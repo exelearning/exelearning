@@ -1,16 +1,16 @@
 ---
-id: ADR-0025
+id: ADR-719-01
 title: "Adopt WebMCP as the client-side AI-agent integration protocol"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 719
+legacy_id: ADR-0025
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: [719]
   prs: [1348]
-  sdds: [SDD-0006]
-  adrs: [ADR-0026, ADR-0027, ADR-0028]
+  changes: ["719-webmcp-in-browser-agent-integration"]
+  adrs: [ADR-719-02, ADR-719-03, ADR-719-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,11 +18,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0025: Adopt WebMCP as the client-side AI-agent integration protocol
-
-## Status
-
-Proposed
+# ADR-719-01: Adopt WebMCP as the client-side AI-agent integration protocol
 
 ## Context
 
@@ -46,7 +42,7 @@ process. Where the native API is missing, a userland shim
 (`@jason.today/webmcp`) provides an equivalent widget/token bridge. This ADR
 records the top-level decision of *which* integration surface eXeLearning
 adopts; the transport details, security boundary and tool lifecycle are the
-subject of the sibling ADRs ADR-0026, ADR-0027 and ADR-0028.
+subject of the sibling ADRs ADR-719-02, ADR-719-03 and ADR-719-04.
 
 ## Problem
 
@@ -69,7 +65,7 @@ existing REST API v1?
   which only happens if the agent mutates the same in-memory model the UI reads.
 - **Embedding constraints.** eXeLearning is frequently embedded in an LMS
   iframe; the chosen surface must at least *degrade cleanly* there (see
-  ADR-0026).
+  ADR-719-02).
 - **Effort and iteration speed.** A first iteration should reuse the existing
   Yjs bridge rather than re-plumb the REST layer.
 
@@ -87,7 +83,7 @@ immediately visible and persist through the normal save path.
   "client is source of truth" architecture.
 - Cons: native `navigator.modelContext` is only available to top-level documents,
   so native mode cannot run inside an LMS iframe (mitigated by the fallback and
-  by degrading cleanly — ADR-0026); depends on an early-stage web API.
+  by degrading cleanly — ADR-719-02); depends on an early-stage web API.
 
 ### Option 2: Server-side MCP server process
 
@@ -135,7 +131,7 @@ Point agents at `/api/v1/*`.
 - Agent-facing contract confirming the browser holds canonical state and the
   server is a relay/persistence layer: `doc/development/webmcp-agent-guide.md`,
   "Identity & scope".
-- The full design is captured in SDD-0006.
+- The full design is captured in the change design.
 
 ## Decision
 
@@ -162,7 +158,7 @@ entry point is **Help → Connect MCP**.
 - Native WebMCP depends on an early-stage web API (`navigator.modelContext`)
   available only in a few browsers and only in top-level documents.
 - Inside an LMS iframe, native mode is unavailable; agents must use the fallback
-  widget or open eXeLearning in its own tab (see ADR-0026).
+  widget or open eXeLearning in its own tab (see ADR-719-02).
 - The agent surface is only present while a user has the editor open in a
   browser; there is no headless/server-driven agent path in this iteration.
 
@@ -178,12 +174,12 @@ entry point is **Help → Connect MCP**.
 
 - **Standard churn (medium likelihood, medium severity).** `navigator.modelContext`
   is pre-standard and may change shape; mitigated by isolating detection and
-  registration behind `WebMCPService` / `WebMCPRegistry` (ADR-0026, ADR-0028).
+  registration behind `WebMCPService` / `WebMCPRegistry` (ADR-719-02, ADR-719-04).
 - **Uneven browser support (high likelihood, low severity).** Many users will
   have no native API; mitigated by the `webmcp.js` fallback and graceful
-  degradation (ADR-0026).
+  degradation (ADR-719-02).
 - **Agent misuse of write tools (medium likelihood, medium severity).** Handled
-  by the security boundary in ADR-0027 (confirmation policy, sanitization,
+  by the security boundary in ADR-719-03 (confirmation policy, sanitization,
   Yjs-model funnel).
 
 ## Validation
@@ -199,16 +195,16 @@ entry point is **Help → Connect MCP**.
 
 ## Follow-up work
 
-- Detailed transport, loading order and degradation: ADR-0026.
-- Agent-write security boundary: ADR-0027.
-- Tool catalog and registration lifecycle: ADR-0028.
-- Full design and rollout: SDD-0006. Related follow-up: PR #2149.
+- Detailed transport, loading order and degradation: ADR-719-02.
+- Agent-write security boundary: ADR-719-03.
+- Tool catalog and registration lifecycle: ADR-719-04.
+- Full design and rollout: the change design. Related follow-up: PR #2149.
 
 ## References
 
 - Issue #719; PR #1348; PR #2149.
-- SDD-0006 — WebMCP In-Browser AI-Agent Integration.
-- ADR-0026, ADR-0027, ADR-0028.
+- the change design — WebMCP In-Browser AI-Agent Integration.
+- ADR-719-02, ADR-719-03, ADR-719-04.
 - `AGENTS.md` §7.1 (Client is Source of Truth).
 - `public/app/app.js` (lines 29, 89, 146).
 - `public/app/integrations/webmcp/WebMCPService.js` (lines 2127-2146).

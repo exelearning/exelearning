@@ -1,16 +1,16 @@
 ---
-id: ADR-0028
+id: ADR-719-04
 title: "Declarative tool catalog with idempotent AbortController registration lifecycle"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 719
+legacy_id: ADR-0028
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: [719]
   prs: [1348]
-  sdds: [SDD-0006]
-  adrs: [ADR-0025, ADR-0026, ADR-0027]
+  changes: ["719-webmcp-in-browser-agent-integration"]
+  adrs: [ADR-719-01, ADR-719-02, ADR-719-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,15 +18,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0028: Declarative tool catalog with idempotent AbortController registration lifecycle
-
-## Status
-
-Proposed
+# ADR-719-04: Declarative tool catalog with idempotent AbortController registration lifecycle
 
 ## Context
 
-The WebMCP surface (ADR-0025) exposes a growing set of tools — project metadata,
+The WebMCP surface (ADR-719-01) exposes a growing set of tools — project metadata,
 page/block/component CRUD, several iDevice creators, rich-HTML and image setters,
 and asset management. Two structural concerns arise:
 
@@ -62,7 +58,7 @@ stale registrations are torn down on re-initialization?
 - **Deterministic teardown** of prior registrations to prevent duplicates or
   ghosts.
 - **Uniform execution wrapper** (abort/permission/handler/envelope) applied to
-  every tool without per-tool boilerplate (see ADR-0027).
+  every tool without per-tool boilerplate (see ADR-719-03).
 - **Testability**: the catalog and lifecycle must be enumerable and unit-testable
   in isolation.
 - **Format correctness**: generated IDs must match the ODE `[0-9]{14}[A-Z0-9]{6}`
@@ -135,7 +131,7 @@ Throw away and rebuild `WebMCPService` to reset state.
 - **Uniform execute wrapper** (abort → permission → handler → `wrapResult`
   envelope, with error capture) is applied once for every tool
   (`WebMCPRegistry.js` lines 121-157) — no per-tool boilerplate; permission logic
-  is ADR-0027.
+  is ADR-719-03.
 - **Service-level lifecycle.** `WebMCPService.init()` is idempotent
   (`WebMCPService.js` lines 174-183); `dispose()` disposes the registry session,
   resets permissions and clears state (lines 185-195); `ensureReady({ forceReload
@@ -226,7 +222,7 @@ repeat across bootstrap, retry and force-reload. Structural tools mint IDs with
 
 ## References
 
-- Issue #719; PR #1348; PR #2149; SDD-0006; ADR-0025, ADR-0026, ADR-0027.
+- Issue #719; PR #1348; PR #2149; the change design; ADR-719-01, ADR-719-02, ADR-719-03.
 - `public/app/integrations/webmcp/tools/index.js` (lines 10-46) and the seven
   category files under `public/app/integrations/webmcp/tools/`.
 - `public/app/integrations/webmcp/WebMCPRegistry.js` (lines 4-15, 41-77,

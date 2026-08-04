@@ -1,16 +1,16 @@
 ---
-id: ADR-0026
+id: ADR-719-02
 title: "Dual-mode WebMCP transport with vendored fallback and graceful degradation"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 719
+legacy_id: ADR-0026
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: [719]
   prs: [1348]
-  sdds: [SDD-0006]
-  adrs: [ADR-0025, ADR-0027, ADR-0028]
+  changes: ["719-webmcp-in-browser-agent-integration"]
+  adrs: [ADR-719-01, ADR-719-03, ADR-719-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,15 +18,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0026: Dual-mode WebMCP transport with vendored fallback and graceful degradation
-
-## Status
-
-Proposed
+# ADR-719-02: Dual-mode WebMCP transport with vendored fallback and graceful degradation
 
 ## Context
 
-ADR-0025 committed eXeLearning to a browser-side WebMCP surface. That surface can
+ADR-719-01 committed eXeLearning to a browser-side WebMCP surface. That surface can
 be realized two ways in a browser:
 
 1. **Native** — the page publishes tools through the W3C incubation API
@@ -63,7 +59,7 @@ when neither mode is available?
 - **Respect embedding and CSP.** Do not call third-party origins without explicit
   opt-in; explain the iframe limitation to users.
 - **Idempotent re-initialization.** Retrying from the UI or forcing a reload must
-  be safe (registration lifecycle is ADR-0028).
+  be safe (registration lifecycle is ADR-719-04).
 
 ## Options considered
 
@@ -153,7 +149,7 @@ same-origin fallback**:
    embedded).
 
 The registry accommodates both registration API shapes, and re-initialization is
-idempotent (ADR-0028).
+idempotent (ADR-719-04).
 
 ## Consequences
 
@@ -212,7 +208,7 @@ idempotent (ADR-0028).
 
 ## References
 
-- Issue #719; PR #1348; PR #2149; SDD-0006; ADR-0025, ADR-0027, ADR-0028.
+- Issue #719; PR #1348; PR #2149; the change design; ADR-719-01, ADR-719-03, ADR-719-04.
 - `public/app/integrations/webmcp/WebMCPService.js` (lines 52-58, 197-262,
   285-342, 344-427, 482-518).
 - `public/app/integrations/webmcp/WebMCPRegistry.js` (lines 183-198).

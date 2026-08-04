@@ -1,16 +1,13 @@
 ---
-id: SDD-0006
+tracking_issue: 719
 title: "WebMCP: in-browser Model Context Protocol agent integration"
-status: Implemented
+status: implemented
 date: 2026-07-09
+legacy_id: SDD-0006
 authors:
   - "@erseco"
-reviewers: []
-related:
-  issues: [719]
-  prs: [1348, 2149]
-  adrs: [ADR-0025, ADR-0026, ADR-0027, ADR-0028]
-  sdds: []
+implementation_prs: [1348]
+related_adrs: [ADR-719-01, ADR-719-02, ADR-719-03, ADR-719-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,18 +15,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0006: WebMCP: in-browser Model Context Protocol agent integration
-
-## Status
-
-Implemented
-
-<!-- This SDD documents the initial, experimental WebMCP integration merged in
-PR #1348. "Implemented" means the code and its unit tests exist on the branch;
-it does not claim the feature is production-hardened. The native path targets an
-early-preview browser API, the fallback ships a vendored widget, and the E2E
-onboarding spec has not been verified green in CI. See "Rollout plan" and "Risks
-and mitigations". -->
+# WebMCP: in-browser Model Context Protocol agent integration — design
 
 ## Summary
 
@@ -50,8 +36,8 @@ a pre-standard browser API available only to top-level documents in a few
 browsers; the fallback is a same-origin vendored script; and agent writes are
 gated by a client-side confirmation policy, sanitized through a single DOMPurify
 choke-point, and recorded as in-memory audit events. The whole design is captured
-by four decision records — ADR-0025 (adopt WebMCP), ADR-0026 (transport and
-loading), ADR-0027 (agent-write security boundary), ADR-0028 (tool catalog and
+by four decision records — ADR-719-01 (adopt WebMCP), ADR-719-02 (transport and
+loading), ADR-719-03 (agent-write security boundary), ADR-719-04 (tool catalog and
 registration lifecycle).
 
 ## Problem statement
@@ -91,19 +77,19 @@ the user's document?*
 ## Non-goals
 
 - No server-side MCP server process, and no headless/server-driven agent path in
-  this iteration (ADR-0025, Option 2 rejected). WebMCP is present only while a
+  this iteration (ADR-719-01, Option 2 rejected). WebMCP is present only while a
   user has the editor open.
 - No use of REST API v1 (`/api/v1/*`) on the MCP execution path for this
   iteration (`doc/development/webmcp.md`, "Design decisions"). CLI and REST v1
   server-side flows are unchanged and additive.
 - No native WebMCP inside an LMS iframe: `navigator.modelContext` is restricted to
   top-level documents, so embedded editors must use the fallback widget or open
-  eXeLearning in its own tab (ADR-0026).
+  eXeLearning in its own tab (ADR-719-02).
 - No server-side authorization layer or server-side persisted audit trail in this
-  iteration (ADR-0027, "Risks and residual threat model").
+  iteration (ADR-719-03, "Risks and residual threat model").
 - No granular per-tool permission UI yet; the default consent is a single
-  per-session `window.confirm()` (ADR-0027, "Follow-up work").
-- No remote-CDN fallback by default; remote sources are opt-in only (ADR-0026).
+  per-session `window.confirm()` (ADR-719-03, "Follow-up work").
+- No remote-CDN fallback by default; remote sources are opt-in only (ADR-719-02).
 
 ## Current state
 
@@ -162,16 +148,16 @@ into the app once at bootstrap. The runtime shape:
 Four durable decisions structure the design:
 
 1. **Adopt a browser-side WebMCP surface** driving the client Y.Doc rather than a
-   server MCP server or REST v1 (ADR-0025).
+   server MCP server or REST v1 (ADR-719-01).
 2. **Dual-mode transport**: native-first, vendored same-origin fallback,
    remote-CDN opt-in, and graceful degradation to an "unavailable" status
-   (ADR-0026).
+   (ADR-719-02).
 3. **A three-part agent-write security boundary**: central confirmation policy, a
    single DOMPurify sanitization choke-point, and a single Yjs write funnel with
-   audit events and W3C tool annotations (ADR-0027).
+   audit events and W3C tool annotations (ADR-719-03).
 4. **A declarative tool catalog** bound to service handlers, registered through an
    `AbortController`-backed session that makes re-initialization idempotent
-   (ADR-0028).
+   (ADR-719-04).
 
 ## User experience
 
@@ -254,7 +240,7 @@ All new code lives under `public/app/integrations/webmcp/` plus UI wiring. Modul
   (`export const toolCatalog`, plus `getToolDefinition`, `getToolsByCategory`,
   `getReadOnlyTools`, `getWriteTools`).
 
-Transport and loading (ADR-0026): `hasNativeModelContext()` checks
+Transport and loading (ADR-719-02): `hasNativeModelContext()` checks
 `typeof navigator?.modelContext?.registerTool === 'function'`;
 `getScriptCandidates()` builds a deterministic candidate list — config
 `webmcpScriptUrl` → `webmcpScriptUrls` → same-origin `libs/webmcp/webmcp.js` →
@@ -265,7 +251,7 @@ the load loop stops at the first candidate yielding a `WebMCP` constructor. When
 nothing is available, `initializeNativeInstance()` / `initializeWebMcpJsInstance()`
 set `instance = null`, `mode = null` and log a detection event without throwing.
 
-Registration and execution (ADR-0027, ADR-0028): `registerDefaultTools()` calls
+Registration and execution (ADR-719-03, ADR-719-04): `registerDefaultTools()` calls
 `registry.createSession()` then `registry.registerAll(instance, mode, toolCatalog,
 handlerMap)`, which skips catalog entries whose handler is missing (logged
 warning). The execute wrapper applies abort → permission → handler → envelope
@@ -300,7 +286,7 @@ human authoring:
   `YjsStructureBinding` and persisted with `bridge.save({ showProgress: false })`.
 - **Generated node IDs** — pages/blocks/components created by tools mint IDs with
   `generateOdeId()` so they round-trip through the ODE/ELPX `[0-9]{14}[A-Z0-9]{6}`
-  format (`validators.js`; ADR-0028).
+  format (`validators.js`; ADR-719-04).
 - **Assets** — image/asset tools store bytes through the file manager / asset
   manager and reference them with canonical `asset://<uuid>` or
   `asset://<uuid>.<ext>` URLs (`doc/elpx-format/assets.md`).
@@ -321,10 +307,10 @@ data — defensive against agent-supplied JSON payloads.
 ## Migration and compatibility
 
 - **Additive only.** No migration is required; no existing schema, route, or
-  export changes. CLI and REST API v1 server-side flows are untouched (ADR-0025,
+  export changes. CLI and REST API v1 server-side flows are untouched (ADR-719-01,
   "Consequences: Neutral").
 - **Backward compatibility.** The legacy `registeredTools` and
-  `writeConfirmationPolicy` fields are synced for external consumers (ADR-0028).
+  `writeConfirmationPolicy` fields are synced for external consumers (ADR-719-04).
   `ideviceNode.parseParamValue()` tolerates legacy/malformed `jsonProperties`
   without regressing valid objects (`ideviceNode.test.js`).
 - **Feature availability, not a flag.** There is no on/off feature flag; the
@@ -341,7 +327,7 @@ data — defensive against agent-supplied JSON payloads.
 ## Security and privacy
 
 The boundary is entirely client-side (there is no server authorization layer
-between the agent and the document) and is enforced at three points (ADR-0027):
+between the agent and the document) and is enforced at three points (ADR-719-03):
 
 1. **Confirmation policy** — writes require consent per the configurable policy
    (`session` default, `per_action`, `none`), enforced centrally in the
@@ -363,7 +349,7 @@ W3C tool annotations advertise risk to cooperating agents: `destructiveHint` on
 `exe.idevices.text.insert_image_url`, `exe.idevices.image_gallery.add` and
 `exe.assets.import_image_url`.
 
-Honest residual threat model (ADR-0027, "Risks"): the default `session` policy is
+Honest residual threat model (ADR-719-03, "Risks"): the default `session` policy is
 coarse (one approval authorizes all writes for the session); `none` disables the
 prompt and must be reserved for trusted deployments; annotations are advisory, not
 enforced (the confirmation policy is the enforced backstop); the inert-DOM
@@ -372,7 +358,7 @@ there is no server-side authorization and audit is in-memory only; and open-worl
 image/import tools reach third-party origins (flagged, but SSRF/opaque-content
 posture follows the rest of the app). Privacy note: remote CDNs are opt-in
 (`webmcpAllowRemoteFallback`) precisely so institutional CSP/iframe deployments do
-not call out to third-party origins without consent (ADR-0026).
+not call out to third-party origins without consent (ADR-719-02).
 
 ## Accessibility
 
@@ -466,37 +452,37 @@ This is an initial, experimental landing, not a hardened GA feature.
    as upstream `@jason.today/webmcp` evolves.
 5. **Re-review when the standard stabilizes.** Revisit the native path if/when
    `navigator.modelContext` changes shape or gains a documented embedded-context
-   story (ADR-0025, ADR-0026, "Validation" / "Follow-up work").
+   story (ADR-719-01, ADR-719-02, "Validation" / "Follow-up work").
 
 ## Risks and mitigations
 
 - **Pre-standard native API churn** (medium/medium). `navigator.modelContext` may
   change; isolated behind `WebMCPService` detection and
-  `WebMCPRegistry.registerTool()` (ADR-0025, ADR-0026).
+  `WebMCPRegistry.registerTool()` (ADR-719-01, ADR-719-02).
 - **Uneven browser support** (high/low). Most users have no native API; mitigated
-  by the vendored same-origin fallback and graceful degradation (ADR-0026).
+  by the vendored same-origin fallback and graceful degradation (ADR-719-02).
 - **Native unavailable in LMS iframes** (high/low in embedded contexts). Mitigated
   by the fallback widget and a status message that explains opening a top-level tab
-  (ADR-0026; `getStatus()` iframe branch).
+  (ADR-719-02; `getStatus()` iframe branch).
 - **Coarse `session` consent** (medium/medium). One approval authorizes all writes
   for the session; mitigated by `per_action` policy and destructive-tool
-  annotations (ADR-0027).
+  annotations (ADR-719-03).
 - **`none` policy misuse** (low/high if set). Disables all prompts; must be scoped
-  to trusted deployments (ADR-0027).
+  to trusted deployments (ADR-719-03).
 - **Sanitizer fallback gap** (low/medium). The inert-DOM fallback is narrower than
   DOMPurify; browsers ship DOMPurify, so the fallback is mainly a test-path safety
-  net (ADR-0027).
+  net (ADR-719-03).
 - **Advisory annotations ignored** (medium/low). A non-cooperating agent may
   ignore `destructiveHint` / `openWorldHint`; the confirmation policy is the
-  enforced backstop (ADR-0027).
+  enforced backstop (ADR-719-03).
 - **Open-world image/import tools** (medium/low-medium). Reach third-party origins;
   flagged `openWorldHint` / `untrustedContentHint`; bytes handled via the asset
-  manager (ADR-0027).
+  manager (ADR-719-03).
 - **Vendored `webmcp.js` drift** (medium/low). The pinned copy may lag upstream;
-  kept same-origin and refreshed on demand (ADR-0026).
+  kept same-origin and refreshed on demand (ADR-719-02).
 - **Handler-map string drift** (medium/low). A catalog entry without a matching
   handler is skipped with a warning; covered by tests and the add-a-tool checklist
-  (ADR-0028).
+  (ADR-719-04).
 - **Unverified E2E** (this iteration). The Connect MCP E2E spec is not confirmed
   green here; mitigated by the rollout gate requiring it before broad enablement.
 
@@ -505,24 +491,24 @@ This is an initial, experimental landing, not a hardened GA feature.
 - Should status labels/descriptions from `getStatus()` be wrapped for i18n, or do
   they stay English (they are currently English literals in the service)?
 - Should the coarse `session` prompt be replaced by an in-app modal and a granular
-  per-tool permission UI before wider rollout (ADR-0027 follow-up)?
+  per-tool permission UI before wider rollout (ADR-719-03 follow-up)?
 - Should audit events be persisted server-side, and if so under which
-  authenticated path (ADR-0027 follow-up)?
+  authenticated path (ADR-719-03 follow-up)?
 - What is the cadence and provenance policy for refreshing the vendored
   `public/libs/webmcp/webmcp.js` against upstream `@jason.today/webmcp`?
 - Should catalog `handlerName` binding be made typed / build-time checked to catch
-  drift without relying on the runtime missing-handler warning (ADR-0028 follow-up)?
+  drift without relying on the runtime missing-handler warning (ADR-719-04 follow-up)?
 - Do we want a headless/server-driven agent path in a later iteration, or is the
-  editor-open-only model sufficient (ADR-0025 non-goal)?
+  editor-open-only model sufficient (ADR-719-01 non-goal)?
 
 ## ADRs required or referenced
 
 | Decision | ADR | Status |
 |---|---|---|
-| Adopt WebMCP (browser-side surface driving the client Y.Doc) as the agent integration protocol; no server MCP process; REST v1 out of the MCP path | [ADR-0025](../adr/ADR-0025-adopt-webmcp-agent-protocol.md) | Proposed |
-| Dual-mode transport: native-first, vendored same-origin `webmcp.js` fallback, remote-CDN opt-in, graceful degradation | [ADR-0026](../adr/ADR-0026-webmcp-transport-and-loading-strategy.md) | Proposed |
-| Agent-write security boundary: central confirmation policy, single DOMPurify sanitization choke-point, single Yjs write funnel with audit + W3C annotations | [ADR-0027](../adr/ADR-0027-webmcp-agent-write-security-model.md) | Proposed |
-| Declarative tool catalog bound to handlers, registered via an idempotent `AbortController` session; ODE-format node IDs | [ADR-0028](../adr/ADR-0028-webmcp-tool-catalog-and-registration-lifecycle.md) | Proposed |
+| Adopt WebMCP (browser-side surface driving the client Y.Doc) as the agent integration protocol; no server MCP process; REST v1 out of the MCP path | [ADR-719-01](../adr/ADR-719-01-adopt-webmcp-agent-protocol.md) | Proposed |
+| Dual-mode transport: native-first, vendored same-origin `webmcp.js` fallback, remote-CDN opt-in, graceful degradation | [ADR-719-02](../adr/ADR-719-02-webmcp-transport-and-loading-strategy.md) | Proposed |
+| Agent-write security boundary: central confirmation policy, single DOMPurify sanitization choke-point, single Yjs write funnel with audit + W3C annotations | [ADR-719-03](../adr/ADR-719-03-webmcp-agent-write-security-model.md) | Proposed |
+| Declarative tool catalog bound to handlers, registered via an idempotent `AbortController` session; ODE-format node IDs | [ADR-719-04](../adr/ADR-719-04-webmcp-tool-catalog-and-registration-lifecycle.md) | Proposed |
 
 ## Evidence
 
@@ -641,11 +627,11 @@ This is an initial, experimental landing, not a hardened GA feature.
 
 - Issue #719 — request for AI-agent authoring in eXeLearning.
 - PR #1348 — initial WebMCP integration (this design). PR #2149 — follow-up.
-- ADR-0025 — Adopt WebMCP as the client-side AI-agent integration protocol.
-- ADR-0026 — Dual-mode WebMCP transport with vendored fallback and graceful
+- ADR-719-01 — Adopt WebMCP as the client-side AI-agent integration protocol.
+- ADR-719-02 — Dual-mode WebMCP transport with vendored fallback and graceful
   degradation.
-- ADR-0027 — WebMCP agent-write security boundary.
-- ADR-0028 — Declarative tool catalog with idempotent AbortController registration
+- ADR-719-03 — WebMCP agent-write security boundary.
+- ADR-719-04 — Declarative tool catalog with idempotent AbortController registration
   lifecycle.
 - `AGENTS.md` §7.1 (Client is Source of Truth), §7.4 (i18n policy), §5.3 (coverage
   gates).

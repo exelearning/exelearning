@@ -1,16 +1,16 @@
 ---
-id: ADR-0027
+id: ADR-719-03
 title: "WebMCP agent-write security boundary: confirmation policy, sanitization, and Yjs-model funnel"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 719
+legacy_id: ADR-0027
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: [719]
   prs: [1348]
-  sdds: [SDD-0006]
-  adrs: [ADR-0025, ADR-0026, ADR-0028]
+  changes: ["719-webmcp-in-browser-agent-integration"]
+  adrs: [ADR-719-01, ADR-719-02, ADR-719-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,15 +18,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0027: WebMCP agent-write security boundary: confirmation policy, sanitization, and Yjs-model funnel
-
-## Status
-
-Proposed
+# ADR-719-03: WebMCP agent-write security boundary: confirmation policy, sanitization, and Yjs-model funnel
 
 ## Context
 
-The WebMCP surface (ADR-0025) lets an AI agent call tools that *mutate* the live
+The WebMCP surface (ADR-719-01) lets an AI agent call tools that *mutate* the live
 project: create pages and blocks, add iDevices, set rich HTML, upload/import
 images and save the project. Agent-supplied input is untrusted along two axes:
 
@@ -254,7 +250,7 @@ We will enforce a **three-part agent-write security boundary**:
 
 ## References
 
-- Issue #719; PR #1348; PR #2149; SDD-0006; ADR-0025, ADR-0026, ADR-0028.
+- Issue #719; PR #1348; PR #2149; the change design; ADR-719-01, ADR-719-02, ADR-719-04.
 - `public/app/integrations/webmcp/WebMCPPermissions.js`,
   `public/app/integrations/webmcp/WebMCPRegistry.js` (lines 121-157, 172-181),
   `public/app/integrations/webmcp/webmcpSanitize.js`,
