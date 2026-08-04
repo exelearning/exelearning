@@ -1,17 +1,18 @@
 ---
-id: ADR-0040
+id: ADR-2019-02
 title: "Keyboard navigation is an opt-in, off-by-default export-metadata option threaded through the unified export pipeline"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2019
+legacy_id: ADR-0040
 deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
 related:
-  issues: [2019]
   prs: [2020]
-  sdds: [SDD-0010]
-  adrs: [ADR-0039, ADR-0041]
+  changes: ["2019-keyboard-navigation-export-preview"]
+  adrs: [ADR-2019-01, ADR-2019-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,15 +20,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0040: Keyboard navigation is an opt-in, off-by-default export-metadata option threaded through the unified export pipeline
-
-## Status
-
-Proposed
+# ADR-2019-02: Keyboard navigation is an opt-in, off-by-default export-metadata option threaded through the unified export pipeline
 
 ## Context
 
-The keyboard-navigation runtime introduced by issue #2019 (see ADR-0039) changes
+The keyboard-navigation runtime introduced by issue #2019 (see ADR-2019-01) changes
 standard page navigation: plain arrow keys move between pages, `m` toggles the
 menu, `Alt+/` opens search, and `t` toggles Teacher Mode. That behavior is
 useful for slide-like content but can surprise readers of ordinary content and
@@ -55,7 +52,7 @@ represented and carried from the author's choice to the rendered page?
 
 - **No surprising behavior change** for existing content or projects.
 - **Conflict avoidance** with other keyboard-driven content (e.g. lightbox
-  galleries) — reinforced by ADR-0041.
+  galleries) — reinforced by ADR-2019-03.
 - **Author control** — the author, not the reader, decides whether pages behave
   like a keyboard-navigable presentation.
 - **Reuse the existing export-option plumbing** (single source of truth) instead
@@ -193,14 +190,14 @@ key.
 
 - Document the `addKeyboardNavigation` metadata key and the `?keyboard-navigation`
   / localStorage opt-out in the operational metadata reference (linked from
-  SDD-0010).
+  the change design).
 
 ## References
 
 - Issue #2019; PR #2020 (review request from @ignaciogros for off-by-default).
-- SDD-0010 — Keyboard navigation for exported and previewed content.
-- ADR-0039 — shared export/preview runtime location.
-- ADR-0041 — overlay-aware keyboard suppression registry.
+- the change design — Keyboard navigation for exported and previewed content.
+- ADR-2019-01 — shared export/preview runtime location.
+- ADR-2019-03 — overlay-aware keyboard suppression registry.
 - `src/shared/export/metadata-properties.ts`, `src/routes/config-params.ts`,
   `src/shared/export/adapters/YjsDocumentAdapter.ts`,
   `src/shared/export/exporters/Html5Exporter.ts`,

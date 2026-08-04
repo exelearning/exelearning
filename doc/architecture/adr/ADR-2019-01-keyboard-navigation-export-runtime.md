@@ -1,17 +1,18 @@
 ---
-id: ADR-0039
+id: ADR-2019-01
 title: "Keyboard-navigation runtime lives in the shared export/preview runtime and drives existing theme elements"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2019
+legacy_id: ADR-0039
 deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
 related:
-  issues: [2019]
   prs: [2020]
-  sdds: [SDD-0010]
-  adrs: [ADR-0040, ADR-0041]
+  changes: ["2019-keyboard-navigation-export-preview"]
+  adrs: [ADR-2019-02, ADR-2019-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,11 +20,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0039: Keyboard-navigation runtime lives in the shared export/preview runtime and drives existing theme elements
-
-## Status
-
-Proposed
+# ADR-2019-01: Keyboard-navigation runtime lives in the shared export/preview runtime and drives existing theme elements
 
 ## Context
 
@@ -164,7 +161,7 @@ a new export library and will not be duplicated per theme.
 
 ### Neutral
 
-- The behavior is only active when the author opts in (see ADR-0040); this ADR
+- The behavior is only active when the author opts in (see ADR-2019-02); this ADR
   fixes *where the runtime lives*, not *whether it is on*.
 
 ## Risks
@@ -187,15 +184,15 @@ a new export library and will not be duplicated per theme.
 ## Follow-up work
 
 - Keep the selector list documented alongside the module so theme authors know
-  which elements enable the feature. See SDD-0010 for the operational reference
+  which elements enable the feature. See the change design for the operational reference
   links.
 
 ## References
 
 - Issue #2019 — keyboard navigation request.
 - PR #2020 — implementation.
-- SDD-0010 — Keyboard navigation for exported and previewed content.
-- ADR-0040 — opt-in, off-by-default export option.
-- ADR-0041 — overlay-aware keyboard suppression registry.
+- the change design — Keyboard navigation for exported and previewed content.
+- ADR-2019-02 — opt-in, off-by-default export option.
+- ADR-2019-03 — overlay-aware keyboard suppression registry.
 - `public/app/common/exe_export.js`, `src/shared/export/renderers/PageRenderer.ts`,
   `src/shared/export/exporters/Html5Exporter.ts`.

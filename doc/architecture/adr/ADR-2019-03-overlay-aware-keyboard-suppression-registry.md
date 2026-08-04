@@ -1,17 +1,18 @@
 ---
-id: ADR-0041
+id: ADR-2019-03
 title: "Defer to open overlays via an extensible overlay-signal registry (active surface owns the keyboard)"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2019
+legacy_id: ADR-0041
 deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
 related:
-  issues: [2019]
   prs: [2020]
-  sdds: [SDD-0010]
-  adrs: [ADR-0039, ADR-0040]
+  changes: ["2019-keyboard-navigation-export-preview"]
+  adrs: [ADR-2019-01, ADR-2019-02]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,15 +20,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0041: Defer to open overlays via an extensible overlay-signal registry (active surface owns the keyboard)
-
-## Status
-
-Proposed
+# ADR-2019-03: Defer to open overlays via an extensible overlay-signal registry (active surface owns the keyboard)
 
 ## Context
 
-The keyboard-navigation runtime (ADR-0039) listens for `keydown` at the document
+The keyboard-navigation runtime (ADR-2019-01) listens for `keydown` at the document
 level and, on plain arrow keys, navigates between pages. Exported content
 frequently contains widgets that own the keyboard while open: the legacy
 `exe_lightbox` (prettyPhoto) gallery, the SimpleLightbox used by the Image
@@ -192,8 +189,8 @@ widgets are covered by adding one entry to the array.
 ## References
 
 - Issue #2019; PR #2020 (review request from @ignaciogros; @ussefxben context).
-- SDD-0010 — Keyboard navigation for exported and previewed content.
-- ADR-0039 — shared export/preview runtime location.
-- ADR-0040 — opt-in, off-by-default export option.
+- the change design — Keyboard navigation for exported and previewed content.
+- ADR-2019-01 — shared export/preview runtime location.
+- ADR-2019-02 — opt-in, off-by-default export option.
 - `public/app/common/exe_export.js` (`overlaySignals`, `isOverlayActive`,
   `handleKeydown`); `test/e2e/playwright/specs/idevices/image-gallery.spec.ts`.

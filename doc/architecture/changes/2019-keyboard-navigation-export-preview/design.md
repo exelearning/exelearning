@@ -1,17 +1,15 @@
 ---
-id: SDD-0010
+tracking_issue: 2019
 title: "Keyboard navigation for exported and previewed content"
-status: Implemented
+status: implemented
 date: 2026-07-09
+legacy_id: SDD-0010
 authors:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
-related:
-  issues: [2019]
-  prs: [2020, 2149]
-  adrs: [ADR-0039, ADR-0040, ADR-0041]
-  sdds: []
+implementation_prs: [2020]
+related_adrs: [ADR-2019-01, ADR-2019-02, ADR-2019-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,11 +17,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0010: Keyboard navigation for exported and previewed content
-
-## Status
-
-Implemented
+# Keyboard navigation for exported and previewed content — design
 
 ## Summary
 
@@ -57,7 +51,7 @@ full-screen video) that own the keyboard while open.
 ## Non-goals
 
 - No new per-theme JavaScript and no new standalone export library (see
-  ADR-0039).
+  ADR-2019-01).
 - No focus-management/tab-order overhaul of exported pages; this design adds
   navigation shortcuts, not a full focus framework.
 - No changes to the authoring workarea's own keyboard shortcuts
@@ -108,9 +102,9 @@ Author toggles "Keyboard navigation" (properties UI)
                 → clicks existing theme elements (nav links, togglers)
 ```
 
-Design rationale is captured in three ADRs: where the runtime lives (ADR-0039),
-opt-in/off-by-default plumbing (ADR-0040), and overlay-aware suppression
-(ADR-0041).
+Design rationale is captured in three ADRs: where the runtime lives (ADR-2019-01),
+opt-in/off-by-default plumbing (ADR-2019-02), and overlay-aware suppression
+(ADR-2019-03).
 
 ## User experience
 
@@ -161,7 +155,7 @@ value.
 **Overlay-signal registry** — `overlaySignals` (lines 643-686) with four probes
 (exe_lightbox `.pp_pic_holder`+visibility, SimpleLightbox `.sl-wrapper`,
 `.Games-OverlayImage`, `.mejs-container-fullscreen`); `isOverlayActive()`
-aggregates them with per-probe try/catch (lines 688-698). See ADR-0041.
+aggregates them with per-probe try/catch (lines 688-698). See ADR-2019-03.
 
 **Server/shared rendering** — `src/shared/export/renderers/PageRenderer.ts`
 emits `<script>window.exeKeyboardNavEnabled=true;</script>` before
@@ -229,7 +223,7 @@ localStorage key are read-only opt-outs and are not persisted to the document.
 
 - Keyboard navigation is itself an accessibility affordance, but it is off by
   default because it changes standard page navigation and can conflict with other
-  keyboard-driven content; authors opt in deliberately (ADR-0040).
+  keyboard-driven content; authors opt in deliberately (ADR-2019-02).
 - Typing targets are never hijacked (`isTypingTarget` covers inputs, textareas,
   selects, `contenteditable`, and `role="textbox"`).
 - Reserved browser combinations are preserved: plain arrows only (no modifier),
@@ -290,7 +284,7 @@ until authors opt in.
   no-op-when-absent design; real and synthetic E2E tests.
 - **Overlay coverage gaps** (medium): a new overlay widget added without a probe
   would not suppress navigation. Mitigation: the documented one-entry
-  `overlaySignals` extension pattern (ADR-0041) and the E2E template.
+  `overlaySignals` extension pattern (ADR-2019-03) and the E2E template.
 - **Author discoverability** (medium, low severity): the option may go unnoticed.
   Mitigation: descriptive properties-UI title and help text.
 
@@ -306,9 +300,9 @@ until authors opt in.
 
 | Decision | ADR | Status |
 |---|---|---|
-| Keyboard-navigation runtime lives in the shared export/preview runtime and drives existing theme elements | ADR-0039 | Proposed |
-| Keyboard navigation is an opt-in, off-by-default export-metadata option threaded through the unified export pipeline | ADR-0040 | Proposed |
-| Defer to open overlays via an extensible overlay-signal registry (active surface owns the keyboard) | ADR-0041 | Proposed |
+| Keyboard-navigation runtime lives in the shared export/preview runtime and drives existing theme elements | ADR-2019-01 | Proposed |
+| Keyboard navigation is an opt-in, off-by-default export-metadata option threaded through the unified export pipeline | ADR-2019-02 | Proposed |
+| Defer to open overlays via an extensible overlay-signal registry (active surface owns the keyboard) | ADR-2019-03 | Proposed |
 
 ## Evidence
 
@@ -361,6 +355,6 @@ until authors opt in.
 
 - Issue #2019 — keyboard navigation request.
 - PR #2020 — implementation; PR #2149 — follow-up.
-- ADR-0039, ADR-0040, ADR-0041.
+- ADR-2019-01, ADR-2019-02, ADR-2019-03.
 - Operational docs: `doc/elpx-format/metadata.md`,
   `doc/elpx-format/export-pipeline.md`, `doc/architecture.md`.
