@@ -208,6 +208,12 @@ idle ──initialize──▶ active ──terminate──▶ finish_attempted 
 - A failed finish stays failed. Later calls replay the recorded result and the
   original LMS error stays available through `client.getFinishReport()`. It is
   never retried during page teardown, where a retry cannot succeed.
+- The client issues `LMSCommit("")` and `LMSFinish("")` as two separate calls
+  rather than through the wrapper's `connection.terminate` (which folds both
+  into one boolean), so the report always distinguishes a failed commit from a
+  failed finish. A failed commit deliberately aborts the termination without
+  attempting `LMSFinish`: the LMS could not persist the data, and finishing
+  anyway would close an attempt whose stored state is unknown.
 - The state is reconciled whenever `pipwerks.SCORM.connection.isActive` turns
   false outside the machine — legacy content holding a reference captured
   before the adapter's shim was installed — and the anomaly is reported once.

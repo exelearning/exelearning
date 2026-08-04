@@ -107,6 +107,11 @@
             pageHasScoredActivities: false,
             successThreshold: DEFAULT_SUCCESS_THRESHOLD,
             thresholdResolved: false,
+            // Last status this policy itself wrote during this session. A
+            // terminal status the policy owns may be corrected when a
+            // required activity registers late; one restored from a previous
+            // attempt or written explicitly by content never is.
+            policySessionStatus: null,
         };
     }
 
@@ -340,44 +345,65 @@
 
         /**
          * Re-evaluate the status during the session, after activity progress
-         * changed.
-         *
-         * Unlike the exit policy this may move between terminal statuses — a
-         * learner who retries a failed activity and passes must end up
-         * "passed" — but it never replaces a terminal status with a
-         * non-terminal one, so progress is never erased.
+         * changed. Same semantics as applyDecidedStatus.
          *
          * @param {number} [aggregateScore] - See decideStatus.
-         * @returns {{status: string, written: boolean, reason: string}} What
-         * happened.
+         * @returns {{status: string, written: boolean, reason: string,
+         * effective: string}} What happened.
          */
         recordActivityOutcome: function (aggregateScore) {
-            var current = deps.getClient().getValue(LESSON_STATUS);
-            var decision = policy.decideStatus(aggregateScore);
-            if (policy.isTerminalStatus(current) && !policy.isTerminalStatus(decision.status)) {
-                return { status: current, written: false, reason: 'terminal-status-preserved' };
-            }
-            if (decision.status === current) {
-                return { status: current, written: true, reason: decision.reason };
-            }
-            return { status: decision.status, written: writeStatus(decision.status), reason: decision.reason };
+            return policy.applyDecidedStatus(aggregateScore);
         },
 
         /**
-         * Apply the decided status to cmi.core.lesson_status, unless a
-         * terminal status is already recorded (a status is never downgraded).
+         * Apply the decided status to cmi.core.lesson_status.
          *
-         * @returns {{status: string, written: boolean, reason: string}} What
-         * happened.
+         * A terminal status already recorded is preserved — with one
+         * exception: when the policy itself wrote that terminal status during
+         * this session and a required activity registered afterwards, the
+         * page demonstrably is not finished, so the policy corrects its own
+         * verdict back to "incomplete". A terminal status restored from a
+         * previous attempt, or written explicitly by content, is never
+         * downgraded. Movement *between* terminal statuses (a retried failed
+         * activity now passing) is always allowed.
+         *
+         * `effective` is the status actually in force at the LMS after the
+         * call — when a write is rejected it is the previously stored value,
+         * so callers (the exit policy) never act on a status the LMS refused.
+         *
+         * @param {number} [aggregateScore] - See decideStatus.
+         * @returns {{status: string, written: boolean, reason: string,
+         * effective: string}} What happened.
          */
         applyDecidedStatus: function (aggregateScore) {
             var current = deps.getClient().getValue(LESSON_STATUS);
-            if (policy.isTerminalStatus(current)) {
-                return { status: current, written: false, reason: 'terminal-status-preserved' };
-            }
             var decision = policy.decideStatus(aggregateScore);
-            var written = decision.status === current ? true : writeStatus(decision.status);
-            return { status: decision.status, written: written, reason: decision.reason };
+            if (policy.isTerminalStatus(current) && !policy.isTerminalStatus(decision.status)) {
+                var policyOwned = current === state.policySessionStatus;
+                var lateRegistration = decision.reason === 'required-activities-pending';
+                if (!policyOwned || !lateRegistration) {
+                    return {
+                        status: current,
+                        written: false,
+                        reason: 'terminal-status-preserved',
+                        effective: current,
+                    };
+                }
+            }
+            if (decision.status === current) {
+                state.policySessionStatus = current;
+                return { status: current, written: true, reason: decision.reason, effective: current };
+            }
+            var written = writeStatus(decision.status);
+            if (written) {
+                state.policySessionStatus = decision.status;
+            }
+            return {
+                status: decision.status,
+                written: written,
+                reason: decision.reason,
+                effective: written ? decision.status : current,
+            };
         },
 
         /**
@@ -415,7 +441,11 @@
             policy.persistActivities();
             var status;
             if (applyCompletionRule !== false) {
-                status = policy.applyDecidedStatus().status;
+                // `effective` rather than the decision: if the LMS rejected
+                // the status write, cmi.core.exit must describe the attempt
+                // the LMS actually stored — reporting a normal end ("") for a
+                // still-incomplete attempt would close it prematurely.
+                status = policy.applyDecidedStatus().effective;
             } else {
                 status = client.getValue(LESSON_STATUS);
             }

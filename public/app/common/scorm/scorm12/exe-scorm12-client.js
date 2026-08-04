@@ -129,24 +129,11 @@
             // Last value this runtime wrote per element, used to answer legacy
             // getters for write-only elements without an invalid LMS call.
             writeCache: {},
+            // Per-step outcome of the single termination (commit and finish
+            // are separate LMS calls with separate results).
+            finishSteps: null,
             externalTerminationReported: false,
         };
-    }
-
-    /**
-     * Resolve the wrapper function that actually sends LMSFinish.
-     *
-     * The adapter layer replaces pipwerks.SCORM.connection.terminate with a
-     * shim that routes legacy callers through the lifecycle layer, and tags it
-     * with the untouched original. Following that tag keeps this layer talking
-     * to the real wrapper instead of recursing into the shim.
-     *
-     * @param {object} pipwerks - The wrapper object.
-     * @returns {Function} The upstream terminate implementation.
-     */
-    function resolveNativeTerminate(pipwerks) {
-        var terminate = pipwerks.SCORM.connection.terminate;
-        return terminate && terminate.exeScorm12Native ? terminate.exeScorm12Native : terminate;
     }
 
     var state = initialState();
@@ -423,15 +410,24 @@
 
         /**
          * @returns {{attempted: boolean, result: boolean|null, error: object|null,
-         * source: string|null}} Everything recorded about the finish attempt.
-         * `error` preserves the original failure even after later calls.
+         * source: string|null, commitAttempted: boolean, commitSucceeded: boolean,
+         * finishAttempted: boolean, finishSucceeded: boolean}} Everything
+         * recorded about the single termination. Commit and finish are
+         * reported separately: a `result` of false may mean the commit failed
+         * and LMSFinish was never attempted at all. `error` preserves the
+         * original failure even after later calls.
          */
         getFinishReport: function () {
+            var steps = state.finishSteps || {};
             return {
                 attempted: client.isTerminated(),
                 result: state.finishResult,
                 error: state.finishError,
                 source: state.terminationSource,
+                commitAttempted: steps.commitAttempted === true,
+                commitSucceeded: steps.commitSucceeded === true,
+                finishAttempted: steps.finishAttempted === true,
+                finishSucceeded: steps.finishSucceeded === true,
             };
         },
 
@@ -609,15 +605,21 @@
         },
 
         /**
-         * Close the session (LMSFinish). Attempted at most once for the whole
-         * page lifetime: the first call moves the state machine through
-         * `finish_attempted` to `finished` or `finish_failed`, and every later
-         * call replays the recorded result without touching the LMS. A failed
-         * finish therefore stays failed — retrying during page teardown cannot
-         * succeed and must not loop.
+         * Close the session: LMSCommit(""), then LMSFinish(""). Attempted at
+         * most once for the whole page lifetime: the first call moves the
+         * state machine through `finish_attempted` to `finished` or
+         * `finish_failed`, and every later call replays the recorded result
+         * without touching the LMS. A failed termination therefore stays
+         * failed — retrying during page teardown cannot succeed and must not
+         * loop.
          *
-         * The wrapper commits (LMSCommit) before LMSFinish, so terminating
-         * always persists pending data first.
+         * The two calls are issued separately (not through the wrapper's
+         * connection.terminate, which folds both into one boolean), so
+         * getFinishReport() can always say whether the commit or the finish
+         * failed. SCORM 1.2 requires pending data to be persisted before the
+         * session ends ([CR] 6.7); when the commit fails, LMSFinish is
+         * deliberately not attempted — finishing anyway would close an
+         * attempt whose stored state is unknown.
          *
          * @returns {boolean} True when the LMS acknowledged the termination.
          */
@@ -630,16 +632,52 @@
                 reportRejected('terminate() rejected: the session was never initialized.');
                 return false;
             }
-            // Marked before the call so a re-entrant termination (a listener
-            // fired by the LMS during LMSFinish) cannot start a second one.
+            // Marked before any LMS traffic so a re-entrant termination (a
+            // listener fired by the LMS mid-call) cannot start a second one.
             state.status = STATE.FINISH_ATTEMPTED;
             state.terminationSource = 'runtime';
+            var steps = { commitAttempted: false, commitSucceeded: false, finishAttempted: false, finishSucceeded: false };
+            state.finishSteps = steps;
             var pipwerks = deps.getPipwerks();
-            var terminate = resolveNativeTerminate(pipwerks);
-            var success = false;
+
+            steps.commitAttempted = true;
+            try {
+                steps.commitSucceeded = pipwerks.SCORM.data.save() === true;
+            } catch (error) {
+                state.status = STATE.FINISH_FAILED;
+                state.finishResult = false;
+                state.finishError = { code: 101, message: String(error) };
+                deps.error('[exe-scorm12] LMSCommit failed during termination: ' + error);
+                return false;
+            }
+            if (!steps.commitSucceeded) {
+                state.status = STATE.FINISH_FAILED;
+                state.finishResult = false;
+                state.finishError = reportLmsError('LMSCommit');
+                return false;
+            }
+
+            // The API handle directly: the adapter layer shims the wrapper's
+            // connection.terminate to route legacy callers through the
+            // lifecycle, so this layer must not depend on that binding.
+            var api = null;
+            try {
+                api = pipwerks.SCORM.API.getHandle();
+            } catch (error) {
+                api = null;
+            }
+            if (!api) {
+                state.status = STATE.FINISH_FAILED;
+                state.finishResult = false;
+                state.finishError = { code: -1, message: 'SCORM API not available' };
+                deps.error('[exe-scorm12] LMSFinish failed: SCORM API not available.');
+                return false;
+            }
+            steps.finishAttempted = true;
+            var result = null;
             var thrown = null;
             try {
-                success = terminate.call(pipwerks.SCORM.connection);
+                result = String(api.LMSFinish(''));
             } catch (error) {
                 thrown = error;
             }
@@ -650,12 +688,16 @@
                 deps.error('[exe-scorm12] LMSFinish failed: ' + thrown);
                 return false;
             }
-            if (!success) {
+            steps.finishSucceeded = result === 'true';
+            if (!steps.finishSucceeded) {
                 state.status = STATE.FINISH_FAILED;
                 state.finishResult = false;
                 state.finishError = reportLmsError('LMSFinish');
                 return false;
             }
+            // Keep the wrapper's view of the connection truthful for
+            // scorm.connection.isActive consumers.
+            pipwerks.SCORM.connection.isActive = false;
             state.status = STATE.FINISHED;
             state.finishResult = true;
             return true;

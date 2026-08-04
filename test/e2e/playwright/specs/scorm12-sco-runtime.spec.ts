@@ -73,6 +73,10 @@ function exportContentType(name: string): string {
  * an iframe. The adapter records every call, refuses the calls SCORM 1.2
  * forbids, and answers with the official error codes — a runtime that makes an
  * illegal call fails the test rather than being quietly tolerated.
+ *
+ * `harnessPage(seed)` overlays LMS-side data (a stored lesson_status, a
+ * previous attempt's suspend_data) onto the defaults, so a resumed attempt can
+ * be simulated with real stored state.
  */
 const HARNESS_PAGE = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>SCORM 1.2 LMS harness</title></head>
@@ -101,6 +105,7 @@ const HARNESS_PAGE = `<!doctype html>
         'cmi.suspend_data': '',
         'cmi.launch_data': ''
     };
+    Object.assign(data, __SEED__);
     var calls = [];
     var errorCode = '0';
     var initialized = false;
@@ -183,6 +188,15 @@ const HARNESS_PAGE = `<!doctype html>
 <iframe id="sco" title="SCO" src="/package/index.html" style="width:900px;height:600px;border:0"></iframe>
 </body></html>`;
 
+/**
+ * Render the harness with LMS-side seed data (previous-attempt state).
+ *
+ * @param seed - cmi element values overlaid onto the defaults.
+ */
+function harnessPage(seed: Record<string, string> = {}): string {
+    return HARNESS_PAGE.replace('__SEED__', JSON.stringify(seed));
+}
+
 /** Export the current project as SCORM 1.2 through the File menu. */
 async function exportScorm12(page: import('@playwright/test').Page) {
     await page.locator('#dropdownFile').click();
@@ -226,7 +240,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             const url = new URL(route.request().url());
             const pathname = decodeURIComponent(url.pathname);
             if (pathname === '/lms.html') {
-                await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: HARNESS_PAGE });
+                await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: harnessPage() });
                 return;
             }
             const key = pathname.replace(/^\/package\//, '');
@@ -338,6 +352,130 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             expect(await page.evaluate(() => (window as any).__scorm.signatures())).toEqual(final);
 
             // ---- The runtime never made a call SCORM 1.2 forbids ------------
+            expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
+        } finally {
+            await page.unroute(`${ORIGIN}/**`);
+        }
+    });
+
+    test('tracks multi-activity completion through the registry, across suspension and resume', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        test.setTimeout(180000);
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'SCORM 1.2 registry runtime');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await addTextIdeviceWithContent(page, '<p>Registry completion check.</p>');
+
+        const download = await exportScorm12(page);
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scorm12-registry-'));
+        const zipPath = path.join(tmpDir, download.suggestedFilename());
+        await download.saveAs(zipPath);
+        const zip = unzipSync(new Uint8Array(fs.readFileSync(zipPath)));
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+
+        // Session 1 serves the fresh harness; session 2 replays the stored
+        // LMS state (suspend_data + lesson_status) captured at the first exit.
+        let resumeSeed: Record<string, string> = {};
+        await page.route(`${ORIGIN}/**`, async route => {
+            const url = new URL(route.request().url());
+            const pathname = decodeURIComponent(url.pathname);
+            if (pathname === '/lms.html') {
+                await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: harnessPage() });
+                return;
+            }
+            if (pathname === '/lms-resume.html') {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'text/html; charset=utf-8',
+                    body: harnessPage(resumeSeed),
+                });
+                return;
+            }
+            const key = pathname.replace(/^\/package\//, '');
+            const bytes = zip[key];
+            if (bytes) {
+                await route.fulfill({ status: 200, contentType: exportContentType(key), body: Buffer.from(bytes) });
+            } else {
+                await route.fulfill({ status: 404, contentType: 'text/plain', body: `not in export: ${key}` });
+            }
+        });
+
+        try {
+            // ---- Session 1: two required activities, one completed ----------
+            await page.goto(`${ORIGIN}/lms.html`);
+            await page.waitForFunction(
+                () => (window as any).__scorm.calls.some((call: any) => call.method === 'LMSInitialize'),
+                null,
+                { timeout: 30000 },
+            );
+
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                sco.scorm.activities.register('act-1', { evaluable: true, completionRequired: true, total: 4 });
+                sco.scorm.activities.register('act-2', { evaluable: true, completionRequired: true, total: 4 });
+                sco.scorm.activities.update('act-1', { completed: true, answered: 4, score: 80 });
+            });
+
+            // Hidden must persist the registry (not only the session time), so
+            // a killed mobile page can restore its activities.
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                const scoDocument = sco.document;
+                Object.defineProperty(scoDocument, 'visibilityState', { configurable: true, get: () => 'hidden' });
+                scoDocument.dispatchEvent(new sco.Event('visibilitychange'));
+                delete scoDocument.visibilityState;
+            });
+            const hiddenSuspend = await page.evaluate(() => (window as any).__scorm.data['cmi.suspend_data']);
+            expect(hiddenSuspend).toMatch(/^exe12\//);
+            expect(hiddenSuspend).toContain('act-1');
+
+            // Real exit with a required activity pending → incomplete + suspend.
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                sco.dispatchEvent(new sco.PageTransitionEvent('pagehide', { persisted: false }));
+            });
+            const firstExit = await page.evaluate(() => (window as any).__scorm.data);
+            expect(firstExit['cmi.core.lesson_status']).toBe('incomplete');
+            expect(firstExit['cmi.core.exit']).toBe('suspend');
+            expect(firstExit['cmi.suspend_data']).toMatch(/^exe12\//);
+
+            // ---- Session 2: resume, finish the second activity --------------
+            resumeSeed = {
+                'cmi.core.lesson_status': firstExit['cmi.core.lesson_status'],
+                'cmi.suspend_data': firstExit['cmi.suspend_data'],
+                'cmi.core.entry': 'resume',
+            };
+            await page.goto(`${ORIGIN}/lms-resume.html`);
+            await page.waitForFunction(
+                () => (window as any).__scorm.calls.some((call: any) => call.method === 'LMSInitialize'),
+                null,
+                { timeout: 30000 },
+            );
+
+            // The entry policy restored the first activity's progress.
+            const restored = await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                return sco.scorm.activities.get('act-1');
+            });
+            expect(restored).toMatchObject({ completed: true, score: 80 });
+
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                sco.scorm.activities.register('act-2', { evaluable: true, completionRequired: true, total: 4 });
+                sco.scorm.activities.update('act-2', { completed: true, answered: 4, score: 60 });
+                sco.dispatchEvent(new sco.PageTransitionEvent('pagehide', { persisted: false }));
+            });
+
+            // Both required activities complete, aggregate 70 ≥ 50 → passed,
+            // normal end.
+            const secondExit = await page.evaluate(() => (window as any).__scorm.data);
+            expect(secondExit['cmi.core.lesson_status']).toBe('passed');
+            expect(secondExit['cmi.core.exit']).toBe('');
+
             expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
         } finally {
             await page.unroute(`${ORIGIN}/**`);

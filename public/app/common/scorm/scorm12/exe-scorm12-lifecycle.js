@@ -88,6 +88,10 @@
         if (state.finalizing || !client.isActive()) {
             return { written: false, committed: false };
         }
+        // Activity state first: a page killed after this commit (mobile app
+        // switch, bfcache eviction) must be able to restore its activities,
+        // not only its session time.
+        deps.getPolicy().persistActivities();
         var written = client.writeSessionTime();
         return { written: written, committed: client.commit() };
     }
@@ -199,9 +203,10 @@
 
         /**
          * End the SCORM session exactly once: apply the exit policy, write
-         * cmi.core.session_time, then terminate (the vendored wrapper commits
-         * before LMSFinish, so a failed commit aborts the termination and is
-         * recorded as a failed finish — it is never retried).
+         * cmi.core.session_time, then terminate (the client commits before
+         * LMSFinish; a failed commit aborts the termination — LMSFinish is
+         * not attempted — and is recorded as a failed termination, never
+         * retried).
          *
          * The `finalizing` guard is raised before any LMS traffic, so a second
          * lifecycle path entering while the first is still running — a
@@ -246,11 +251,15 @@
             var exitResult = deps.getPolicy().applyExitPolicy(applyCompletionRule !== false);
             client.writeSessionTime();
             var terminated = client.terminate();
+            var finishReport = client.getFinishReport();
             state.finished = true;
             state.report = {
                 finished: true,
-                committed: terminated,
+                // Commit and finish separately: a failed termination may mean
+                // the commit failed and LMSFinish was never attempted.
+                committed: finishReport.commitSucceeded,
                 terminated: terminated,
+                finishAttempted: finishReport.finishAttempted,
                 status: exitResult.status,
                 exit: exitResult.exit,
                 state: client.getState(),

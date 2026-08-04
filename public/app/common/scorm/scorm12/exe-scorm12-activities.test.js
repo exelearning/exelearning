@@ -283,21 +283,96 @@ describe('exe-scorm12-activities', () => {
     });
 
     describe('cmi.suspend_data migration and robustness', () => {
-        it('migrates the unversioned legacy payload', () => {
+        it('migrates the unversioned legacy payload into a pending pool, not the registry', () => {
             const legacy = '1. "First activity"; Score: 40%; Weight: 1%.\t2. "Second"; Puntuación: 0%; Peso: 2%';
 
             const outcome = activities.load(legacy);
 
             expect(outcome).toMatchObject({ version: 0, restored: 2, migrated: true });
-            expect(activities.get('1')).toMatchObject({ evaluable: true, completed: true, score: 40, weight: 1 });
-            // A legacy record with a zero score was registered but never done.
-            expect(activities.get('2')).toMatchObject({ completed: false, score: 0, weight: 2 });
+            // The old format identifies activities by page position, which is
+            // not a stable id: nothing enters the main registry, so unclaimed
+            // records neither weigh nor block completion.
+            expect(activities.list()).toEqual([]);
+            expect(activities.pendingLegacy()).toBe(2);
+            expect(activities.summary()).toMatchObject({ total: 0, hasRequired: false, score: null });
         });
 
-        it('re-serialises a migrated payload in the versioned format', () => {
-            activities.load('1. "First"; Score: 40%; Weight: 1%');
+        it('a live registration claims its legacy record by page position', () => {
+            activities.load('1. "First"; Score: 40%; Weight: 1%.\t2. "Second"; Score: 80%; Weight: 2%');
 
-            expect(activities.serialize().indexOf('exe12/1|')).toBe(0);
+            const stored = activities.register('idevice-abc', {
+                evaluable: true,
+                completionRequired: true,
+                total: 5,
+                legacyIndex: 2,
+            });
+
+            // The score is inherited; completion is NOT — the legacy format
+            // carries no completion flag, so the live iDevice decides. The
+            // declaration (weight, bounds) is the live one.
+            expect(stored).toMatchObject({ id: 'idevice-abc', score: 80, completed: false, weight: 1, total: 5 });
+            expect(activities.pendingLegacy()).toBe(1);
+            // The same activity registered under one id only — no positional
+            // duplicate that would double the weight.
+            expect(activities.list()).toHaveLength(1);
+        });
+
+        it('a legacy record with a zero score restores as not completed with score 0', () => {
+            activities.load('1. "Quiz"; Score: 0%; Weight: 1%');
+
+            const stored = activities.register('quiz-a', { evaluable: true, legacyIndex: 1 });
+
+            expect(stored).toMatchObject({ score: 0, completed: false });
+        });
+
+        it('a claim only happens on the first registration', () => {
+            activities.load('1. "Quiz"; Score: 40%; Weight: 1%');
+            activities.register('quiz-a', { evaluable: true, completed: true, score: 90 });
+
+            // Re-registering with a legacyIndex must not overwrite live
+            // progress with stale migrated data.
+            activities.register('quiz-a', { evaluable: true, legacyIndex: 1 });
+
+            expect(activities.get('quiz-a')).toMatchObject({ score: 90, completed: true });
+            expect(activities.pendingLegacy()).toBe(1);
+        });
+
+        it('an unknown legacyIndex claims nothing', () => {
+            activities.load('1. "Quiz"; Score: 40%; Weight: 1%');
+
+            const stored = activities.register('quiz-b', { evaluable: true, legacyIndex: 7 });
+
+            expect(stored.score).toBeNull();
+            expect(activities.pendingLegacy()).toBe(1);
+        });
+
+        it('round-trips the unclaimed pool through the versioned payload', () => {
+            activities.load('1. "First"; Score: 40%; Weight: 1%.\t2. "Second"; Score: 80%; Weight: 2%');
+
+            const payload = activities.serialize();
+            expect(payload.indexOf('exe12/1|')).toBe(0);
+            expect(payload).toContain('1;40;1');
+            expect(payload).toContain('2;80;2');
+
+            // An exit before every iDevice initialised must not wipe migrated
+            // progress: the pool survives the round trip and stays claimable.
+            activities.clear();
+            const outcome = activities.load(payload);
+            expect(outcome).toMatchObject({ version: 1, restored: 2 });
+            expect(activities.pendingLegacy()).toBe(2);
+            expect(activities.register('late-quiz', { evaluable: true, legacyIndex: 1 }).score).toBe(40);
+        });
+
+        it('mixes main records and pool entries in one payload', () => {
+            activities.register('quiz-a', { evaluable: true, completed: true, score: 60 });
+            activities.load('2. "Old"; Score: 30%; Weight: 1%');
+
+            const payload = activities.serialize();
+            activities.clear();
+            activities.load(payload);
+
+            expect(activities.get('quiz-a')).toMatchObject({ completed: true, score: 60 });
+            expect(activities.pendingLegacy()).toBe(1);
         });
 
         it.each([

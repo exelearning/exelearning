@@ -429,6 +429,44 @@ describe('exe-scorm12-policy', () => {
             expect(policy.recordActivityOutcome(20)).toMatchObject({ status: 'failed', written: true });
             expect(api.data['cmi.core.lesson_status']).toBe('failed');
         });
+
+        it('a required activity registering late corrects the policy\'s own passed verdict', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            // A second iDevice initialises after the first one finished.
+            register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'incomplete', written: true });
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+            // The exit now suspends instead of reporting a normal end.
+            api.resetCalls();
+            expect(policy.applyExitPolicy()).toMatchObject({ status: 'incomplete', exit: 'suspend' });
+        });
+
+        it('never downgrades a terminal status the policy did not write', () => {
+            // Restored from a previous attempt: the policy wrote nothing.
+            startSession({ 'cmi.core.lesson_status': 'passed' });
+            register('quiz-2', { evaluable: true, completionRequired: true });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+
+            // Written explicitly by content, not by the policy.
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            policy.setCompleted();
+            register('quiz-3', { evaluable: true, completionRequired: true });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({
+                status: 'completed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+        });
     });
 
     describe('lesson mode', () => {
@@ -527,6 +565,23 @@ describe('exe-scorm12-policy', () => {
 
             policy.applyExitPolicy(false);
 
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+
+        it('computes cmi.core.exit from the status the LMS actually stored', () => {
+            // The LMS rejects the status write: the attempt is still
+            // incomplete at the LMS, so reporting a normal end ("") would
+            // close it prematurely — the exit must say "suspend".
+            startSession(
+                { 'cmi.core.lesson_status': 'incomplete' },
+                { elementFailures: { 'cmi.core.lesson_status': { errorCode: 101 } } },
+            );
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            const result = policy.applyExitPolicy();
+
+            expect(result).toMatchObject({ status: 'incomplete', exit: 'suspend' });
             expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
             expect(api.data['cmi.core.exit']).toBe('suspend');
         });

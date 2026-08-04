@@ -78,6 +78,12 @@
             // deterministic regardless of object key ordering.
             order: [],
             byId: {},
+            // Migrated legacy records, keyed by their page position. The old
+            // format has no stable identity, so these stay out of the main
+            // registry (they neither weigh nor block completion) until a live
+            // registration that knows both the position and the stable id
+            // claims them (see register()).
+            legacyByIndex: {},
         };
     }
 
@@ -246,19 +252,24 @@
     }
 
     /**
-     * Parse the unversioned payload written by older eXeLearning releases.
+     * Parse the unversioned payload written by older eXeLearning releases
+     * into the pending-legacy pool.
      *
-     * Those records carry an index, a title, a score in the 0-100 range and a
-     * weight. They have no completion flag, so an activity counts as completed
-     * exactly when it recorded a non-zero score — a fresh registration always
-     * seeded 0. Titles are dropped: they are not needed for aggregation and
-     * they are the largest field in a size-constrained element.
+     * Those records carry a page position, a title, a score in the 0-100
+     * range and a weight — and **no completion flag**. Completion is
+     * therefore not invented here (a finished activity with a score of 0 and
+     * a half-done one with some points are indistinguishable): only the score
+     * and weight are kept, and the live iDevice decides completion after
+     * claiming the record. Titles are dropped: they are not needed for
+     * aggregation and they are the largest field in a size-constrained
+     * element.
      *
      * @param {string} payload - Raw suspend_data value.
-     * @returns {object[]} Normalised records (possibly empty).
+     * @returns {Object<string, {score: number, weight: number}>} Pool entries
+     * keyed by page position.
      */
     function parseLegacyPayload(payload) {
-        var records = [];
+        var pool = {};
         var lines = payload.split(LEGACY_RECORD_SEPARATOR);
         for (var index = 0; index < lines.length; index += 1) {
             var match = lines[index].trim().match(LEGACY_RECORD_PATTERN);
@@ -266,17 +277,13 @@
                 continue;
             }
             var score = toNumber(match[3], null);
-            records.push(
-                normalize(match[1], {
-                    evaluable: true,
-                    completionRequired: true,
-                    completed: score !== null && score > 0,
-                    score: score,
-                    weight: toNumber(match[4], 1),
-                }),
-            );
+            var weight = toNumber(match[4], 1);
+            pool[match[1]] = {
+                score: score === null ? 0 : clamp(score, 0, 100),
+                weight: weight !== null && weight > 0 ? weight : 1,
+            };
         }
-        return records;
+        return pool;
     }
 
     var activities = {
@@ -329,10 +336,22 @@
                 return null;
             }
             var previous = Object.prototype.hasOwnProperty.call(state.byId, id) ? state.byId[id] : null;
+            var legacySeed = null;
             if (previous === null) {
+                // Claim a migrated legacy record. The old suspend_data format
+                // identified activities by page position, so the claim happens
+                // here, where the caller knows both the position
+                // (descriptor.legacyIndex) and the stable id. Only the score
+                // is trusted: the legacy format carries no completion flag,
+                // so completion stays with the live iDevice.
+                var legacyIndex = descriptor && descriptor.legacyIndex !== undefined ? descriptor.legacyIndex : null;
+                if (legacyIndex !== null && Object.prototype.hasOwnProperty.call(state.legacyByIndex, legacyIndex)) {
+                    legacySeed = { score: state.legacyByIndex[legacyIndex].score };
+                    delete state.legacyByIndex[legacyIndex];
+                }
                 state.order.push(id);
             }
-            state.byId[id] = normalize(id, descriptor, previous);
+            state.byId[id] = normalize(id, descriptor, previous || legacySeed);
             return state.byId[id];
         },
 
@@ -384,6 +403,15 @@
                 result.push(activities.get(state.order[index]));
             }
             return result;
+        },
+
+        /**
+         * @returns {number} Migrated legacy records nobody has claimed yet.
+         * They neither weigh nor block completion until a live registration
+         * claims them by page position.
+         */
+        pendingLegacy: function () {
+            return Object.keys(state.legacyByIndex).length;
         },
 
         /**
@@ -455,19 +483,43 @@
             for (var index = 0; index < state.order.length; index += 1) {
                 records.push(state.byId[state.order[index]]);
             }
-            var payload = header + RECORD_SEPARATOR + records.map(encodeRecord).join(RECORD_SEPARATOR);
-            if (records.length === 0) {
+            // Unclaimed legacy records travel too (three fields: position,
+            // score, weight — unambiguous, a full record always has more), so
+            // an exit before every iDevice initialised does not wipe migrated
+            // progress. A record with no stable id cannot enter the main
+            // format.
+            var poolParts = [];
+            for (var position in state.legacyByIndex) {
+                var legacy = state.legacyByIndex[position];
+                poolParts.push(position + FIELD_SEPARATOR + legacy.score + FIELD_SEPARATOR + legacy.weight);
+            }
+            var allParts = records.map(encodeRecord).concat(poolParts);
+            if (allParts.length === 0) {
                 return header;
             }
+            var payload = header + RECORD_SEPARATOR + allParts.join(RECORD_SEPARATOR);
             if (payload.length <= SUSPEND_DATA_LIMIT) {
                 return payload;
             }
-            // Compaction pass 1: drop the activities that do not block
+            // Compaction pass 1: drop the unclaimed legacy pool — records
+            // with no live owner are the least valuable.
+            if (poolParts.length > 0) {
+                deps.warn(
+                    '[exe-scorm12] cmi.suspend_data exceeded the SCORM 1.2 limit; dropped ' +
+                        poolParts.length +
+                        ' unclaimed legacy records.',
+                );
+                payload = header + RECORD_SEPARATOR + records.map(encodeRecord).join(RECORD_SEPARATOR);
+                if (records.length > 0 && payload.length <= SUSPEND_DATA_LIMIT) {
+                    return payload;
+                }
+            }
+            // Compaction pass 2: drop the activities that do not block
             // completion, oldest kept first.
             var kept = records.filter(function (activity) {
                 return activity.completionRequired;
             });
-            // Compaction pass 2: drop the newest required activities until it
+            // Compaction pass 3: drop the newest required activities until it
             // fits. The payload is rebuilt each time so the check is exact.
             while (kept.length > 0) {
                 payload = header + RECORD_SEPARATOR + kept.map(encodeRecord).join(RECORD_SEPARATOR);
@@ -522,14 +574,37 @@
                     return result;
                 }
                 result.version = version;
-                records = (separator === -1 ? [] : body.slice(separator + 1).split(RECORD_SEPARATOR))
-                    .map(decodeRecord)
-                    .filter(function (record) {
-                        return record !== null;
-                    });
+                records = [];
+                var rawRecords = separator === -1 ? [] : body.slice(separator + 1).split(RECORD_SEPARATOR);
+                for (var raw = 0; raw < rawRecords.length; raw += 1) {
+                    // A three-field entry is an unclaimed legacy pool record
+                    // (position, score, weight); a full record has eight.
+                    var fields = rawRecords[raw].split(FIELD_SEPARATOR);
+                    if (fields.length === 3) {
+                        var poolPosition = toNumber(fields[0], null);
+                        var poolScore = toNumber(fields[1], null);
+                        if (poolPosition !== null && poolScore !== null) {
+                            state.legacyByIndex[poolPosition] = {
+                                score: clamp(poolScore, 0, 100),
+                                weight: toNumber(fields[2], 1) || 1,
+                            };
+                            result.restored += 1;
+                        }
+                        continue;
+                    }
+                    var decoded = decodeRecord(rawRecords[raw]);
+                    if (decoded !== null) {
+                        records.push(decoded);
+                    }
+                }
             } else {
-                records = parseLegacyPayload(payload);
-                result.migrated = records.length > 0;
+                var pool = parseLegacyPayload(payload);
+                for (var position in pool) {
+                    state.legacyByIndex[position] = pool[position];
+                    result.restored += 1;
+                    result.migrated = true;
+                }
+                records = [];
             }
             for (var index = 0; index < records.length; index += 1) {
                 var record = records[index];

@@ -963,8 +963,14 @@ var $exeDevices = {
                         return 0;
                     }
 
-                    const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                    const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                    // Single owner of cmi.suspend_data: the SCORM 1.2 registry
+                    // when present, the legacy line format otherwise.
+                    const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    const lmsData = registry
+                        ? $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry()
+                        : $exeDevices.iDevice.gamification.scorm.parseSuspendData(
+                              pipwerks.SCORM.get("cmi.suspend_data") || ""
+                          );
 
                     if (lmsData[ideviceNumber]) {
                         // Score está guardado en escala 0-1000, convertir a 0-10
@@ -1034,6 +1040,13 @@ var $exeDevices = {
                     if (!registry || typeof game !== 'object' || game === null || !game.ideviceId) return null;
                     const evaluable = Number(game.isScorm) > 0;
                     const weight = parseFloat(game.weighted);
+                    if (game.ideviceNumber) {
+                        // Page position of each registered id, so registry
+                        // records can be presented under the positional keys
+                        // the legacy display code uses (buildLmsDataFromRegistry).
+                        $exeDevices.iDevice.gamification.scorm._activityNumbersById[game.ideviceId] =
+                            game.ideviceNumber;
+                    }
                     return registry.register(
                         game.ideviceId,
                         Object.assign(
@@ -1050,6 +1063,35 @@ var $exeDevices = {
                             progress || {}
                         )
                     );
+                },
+
+                /** Page position by activity id (see reportActivity). */
+                _activityNumbersById: {},
+
+                /**
+                 * Present the registry in the legacy lmsData shape
+                 * (`{ideviceNumber: {title, score, weighted}}`), so the
+                 * historical aggregate (getFinalScore) and the display helpers
+                 * keep a single source of score math. Only evaluable
+                 * activities enter, matching what the legacy format stored.
+                 *
+                 * @returns {Object} Legacy-shaped view of the registry.
+                 */
+                buildLmsDataFromRegistry: function () {
+                    const lmsData = {};
+                    const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    if (!registry) return lmsData;
+                    const numbers = $exeDevices.iDevice.gamification.scorm._activityNumbersById;
+                    registry.list().forEach((record, position) => {
+                        if (!record.evaluable) return;
+                        const key = numbers[record.id] || position + 1;
+                        lmsData[key] = {
+                            title: '',
+                            score: record.score === null ? 0 : record.score,
+                            weighted: record.weight,
+                        };
+                    });
+                    return lmsData;
                 },
 
                 addButtonScoreNew: function (game, hasSCORMbutton, isInExe) {
@@ -1089,10 +1131,20 @@ var $exeDevices = {
                         if (rawScore && rawScore !== "" && rawScore !== "0") {
                             initialScore = parseFloat(rawScore) || 0;
                         } else {
-                            const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                            if (suspendData && suspendData.trim() !== "") {
-                                const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
-                                initialScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                            // Single owner of cmi.suspend_data: the SCORM 1.2
+                            // registry when present, the legacy line format
+                            // otherwise.
+                            const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                            if (registry) {
+                                initialScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(
+                                    $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry()
+                                );
+                            } else {
+                                const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+                                if (suspendData && suspendData.trim() !== "") {
+                                    const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                                    initialScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                                }
                             }
                         }
                     }
@@ -1239,34 +1291,57 @@ var $exeDevices = {
                     // Declare the activity to the central registry (SCORM 1.2
                     // packages only) before any score is reported, so the
                     // completion policy knows the page's shape from the start.
+                    // The legacy suspend_data format identified activities by
+                    // page position; passing the position lets the registry
+                    // claim a migrated record for this activity.
                     $exeDevices.iDevice.gamification.scorm.reportActivity(game, {
                         total: parseFloat(game.numberQuestions) || 0,
+                        legacyIndex: game.ideviceNumber,
                     });
 
                     let lmsData = {};
                     if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
                         $exeDevices.iDevice.gamification.scorm.createScoreScormHtml(game);
 
-                        let suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-
-                        lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
-
-                        if (lmsData[game.ideviceNumber]) {
-                            game.previousScore = (lmsData[game.ideviceNumber].score / 10).toFixed(2);
-                            // Actualizar el score node con la puntuación recuperada
-                            const totalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
-                            if (totalScore > 0) {
-                                $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
+                        const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                        if (registry) {
+                            // SCORM 1.2 runtime: the registry is the single
+                            // owner of cmi.suspend_data (restored by the entry
+                            // policy, persisted by the lifecycle layer) — this
+                            // helper no longer reads or writes it directly.
+                            lmsData = $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry();
+                            const record = registry.get(game.ideviceId);
+                            if (record && record.score !== null) {
+                                game.previousScore = (record.score / 10).toFixed(2);
+                                const totalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                                if (totalScore > 0) {
+                                    $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
+                                }
                             }
                         } else {
-                            lmsData[game.ideviceNumber] = {
-                                title: game.title,
-                                score: 0,
-                                weighted: game.weighted
-                            };
+                            // Legacy runtime (SCORM 2004 packages and packages
+                            // exported before the SCORM 1.2 runtime rewrite).
+                            let suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
 
-                            const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
-                            pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
+                            lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+
+                            if (lmsData[game.ideviceNumber]) {
+                                game.previousScore = (lmsData[game.ideviceNumber].score / 10).toFixed(2);
+                                // Actualizar el score node con la puntuación recuperada
+                                const totalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                                if (totalScore > 0) {
+                                    $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
+                                }
+                            } else {
+                                lmsData[game.ideviceNumber] = {
+                                    title: game.title,
+                                    score: 0,
+                                    weighted: game.weighted
+                                };
+
+                                const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
+                                pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
+                            }
                         }
                     }
 
@@ -1353,10 +1428,22 @@ var $exeDevices = {
                         game.repeatActivity = true;
                         // Explicit completion signal for the activity registry:
                         // the learner either finished the activity (gameOver)
-                        // or submitted their score by hand (!auto).
+                        // or submitted their score by hand (!auto). Counting a
+                        // manual submission as completion is a documented
+                        // policy decision (ADR-0043): submitting is the
+                        // learner's explicit act of finishing the attempt, and
+                        // it is the only completion signal games without a
+                        // game-over state can give.
                         const activityCompleted = game.gameOver === true || auto !== true;
-                        const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                        const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                        // Single owner of cmi.suspend_data: the registry when
+                        // the SCORM 1.2 runtime is present, the legacy line
+                        // format otherwise.
+                        const scormRegistry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                        const lmsData = scormRegistry
+                            ? $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry()
+                            : $exeDevices.iDevice.gamification.scorm.parseSuspendData(
+                                  pipwerks.SCORM.get("cmi.suspend_data") || ""
+                              );
                         const scoreVal = parseFloat(lmsData[game.ideviceNumber]?.score);
                         const previousScore = !Number.isNaN(scoreVal) ? (scoreVal / 10).toFixed(2) : '';
 
@@ -1416,6 +1503,31 @@ var $exeDevices = {
                         return;
                     }
 
+                    const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    if (registry) {
+                        // SCORM 1.2 runtime: the registry is the single owner
+                        // of cmi.suspend_data — report the progress, let the
+                        // runtime serialise it, and never write the legacy
+                        // line format (two writers alternating formats would
+                        // corrupt each other's view on resume).
+                        $exeDevices.iDevice.gamification.scorm.reportActivity(game, {
+                            completed: completed === true,
+                            score: game.scorerp * 10,
+                            answered: parseFloat(game.answered) || 0,
+                        });
+                        const runtime = window.exeScorm12;
+                        if (runtime.policy && typeof runtime.policy.persistActivities === 'function') {
+                            runtime.policy.persistActivities();
+                        }
+                        $exeDevices.iDevice.gamification.scorm.showFinalScore(
+                            $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry(),
+                            game
+                        );
+                        return;
+                    }
+
+                    // Legacy runtime (SCORM 2004 packages and packages
+                    // exported before the SCORM 1.2 runtime rewrite).
                     const updatedData = {
                         title: game.title,
                         score: game.scorerp * 10,
@@ -1427,12 +1539,6 @@ var $exeDevices = {
 
                     pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
 
-                    $exeDevices.iDevice.gamification.scorm.reportActivity(game, {
-                        completed: completed === true,
-                        score: updatedData.score,
-                        answered: parseFloat(game.answered) || 0,
-                    });
-
                     $exeDevices.iDevice.gamification.scorm.showFinalScore(lmsData, game);
 
                 },
@@ -1443,8 +1549,12 @@ var $exeDevices = {
                     }
 
                     if (!lmsData || typeof lmsData !== 'object') {
-                        const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                        lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                        const fallbackRegistry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                        lmsData = fallbackRegistry
+                            ? $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry()
+                            : $exeDevices.iDevice.gamification.scorm.parseSuspendData(
+                                  pipwerks.SCORM.get("cmi.suspend_data") || ""
+                              );
                     }
 
                     // Single source of truth for the aggregate: getFinalScore

@@ -142,6 +142,23 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
 
             expect(api.calls.length).toBe(callCount);
         });
+
+        it('stays retryable after a failed initialize', () => {
+            // A transient failure (the LMS API not attached yet) must not
+            // consume the one-shot latch: exe_export.js calls loadPage()
+            // again after the body onload attribute already tried.
+            const failures = { LMSInitialize: { result: 'false', errorCode: 101 } };
+            useLms({}, { failures });
+
+            pageWindow.loadPage();
+            expect(client.isActive()).toBe(false);
+
+            delete failures.LMSInitialize;
+            pageWindow.loadPage();
+
+            expect(client.isActive()).toBe(true);
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+        });
     });
 
     describe('unloadPage', () => {

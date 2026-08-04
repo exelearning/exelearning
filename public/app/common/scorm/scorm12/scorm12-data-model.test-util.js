@@ -84,7 +84,14 @@ const LESSON_STATUS_VOCABULARY = ['passed', 'completed', 'failed', 'incomplete',
 
 /**
  * The subset a SCO may write to cmi.core.lesson_status. "not attempted" is
- * LMS-only: [CR] 1.6.5 requires the LMS to refuse it from a SCO.
+ * LMS-only. [CR] 1.6.5 verbatim (the LMS conformance requirement for this
+ * element): "Not accept CMIVocabulary (Status) value of 'not attempted' for
+ * this element from a SCO. (This value can only be set by the LMS)". Note
+ * that secondary reference charts (e.g. scorm.com's run-time chart) list the
+ * element as plain read/write with the full vocabulary and do not carry this
+ * restriction — the ADL Conformance Requirements are the normative source.
+ * cmi.objectives.n.status, by contrast, accepts the full vocabulary
+ * including "not attempted" ([CR] 6.5.4).
  */
 const LESSON_STATUS_SCO_VOCABULARY = ['passed', 'completed', 'failed', 'incomplete', 'browsed'];
 

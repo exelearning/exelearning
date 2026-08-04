@@ -142,13 +142,28 @@ scorm.activities.summary();
    other iDevice-specific property. `public/app/common/common.js` bridges the
    game iDevices onto it (`reportActivity`), deriving `evaluable` and
    `completionRequired` from the iDevice's own `isScorm` flag and passing
-   `completed` explicitly from the call site.
-4. **Presentation-only and exploration activities never block completion.**
+   `completed` explicitly from the call site. The bridge reports
+   `completed: true` when the game is over **or** the learner submitted their
+   score by hand (`sendScoreNew(auto=false)`): submitting is the learner's
+   explicit act of finishing the attempt, and it is the only completion signal
+   games without a game-over state can give — without it, such an activity
+   would hold its page at `incomplete` forever. This is a deliberate product
+   policy, recorded here rather than implied by the code.
+4. **The registry is the single owner of `cmi.suspend_data`.** When the SCORM
+   1.2 runtime is present, every `common.js` helper that used to read or write
+   the legacy line format directly goes through the registry instead
+   (`buildLmsDataFromRegistry()` presents it in the legacy shape so the
+   historical `getFinalScore` weighting stays single-source). Two writers
+   alternating formats — the registry's `exe12/…` at exit, `common.js`'s line
+   format mid-session — would silently overwrite each other and corrupt
+   resumes. The legacy paths remain only where the runtime is absent (SCORM
+   2004, packages exported before the rewrite).
+5. **Presentation-only and exploration activities never block completion.**
    They register with `completionRequired: false`. Of the two policies the
    alternative would allow — "do not block" versus "must report a viewed
    state" — we choose "do not block", because it requires no change from
    iDevices that have no notion of completion at all.
-5. **The policy layer maps the aggregate onto the single status element:**
+6. **The policy layer maps the aggregate onto the single status element:**
 
    | Registry state | `cmi.core.lesson_status` | `cmi.core.exit` |
    |---|---|---|
@@ -158,25 +173,29 @@ scorm.activities.summary();
    | All required complete, aggregate ≥ threshold | `passed` | `""` |
    | All required complete, aggregate < threshold | `failed` | `""` |
 
-6. **The success threshold** is `cmi.student_data.mastery_score` when the LMS
+7. **The success threshold** is `cmi.student_data.mastery_score` when the LMS
    publishes one (it is optional in SCORM 1.2, so a "not implemented" answer is
    normal and not an error), otherwise **50** — the threshold eXeLearning game
    iDevices have always applied. `policy.setSuccessThreshold(null)` drops the
    pass/fail distinction and reports completion only.
-7. **Two write paths, deliberately different.** The *exit* policy never
-   downgrades: a terminal status already recorded is preserved. The *in-session*
-   re-evaluation (`policy.recordActivityOutcome()`, called after each score
-   update) may move between terminal statuses, so a learner who retries a failed
-   activity and passes ends up `passed`; it never replaces a terminal status
-   with a non-terminal one.
-8. **The score stays single-source.** `common.js` keeps computing the aggregate
+8. **The policy corrects only its own verdict.** A terminal status is
+   preserved — with one exception: when the policy itself wrote it during this
+   session and a *required* activity registers afterwards (deferred iDevice
+   initialisation), the page demonstrably is not finished, so the policy
+   downgrades its own verdict back to `incomplete` (and the exit becomes
+   `suspend`). A terminal status restored from a previous attempt, or written
+   explicitly by content, is never downgraded. Movement *between* terminal
+   statuses (a retried failed activity now passing) is always allowed, and
+   `cmi.core.exit` is always computed from the status the LMS actually
+   stored, never from a decision the LMS rejected.
+9. **The score stays single-source.** `common.js` keeps computing the aggregate
    with `getFinalScore()` — the weighting algorithm published packages depend on
    — and passes it to the policy, which records it *and* decides the status from
    the same number. The two can therefore never disagree.
-9. **`setPageHasScoredActivities()` remains the fallback.** When no iDevice
+10. **`setPageHasScoredActivities()` remains the fallback.** When no iDevice
    registers, the page-level flag decides exactly as before, so content that
    predates the registry is unaffected.
-10. **The registry persists itself into `cmi.suspend_data`** in a versioned
+11. **The registry persists itself into `cmi.suspend_data`** in a versioned
     format, migrating the previous one:
 
     ```
@@ -184,15 +203,26 @@ scorm.activities.summary();
     ```
 
     - Version-tagged; a payload from a newer runtime is ignored, not misread.
-    - An unversioned payload is parsed as the legacy line format and migrated.
-      Such a record counts as completed exactly when it carries a non-zero score
-      (a fresh registration always seeded 0), and its title is dropped — it is
-      not needed for aggregation and it is the largest field in a
-      size-constrained element.
+    - An unversioned payload is parsed as the legacy line format into a
+      **pending pool**, keyed by page position — outside the main registry,
+      where it neither weighs nor blocks completion. A live registration that
+      knows both the position and the stable id claims its record
+      (`register(id, {legacyIndex: n})`), inheriting only the score: the
+      legacy format carries **no completion flag**, so completion is never
+      inferred from it — the live iDevice decides. Titles are dropped — they
+      are not needed for aggregation and they are the largest field in a
+      size-constrained element. Unclaimed pool entries round-trip through the
+      versioned payload as three-field records (`position;score;weight`), so
+      an exit before every iDevice initialised does not wipe migrated
+      progress.
+    - The serialised registry is written not only at exit but also on
+      `visibilitychange → hidden` and on a persisted `pagehide` (bfcache
+      entry), so a page killed without a further event can still restore its
+      activity state.
     - Bounded to the SCORM 1.2 CMIString4096 limit. When the payload would
-      overflow, activities that do not block completion are dropped first, then
-      the most recently registered ones, and the compaction is logged; the
-      records that decide the status survive.
+      overflow, the unclaimed legacy pool is dropped first, then activities
+      that do not block completion, then the most recently registered ones —
+      each compaction is logged; the records that decide the status survive.
     - Malformed, truncated or foreign payloads are ignored rather than thrown
       inside a learner's session.
     - Only identifiers, flags, counters, scores and weights are stored — no
@@ -239,6 +269,12 @@ scorm.activities.summary();
   A learner resuming an attempt started in an older package is migrated on
   entry; the reverse (opening a new payload with an old package) is not
   supported, and the old parser will simply find no records.
+- A migrated activity restores its score but **not** its completion (the legacy
+  format never stored one), so a learner resuming a legacy attempt on a page
+  with required activities must re-complete them before the page reports
+  `completed`/`passed` — inventing completion from a non-zero score would be
+  wrong in both directions (a finished activity scored 0, a half-done one with
+  points).
 - The registry is a SCORM 1.2 runtime layer, so every consumer in `common.js`
   must feature-detect it. HTML5/EPUB exports and SCORM 2004 packages keep the
   previous behaviour.

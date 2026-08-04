@@ -415,19 +415,27 @@ describe('exe-scorm12-client', () => {
 
     describe('termination state machine', () => {
         /**
-         * A pipwerks stand-in whose terminate outcome is fully controlled, so
-         * the state matrix can be exercised independently of the vendored
-         * wrapper's own commit-then-finish sequencing.
+         * A pipwerks stand-in whose commit (data.save) and finish (the API
+         * handle's LMSFinish) outcomes are fully controlled, so the state
+         * matrix can be exercised step by step. The wrapper's own
+         * connection.terminate throws: the client must never use it.
          */
-        function useStubbedWrapper(terminate) {
+        function useStubbedWrapper(behaviour = {}) {
+            const handle = { LMSFinish: behaviour.finish || (() => 'true') };
             const stub = {
                 SCORM: {
                     version: null,
                     handleCompletionStatus: true,
                     handleExitMode: true,
-                    API: { getHandle: () => ({}) },
-                    connection: { isActive: false, initialize: () => ((stub.SCORM.connection.isActive = true), true), terminate },
-                    data: { get: () => '', set: () => true, save: () => true },
+                    API: { getHandle: () => (behaviour.noApi ? null : handle) },
+                    connection: {
+                        isActive: false,
+                        initialize: () => ((stub.SCORM.connection.isActive = true), true),
+                        terminate: () => {
+                            throw new Error('the wrapper terminate must not be used by the client layer');
+                        },
+                    },
+                    data: { get: () => '', set: () => true, save: behaviour.save || (() => true) },
                     debug: { getCode: () => 0, getInfo: () => 'No error' },
                 },
             };
@@ -458,7 +466,7 @@ describe('exe-scorm12-client', () => {
         });
 
         it('a failed finish never becomes a success on the second call', () => {
-            useStubbedWrapper(() => false);
+            useStubbedWrapper({ finish: () => 'false' });
             client.initialize();
 
             expect(client.terminate()).toBe(false);
@@ -468,8 +476,10 @@ describe('exe-scorm12-client', () => {
         });
 
         it('a thrown finish is recorded as failed with its message', () => {
-            useStubbedWrapper(() => {
-                throw new Error('adapter vanished');
+            useStubbedWrapper({
+                finish: () => {
+                    throw new Error('adapter vanished');
+                },
             });
             client.initialize();
 
@@ -480,9 +490,11 @@ describe('exe-scorm12-client', () => {
 
         it('duplicate finish after success replays the recorded result', () => {
             let calls = 0;
-            useStubbedWrapper(() => {
-                calls += 1;
-                return true;
+            useStubbedWrapper({
+                finish: () => {
+                    calls += 1;
+                    return 'true';
+                },
             });
             client.initialize();
 
@@ -493,16 +505,82 @@ describe('exe-scorm12-client', () => {
 
         it('a re-entrant terminate cannot start a second LMSFinish', () => {
             let calls = 0;
-            useStubbedWrapper(() => {
-                calls += 1;
-                // The LMS calls back into the runtime during LMSFinish.
-                expect(client.terminate()).toBe(false);
-                return true;
+            useStubbedWrapper({
+                finish: () => {
+                    calls += 1;
+                    // The LMS calls back into the runtime during LMSFinish.
+                    expect(client.terminate()).toBe(false);
+                    return 'true';
+                },
             });
             client.initialize();
 
             expect(client.terminate()).toBe(true);
             expect(calls).toBe(1);
+        });
+
+        it('distinguishes a failed commit from a failed finish', () => {
+            let finishCalls = 0;
+            useStubbedWrapper({
+                save: () => false,
+                finish: () => {
+                    finishCalls += 1;
+                    return 'true';
+                },
+            });
+            client.initialize();
+
+            expect(client.terminate()).toBe(false);
+
+            // The LMS could not persist the data, so LMSFinish was never
+            // attempted — and the report says exactly that.
+            expect(finishCalls).toBe(0);
+            expect(client.getFinishReport()).toMatchObject({
+                commitAttempted: true,
+                commitSucceeded: false,
+                finishAttempted: false,
+                finishSucceeded: false,
+            });
+            expect(client.getState()).toBe('finish_failed');
+        });
+
+        it('records both steps as succeeded on a clean termination', () => {
+            useWindow('self');
+            client.initialize();
+
+            expect(client.terminate()).toBe(true);
+            expect(client.getFinishReport()).toMatchObject({
+                commitAttempted: true,
+                commitSucceeded: true,
+                finishAttempted: true,
+                finishSucceeded: true,
+            });
+        });
+
+        it('records a thrown commit as a failed termination without attempting the finish', () => {
+            useStubbedWrapper({
+                save: () => {
+                    throw new Error('backend gone');
+                },
+            });
+            client.initialize();
+
+            expect(client.terminate()).toBe(false);
+            expect(client.getFinishReport()).toMatchObject({
+                commitAttempted: true,
+                commitSucceeded: false,
+                finishAttempted: false,
+            });
+            expect(client.getFinishReport().error.message).toContain('backend gone');
+        });
+
+        it('fails the termination when the API handle disappeared', () => {
+            useStubbedWrapper({ noApi: true });
+            client.initialize();
+
+            expect(client.terminate()).toBe(false);
+            expect(client.getState()).toBe('finish_failed');
+            expect(client.getFinishReport().error.message).toContain('not available');
         });
 
         it.each(['getValue', 'setValue', 'commit'])('makes no LMS call through %s after a finish attempt', method => {
@@ -517,22 +595,15 @@ describe('exe-scorm12-client', () => {
             expect(api.calls).toEqual([]);
         });
 
-        it('follows the shim installed by the adapter to the real terminate', () => {
-            let nativeCalls = 0;
-            const stub = useStubbedWrapper(() => {
-                nativeCalls += 1;
-                return true;
-            });
-            const nativeTerminate = stub.SCORM.connection.terminate;
-            const shim = () => {
-                throw new Error('the shim must never be called by the client layer');
-            };
-            shim.exeScorm12Native = nativeTerminate;
-            stub.SCORM.connection.terminate = shim;
+        it('never depends on connection.terminate, even when the adapter shims it', () => {
+            // The stub's connection.terminate throws; the client must commit
+            // and finish through the API handle directly, so a shimmed (or
+            // doubly-shimmed) binding can never recurse into the lifecycle.
+            useStubbedWrapper({});
             client.initialize();
 
             expect(client.terminate()).toBe(true);
-            expect(nativeCalls).toBe(1);
+            expect(client.getState()).toBe('finished');
         });
 
         it('notices a connection closed outside the state machine', () => {

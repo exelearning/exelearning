@@ -259,6 +259,35 @@ describe('exe-scorm12-lifecycle', () => {
             expect(client.setValue('cmi.core.score.raw', '70')).toBe(true);
         });
 
+        it('to hidden persists the activity registry before the session time', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            lifecycle.install();
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 80 });
+
+            fakeDocument.visibilityState = 'hidden';
+            fakeDocument.fire('visibilitychange');
+
+            // A page killed after this commit (mobile app switch) must be
+            // able to restore its activity state, not only its session time.
+            const signatures = api.callSignatures();
+            expect(signatures[0]).toMatch(/^LMSSetValue\(cmi\.suspend_data=exe12\//);
+            expect(signatures.slice(1)).toEqual([
+                'LMSSetValue(cmi.core.session_time=0000:00:00.00)',
+                'LMSCommit',
+            ]);
+        });
+
+        it('a persisted pagehide stores the activity registry too', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            lifecycle.install();
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, answered: 2, total: 5 });
+
+            fakeWindow.fire('pagehide', { persisted: true });
+
+            expect(api.callSignatures()[0]).toMatch(/^LMSSetValue\(cmi\.suspend_data=exe12\//);
+            expect(api.callNames()).not.toContain('LMSFinish');
+        });
+
         it('repeated hidden/visible cycles report the total, never a sum of deltas', () => {
             startSession({ 'cmi.core.lesson_status': 'incomplete' });
             lifecycle.install();

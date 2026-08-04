@@ -108,8 +108,11 @@
         if (state.loadPageRan) {
             return;
         }
-        state.loadPageRan = true;
         if (client.initialize()) {
+            // Only a successful initialize consumes the latch: a transient
+            // failure (the LMS API not attached yet) must stay retryable —
+            // exe_export.js calls loadPage() again after the body onload.
+            state.loadPageRan = true;
             policy.applyEntryPolicy();
             lifecycle.install();
         }
@@ -467,13 +470,17 @@
     // Centralize termination: legacy content that calls the wrapper's own
     // quit()/connection.terminate() must go through the lifecycle layer, so
     // the session is finalized once and the state machine stays coherent.
-    // The untouched implementation is carried on the shim so the client layer
-    // can still reach the real LMSFinish exactly once (the vendored file
-    // itself is never modified — only this runtime object binding is).
+    // The client layer never uses this binding (it commits and finishes
+    // through the API handle directly), and the vendored file itself is never
+    // modified — only this runtime object binding is. The original
+    // implementation is kept on the shim for diagnostics; if the runtime is
+    // ever evaluated twice, the tag is carried over instead of pointing at
+    // the first shim.
+    var existingTerminate = pipwerks.SCORM.connection.terminate;
     var centralizedTerminate = function () {
         return lifecycle.finish(false);
     };
-    centralizedTerminate.exeScorm12Native = pipwerks.SCORM.connection.terminate;
+    centralizedTerminate.exeScorm12Native = (existingTerminate && existingTerminate.exeScorm12Native) || existingTerminate;
     pipwerks.SCORM.connection.terminate = centralizedTerminate;
     pipwerks.SCORM.quit = centralizedTerminate;
 

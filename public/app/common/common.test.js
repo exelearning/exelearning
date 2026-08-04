@@ -1822,9 +1822,14 @@ describe('common.js $exeDevices', () => {
     let policy;
 
     beforeEach(() => {
-      registry = { register: vi.fn(descriptor => descriptor) };
-      policy = { setScoreDetailed: vi.fn(), recordActivityOutcome: vi.fn() };
+      registry = {
+        register: vi.fn(descriptor => descriptor),
+        get: vi.fn(() => null),
+        list: vi.fn(() => []),
+      };
+      policy = { setScoreDetailed: vi.fn(), recordActivityOutcome: vi.fn(), persistActivities: vi.fn(() => true) };
       window.exeScorm12 = { activities: registry, policy };
+      $exeDevices.iDevice.gamification.scorm._activityNumbersById = {};
     });
 
     afterEach(() => {
@@ -1876,6 +1881,27 @@ describe('common.js $exeDevices', () => {
       expect(registry.register).toHaveBeenNthCalledWith(2, 'id-4', expect.objectContaining({ weight: 1 }));
     });
 
+    it('reportActivity passes the legacy page position through for migration claims', () => {
+      getScorm().reportActivity({ ideviceId: 'id-5', isScorm: 1, ideviceNumber: 3 }, { legacyIndex: 3 });
+
+      expect(registry.register).toHaveBeenCalledWith('id-5', expect.objectContaining({ legacyIndex: 3 }));
+      expect(getScorm()._activityNumbersById['id-5']).toBe(3);
+    });
+
+    it('buildLmsDataFromRegistry keys evaluable records by their page position', () => {
+      registry.list = vi.fn(() => [
+        { id: 'id-a', evaluable: true, score: 80, weight: 2 },
+        { id: 'id-b', evaluable: false, score: null, weight: 1 },
+        { id: 'id-c', evaluable: true, score: null, weight: 1 },
+      ]);
+      getScorm()._activityNumbersById = { 'id-a': 2, 'id-c': 5 };
+
+      expect(getScorm().buildLmsDataFromRegistry()).toEqual({
+        2: { title: '', score: 80, weighted: 2 },
+        5: { title: '', score: 0, weighted: 1 },
+      });
+    });
+
     it.each([
       ['no registry', () => delete window.exeScorm12, { ideviceId: 'id' }],
       ['no game', () => {}, null],
@@ -1905,6 +1931,68 @@ describe('common.js $exeDevices', () => {
         'id-1',
         expect.objectContaining({ completed: true, score: 80, answered: 4 })
       );
+    });
+
+    it('updateActivity lets the runtime own cmi.suspend_data (no legacy write)', () => {
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = {
+        ideviceId: 'id-1',
+        ideviceNumber: 1,
+        isScorm: 1,
+        weighted: 1,
+        scorerp: 8,
+        answered: 4,
+        title: 'Quiz',
+        msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+      };
+
+      getScorm().updateActivity(game, {}, true);
+
+      // The registry serialises suspend_data through the runtime; writing the
+      // legacy line format here would alternate formats with the runtime's
+      // exe12 payload and corrupt resumes.
+      expect(set).not.toHaveBeenCalledWith('cmi.suspend_data', expect.anything());
+      expect(policy.persistActivities).toHaveBeenCalled();
+    });
+
+    it('registerActivity reads previous progress from the registry, not suspend_data', () => {
+      const get = vi.fn(() => '');
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get, set } };
+      registry.get = vi.fn(() => ({ id: 'node-1', evaluable: true, score: 70, weight: 1, completed: false }));
+      registry.list = vi.fn(() => [{ id: 'node-1', evaluable: true, score: 70, weight: 1 }]);
+
+      const node = document.createElement('div');
+      node.className = 'idevice_node';
+      node.id = 'node-1';
+      const main = document.createElement('div');
+      main.id = 'game-reg';
+      node.appendChild(main);
+      document.body.appendChild(node);
+
+      const game = {
+        main: 'game-reg',
+        isScorm: 1,
+        weighted: 1,
+        numberQuestions: 5,
+        msgs: { msgYouScore: 'Score', msgScoreScorm: 'scorm', msgSaveAuto: 'auto', msgPlaySeveralTimes: 'again', msgYouLastScore: 'last', msgActityComply: 'ok' },
+      };
+
+      getScorm().registerActivity(game);
+
+      // Previous score comes from the restored registry record…
+      expect(game.previousScore).toBe('7.00');
+      // …the migration claim is passed through…
+      expect(registry.register).toHaveBeenCalledWith(
+        'node-1',
+        expect.objectContaining({ legacyIndex: game.ideviceNumber })
+      );
+      // …and suspend_data is neither read nor written here.
+      expect(get).not.toHaveBeenCalledWith('cmi.suspend_data');
+      expect(set).not.toHaveBeenCalledWith('cmi.suspend_data', expect.anything());
+
+      node.remove();
     });
 
     it.each([

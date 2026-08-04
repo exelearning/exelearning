@@ -95,7 +95,9 @@ page with the `exe-scorm` body class:
    (`window.exeScorm12.setPageHasScoredActivities(isSCORM)`) and registers no
    lifecycle listener of its own. For SCORM 2004 packages and packages exported
    before the rewrite it falls back to a `pagehide` listener calling
-   `window.unloadPage(isSCORM)`.
+   `window.unloadPage(isSCORM)` — skipped when `event.persisted === true`,
+   because a page frozen into the back/forward cache may be restored intact and
+   ending the LMS session then would close an attempt the learner has not left.
 
 Note that `loadPage()` can therefore run **twice** (body `onload` attribute and
 `exe_export.js`), in either order. It must be idempotent **[LEGACY]**.
@@ -382,6 +384,25 @@ completion and success collapse onto `cmi.core.lesson_status`:
   register with `completionRequired: false`. This is the chosen policy of the
   two the requirement allowed; it means such an iDevice does not need to report
   a "viewed" state to let the page complete.
+- **A manually submitted score counts as completing the activity** **[POLICY]**.
+  The gamification bridge reports `completed: true` when the game is over *or*
+  the learner pressed the send-score button (`sendScoreNew(auto=false)`).
+  Submitting is the learner's explicit act of finishing the attempt, and it is
+  the only completion signal games without a game-over state can give — without
+  it, such an activity would hold its page at `incomplete` forever. An iDevice
+  with a richer notion of completion can report `completed` itself through
+  `scorm.activities.update()`.
+- **The policy may correct its own verdict, never someone else's.** A terminal
+  status the policy wrote during this session is downgraded back to
+  `incomplete` when a *required* activity registers afterwards (deferred
+  iDevice initialisation) — the page demonstrably is not finished. A terminal
+  status restored from a previous attempt, or written explicitly by content
+  (`setComplete()`, `SetCompletionStatus()`), is never downgraded.
+- **`cmi.core.exit` follows the status the LMS actually stored.** If the LMS
+  rejects the status write at exit, the exit value is computed from the value
+  still in force (typically `suspend`), never from the decision the LMS
+  refused — reporting a normal end for a still-incomplete attempt would close
+  it prematurely.
 - The success threshold is `cmi.student_data.mastery_score` when the LMS
   publishes one, otherwise **50**, which is the threshold eXeLearning game
   iDevices have always applied. `policy.setSuccessThreshold(null)` disables the
@@ -405,13 +426,32 @@ The registry serialises itself into `cmi.suspend_data`:
 exe12/1|<uri-encoded id>;<flags>;<answered>;<total>;<score>;<weight>;<min>;<max>|…
 ```
 
+- **Single owner**: on a SCORM 1.2 page the registry is the *only* writer of
+  `cmi.suspend_data`. Every `common.js` helper that used to read or write the
+  legacy line format directly (`registerActivity`, `updateActivity`,
+  `sendScoreNew`, `showFinalScore`, `createScoreScormHtml`,
+  `getActivityScore`) goes through the registry when the runtime is present
+  (`buildLmsDataFromRegistry()` presents it in the legacy shape for the
+  historical `getFinalScore` aggregate). Two writers alternating formats would
+  corrupt each other's view on resume. The legacy code paths remain for SCORM
+  2004 packages and packages exported before the rewrite, where the runtime is
+  absent.
 - **Versioned**: the `exe12/<version>` header. A payload from a newer runtime is
   ignored rather than misread.
-- **Migrated**: an unversioned payload is parsed as the legacy line format
-  (`3. "Title"; Score: 40%; Weight: 1%` joined by `.\t`) written by eXeLearning
-  releases before this layer existed. Such a record counts as completed exactly
-  when it carries a non-zero score, and its title is dropped — it is not needed
-  for aggregation and it is the largest field in a size-constrained element.
+- **Migrated through a pending pool**: an unversioned payload is parsed as the
+  legacy line format (`3. "Title"; Score: 40%; Weight: 1%` joined by `.\t`)
+  written by eXeLearning releases before this layer existed. Those records are
+  identified by **page position**, which is not a stable id, so they go into a
+  pending pool — outside the main registry, where they neither weigh nor block
+  completion — until a live registration that knows both the position and the
+  stable id claims them (`register(id, {legacyIndex: n})`, wired by
+  `common.js`'s `reportActivity`). Only the score is inherited: the legacy
+  format carries **no completion flag**, so completion is never inferred from
+  it (a finished activity scored 0 and a half-done one with points are
+  indistinguishable) — the live iDevice decides. Unclaimed pool entries
+  round-trip through the versioned payload as three-field records
+  (`position;score;weight`), so an exit before every iDevice initialised does
+  not wipe migrated progress; titles are dropped.
 - **Bounded**: SCORM 1.2 sizes the element as CMIString4096 **[SCORM]**. The
   payload always fits: when it would overflow, activities that do not block
   completion are dropped first, then the most recently registered ones, and the
@@ -452,8 +492,14 @@ idle ──initialize──▶ active ──terminate──▶ finish_attempted 
 - A failed finish stays failed: later calls replay the recorded result and the
   original LMS error is preserved in `client.getFinishReport()`. It is never
   retried during page teardown, where a retry cannot succeed.
-- The vendored wrapper commits before `LMSFinish` and skips the finish when the
-  commit fails; the runtime records that as a failed termination.
+- The client issues `LMSCommit("")` and `LMSFinish("")` **as separate calls**
+  (not through the wrapper's `connection.terminate`, which folds both into one
+  boolean), so `getFinishReport()` always distinguishes a failed commit from a
+  failed finish: `{commitAttempted, commitSucceeded, finishAttempted,
+  finishSucceeded}`. When the commit fails, `LMSFinish` is deliberately not
+  attempted — SCORM 1.2 requires pending data to be persisted before the
+  session ends ([CR] 6.7), and finishing anyway would close an attempt whose
+  stored state is unknown.
 
 **External termination.** Legacy content may call
 `pipwerks.SCORM.quit()` or `pipwerks.SCORM.connection.terminate()` directly. The
@@ -552,5 +598,12 @@ made about them:
   `static` Playwright projects.
 - Mobile browsers, and the case where a hidden page is killed without firing
   `pagehide`.
-- SCORM 2004 behaviour beyond "unchanged": the 2004 exporter, its inline
-  fallback and the legacy runtime files it ships are untouched by this work.
+- SCORM 2004 behaviour beyond the shared-file changes: the 2004 exporter, its
+  inline fallback and the legacy runtime files it ships (`SCOFunctions.js`,
+  `SCORM_API_wrapper.js`) are untouched — but `exe_export.js`, `exe_xapi.js`
+  and the iDevice export runtimes are **shared** between formats, and their
+  lifecycle handling moved from `unload` to `pagehide`. For 2004 packages the
+  observable effect is nil in the tested engines (those pages still carry
+  `onunload`/`onbeforeunload` body attributes, so they are never bfcached and
+  `pagehide` fires immediately before `unload`), but no 2004-specific test
+  asserts it.
