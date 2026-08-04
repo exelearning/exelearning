@@ -1,5 +1,32 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import ModalFilemanager from './modalFileManager.js';
+
+// The upload <input> lives in the server-rendered Nunjucks view, not in this
+// module, so the most direct way to catch a regression here is to read the
+// real template source (see AGENTS.md -- no view-rendering harness exists on
+// the frontend/Vitest side; src/services/template.spec.ts covers the
+// server-rendered-HTML version of this same assertion via real nunjucks).
+describe('filemanager.njk upload input accept attribute (issue #2034)', () => {
+  it('allows selecting .srt and .vtt subtitle files from the media library upload chooser', () => {
+    const njkPath = join(process.cwd(), 'views', 'workarea', 'modals', 'pages', 'filemanager.njk');
+    const source = readFileSync(njkPath, 'utf-8');
+
+    const inputMatch = source.match(/<input[^>]*class="media-library-upload-input"[^>]*>/);
+    expect(inputMatch).not.toBeNull();
+
+    const acceptMatch = inputMatch[0].match(/accept="([^"]*)"/);
+    expect(acceptMatch).not.toBeNull();
+
+    const acceptedExtensions = acceptMatch[1].split(',').map((s) => s.trim());
+
+    // "Subtitles (srt / vtt)" is offered in the Text iDevice video dialog,
+    // but the shared upload chooser silently rejects both extensions today.
+    expect(acceptedExtensions).toContain('.srt');
+    expect(acceptedExtensions).toContain('.vtt');
+  });
+});
 
 describe('ModalFilemanager', () => {
   let modal;

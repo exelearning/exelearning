@@ -7748,56 +7748,57 @@ describe('YjsProjectBridge', () => {
       bridge.collaborativeAutosave.options.onStatusChange('saving');
       expect(renderSpy).toHaveBeenCalledWith('saving');
     });
+
+    it('destroys the collaborative status view on disconnect', async () => {
+      const instances = [];
+      class MockCollaborativeSaveStatusView {
+        constructor() {
+          this.setPhase = mock(() => {});
+          this.destroy = mock(() => {});
+          instances.push(this);
+        }
+      }
+      global.window.CollaborativeSaveStatusView = MockCollaborativeSaveStatusView;
+
+      bridge._updateCollaborativeSaveStatus('failed'); // lazily creates the view
+      await bridge.disconnect();
+
+      expect(instances[0].destroy).toHaveBeenCalled();
+      expect(bridge._collabStatusView).toBeNull();
+    });
   });
 
   describe('_updateCollaborativeSaveStatus (issue #1592)', () => {
-    function makeFakeStatusEl() {
-      const classes = new Set(['d-none']);
-      const span = { textContent: '' };
-      return {
-        classList: {
-          add: (...c) => c.forEach((x) => classes.add(x)),
-          remove: (...c) => c.forEach((x) => classes.delete(x)),
-          contains: (x) => classes.has(x),
-        },
-        querySelector: () => span,
-        setAttribute: mock(() => undefined),
-        _classes: classes,
-        _span: span,
-      };
+    // The rendering itself lives in CollaborativeSaveStatusView (covered by its
+    // own colocated test); the bridge only wires phases through to it.
+    function installMockView() {
+      const instances = [];
+      class MockCollaborativeSaveStatusView {
+        constructor() {
+          this.setPhase = mock(() => {});
+          this.destroy = mock(() => {});
+          instances.push(this);
+        }
+      }
+      global.window.CollaborativeSaveStatusView = MockCollaborativeSaveStatusView;
+      return instances;
     }
 
-    it('does nothing when the notice element is absent', () => {
-      global.document.getElementById = mock(() => null);
-      expect(() => bridge._updateCollaborativeSaveStatus('pending')).not.toThrow();
+    it('does nothing when the CollaborativeSaveStatusView global is unavailable', () => {
+      delete global.window.CollaborativeSaveStatusView;
+      expect(() => bridge._updateCollaborativeSaveStatus('failed')).not.toThrow();
+      expect(bridge._collabStatusView).toBeFalsy();
     });
 
-    it('renders the failed message and reveals the notice', () => {
-      const el = makeFakeStatusEl();
-      global.document.getElementById = mock(() => el);
-      bridge._updateCollaborativeSaveStatus('failed');
-      expect(el._span.textContent).toBe('Autosave failed. Please click Save before leaving.');
-      expect(el._classes.has('collab-save-status--failed')).toBe(true);
-      expect(el._classes.has('d-none')).toBe(false);
-      expect(el.setAttribute).toHaveBeenCalledWith(
-        'title',
-        'Autosave failed. Please click Save before leaving.'
-      );
-    });
+    it('lazily constructs a single view and forwards each phase to it', () => {
+      const instances = installMockView();
 
-    it('renders the clean message', () => {
-      const el = makeFakeStatusEl();
-      global.document.getElementById = mock(() => el);
-      bridge._updateCollaborativeSaveStatus('clean');
-      expect(el._span.textContent).toBe('All collaborative changes are saved.');
-      expect(el._classes.has('collab-save-status--clean')).toBe(true);
-    });
+      bridge._updateCollaborativeSaveStatus('pending');
+      bridge._updateCollaborativeSaveStatus('saving');
 
-    it('ignores unknown phases without revealing the notice', () => {
-      const el = makeFakeStatusEl();
-      global.document.getElementById = mock(() => el);
-      bridge._updateCollaborativeSaveStatus('bogus');
-      expect(el._classes.has('d-none')).toBe(true);
+      expect(instances.length).toBe(1); // constructed once, then reused
+      expect(instances[0].setPhase).toHaveBeenCalledWith('pending');
+      expect(instances[0].setPhase).toHaveBeenCalledWith('saving');
     });
   });
 });
