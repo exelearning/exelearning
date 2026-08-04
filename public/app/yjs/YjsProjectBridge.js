@@ -2823,6 +2823,9 @@ class YjsProjectBridge {
    * @param {string} ideviceType - iDevice type
    * @param {Object} initialData - Initial properties (optional)
    * @returns {string} Created component ID
+   * @throws {Error} InvalidJsonPropertiesError when `initialData.jsonProperties`
+   *   cannot be serialized/parsed. Callers that pass iDevice payloads should
+   *   handle this to avoid an uncaught rejection.
    */
   addComponent(pageId, blockId, ideviceType, initialData = {}) {
     const componentId = this.structureBinding.createComponent(pageId, blockId, ideviceType, initialData);
@@ -2840,6 +2843,9 @@ class YjsProjectBridge {
    * Update component properties
    * @param {string} componentId - Component ID
    * @param {Object} props - Properties to update
+   * @throws {Error} InvalidJsonPropertiesError when `props.jsonProperties`
+   *   cannot be serialized/parsed. Callers that pass iDevice payloads should
+   *   handle this to avoid an uncaught rejection.
    */
   updateComponent(componentId, props) {
     this.structureBinding.updateComponent(componentId, props);

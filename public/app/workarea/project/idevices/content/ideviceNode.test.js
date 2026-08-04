@@ -98,7 +98,32 @@ global.eXeLearning = {
 };
 
 // Import after setting up mocks
-import IdeviceNode from './ideviceNode.js';
+import IdeviceNode, { parseIdeviceJsonProperties } from './ideviceNode.js';
+
+describe('parseIdeviceJsonProperties', () => {
+    it('returns an empty object for missing values', () => {
+        expect(parseIdeviceJsonProperties('')).toEqual({
+            value: {},
+            error: null,
+        });
+    });
+
+    it('preserves values that are already parsed', () => {
+        const value = { questions: [] };
+
+        expect(parseIdeviceJsonProperties(value)).toEqual({
+            value,
+            error: null,
+        });
+    });
+
+    it('returns the parsing error for malformed JSON', () => {
+        const result = parseIdeviceJsonProperties('{"broken":');
+
+        expect(result.value).toEqual({});
+        expect(result.error).toBeInstanceOf(SyntaxError);
+    });
+});
 
 describe('IdeviceNode', () => {
     let idevice;
@@ -254,6 +279,22 @@ describe('IdeviceNode', () => {
             idevice.setParams({ jsonProperties: '{}' });
             expect(typeof idevice.jsonProperties).toBe('object');
             expect(Object.keys(idevice.jsonProperties).length).toBe(0);
+        });
+
+        it('keeps loading when jsonProperties contains malformed JSON', () => {
+            const malformedJson =
+                '{"questions":[{"question":"<audio src=\\""><a href=\\"">audio.webm</a></audio>"}]}';
+
+            expect(() =>
+                idevice.setParams({
+                    htmlView: '<p>Previously rendered activity</p>',
+                    jsonProperties: malformedJson,
+                })
+            ).not.toThrow();
+            expect(idevice.jsonProperties).toEqual({});
+            expect(idevice.malformedJsonPropertiesRaw).toBe(malformedJson);
+            expect(idevice.getJsonProperties(true)).toBe(malformedJson);
+            expect(idevice.htmlView).toBe('<p>Previously rendered activity</p>');
         });
     });
 
@@ -2840,6 +2881,20 @@ describe('IdeviceNode', () => {
             });
         });
 
+        it('blocks edition when the saved jsonProperties are malformed', () => {
+            idevice.jsonPropertiesParseError = new SyntaxError('Invalid JSON');
+
+            idevice.edition();
+
+            expect(idevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+            expect(idevice.goWindowToIdevice).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'iDevice error',
+                body: 'This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.',
+                contentId: 'error',
+            });
+        });
+
         it('sets editing component in Yjs when enabled', () => {
             eXeLearning.app.project._yjsEnabled = true;
             idevice.yjsComponentId = 'yjs-comp-id';
@@ -3261,6 +3316,22 @@ describe('IdeviceNode', () => {
             const result = await idevice.apiSaveIdeviceJson(false);
 
             expect(result).toBe(false);
+        });
+
+        it('does not overwrite malformed saved jsonProperties', async () => {
+            idevice.jsonPropertiesParseError = new SyntaxError('Invalid JSON');
+            idevice.malformedJsonPropertiesRaw = '{"broken":';
+            global.$exeDevice = {
+                save: vi.fn().mockReturnValue({ replacement: true }),
+            };
+
+            const result = await idevice.apiSaveIdeviceJson(true);
+
+            expect(result).toBe(false);
+            expect(global.$exeDevice.save).not.toHaveBeenCalled();
+            expect(idevice.apiSendDataService).not.toHaveBeenCalled();
+            expect(idevice.getJsonProperties(true)).toBe('{"broken":');
+            delete global.$exeDevice;
         });
     });
 
@@ -4431,6 +4502,17 @@ describe('IdeviceNode', () => {
             expect(editBtn).not.toBeNull();
         });
 
+        it('does not request edition for malformed saved jsonProperties', () => {
+            idevice.jsonPropertiesParseError = new SyntaxError('Invalid JSON');
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn();
+
+            idevice.addBehaviourEditionIdeviceButton();
+            idevice.ideviceButtons.querySelector('#editIdeviceidevice-123').click();
+
+            expect(eXeLearning.app.project.changeUserFlagOnEdit).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+        });
+
         it('expands minimized iDevice before entering edit mode', async () => {
             // Set up iDevice with minify button and icon (collapsed state)
             idevice.ideviceButtons.innerHTML = `
@@ -4495,6 +4577,19 @@ describe('IdeviceNode', () => {
 
         it('adds dblclick event listener without throwing', () => {
             expect(() => idevice.addBehaviourEditionIdeviceDoubleClick()).not.toThrow();
+        });
+
+        it('does not request edition on double click for malformed saved jsonProperties', () => {
+            idevice.jsonPropertiesParseError = new SyntaxError('Invalid JSON');
+            idevice.isLockedByOtherUser = vi.fn(() => false);
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn();
+
+            idevice.addBehaviourEditionIdeviceDoubleClick();
+            idevice.ideviceBody.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+
+            expect(eXeLearning.app.project.changeUserFlagOnEdit).not.toHaveBeenCalled();
+            expect(idevice.isLockedByOtherUser).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
         });
     });
 
