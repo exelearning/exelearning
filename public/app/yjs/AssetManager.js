@@ -831,6 +831,84 @@ class AssetManager {
   }
 
   /**
+   * Whether an asset is a raw SubRip (`.srt`) subtitle file, detected from its
+   * stored MIME or filename. The Blob's own `type` is unreliable here --
+   * browsers frequently report an empty type for `.srt` uploads -- so we key on
+   * `asset.mime`/`asset.filename`. Mirrors `BaseExporter.isSrtSubtitleAsset()`
+   * on the export side (issue #2034).
+   * @param {{mime?: string, filename?: string, blob?: Blob}} asset
+   * @returns {boolean}
+   */
+  _isSrtSubtitleAsset(asset) {
+    if (!asset) return false;
+    const mime = (asset.mime || (asset.blob && asset.blob.type) || '').toLowerCase();
+    const filename = (asset.filename || '').toLowerCase();
+    return (
+      filename.endsWith('.srt') ||
+      mime === 'application/x-subrip' ||
+      mime === 'application/srt' ||
+      mime === 'text/srt'
+    );
+  }
+
+  /**
+   * Decode a subtitle blob's raw bytes to text. `.srt` files are usually UTF-8
+   * but very frequently Windows-1252/Latin-1 in the wild (accented cues). A
+   * non-fatal UTF-8 decode would silently replace every high byte with U+FFFD,
+   * so we decode UTF-8 strictly first and fall back to Windows-1252 -- keeping
+   * accented captions readable in the live workarea editor. This mirrors the
+   * export/preview decode in `BaseExporter.readAssetDataAsText()` so the editor
+   * display and the downloaded/preview export never diverge (issue #2035).
+   *
+   * `Blob.text()` cannot be used here: per the Blob spec it always decodes as
+   * UTF-8, turning every Latin-1 byte into mojibake. Read the raw bytes instead.
+   * @param {Blob} blob
+   * @returns {Promise<string>}
+   */
+  async _readSubtitleBlobAsText(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+      return new TextDecoder('windows-1252').decode(bytes);
+    }
+  }
+
+  /**
+   * Create a *display* blob URL for an asset. Raw `.srt` subtitle assets are
+   * converted to WebVTT on the fly and served as a `text/vtt` blob, so the
+   * native `<video><track>` renders cues in the live workarea editor -- the
+   * `<track>` element only understands WebVTT, so a raw `.srt` blob produces
+   * zero cues (issue #2034).
+   *
+   * The stored asset is never mutated: it stays `.srt` so it round-trips to the
+   * server and the export pipeline (`BaseExporter`) runs its own conversion.
+   * Every `blobURLCache` population site must go through here so no path can
+   * cache the un-converted `.srt` blob URL first (cache-first lookups would
+   * then keep serving it). Single source of truth (AGENTS.md).
+   * @param {{mime?: string, filename?: string, blob: Blob}} asset
+   * @returns {Promise<string>} blob: (or data:) URL
+   */
+  async _displayBlobURLForAsset(asset) {
+    if (
+      asset &&
+      asset.blob &&
+      this._isSrtSubtitleAsset(asset) &&
+      typeof window !== 'undefined' &&
+      typeof window.convertSrtToVtt === 'function'
+    ) {
+      try {
+        const text = await this._readSubtitleBlobAsText(asset.blob);
+        const { vtt } = window.convertSrtToVtt(text);
+        return this.createBlobURL(new Blob([vtt], { type: 'text/vtt' }));
+      } catch (e) {
+        console.warn('[AssetManager] Failed to convert .srt subtitle to WebVTT for display:', e);
+      }
+    }
+    return this.createBlobURL(asset && asset.blob ? asset.blob : asset);
+  }
+
+  /**
    * Whether a filename ends with a plausible file extension (1-8 alnum chars).
    * `asset-<uuid>` → false; `report.pdf` → true.
    * @param {string|undefined|null} filename
@@ -2619,7 +2697,7 @@ class AssetManager {
         // Asset with blob exists for THIS project - safe to skip
         // Ensure blob URL is in cache for immediate availability
         if (!this.blobURLCache.has(assetId)) {
-          const blobUrl = URL.createObjectURL(existing.blob);
+          const blobUrl = await this._displayBlobURLForAsset(existing);
           this.blobURLCache.set(assetId, blobUrl);
           this.reverseBlobCache.set(blobUrl, assetId);
           Logger.log(`[AssetManager] Cached existing blob URL for ${assetId}`);
@@ -2651,8 +2729,8 @@ class AssetManager {
       };
       await this.putAsset(newAsset);
 
-      // Cache blob URL
-      const blobUrl = URL.createObjectURL(newAsset.blob);
+      // Cache blob URL (subtitle-aware; see _displayBlobURLForAsset)
+      const blobUrl = await this._displayBlobURLForAsset(newAsset);
       this.blobURLCache.set(assetId, blobUrl);
       this.reverseBlobCache.set(blobUrl, assetId);
 
@@ -2680,7 +2758,8 @@ class AssetManager {
     Logger.log(`[AssetManager] Stored new asset ${assetId}`);
 
     // 6. Add to blob URL cache immediately for instant availability
-    const blobUrl = URL.createObjectURL(blob);
+    //    (subtitle-aware; see _displayBlobURLForAsset)
+    const blobUrl = await this._displayBlobURLForAsset(asset);
     this.blobURLCache.set(assetId, blobUrl);
     this.reverseBlobCache.set(blobUrl, assetId);
     Logger.log(`[AssetManager] Cached blob URL for ${assetId}`);
@@ -2796,7 +2875,7 @@ class AssetManager {
     }
 
     // Create blob URL (with fallback to data URL if blocked by extensions)
-    const blobURL = await this.createBlobURL(asset.blob);
+    const blobURL = await this._displayBlobURLForAsset(asset);
 
     // Cache both directions
     this.blobURLCache.set(assetId, blobURL);
@@ -3709,7 +3788,7 @@ class AssetManager {
           continue;
         }
         // Use createBlobURL with fallback for blocked extensions
-        const blobURL = await this.createBlobURL(asset.blob);
+        const blobURL = await this._displayBlobURLForAsset(asset);
         this.blobURLCache.set(asset.id, blobURL);
         this.reverseBlobCache.set(blobURL, asset.id);
         count++;
@@ -3960,6 +4039,9 @@ class AssetManager {
       json: 'application/json',
       csv: 'text/csv',
       rtf: 'application/rtf',
+      // Subtitles
+      srt: 'application/x-subrip',
+      vtt: 'text/vtt',
       // Open Document
       odt: 'application/vnd.oasis.opendocument.text',
       ods: 'application/vnd.oasis.opendocument.spreadsheet',
@@ -4204,7 +4286,7 @@ class AssetManager {
     // Try to load from memory
     const asset = await this.getAsset(assetId);
     if (asset?.blob && typeof asset.blob.arrayBuffer === 'function') {
-      const blobURL = await this.createBlobURL(asset.blob);
+      const blobURL = await this._displayBlobURLForAsset(asset);
       this.blobURLCache.set(assetId, blobURL);
       this.reverseBlobCache.set(blobURL, assetId);
       return {
@@ -4270,7 +4352,7 @@ class AssetManager {
     // Try to load from memory
     const asset = await this.getAsset(assetId);
     if (asset?.blob && typeof asset.blob.arrayBuffer === 'function') {
-      const blobURL = await this.createBlobURL(asset.blob);
+      const blobURL = await this._displayBlobURLForAsset(asset);
       this.blobURLCache.set(assetId, blobURL);
       this.reverseBlobCache.set(blobURL, assetId);
       return {
@@ -4432,7 +4514,7 @@ class AssetManager {
     }
 
     // Use createBlobURL with fallback for blocked extensions
-    const blobURL = await this.createBlobURL(asset.blob);
+    const blobURL = await this._displayBlobURLForAsset(asset);
 
     return new Promise((resolve) => {
       const img = new Image();
@@ -4799,8 +4881,8 @@ class AssetManager {
       // Skip if already in memory (just not loaded to URL cache yet)
       const existingAsset = await this.getAsset(assetId);
       if (existingAsset?.blob) {
-        // Load it to URL cache (use createBlobURL with fallback)
-        const blobURL = await this.createBlobURL(existingAsset.blob);
+        // Load it to URL cache (subtitle-aware; see _displayBlobURLForAsset)
+        const blobURL = await this._displayBlobURLForAsset(existingAsset);
         this.blobURLCache.set(assetId, blobURL);
         this.reverseBlobCache.set(blobURL, assetId);
         this.missingAssets.delete(assetId);
@@ -4878,8 +4960,8 @@ class AssetManager {
 
         await this.putAsset(asset);
 
-        // Create blob URL and update cache (with fallback for blocked extensions)
-        const blobURL = await this.createBlobURL(blob);
+        // Create blob URL and update cache (subtitle-aware; see _displayBlobURLForAsset)
+        const blobURL = await this._displayBlobURLForAsset(asset);
         this.blobURLCache.set(assetId, blobURL);
         this.reverseBlobCache.set(blobURL, assetId);
 
@@ -5048,9 +5130,9 @@ class AssetManager {
         await this.putAsset(updatedAsset);
         await this._putToCache(assetId, blob);
 
-        // Create blob URL and cache it
+        // Create blob URL and cache it (subtitle-aware; see _displayBlobURLForAsset)
         try {
-          const blobUrl = URL.createObjectURL(blob);
+          const blobUrl = await this._displayBlobURLForAsset(updatedAsset);
           this.blobURLCache.set(assetId, blobUrl);
           this.reverseBlobCache.set(blobUrl, assetId);
         } catch (e) {
@@ -5160,7 +5242,7 @@ class AssetManager {
         // Load to cache
         const asset = await this.getAsset(assetId);
         if (asset && asset.blob) {
-          const blobURL = await this.createBlobURL(asset.blob);
+          const blobURL = await this._displayBlobURLForAsset(asset);
           this.blobURLCache.set(assetId, blobURL);
           this.reverseBlobCache.set(blobURL, assetId);
           this.missingAssets.delete(assetId);
@@ -5197,7 +5279,7 @@ class AssetManager {
             // Asset should now be in memory - load to URL cache
             const asset = await this.getAsset(assetId);
             if (asset && asset.blob) {
-              const blobURL = await this.createBlobURL(asset.blob);
+              const blobURL = await this._displayBlobURLForAsset(asset);
               this.blobURLCache.set(assetId, blobURL);
               this.reverseBlobCache.set(blobURL, assetId);
               this.missingAssets.delete(assetId);
@@ -5421,6 +5503,89 @@ window.addMediaTypes = function(html) {
 };
 
 /**
+ * Browser twin of `src/shared/utils/srt-to-vtt.ts` `isWebVtt()`. AssetManager.js
+ * is a classic <script> (see yjs-loader.js) and cannot `import` from `src/`, so
+ * -- exactly like window.simplifyMediaElements / window.addMediaTypes -- the
+ * converter is hand-mirrored here. Keep the two in sync (issue #2034).
+ *
+ * Detect whether `content` is already valid WebVTT (has a `WEBVTT` header),
+ * tolerating a leading UTF-8 BOM.
+ * @param {string} content
+ * @returns {boolean}
+ */
+window.isWebVtt = function(content) {
+  if (!content) return false;
+  const BOM = '﻿';
+  const stripped = content.startsWith(BOM) ? content.slice(1) : content;
+  return /^WEBVTT(\s|$)/.test(stripped.trimStart());
+};
+
+/**
+ * Browser twin of `src/shared/utils/srt-to-vtt.ts` `convertSrtToVtt()`.
+ * Converts raw SRT subtitle text to WebVTT. Content that is already valid
+ * WebVTT is passed through unchanged (`converted: false`). Never throws --
+ * malformed, empty, or binary input yields an empty WebVTT document with
+ * `error` set. Native `<video><track>` only understands WebVTT (issue #2034).
+ * @param {string} content
+ * @returns {{vtt: string, converted: boolean, error?: string}}
+ */
+window.convertSrtToVtt = function(content) {
+  const BOM = '﻿';
+  const CUE_TIMESTAMP_RE = /^(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})(.*)$/;
+  const CUE_INDEX_RE = /^\d+$/;
+  try {
+    const raw = typeof content === 'string' ? content : '';
+    const withoutBom = raw.startsWith(BOM) ? raw.slice(1) : raw;
+
+    if (window.isWebVtt(withoutBom)) {
+      return { vtt: withoutBom, converted: false };
+    }
+
+    const normalized = withoutBom.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const blocks = normalized.split(/\n\s*\n/);
+    const cues = [];
+
+    for (const rawBlock of blocks) {
+      const lines = rawBlock.split('\n').map((line) => line.trim());
+
+      let timestampIndex = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (CUE_TIMESTAMP_RE.test(lines[i])) {
+          timestampIndex = i;
+          break;
+        }
+      }
+      if (timestampIndex === -1) continue;
+
+      const match = lines[timestampIndex].match(CUE_TIMESTAMP_RE);
+      if (!match) continue;
+
+      const start = match[1].replace(',', '.');
+      const end = match[2].replace(',', '.');
+      const settings = match[3] ? match[3].trim() : '';
+      const timestampLine = settings ? `${start} --> ${end} ${settings}` : `${start} --> ${end}`;
+
+      const indexLine = timestampIndex > 0 && CUE_INDEX_RE.test(lines[0]) ? lines[0] : null;
+      const text = lines
+        .slice(timestampIndex + 1)
+        .join('\n')
+        .trim();
+
+      const cueParts = [indexLine, timestampLine, text].filter((part) => !!part);
+      cues.push(cueParts.join('\n'));
+    }
+
+    if (cues.length === 0) {
+      return { vtt: 'WEBVTT\n', converted: true, error: 'No subtitle cues could be parsed from the input' };
+    }
+
+    return { vtt: `WEBVTT\n\n${cues.join('\n\n')}\n`, converted: true };
+  } catch (e) {
+    return { vtt: 'WEBVTT\n', converted: true, error: e instanceof Error ? e.message : String(e) };
+  }
+};
+
+/**
  * Global helper to simplify MediaElement.js video structures to native HTML5 video.
  * Converts complex <video class="mediaelement"><source src="..."></video> structures
  * to simple <video src="..." controls> that browsers handle natively.
@@ -5480,6 +5645,14 @@ window.simplifyMediaElements = function(html) {
     newVideo.style.maxWidth = '100%';
     newVideo.style.height = 'auto';
 
+    // Preserve <track> children (subtitles/captions) -- dropping them here
+    // silently loses subtitles wherever this simplified markup is rendered
+    // (issue #2034). Keep this symmetric with the isomorphic twin in
+    // src/shared/utils/media-helpers.ts simplifyMediaElements().
+    video.querySelectorAll('track').forEach((track) => {
+      newVideo.appendChild(track.cloneNode(true));
+    });
+
     // Replace the old video with the new simple one
     video.parentNode.replaceChild(newVideo, video);
     modified++;
@@ -5510,6 +5683,11 @@ window.simplifyMediaElements = function(html) {
 
     if (type) newAudio.setAttribute('type', type);
     if (className) newAudio.className = className;
+
+    // Preserve <track> children (subtitles/captions), same as for video.
+    audio.querySelectorAll('track').forEach((track) => {
+      newAudio.appendChild(track.cloneNode(true));
+    });
 
     audio.parentNode.replaceChild(newAudio, audio);
     modified++;
