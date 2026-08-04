@@ -368,6 +368,7 @@ window.$exeExport = {
             // 'trueorfalse' added for legacy imports that have empty htmlView.
             const jsonOnlyIdevices = [
                 'casestudy',
+                'file-attachment',
                 'form',
                 'image-gallery',
                 'magnifier',
@@ -384,6 +385,7 @@ window.$exeExport = {
                 // No renderView needed, just behaviour and init
                 exportIdevice.renderBehaviour(jsonData, accesibility);
                 exportIdevice.init(jsonData, accesibility);
+                this.afterIdeviceRendered(ideviceNode);
                 ideviceNode.classList.add('loaded');
                 setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
             }
@@ -435,11 +437,33 @@ window.$exeExport = {
         exportIdevice.renderBehaviour(jsonData, accesibility);
         // Idevice export function 3: init
         exportIdevice.init(jsonData, accesibility);
+        this.afterIdeviceRendered(ideviceNode);
         // Loaded
         ideviceNode.classList.add('loaded');
         setTimeout(() => { ideviceNode.classList.remove('loading') }, 100);
     },
 
+    /**
+     * Apply the enhancements shared by every iDevice to content an iDevice has just
+     * rendered.
+     *
+     * JSON iDevices build their markup from data long after the page-wide
+     * initialization has run, so rich text they generate (which authors write in
+     * TinyMCE, effects included) would never be processed. This is the export-side
+     * counterpart of the editor's `loadLegacyExeFunctionalitiesExport()`: iDevices
+     * stay unaware of the common libraries, and a new shared enhancement only has to
+     * be registered here. See #2170.
+     *
+     * @param {HTMLElement} ideviceNode
+     */
+    afterIdeviceRendered: function (ideviceNode) {
+        if (!ideviceNode) return;
+        // Legacy $exe_effects object: initialize the effects inside this iDevice only,
+        // leaving the ones already initialized elsewhere on the page untouched.
+        if (typeof $exeFX !== 'undefined' && typeof $exeFX.init === 'function') {
+            $exeFX.init(ideviceNode);
+        }
+    },
 
     /**
      * Get idevice export object
