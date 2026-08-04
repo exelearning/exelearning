@@ -17,6 +17,42 @@ class YjsStructureBinding {
   }
 
   /**
+   * Serialize jsonProperties and verify that the result can be parsed.
+   * @param {*} value - Object or JSON string supplied by an iDevice
+   * @returns {string} Valid JSON string
+   */
+  serializeAndValidateJsonProperties(value) {
+    try {
+      const serialized = typeof value === 'string' ? value : JSON.stringify(value);
+      if (typeof serialized !== 'string') {
+        throw new TypeError('The value cannot be serialized as JSON');
+      }
+      JSON.parse(serialized);
+      return serialized;
+    } catch (error) {
+      const validationError = new Error(`Invalid jsonProperties: ${error.message}`, { cause: error });
+      validationError.name = 'InvalidJsonPropertiesError';
+      throw validationError;
+    }
+  }
+
+  /**
+   * Normalize persistent asset references and validate the final JSON string.
+   * @param {*} value - Object or JSON string supplied by an iDevice
+   * @returns {string} Valid JSON string ready for Yjs
+   */
+  prepareJsonPropertiesForSync(value) {
+    let serialized = this.serializeAndValidateJsonProperties(value);
+    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+
+    if (assetManager && typeof assetManager.prepareJsonForSync === 'function') {
+      serialized = assetManager.prepareJsonForSync(serialized);
+    }
+
+    return this.serializeAndValidateJsonProperties(serialized);
+  }
+
+  /**
    * Subscribe to structure changes
    * @param {Function} callback - Called when structure changes with (events, transaction)
    *   - transaction.local: true if change originated from this client
@@ -1919,8 +1955,15 @@ class YjsStructureBinding {
     const blockMap = this.getBlockMap(pageId, blockId);
     if (!blockMap) return null;
 
+    const preparedInitialData = { ...initialData };
+    if (Object.prototype.hasOwnProperty.call(preparedInitialData, 'jsonProperties')) {
+      preparedInitialData.jsonProperties = this.prepareJsonPropertiesForSync(
+        preparedInitialData.jsonProperties
+      );
+    }
+
     // Use provided ID or generate a new one
-    const componentId = initialData.id || this.generateId('idevice');
+    const componentId = preparedInitialData.id || this.generateId('idevice');
     const compMap = new this.Y.Map();
 
     // Get current user info for lock
@@ -1937,8 +1980,8 @@ class YjsStructureBinding {
       }
 
       // Determine the target order/position
-      const targetOrder = (initialData.order !== undefined && initialData.order !== null)
-        ? initialData.order
+      const targetOrder = (preparedInitialData.order !== undefined && preparedInitialData.order !== null)
+        ? preparedInitialData.order
         : components.length;
 
       compMap.set('id', componentId);
@@ -1953,7 +1996,7 @@ class YjsStructureBinding {
       compMap.set('lockUserColor', userInfo.color || '#999');
 
       // Set initial data (except 'order' which was already set)
-      Object.entries(initialData).forEach(([key, value]) => {
+      Object.entries(preparedInitialData).forEach(([key, value]) => {
         if (key === 'order') return; // Already handled above
         if (typeof value === 'string') {
           // Use Y.Text for rich text content
@@ -1998,6 +2041,22 @@ class YjsStructureBinding {
   }
 
   /**
+   * Length of a component content value that may be a Y.Text, a plain string,
+   * or undefined. Used to detect whether a component already holds content
+   * before applying a potentially destructive update.
+   * @param {*} value
+   * @returns {number}
+   * @private
+   */
+  contentLength(value) {
+    if (value == null) return 0;
+    if (value instanceof this.Y.Text) return value.length;
+    if (typeof value === 'string') return value.length;
+    if (typeof value.length === 'number') return value.length;
+    return 0;
+  }
+
+  /**
    * Update a component's properties
    * @param {string} componentId
    * @param {Object} updates
@@ -2006,13 +2065,20 @@ class YjsStructureBinding {
     const compMap = this.getComponentMap(componentId);
     if (!compMap) return;
 
+    const preparedUpdates = { ...updates };
+    if (Object.prototype.hasOwnProperty.call(preparedUpdates, 'jsonProperties')) {
+      preparedUpdates.jsonProperties = this.prepareJsonPropertiesForSync(
+        preparedUpdates.jsonProperties
+      );
+    }
+
     // Checkbox fields that should be converted to boolean for iDevices
     // visibility and teacherOnly are checkbox fields from ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG
     const checkboxFields = ['visibility', 'teacherOnly'];
 
     // Use transaction with clientID origin for UndoManager tracking
     this.manager.getDoc().transact(() => {
-      Object.entries(updates).forEach(([key, value]) => {
+      Object.entries(preparedUpdates).forEach(([key, value]) => {
         if (key === 'htmlContent' || key === 'content') {
           // Handle Y.Text updates
           let ytext = compMap.get(key);
@@ -2023,6 +2089,28 @@ class YjsStructureBinding {
           const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
           if (assetManager && safeValue && typeof assetManager.prepareHtmlForSync === 'function') {
             safeValue = assetManager.prepareHtmlForSync(safeValue);
+          }
+
+          // Data-integrity guard: never let an empty content update erase existing
+          // content. iDevice save paths always emit a non-empty wrapper, so an empty
+          // value here signals a transient/broken write (interrupted edit, race,
+          // failed serialization). Applying it would blank the Y.Text AND drop the
+          // htmlView fallback below — irreversibly wiping the iDevice. Game iDevices
+          // (classify/crossword/select-media-files) are especially exposed because
+          // their whole state lives in htmlView/htmlContent with empty jsonProperties,
+          // so there is no other copy to recover from. Skip the destructive write and
+          // keep whatever content the component already holds.
+          if (safeValue.trim() === '') {
+            const existingLen = this.contentLength(ytext);
+            const htmlViewLen = this.contentLength(compMap.get('htmlView'));
+            if (existingLen > 0 || htmlViewLen > 0) {
+              Logger.warn(
+                `[YjsStructureBinding] Ignored empty '${key}' update for component ` +
+                  `${componentId}: it would erase existing content ` +
+                  `(existing=${existingLen}, htmlView=${htmlViewLen}). Content preserved.`,
+              );
+              return; // skip this key; continue with the rest of the update
+            }
           }
 
           if (!(ytext instanceof this.Y.Text)) {
@@ -2040,7 +2128,13 @@ class YjsStructureBinding {
           // htmlView plain-string fallback populated by the initial import path
           // (createComponentMapFromApi / ElpxImporter). Keeping it around causes
           // stale reference counts in the File Manager after in-place edits (issue #1674).
-          if ((key === 'htmlContent' || key === 'content') && compMap.get('htmlView') !== undefined) {
+          // Only drop it when the new value is non-empty, so the fallback is never
+          // removed in favour of blank content.
+          if (
+            (key === 'htmlContent' || key === 'content') &&
+            safeValue.trim() !== '' &&
+            compMap.get('htmlView') !== undefined
+          ) {
             compMap.delete('htmlView');
           }
         } else if (key === 'properties' && typeof value === 'object') {
@@ -2059,14 +2153,7 @@ class YjsStructureBinding {
             propsMap.set(propKey, finalValue);
           });
         } else if (key === 'jsonProperties') {
-          // Prepare JSON for sync: convert blob:// URLs to asset:// refs
-          // This centralizes blob URL recovery for iDevices like image-gallery, map, etc.
-          let safeValue = typeof value === 'string' ? value : JSON.stringify(value);
-          const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-          if (assetManager && safeValue && typeof assetManager.prepareJsonForSync === 'function') {
-            safeValue = assetManager.prepareJsonForSync(safeValue);
-          }
-          compMap.set(key, safeValue);
+          compMap.set(key, value);
         } else {
           compMap.set(key, value);
         }

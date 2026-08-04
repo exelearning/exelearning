@@ -41,6 +41,20 @@
 
 // Logger is defined globally by yjs-loader.js before this file loads
 
+/**
+ * A blob: URL as it appears inside a decoded string — either the whole value
+ * ("blob:http://host/id") or embedded in markup (src="blob:http://host/id").
+ * The scheme part accepts any origin scheme (http, https, app for Electron —
+ * see #2186), and the class stops at the characters that delimit a URL in
+ * those contexts, so the surrounding quotes are never part of the match. The
+ * final character must not be sentence punctuation: a blob URL always ends in
+ * an identifier character, so "see blob:…/abc123, then" must not capture the
+ * comma (it would break the exact-string cache lookup and eat the comma).
+ * Note: opaque-origin URLs ("blob:null/...") are not a target — they cannot
+ * be recovered and never appear in stored content.
+ */
+const BLOB_URL_IN_TEXT = /blob:[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)\\]*[^\s"'<>)\\.,;:!?]/g;
+
 class AssetManager {
   // IndexedDB fallback constants (#1710) — used when Cache API is unavailable
   // (non-secure contexts such as HTTP on a non-loopback host). A single shared
@@ -3349,25 +3363,62 @@ class AssetManager {
    */
   prepareJsonForSync(json) {
     if (!json || typeof json !== 'string') return json;
+    if (!json.includes('blob:')) return json;
 
-    // Pattern to match blob:// URLs inside JSON string values (quoted strings)
-    // Matches: "blob:http://..." or "blob:https://..."
-    // This captures blob URLs within JSON property values
-    const blobUrlPattern = /"(blob:https?:\/\/[^"]+)"/g;
+    let parsed;
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      // A payload we cannot parse is one we cannot rewrite safely. Hand it back
+      // untouched rather than guessing at its structure.
+      Logger.warn('[AssetManager] JSON: payload is not valid JSON, leaving blob URLs untouched');
+      return json;
+    }
 
-    return json.replace(blobUrlPattern, (match, blobUrl) => {
-      // Try to recover asset ID from reverseBlobCache
-      const assetId = this.reverseBlobCache.get(blobUrl);
-      if (assetId) {
-        Logger.log(`[AssetManager] JSON: Converted blob→asset: ${assetId.substring(0, 8)}...`);
-        return `"asset://${assetId}"`;
+    return JSON.stringify(this.replaceBlobUrlsInValue(parsed));
+  }
+
+  /**
+   * Replace every blob: URL found in the strings of a parsed jsonProperties tree.
+   *
+   * Walks the parsed value rather than rewriting the serialized JSON. A blob URL
+   * inside an HTML attribute is serialized as src=\"blob:...\", so a textual
+   * rewrite consumes the backslash that escapes the closing quote and silently
+   * corrupts the payload — that is issue #2177.
+   *
+   * @param {*} value - Parsed JSON value (object, array, string or primitive)
+   * @returns {*} The value with blob URLs replaced by asset:// references
+   */
+  replaceBlobUrlsInValue(value) {
+    if (typeof value === 'string') {
+      return value.replace(BLOB_URL_IN_TEXT, (blobUrl) => {
+        // Try to recover asset ID from reverseBlobCache
+        const assetId = this.reverseBlobCache.get(blobUrl);
+        if (assetId) {
+          Logger.log(`[AssetManager] JSON: Converted blob→asset: ${assetId.substring(0, 8)}...`);
+          return `asset://${assetId}`;
+        }
+
+        // If we can't recover, clear it to avoid persisting a broken blob URL
+        // This is safer than leaving a blob URL that will definitely break after reload
+        Logger.warn(`[AssetManager] JSON: Cannot recover blob URL, clearing: ${blobUrl.substring(0, 50)}...`);
+        return '';
+      });
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.replaceBlobUrlsInValue(item));
+    }
+
+    if (value && typeof value === 'object') {
+      const replaced = {};
+      for (const [key, item] of Object.entries(value)) {
+        replaced[key] = this.replaceBlobUrlsInValue(item);
       }
+      return replaced;
+    }
 
-      // If we can't recover, return empty string to avoid persisting broken blob URL
-      // This is safer than leaving a blob URL that will definitely break after reload
-      Logger.warn(`[AssetManager] JSON: Cannot recover blob URL, clearing: ${blobUrl.substring(0, 50)}...`);
-      return '""';
-    });
+    return value;
   }
 
   /**

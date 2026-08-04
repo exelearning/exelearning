@@ -29,6 +29,7 @@ changes status, update the table and the per-status lists below.
 
 ## Proposed ADRs
 
+- [ADR-0001](ADR-0001-runtime-specific-elpx-import-limits.md) — Runtime-specific ELP/ELPX decompression limits (#2193)
 - [ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md) — Hybrid preview trust boundary: source-filtered by default, opaque-on-enable
 - [ADR-0003](ADR-0003-preview-grant-revocation-under-collaboration.md) — Preview active-content grant revocation under collaboration (D1)
 - [ADR-0004](ADR-0004-self-hosted-capability-snapshots-for-editor-preview.md) — Self-hosted capability snapshots for the editor preview (minimal subset)
