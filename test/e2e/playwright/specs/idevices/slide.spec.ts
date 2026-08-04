@@ -434,6 +434,216 @@ test.describe('Slide iDevice', () => {
         });
     });
 
+    test.describe('Editor usability (#2218)', () => {
+        async function setupEditorWithRect(page: Page): Promise<void> {
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+            await page.locator('[data-testid="slide-tool-shapes"]').first().click();
+            await page.locator('[data-testid="slide-shape-rect"]').first().click();
+            await waitForObjectCountAtLeast(page, 1);
+        }
+
+        test('Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y drive the editor history without the unsaved-changes modal', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide Keyboard Undo');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await setupEditorWithRect(page);
+
+            // Focus must sit outside inputs so the editor shortcut handler runs.
+            await page.locator('[data-testid="slide-canvas-shell"]').first().click();
+
+            await page.keyboard.press('Control+z');
+            await page.waitForFunction(
+                () => {
+                    const w = window as unknown as { __slideEditorCanvas?: { getObjects?: () => unknown[] } };
+                    return (w.__slideEditorCanvas?.getObjects?.().length ?? -1) === 0;
+                },
+                undefined,
+                { timeout: 10_000 },
+            );
+            // The project-level handler must yield silently: no warning modal.
+            await expect(page.locator('.modal.show')).toHaveCount(0);
+
+            await page.keyboard.press('Control+Shift+z');
+            await waitForObjectCountAtLeast(page, 1);
+
+            await page.keyboard.press('Control+z');
+            await page.waitForFunction(
+                () => {
+                    const w = window as unknown as { __slideEditorCanvas?: { getObjects?: () => unknown[] } };
+                    return (w.__slideEditorCanvas?.getObjects?.().length ?? -1) === 0;
+                },
+                undefined,
+                { timeout: 10_000 },
+            );
+            await page.keyboard.press('Control+y');
+            await waitForObjectCountAtLeast(page, 1);
+            await expect(page.locator('.modal.show')).toHaveCount(0);
+        });
+
+        test('project-level undo/redo buttons are disabled while the editor is open and never pop the modal', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide Navbar Undo Guard');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await setupEditorWithRect(page);
+            const ideviceId = await getSlideIdeviceId(page);
+
+            // While the slide editor owns the history, the project-level
+            // buttons must be disabled (clicking them used to pop the
+            // "unsaved changes" modal).
+            await expect(page.locator('#yjs-undo-redo .btn-undo')).toBeDisabled();
+            await expect(page.locator('#yjs-undo-redo .btn-redo')).toBeDisabled();
+            await expect(page.locator('.modal.show')).toHaveCount(0);
+
+            // Once the iDevice is saved the project history takes over again.
+            await saveIdevice(page, ideviceId);
+            await expect(page.locator('#yjs-undo-redo .btn-undo')).toBeEnabled({ timeout: 10_000 });
+        });
+
+        test('arrow keys nudge the selected object by 1px, Shift+arrow by 10px', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide Keyboard Nudge');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await setupEditorWithRect(page);
+
+            const before = await page.evaluate(() => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: { getActiveObject?: () => { left: number; top: number } | null };
+                };
+                const active = w.__slideEditorCanvas?.getActiveObject?.();
+                return active ? { left: active.left, top: active.top } : null;
+            });
+            expect(before).not.toBeNull();
+
+            await page.keyboard.press('ArrowRight');
+            await page.keyboard.press('ArrowDown');
+            await page.keyboard.press('Shift+ArrowRight');
+            await page.keyboard.press('Shift+ArrowUp');
+
+            const after = await page.evaluate(() => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: { getActiveObject?: () => { left: number; top: number } | null };
+                };
+                const active = w.__slideEditorCanvas?.getActiveObject?.();
+                return active ? { left: active.left, top: active.top } : null;
+            });
+            expect(after).not.toBeNull();
+            expect(after!.left - before!.left).toBeCloseTo(11); // +1 +10
+            expect(after!.top - before!.top).toBeCloseTo(-9); // +1 -10
+        });
+
+        test('Ctrl+D duplicates the selected object', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide Keyboard Duplicate');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await setupEditorWithRect(page);
+
+            await page.keyboard.press('Control+d');
+            await waitForObjectCountAtLeast(page, 2);
+        });
+
+        test('Ctrl+drag draws a marquee over a full-bleed background instead of moving it', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide Marquee Selection');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+
+            // Cover-page scene: a full-bleed background plus two small
+            // rects, all with explicit top-left origins so the marquee
+            // coordinates below are deterministic.
+            await page.evaluate(() => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: {
+                        add: (o: unknown) => void;
+                        sendObjectToBack: (o: unknown) => void;
+                        discardActiveObject: () => void;
+                        requestRenderAll: () => void;
+                    };
+                    fabric?: { Rect: new (opts: Record<string, unknown>) => unknown };
+                };
+                const c = w.__slideEditorCanvas;
+                const f = w.fabric;
+                if (!c || !f) throw new Error('slide canvas not ready');
+                const mk = (opts: Record<string, unknown>) => new f.Rect({ originX: 'left', originY: 'top', ...opts });
+                const bg = mk({ left: 0, top: 0, width: 1280, height: 720, fill: '#dfe9f2' });
+                c.add(bg);
+                c.sendObjectToBack(bg);
+                c.add(mk({ left: 100, top: 100, width: 120, height: 80, fill: '#4e9a8e' }));
+                c.add(mk({ left: 320, top: 140, width: 120, height: 80, fill: '#b05669' }));
+                c.discardActiveObject();
+                c.requestRenderAll();
+            });
+
+            const canvas = page.locator('[data-testid="slide-canvas"]').first();
+            await canvas.scrollIntoViewIfNeeded();
+            const box = await canvas.boundingBox();
+            expect(box).not.toBeNull();
+            const scale = box!.width / 1280;
+            const toScreen = (x: number, y: number) => ({ x: box!.x + x * scale, y: box!.y + y * scale });
+
+            // Ctrl/Cmd+drag a rectangle that fully encloses both small
+            // rects. macOS translates Ctrl+click into a context-menu
+            // gesture at the OS level, so use the platform's own marquee
+            // modifier (Cmd there, Ctrl elsewhere) — the editor wires both.
+            const marqueeKey = process.platform === 'darwin' ? 'Meta' : 'Control';
+            const from = toScreen(60, 60);
+            const to = toScreen(520, 280);
+            await page.keyboard.down(marqueeKey);
+            await page.mouse.move(from.x, from.y);
+            await page.mouse.down();
+            await page.mouse.move(to.x, to.y, { steps: 10 });
+            await page.mouse.up();
+            await page.keyboard.up(marqueeKey);
+
+            const result = await page.evaluate(() => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: {
+                        getObjects: () => Array<{ width?: number; left?: number; top?: number }>;
+                        getActiveObjects: () => unknown[];
+                    };
+                };
+                const c = w.__slideEditorCanvas;
+                if (!c) return null;
+                const bg = c.getObjects().find(o => o.width === 1280);
+                return {
+                    selected: c.getActiveObjects().length,
+                    bgSelected: (c.getActiveObjects() as unknown[]).includes(bg as unknown),
+                    bgLeft: bg?.left,
+                    bgTop: bg?.top,
+                };
+            });
+            expect(result).not.toBeNull();
+            // Both small rects selected; the background neither selected nor moved.
+            expect(result!.selected).toBe(2);
+            expect(result!.bgSelected).toBe(false);
+            expect(result!.bgLeft).toBe(0);
+            expect(result!.bgTop).toBe(0);
+        });
+    });
+
     test.describe('Security', () => {
         test('strips <script> and javascript: URLs from the saved SVG', async ({
             authenticatedPage,
