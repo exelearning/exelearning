@@ -4,6 +4,19 @@ on:
   push:
     branches:
       - main
+  # Dependency bumps are the one change class that can move the runtime floor
+  # out from under this matrix (a jsdom major raised the Node requirement and
+  # broke all three databases on main), and it is otherwise only exercised
+  # after merge. Run it on PRs that touch the dependency manifests — every
+  # dependabot PR, plus any hand-written bump — so that lands as a red PR
+  # check instead of a red main.
+  pull_request:
+    branches:
+      - main
+    paths:
+      - package.json
+      - bun.lock
+      - .github/workflows/e2e-db-matrix.yml
   workflow_dispatch:
 
 concurrency:
@@ -26,7 +39,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          # `bun x playwright` honours the CLI's `#!/usr/bin/env node` shebang,
+          # so the specs (and everything they import from src/) run under this
+          # Node. jsdom >= 30 pulls undici 8, which needs Node >= 22.19 for
+          # worker_threads.markAsUncloneable. 22 also matches the Node the
+          # ubuntu-latest image ships, which every other workflow already uses.
+          node-version: '22'
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

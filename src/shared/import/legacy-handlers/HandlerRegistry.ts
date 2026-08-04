@@ -69,10 +69,10 @@ export const LEGACY_TYPE_MAP: Record<string, string> = {
     ImageMagnifierIdevice: 'magnifier',
     GalleryIdevice: 'image-gallery',
 
-    // File iDevices -> text with links
-    FileAttachIdevice: 'text',
-    FileAttachIdeviceInc: 'text',
-    AttachmentIdevice: 'text',
+    // File iDevices -> dedicated file-attachment iDevice
+    FileAttachIdevice: 'file-attachment',
+    FileAttachIdeviceInc: 'file-attachment',
+    AttachmentIdevice: 'file-attachment',
 
     // External content
     ExternalUrlIdevice: 'external-website',
@@ -131,7 +131,7 @@ class LegacyHandlerRegistryClass {
             new CaseStudyHandler(), // CaseStudyIdevice -> casestudy
             new GalleryHandler(), // ImageGalleryIdevice, GalleryIdevice -> image-gallery
             new ExternalUrlHandler(), // ExternalUrlIdevice -> external-website
-            new FileAttachHandler(), // FileAttachIdevice, AttachmentIdevice -> text (with file links)
+            new FileAttachHandler(), // FileAttachIdevice, AttachmentIdevice -> file-attachment
             new ImageMagnifierHandler(), // ImageMagnifierIdevice -> magnifier
             new GeogebraHandler(), // GeogebraIdevice -> geogebra-activity
             new InteractiveVideoHandler(), // JsIdevice interactive-video -> interactive-video

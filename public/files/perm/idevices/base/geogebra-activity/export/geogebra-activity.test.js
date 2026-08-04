@@ -198,6 +198,156 @@ describe('geogebra-activity iDevice (export)', () => {
     expect(document.getElementById('ac-geogebra-1')).toBeNull();
   });
 
+  it('addActivity applies the configured width and height to the GeoGebra applet', () => {
+    const previousGGBApplet = global.GGBApplet;
+    const previousReport = $exeDevices.iDevice.gamification.report;
+    const capturedParams = [];
+
+    vi.useFakeTimers();
+    global.GGBApplet = vi.fn(function (parameters) {
+      capturedParams.push(parameters);
+      this.inject = vi.fn();
+    });
+    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+
+    document.body.innerHTML = `
+      <div class="idevice_body geogebra-activityIdevice">
+        <div id="geogebra-1" class="idevice_node geogebra-activity">
+          <div class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-width-800 auto-geogebra-height-600"></div>
+        </div>
+      </div>
+    `;
+
+    try {
+      const activity = document.querySelector('.auto-geogebra');
+      $geogebraactivity.addActivity(
+        activity,
+        'VgHhQXCC',
+        activity.className.split(' '),
+        0,
+      );
+      vi.runAllTimers();
+
+      expect(capturedParams[0].width).toBe(800);
+      expect(capturedParams[0].height).toBe(600);
+    } finally {
+      vi.useRealTimers();
+      global.GGBApplet = previousGGBApplet;
+      $exeDevices.iDevice.gamification.report = previousReport;
+    }
+  });
+
+  it('addActivity falls back to the default dimensions for legacy activities without size classes', () => {
+    const previousGGBApplet = global.GGBApplet;
+    const previousReport = $exeDevices.iDevice.gamification.report;
+    const capturedParams = [];
+
+    vi.useFakeTimers();
+    global.GGBApplet = vi.fn(function (parameters) {
+      capturedParams.push(parameters);
+      this.inject = vi.fn();
+    });
+    $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+
+    document.body.innerHTML = `
+      <div class="idevice_body geogebra-activityIdevice">
+        <div id="geogebra-1" class="idevice_node geogebra-activity">
+          <div class="auto-geogebra auto-geogebra-VgHhQXCC"></div>
+        </div>
+      </div>
+    `;
+
+    try {
+      const activity = document.querySelector('.auto-geogebra');
+      $geogebraactivity.addActivity(
+        activity,
+        'VgHhQXCC',
+        activity.className.split(' '),
+        0,
+      );
+      vi.runAllTimers();
+
+      expect(capturedParams[0].width).toBe($geogebraactivity.defaults.width);
+      expect(capturedParams[0].height).toBe($geogebraactivity.defaults.height);
+    } finally {
+      vi.useRealTimers();
+      global.GGBApplet = previousGGBApplet;
+      $exeDevices.iDevice.gamification.report = previousReport;
+    }
+  });
+
+  describe('indicator.getSize', () => {
+    it('returns the configured width and height from the element classes', () => {
+      const fakeElement = {
+        className:
+          'auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-width-800 auto-geogebra-height-600',
+      };
+
+      expect($geogebraactivity.indicator.getSize(fakeElement)).toEqual([800, 600]);
+    });
+
+    it('falls back to default dimensions when no size classes are present', () => {
+      const fakeElement = { className: 'auto-geogebra auto-geogebra-VgHhQXCC' };
+
+      expect($geogebraactivity.indicator.getSize(fakeElement)).toEqual([
+        $geogebraactivity.defaults.width,
+        $geogebraactivity.defaults.height,
+      ]);
+    });
+
+    it('falls back to default dimensions for invalid (zero or non-numeric) size classes', () => {
+      const fakeElement = {
+        className:
+          'auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-width-0 auto-geogebra-height-abc',
+      };
+
+      expect($geogebraactivity.indicator.getSize(fakeElement)).toEqual([
+        $geogebraactivity.defaults.width,
+        $geogebraactivity.defaults.height,
+      ]);
+    });
+  });
+
+  describe('parseSizeClasses', () => {
+    it('parses valid width/height classes from an element', () => {
+      const element = {
+        className:
+          'auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-width-800 auto-geogebra-height-600',
+      };
+
+      expect($geogebraactivity.parseSizeClasses(element)).toEqual([800, 600]);
+    });
+
+    it('parses valid width/height classes from a raw class string', () => {
+      const classString = 'auto-geogebra auto-geogebra-width-320 auto-geogebra-height-240';
+
+      expect($geogebraactivity.parseSizeClasses(classString)).toEqual([320, 240]);
+    });
+
+    it('parses valid width/height classes from an array of class tokens', () => {
+      const classes = ['auto-geogebra', 'auto-geogebra-width-500', 'auto-geogebra-height-400'];
+
+      expect($geogebraactivity.parseSizeClasses(classes)).toEqual([500, 400]);
+    });
+
+    it('falls back to defaults for garbage (zero or non-numeric) size classes', () => {
+      const classString =
+        'auto-geogebra auto-geogebra-width-0 auto-geogebra-height-abc';
+
+      expect($geogebraactivity.parseSizeClasses(classString)).toEqual([
+        $geogebraactivity.defaults.width,
+        $geogebraactivity.defaults.height,
+      ]);
+    });
+
+    it('falls back to defaults when size classes are missing', () => {
+      expect($geogebraactivity.parseSizeClasses('auto-geogebra')).toEqual([
+        $geogebraactivity.defaults.width,
+        $geogebraactivity.defaults.height,
+      ]);
+    });
+  });
+
   it('cleans stale report icons when the exported activity has evaluation id 0', () => {
     const previousGGBApplet = global.GGBApplet;
     const previousReport = $exeDevices.iDevice.gamification.report;
