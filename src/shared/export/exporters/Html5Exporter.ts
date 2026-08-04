@@ -931,7 +931,6 @@ export class Html5Exporter extends BaseExporter {
             };
 
             await this.forEachAsset(processAsset);
-
         } catch (e) {
             console.warn('[Html5Exporter] Failed to add assets to preview files:', e);
         }
