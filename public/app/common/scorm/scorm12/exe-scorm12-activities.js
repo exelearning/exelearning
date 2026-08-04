@@ -184,6 +184,60 @@
     }
 
     /**
+     * Aggregate the evaluable activities into one 0-100 score with the
+     * historical eXeLearning weighting algorithm: each weight (clamped into
+     * 1-100) is scaled so the weights sum to exactly 100 as integers
+     * (largest-remainder rounding), and the aggregate is the weight-scaled
+     * sum of the normalised scores.
+     *
+     * This is the registry's only aggregation. Published packages recorded
+     * cmi.core.score.raw with this exact rounding for years, and the
+     * completion policy compares the aggregate against the mastery
+     * threshold — a second algorithm (say, an exact weighted mean) could
+     * disagree near the threshold and flip a passed page to failed at exit.
+     *
+     * @returns {number|null} Aggregate score, or null when no activity is
+     * evaluable.
+     */
+    function aggregateScore() {
+        var entries = [];
+        var weightSum = 0;
+        for (var index = 0; index < state.order.length; index += 1) {
+            var activity = state.byId[state.order[index]];
+            if (!activity.evaluable) {
+                continue;
+            }
+            var weight = clamp(activity.weight, 1, 100);
+            entries.push({ score: normalizedScore(activity), scaled: weight, floored: 0, fraction: 0 });
+            weightSum += weight;
+        }
+        if (entries.length === 0) {
+            return null;
+        }
+        var factor = 100 / weightSum;
+        var flooredSum = 0;
+        for (var position = 0; position < entries.length; position += 1) {
+            var scaled = entries[position].scaled * factor;
+            entries[position].floored = Math.floor(scaled);
+            entries[position].fraction = scaled - entries[position].floored;
+            flooredSum += entries[position].floored;
+        }
+        var remainder = 100 - flooredSum;
+        entries.sort(function (a, b) {
+            return b.fraction - a.fraction;
+        });
+        for (var slot = 0; slot < entries.length && remainder > 0; slot += 1) {
+            entries[slot].floored += 1;
+            remainder -= 1;
+        }
+        var weightedTotal = 0;
+        for (var item = 0; item < entries.length; item += 1) {
+            weightedTotal += entries[item].score * entries[item].floored;
+        }
+        return round2(weightedTotal / 100);
+    }
+
+    /**
      * Encode a record for the versioned payload.
      *
      * @param {object} activity - Normalised record.
@@ -417,11 +471,15 @@
         /**
          * Aggregate the registry.
          *
-         * `score` is the weighted mean of every evaluable activity's score,
-         * each normalised into 0-100 with its own bounds. An evaluable
-         * activity that has not produced a score yet counts as 0, so the
-         * aggregate can only rise as the learner works. It is null when the
-         * page has no evaluable activity at all.
+         * `score` comes from aggregateScore(): the historical eXeLearning
+         * weighting over every evaluable activity, each score normalised
+         * into 0-100 with its own bounds. An evaluable activity that has not
+         * produced a score yet counts as 0, so the aggregate can only rise
+         * as the learner works. It is null when the page has no evaluable
+         * activity at all. Every consumer — the score display, the recorded
+         * cmi.core.score.raw and the completion policy — reads this one
+         * number, so the status decided during the session and the status
+         * decided at exit can never disagree.
          *
          * @returns {{total: number, evaluable: number, required: number,
          * requiredCompleted: number, hasRequired: boolean,
@@ -438,18 +496,14 @@
                 allRequiredComplete: true,
                 answered: 0,
                 questions: 0,
-                score: null,
+                score: aggregateScore(),
             };
-            var weightedTotal = 0;
-            var weightSum = 0;
             for (var index = 0; index < state.order.length; index += 1) {
                 var activity = state.byId[state.order[index]];
                 summary.answered += activity.answered;
                 summary.questions += activity.total;
                 if (activity.evaluable) {
                     summary.evaluable += 1;
-                    weightedTotal += normalizedScore(activity) * activity.weight;
-                    weightSum += activity.weight;
                 }
                 if (activity.completionRequired) {
                     summary.required += 1;
@@ -460,9 +514,6 @@
             }
             summary.hasRequired = summary.required > 0;
             summary.allRequiredComplete = summary.requiredCompleted === summary.required;
-            if (weightSum > 0) {
-                summary.score = round2(weightedTotal / weightSum);
-            }
             return summary;
         },
 

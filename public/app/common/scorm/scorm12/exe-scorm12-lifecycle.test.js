@@ -284,8 +284,70 @@ describe('exe-scorm12-lifecycle', () => {
 
             fakeWindow.fire('pagehide', { persisted: true });
 
-            expect(api.callSignatures()[0]).toMatch(/^LMSSetValue\(cmi\.suspend_data=exe12\//);
+            // With a required activity pending, persist() first reconciles
+            // the lesson status against the registry (a read; the stored
+            // "incomplete" already matches), then stores the registry.
+            const signatures = api.callSignatures();
+            expect(signatures[0]).toBe('LMSGetValue(cmi.core.lesson_status)');
+            expect(signatures[1]).toMatch(/^LMSSetValue\(cmi\.suspend_data=exe12\//);
             expect(api.callNames()).not.toContain('LMSFinish');
+        });
+
+        it('persist() corrects a stale terminal verdict before committing', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            lifecycle.install();
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            policy.recordActivityOutcome();
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+            // A second iDevice initialises late, after the verdict.
+            activities.register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+            api.resetCalls();
+
+            fakeDocument.visibilityState = 'hidden';
+            fakeDocument.fire('visibilitychange');
+
+            // The commit must never freeze a terminal verdict alongside a
+            // registry that still has required work pending — the page may
+            // be killed right after this commit.
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+            expect(api.data['cmi.suspend_data']).toContain('quiz-2');
+            const signatures = api.callSignatures();
+            expect(signatures.indexOf('LMSSetValue(cmi.core.lesson_status=incomplete)')).toBeLessThan(
+                signatures.indexOf('LMSCommit'),
+            );
+        });
+
+        it('persist() reports every step it took', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 80 });
+
+            expect(lifecycle.persist()).toEqual({
+                activitiesWritten: true,
+                sessionTimeWritten: true,
+                committed: true,
+            });
+        });
+
+        it('persist() reports an activities write the LMS refused', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            lifecycle.configure({
+                getClient: () => client,
+                getPolicy: () => ({
+                    reconcilePendingActivities: () => null,
+                    persistActivities: () => false,
+                }),
+                getWindow: () => fakeWindow,
+                getDocument: () => fakeDocument,
+            });
+
+            // A caller must be able to tell a full commit from one whose
+            // suspend_data write failed — "committed" alone would claim more
+            // than the LMS accepted.
+            expect(lifecycle.persist()).toEqual({
+                activitiesWritten: false,
+                sessionTimeWritten: true,
+                committed: true,
+            });
         });
 
         it('repeated hidden/visible cycles report the total, never a sum of deltas', () => {
@@ -461,7 +523,11 @@ describe('exe-scorm12-lifecycle', () => {
             lifecycle.finish();
             api.resetCalls();
 
-            expect(lifecycle.persist()).toEqual({ written: false, committed: false });
+            expect(lifecycle.persist()).toEqual({
+                activitiesWritten: false,
+                sessionTimeWritten: false,
+                committed: false,
+            });
             expect(api.calls).toEqual([]);
         });
 

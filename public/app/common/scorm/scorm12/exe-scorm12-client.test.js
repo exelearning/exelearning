@@ -475,6 +475,38 @@ describe('exe-scorm12-client', () => {
             expect(client.getState()).toBe('finish_failed');
         });
 
+        it('a failed commit still closes the wrapper connection', () => {
+            const stub = useStubbedWrapper({ save: () => false });
+            client.initialize();
+            expect(stub.SCORM.connection.isActive).toBe(true);
+
+            expect(client.terminate()).toBe(false);
+
+            // No-retry policy: the state machine refuses further SCO calls,
+            // and the wrapper's connection flag mirrors that so a direct
+            // pipwerks consumer cannot keep writing into a session whose
+            // stored state is unknown.
+            expect(stub.SCORM.connection.isActive).toBe(false);
+        });
+
+        it('a failed finish still closes the wrapper connection', () => {
+            const stub = useStubbedWrapper({ finish: () => 'false' });
+            client.initialize();
+
+            expect(client.terminate()).toBe(false);
+
+            expect(stub.SCORM.connection.isActive).toBe(false);
+        });
+
+        it('a successful termination closes the wrapper connection', () => {
+            const stub = useStubbedWrapper({});
+            client.initialize();
+
+            expect(client.terminate()).toBe(true);
+
+            expect(stub.SCORM.connection.isActive).toBe(false);
+        });
+
         it('a thrown finish is recorded as failed with its message', () => {
             useStubbedWrapper({
                 finish: () => {

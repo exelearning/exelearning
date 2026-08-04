@@ -155,6 +155,28 @@ describe('exe-scorm12-activities', () => {
             expect(activities.summary().score).toBe(80);
         });
 
+        it('aggregates with the historical largest-remainder weighting, not an exact mean', () => {
+            activities.register('a', { evaluable: true, completed: true, score: 100 });
+            activities.register('b', { evaluable: true, completed: true, score: 49 });
+            activities.register('c', { evaluable: true, completed: true, score: 0 });
+
+            // Three equal weights scale to the integer split 34/33/33
+            // (largest remainder), so the aggregate is 50.17 — an exact
+            // weighted mean (49.67) would flip this page from passed to
+            // failed at the default mastery threshold of 50. Published
+            // packages recorded cmi.core.score.raw with this rounding, and
+            // the completion policy must read the very same number.
+            expect(activities.summary().score).toBe(50.17);
+        });
+
+        it('clamps an out-of-range weight into 1-100 for the aggregate', () => {
+            activities.register('heavy', { evaluable: true, completed: true, score: 100, weight: 1000 });
+            activities.register('light', { evaluable: true, completed: true, score: 0, weight: 100 });
+
+            // 1000 clamps to 100, so both activities weigh the same.
+            expect(activities.summary().score).toBe(50);
+        });
+
         it('counts an evaluable activity without a score as zero', () => {
             activities.register('a', { evaluable: true, completed: true, score: 100 });
             activities.register('b', { evaluable: true });

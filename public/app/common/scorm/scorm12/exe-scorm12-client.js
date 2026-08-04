@@ -611,7 +611,9 @@
          * `finish_failed`, and every later call replays the recorded result
          * without touching the LMS. A failed termination therefore stays
          * failed — retrying during page teardown cannot succeed and must not
-         * loop.
+         * loop — and any attempt, successful or not, clears the wrapper's
+         * connection.isActive flag so direct pipwerks consumers see the same
+         * closed session the state machine enforces.
          *
          * The two calls are issued separately (not through the wrapper's
          * connection.terminate, which folds both into one boolean), so
@@ -640,6 +642,16 @@
             state.finishSteps = steps;
             var pipwerks = deps.getPipwerks();
 
+            // No-retry policy: after any termination attempt — successful or
+            // not — the session is over for this page. The state machine
+            // refuses further SCO calls, and the wrapper's connection flag
+            // mirrors that so a direct scorm.connection.isActive consumer
+            // fails fast instead of writing into a session whose stored
+            // state is unknown.
+            function closeWrapperConnection() {
+                pipwerks.SCORM.connection.isActive = false;
+            }
+
             steps.commitAttempted = true;
             try {
                 steps.commitSucceeded = pipwerks.SCORM.data.save() === true;
@@ -647,6 +659,7 @@
                 state.status = STATE.FINISH_FAILED;
                 state.finishResult = false;
                 state.finishError = { code: 101, message: String(error) };
+                closeWrapperConnection();
                 deps.error('[exe-scorm12] LMSCommit failed during termination: ' + error);
                 return false;
             }
@@ -654,6 +667,7 @@
                 state.status = STATE.FINISH_FAILED;
                 state.finishResult = false;
                 state.finishError = reportLmsError('LMSCommit');
+                closeWrapperConnection();
                 return false;
             }
 
@@ -670,6 +684,7 @@
                 state.status = STATE.FINISH_FAILED;
                 state.finishResult = false;
                 state.finishError = { code: -1, message: 'SCORM API not available' };
+                closeWrapperConnection();
                 deps.error('[exe-scorm12] LMSFinish failed: SCORM API not available.');
                 return false;
             }
@@ -685,6 +700,7 @@
                 state.status = STATE.FINISH_FAILED;
                 state.finishResult = false;
                 state.finishError = { code: 101, message: String(thrown) };
+                closeWrapperConnection();
                 deps.error('[exe-scorm12] LMSFinish failed: ' + thrown);
                 return false;
             }
@@ -693,11 +709,10 @@
                 state.status = STATE.FINISH_FAILED;
                 state.finishResult = false;
                 state.finishError = reportLmsError('LMSFinish');
+                closeWrapperConnection();
                 return false;
             }
-            // Keep the wrapper's view of the connection truthful for
-            // scorm.connection.isActive consumers.
-            pipwerks.SCORM.connection.isActive = false;
+            closeWrapperConnection();
             state.status = STATE.FINISHED;
             state.finishResult = true;
             return true;

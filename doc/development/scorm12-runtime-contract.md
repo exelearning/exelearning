@@ -266,9 +266,9 @@ The runtime registers exactly three listeners and no unload-family handler:
 
 | Event | Condition | Action |
 |---|---|---|
-| `visibilitychange` | `document.visibilityState === 'hidden'` | Write `cmi.core.session_time`, then `LMSCommit("")`. **Never finishes.** The learner may come back, and SCORM 1.2 has no concept of a hidden SCO. |
+| `visibilitychange` | `document.visibilityState === 'hidden'` | Persist: reconcile the lesson status against the registry (see §9.1), write the registry into `cmi.suspend_data` and the elapsed `cmi.core.session_time`, then `LMSCommit("")`. **Never finishes.** The learner may come back, and SCORM 1.2 has no concept of a hidden SCO. |
 | `pagehide` | `event.persisted === false` (or absent) | Full end of session: exit policy → `cmi.core.session_time` → `LMSCommit` → `LMSFinish`, exactly once. |
-| `pagehide` | `event.persisted === true` | The page is being frozen into the back/forward cache. Persist (`session_time` + `LMSCommit`) and **pause the session clock**; do **not** terminate — the page may be restored intact. |
+| `pagehide` | `event.persisted === true` | The page is being frozen into the back/forward cache. Persist (same sequence as `hidden`) and **pause the session clock**; do **not** terminate — the page may be restored intact. |
 | `pageshow` | `event.persisted === true` | Restored from the cache. Resume the session clock. Nothing is re-initialized: the LMS session was never closed. |
 
 Why the split matters: a document frozen into the back/forward cache can be
@@ -392,12 +392,30 @@ completion and success collapse onto `cmi.core.lesson_status`:
   it, such an activity would hold its page at `incomplete` forever. An iDevice
   with a richer notion of completion can report `completed` itself through
   `scorm.activities.update()`.
+- **One aggregation algorithm** **[POLICY]**. The registry's
+  `summary().score` is the historical eXeLearning weighting (weights scaled to
+  integers summing to exactly 100 by largest-remainder rounding, then a
+  weight-scaled sum). `common.js`'s `getFinalScore()` delegates to it whenever
+  the runtime is present, so the displayed score, the recorded
+  `cmi.core.score.raw`, the in-session status decision and the exit decision
+  all read the same number. Two algorithms (the historical one in-session, an
+  exact weighted mean at exit) could disagree near the mastery threshold —
+  e.g. 100/49/0 at equal weights is 50.17 historically but 49.67 exactly —
+  and flip a passed page to failed on the way out.
 - **The policy may correct its own verdict, never someone else's.** A terminal
   status the policy wrote during this session is downgraded back to
   `incomplete` when a *required* activity registers afterwards (deferred
   iDevice initialisation) — the page demonstrably is not finished. A terminal
   status restored from a previous attempt, or written explicitly by content
-  (`setComplete()`, `SetCompletionStatus()`), is never downgraded.
+  (`setComplete()`, `SetCompletionStatus()`), is never downgraded — and
+  merely *agreeing* with a stored status never claims it: ownership is taken
+  only when the policy successfully writes the value itself. The correction
+  runs at two moments (`policy.reconcilePendingActivities()`): when an
+  activity registers, and before every mid-session persist — so a page killed
+  right after a `hidden` commit never leaves the LMS holding a stale terminal
+  verdict alongside a registry with pending required work. Reconciliation
+  only acts when required work is pending; it never emits a transient
+  passed/failed verdict while a page is still registering its activities.
 - **`cmi.core.exit` follows the status the LMS actually stored.** If the LMS
   rejects the status write at exit, the exit value is computed from the value
   still in force (typically `suspend`), never from the decision the LMS
@@ -431,8 +449,9 @@ exe12/1|<uri-encoded id>;<flags>;<answered>;<total>;<score>;<weight>;<min>;<max>
   legacy line format directly (`registerActivity`, `updateActivity`,
   `sendScoreNew`, `showFinalScore`, `createScoreScormHtml`,
   `getActivityScore`) goes through the registry when the runtime is present
-  (`buildLmsDataFromRegistry()` presents it in the legacy shape for the
-  historical `getFinalScore` aggregate). Two writers alternating formats would
+  (`buildLmsDataFromRegistry()` presents it in the legacy shape for display
+  code; the aggregate itself always comes from the registry's `summary()` —
+  see §9.1). Two writers alternating formats would
   corrupt each other's view on resume. The legacy code paths remain for SCORM
   2004 packages and packages exported before the rewrite, where the runtime is
   absent.
@@ -500,6 +519,11 @@ idle ──initialize──▶ active ──terminate──▶ finish_attempted 
   attempted — SCORM 1.2 requires pending data to be persisted before the
   session ends ([CR] 6.7), and finishing anyway would close an attempt whose
   stored state is unknown.
+- Any termination attempt — successful or not — also clears
+  `pipwerks.SCORM.connection.isActive`, so a direct pipwerks consumer sees
+  the same closed session the state machine enforces instead of writing into
+  an attempt whose stored state is unknown (eXeLearning policy, matching the
+  no-retry rule above).
 
 **External termination.** Legacy content may call
 `pipwerks.SCORM.quit()` or `pipwerks.SCORM.connection.terminate()` directly. The
@@ -521,6 +545,9 @@ LMSGetValue("cmi.student_data.mastery_score")       → optional success thresho
 LMSGetValue("cmi.suspend_data")                     → restore the activity registry
 … content traffic (scores, suspend_data, explicit status) …
 -- visibilitychange → hidden (any number of times) --
+[LMSGetValue("cmi.core.lesson_status")]             (reconcile, only with required work pending)
+[LMSSetValue("cmi.core.lesson_status", "incomplete")]   (only when correcting the policy's own stale verdict)
+[LMSSetValue("cmi.suspend_data", …)]                (only when activities are registered)
 LMSSetValue("cmi.core.session_time", "HHHH:MM:SS.SS")
 LMSCommit("")
 -- end of session (pagehide, doQuit/doContinue, scorm.quit) --
@@ -580,7 +607,7 @@ contract surface above).
 | `test/helpers/unload-handler-scanner.spec.ts` | The package scanner's detection and its allowlist. |
 | `test/integration/export/scorm12-exporter.spec.ts` | Real export pipeline: runtime assembly order, vendored bytes, no unload handlers anywhere in the package. |
 | `test/e2e/playwright/specs/scorm12-export-runtime.spec.ts` | The exported ZIP's runtime files, through the browser export pipeline. |
-| `test/e2e/playwright/specs/scorm12-sco-runtime.spec.ts` | A real exported SCO executing against a strict parent `window.API`. |
+| `test/e2e/playwright/specs/scorm12-sco-runtime.spec.ts` | A real exported SCO executing against a strict parent `window.API`: the page lifecycle, multi-activity suspension/resume through the registry, and the `common.js` bridge driven against real exported iDevice nodes (register → auto/manual score → aggregate → status → finish). |
 
 ## 14. Explicitly not validated
 

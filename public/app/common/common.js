@@ -1047,7 +1047,7 @@ var $exeDevices = {
                         $exeDevices.iDevice.gamification.scorm._activityNumbersById[game.ideviceId] =
                             game.ideviceNumber;
                     }
-                    return registry.register(
+                    const registration = registry.register(
                         game.ideviceId,
                         Object.assign(
                             {
@@ -1063,6 +1063,15 @@ var $exeDevices = {
                             progress || {}
                         )
                     );
+                    // A required activity registering after the policy already
+                    // wrote a terminal verdict means the page is demonstrably
+                    // not finished — let the policy correct its own verdict
+                    // (a restored one is never touched).
+                    const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
+                    if (runtime && runtime.policy && typeof runtime.policy.reconcilePendingActivities === 'function') {
+                        runtime.policy.reconcilePendingActivities();
+                    }
+                    return registration;
                 },
 
                 /** Page position by activity id (see reportActivity). */
@@ -1215,6 +1224,18 @@ var $exeDevices = {
                 },
 
                 getFinalScore: function (lmsData) {
+                    // Single aggregation algorithm: when the SCORM 1.2
+                    // registry is present, its summary() owns the historical
+                    // weighting, so the displayed score, cmi.core.score.raw
+                    // and the completion policy always read the same number.
+                    // The local implementation below serves only the legacy
+                    // runtimes (SCORM 2004 and pre-rewrite packages), which
+                    // have no registry.
+                    const scoreRegistry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    if (scoreRegistry) {
+                        const aggregate = scoreRegistry.summary().score;
+                        return aggregate === null ? 0 : aggregate;
+                    }
                     if (!lmsData) {
                         return 0;
                     }
@@ -1557,19 +1578,22 @@ var $exeDevices = {
                               );
                     }
 
-                    // Single source of truth for the aggregate: getFinalScore
-                    // keeps the weighting algorithm published packages rely on.
+                    // Single source of truth for the aggregate: with the
+                    // SCORM 1.2 registry present, getFinalScore delegates to
+                    // its summary(), which owns the weighting algorithm
+                    // published packages rely on.
                     const newFinalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
 
                     const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
                     if (runtime && runtime.policy) {
                         // SCORM 1.2 packages: the runtime owns score validation
-                        // and the completion/success policy, so the recorded
-                        // score and the status decision cannot disagree, and a
-                        // page whose required activities are still pending is
-                        // never marked passed or failed.
+                        // and the completion/success policy. The status
+                        // decision reads the registry's own aggregate — the
+                        // same number recorded just below — so the two can
+                        // never disagree, and a page whose required activities
+                        // are still pending is never marked passed or failed.
                         runtime.policy.setScoreDetailed(newFinalScore, 0, 100);
-                        runtime.policy.recordActivityOutcome(newFinalScore);
+                        runtime.policy.recordActivityOutcome();
                     } else {
                         // Legacy runtime (SCORM 2004 packages and packages
                         // exported before the SCORM 1.2 runtime rewrite).

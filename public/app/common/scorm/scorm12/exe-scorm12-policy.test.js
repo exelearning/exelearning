@@ -467,6 +467,88 @@ describe('exe-scorm12-policy', () => {
                 reason: 'terminal-status-preserved',
             });
         });
+
+        it('agreeing with a restored terminal status does not claim it for the policy', () => {
+            // The LMS restores "passed" from a previous attempt, and the
+            // restored registry agrees, so the decision equals the stored
+            // value without the policy ever writing it.
+            startSession({ 'cmi.core.lesson_status': 'passed' });
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            // A required activity registering later must therefore NOT
+            // downgrade it: agreeing with a status is not owning it.
+            register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
+        it('decides the same status during the session and at exit near the threshold', () => {
+            // 100/49/0 with equal weights: the historical largest-remainder
+            // weighting yields 50.17 (passed at the default threshold of
+            // 50), where an exact mean would yield 49.67 (failed). Both the
+            // mid-session decision and the exit decision must read the same
+            // aggregate — a page must never pass while in use and fail on
+            // the way out.
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            register('a', { evaluable: true, completionRequired: true, completed: true, score: 100 });
+            register('b', { evaluable: true, completionRequired: true, completed: true, score: 49 });
+            register('c', { evaluable: true, completionRequired: true, completed: true, score: 0 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            expect(policy.applyExitPolicy()).toMatchObject({ status: 'passed', exit: '' });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+    });
+
+    describe('reconcilePendingActivities', () => {
+        function register(id, descriptor) {
+            activities.register(id, descriptor);
+        }
+
+        it('corrects the policy\'s own terminal verdict when a required activity is pending', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({
+                status: 'incomplete',
+                written: true,
+                effective: 'incomplete',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+        });
+
+        it('does nothing without a pending required activity', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            api.resetCalls();
+
+            expect(policy.reconcilePendingActivities()).toBeNull();
+            // Never writes a transient passed/failed verdict from a
+            // registration event: only pending work is reconciled.
+            expect(api.calls).toEqual([]);
+        });
+
+        it('never touches a restored terminal status', () => {
+            startSession({ 'cmi.core.lesson_status': 'passed' });
+            register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
     });
 
     describe('lesson mode', () => {

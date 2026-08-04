@@ -183,15 +183,27 @@ scorm.activities.summary();
    session and a *required* activity registers afterwards (deferred iDevice
    initialisation), the page demonstrably is not finished, so the policy
    downgrades its own verdict back to `incomplete` (and the exit becomes
-   `suspend`). A terminal status restored from a previous attempt, or written
-   explicitly by content, is never downgraded. Movement *between* terminal
-   statuses (a retried failed activity now passing) is always allowed, and
-   `cmi.core.exit` is always computed from the status the LMS actually
-   stored, never from a decision the LMS rejected.
-9. **The score stays single-source.** `common.js` keeps computing the aggregate
-   with `getFinalScore()` — the weighting algorithm published packages depend on
-   — and passes it to the policy, which records it *and* decides the status from
-   the same number. The two can therefore never disagree.
+   `suspend`). Ownership is claimed only by successfully *writing* a status —
+   merely agreeing with a stored value never claims it, so a terminal status
+   restored from a previous attempt, or written explicitly by content, is
+   never downgraded. The correction runs when an activity registers and
+   before every mid-session persist (`reconcilePendingActivities()`), so a
+   `hidden` commit never freezes a stale terminal verdict alongside a
+   registry with pending required work; reconciliation acts only on pending
+   work and never emits a transient passed/failed verdict while a page is
+   still registering. Movement *between* terminal statuses (a retried failed
+   activity now passing) is always allowed, and `cmi.core.exit` is always
+   computed from the status the LMS actually stored, never from a decision
+   the LMS rejected.
+9. **The score stays single-source, inside the registry.** The registry's
+   `summary()` owns the historical weighting algorithm published packages
+   depend on (weights scaled to integers summing to 100 by largest-remainder
+   rounding); `common.js`'s `getFinalScore()` delegates to it whenever the
+   runtime is present. The displayed score, the recorded
+   `cmi.core.score.raw`, the in-session status decision and the exit decision
+   therefore all read the same number — a second algorithm could disagree
+   near the mastery threshold (100/49/0 at equal weights: 50.17 historically,
+   49.67 as an exact mean) and flip a passed page to failed at exit.
 10. **`setPageHasScoredActivities()` remains the fallback.** When no iDevice
    registers, the page-level flag decides exactly as before, so content that
    predates the registry is unaffected.

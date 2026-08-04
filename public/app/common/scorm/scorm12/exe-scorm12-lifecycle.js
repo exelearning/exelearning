@@ -78,22 +78,34 @@
     var state = initialState();
 
     /**
-     * Persist the current session without ending it: write the elapsed
-     * session time, then commit.
+     * Persist the current session without ending it: reconcile the lesson
+     * status against the registry, write the activity state and the elapsed
+     * session time, then commit. Every step is reported — a caller must be
+     * able to tell a full commit from one whose suspend_data write failed.
      *
-     * @returns {{written: boolean, committed: boolean}} What the LMS accepted.
+     * @returns {{activitiesWritten: boolean, sessionTimeWritten: boolean,
+     * committed: boolean}} What the LMS accepted.
      */
     function persist() {
         var client = deps.getClient();
         if (state.finalizing || !client.isActive()) {
-            return { written: false, committed: false };
+            return { activitiesWritten: false, sessionTimeWritten: false, committed: false };
         }
-        // Activity state first: a page killed after this commit (mobile app
-        // switch, bfcache eviction) must be able to restore its activities,
-        // not only its session time.
-        deps.getPolicy().persistActivities();
-        var written = client.writeSessionTime();
-        return { written: written, committed: client.commit() };
+        var policy = deps.getPolicy();
+        // A required activity may have registered after the last status
+        // write: reconcile before committing, so a page killed right after
+        // this commit (mobile app switch, bfcache eviction) never leaves the
+        // LMS holding a stale terminal verdict alongside a pending registry.
+        policy.reconcilePendingActivities();
+        // Activity state next: that same killed page must be able to restore
+        // its activities, not only its session time.
+        var activitiesWritten = policy.persistActivities();
+        var sessionTimeWritten = client.writeSessionTime();
+        return {
+            activitiesWritten: activitiesWritten === true,
+            sessionTimeWritten: sessionTimeWritten,
+            committed: client.commit(),
+        };
     }
 
     function onPageHide(event) {

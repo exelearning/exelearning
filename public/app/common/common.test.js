@@ -1826,8 +1826,14 @@ describe('common.js $exeDevices', () => {
         register: vi.fn(descriptor => descriptor),
         get: vi.fn(() => null),
         list: vi.fn(() => []),
+        summary: vi.fn(() => ({ score: null })),
       };
-      policy = { setScoreDetailed: vi.fn(), recordActivityOutcome: vi.fn(), persistActivities: vi.fn(() => true) };
+      policy = {
+        setScoreDetailed: vi.fn(),
+        recordActivityOutcome: vi.fn(),
+        persistActivities: vi.fn(() => true),
+        reconcilePendingActivities: vi.fn(() => null),
+      };
       window.exeScorm12 = { activities: registry, policy };
       $exeDevices.iDevice.gamification.scorm._activityNumbersById = {};
     });
@@ -1871,6 +1877,34 @@ describe('common.js $exeDevices', () => {
         'id-2',
         expect.objectContaining({ evaluable: false, completionRequired: false, weight: 1 })
       );
+    });
+
+    it('reportActivity reconciles the completion policy after registering', () => {
+      getScorm().reportActivity({ ideviceId: 'id-9', isScorm: 1, weighted: 1 }, { total: 3 });
+
+      // Registration first, then the reconciliation that lets the policy
+      // correct a stale terminal verdict it wrote before this activity
+      // announced itself.
+      expect(registry.register).toHaveBeenCalledTimes(1);
+      expect(policy.reconcilePendingActivities).toHaveBeenCalledTimes(1);
+      expect(registry.register.mock.invocationCallOrder[0]).toBeLessThan(
+        policy.reconcilePendingActivities.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('getFinalScore reads the registry aggregate when the runtime is present', () => {
+      registry.summary.mockReturnValue({ score: 50.17 });
+
+      // The lmsData argument is a presentation-only view: the aggregate
+      // always comes from the registry's single algorithm, never from a
+      // second computation that could disagree near the mastery threshold.
+      expect(getScorm().getFinalScore({ 1: { score: 0, weighted: 1 } })).toBe(50.17);
+    });
+
+    it('getFinalScore returns 0 when the registry has no evaluable activity', () => {
+      registry.summary.mockReturnValue({ score: null });
+
+      expect(getScorm().getFinalScore({ 1: { score: 80, weighted: 1 } })).toBe(0);
     });
 
     it('reportActivity falls back to weight 1 for a missing or invalid weight', () => {
@@ -2046,11 +2080,17 @@ describe('common.js $exeDevices', () => {
       const set = vi.fn(() => true);
       global.pipwerks = { SCORM: { get: () => '', set } };
       const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+      // The registry owns the aggregation: the recorded score must be its
+      // summary().score, not a second computation over the lmsData view.
+      registry.summary.mockReturnValue({ score: 90 });
 
       getScorm().showFinalScore({ 1: { title: 'Q', score: 90, weighted: 1 } }, game);
 
       expect(policy.setScoreDetailed).toHaveBeenCalledWith(90, 0, 100);
-      expect(policy.recordActivityOutcome).toHaveBeenCalledWith(90);
+      // No aggregate argument: the policy reads the registry's own
+      // summary().score, the same number recorded above, so the status
+      // decided mid-session and the status decided at exit cannot diverge.
+      expect(policy.recordActivityOutcome).toHaveBeenCalledWith();
       // Nothing is written behind the runtime's back.
       expect(set).not.toHaveBeenCalledWith('cmi.core.score.raw', expect.anything());
       expect(set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());

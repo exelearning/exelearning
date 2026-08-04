@@ -315,11 +315,9 @@
          * "incomplete" — they are not evaluable and nothing is inferred from
          * whether they happen to expose a game-over state.
          *
-         * @param {number} [aggregateScore] - Aggregate score, 0-100, when the
-         * caller computes its own. The gamification helper in common.js does,
-         * because published packages depend on its historical weighting
-         * algorithm; passing it here keeps the recorded score and the status
-         * decision from ever disagreeing.
+         * @param {number} [aggregateScore] - Aggregate score override, 0-100.
+         * Normally omitted: the registry's summary() owns the historical
+         * weighting algorithm, so every caller reads the same aggregate.
          * @returns {{status: string, reason: string, score: number|null}} The
          * decision and why it was taken.
          */
@@ -353,6 +351,32 @@
          */
         recordActivityOutcome: function (aggregateScore) {
             return policy.applyDecidedStatus(aggregateScore);
+        },
+
+        /**
+         * Targeted reconciliation for activities that register after a status
+         * was already written: when the registry says a required activity is
+         * still pending, re-run the status decision so a stale terminal
+         * verdict this policy wrote earlier in the session is corrected back
+         * to "incomplete" (applyDecidedStatus's ownership rules decide
+         * whether the downgrade is allowed). Any other decision is left to
+         * the moments that normally write status — activity outcomes and the
+         * exit policy — so a partially registered page never receives a
+         * transient passed/failed verdict from a registration event.
+         *
+         * Called when an activity registers (common.js reportActivity) and
+         * before every mid-session persist (the lifecycle layer), so the LMS
+         * never keeps a stale terminal verdict alongside a pending registry.
+         *
+         * @returns {{status: string, written: boolean, reason: string,
+         * effective: string}|null} applyDecidedStatus's report, or null when
+         * no required activity was pending.
+         */
+        reconcilePendingActivities: function () {
+            if (policy.decideStatus().reason !== 'required-activities-pending') {
+                return null;
+            }
+            return policy.applyDecidedStatus();
         },
 
         /**
@@ -391,7 +415,11 @@
                 }
             }
             if (decision.status === current) {
-                state.policySessionStatus = current;
+                // Deliberately NOT claimed as policy-owned: the stored value
+                // may have been restored from a previous attempt or written
+                // by content — agreeing with it is not the same as having
+                // written it, and only a status this policy wrote may later
+                // be downgraded.
                 return { status: current, written: true, reason: decision.reason, effective: current };
             }
             var written = writeStatus(decision.status);

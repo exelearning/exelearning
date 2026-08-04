@@ -481,4 +481,164 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             await page.unroute(`${ORIGIN}/**`);
         }
     });
+
+    test('drives real exported iDevices through the common.js bridge', async ({ authenticatedPage, createProject }) => {
+        test.setTimeout(180000);
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'SCORM 1.2 common.js bridge');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await addTextIdeviceWithContent(page, '<p>First activity host.</p>');
+        await addTextIdeviceWithContent(page, '<p>Second activity host.</p>');
+        // The helper's own wait only watches the first text iDevice; make
+        // sure both are saved before exporting.
+        await page.waitForFunction(
+            () => {
+                const nodes = document.querySelectorAll('#node-content article .idevice_node.text');
+                return nodes.length === 2 && Array.from(nodes).every(node => node.getAttribute('mode') !== 'edition');
+            },
+            undefined,
+            { timeout: 20000 },
+        );
+
+        const download = await exportScorm12(page);
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scorm12-bridge-'));
+        const zipPath = path.join(tmpDir, download.suggestedFilename());
+        await download.saveAs(zipPath);
+        const zip = unzipSync(new Uint8Array(fs.readFileSync(zipPath)));
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+
+        // The bridge under test ships with every export.
+        expect(zip['libs/common.js']).toBeTruthy();
+
+        await page.route(`${ORIGIN}/**`, async route => {
+            const url = new URL(route.request().url());
+            const pathname = decodeURIComponent(url.pathname);
+            if (pathname === '/lms.html') {
+                await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: harnessPage() });
+                return;
+            }
+            const key = pathname.replace(/^\/package\//, '');
+            const bytes = zip[key];
+            if (bytes) {
+                await route.fulfill({ status: 200, contentType: exportContentType(key), body: Buffer.from(bytes) });
+            } else {
+                await route.fulfill({ status: 404, contentType: 'text/plain', body: `not in export: ${key}` });
+            }
+        });
+
+        try {
+            await page.goto(`${ORIGIN}/lms.html`);
+            await page.waitForFunction(
+                () => (window as any).__scorm.calls.some((call: any) => call.method === 'LMSInitialize'),
+                null,
+                { timeout: 30000 },
+            );
+            await expect
+                .poll(() => page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status']), {
+                    timeout: 15000,
+                })
+                .toBe('incomplete');
+
+            // ---- Register both activities through common.js -----------------
+            // Exactly what a game iDevice does on load: build its options
+            // object and call the public registerActivity entry point, which
+            // resolves the identity from the real exported DOM.
+            const nodeIds: string[] = await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                const ids = Array.from(sco.document.querySelectorAll('.idevice_node')).map(
+                    (node: any) => node.id as string,
+                );
+                const makeGame = (nodeId: string, isScorm: number) => ({
+                    main: nodeId,
+                    idevice: 'bridge-check',
+                    isScorm,
+                    weighted: 1,
+                    numberQuestions: 2,
+                    userName: '',
+                    msgs: {
+                        msgYouScore: 'Score',
+                        msgYouLastScore: 'Last score',
+                        msgActityComply: 'Done',
+                        msgSaveAuto: 'Saved automatically',
+                        msgPlaySeveralTimes: 'Play again',
+                        msgOnlySaveAuto: 'Saved once',
+                        msgOnlySaveScore: 'Submitted once',
+                        msgSeveralScore: 'Submit any time',
+                        msgScoreScorm: 'No SCORM',
+                        msgEndGameScore: 'Finish first',
+                        msgScore: 'Score',
+                        msgWeight: 'Weight',
+                    },
+                });
+                sco.__bridgeGames = [makeGame(ids[0], 1), makeGame(ids[1], 2)];
+                for (const game of sco.__bridgeGames) {
+                    sco.$exeDevices.iDevice.gamification.scorm.registerActivity(game);
+                }
+                return ids;
+            });
+            expect(nodeIds).toHaveLength(2);
+
+            // Two required activities pending: the page must stay incomplete.
+            expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe(
+                'incomplete',
+            );
+
+            // ---- First activity finishes; the game reports automatically ----
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                const game = sco.__bridgeGames[0];
+                game.gameStarted = true;
+                game.gameOver = true;
+                game.scorerp = 8;
+                game.answered = 2;
+                sco.$exeDevices.iDevice.gamification.scorm.sendScoreNew(true, game);
+            });
+
+            // Aggregate 80/2 activities = 40; the other activity is still
+            // pending, so the recorded score moves but the status does not.
+            expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe('40');
+            expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe(
+                'incomplete',
+            );
+            const midSuspend = await page.evaluate(() => (window as any).__scorm.data['cmi.suspend_data']);
+            expect(midSuspend).toMatch(/^exe12\//);
+            expect(midSuspend).toContain(nodeIds[0]);
+            expect(midSuspend).toContain(nodeIds[1]);
+
+            // ---- Second activity: the learner submits by hand ---------------
+            // ADR-0043: a manual submission is the learner's explicit act of
+            // finishing the attempt, so it completes the activity.
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                const game = sco.__bridgeGames[1];
+                game.gameStarted = true;
+                game.gameOver = false;
+                game.scorerp = 4;
+                game.answered = 1;
+                sco.$exeDevices.iDevice.gamification.scorm.sendScoreNew(false, game);
+            });
+
+            // Both complete: aggregate (80 + 40) / 2 = 60 ≥ 50 → passed, and
+            // the score the LMS stores is the same aggregate the policy read.
+            expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe('60');
+            expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe('passed');
+
+            // ---- Exit: one finish, a normal end ------------------------------
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                sco.dispatchEvent(new sco.PageTransitionEvent('pagehide', { persisted: false }));
+            });
+            const stored = await page.evaluate(() => (window as any).__scorm.data);
+            expect(stored['cmi.core.lesson_status']).toBe('passed');
+            expect(stored['cmi.core.exit']).toBe('');
+            const signatures = await page.evaluate(() => (window as any).__scorm.signatures());
+            expect(signatures.filter((s: string) => s === 'LMSFinish')).toHaveLength(1);
+
+            expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
+        } finally {
+            await page.unroute(`${ORIGIN}/**`);
+        }
+    });
 });
