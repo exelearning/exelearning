@@ -545,6 +545,25 @@
         },
 
         /**
+         * Write a lesson_status on behalf of content through a generic entry
+         * point (SetCompletionStatus, scorm.set). Validates the SCO-writable
+         * vocabulary locally — forwarding "not attempted" or a foreign value
+         * would be an invalid LMS call — and releases the policy's session
+         * claim on success, exactly like the named setters above: whatever
+         * path content uses to write a status, the result is content's
+         * verdict and is never downgraded.
+         *
+         * @param {string} status - Requested lesson_status value.
+         * @returns {boolean} True when the LMS accepted the value.
+         */
+        setContentStatus: function (status) {
+            if (!policy.isWritableStatus(status)) {
+                return false;
+            }
+            return writeContentStatus(status);
+        },
+
+        /**
          * Validate a raw/min/max score triplet without writing anything.
          *
          * SCORM 1.2 constrains all three to the 0-100 CMIDecimal range.

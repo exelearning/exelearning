@@ -366,6 +366,70 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
             expect(pageWindow.scorm.save()).toBe(true);
         });
 
+        it('set() on lesson_status validates the SCO-writable vocabulary locally', () => {
+            useLms({});
+            pageWindow.loadPage();
+
+            expect(pageWindow.scorm.set('cmi.core.lesson_status', 'completed')).toBe(true);
+            expect(api.data['cmi.core.lesson_status']).toBe('completed');
+
+            // "not attempted" is LMS-only: refused locally, never forwarded —
+            // sending it would be an invalid SCORM 1.2 call.
+            api.resetCalls();
+            expect(pageWindow.scorm.set('cmi.core.lesson_status', 'not attempted')).toBe(false);
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
+            expect(api.data['cmi.core.lesson_status']).toBe('completed');
+        });
+
+        it('set() on lesson_status releases the policy claim, so the status is never downgraded', () => {
+            useLms({});
+            pageWindow.loadPage();
+            pageWindow.scorm.activities.register('quiz-1', {
+                evaluable: true,
+                completionRequired: true,
+                completed: true,
+                score: 90,
+            });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            // Content ratifies the verdict through the generic facade.
+            expect(pageWindow.scorm.set('cmi.core.lesson_status', 'passed')).toBe(true);
+
+            // A required activity registering afterwards must not downgrade
+            // a status content wrote — whatever entry point it used.
+            pageWindow.scorm.activities.register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+            expect(policy.reconcilePendingActivities()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
+        it('SetCompletionStatus releases the policy claim, so the status is never downgraded', () => {
+            useLms({});
+            pageWindow.loadPage();
+            pageWindow.scorm.activities.register('quiz-1', {
+                evaluable: true,
+                completionRequired: true,
+                completed: true,
+                score: 90,
+            });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            // Content ratifies the very value the policy wrote (the
+            // documented "written explicitly by content" case).
+            pageWindow.scorm.SetCompletionStatus('passed');
+
+            pageWindow.scorm.activities.register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+            expect(policy.reconcilePendingActivities()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
         it('quit() ends the session without completing the page and is idempotent', () => {
             useLms({});
             pageWindow.loadPage();

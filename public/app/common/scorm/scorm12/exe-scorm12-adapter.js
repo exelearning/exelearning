@@ -228,11 +228,16 @@
          * "unknown" is not 1.2 vocabulary at all (the legacy runtime mapped it
          * to "not attempted", which erased progress).
          *
+         * Routed through the policy's content entry point so the write also
+         * releases the policy's session claim — a status content set through
+         * this method is content's verdict and is never downgraded by the
+         * late-registration correction.
+         *
          * @param {string} status - lesson_status value.
          */
         SetCompletionStatus: function (status) {
             if (policy.isWritableStatus(status)) {
-                client.setValue('cmi.core.lesson_status', status);
+                policy.setContentStatus(status);
             } else {
                 warn("SetCompletionStatus ignored status '" + status + "' (not writable by a SCO in SCORM 1.2).");
             }
@@ -433,6 +438,14 @@
          * @returns {boolean} True when the LMS accepted the value.
          */
         set: function (element, value) {
+            if (element === 'cmi.core.lesson_status') {
+                // Content writing the status through the generic facade is
+                // still content writing a status: validate the SCO-writable
+                // vocabulary locally (forwarding "not attempted" would be an
+                // invalid LMS call) and release the policy's session claim,
+                // exactly like SetCompletionStatus().
+                return policy.setContentStatus(value);
+            }
             return client.setValue(element, value);
         },
         /** @returns {boolean} True when the LMS accepted the commit. */

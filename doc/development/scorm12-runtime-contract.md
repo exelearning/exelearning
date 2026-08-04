@@ -166,7 +166,7 @@ callers (in-repo):
 | Member | Called from | Notes |
 |---|---|---|
 | `scorm.init()` | `common.js` `initGame()`, game/quiz iDevices (`trueorfalse.js`, `form.js`, …) | Must return **truthy when the session is already initialized** (the legacy fork changed pipwerks' "already active → false" to `true`; iDevice code gates SCORM setup on it) **[LEGACY]**. |
-| `scorm.set(el, value)` / `scorm.get(el)` | `common.js` fallback branch, iDevices | Generic data-model access, filtered by the element access rules in §5. |
+| `scorm.set(el, value)` / `scorm.get(el)` | `common.js` fallback branch, iDevices | Generic data-model access, filtered by the element access rules in §5. A `set()` on `cmi.core.lesson_status` routes through `policy.setContentStatus()`: the SCO-writable vocabulary is validated locally and the policy's session claim is released (§9.1). |
 | `scorm.save()` / `scorm.quit()` | legacy content, `form.js` (`endScorm`, inert) | Commit / terminate. `quit()` routes through the lifecycle layer and is idempotent. |
 | `scorm.SetScoreMax(n)` / `scorm.SetScoreMin(n)` | `common.js` `initGame()`, game iDevices | Feature-detected (`typeof … === 'function'`) with a `scorm.set('cmi.core.score.max', …)` fallback — must exist to take the primary branch. |
 | `scorm.GetLearnerName()` | `$exeDevices.iDevice.gamification.scorm.getUserName()` | Reads `cmi.core.student_name`. Feature-detected. |
@@ -190,7 +190,7 @@ the underlying LMS operation is valid in SCORM 1.2**, so each is classified:
 | `isAvailable()` | no-op | Always `true` (legacy Flash handshake). |
 | `GetDataModelVersion()` | LMS call | Reads `cmi._version`. |
 | `GetCompletionStatus()` | LMS call | Reads `cmi.core.lesson_status`. |
-| `SetCompletionStatus(status)` | LMS call | Writes `cmi.core.lesson_status`, but only values a SCO may write (§6). |
+| `SetCompletionStatus(status)` | LMS call | Writes `cmi.core.lesson_status`, but only values a SCO may write (§6), through `policy.setContentStatus()` — the write releases the policy's session claim (§9.1). |
 | `SetCompletionScormActivity(status)` | LMS call | Alias of `SetCompletionStatus`. |
 | `GetExit()` | **local cache** | `cmi.core.exit` is write-only **[SCORM]**; returns the last value this runtime wrote, `""` if none. |
 | `SetExit(exit)` | LMS call | Writes `cmi.core.exit`; the SCORM 2004 value `"normal"` maps to `""`. |
@@ -424,7 +424,8 @@ completion and success collapse onto `cmi.core.lesson_status`:
   merely *agreeing* with a stored status never claims it: ownership is taken
   only when the policy successfully writes the value itself, and the explicit
   content entry points (`setCompleted()`, `setPassed()`, `setFailed()`,
-  `setIncomplete()`, `doContinue(status)`) *clear* the claim — even when they
+  `setIncomplete()`, `doContinue(status)`, `SetCompletionStatus()`,
+  `scorm.set('cmi.core.lesson_status', …)`) *clear* the claim — even when they
   repeat the value the policy last wrote, ratifying a verdict makes it
   content's. The correction
   runs at two moments (`policy.reconcilePendingActivities()`): when an
