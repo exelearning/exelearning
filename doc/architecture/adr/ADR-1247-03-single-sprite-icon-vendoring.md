@@ -1,18 +1,19 @@
 ---
-id: ADR-0015
+id: ADR-1247-03
 title: "Ship Material icons as a single sprite with on-demand extraction"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1247
+legacy_id: ADR-0015
 deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  issues: [1247]
   prs: [1497]
-  sdds: [SDD-0003]
-  adrs: [ADR-0013, ADR-0014, ADR-0016]
+  changes: ["1247-material-icons-default-icon-system"]
+  adrs: [ADR-1247-01, ADR-1247-02, ADR-1247-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,15 +21,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0015: Ship Material icons as a single sprite with on-demand extraction
-
-## Status
-
-Proposed
+# ADR-1247-03: Ship Material icons as a single sprite with on-demand extraction
 
 ## Context
 
-Adopting Material Symbols (ADR-0013) means vendoring ~3,800 icons into the repository and making them available to both the editor and every export format (HTML5, SCORM 1.2/2004, EPUB3, IMS, single-page, ELPX). A project only ever uses a handful of these icons.
+Adopting Material Symbols (ADR-1247-01) means vendoring ~3,800 icons into the repository and making them available to both the editor and every export format (HTML5, SCORM 1.2/2004, EPUB3, IMS, single-page, ELPX). A project only ever uses a handful of these icons.
 
 The naive approach — one loose `.svg` file per icon under `public/libs/material-icons/icons/` — was tried and then removed: shipping ~3,800 tiny files bloated the static editor bundle and the repository, and every export had to decide which loose files to copy. The design in PR #1497 replaces the loose files with a single sprite and extracts only what is needed, on demand, at both the editor runtime and export time.
 
@@ -113,10 +110,10 @@ We will ship the Material Symbols set as **one on-disk sprite file** (`public/li
 ## Follow-up work
 
 - Consider lazy/streaming parse or a prebuilt index if editor sprite-parse time becomes noticeable on low-end devices.
-- See SDD-0003 for the full pipeline and remaining follow-up items.
+- See the change design for the full pipeline and remaining follow-up items.
 
 ## References
 
-- PR #1497, Issue #1247, SDD-0003.
-- ADR-0013 (Material Symbols default set), ADR-0014 (structured descriptor), ADR-0016 (dual rendering + tint).
+- PR #1497, Issue #1247, the change design.
+- ADR-1247-01 (Material Symbols default set), ADR-1247-02 (structured descriptor), ADR-1247-04 (dual rendering + tint).
 - `public/libs/material-icons/material-icons.svg`, `scripts/generate-material-icons.js`, `src/shared/material-icons/spriteParser.ts` (+ `.spec.ts`), `src/shared/export/exporters/BaseExporter.ts` (+ `.spec.ts`), `public/app/common/blockIconRuntime.js` (+ `.test.js`), `public/app/yjs/YjsProjectBridge.js`, `public/app/yjs/ResourceFetcher.js`.

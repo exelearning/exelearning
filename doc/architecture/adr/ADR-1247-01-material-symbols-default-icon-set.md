@@ -1,18 +1,19 @@
 ---
-id: ADR-0013
+id: ADR-1247-01
 title: "Adopt Google Material Symbols as the default built-in block/iDevice icon set"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1247
+legacy_id: ADR-0013
 deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  issues: [1247]
   prs: [1497]
-  sdds: [SDD-0003]
-  adrs: [ADR-0014, ADR-0015, ADR-0016]
+  changes: ["1247-material-icons-default-icon-system"]
+  adrs: [ADR-1247-02, ADR-1247-03, ADR-1247-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +21,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0013: Adopt Google Material Symbols as the default built-in block/iDevice icon set
-
-## Status
-
-Proposed
+# ADR-1247-01: Adopt Google Material Symbols as the default built-in block/iDevice icon set
 
 ## Context
 
@@ -63,7 +60,7 @@ Continue offering only the icons drawn by the active theme.
 Vendor the Material Symbols outlined set (filled variant, weight 400) as the default "General" group, drawn on a uniform 24-grid so glyphs can be recolored per theme.
 
 - Pros: ~3,800 icons covering nearly every concept; Apache-2.0 licensed (redistributable under AGPL); single visual family on one grid; monochrome path data that can be tinted with `currentColor`; distributed as an npm package (`@material-symbols/svg-400`) so the vendored copy is regenerable.
-- Cons: adds a large asset to the repo/bundle (mitigated by ADR-0015, single sprite + on-demand extraction); glyphs live in a 20/24 live area, so they need a 1.2× optical scale to match edge-to-edge theme artwork.
+- Cons: adds a large asset to the repo/bundle (mitigated by ADR-1247-03, single sprite + on-demand extraction); glyphs live in a 20/24 live area, so they need a 1.2× optical scale to match edge-to-edge theme artwork.
 
 ### Option 3: Another open icon set (Font Awesome Free, Bootstrap Icons, Feather, Tabler…)
 
@@ -90,23 +87,23 @@ We will adopt **Google Material Symbols** (outlined family, filled variant, weig
 
 - Authors get a large, consistent, always-available icon vocabulary regardless of theme (resolves #1247).
 - The set is regenerable from a pinned upstream package, so bumps are a scripted, reviewable operation.
-- Monochrome glyph paths allow per-theme tinting (ADR-0016).
+- Monochrome glyph paths allow per-theme tinting (ADR-1247-04).
 
 ### Negative
 
-- Adds a large vendored asset to the repository and to exports (mitigated by ADR-0015: a single sprite plus on-demand extraction rather than ~3,800 loose files).
+- Adds a large vendored asset to the repository and to exports (mitigated by ADR-1247-03: a single sprite plus on-demand extraction rather than ~3,800 loose files).
 - Introduces a build-time devDependency (`@material-symbols/svg-400`) that must be kept in sync with the vendored sprite/catalog.
 
 ### Neutral
 
 - The icon vocabulary is now defined by two sources in the UI: theme "Style" icons and Material "General" icons; the picker groups them explicitly.
-- Material Symbols glyphs need a 1.2× optical scale to visually match edge-to-edge theme artwork (a CSS concern handled in ADR-0016).
+- Material Symbols glyphs need a 1.2× optical scale to visually match edge-to-edge theme artwork (a CSS concern handled in ADR-1247-04).
 
 ## Risks
 
 - **Upstream drift**: a future `@material-symbols/svg-400` bump could rename or drop icons, changing the catalog. Mitigated because the vendored sprite/catalog are checked in and only change when the generator is re-run deliberately.
 - **License compliance**: the Apache-2.0 `LICENSE` must remain vendored next to the asset; removing it would break redistribution terms.
-- **Bundle size**: the full set is large; mitigated by ADR-0015.
+- **Bundle size**: the full set is large; mitigated by ADR-1247-03.
 
 ## Validation
 
@@ -117,14 +114,14 @@ We will adopt **Google Material Symbols** (outlined family, filled variant, weig
 ## Follow-up work
 
 - Keep the vendored sprite/catalog in sync with `@material-symbols/svg-400` on dependency bumps (re-run the generator).
-- See SDD-0003 for the end-to-end system design and the remaining follow-up items.
+- See the change design for the end-to-end system design and the remaining follow-up items.
 
 ## References
 
 - Issue #1247 — request for a richer, theme-independent block icon library.
 - PR #1497 — implementation.
-- SDD-0003 — Material Icons as the Default Block/iDevice Icon System.
-- ADR-0014 — structured block-icon descriptor with legacy `iconName` compatibility.
-- ADR-0015 — single sprite with on-demand extraction.
-- ADR-0016 — dual icon rendering and per-theme tint.
+- the change design — Material Icons as the Default Block/iDevice Icon System.
+- ADR-1247-02 — structured block-icon descriptor with legacy `iconName` compatibility.
+- ADR-1247-03 — single sprite with on-demand extraction.
+- ADR-1247-04 — dual icon rendering and per-theme tint.
 - `scripts/generate-material-icons.js`, `public/libs/material-icons/material-icons.svg`, `public/libs/material-icons/LICENSE`, `public/app/workarea/project/idevices/content/materialIconCatalog.js`, `package.json`.

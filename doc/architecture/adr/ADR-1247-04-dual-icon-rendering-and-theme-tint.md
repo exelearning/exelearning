@@ -1,18 +1,19 @@
 ---
-id: ADR-0016
+id: ADR-1247-04
 title: "Dual icon rendering: currentColor-masked Material glyphs vs img style/asset icons, tinted per theme"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1247
+legacy_id: ADR-0016
 deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  issues: [1247]
   prs: [1497]
-  sdds: [SDD-0003]
-  adrs: [ADR-0013, ADR-0014, ADR-0015]
+  changes: ["1247-material-icons-default-icon-system"]
+  adrs: [ADR-1247-01, ADR-1247-02, ADR-1247-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,15 +21,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0016: Dual icon rendering: currentColor-masked Material glyphs vs img style/asset icons, tinted per theme
-
-## Status
-
-Proposed
+# ADR-1247-04: Dual icon rendering: currentColor-masked Material glyphs vs img style/asset icons, tinted per theme
 
 ## Context
 
-Block headers now render icons from three sources (ADR-0014): Material "General" glyphs, theme "Style" icons, and author-supplied asset images. These have fundamentally different coloring semantics:
+Block headers now render icons from three sources (ADR-1247-02): Material "General" glyphs, theme "Style" icons, and author-supplied asset images. These have fundamentally different coloring semantics:
 
 - **Material glyphs** are monochrome path data. To look like they belong to a theme, they must be recolored to match that theme's accent — a single tint applied to the glyph ink.
 - **Theme "Style" icons and asset images** are already-colored raster/vector artwork (often multi-hued). They must be drawn as-is; tinting them would destroy them.
@@ -64,7 +61,7 @@ Render Material glyphs as a masked element whose fill is `currentColor` and whos
 ### Option 3: Recolor Material SVGs at generation/paint time (bake per-theme colored copies)
 
 - Pros: no runtime masking.
-- Cons: multiplies stored/exported assets per theme; defeats ADR-0015's single-copy goal; still cannot handle arbitrary theme colors. Rejected.
+- Cons: multiplies stored/exported assets per theme; defeats ADR-1247-03's single-copy goal; still cannot handle arbitrary theme colors. Rejected.
 
 ## Evidence
 
@@ -115,12 +112,12 @@ We will render block icons with **two techniques chosen per source**: Material "
 
 ## Follow-up work
 
-- If more multi-hued themes appear, consider a per-theme multi-stop tint or per-theme colored Material variants (weighed against ADR-0015's single-copy goal).
+- If more multi-hued themes appear, consider a per-theme multi-stop tint or per-theme colored Material variants (weighed against ADR-1247-03's single-copy goal).
 - Consolidate the `1.2×` scale and mask CSS into a single shared partial to avoid drift.
-- See SDD-0003 for the full design and remaining follow-up items.
+- See the change design for the full design and remaining follow-up items.
 
 ## References
 
-- PR #1497, Issue #1247, SDD-0003.
-- ADR-0013 (Material Symbols default set), ADR-0014 (structured descriptor), ADR-0015 (single sprite).
+- PR #1497, Issue #1247, the change design.
+- ADR-1247-01 (Material Symbols default set), ADR-1247-02 (structured descriptor), ADR-1247-03 (single sprite).
 - `src/shared/export/renderers/IdeviceRenderer.ts` (+ `.spec.ts`), `public/app/common/blockIconRuntime.js`, `public/app/workarea/project/idevices/content/blockNode.js` (+ `.test.js`), `assets/styles/layout/_execontent.scss`, `assets/styles/components/_modals.scss`, `assets/styles/abstracts/_variables.scss`, `public/files/perm/themes/base/*/style.css`, `src/shared/material-icons/spriteParser.ts`.

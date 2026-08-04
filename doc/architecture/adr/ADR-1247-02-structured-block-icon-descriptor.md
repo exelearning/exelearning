@@ -1,18 +1,19 @@
 ---
-id: ADR-0014
+id: ADR-1247-02
 title: "Structured block-icon descriptor with source discriminator and legacy iconName compatibility"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1247
+legacy_id: ADR-0014
 deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  issues: [1247]
   prs: [1497]
-  sdds: [SDD-0003]
-  adrs: [ADR-0013, ADR-0015, ADR-0016]
+  changes: ["1247-material-icons-default-icon-system"]
+  adrs: [ADR-1247-01, ADR-1247-03, ADR-1247-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,17 +21,13 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0014: Structured block-icon descriptor with source discriminator and legacy iconName compatibility
-
-## Status
-
-Proposed
+# ADR-1247-02: Structured block-icon descriptor with source discriminator and legacy iconName compatibility
 
 ## Context
 
 Before PR #1497 a block's icon was a single string, `iconName`. That string was overloaded: it might be a theme icon base name (`objectives`), a legacy pre-v3 id (`tip`), or — once assets became first-class — an asset reference. Each consumer had to re-guess "what kind of icon is this?" from the string shape, and that guessing logic was copy-pasted, with subtle divergence, across the server export route, the shared export renderer, and the Yjs structure binding.
 
-Adopting Material Symbols (ADR-0013) adds a fourth kind of icon. Rendering, tinting (ADR-0016), and export bundling (ADR-0015) all branch on the icon's *kind*, so the kind must be represented explicitly and derived by exactly one function shared by every path — while old projects and ELP/ELPX files that only carry `iconName` must keep working.
+Adopting Material Symbols (ADR-1247-01) adds a fourth kind of icon. Rendering, tinting (ADR-1247-04), and export bundling (ADR-1247-03) all branch on the icon's *kind*, so the kind must be represented explicitly and derived by exactly one function shared by every path — while old projects and ELP/ELPX files that only carry `iconName` must keep working.
 
 ## Problem
 
@@ -109,10 +106,10 @@ We will represent a block icon as a **structured `{ source, value }` descriptor*
 ## Follow-up work
 
 - If the TS/JS twin becomes a maintenance burden, consider generating the JS twin from the TS source or exposing the compiled shared module to the frontend bundle.
-- See SDD-0003 for the full data-flow and remaining follow-up items.
+- See the change design for the full data-flow and remaining follow-up items.
 
 ## References
 
-- PR #1497, Issue #1247, SDD-0003.
-- ADR-0013 (Material Symbols default set), ADR-0015 (single sprite), ADR-0016 (dual rendering + tint).
+- PR #1497, Issue #1247, the change design.
+- ADR-1247-01 (Material Symbols default set), ADR-1247-03 (single sprite), ADR-1247-04 (dual rendering + tint).
 - `src/shared/block-icon.ts` (+ `.spec.ts`), `public/app/common/blockIconRuntime.js` (+ `.test.js`), `public/app/workarea/project/idevices/content/blockNode.js` (+ `.test.js`), `src/yjs/types.ts`, `src/yjs/structure-binding.ts` (+ `.spec.ts`), `src/shared/export/interfaces.ts`, `src/shared/export/renderers/IdeviceRenderer.ts`, `src/routes/export.ts`.

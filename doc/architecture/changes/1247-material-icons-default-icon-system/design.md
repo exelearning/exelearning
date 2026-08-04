@@ -1,18 +1,16 @@
 ---
-id: SDD-0003
+tracking_issue: 1247
 title: "Material Icons as the Default Block/iDevice Icon System"
-status: Implemented
+status: implemented
 date: 2026-07-09
+legacy_id: SDD-0003
 authors:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
-related:
-  issues: [1247]
-  prs: [1497, 2149]
-  adrs: [ADR-0013, ADR-0014, ADR-0015, ADR-0016]
-  sdds: []
+implementation_prs: [1497]
+related_adrs: [ADR-1247-01, ADR-1247-02, ADR-1247-03, ADR-1247-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +18,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0003: Material Icons as the Default Block/iDevice Icon System
-
-## Status
-
-Implemented
+# Material Icons as the Default Block/iDevice Icon System — design
 
 ## Summary
 
@@ -67,10 +61,10 @@ Before PR #1497, a block icon was a single overloaded `iconName` string, and eac
 
 Implemented in PR #1497. Four durable decisions underpin it (see "ADRs required or referenced"):
 
-1. **Default set (ADR-0013):** vendor Material Symbols (outlined, filled, weight 400) as the "General" group, generated from the `@material-symbols/svg-400` npm package.
-2. **Data model (ADR-0014):** a structured `{ source, value }` descriptor with `source ∈ {material, asset, theme, none}`, kept coherent with a legacy `iconName` mirror, derived by one shared `deriveBlockIcon()` function.
-3. **Delivery (ADR-0015):** a single sprite (`material-icons.svg`) parsed once; only the icons a project uses are extracted on demand, in both the editor and exports.
-4. **Rendering (ADR-0016):** CSS-masked `currentColor` glyphs for Material icons (tinted per theme, scaled 1.2×); `<img>` for theme/asset icons.
+1. **Default set (ADR-1247-01):** vendor Material Symbols (outlined, filled, weight 400) as the "General" group, generated from the `@material-symbols/svg-400` npm package.
+2. **Data model (ADR-1247-02):** a structured `{ source, value }` descriptor with `source ∈ {material, asset, theme, none}`, kept coherent with a legacy `iconName` mirror, derived by one shared `deriveBlockIcon()` function.
+3. **Delivery (ADR-1247-03):** a single sprite (`material-icons.svg`) parsed once; only the icons a project uses are extracted on demand, in both the editor and exports.
+4. **Rendering (ADR-1247-04):** CSS-masked `currentColor` glyphs for Material icons (tinted per theme, scaled 1.2×); `<img>` for theme/asset icons.
 
 ## User experience
 
@@ -81,7 +75,7 @@ Implemented in PR #1497. Four durable decisions underpin it (see "ADRs required 
 
 ## Technical design
 
-Data model and derivation (ADR-0014):
+Data model and derivation (ADR-1247-02):
 
 - `src/shared/block-icon.ts` — `deriveBlockIcon(iconName) → { source, value }`; `BlockIconSource = 'material' | 'asset' | 'theme' | 'none'`. Single source of truth for string → descriptor.
 - JS twins: `public/app/common/blockIconRuntime.js` (`deriveBlockIcon`) and a mirror in `public/app/workarea/project/idevices/content/blockNode.js` (`normalizeIconDescriptor`, `LEGACY_ICON_MAP`).
@@ -89,17 +83,17 @@ Data model and derivation (ADR-0014):
 - Yjs shape: `BlockIconDescriptor` in `src/yjs/types.ts`; stored/read/kept-coherent in `src/yjs/structure-binding.ts` (`createYjsBlockIcon`, `toBlockIconDescriptor`, `updateBlock` mirrors `icon`↔`iconName`).
 - Server export route: `src/routes/export.ts` uses `block.icon || deriveBlockIcon(block.iconName)`.
 
-Icon set generation and storage (ADR-0013, ADR-0015):
+Icon set generation and storage (ADR-1247-01, ADR-1247-03):
 
 - `scripts/generate-material-icons.js` reads `@material-symbols/svg-400/outlined` (`*-fill.svg`, weight 400) and writes the sprite `public/libs/material-icons/material-icons.svg` (3,798 `<symbol>` entries, ~1.6 MB) and the catalog `public/app/workarea/project/idevices/content/materialIconCatalog.js` (`MATERIAL_ICON_CATALOG`, 3,798 names). `public/libs/material-icons/LICENSE` is vendored alongside. Dependency pinned in `package.json` (`@material-symbols/svg-400: ^0.40.2`).
 
-Sprite parsing and on-demand extraction (ADR-0015):
+Sprite parsing and on-demand extraction (ADR-1247-03):
 
 - Shared parser `src/shared/material-icons/spriteParser.ts` — `parseMaterialIconSprite`, `resolveMaterialIconSymbol`, `buildStandaloneSvg`, `getMaterialIconSvg`, `getMaterialIconDataUri`, `MATERIAL_ICON_FALLBACK='help'`, `HELP_ICON_FALLBACK_DATA_URI`.
 - Export side: `src/shared/export/exporters/BaseExporter.ts` — `collectUsedMaterialIconNames(pages)` + `resolveMaterialIconDataUris(resources, pages)` fetch the sprite once, extract only used icons, and return `{ paths, files, dataUris }`. Every exporter calls it: `Html5Exporter`, `Scorm12Exporter`, `Scorm2004Exporter`, `Epub3Exporter`, `PageExporter`, `PrintPreviewExporter`, `ElpxExporter` (and `ImsExporter`, which extends `Html5Exporter`). The file-based exporters (HTML5, SCORM 1.2/2004, single page, ELPX) write reconstructed files under `libs/` and pass `dataUris` into rendering; `Epub3Exporter` and `PrintPreviewExporter` embed the glyphs as inline `data:` URIs only.
 - Editor side: `public/app/common/blockIconRuntime.js` parses the sprite once (JS twin), caches per-icon `data:` URIs, and hydrates placeholders. The sprite is fetched lazily by `public/app/yjs/YjsProjectBridge.js` (`loadMaterialSprite`), and deliberately excluded from bulk base-library maps in `public/app/yjs/ResourceFetcher.js`.
 
-Rendering and tinting (ADR-0016):
+Rendering and tinting (ADR-1247-04):
 
 - Export renderer `src/shared/export/renderers/IdeviceRenderer.ts` (`renderBlock`) branches on `icon.source`: `material` → `<span class="exe-material-icon" style="--exe-material-icon-url:url('<data URI>')" aria-hidden="true">`; `asset`/`theme` → `<img>`.
 - CSS mask + `currentColor` fill + `1.2×` scale in `assets/styles/layout/_execontent.scss`, `assets/styles/components/_modals.scss`, exported theme CSS `public/files/perm/themes/base/*/style.css`, and `public/style/workarea/base.css`.
@@ -164,17 +158,17 @@ Rendering and tinting (ADR-0016):
 ## Open questions
 
 - Should the TS→JS twins be generated to remove manual sync? (Deferred.)
-- Should multi-hued themes get a multi-stop tint or per-theme colored Material variants instead of keeping the accent? (Deferred; weighed against ADR-0015's single-copy goal.)
+- Should multi-hued themes get a multi-stop tint or per-theme colored Material variants instead of keeping the accent? (Deferred; weighed against ADR-1247-03's single-copy goal.)
 - Should the `1.2×` optical-scale constant and mask CSS be consolidated into one shared partial? (Deferred.)
 
 ## ADRs required or referenced
 
 | Decision | ADR | Status |
 |---|---|---|
-| Adopt Google Material Symbols as the default "General" icon set | ADR-0013 | Proposed |
-| Structured `{ source, value }` block-icon descriptor with legacy `iconName` compatibility | ADR-0014 | Proposed |
-| Ship Material icons as a single sprite with on-demand extraction | ADR-0015 | Proposed |
-| Dual icon rendering (masked Material glyphs vs `<img>` style/asset) with per-theme tint | ADR-0016 | Proposed |
+| Adopt Google Material Symbols as the default "General" icon set | ADR-1247-01 | Proposed |
+| Structured `{ source, value }` block-icon descriptor with legacy `iconName` compatibility | ADR-1247-02 | Proposed |
+| Ship Material icons as a single sprite with on-demand extraction | ADR-1247-03 | Proposed |
+| Dual icon rendering (masked Material glyphs vs `<img>` style/asset) with per-theme tint | ADR-1247-04 | Proposed |
 
 ## Evidence
 
@@ -211,5 +205,5 @@ Implementation (PR #1497) — verified code paths:
 ## References
 
 - Issue #1247, PR #1497 (implementation), PR #2149 (ADR/SDD documentation infrastructure).
-- ADR-0013, ADR-0014, ADR-0015, ADR-0016.
+- ADR-1247-01, ADR-1247-02, ADR-1247-03, ADR-1247-04.
 - Operational docs and code/test paths listed under Evidence.
