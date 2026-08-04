@@ -252,6 +252,75 @@ describe('exe_export.js', () => {
     timeoutSpy.mockRestore();
   });
 
+  describe('afterIdeviceRendered', () => {
+    // JSON iDevices build their markup from data after the page-wide initialization
+    // has run, so the shared enhancements have to be applied again on what they just
+    // rendered. See #2170.
+    afterEach(() => {
+      delete window.$exeFX;
+    });
+
+    it('initializes the effects contained in the rendered iDevice', () => {
+      window.$exeFX = { init: vi.fn() };
+      const node = document.createElement('div');
+
+      window.$exeExport.afterIdeviceRendered(node);
+
+      expect(window.$exeFX.init).toHaveBeenCalledTimes(1);
+      expect(window.$exeFX.init).toHaveBeenCalledWith(node);
+    });
+
+    it('ignores a missing node', () => {
+      window.$exeFX = { init: vi.fn() };
+
+      window.$exeExport.afterIdeviceRendered(null);
+
+      expect(window.$exeFX.init).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the effects library is not loaded', () => {
+      const node = document.createElement('div');
+
+      expect(() => window.$exeExport.afterIdeviceRendered(node)).not.toThrow();
+    });
+
+    it('runs after an iDevice rendered with a template', () => {
+      window.$exeFX = { init: vi.fn() };
+      const exportIdevice = {
+        renderView: vi.fn(() => '<div class="exe-fx exe-tabs"></div>'),
+        renderBehaviour: vi.fn(),
+        init: vi.fn(),
+      };
+      const node = document.createElement('div');
+      document.body.appendChild(node);
+
+      window.$exeExport.renderWithTemplate(node, exportIdevice, {}, null, '{content}');
+
+      expect(window.$exeFX.init).toHaveBeenCalledWith(node);
+      // The content must already be in place when the enhancements run.
+      expect(window.$exeFX.init.mock.invocationCallOrder[0]).toBeGreaterThan(
+        exportIdevice.renderBehaviour.mock.invocationCallOrder[0]
+      );
+    });
+
+    it('runs for iDevices rendered without renderView', () => {
+      window.$exeFX = { init: vi.fn() };
+      window.$testidevice = { renderBehaviour: vi.fn(), init: vi.fn() };
+
+      const node = document.createElement('div');
+      node.id = 'idevice-no-render';
+      node.className = 'idevice_node test-idevice';
+      node.setAttribute('data-idevice-component-type', 'json');
+      node.setAttribute('data-idevice-type', 'test-idevice');
+      document.body.appendChild(node);
+
+      window.$exeExport.initJsonIdevice('test-idevice', 'interval_no_render');
+
+      expect(window.$exeFX.init).toHaveBeenCalledWith(node);
+      delete window.$testidevice;
+    });
+  });
+
   it('loads scorm when scorm assets are ready', () => {
     document.body.classList.add('exe-scorm');
 

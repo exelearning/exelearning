@@ -17,7 +17,8 @@ See also:
 | `image-gallery` | Image gallery | Information and presentation | 0 | 3.0 | json | `ImageGalleryIdevice`, `GalleryIdevice` |
 | `magnifier` | Magnifier | Information and presentation | 0 | 3.0 | json | `ImageMagnifierIdevice` |
 | `external-website` | External website | Information and presentation | 0 | — | — | `ExternalUrlIdevice` |
-| `download-source-file` | Download source file | Information and presentation | 0 | — | — | `FileAttachIdevice`, `FileAttachIdeviceInc`, `AttachmentIdevice` |
+| `download-source-file` | Download source file | Information and presentation | 0 | — | — | — |
+| `file-attachment` | File attachment | Information and presentation | 0 | 3.0 | json | `FileAttachIdevice`, `FileAttachIdeviceInc`, `AttachmentIdevice` |
 | `digcompedu` | DigCompEdu | Information and presentation | 0 | 3.0 | json | — |
 | `map` | Map | Information and presentation | 0 | — | — | — |
 | `udl-content` | UDL Content | Information and presentation | 0 | — | — | — |
@@ -87,6 +88,10 @@ Embeds a remote URL in an iframe. The author sets the URL, width, height, and wh
 ### `download-source-file`
 
 Presents a descriptive table about the learning resource and a button that downloads the original `.elpx` source file when the exported package includes it. The entire content is rendered into `htmlView` at export time; there is no separate JSON state blob.
+
+### `file-attachment`
+
+Lets authors attach one or more downloadable files to a page. Files are selected or uploaded through the Media Library and stored as stable `asset://` references in `jsonProperties` — the binary asset remains the source of truth, packaged under `content/resources/` on export. Each attachment renders as an accessible download link with a file-type icon, the filename (or an author-supplied title), an optional description, and the file size when known. Optional instructions can be shown above the list. This is the modern replacement for the legacy eXeLearning 2.x "File Attachments" iDevice (`FileAttachIdevice`, `FileAttachIdeviceInc`, `AttachmentIdevice`), which now imports as `file-attachment` rather than `text`.
 
 ### `digcompedu`
 
@@ -284,9 +289,9 @@ The following table lists every legacy CamelCase class name that the importer re
 | `ImageGalleryIdevice` | `image-gallery` |
 | `GalleryIdevice` | `image-gallery` |
 | `ImageMagnifierIdevice` | `magnifier` |
-| `FileAttachIdevice` | `text` |
-| `FileAttachIdeviceInc` | `text` |
-| `AttachmentIdevice` | `text` |
+| `FileAttachIdevice` | `file-attachment` |
+| `FileAttachIdeviceInc` | `file-attachment` |
+| `AttachmentIdevice` | `file-attachment` |
 | `ExternalUrlIdevice` | `external-website` |
 | `GeogebraIdevice` | `geogebra-activity` |
 | `JavaAppIdevice` | `java-app` |
