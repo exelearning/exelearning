@@ -3,7 +3,7 @@
  *
  */
 
-import IdeviceNode from './content/ideviceNode.js';
+import IdeviceNode, { parseIdeviceJsonProperties } from './content/ideviceNode.js';
 import IdeviceBlockNode from './content/blockNode.js';
 import { getInitials, generateGravatarUrl } from '../../../utils/avatarUtils.js';
 import { sanitizeCollaborativeHtml } from '../../../utils/sanitizeHtml.js';
@@ -1497,13 +1497,16 @@ export default class IdevicesEngine {
             ideviceNode.htmlView = componentData.htmlContent || '';
         }
         if (componentData.jsonProperties !== undefined) {
-            try {
-                ideviceNode.jsonProperties =
-                    typeof componentData.jsonProperties === 'string'
-                        ? JSON.parse(componentData.jsonProperties || '{}')
-                        : componentData.jsonProperties || {};
-            } catch {
-                ideviceNode.jsonProperties = {};
+            const parsed = parseIdeviceJsonProperties(componentData.jsonProperties);
+            ideviceNode.jsonProperties = parsed.value;
+            ideviceNode.jsonPropertiesParseError = parsed.error;
+            ideviceNode.malformedJsonPropertiesRaw = parsed.error
+                ? componentData.jsonProperties
+                : null;
+            if (parsed.error) {
+                Logger.warn(
+                    `[IdevicesEngine] Ignoring malformed jsonProperties update for ${componentData.id}: ${parsed.error.message}`
+                );
             }
         }
 

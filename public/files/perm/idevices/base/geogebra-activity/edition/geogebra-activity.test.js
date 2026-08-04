@@ -156,4 +156,120 @@ describe('geogebra-activity iDevice (edition)', () => {
     expect($('#eXeProgressReport').prop('checked')).toBe(false);
     expect($('#eXeProgressReportID').val()).toBe('');
   });
+
+  describe('display size controls', () => {
+    function buildSizeFieldsDom() {
+      return `
+        <input id="geogebraActivityLang" value="en" />
+        <input id="geogebraActivityURL" value="" />
+        <input id="geogebraActivitySCORM" type="checkbox" />
+        <div id="geogebraActivitySCORMoptions" class="d-none"></div>
+        <div id="geogebraActivitySCORMinstructions" class="d-none"></div>
+        <div id="geogebraActivityWeightDiv" class="d-none"></div>
+        <textarea id="geogebraActivityInstructions"></textarea>
+        <textarea id="eXeIdeviceTextAfter"></textarea>
+        <span id="geogebraActivityAuthorURL"></span>
+        <span id="geogebraActivityTitle"></span>
+        <input id="geogebraActivityShowTitle" type="checkbox" />
+        <input id="geogebraActivityShowAuthor" type="checkbox" />
+        <input id="geogebraActivityEvaluation" type="checkbox" />
+        <input id="geogebraActivityEvaluationID" value="" />
+        <input id="geogebraActivityWidth" />
+        <input id="geogebraActivityHeight" />
+      `;
+    }
+
+    it('renders createForm() with the size controls visible (not hidden)', () => {
+      document.body.innerHTML = '<div id="geogebra_body_create_form"></div>';
+      $exeDevice.ideviceBody = document.getElementById('geogebra_body_create_form');
+
+      globalThis.$exeDevicesEdition.iDevice.common = {
+        getIdeviceDescription: vi.fn(() => '<div class="alert alert-info"></div>'),
+        getTextFieldset: vi.fn(() => ''),
+      };
+
+      $exeDevice.createForm();
+
+      const sizeBlock = $exeDevice.ideviceBody.querySelector('#geogebraActivitySize');
+      expect(sizeBlock).not.toBeNull();
+      expect(sizeBlock.classList.contains('d-none')).toBe(false);
+      expect(sizeBlock.classList.contains('d-flex')).toBe(true);
+
+      const widthInput = $exeDevice.ideviceBody.querySelector('#geogebraActivityWidth');
+      const heightInput = $exeDevice.ideviceBody.querySelector('#geogebraActivityHeight');
+      expect(widthInput).not.toBeNull();
+      expect(heightInput).not.toBeNull();
+    });
+
+    it('restores width and height from saved size classes', () => {
+      document.body.innerHTML = buildSizeFieldsDom();
+
+      $exeDevice.idevicePreviousData = `
+        <div class="auto-geogebra auto-geogebra-VgHhQXCC auto-geogebra-width-800 auto-geogebra-height-600"></div>
+      `;
+
+      $exeDevice.loadPreviousValues();
+
+      expect($('#geogebraActivityWidth').val()).toBe('800');
+      expect($('#geogebraActivityHeight').val()).toBe('600');
+    });
+
+    it('leaves width and height empty for legacy content without explicit size classes', () => {
+      document.body.innerHTML = buildSizeFieldsDom();
+
+      $exeDevice.idevicePreviousData = `
+        <div class="auto-geogebra auto-geogebra-VgHhQXCC"></div>
+      `;
+
+      $exeDevice.loadPreviousValues();
+
+      expect($('#geogebraActivityWidth').val()).toBe('');
+      expect($('#geogebraActivityHeight').val()).toBe('');
+    });
+
+    function buildSaveDom({ width, height }) {
+      return `
+        <input id="geogebraActivityLang" value="en" />
+        <input id="geogebraActivityURL" value="VgHhQXCC" />
+        <input id="geogebraActivitySCORM" type="checkbox" />
+        <input id="geogebraActivityBorderColor" value="" />
+        <input id="geogebraActivityScale" value="100" />
+        <input id="geogebraActivityWeight" value="100" />
+        <input id="geogebraActivityWidth" value="${width}" />
+        <input id="geogebraActivityHeight" value="${height}" />
+        <span id="geogebraActivityAuthorURL"></span>
+        <span id="geogebraActivityTitle"></span>
+      `;
+    }
+
+    it('save() emits auto-geogebra-width/height classes for provided values', () => {
+      document.body.innerHTML = buildSaveDom({ width: '800', height: '600' });
+
+      const previousEditors = global.tinymce.editors;
+      global.tinymce.editors = [{ getContent: () => '' }, { getContent: () => '' }];
+
+      try {
+        const html = $exeDevice.save();
+        expect(html).toContain('auto-geogebra-width-800');
+        expect(html).toContain('auto-geogebra-height-600');
+      } finally {
+        global.tinymce.editors = previousEditors;
+      }
+    });
+
+    it('save() omits size classes when width and height are left blank', () => {
+      document.body.innerHTML = buildSaveDom({ width: '', height: '' });
+
+      const previousEditors = global.tinymce.editors;
+      global.tinymce.editors = [{ getContent: () => '' }, { getContent: () => '' }];
+
+      try {
+        const html = $exeDevice.save();
+        expect(html).not.toContain('auto-geogebra-width-');
+        expect(html).not.toContain('auto-geogebra-height-');
+      } finally {
+        global.tinymce.editors = previousEditors;
+      }
+    });
+  });
 });

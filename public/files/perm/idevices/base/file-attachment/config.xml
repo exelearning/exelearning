@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<idevice>
+    <name>file-attachment</name>
+    <title>File attachments</title>
+    <css-class>file-attachment</css-class>
+    <category>Information and presentation</category>
+    <icon>
+        <name>file-attachment</name>
+        <url>file-attachment-icon.svg</url>
+        <type>img</type>
+    </icon>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <location>location</location>
+    <location-type>location type</location-type>
+    <edition-js>
+        <filename>file-attachment.js</filename>
+    </edition-js>
+    <edition-css>
+        <filename>file-attachment.css</filename>
+    </edition-css>
+    <export-js>
+        <filename>file-attachment.js</filename>
+    </export-js>
+    <export-css>
+        <filename>file-attachment.css</filename>
+    </export-css>
+    <export-template-filename>file-attachment.html</export-template-filename>
+    <author>eXeLearning</author>
+    <author-url>https://exelearning.net</author-url>
+    <license>AGPL-3.0</license>
+    <license-url>https://www.gnu.org/licenses/agpl-3.0.html</license-url>
+    <description></description>
+    <downloadable>0</downloadable>
+</idevice>
