@@ -9,6 +9,7 @@ const fflate = require('fflate');
 const https = require('https');
 
 const { initAutoUpdater } = require('./update-manager');
+const { checkExternalLink } = require('./link-check');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -1559,6 +1560,17 @@ ipcMain.handle('app:readFile', async (_e, { filePath }) => {
     } catch (err) {
         return { ok: false, error: err.message };
     }
+});
+
+// Check an external link from the main process, where CORS does not apply,
+// and report the real HTTP status — same outcome as server-side validation.
+ipcMain.handle('app:checkLink', async (_e, { url } = {}) => {
+    const isExternal = typeof url === 'string' && /^(https?:)?\/\//.test(url);
+    if (!isExternal) {
+        return { status: 'unknown', error: null };
+    }
+    const error = await checkExternalLink(url, { fetchImpl: net.fetch.bind(net) });
+    return { status: error ? 'broken' : 'valid', error };
 });
 
 ipcMain.handle('app:getMemoryUsage', async (e) => {

@@ -11,12 +11,15 @@ import { waitForAppReady, addTextIdevice, selectFirstPage, gotoWorkarea } from '
 import { Page } from '@playwright/test';
 
 /**
- * In static mode the check runs in the browser, where a cross-origin response is
- * opaque: a reachable URL can only be reported as "requires manual review".
- * The server-side validator reads the real HTTP status and can confirm it.
+ * In static mode the check runs in a plain browser, where CORS makes every
+ * cross-origin response opaque: no external link can be checked at all, so all
+ * of them are reported as "requires manual review" and the modal explains the
+ * limitation up front. The server-side validator (online mode) and the
+ * Electron main process (desktop app) read the real HTTP status instead.
  */
 const isStaticMode = process.env.STATIC_MODE === 'true';
 const reachableLinkIcon = isStaticMode ? '.text-warning-emphasis' : '.text-success';
+const brokenLinkIcon = isStaticMode ? '.text-warning-emphasis' : '.text-danger';
 
 /**
  * Helper to open the link validation modal
@@ -120,11 +123,12 @@ test.describe('Link Validation', () => {
         });
         await expect(googleRow.locator(reachableLinkIcon)).toBeVisible();
 
-        // Verify broken domain shows error (X mark)
+        // Verify the broken domain shows an error: an X mark when the status
+        // could actually be read, the manual-review warning in a plain browser
         const brokenRow = modal.locator('tr', {
             has: page.locator('td.link-url:has-text("this-domain-definitely")'),
         });
-        await expect(brokenRow.locator('.text-danger')).toBeVisible();
+        await expect(brokenRow.locator(brokenLinkIcon)).toBeVisible();
 
         // Verify exe-node links are NOT shown (they should be skipped)
         const exeNodeLinks = modal.locator('td.link-url:has-text("exe-node")');
@@ -139,6 +143,16 @@ test.describe('Link Validation', () => {
 
         // The legend explains the three possible outcomes
         await expect(modal.locator('.validation-legend')).toContainText('Requires manual review');
+
+        // Browser-limited flavors say up front that external links cannot be
+        // checked automatically; flavors with real statuses show no such notice
+        const staticNotice = modal.locator('.validation-static-notice');
+        if (isStaticMode) {
+            await expect(staticNotice).toBeVisible();
+            await expect(staticNotice).toContainText('browser security restrictions');
+        } else {
+            await expect(staticNotice).toHaveCount(0);
+        }
 
         // Verify CSV button is enabled after validation completes
         const csvButton = modal.locator('button.confirm');

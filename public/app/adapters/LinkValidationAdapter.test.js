@@ -264,222 +264,92 @@ describe('LinkValidationAdapter', () => {
             });
         });
 
-        describe('external URLs (http/https)', () => {
+        describe('external URLs in a plain browser (static web flavor)', () => {
             /**
-             * A cross-origin no-cors response is opaque (status 0), so the browser
-             * cannot tell a 200 from a 404. Reaching the host proves the link is not
-             * dead, nothing more: report it as needing a manual review (issue #2208
-             * review by @ignaciogros).
+             * A cross-origin response is opaque under CORS, so the browser cannot
+             * tell a 200 from a 404 — a live YouTube channel and a deleted one look
+             * identical (issue #2207, review of PR #2208 by @ignaciogros). No probe
+             * can improve on that, so the adapter performs no network traffic at
+             * all and reports every external link as needing a manual review.
              */
-            it('should report reachable external URLs as needing manual review', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
+            it('should report external URLs as needing manual review without fetching', async () => {
+                global.fetch = vi.fn();
+
+                const result = await adapter.validateLink('https://www.youtube.com/@thisisjustanexample');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Not checked automatically: open the link to review it');
+                expect(global.fetch).not.toHaveBeenCalled();
+            });
+
+            it('should never claim an external URL is valid', async () => {
+                const result = await adapter.validateLink('https://example.com/does-not-exist');
+
+                expect(result.status).toBe('unknown');
+            });
+
+            it('should treat protocol-relative URLs like any external URL', async () => {
+                const result = await adapter.validateLink('//cdn.example.com/file.js');
+
+                expect(result.status).toBe('unknown');
+            });
+        });
+
+        describe('external URLs in the desktop app (Electron main-process check)', () => {
+            let checkLink;
+
+            beforeEach(() => {
+                checkLink = vi.fn();
+                global.window.electronAPI = { checkLink };
+            });
+
+            it('should report the main-process result for a valid link', async () => {
+                checkLink.mockResolvedValue({ status: 'valid', error: null });
+
+                const result = await adapter.validateLink('https://www.youtube.com/@bbc');
+
+                expect(result).toEqual({ status: 'valid', error: null });
+                expect(checkLink).toHaveBeenCalledWith('https://www.youtube.com/@bbc');
+            });
+
+            it('should report the main-process result for a broken link', async () => {
+                checkLink.mockResolvedValue({ status: 'broken', error: '404' });
+
+                const result = await adapter.validateLink('https://www.youtube.com/@thisisjustanexample');
+
+                expect(result).toEqual({ status: 'broken', error: '404' });
+            });
+
+            it('should normalize protocol-relative URLs before delegating', async () => {
+                checkLink.mockResolvedValue({ status: 'valid', error: null });
+
+                await adapter.validateLink('//cdn.example.com/file.js');
+
+                expect(checkLink).toHaveBeenCalledWith('https://cdn.example.com/file.js');
+            });
+
+            it('should fall back to manual review when the IPC call fails', async () => {
+                checkLink.mockRejectedValue(new Error('IPC channel not available'));
 
                 const result = await adapter.validateLink('https://example.com');
 
                 expect(result.status).toBe('unknown');
-                expect(result.error).toBe('Reachable, but its status could not be checked');
-                expect(global.fetch).toHaveBeenCalled();
+                expect(result.error).toBe('Not checked automatically: open the link to review it');
             });
 
-            it('should not claim a page that returns 404 is valid (opaque response)', async () => {
-                // A 404 and a 200 are indistinguishable through a no-cors fetch
-                global.fetch = vi.fn().mockResolvedValue({ ok: false, type: 'opaque', status: 0 });
+            it('should fall back to manual review on a malformed IPC result', async () => {
+                checkLink.mockResolvedValue({ status: 'weird' });
 
-                const result = await adapter.validateLink('https://example.com/does-not-exist');
+                const result = await adapter.validateLink('https://example.com');
 
-                expect(result.status).not.toBe('valid');
                 expect(result.status).toBe('unknown');
             });
 
-            it('should flag HTTP URL on an HTTPS page for manual review (mixed content)', async () => {
-                global.fetch = vi.fn();
-                global.window = { location: { protocol: 'https:' } };
+            it('should not delegate internal URLs to the main process', async () => {
+                const result = await adapter.validateLink('exe-node:page1');
 
-                const result = await adapter.validateLink('http://example.com');
-
-                expect(result.status).toBe('unknown');
-                expect(result.error).toBe('Could not be checked: HTTP content is blocked on HTTPS pages.');
-                expect(global.fetch).not.toHaveBeenCalled();
-            });
-
-            it('should NOT block HTTP URL when page is served over HTTP', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
-                global.window = { location: { protocol: 'http:' } };
-
-                const result = await adapter.validateLink('http://example.com');
-
-                expect(result.status).toBe('unknown');
-                expect(global.fetch).toHaveBeenCalled();
-            });
-
-            it('should NOT block HTTP URL when window is undefined (non-browser context)', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
-                const originalWindow = global.window;
-                delete global.window;
-
-                const result = await adapter.validateLink('http://example.com');
-
-                expect(result.status).toBe('unknown');
-                expect(global.fetch).toHaveBeenCalled();
-                global.window = originalWindow;
-            });
-
-            it('should handle protocol-relative URL on HTTPS page by converting to HTTPS and fetching', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
-                global.window = { location: { protocol: 'https:' } };
-
-                const result = await adapter.validateLink('//cdn.example.com/file.js');
-
-                // Protocol-relative URLs become https://, which is fine on an HTTPS page
-                expect(result.status).toBe('unknown');
-                expect(global.fetch).toHaveBeenCalledWith('https://cdn.example.com/file.js', expect.any(Object));
-            });
-
-            it('should handle fetch network errors', async () => {
-                // HEAD + GET both fail; DoH also fails → surface the original network error
-                global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
-
-                const result = await adapter.validateLink('https://nonexistent.invalid');
-
-                expect(result.status).toBe('broken');
-                expect(result.error).toBe('Network error');
-            });
-
-            it('should handle fetch timeout', async () => {
-                const abortError = new Error('Aborted');
-                abortError.name = 'AbortError';
-                global.fetch = vi.fn().mockRejectedValue(abortError);
-
-                const result = await adapter.validateLink('https://slow-site.com');
-
-                expect(result.status).toBe('broken');
-                expect(result.error).toBe('Timeout');
-            });
-
-            it('should report a timeout when the GET fallback times out', async () => {
-                const abortError = new Error('Aborted');
-                abortError.name = 'AbortError';
-                global.fetch = vi
-                    .fn()
-                    .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-                    .mockRejectedValueOnce(abortError);
-
-                const result = await adapter.validateLink('https://slow-after-head.com');
-
-                expect(result.status).toBe('broken');
-                expect(result.error).toBe('Timeout');
-                // No DNS probe once we know the request timed out
-                expect(global.fetch).toHaveBeenCalledTimes(2);
-            });
-
-            it('should handle protocol-relative URLs', async () => {
-                global.fetch = vi.fn().mockResolvedValue({ ok: true });
-
-                const result = await adapter.validateLink('//cdn.example.com/file.js');
-
-                expect(result.status).toBe('unknown');
-                // Should have converted to https://
-                expect(global.fetch).toHaveBeenCalledWith(
-                    'https://cdn.example.com/file.js',
-                    expect.any(Object)
-                );
-            });
-
-            /**
-             * Regression for #2207: hosts (e.g. YouTube channel URLs) that respond with a
-             * cross-site consent/redirect chain cause browser fetch(mode:'no-cors') to throw
-             * TypeError "Failed to fetch" (ERR_BLOCKED_BY_RESPONSE.NotSameSite) even though
-             * the URL is reachable in a normal navigation. When the browser cannot complete
-             * the check but DNS still resolves the host, the link is not broken — but it is
-             * not proven valid either (a 404 channel throws exactly the same error), so it
-             * needs a manual review.
-             */
-            it('should flag browser-blocked fetches for manual review when the host still resolves', async () => {
-                const failedFetch = new TypeError('Failed to fetch');
-                global.fetch = vi
-                    .fn()
-                    // HEAD no-cors
-                    .mockRejectedValueOnce(failedFetch)
-                    // GET fallback no-cors
-                    .mockRejectedValueOnce(failedFetch)
-                    // DNS-over-HTTPS probe: host resolves
-                    .mockResolvedValueOnce({
-                        ok: true,
-                        json: async () => ({
-                            Status: 0,
-                            Answer: [{ type: 1, data: '142.250.0.1' }],
-                        }),
-                    });
-
-                const result = await adapter.validateLink('https://www.youtube.com/@freddcosmos');
-
-                expect(result.status).toBe('unknown');
-                expect(result.error).toBe(
-                    'Blocked by the browser: the host exists but the page could not be checked',
-                );
-                // HEAD, then GET, then DoH
-                expect(global.fetch).toHaveBeenCalledTimes(3);
-                expect(global.fetch.mock.calls[0][1]).toMatchObject({ method: 'HEAD' });
-                expect(global.fetch.mock.calls[1][1]).toMatchObject({ method: 'GET' });
-                expect(String(global.fetch.mock.calls[2][0])).toContain('dns-query');
-                expect(String(global.fetch.mock.calls[2][0])).toContain('www.youtube.com');
-            });
-
-            it('should fall back from HEAD to GET when HEAD is rejected but GET succeeds', async () => {
-                global.fetch = vi
-                    .fn()
-                    .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-                    .mockResolvedValueOnce({ ok: true, type: 'opaque', status: 0 });
-
-                const result = await adapter.validateLink('https://example.com/head-blocked');
-
-                expect(result.status).toBe('unknown');
-                expect(result.error).toBe('Reachable, but its status could not be checked');
-                expect(global.fetch).toHaveBeenCalledTimes(2);
-                expect(global.fetch.mock.calls[0][1]).toMatchObject({ method: 'HEAD' });
-                expect(global.fetch.mock.calls[1][1]).toMatchObject({ method: 'GET' });
-            });
-
-            /**
-             * Review of PR #2208 by @ignaciogros: https://www.youtube.com/@thisisjustanexample
-             * answers 404, yet from the browser it fails exactly like a live channel does.
-             * The adapter must never call it valid.
-             */
-            it('should not report a nonexistent YouTube channel as valid', async () => {
-                const failedFetch = new TypeError('Failed to fetch');
-                global.fetch = vi
-                    .fn()
-                    .mockRejectedValueOnce(failedFetch)
-                    .mockRejectedValueOnce(failedFetch)
-                    .mockResolvedValueOnce({
-                        ok: true,
-                        json: async () => ({ Status: 0, Answer: [{ type: 1, data: '142.250.0.1' }] }),
-                    });
-
-                const result = await adapter.validateLink('https://www.youtube.com/@thisisjustanexample');
-
-                expect(result.status).not.toBe('valid');
-                expect(result.status).toBe('unknown');
-            });
-
-            it('should still report genuinely unresolvable hosts as broken', async () => {
-                const failedFetch = new TypeError('Failed to fetch');
-                global.fetch = vi
-                    .fn()
-                    .mockRejectedValueOnce(failedFetch)
-                    .mockRejectedValueOnce(failedFetch)
-                    // DoH NXDOMAIN
-                    .mockResolvedValueOnce({
-                        ok: true,
-                        json: async () => ({ Status: 3 }),
-                    });
-
-                const result = await adapter.validateLink(
-                    'https://this-domain-definitely-does-not-exist-zzz999.invalid/page',
-                );
-
-                expect(result.status).toBe('broken');
-                expect(result.error).toBe('Could not resolve host');
+                expect(result.status).toBe('valid');
+                expect(checkLink).not.toHaveBeenCalled();
             });
         });
 

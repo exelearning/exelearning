@@ -6,6 +6,7 @@ const mockLinkManager = {
     startValidation: vi.fn(),
     cancel: vi.fn(),
     isInProgress: vi.fn().mockReturnValue(false),
+    isBrowserLimited: vi.fn().mockReturnValue(false),
     toExportFormat: vi.fn().mockReturnValue([]),
     onLinksExtracted: null,
     onLinkUpdate: null,
@@ -35,6 +36,7 @@ describe('ModalOdeBrokenLinks', () => {
         mockLinkManager.startValidation = vi.fn();
         mockLinkManager.cancel = vi.fn();
         mockLinkManager.isInProgress = vi.fn().mockReturnValue(false);
+        mockLinkManager.isBrowserLimited = vi.fn().mockReturnValue(false);
         mockLinkManager.toExportFormat = vi.fn().mockReturnValue([]);
         mockLinkManager.onLinksExtracted = null;
         mockLinkManager.onLinkUpdate = null;
@@ -189,7 +191,7 @@ describe('ModalOdeBrokenLinks', () => {
                 id: 'test-id',
                 url: 'https://www.youtube.com/@example',
                 status: 'unknown',
-                error: 'Reachable, but its status could not be checked',
+                error: 'Not checked automatically: open the link to review it',
                 count: 1,
             };
             const row = modal.createLinkRow(link);
@@ -225,10 +227,10 @@ describe('ModalOdeBrokenLinks', () => {
         });
 
         it('should return a warning sign for links needing manual review', () => {
-            const html = modal.getStatusHtml('unknown', 'Reachable, but its status could not be checked');
+            const html = modal.getStatusHtml('unknown', 'Not checked automatically: open the link to review it');
             expect(html).toContain('text-warning-emphasis');
             expect(html).toContain('&#9888;');
-            expect(html).toContain('Reachable, but its status could not be checked');
+            expect(html).toContain('Not checked automatically: open the link to review it');
         });
 
         it('should fall back to a generic title when no reason is given', () => {
@@ -299,6 +301,34 @@ describe('ModalOdeBrokenLinks', () => {
             const cell = body.querySelector('tbody td');
             expect(cell.textContent).toBe('No links found in content');
             expect(cell.colSpan).toBe(8);
+        });
+
+        it('should explain the browser limitation in flavors that cannot check links', () => {
+            modal.linkManager = { isBrowserLimited: () => true };
+            const links = [{ id: '1', url: 'https://example.com', status: 'pending', count: 1 }];
+
+            const body = modal.buildBody(links);
+
+            const notice = body.querySelector('.validation-static-notice');
+            expect(notice).not.toBeNull();
+            expect(notice.textContent).toContain('browser security restrictions');
+        });
+
+        it('should not show the browser-limitation notice when links can be checked', () => {
+            modal.linkManager = { isBrowserLimited: () => false };
+            const links = [{ id: '1', url: 'https://example.com', status: 'pending', count: 1 }];
+
+            const body = modal.buildBody(links);
+
+            expect(body.querySelector('.validation-static-notice')).toBeNull();
+        });
+
+        it('should not show the browser-limitation notice when there are no links', () => {
+            modal.linkManager = { isBrowserLimited: () => true };
+
+            const body = modal.buildBody([]);
+
+            expect(body.querySelector('.validation-static-notice')).toBeNull();
         });
     });
 
@@ -380,14 +410,14 @@ describe('ModalOdeBrokenLinks', () => {
         });
 
         it('should highlight links needing a manual review in amber', () => {
-            modal.updateLinkRow('test-id', 'unknown', 'Reachable, but its status could not be checked');
+            modal.updateLinkRow('test-id', 'unknown', 'Not checked automatically: open the link to review it');
             const row = modal.rowElements.get('test-id');
             expect(row.querySelector('.text-warning-emphasis')).not.toBeNull();
             expect(row.classList.contains('table-warning')).toBe(true);
             expect(row.classList.contains('table-danger')).toBe(false);
             expect(row.dataset.status).toBe('unknown');
             expect(row.querySelector('.link-error').textContent).toBe(
-                'Reachable, but its status could not be checked',
+                'Not checked automatically: open the link to review it',
             );
         });
 
@@ -564,7 +594,7 @@ describe('ModalOdeBrokenLinks', () => {
                         <tr class="table-warning" data-status="unknown">
                             <td class="link-status"><span class="text-warning">&#9888;</span></td>
                             <td>https://www.youtube.com/@example</td>
-                            <td>Reachable, but its status could not be checked</td>
+                            <td>Not checked automatically: open the link to review it</td>
                         </tr>
                     </tbody>
                 </table>

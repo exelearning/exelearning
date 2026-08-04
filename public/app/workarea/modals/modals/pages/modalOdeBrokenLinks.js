@@ -201,6 +201,22 @@ export default class ModalOdeBrokenLinks extends Modal {
     }
 
     /**
+     * Notice shown in flavors where the check runs in a plain browser (static
+     * web, embeds): CORS hides the status of external links, so none of them
+     * can be verified automatically and every one needs a manual review.
+     * @returns {string}
+     */
+    createBrowserLimitedNoticeHtml() {
+        return `
+            <div class="alert alert-warning validation-static-notice small" role="alert">
+                ${_(
+                    'Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.'
+                )}
+            </div>
+        `;
+    }
+
+    /**
      * Legend explaining the three possible outcomes.
      * The amber one matters: a browser cannot read the HTTP status of a
      * cross-origin response, so many links can only be confirmed by opening them.
@@ -303,6 +319,14 @@ export default class ModalOdeBrokenLinks extends Modal {
         this.progressContainer = document.createElement('div');
         this.progressContainer.innerHTML = this.createProgressHtml();
         container.appendChild(this.progressContainer);
+
+        // Browser-limited flavors cannot check external links at all: say so
+        // once, up front, instead of letting the amber rows speak for themselves
+        if (links.length > 0 && this.linkManager?.isBrowserLimited?.()) {
+            const notice = document.createElement('div');
+            notice.innerHTML = this.createBrowserLimitedNoticeHtml();
+            container.appendChild(notice);
+        }
 
         // Legend explaining the status icons
         const legend = document.createElement('div');

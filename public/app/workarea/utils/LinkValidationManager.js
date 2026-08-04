@@ -279,6 +279,23 @@ export default class LinkValidationManager {
     }
 
     /**
+     * True when this flavor of eXeLearning can only run browser-side checks:
+     * no server validation stream and no Electron main-process checker.
+     * Browser security restrictions (CORS) then hide the status of external
+     * links, so none of them can be verified automatically.
+     *
+     * @returns {boolean}
+     */
+    isBrowserLimited() {
+        const streamUrl =
+            typeof eXeLearning !== 'undefined'
+                ? (eXeLearning?.app?.api?.getLinkValidationStreamUrl?.() ?? null)
+                : null;
+        const electronApi = typeof window !== 'undefined' ? window.electronAPI : undefined;
+        return !streamUrl && typeof electronApi?.checkLink !== 'function';
+    }
+
+    /**
      * Cancel the validation process
      */
     cancel() {

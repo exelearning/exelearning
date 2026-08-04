@@ -152,6 +152,7 @@
       "main.js",
       "preload.js",
       "save-utils.js",
+      "link-check.js",
       "update-manager.js",
       "package.json",
       "node_modules/**/*",

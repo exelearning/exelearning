@@ -2,10 +2,15 @@
  * LinkValidationAdapter
  *
  * Client-side link validation adapter for static/offline mode.
- * Extracts links from HTML content and validates them where possible.
+ * Extracts links from HTML content (a port of the server-side
+ * link-validator.ts extraction logic) and validates them where possible:
  *
- * This adapter ports the server-side link-validator.ts logic to run in the browser,
- * allowing link validation to work without a backend server.
+ * - Electron desktop app: external links are checked by the main process
+ *   (window.electronAPI.checkLink), where CORS does not apply, so the report
+ *   shows real HTTP statuses just like online mode.
+ * - Plain browser (static web, embeds): CORS makes cross-origin responses
+ *   opaque, so external links cannot be checked at all and are reported as
+ *   needing a manual review.
  */
 
 export default class LinkValidationAdapter {
@@ -222,177 +227,50 @@ export default class LinkValidationAdapter {
     // =====================================================
 
     /**
-     * Validate an external HTTP(S) URL
+     * Validate an external HTTP(S) URL.
      *
-     * A browser cannot read the HTTP status of a cross-origin response: `no-cors`
-     * requests resolve with an opaque response (`status === 0`) for 200 and 404
-     * alike, and hosts behind a consent/redirect wall reject the request the same
-     * way a dead host does. So this adapter can only prove that a link is *dead*
-     * (the host does not resolve, mixed content is blocked, the request times out);
-     * it can never prove that a link is *alive*. Anything reachable is therefore
-     * reported as 'unknown' — needs a human to open it — instead of a false 'valid'.
+     * A web page cannot read the HTTP status of a cross-origin response: CORS
+     * makes it opaque, so a 200 and a 404 are indistinguishable from the
+     * browser. In the desktop app the check is delegated to the Electron main
+     * process, where CORS does not apply and the real status is available. In
+     * a plain browser (static/offline flavors) no automatic check is possible,
+     * so the link is reported as needing a manual review.
      *
      * @param {string} url
      * @returns {Promise<{status: 'valid'|'broken'|'unknown', error: string|null}>}
      * @private
      */
     async _validateExternalUrl(url) {
-        try {
-            let normalizedUrl = url;
+        const normalizedUrl = url.startsWith('//') ? `https:${url}` : url;
 
-            // Handle protocol-relative URLs
-            if (url.startsWith('//')) {
-                normalizedUrl = 'https:' + url;
-            }
-
-            // Browsers block HTTP fetches from HTTPS pages (mixed content policy).
-            // Detect this condition early and return a clear message instead of a
-            // generic NetworkError.
-            if (
-                normalizedUrl.startsWith('http://') &&
-                typeof window !== 'undefined' &&
-                window.location.protocol === 'https:'
-            ) {
-                return {
-                    status: 'unknown',
-                    error: _('Could not be checked: HTTP content is blocked on HTTPS pages.'),
-                };
-            }
-
-            // Prefer HEAD (cheap). Some hosts reject HEAD or block no-cors redirect
-            // chains (e.g. consent walls); fall back to GET, then to a DNS probe so
-            // a browser security policy failure is not reported as a broken link.
+        const electronCheck = this._getElectronLinkChecker();
+        if (electronCheck) {
             try {
-                await this._probeUrl(normalizedUrl, 'HEAD');
-                return { status: 'unknown', error: _('Reachable, but its status could not be checked') };
-            } catch (headError) {
-                if (headError?.name === 'AbortError') {
-                    return { status: 'broken', error: _('Timeout') };
+                const result = await electronCheck(normalizedUrl);
+                if (result?.status === 'valid' || result?.status === 'broken') {
+                    return { status: result.status, error: result.error ?? null };
                 }
+            } catch (_e) {
+                // IPC unavailable (e.g. outdated desktop shell): fall through
+                // to the browser-limited outcome below.
             }
-
-            try {
-                await this._probeUrl(normalizedUrl, 'GET');
-                return { status: 'unknown', error: _('Reachable, but its status could not be checked') };
-            } catch (getError) {
-                if (getError?.name === 'AbortError') {
-                    return { status: 'broken', error: _('Timeout') };
-                }
-
-                // Browser fetch often throws TypeError "Failed to fetch" both for
-                // truly dead hosts and for reachable hosts whose redirect/CORS policy
-                // the page cannot follow (e.g. youtube.com → consent.youtube.com).
-                // Distinguish those cases with a DNS-over-HTTPS lookup: only a host
-                // that does not resolve is provably broken.
-                const hostResolves = await this._hostResolves(normalizedUrl);
-                if (hostResolves === true) {
-                    return {
-                        status: 'unknown',
-                        error: _('Blocked by the browser: the host exists but the page could not be checked'),
-                    };
-                }
-                if (hostResolves === false) {
-                    return { status: 'broken', error: _('Could not resolve host') };
-                }
-
-                return {
-                    status: 'broken',
-                    error: getError?.message || _('Network error'),
-                };
-            }
-        } catch (error) {
-            // URL parsing or other errors
-            return { status: 'broken', error: _('Invalid URL') };
         }
+
+        return {
+            status: 'unknown',
+            error: _('Not checked automatically: open the link to review it'),
+        };
     }
 
     /**
-     * Probe a URL with a no-cors request (opaque success ⇒ reachable).
-     * @param {string} url
-     * @param {'HEAD'|'GET'} method
-     * @returns {Promise<Response>}
+     * Main-process link checker exposed by the Electron preload, or null when
+     * running in a plain browser.
+     * @returns {Function|null}
      * @private
      */
-    async _probeUrl(url, method) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        try {
-            // no-cors: we only care whether the request completes without a network
-            // error. Status is opaque (0) and cannot be read cross-origin.
-            return await fetch(url, {
-                method,
-                mode: 'no-cors',
-                signal: controller.signal,
-                // Avoid sending cookies that can force consent/redirect chains.
-                credentials: 'omit',
-            });
-        } finally {
-            clearTimeout(timeoutId);
-        }
-    }
-
-    /**
-     * Check whether a URL's hostname resolves via DNS-over-HTTPS.
-     * Returns true / false when DoH answers, or null when the probe itself fails
-     * (offline, blocked, etc.) so the caller can fall back to the original error.
-     * @param {string} url
-     * @returns {Promise<boolean|null>}
-     * @private
-     */
-    async _hostResolves(url) {
-        let hostname;
-        try {
-            hostname = new URL(url).hostname;
-        } catch {
-            return false;
-        }
-        if (!hostname) {
-            return false;
-        }
-
-        // Cloudflare DoH is CORS-enabled and needs no API key. Only used as a
-        // last resort after browser fetch failed, so we never send hostnames for
-        // links that already validated successfully.
-        const dohUrl =
-            'https://cloudflare-dns.com/dns-query?name=' +
-            encodeURIComponent(hostname) +
-            '&type=A';
-
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-            let response;
-            try {
-                response = await fetch(dohUrl, {
-                    method: 'GET',
-                    headers: { Accept: 'application/dns-json' },
-                    signal: controller.signal,
-                    credentials: 'omit',
-                });
-            } finally {
-                clearTimeout(timeoutId);
-            }
-            if (!response.ok) {
-                return null;
-            }
-            const data = await response.json();
-            // DNS RCODE: 0 = NOERROR, 3 = NXDOMAIN. Any answer section means the
-            // name exists (A, CNAME, etc.).
-            if (data && data.Status === 3) {
-                return false;
-            }
-            if (data && data.Status === 0 && Array.isArray(data.Answer) && data.Answer.length > 0) {
-                return true;
-            }
-            // NOERROR with no Answer can still be a valid host (NODATA for A but
-            // AAAA-only, etc.). Treat Status 0 as resolved.
-            if (data && data.Status === 0) {
-                return true;
-            }
-            return false;
-        } catch {
-            return null;
-        }
+    _getElectronLinkChecker() {
+        const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+        return typeof api?.checkLink === 'function' ? api.checkLink : null;
     }
 
     // =====================================================

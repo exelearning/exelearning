@@ -144,13 +144,48 @@ describe('LinkValidationManager', () => {
                 id: '3',
                 url: 'https://www.youtube.com/@example',
                 status: 'unknown',
-                error: 'Blocked by the browser: the host exists but the page could not be checked',
+                error: 'Not checked automatically: open the link to review it',
             });
 
             const unknown = manager.getUnknownLinks();
 
             expect(unknown).toHaveLength(1);
             expect(unknown[0].url).toBe('https://www.youtube.com/@example');
+        });
+    });
+
+    describe('isBrowserLimited', () => {
+        afterEach(() => {
+            delete window.electronAPI;
+            // clearAllMocks does not reset return values: restore the default
+            // stream URL so later describes keep exercising the SSE path.
+            mockApi.getLinkValidationStreamUrl.mockReturnValue('http://test.com/validate-stream');
+        });
+
+        it('should be false when the server validation stream is available', () => {
+            mockApi.getLinkValidationStreamUrl.mockReturnValue('http://test.com/validate-stream');
+
+            expect(new LinkValidationManager().isBrowserLimited()).toBe(false);
+        });
+
+        it('should be true in a plain browser without server stream (static web flavor)', () => {
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+
+            expect(new LinkValidationManager().isBrowserLimited()).toBe(true);
+        });
+
+        it('should be false in the desktop app, where the main process checks links', () => {
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            window.electronAPI = { checkLink: () => {} };
+
+            expect(new LinkValidationManager().isBrowserLimited()).toBe(false);
+        });
+
+        it('should be true when the desktop shell does not expose checkLink (outdated shell)', () => {
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            window.electronAPI = {};
+
+            expect(new LinkValidationManager().isBrowserLimited()).toBe(true);
         });
     });
 
