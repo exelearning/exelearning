@@ -5,6 +5,7 @@
  */
 
 import ImportProgress from '../../interface/importProgress.js';
+import { isImportCancelled } from '../../interface/importResult.js';
 import { exportPageAndDownload } from './pageExportHelper.js';
 import { startInlineTitleEdit } from '../../project/idevices/inlineTitleEditor.js';
 
@@ -596,6 +597,14 @@ export default class MenuStructureBehaviour {
 
                     // Hide progress
                     importProgress.hide();
+
+                    // Import cancelled/rejected (over-limit archive or declined
+                    // confirmation): the bridge left the project unchanged and
+                    // already surfaced any error, so skip the refresh. #2198
+                    if (isImportCancelled(stats)) {
+                        Logger.log('[MenuStructure] Import cancelled/rejected; structure unchanged');
+                        return;
+                    }
 
                     // Refresh structure
                     if (this.structureEngine &&
