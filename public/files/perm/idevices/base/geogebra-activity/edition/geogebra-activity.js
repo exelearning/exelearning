@@ -87,11 +87,11 @@ var $exeDevice = {
                             <span class="mb-0">${_('Authorship')}:</span>
                             <span id="geogebraActivityAuthorURL">&hellip;</span>
                         </div>
-                        <div id="geogebraActivitySize" class="d-none flex-wrap align-items-center gap-2 mb-3">
+                        <div id="geogebraActivitySize" class="d-flex flex-wrap align-items-center gap-2 mb-3">
                             <label for="geogebraActivityWidth" class="mb-0">${_('Width')}:</label>
-                            <input type="text" maxlength="1500" name="geogebraActivityWidth" id="geogebraActivityWidth" class="form-control" /><span>px</span>
-                            <label for="geogebraActivityHeight" class="mb-0">${_('Height')}:</label>
-                            <input type="text" maxlength="1500" name="geogebraActivityHeight" id="geogebraActivityHeight" class="form-control" /><span>px</span>
+                            <input type="text" maxlength="4" placeholder="800" name="geogebraActivityWidth" id="geogebraActivityWidth" class="form-control me-0" /><span class="text-muted me-2">px</span>
+                            <label for="geogebraActivityHeight" class="ps-3 mb-0">${_('Height')}:</label>
+                            <input type="text" maxlength="4" placeholder="600" name="geogebraActivityHeight" id="geogebraActivityHeight" class="form-control me-0" /><span class="text-muted">px</span>
                         </div>
                     </div>
                 </fieldset>
