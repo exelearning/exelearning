@@ -9,7 +9,7 @@ const fflate = require('fflate');
 const https = require('https');
 
 const { initAutoUpdater } = require('./update-manager');
-const { checkExternalLink } = require('./link-check');
+const { checkExternalLink, resolvesToPrivateAddress } = require('./link-check');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -1564,10 +1564,16 @@ ipcMain.handle('app:readFile', async (_e, { filePath }) => {
 
 // Check an external link from the main process, where CORS does not apply,
 // and report the real HTTP status — same outcome as server-side validation.
+// Local/private addresses are never probed automatically: an untrusted OER
+// must not turn link validation into a LAN scan. Those rows ask for a manual
+// review instead (the renderer maps the reason to a translated message).
 ipcMain.handle('app:checkLink', async (_e, { url } = {}) => {
     const isExternal = typeof url === 'string' && /^(https?:)?\/\//.test(url);
     if (!isExternal) {
         return { status: 'unknown', error: null };
+    }
+    if (await resolvesToPrivateAddress(url)) {
+        return { status: 'unknown', reason: 'private-address', error: null };
     }
     const error = await checkExternalLink(url, { fetchImpl: net.fetch.bind(net) });
     return { status: error ? 'broken' : 'valid', error };

@@ -169,22 +169,14 @@ export function extractLinksFromIdevices(idevices: IdeviceContent[]): ExtractedL
 // =====================================================
 
 /**
- * HEAD statuses that must be confirmed with a ranged GET before classifying
- * the link. HEAD answers are unreliable across CDNs/WAFs: some reject the
- * method (405/403/401/501) and some lie outright (e.g. educa.madrid answers
- * HEAD with 404 while GET returns the real status), so only a 2xx/3xx HEAD
- * is trusted.
- */
-export function shouldFallbackFromHead(status: number): boolean {
-    return classifyHttpStatus(status) !== null;
-}
-
-/**
  * Classify an HTTP status from a completed request as valid (null) or broken (message).
  * Any 2xx/3xx response means the resource exists for link-check purposes.
  */
 export function classifyHttpStatus(status: number): string | null {
     if (status >= 200 && status < 400) return null;
+    // 416 = our `Range: bytes=0-0` was not satisfiable (zero-length
+    // resource): the resource exists, there is just no byte 0 to serve.
+    if (status === 416) return null;
     return String(status);
 }
 
@@ -240,7 +232,7 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-        // Browser-like headers: some hosts drop or 403 bare bot-like HEAD/GET.
+        // Browser-like headers: some hosts drop or 403 bare bot-like requests.
         const browserHeaders: Record<string, string> = {
             'User-Agent':
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -249,79 +241,40 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
         };
 
         try {
-            // safeFetch enforces SSRF egress filtering (allow only http(s), reject
-            // private/loopback/link-local/CGNAT addresses) and follows redirects
-            // manually, re-validating every hop. It forces redirect: 'manual'
-            // internally, so we must NOT pass redirect: 'follow'.
-            let response: Response;
+            // A single ranged GET — no HEAD. Too many hosts reject HEAD
+            // (405/403), lie about it (educa.madrid answers HEAD with 404
+            // while GET returns the real status) or simply hang on it. A GET
+            // is what a browser sends, so hosts answer it truthfully; Range
+            // keeps the transfer to one byte on servers that honor it, and
+            // the body is cancelled unread either way.
+            //
+            // safeFetch enforces SSRF egress filtering (allow only http(s),
+            // reject private/loopback/link-local/CGNAT addresses) and follows
+            // redirects manually, re-validating every hop. It forces
+            // redirect: 'manual' internally, so we must NOT pass
+            // redirect: 'follow'.
+            const response = await safeFetch(normalizedUrl, {
+                method: 'GET',
+                signal: controller.signal,
+                maxRedirects,
+                lookupFn,
+                fetchImpl,
+                headers: {
+                    ...browserHeaders,
+                    Range: 'bytes=0-0',
+                    // identity: a compressed body sliced by Range is a
+                    // truncated gzip stream that some fetch implementations
+                    // refuse to accept.
+                    'Accept-Encoding': 'identity',
+                },
+            });
             try {
-                response = await safeFetch(normalizedUrl, {
-                    method: 'HEAD',
-                    signal: controller.signal,
-                    maxRedirects,
-                    lookupFn,
-                    fetchImpl,
-                    headers: browserHeaders,
-                });
-            } catch (headError: unknown) {
-                // Some hosts drop or hang on HEAD connections entirely. Fall
-                // back to a ranged GET (with its own timeout) before treating
-                // the link as a network failure or a timeout.
-                if (headError instanceof SsrfBlockedError) {
-                    throw headError;
-                }
-                clearTimeout(timeoutId);
-                const controller2 = new AbortController();
-                const timeoutId2 = setTimeout(() => controller2.abort(), timeout);
-                try {
-                    response = await safeFetch(normalizedUrl, {
-                        method: 'GET',
-                        signal: controller2.signal,
-                        maxRedirects,
-                        lookupFn,
-                        fetchImpl,
-                        headers: {
-                            ...browserHeaders,
-                            Range: 'bytes=0-0',
-                        },
-                    });
-                } finally {
-                    clearTimeout(timeoutId2);
-                }
-                // Re-arm outer timeout bookkeeping: HEAD already consumed the
-                // first timer; GET used its own. Mark outer timer as cleared.
-                // (timeoutId already cleared above.)
-                return classifyHttpStatus(response.status);
+                await response.body?.cancel();
+            } catch {
+                // Stream already closed or locked — the status is all we need.
             }
-
-            clearTimeout(timeoutId);
-
-            // Hosts that reject HEAD (405 Method Not Allowed, or bot-style 403)
-            // often still answer a minimal ranged GET. Fall back before reporting
-            // the HEAD status as a broken link.
-            if (shouldFallbackFromHead(response.status)) {
-                const controller2 = new AbortController();
-                const timeoutId2 = setTimeout(() => controller2.abort(), timeout);
-                try {
-                    response = await safeFetch(normalizedUrl, {
-                        method: 'GET',
-                        signal: controller2.signal,
-                        maxRedirects,
-                        lookupFn,
-                        fetchImpl,
-                        headers: {
-                            ...browserHeaders,
-                            Range: 'bytes=0-0',
-                        },
-                    });
-                } finally {
-                    clearTimeout(timeoutId2);
-                }
-            }
-
             return classifyHttpStatus(response.status);
         } catch (fetchError: unknown) {
-            clearTimeout(timeoutId);
             // The SSRF guard blocked the URL or one of its redirect hops (private/
             // loopback/link-local/CGNAT, disallowed scheme, etc.). Treat as broken
             // without reflecting the resolved address (no internal-host oracle).
@@ -334,6 +287,8 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
             if (cause?.code === 'ENOTFOUND') return 'Could not resolve host';
             if (cause?.code === 'ECONNREFUSED') return 'Connection refused';
             return err.message || 'Network error';
+        } finally {
+            clearTimeout(timeoutId);
         }
     } catch {
         return 'URL using bad/illegal format';

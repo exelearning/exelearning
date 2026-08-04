@@ -345,6 +345,24 @@ describe('LinkValidationAdapter', () => {
                 expect(result.status).toBe('unknown');
             });
 
+            it('should explain when the main process refused a local/private address', async () => {
+                checkLink.mockResolvedValue({ status: 'unknown', reason: 'private-address', error: null });
+
+                const result = await adapter.validateLink('http://192.168.1.1/admin');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Local or private address: open the link to review it manually');
+            });
+
+            it('should use the generic review message for unknown results without a reason', async () => {
+                checkLink.mockResolvedValue({ status: 'unknown', error: null });
+
+                const result = await adapter.validateLink('https://example.com');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Not checked automatically: open the link to review it');
+            });
+
             it('should not delegate internal URLs to the main process', async () => {
                 const result = await adapter.validateLink('exe-node:page1');
 

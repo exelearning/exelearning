@@ -250,6 +250,17 @@ export default class LinkValidationAdapter {
                 if (result?.status === 'valid' || result?.status === 'broken') {
                     return { status: result.status, error: result.error ?? null };
                 }
+                if (result?.status === 'unknown') {
+                    // The main process refuses to probe local/private addresses
+                    // automatically (LAN-scan protection); tell the user why.
+                    return {
+                        status: 'unknown',
+                        error:
+                            result.reason === 'private-address'
+                                ? _('Local or private address: open the link to review it manually')
+                                : _('Not checked automatically: open the link to review it'),
+                    };
+                }
             } catch (_e) {
                 // IPC unavailable (e.g. outdated desktop shell): fall through
                 // to the browser-limited outcome below.
