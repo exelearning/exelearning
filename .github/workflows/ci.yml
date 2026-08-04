@@ -80,6 +80,13 @@ jobs:
         run: make bundle
 
       - name: Frontend Tests + Coverage
+        env:
+          # Remapping the v8 coverage of the whole public/app tree peaks just under
+          # Node's default heap cap on this runner (~4.1 GB of ~4.14 GB), so the job
+          # aborts with "Reached heap limit" while writing the lcov report — after
+          # every test has already passed. The peak grows with the codebase, so the
+          # cap has to be stated rather than left to Node's default.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: make test-frontend
 
       - name: Upload coverage to Codecov

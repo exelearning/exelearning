@@ -24,6 +24,45 @@ var $geogebraactivity = {
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
 
+    /**
+     * Parse the GeoGebra size helper classes and return [width, height].
+     *
+     * Accepts a DOM element (uses its `className`), a raw class string, or an
+     * already-split array of class tokens. Falls back to the configured
+     * defaults when a size class is missing, zero or non-numeric. Shared by
+     * both `indicator.getSize` and `addActivity` so the parsing lives in one
+     * place.
+     *
+     * @param {(Element|string|string[])} input
+     * @returns {[number, number]} [width, height]
+     */
+    parseSizeClasses: function (input) {
+        let w = $geogebraactivity.defaults.width;
+        let h = $geogebraactivity.defaults.height;
+        let classes;
+        if (Array.isArray(input)) {
+            classes = input;
+        } else {
+            let classString =
+                input && typeof input === 'object' ? input.className : input;
+            classes = (classString || '').split(' ');
+        }
+        for (let i = 0; i < classes.length; i++) {
+            if (classes[i].indexOf('auto-geogebra-width-') == 0) {
+                let parsedWidth = parseInt(
+                    classes[i].replace('auto-geogebra-width-', '')
+                );
+                if (!isNaN(parsedWidth) && parsedWidth > 0) w = parsedWidth;
+            } else if (classes[i].indexOf('auto-geogebra-height-') == 0) {
+                let parsedHeight = parseInt(
+                    classes[i].replace('auto-geogebra-height-', '')
+                );
+                if (!isNaN(parsedHeight) && parsedHeight > 0) h = parsedHeight;
+            }
+        }
+        return [w, h];
+    },
+
     init: function () {
         this.isInExe = eXe.app.isInExe();
         const nx = $('.idevice_node.geogebra-activity')
@@ -187,17 +226,7 @@ var $geogebraactivity = {
         },
 
         getSize: function (e) {
-            let w = $geogebraactivity.defaults.width;
-            let h = $geogebraactivity.defaults.height;
-            let c = e.className;
-            c = c.split(' ');
-            for (let i = 0; i < c.length; i++) {
-                if (c[i].indexOf('auto-geogebra-width-') == 0)
-                    w = c[i].replace('auto-geogebra-width-', '');
-                else if (c[i].indexOf('auto-geogebra-height-') == 0)
-                    h = c[i].replace('auto-geogebra-height-', '');
-            }
-            return [w, h];
+            return $geogebraactivity.parseSizeClasses(e);
         },
 
         getIDEvaluation: function (e) {
@@ -236,8 +265,9 @@ var $geogebraactivity = {
         let sfx = id + inst;
         $(e).html('').css('margin', '0 auto');
         e.id = 'auto-geogebra-' + sfx;
-        let width = this.defaults.width;
-        let height = this.defaults.height;
+        let size = $geogebraactivity.parseSizeClasses(c);
+        let width = size[0];
+        let height = size[1];
         let lang = 'en';
         let borderColor = '#FFFFFF';
         let scale = 1;
@@ -246,20 +276,7 @@ var $geogebraactivity = {
         let weighted = 100;
         for (let i = 0; i < c.length; i++) {
             let currentClass = c[i];
-            if (currentClass.indexOf('auto-geogebra-width-') == 0) {
-                currentClass = currentClass.replace('auto-geogebra-width-', '');
-                currentClass = parseInt(currentClass);
-                if (!isNaN(currentClass) && currentClass > 0)
-                    width = currentClass;
-            } else if (currentClass.indexOf('auto-geogebra-height-') == 0) {
-                currentClass = currentClass.replace(
-                    'auto-geogebra-height-',
-                    ''
-                );
-                currentClass = parseInt(currentClass);
-                if (!isNaN(currentClass) && currentClass > 0)
-                    height = currentClass;
-            } else if (currentClass.indexOf('language-') == 0) {
+            if (currentClass.indexOf('language-') == 0) {
                 lang = currentClass.replace('language-', '');
             } else if (currentClass.indexOf('auto-geogebra-border-') == 0) {
                 currentClass = currentClass.replace(

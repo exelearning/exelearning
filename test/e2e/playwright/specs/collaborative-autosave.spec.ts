@@ -35,7 +35,8 @@ async function waitForCollaboratorPresent(page: import('@playwright/test').Page)
  * persisted when someone clicked Save. If the last editor closed their tab
  * without saving, the visible collaborative changes were lost on reopen. These
  * tests verify that the conservative idle autosave persists the shared state,
- * and that the collaborative status notice communicates it.
+ * and that the compact Save-button status badge (with a visually-hidden live
+ * region for screen readers) communicates it.
  *
  * Skipped in static mode (no WebSocket collaboration / no remote storage).
  */
@@ -84,12 +85,14 @@ test.describe('Collaborative autosave', () => {
         // Client B sees it live (confirms the shared-live state).
         await navB.waitForNodeInNav(nodeName, 30000);
 
-        // The collaborative notice appears and settles on the saved state once
-        // the idle autosave has persisted the change to the server.
-        const notice = authenticatedPage.locator('#exe-collab-save-status');
-        await expect(notice).toBeVisible({ timeout: 15000 });
-        await expect(notice).toHaveClass(/collab-save-status--clean/, { timeout: 20000 });
-        await expect(notice).toContainText('All collaborative changes are saved.');
+        // The compact Save-button badge settles on the "clean" state once the
+        // idle autosave has persisted the change to the server, and the
+        // visually-hidden live region announces it to screen readers.
+        const badge = authenticatedPage.locator('#head-top-save-button .collab-autosave-badge');
+        await expect(badge).toBeVisible({ timeout: 15000 });
+        await expect(badge).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
+        const liveRegion = authenticatedPage.locator('#exe-collab-save-status .content');
+        await expect(liveRegion).toHaveText('All collaborative changes are saved.');
 
         // Both editors leave WITHOUT clicking Save.
         await secondAuthenticatedPage.close();
@@ -125,8 +128,18 @@ test.describe('Collaborative autosave', () => {
         const navA = new NavigationPage(authenticatedPage);
         await navA.createNodeAtRoot(`Pending Node ${Date.now()}`);
 
-        const notice = authenticatedPage.locator('#exe-collab-save-status');
-        await expect(notice).toBeVisible({ timeout: 15000 });
-        await expect(notice).toContainText('Collaborative changes are shared live and will be saved automatically.');
+        // The compact badge shows the "pending" state and the visually-hidden
+        // live region carries the full explanation for screen readers.
+        const badge = authenticatedPage.locator('#head-top-save-button .collab-autosave-badge');
+        await expect(badge).toBeVisible({ timeout: 15000 });
+        await expect(badge).toHaveAttribute('data-collab-phase', 'pending', { timeout: 15000 });
+        const liveRegion = authenticatedPage.locator('#exe-collab-save-status .content');
+        await expect(liveRegion).toHaveText('Collaborative changes are shared live and will be saved automatically.');
+
+        // Responsive: the compact indicator must stay reachable and not vanish
+        // at a narrow (mobile) width, where the Save button collapses to an icon.
+        await authenticatedPage.setViewportSize({ width: 375, height: 720 });
+        await expect(authenticatedPage.locator('#head-top-save-button')).toBeVisible();
+        await expect(badge).toBeVisible();
     });
 });

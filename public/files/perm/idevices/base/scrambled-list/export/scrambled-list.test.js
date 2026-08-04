@@ -41,6 +41,22 @@ describe('scrambled-list iDevice export', () => {
     $scrambledlist = loadExportIdevice(code);
   });
 
+  describe('updateConfig', () => {
+    beforeEach(() => {
+      eXe.app.isInExe = vi.fn(() => false);
+      eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/scrambled-list/');
+      document.body.innerHTML = '';
+    });
+
+    it('does not throw when there is no saved data at all', () => {
+      expect(() => $scrambledlist.updateConfig(undefined, 'sl-1')).not.toThrow();
+    });
+
+    it('does not throw when the saved data is empty', () => {
+      expect(() => $scrambledlist.updateConfig({}, 'sl-1')).not.toThrow();
+    });
+  });
+
   describe('randomizeArray', () => {
     it('returns array of same length', () => {
       const arr = [1, 2, 3, 4, 5];
