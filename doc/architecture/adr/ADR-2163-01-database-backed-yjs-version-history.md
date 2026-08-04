@@ -1,16 +1,15 @@
 ---
-id: ADR-0001
+id: ADR-2163-01
 title: "Store limited Yjs version history in the database"
 status: Proposed
 date: 2026-07-13
+tracking_issue: 2163
+legacy_id: ADR-0001
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues:
-    - 2163
   prs: []
-  sdds: []
+  changes: []
   adrs: []
 supersedes: []
 superseded_by: []
@@ -19,11 +18,7 @@ ai_assistance:
   model: "GPT-5.6 Thinking"
 ---
 
-# ADR-0001: Store limited Yjs version history in the database
-
-## Status
-
-Proposed
+# ADR-2163-01: Store limited Yjs version history in the database
 
 ## Context
 
