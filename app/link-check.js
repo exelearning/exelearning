@@ -24,16 +24,6 @@ const BROWSER_HEADERS = {
 };
 
 /**
- * HEAD statuses that commonly mean "method not welcome" rather than "URL
- * missing". Fall back to a ranged GET before classifying the link as broken.
- * @param {number} status
- * @returns {boolean}
- */
-function shouldFallbackFromHead(status) {
-    return status === 405 || status === 403 || status === 401 || status === 501;
-}
-
-/**
  * Classify an HTTP status as valid (null) or broken (message).
  * Any 2xx/3xx response means the resource exists for link-check purposes.
  * @param {number} status
@@ -76,20 +66,21 @@ async function checkExternalLink(url, { fetchImpl, timeout = DEFAULT_TIMEOUT }) 
     };
 
     try {
-        let response;
         try {
-            response = await request('HEAD');
-        } catch (headError) {
-            if (isTimeoutError(headError)) throw headError;
-            // Some hosts drop HEAD connections entirely; retry with a ranged
-            // GET before treating the link as a network failure.
-            response = await request('GET', { Range: 'bytes=0-0' });
-            return classifyHttpStatus(response.status);
+            const headResponse = await request('HEAD');
+            // HEAD answers are unreliable: CDNs/WAFs reject the method
+            // (405/403) or lie outright (educa.madrid answers HEAD with 404
+            // while GET returns the real status). Only a healthy HEAD may
+            // classify the link on its own.
+            if (classifyHttpStatus(headResponse.status) === null) {
+                return null;
+            }
+        } catch (_headError) {
+            // Dropped connection or timeout on HEAD: some hosts hang on HEAD
+            // requests — the ranged GET below settles it either way.
         }
-        if (shouldFallbackFromHead(response.status)) {
-            response = await request('GET', { Range: 'bytes=0-0' });
-        }
-        return classifyHttpStatus(response.status);
+        const getResponse = await request('GET', { Range: 'bytes=0-0' });
+        return classifyHttpStatus(getResponse.status);
     } catch (err) {
         if (isTimeoutError(err)) return 'Timeout';
         // Node's fetch reports failures via error.cause.code (ENOTFOUND);
@@ -106,5 +97,4 @@ module.exports = {
     BROWSER_HEADERS,
     checkExternalLink,
     classifyHttpStatus,
-    shouldFallbackFromHead,
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { BROWSER_HEADERS, checkExternalLink, classifyHttpStatus, shouldFallbackFromHead } = require('./link-check');
+const { BROWSER_HEADERS, checkExternalLink, classifyHttpStatus } = require('./link-check');
 
 const okResponse = { status: 200 };
 const notFoundResponse = { status: 404 };
@@ -19,17 +19,6 @@ describe('link-check', () => {
         });
     });
 
-    describe('shouldFallbackFromHead', () => {
-        it('falls back for method-hostile statuses only', () => {
-            expect(shouldFallbackFromHead(405)).toBe(true);
-            expect(shouldFallbackFromHead(403)).toBe(true);
-            expect(shouldFallbackFromHead(401)).toBe(true);
-            expect(shouldFallbackFromHead(501)).toBe(true);
-            expect(shouldFallbackFromHead(404)).toBe(false);
-            expect(shouldFallbackFromHead(200)).toBe(false);
-        });
-    });
-
     describe('checkExternalLink', () => {
         it('returns null when HEAD answers 2xx', async () => {
             const fetchImpl = mock(async () => okResponse);
@@ -45,10 +34,24 @@ describe('link-check', () => {
             expect(options.headers['User-Agent']).toBe(BROWSER_HEADERS['User-Agent']);
         });
 
-        it('reports the real status code when HEAD answers 404', async () => {
+        it('confirms a 404 HEAD with a ranged GET before reporting it', async () => {
             const fetchImpl = mock(async () => notFoundResponse);
 
             expect(await checkExternalLink('https://example.com/missing', { fetchImpl })).toBe('404');
+            expect(fetchImpl).toHaveBeenCalledTimes(2);
+            const [, getOptions] = fetchImpl.mock.calls[1];
+            expect(getOptions.method).toBe('GET');
+            expect(getOptions.headers.Range).toBe('bytes=0-0');
+        });
+
+        it('does not trust a 404 HEAD when the GET says the page exists (lying CDN)', async () => {
+            // educa.madrid answers HEAD with 404 while GET returns the real status
+            const fetchImpl = mock()
+                .mockResolvedValueOnce(notFoundResponse)
+                .mockResolvedValueOnce(okResponse);
+
+            expect(await checkExternalLink('https://educasaac.educa.madrid.org/', { fetchImpl })).toBeNull();
+            expect(fetchImpl).toHaveBeenCalledTimes(2);
         });
 
         it('falls back from a 403 HEAD to a ranged GET and uses its status', async () => {
@@ -74,7 +77,18 @@ describe('link-check', () => {
             expect(fetchImpl).toHaveBeenCalledTimes(2);
         });
 
-        it('does not retry with GET when HEAD timed out', async () => {
+        it('falls back to GET when HEAD times out (host hangs on HEAD)', async () => {
+            const abortError = new Error('Aborted');
+            abortError.name = 'AbortError';
+            const fetchImpl = mock()
+                .mockRejectedValueOnce(abortError)
+                .mockResolvedValueOnce(okResponse);
+
+            expect(await checkExternalLink('https://slow-head.example.com', { fetchImpl })).toBeNull();
+            expect(fetchImpl).toHaveBeenCalledTimes(2);
+        });
+
+        it('reports Timeout when HEAD and GET both time out', async () => {
             const abortError = new Error('Aborted');
             abortError.name = 'AbortError';
             const fetchImpl = mock(async () => {
@@ -82,7 +96,7 @@ describe('link-check', () => {
             });
 
             expect(await checkExternalLink('https://slow.example.com', { fetchImpl })).toBe('Timeout');
-            expect(fetchImpl).toHaveBeenCalledTimes(1);
+            expect(fetchImpl).toHaveBeenCalledTimes(2);
         });
 
         it('reports a timeout when the GET fallback times out', async () => {

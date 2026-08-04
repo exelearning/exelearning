@@ -230,6 +230,10 @@ export default class LinkValidationManager {
 
         const adapter = eXeLearning.app.api.getAdapter('linkValidation');
 
+        // The same URL can appear in several iDevices (one row each): check it
+        // once per run so every row agrees and each host is probed only once.
+        const resultsByUrl = new Map();
+
         for (const link of links) {
             // Check if validation was cancelled
             if (this.isCancelled) {
@@ -251,10 +255,15 @@ export default class LinkValidationManager {
             // Validate using adapter (or mark as valid if no adapter)
             let result = { status: 'valid', error: null };
             if (adapter?.validateLink) {
-                try {
-                    result = await adapter.validateLink(link.url);
-                } catch (err) {
-                    result = { status: 'broken', error: err.message };
+                if (resultsByUrl.has(link.url)) {
+                    result = resultsByUrl.get(link.url);
+                } else {
+                    try {
+                        result = await adapter.validateLink(link.url);
+                    } catch (err) {
+                        result = { status: 'broken', error: err.message };
+                    }
+                    resultsByUrl.set(link.url, result);
                 }
             }
 

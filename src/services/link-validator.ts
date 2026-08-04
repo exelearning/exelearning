@@ -169,11 +169,14 @@ export function extractLinksFromIdevices(idevices: IdeviceContent[]): ExtractedL
 // =====================================================
 
 /**
- * HEAD statuses that commonly mean "method not welcome" rather than "URL missing".
- * Fall back to a ranged GET before classifying the link as broken.
+ * HEAD statuses that must be confirmed with a ranged GET before classifying
+ * the link. HEAD answers are unreliable across CDNs/WAFs: some reject the
+ * method (405/403/401/501) and some lie outright (e.g. educa.madrid answers
+ * HEAD with 404 while GET returns the real status), so only a 2xx/3xx HEAD
+ * is trusted.
  */
 export function shouldFallbackFromHead(status: number): boolean {
-    return status === 405 || status === 403 || status === 401 || status === 501;
+    return classifyHttpStatus(status) !== null;
 }
 
 /**
@@ -261,13 +264,10 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
                     headers: browserHeaders,
                 });
             } catch (headError: unknown) {
-                // Some hosts drop HEAD connections entirely. Fall back to a
-                // ranged GET before treating the link as a network failure.
+                // Some hosts drop or hang on HEAD connections entirely. Fall
+                // back to a ranged GET (with its own timeout) before treating
+                // the link as a network failure or a timeout.
                 if (headError instanceof SsrfBlockedError) {
-                    throw headError;
-                }
-                const headErr = headError as { name?: string };
-                if (headErr.name === 'AbortError') {
                     throw headError;
                 }
                 clearTimeout(timeoutId);

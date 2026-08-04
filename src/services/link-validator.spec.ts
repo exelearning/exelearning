@@ -419,6 +419,69 @@ describe('Link Validator Service', () => {
             expect(callCount).toBe(2);
         });
 
+        it('should not trust a 404 HEAD when the GET confirms the page exists (lying CDN)', async () => {
+            // educa.madrid answers HEAD with 404 while a GET returns the real
+            // status: only a 2xx/3xx HEAD may classify a link on its own.
+            let callCount = 0;
+            const fetchImpl = (async (_url: string, options?: RequestInit) => {
+                callCount++;
+                if (options?.method === 'HEAD') {
+                    return mockResponse({ status: 404, ok: false });
+                }
+                expect(options?.method).toBe('GET');
+                expect(options?.headers).toMatchObject({ Range: 'bytes=0-0' });
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/head-lies', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+            expect(callCount).toBe(2);
+        });
+
+        it('should fall back to GET when HEAD times out (host hangs on HEAD)', async () => {
+            let callCount = 0;
+            const fetchImpl = (async (_url: string, options?: RequestInit) => {
+                callCount++;
+                if (options?.method === 'HEAD') {
+                    const abortError = new Error('The operation was aborted');
+                    abortError.name = 'AbortError';
+                    throw abortError;
+                }
+                expect(options?.method).toBe('GET');
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/head-hangs', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+            expect(callCount).toBe(2);
+        });
+
+        it('should report Timeout when HEAD and the GET fallback both time out', async () => {
+            const fetchImpl = (async () => {
+                const abortError = new Error('The operation was aborted');
+                abortError.name = 'AbortError';
+                throw abortError;
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/slow', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBe('Timeout');
+        });
+
         it('should return error when GET fallback also fails', async () => {
             // Mock fetch to return 405 on HEAD, then 404 on GET.
             const fetchImpl = (async (_url: string, options?: RequestInit) => {
@@ -621,18 +684,20 @@ describe('Link Validator Service', () => {
     });
 
     describe('shouldFallbackFromHead', () => {
-        it('should fallback for method-not-allowed and bot-style rejections', () => {
+        it('should confirm every non-OK HEAD with a GET (HEAD answers are unreliable)', () => {
             expect(shouldFallbackFromHead(405)).toBe(true);
             expect(shouldFallbackFromHead(403)).toBe(true);
             expect(shouldFallbackFromHead(401)).toBe(true);
             expect(shouldFallbackFromHead(501)).toBe(true);
+            // CDNs/WAFs can answer HEAD with 404/5xx for pages a GET can fetch
+            // (educa.madrid replies 404 to HEAD while GET has the real status)
+            expect(shouldFallbackFromHead(404)).toBe(true);
+            expect(shouldFallbackFromHead(500)).toBe(true);
         });
 
-        it('should not fallback for success or genuine missing-resource statuses', () => {
+        it('should trust a healthy HEAD', () => {
             expect(shouldFallbackFromHead(200)).toBe(false);
             expect(shouldFallbackFromHead(301)).toBe(false);
-            expect(shouldFallbackFromHead(404)).toBe(false);
-            expect(shouldFallbackFromHead(500)).toBe(false);
         });
     });
 

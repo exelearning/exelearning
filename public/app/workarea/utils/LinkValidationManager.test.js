@@ -509,6 +509,32 @@ describe('LinkValidationManager', () => {
             expect(onLinkUpdate).toHaveBeenCalledWith('link-1', 'broken', '404', expect.any(Object));
         });
 
+        it('should check a repeated URL only once and give every row the same result', async () => {
+            // The same URL can appear in several iDevices; per-run memoization
+            // avoids inconsistent rows (e.g. one Timeout, one valid).
+            const mockAdapter = {
+                validateLink: vi.fn().mockResolvedValue({ status: 'broken', error: '404' }),
+            };
+            mockApi.getLinkValidationStreamUrl.mockReturnValue(null);
+            mockApi.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+            mockApi.extractLinksForValidation.mockResolvedValue({
+                responseMessage: 'OK',
+                links: [
+                    { id: 'link-1', url: 'https://repeated.com/page', count: 1 },
+                    { id: 'link-2', url: 'https://repeated.com/page', count: 2 },
+                ],
+                totalLinks: 2,
+            });
+
+            const manager = new LinkValidationManager();
+            await manager.startValidation([{ html: '<a href="https://repeated.com/page">Link</a>' }]);
+
+            expect(mockAdapter.validateLink).toHaveBeenCalledTimes(1);
+            expect(manager.getLinkById('link-1').status).toBe('broken');
+            expect(manager.getLinkById('link-2').status).toBe('broken');
+            expect(manager.getLinkById('link-2').error).toBe('404');
+        });
+
         it('should handle adapter validation errors', async () => {
             const mockAdapter = {
                 validateLink: vi.fn().mockRejectedValue(new Error('Validation failed')),
