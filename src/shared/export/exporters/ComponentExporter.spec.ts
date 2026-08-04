@@ -326,6 +326,60 @@ describe('ComponentExporter', () => {
         });
     });
 
+    describe('subtitle .srt -> WebVTT conversion (issue #2034)', () => {
+        it('emits a converted .vtt subtitle asset (never raw .srt bytes) for iDevice exports', async () => {
+            const SRT_UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'P',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'B',
+                            order: 0,
+                            properties: {},
+                            components: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: `<video controls><track kind="subtitles" src="asset://${SRT_UUID}.srt" /></video>`,
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            const doc = new MockDocument({}, pages);
+            const srtAssets = new MockAssetProvider();
+            srtAssets.setAssets([
+                {
+                    id: SRT_UUID,
+                    filename: 'subs.srt',
+                    originalPath: '',
+                    mime: 'application/x-subrip',
+                    data: new TextEncoder().encode('1\n00:00:01,000 --> 00:00:02,000\nHola\n'),
+                },
+            ]);
+            const srtZip = new MockZipProvider();
+            const srtExporter = new ComponentExporter(doc, resources, srtAssets, srtZip);
+
+            await srtExporter.exportComponent('block-1', 'idevice-1');
+
+            const vttPath = srtZip.getFilePaths().find(p => p.endsWith('.vtt'));
+            expect(vttPath, 'component export must ship a converted .vtt subtitle').toBeTruthy();
+            const text = new TextDecoder().decode(srtZip.files.get(vttPath as string));
+            expect(text.startsWith('WEBVTT')).toBe(true);
+            expect(text).toContain('Hola');
+            expect(text).not.toMatch(/\d{2}:\d{2}:\d{2},\d{3}/);
+            expect(srtZip.getFilePaths().some(p => p.endsWith('.srt'))).toBe(false);
+        });
+    });
+
     describe('XML Generation', () => {
         it('should include component type', async () => {
             await exporter.exportComponent('block-1', 'idevice-1');

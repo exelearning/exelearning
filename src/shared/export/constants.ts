@@ -374,6 +374,8 @@ export const MIME_TO_EXTENSION: Record<string, string> = {
     'text/css': '.css',
     'application/javascript': '.js',
     'application/octet-stream': '.bin',
+    'application/x-subrip': '.srt',
+    'text/vtt': '.vtt',
 };
 
 /**
