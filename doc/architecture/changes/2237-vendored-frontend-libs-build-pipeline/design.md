@@ -1,8 +1,9 @@
 ---
-id: SDD-0007
+tracking_issue: 2237
 title: "Vendored frontend libraries sourced from npm and generated at build time"
-status: Implemented
+status: implemented
 date: 2026-07-09
+legacy_id: SDD-0007
 authors:
   - "@erseco"
 reviewers:
@@ -10,11 +11,8 @@ reviewers:
   - "@ignaciogros"
   - "@juanda"
   - "@mnarvaezm"
-related:
-  issues: []
-  prs: [1593, 2149]
-  adrs: [ADR-0029, ADR-0030, ADR-0031]
-  sdds: []
+implementation_prs: [1593]
+related_adrs: [ADR-2237-01, ADR-2237-02, ADR-2237-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -22,11 +20,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0007: Vendored frontend libraries sourced from npm and generated at build time
-
-## Status
-
-Implemented
+# Vendored frontend libraries sourced from npm and generated at build time — design
 
 ## Summary
 
@@ -159,7 +153,7 @@ source: `html2canvas` → `progress-report`, `checklist`, `rubric` export dirs;
 `public/libs/dompurify/`. MathJax is intentionally excluded (documented in the
 file header).
 
-### Yjs shim generator — `scripts/build-yjs-shims.js` (see ADR-0030)
+### Yjs shim generator — `scripts/build-yjs-shims.js` (see ADR-2237-02)
 
 Uses `esbuild` `buildSync` to emit three files under `public/libs/yjs/`:
 
@@ -221,7 +215,7 @@ static declarative structures:
   privileges, so their provenance is security-relevant. Previously they were
   opaque committed blobs with no verifiable origin. After this change each file
   derives from a named npm package pinned in `bun.lock`, and updates flow through
-  Dependabot (ADR-0031) rather than manual blob edits.
+  Dependabot (ADR-2237-03) rather than manual blob edits.
 - **No new runtime third-party surface.** Assets are copied at build time and
   served from the app's own origin; there is no CDN fetch, consistent with the
   offline/desktop/static/embedded requirements and the opaque serving model.
@@ -290,7 +284,7 @@ Delivered as a single PR (#1593) in two conceptual phases reflected in
    fabric) copied by `copy-vendor-libs.js`.
 
 CI gains the vendor build step and E2E artifacts gain the generated files in the
-same PR; Dependabot (ADR-0031) turns on grouped updates going forward.
+same PR; Dependabot (ADR-2237-03) turns on grouped updates going forward.
 
 ## Risks and mitigations
 
@@ -302,7 +296,7 @@ same PR; Dependabot (ADR-0031) turns on grouped updates going forward.
   `build-resource-bundles.js` and the CI "Build vendor libs" step.
 - **Upstream dist path change** → copy fails fast; the "resolves every source
   path" spec catches it after install.
-- **esbuild/Yjs-ecosystem version skew** → mitigated by ADR-0031's grouped
+- **esbuild/Yjs-ecosystem version skew** → mitigated by ADR-2237-03's grouped
   `yjs-ecosystem` and `build-tools` updates plus tests loading the real shim.
 - **Supply-chain compromise** → residual; reduced to lockfile trust, no runtime
   CDN. Future SRI/checksum work.
@@ -319,9 +313,9 @@ same PR; Dependabot (ADR-0031) turns on grouped updates going forward.
 
 | Decision | ADR | Status |
 |---|---|---|
-| Source vendored frontend libraries from npm and generate them at build time | ADR-0029 | Proposed |
-| Ship Yjs to the browser as esbuild-built global-`window.Y` shims generated from root dependencies | ADR-0030 | Proposed |
-| Govern the newly npm-managed frontend dependencies with grouped Dependabot updates | ADR-0031 | Proposed |
+| Source vendored frontend libraries from npm and generate them at build time | ADR-2237-01 | Proposed |
+| Ship Yjs to the browser as esbuild-built global-`window.Y` shims generated from root dependencies | ADR-2237-02 | Proposed |
+| Govern the newly npm-managed frontend dependencies with grouped Dependabot updates | ADR-2237-03 | Proposed |
 
 ## Evidence
 
@@ -377,7 +371,7 @@ same PR; Dependabot (ADR-0031) turns on grouped updates going forward.
 ## References
 
 - PR #1593
-- ADR-0029, ADR-0030, ADR-0031
+- ADR-2237-01, ADR-2237-02, ADR-2237-03
 - `scripts/copy-vendor-libs.js`, `scripts/copy-vendor-libs.spec.ts`
 - `scripts/build-yjs-shims.js`, `public/libs/yjs/build/`
 - `scripts/build-resource-bundles.js`, `scripts/build-resource-bundles.spec.ts`
