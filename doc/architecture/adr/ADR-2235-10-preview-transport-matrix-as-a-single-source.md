@@ -1,16 +1,16 @@
 ---
-id: ADR-0019
+id: ADR-2235-10
 title: "The preview transport matrix is a single source with a consistency gate"
 status: Accepted
 date: 2026-07-26
+tracking_issue: 2235
+legacy_id: ADR-0019
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [2199]
-  sdds: []
-  adrs: [ADR-0002, ADR-0003, ADR-0006, ADR-0009, ADR-0016, ADR-0017]
+  changes: []
+  adrs: [ADR-2235-02, ADR-2235-03, ADR-2235-05, ADR-2235-06, ADR-2235-07, ADR-2235-08]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,35 +18,13 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-0019: The preview transport matrix is a single source with a consistency gate
-
-## Status
-
-Accepted on 2026-07-27.
-
-### Why this was accepted
-
-The alternative is what was there before: the same matrix stated in `previewContentPolicy.js`
-and again in `Capabilities.js`, kept in step by discipline. Two statements of one truth
-diverge — that is not a prediction, it is what duplication does.
-
-What makes this acceptable rather than merely tidy is that the gate **executes** the
-shipped JavaScript rather than re-describing it:
-`src/shared/preview/preview-mode-matrix.consistency.spec.ts` runs
-`previewContentPolicy.js` and compares its answers to the canonical matrix for every
-runtime. A change in one that is not made in the other fails the suite.
-
-The model also refuses to represent states that cannot occur — no `playground` runtime, no
-`dedicated-origin` transport. A matrix that can express impossible combinations invites
-code that handles them.
-
-Accepted because the mechanism is executable, not aspirational.
+# ADR-2235-10: The preview transport matrix is a single source with a consistency gate
 
 ## Context
 
 Which isolation the editor preview uses is a security decision with one input — the
 runtime — and one modifier — whether the author has enabled custom active content.
-[ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md) established the hybrid boundary;
+[ADR-2235-02](ADR-2235-02-hybrid-preview-trust-boundary.md) established the hybrid boundary;
 what it did not establish is *where the decision lives*.
 
 In practice it was spread across `previewContentPolicy.js` (`resolvePreviewTransport`,
@@ -180,5 +158,5 @@ machine-readable `reason`, and `requiresConsentWarning`. An unmodelled runtime
 - `public/app/utils/previewContentPolicy.js`
 - `src/shared/security/previewSandbox.ts` — the sandbox token owner
 - `doc/development/external-media-inventory.md` — spikes S1, S2, S3, S7
-- [ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md),
-  [ADR-0016](ADR-0016-opfs-service-worker-is-not-an-opaque-origin.md)
+- [ADR-2235-02](ADR-2235-02-hybrid-preview-trust-boundary.md),
+  [ADR-2235-07](ADR-2235-07-opfs-service-worker-is-not-an-opaque-origin.md)

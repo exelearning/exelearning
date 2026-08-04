@@ -1,16 +1,16 @@
 ---
-id: ADR-0003
+id: ADR-2235-03
 title: "Preview active-content grant revocation under collaboration (D1)"
 status: Accepted
 date: 2026-07-22
+tracking_issue: 2235
+legacy_id: ADR-0003
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: []
-  sdds: []
-  adrs: [ADR-0002]
+  changes: []
+  adrs: [ADR-2235-02]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,18 +18,14 @@ ai_assistance:
   model: "Claude Fable 5"
 ---
 
-# ADR-0003: Preview active-content grant revocation under collaboration (D1)
-
-## Status
-
-Proposed. Resolves open decision **D1** of [ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md).
+# ADR-2235-03: Preview active-content grant revocation under collaboration (D1)
 
 ## Context
 
 When a user enables custom active content, the grant is scoped to the current
 project and editor session. eXeLearning documents are collaborative: a second
 person (or the same person in another tab) can push Yjs updates into the same
-`Y.Doc` at any time. The base branch (ADR-0001) took the conservative line: **any**
+`Y.Doc` at any time. The base branch (ADR-2235-01) took the conservative line: **any**
 non-system document update revokes the grant, forcing the user to re-consent.
 That is safe but noisy — a user who enables active content and then keeps typing
 is asked to re-enable on essentially every keystroke-batch.
@@ -130,4 +126,4 @@ disabled and the session is disposed.
 - `public/app/utils/previewContentPolicy.js` — `shouldRevokeOnYdocUpdate`
 - `public/app/workarea/interface/elements/previewPanel.js` — update handler + disposal
 - `public/app/yjs/YjsDocumentManager.js` — UndoManager and provider origins
-- [ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md)
+- [ADR-2235-02](ADR-2235-02-hybrid-preview-trust-boundary.md)

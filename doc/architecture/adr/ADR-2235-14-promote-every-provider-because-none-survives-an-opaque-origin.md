@@ -1,16 +1,16 @@
 ---
-id: ADR-0023
+id: ADR-2235-14
 title: "Promote every provider, because none of them survives an opaque origin"
 status: Accepted
 date: 2026-07-27
+tracking_issue: 2235
+legacy_id: ADR-0023
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [2199]
-  sdds: []
-  adrs: [ADR-0017, ADR-0021, ADR-0022]
+  changes: []
+  adrs: [ADR-2235-08, ADR-2235-12, ADR-2235-13]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -22,7 +22,7 @@ ai_assistance:
 
 ## Context
 
-Untrusted packages run sandboxed **without `allow-same-origin`** (ADR-0002/ADR-0026 in the
+Untrusted packages run sandboxed **without `allow-same-origin`** (ADR-2235-02/ADR-0026 in the
 host plugins). The external-media host therefore *promotes* embedded videos: the child
 replaces each provider iframe with a geometry placeholder, and the trusted page mounts the
 real player over it.
@@ -88,7 +88,7 @@ opaque. None does, so the setting would have exactly one correct value for every
 a knob whose only effect is to let an operator break video by setting it wrong.
 
 This is **not** the same as the existing `strict` / `open` policy and its host allowlist
-(ADR-0022, `url-policy.ts`). That decides **what may be promoted**, which is a trust
+(ADR-2235-13, `url-policy.ts`). That decides **what may be promoted**, which is a trust
 question and genuinely belongs to the embedding page. This ADR is about **whether promotion
 is needed at all**, which is settled by the boundary.
 
@@ -97,7 +97,7 @@ is needed at all**, which is settled by the boundary.
 - The promotion path stays uniform: one mechanism, no per-provider branches, nothing to
   keep in sync as providers are added.
 - Adding a provider to the registry means it will be promoted. Being *controllable* is a
-  separate capability that needs a dialect (ADR-0022), and the two do not always both
+  separate capability that needs a dialect (ADR-2235-13), and the two do not always both
   exist.
 
 ### Dailymotion is promotable but not controllable, and that is not our choice
@@ -117,7 +117,7 @@ side. That matches their documentation: the legacy JavaScript Player API has bee
 and control now requires the **Player SDK** ([announced deprecations][dm-deprecations];
 [Web SDK reference][dm-web-sdk]).
 
-ADR-0022 leaves a hatch for exactly this case — a provider SDK running inside an own player
+ADR-2235-13 leaves a hatch for exactly this case — a provider SDK running inside an own player
 host, never on the trusted origin — and then declines to open it here: Dailymotion's Web SDK
 requires a Player ID bound to an account, which their documentation ties to monetization,
 targeting and attribution. For a tool whose exports run in schools that is a

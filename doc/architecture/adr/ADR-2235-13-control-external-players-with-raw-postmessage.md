@@ -1,16 +1,16 @@
 ---
-id: ADR-0022
+id: ADR-2235-13
 title: "Control external players with raw postMessage, keeping provider SDKs off the critical path"
 status: Accepted
 date: 2026-07-26
+tracking_issue: 2235
+legacy_id: ADR-0022
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [2199]
-  sdds: []
-  adrs: [ADR-0017, ADR-0021]
+  changes: []
+  adrs: [ADR-2235-08, ADR-2235-12]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,62 +18,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-0022: Control external players with raw postMessage, keeping provider SDKs off the critical path
-
-## Status
-
-Accepted on 2026-07-27.
-
-### Why this was accepted
-
-Three options. **Lazy-load the official SDKs** is what the brief specified. **Raw
-`postMessage`** is what WordPress and Omeka already ship. **Keep both behind the adapter
-seam** was the compromise, and was rejected: two transports means two sets of failure
-modes for one capability.
-
-The decisive evidence is that core's SDK path does not work and never did [M, verified
-2026-07-27]: `exe-media-host.js` constructs `new root.YT.Player(...)` and
-`new root.Vimeo.Player(...)`, and **core never loads those globals for it** —
-`common.js`'s `loadYoutubeApi` serves the editor's own YouTube handling. Together with F3
-(nothing in core references the media bridge at all), what the brief called the SDK
-integration is an untested dependency that happens never to execute. There is no working
-implementation being traded away.
-
-What makes it feasible is where the player lives: the promoted iframe is mounted **by the
-host**, on a page with a real origin, so it can supply the `enablejsapi=1` and `origin`
-parameters YouTube requires. From the opaque child neither transport would work. This is
-the fact the decision rests on, and it was checked rather than assumed.
-
-The gain is not convenience: it removes a third-party fetch from the path that runs while
-a learner is watching, which is what makes §7.7's privacy argument cover *control* and not
-only posters.
-
-Accepted with the cost named rather than minimised — ready-state tracking and command
-buffering become ours, and the Validation section below lists the tests they owe.
-
-### A reference implementation already exists, and it is not core's [M, 2026-07-27]
-
-Re-verified while starting Phase 6, and it changes the shape of the work:
-
-| | implementation | size |
-|---|---|---|
-| `mod_exelearning/js/exe_media_host.js` | **raw `postMessage`** — "NO YouTube IFrame API / Vimeo SDK", `enablejsapi=1` / `api=1` | 25 310 B |
-| `exelearning/public/app/common/exe_media_bridge/exe-media-host.js` | `new YT.Player(...)` / `new Vimeo.Player(...)` | 16 783 B |
-
-So the ready-state and buffering logic this ADR accepts as a cost is **already written and
-in production** — in a host plugin. What remains is not to invent it but to bring it into
-core, which is what ADR-0021 (core is canonical) requires: the flow is core → plugins, and
-here the better implementation is sitting downstream.
-
-This also has an immediate operational consequence, found by attempting the migration
-rather than by reasoning: **vendoring core's current host bundle into `mod_exelearning`
-would be a regression**, replacing a working raw-postMessage media host with an SDK-based
-one whose globals nobody loads. Phase 6 for the media half is therefore blocked on this
-ADR being implemented, not merely decided. The embed half is unaffected.
-
-The earlier note that this evidence leg "could not be re-verified in this checkout" applied
-to WordPress and Omeka, which are absent. It no longer applies to the claim itself:
-Moodle's copy is present and was read directly.
+# ADR-2235-13: Control external players with raw postMessage, keeping provider SDKs off the critical path
 
 ## Context
 
@@ -140,7 +85,7 @@ We take on what the SDK was doing for us, explicitly:
 Dailymotion is the first provider to force the question: its legacy JavaScript Player API
 has been removed, and three probes of both embed forms (object command, bare-string
 command, modern `geo.dailymotion.com/player.html`) returned nothing but a `get` handshake
-probe — no `apiready`, no `timeupdate`, no acknowledgement. See ADR-0023.
+probe — no `apiready`, no `timeupdate`, no acknowledgement. See ADR-2235-14.
 
 Its Web SDK would work inside an own player host, but it requires a **Player ID bound to a
 Dailymotion account**, and their documentation states the ID exists "to ensure accurate
@@ -212,7 +157,7 @@ deliberately not opened here.
 ## References
 
 - `doc/development/external-media-inventory.md` §5 (P3, P6), §4 S4 (usage evidence), §1.2 (F3)
-- ADR-0021 (core is canonical), ADR-0017 (the handshake that gates promotion)
+- ADR-2235-12 (core is canonical), ADR-2235-08 (the handshake that gates promotion)
 
 [dm-getting-started]: https://developers.dailymotion.com/docs/getting-started-with-the-web-sdk
 [dm-library-script]: https://developers.dailymotion.com/docs/player-library-script

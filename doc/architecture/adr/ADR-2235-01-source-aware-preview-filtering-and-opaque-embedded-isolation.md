@@ -1,38 +1,24 @@
 ---
-id: ADR-0001
+id: ADR-2235-01
 title: "Use source-aware preview filtering in the editor and opaque iframe isolation in embedded hosts"
 status: Superseded
 date: 2026-07-14
+tracking_issue: 2235
+legacy_id: ADR-0001
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [1968]
-  sdds: []
+  changes: []
   adrs: []
 supersedes: []
-superseded_by: [ADR-0002]
+superseded_by: []
 ai_assistance:
   tool: "OpenAI Codex"
   model: "GPT-5"
 ---
 
-# ADR-0001: Use source-aware preview filtering in the editor and opaque iframe isolation in embedded hosts
-
-## Status
-
-Superseded by [ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md).
-
-ADR-0002 keeps this record's source-aware filtering and embedded-host opaque
-isolation, and extends it: enabling custom active content in web/server mode now
-switches the preview to a self-hosted opaque snapshot (instead of running author
-JavaScript same-origin with the editor). The residual risk this ADR called out —
-"enabling custom JavaScript is a trust decision and does not make the project
-safe", with author code reaching the editor DOM and cookies on enable — is what
-ADR-0002 closes for web/server. The rest of this ADR (the filtering policy, the
-non-mutation guarantee, the embedded-host lifecycle, the Electron restriction)
-carries forward unchanged.
+# ADR-2235-01: Use source-aware preview filtering in the editor and opaque iframe isolation in embedded hosts
 
 ## Context
 
@@ -192,11 +178,11 @@ does not claim to prevent those behaviours.
 
 The following records exist only on the unmerged PR branch and are not copied to this branch:
 
-- ADR-0006 and ADR-0009: retained as useful embedded-host security reasoning and refined by
+- ADR-2235-05 and ADR-2235-06: retained as useful embedded-host security reasoning and refined by
   this decision.
 - ADR-0007, ADR-0008, ADR-0011, ADR-0012, and ADR-0015: superseded for the normal editor;
   capability serving remains applicable only to embedded hosts.
 - ADR-0010, ADR-0013, and ADR-0014: superseded; the media overlay, layered revisions, and
   protocol-v2 rollout are not adopted.
-- ADR-0016: retained as historical evidence that OPFS plus a Service Worker does not create an
+- ADR-2235-07: retained as historical evidence that OPFS plus a Service Worker does not create an
   opaque origin.
