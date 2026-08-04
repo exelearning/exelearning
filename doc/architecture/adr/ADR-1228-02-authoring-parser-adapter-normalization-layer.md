@@ -1,8 +1,10 @@
 ---
-id: ADR-0033
+id: ADR-1228-02
 title: "Separate a pure normalized parser from iDevice adapters, mapping onto existing iDevice models"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1228
+legacy_id: ADR-0033
 deciders:
   - "@erseco"
 reviewers:
@@ -10,10 +12,9 @@ reviewers:
   - "@cristinavaldera"
   - "@mnarvaezm"
 related:
-  issues: [1228]
   prs: [1999]
-  sdds: [SDD-0008]
-  adrs: [ADR-0032, ADR-0034]
+  changes: ["1228-unified-compact-activity-authoring-format"]
+  adrs: [ADR-1228-01, ADR-1228-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,15 +22,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0033: Separate a pure normalized parser from iDevice adapters, mapping onto existing iDevice models
-
-## Status
-
-Proposed
+# ADR-1228-02: Separate a pure normalized parser from iDevice adapters, mapping onto existing iDevice models
 
 ## Context
 
-ADR-0032 adopts a compact line-based DSL for authoring activities. The DSL must
+ADR-1228-01 adopts a compact line-based DSL for authoring activities. The DSL must
 ultimately produce data that existing iDevices can render. But eXeLearning's
 activity iDevices do not share a storage shape: as documented in
 `doc/elpx-format/idevices/patterns.md`, `form` questions live as `questionsData`
@@ -196,7 +193,7 @@ We will keep parsing and iDevice mapping in **two separate layers** (Option 3):
 
 - Adapters intentionally omit sanitization; `baseText`/`question` output is HTML
   and sanitization stays in the iDevice render layer, consistent with the rest
-  of the codebase (see Security and privacy in SDD-0008).
+  of the codebase (see Security and privacy in the change design).
 - Flashcards are skipped by the `form` batch adapter because the `form` iDevice
   has no flashcard activity type; this is reported, not silent.
 
@@ -235,9 +232,9 @@ We will keep parsing and iDevice mapping in **two separate layers** (Option 3):
 
 ## References
 
-- Issue #1228; PR #1999; SDD-0008.
-- ADR-0032 — Adopt a custom compact line-based DSL for activity authoring.
-- ADR-0034 — Non-throwing parser with line-accurate diagnostics.
+- Issue #1228; PR #1999; the change design.
+- ADR-1228-01 — Adopt a custom compact line-based DSL for activity authoring.
+- ADR-1228-03 — Non-throwing parser with line-accurate diagnostics.
 - `src/shared/parsers/unified-activity-format.ts`,
   `src/shared/parsers/unified-activity-adapters.ts`, and their `*.spec.ts`.
 - `doc/elpx-format/idevices/patterns.md`,

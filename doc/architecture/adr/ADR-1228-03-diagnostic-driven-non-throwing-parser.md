@@ -1,8 +1,10 @@
 ---
-id: ADR-0034
+id: ADR-1228-03
 title: "Non-throwing parser with line-accurate diagnostics and stable codes"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1228
+legacy_id: ADR-0034
 deciders:
   - "@erseco"
 reviewers:
@@ -10,10 +12,9 @@ reviewers:
   - "@cristinavaldera"
   - "@mnarvaezm"
 related:
-  issues: [1228]
   prs: [1999]
-  sdds: [SDD-0008]
-  adrs: [ADR-0032, ADR-0033]
+  changes: ["1228-unified-compact-activity-authoring-format"]
+  adrs: [ADR-1228-01, ADR-1228-02]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,15 +22,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0034: Non-throwing parser with line-accurate diagnostics and stable codes
-
-## Status
-
-Proposed
+# ADR-1228-03: Non-throwing parser with line-accurate diagnostics and stable codes
 
 ## Context
 
-The activity authoring DSL (ADR-0032) is written by humans, often in bulk, one
+The activity authoring DSL (ADR-1228-01) is written by humans, often in bulk, one
 item per line. Malformed input is therefore the normal case, not the exception:
 a teacher will mistype an answer index, leave a blank empty, forget a `@type=`,
 or paste text containing stray `#`/`@`. The sibling parsers in
@@ -216,16 +213,16 @@ divergence from the `null`-returning sibling parsers.
   `public/app/common/common_edition.js` and each iDevice's own `insertQuestions`
   handler, e.g. `public/files/perm/idevices/base/form/edition/form.js`), surface
   diagnostics inline with their line numbers and localize messages by `code`
-  (i18n via `_()` / `c_()`), tracked in SDD-0008.
+  (i18n via `_()` / `c_()`), tracked in the change design.
 - Keep the diagnostic-code catalogue in
   `doc/elpx-format/idevices/unified-authoring-format.md` in sync with the parser
   as codes are added.
 
 ## References
 
-- Issue #1228; PR #1999; SDD-0008.
-- ADR-0032 — Adopt a custom compact line-based DSL for activity authoring.
-- ADR-0033 — Separate a pure normalized parser from iDevice adapters.
+- Issue #1228; PR #1999; the change design.
+- ADR-1228-01 — Adopt a custom compact line-based DSL for activity authoring.
+- ADR-1228-02 — Separate a pure normalized parser from iDevice adapters.
 - `src/shared/parsers/unified-activity-format.ts` and
   `src/shared/parsers/unified-activity-format.spec.ts`.
 - `doc/elpx-format/idevices/unified-authoring-format.md` (Diagnostics section).

@@ -1,19 +1,17 @@
 ---
-id: SDD-0008
+tracking_issue: 1228
 title: "Unified compact activity authoring format"
-status: Implemented
+status: implemented
 date: 2026-07-09
+legacy_id: SDD-0008
 authors:
   - "@erseco"
 reviewers:
   - "@ignaciogros"
   - "@cristinavaldera"
   - "@mnarvaezm"
-related:
-  issues: [1228]
-  prs: [1999, 2149]
-  adrs: [ADR-0032, ADR-0033, ADR-0034]
-  sdds: []
+implementation_prs: [1999]
+related_adrs: [ADR-1228-01, ADR-1228-02, ADR-1228-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,16 +19,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0008: Unified compact activity authoring format
-
-## Status
-
-Implemented
-
-This SDD documents the parser and adapter layer that is implemented and merged on
-this branch (PR #1999). The authoring **UI wiring** described under Rollout is a
-tracked follow-up and is **not** part of this branch; it is called out explicitly
-wherever it appears.
+# Unified compact activity authoring format — design
 
 ## Summary
 
@@ -113,13 +102,13 @@ DSL line ──► parseUnifiedActivityLine ──► UnifiedActivityItem ──
    payload and a trailing `@key=value` parameter section, resolves the activity
    kind (explicit `@type=` alias, `defaultType`, or shape inference), validates,
    and returns a normalized `UnifiedActivityItem` plus `diagnostics`. It never
-   imports iDevice code and never throws (ADR-0034).
+   imports iDevice code and never throws (ADR-1228-03).
 2. **Adapters** (`unified-activity-adapters.ts`): small per-target functions
    converting a normalized item into one concrete iDevice structure, importing
-   only *types* from the parser (ADR-0033).
+   only *types* from the parser (ADR-1228-02).
 
-Design rationale is captured in ADR-0032 (why a bespoke DSL), ADR-0033 (why the
-parser/adapter split), and ADR-0034 (why a non-throwing, diagnostic-driven
+Design rationale is captured in ADR-1228-01 (why a bespoke DSL), ADR-1228-02 (why the
+parser/adapter split), and ADR-1228-03 (why a non-throwing, diagnostic-driven
 parser).
 
 ## User experience
@@ -293,7 +282,7 @@ expectations. Tracked with the UI follow-up.
   `AMBIGUOUS_TYPE` diagnostics; documented in `unified-authoring-format.md`.
 - **Twin drift** between adapters and live editors (`encodeURIComponentSafe`,
   `<u>` fill encoding). Mitigation: adapter tests pin the encodings; extract a
-  shared helper as follow-up (ADR-0033).
+  shared helper as follow-up (ADR-1228-02).
 - **Diagnostic-code contract churn.** Mitigation: treat the code catalogue and
   `hasCode` assertions as a contract; keep the doc in sync.
 - **Unsanitized adapter HTML rendered off the iDevice path.** Mitigation: route
@@ -312,9 +301,9 @@ expectations. Tracked with the UI follow-up.
 
 | Decision | ADR | Status |
 |---|---|---|
-| Adopt a custom compact line-based DSL for activity authoring | ADR-0032 | Proposed |
-| Separate a pure normalized parser from iDevice adapters, mapping onto existing iDevice models | ADR-0033 | Proposed |
-| Non-throwing parser with line-accurate diagnostics and stable codes | ADR-0034 | Proposed |
+| Adopt a custom compact line-based DSL for activity authoring | ADR-1228-01 | Proposed |
+| Separate a pure normalized parser from iDevice adapters, mapping onto existing iDevice models | ADR-1228-02 | Proposed |
+| Non-throwing parser with line-accurate diagnostics and stable codes | ADR-1228-03 | Proposed |
 
 ## Evidence
 
@@ -392,7 +381,7 @@ Code and tests (verified present on this branch):
 - Issue #1228 — a unified format using separators and optional parameters.
 - PR #1999 — feat(parsers): add unified compact activity authoring format.
 - PR #2149 — related authoring-UI follow-up (outside this branch).
-- ADR-0032, ADR-0033, ADR-0034.
+- ADR-1228-01, ADR-1228-02, ADR-1228-03.
 - `doc/elpx-format/idevices/unified-authoring-format.md`, `doc/elpx-format.md`,
   `doc/elpx-format/idevices/catalog.md`,
   `doc/elpx-format/idevices/patterns.md`, `llms.txt`.

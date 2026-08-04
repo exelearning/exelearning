@@ -1,8 +1,10 @@
 ---
-id: ADR-0032
+id: ADR-1228-01
 title: "Adopt a custom compact line-based DSL for activity authoring"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1228
+legacy_id: ADR-0032
 deciders:
   - "@erseco"
 reviewers:
@@ -10,10 +12,9 @@ reviewers:
   - "@cristinavaldera"
   - "@mnarvaezm"
 related:
-  issues: [1228]
   prs: [1999]
-  sdds: [SDD-0008]
-  adrs: [ADR-0033, ADR-0034]
+  changes: ["1228-unified-compact-activity-authoring-format"]
+  adrs: [ADR-1228-02, ADR-1228-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,11 +22,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0032: Adopt a custom compact line-based DSL for activity authoring
-
-## Status
-
-Proposed
+# ADR-1228-01: Adopt a custom compact line-based DSL for activity authoring
 
 ## Context
 
@@ -176,7 +173,7 @@ only; it introduces no new canonical iDevice storage type and leaves existing
 - The syntax is tuned to educational text: `#`/`@` escaping, `@@blank@@`
   markers, and a single shared parameter section.
 - Because the DSL is decoupled from storage, it can target multiple existing
-  iDevices (see ADR-0033) without becoming a second source of truth.
+  iDevices (see ADR-1228-02) without becoming a second source of truth.
 - Deterministic, pure-function parsing enables high unit-test coverage.
 
 ### Negative
@@ -201,10 +198,10 @@ only; it introduces no new canonical iDevice storage type and leaves existing
 - **Ambiguity confusion:** users may be surprised by type inference (e.g. a
   two-field line is `AMBIGUOUS_TYPE`, flashcards are never inferred). Mitigated
   by requiring explicit `@type=` in ambiguous cases and by clear diagnostics
-  (ADR-0034).
+  (ADR-1228-03).
 - **Scope creep:** pressure to make the DSL express every iDevice could turn it
   into a de-facto storage format. Mitigated by the explicit "authoring only,
-  not canonical storage" boundary and the adapter layer (ADR-0033).
+  not canonical storage" boundary and the adapter layer (ADR-1228-02).
 - **Documentation drift:** as new parameters/kinds are added, the single
   grammar doc must stay in sync with the parser. Mitigated by colocated tests
   that encode the documented behaviour.
@@ -230,7 +227,7 @@ only; it introduces no new canonical iDevice storage type and leaves existing
   iDevice's own `insertQuestions` handler (e.g.
   `public/files/perm/idevices/base/form/edition/form.js`), tracked in the
   "Known limitations" section of
-  `doc/elpx-format/idevices/unified-authoring-format.md` and in SDD-0008.
+  `doc/elpx-format/idevices/unified-authoring-format.md` and in the change design.
 - Consider optional importers from GIFT/Aiken *into* this DSL if Moodle
   interoperability is later requested (not in scope for #1228).
 
@@ -238,9 +235,9 @@ only; it introduces no new canonical iDevice storage type and leaves existing
 
 - Issue #1228 — a unified format using separators and optional parameters.
 - PR #1999 — feat(parsers): add unified compact activity authoring format.
-- SDD-0008 — Unified compact activity authoring format.
-- ADR-0033 — Separate a pure normalized parser from iDevice adapters.
-- ADR-0034 — Non-throwing parser with line-accurate diagnostics.
+- the change design — Unified compact activity authoring format.
+- ADR-1228-02 — Separate a pure normalized parser from iDevice adapters.
+- ADR-1228-03 — Non-throwing parser with line-accurate diagnostics.
 - `doc/elpx-format/idevices/unified-authoring-format.md`
 - `doc/elpx-format/idevices/patterns.md`, `doc/elpx-format/idevices/catalog.md`
 - `src/shared/parsers/unified-activity-format.ts`,
