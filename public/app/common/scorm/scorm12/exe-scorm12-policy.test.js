@@ -251,6 +251,49 @@ describe('exe-scorm12-policy', () => {
             expect(result.requiredWritten).toBe(false);
             expect(result.required.errorCode).toBe(101);
         });
+
+        it('does not log an error for an unimplemented optional bound', () => {
+            // A conforming LMS may skip score.min/max ([CR] §2.1.1.3a): the
+            // 401 answer is classified as unsupported, and nothing lands in
+            // the console — two error lines per score update on a perfectly
+            // valid minimal LMS would train users to ignore real errors.
+            const errorSpy = vi.fn();
+            client.configure({ getPipwerks: () => pipwerks, now: () => 1000, error: errorSpy, warn: vi.fn() });
+            startSession({}, { profile: 'minimal' });
+
+            const result = policy.setScoreDetailed(80, 0, 100);
+
+            expect(result.optional.every(entry => entry.unsupported)).toBe(true);
+            expect(errorSpy).not.toHaveBeenCalled();
+        });
+
+        it('still logs a real failure on an optional bound', () => {
+            const errorSpy = vi.fn();
+            client.configure({ getPipwerks: () => pipwerks, now: () => 1000, error: errorSpy, warn: vi.fn() });
+            startSession({}, { elementFailures: { 'cmi.core.score.min': { errorCode: 101 } } });
+
+            const result = policy.setScoreDetailed(80, 0, 100);
+
+            expect(result.optional[0]).toMatchObject({ unsupported: false, errorCode: 101 });
+            expect(errorSpy).toHaveBeenCalled();
+        });
+
+        it('still decides the status when the mandatory score write fails', () => {
+            startSession(
+                { 'cmi.core.lesson_status': 'incomplete' },
+                { elementFailures: { 'cmi.core.score.raw': { errorCode: 101 } } },
+            );
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            const score = policy.setScoreDetailed(90, 0, 100);
+            expect(score.requiredWritten).toBe(false);
+
+            // Documented policy (runtime contract §8): completion is not held
+            // hostage by score storage — a broken LMS that refuses score.raw
+            // must not trap the learner at "incomplete" forever.
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
     });
 
     describe('completion decision (activity matrix)', () => {
@@ -541,6 +584,25 @@ describe('exe-scorm12-policy', () => {
         it('never touches a restored terminal status', () => {
             startSession({ 'cmi.core.lesson_status': 'passed' });
             register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
+        it('an explicit content write clears the policy\'s claim, even for the same value', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            // Content ratifies the very verdict the policy wrote. Ratifying
+            // makes it content's: a required activity registering later must
+            // no longer downgrade it.
+            expect(policy.setPassed()).toBe(true);
+            register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
 
             expect(policy.reconcilePendingActivities()).toMatchObject({
                 status: 'passed',

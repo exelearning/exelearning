@@ -413,6 +413,52 @@ describe('exe-scorm12-client', () => {
         });
     });
 
+    describe('optional element writes', () => {
+        it('writes a supported optional element', () => {
+            useWindow('self');
+            client.initialize();
+
+            expect(client.setOptionalValueDetailed('cmi.core.score.min', '0')).toMatchObject({
+                success: true,
+                errorCode: 0,
+            });
+            expect(api.data['cmi.core.score.min']).toBe('0');
+        });
+
+        it('reports an unimplemented optional element without logging an error', () => {
+            api = createFakeScorm12Api({ profile: 'minimal' });
+            useWindow('self');
+            client.initialize();
+
+            expect(client.setOptionalValueDetailed('cmi.core.score.min', '0')).toMatchObject({
+                success: false,
+                errorCode: 401,
+            });
+            expect(errorSpy).not.toHaveBeenCalled();
+        });
+
+        it('still reports a real failure', () => {
+            api = createFakeScorm12Api({ elementFailures: { 'cmi.core.score.min': { errorCode: 101 } } });
+            useWindow('self');
+            client.initialize();
+
+            expect(client.setOptionalValueDetailed('cmi.core.score.min', '0')).toMatchObject({
+                success: false,
+                errorCode: 101,
+            });
+            expect(errorSpy).toHaveBeenCalled();
+        });
+
+        it('setValueDetailed keeps reporting a 401 — only the optional entry point is quiet', () => {
+            api = createFakeScorm12Api({ profile: 'minimal' });
+            useWindow('self');
+            client.initialize();
+
+            expect(client.setValueDetailed('cmi.core.score.min', '0').errorCode).toBe(401);
+            expect(errorSpy).toHaveBeenCalled();
+        });
+    });
+
     describe('termination state machine', () => {
         /**
          * A pipwerks stand-in whose commit (data.save) and finish (the API

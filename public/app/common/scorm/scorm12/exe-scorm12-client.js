@@ -258,10 +258,12 @@
      *
      * @param {string} operation - The SCORM API call that failed.
      * @param {string} [element] - The cmi element involved, if any.
+     * @param {{code: number, message: string}} [preRead] - The LMS error, when
+     * the caller already read it; read from the LMS otherwise.
      * @returns {{code: number, message: string}} The LMS error that was read.
      */
-    function reportLmsError(operation, element) {
-        var lastError = getLastError();
+    function reportLmsError(operation, element, preRead) {
+        var lastError = preRead || getLastError();
         var target = element ? " for '" + element + "'" : '';
         deps.error(
             '[exe-scorm12] ' +
@@ -306,6 +308,57 @@
             state.externalTerminationReported = true;
             reportRejected('the SCORM connection was closed outside the runtime; the session is now treated as ended.');
         }
+    }
+
+    /**
+     * Shared implementation of the two LMSSetValue entry points.
+     *
+     * @param {string} element - cmi element name.
+     * @param {string|number} value - Value to write.
+     * @param {boolean} optionalElement - True when the SCORM 1.2 data model
+     * declares the element optional: LMS error 401 ("not implemented") is
+     * then a conforming answer and is returned without an error report.
+     * @returns {{success: boolean, errorCode: number, errorMessage: string,
+     * forwarded: boolean}} What happened.
+     */
+    function writeValueDetailed(element, value, optionalElement) {
+        var rejection = writeRejection(element);
+        if (rejection !== null) {
+            reportRejected("setValue('" + element + "') rejected: " + rejection.message + ' in SCORM 1.2.');
+            return {
+                success: false,
+                errorCode: rejection.code,
+                errorMessage: rejection.message,
+                forwarded: false,
+            };
+        }
+        if (!client.isActive()) {
+            reportRejected("setValue('" + element + "') rejected: no active SCORM session.");
+            return { success: false, errorCode: 301, errorMessage: 'Not initialized', forwarded: false };
+        }
+        var pipwerks = deps.getPipwerks();
+        var text = String(value);
+        var success = false;
+        try {
+            success = pipwerks.SCORM.data.set(element, text);
+        } catch (error) {
+            deps.error("[exe-scorm12] LMSSetValue for '" + element + "' failed: " + error);
+            return { success: false, errorCode: 101, errorMessage: String(error), forwarded: true };
+        }
+        if (!success) {
+            var lastError = getLastError();
+            if (!(optionalElement && lastError.code === 401)) {
+                reportLmsError('LMSSetValue', element, lastError);
+            }
+            return {
+                success: false,
+                errorCode: lastError.code,
+                errorMessage: lastError.message,
+                forwarded: true,
+            };
+        }
+        state.writeCache[element] = text;
+        return { success: true, errorCode: 0, errorMessage: 'No error', forwarded: true };
     }
 
     var client = {
@@ -524,40 +577,24 @@
          * the runtime refused the call without contacting the LMS.
          */
         setValueDetailed: function (element, value) {
-            var rejection = writeRejection(element);
-            if (rejection !== null) {
-                reportRejected("setValue('" + element + "') rejected: " + rejection.message + ' in SCORM 1.2.');
-                return {
-                    success: false,
-                    errorCode: rejection.code,
-                    errorMessage: rejection.message,
-                    forwarded: false,
-                };
-            }
-            if (!client.isActive()) {
-                reportRejected("setValue('" + element + "') rejected: no active SCORM session.");
-                return { success: false, errorCode: 301, errorMessage: 'Not initialized', forwarded: false };
-            }
-            var pipwerks = deps.getPipwerks();
-            var text = String(value);
-            var success = false;
-            try {
-                success = pipwerks.SCORM.data.set(element, text);
-            } catch (error) {
-                deps.error("[exe-scorm12] LMSSetValue for '" + element + "' failed: " + error);
-                return { success: false, errorCode: 101, errorMessage: String(error), forwarded: true };
-            }
-            if (!success) {
-                var lastError = reportLmsError('LMSSetValue', element);
-                return {
-                    success: false,
-                    errorCode: lastError.code,
-                    errorMessage: lastError.message,
-                    forwarded: true,
-                };
-            }
-            state.writeCache[element] = text;
-            return { success: true, errorCode: 0, errorMessage: 'No error', forwarded: true };
+            return writeValueDetailed(element, value, false);
+        },
+
+        /**
+         * Write an element the SCORM 1.2 data model declares optional
+         * (cmi.core.score.min / cmi.core.score.max). Identical to
+         * setValueDetailed, except that LMS error 401 ("not implemented") is
+         * returned without an error report — an LMS that skips an optional
+         * element is conforming, not failing ([CR] §2.1.1.3a). The
+         * write-side mirror of getOptionalValue().
+         *
+         * @param {string} element - cmi element name.
+         * @param {string|number} value - Value to write.
+         * @returns {{success: boolean, errorCode: number,
+         * errorMessage: string, forwarded: boolean}} What happened.
+         */
+        setOptionalValueDetailed: function (element, value) {
+            return writeValueDetailed(element, value, true);
         },
 
         /**

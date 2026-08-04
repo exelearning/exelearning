@@ -333,6 +333,19 @@ Validation before any write **[POLICY]**: raw, min and max must be numbers in
 consistency requirement is eXeLearning's, because an inconsistent triplet is a
 content bug and recording it would store a meaningless score.
 
+The optional bounds are written through `client.setOptionalValueDetailed()`
+(the write-side mirror of `getOptionalValue()`): a 401 answer is a conforming
+LMS skipping an optional element, so nothing is logged for it — the report
+still records `unsupported: true`. Every other error code is reported as
+usual.
+
+When the mandatory `cmi.core.score.raw` write itself fails (a broken LMS —
+the triplet was already validated), the completion policy still decides and
+records `cmi.core.lesson_status` **[POLICY]**: completion is not held hostage
+by score storage, SCORM 1.2 does not make the status depend on a stored
+score, and this matches the pre-rewrite behaviour. The failure stays visible
+in `setScoreDetailed()`'s report (`requiredWritten: false`).
+
 ## 9. Activity registry and completion policy
 
 Full rationale: [ADR-0043](../architecture/adr/ADR-0043-scorm12-activity-completion-registry.md).
@@ -409,7 +422,11 @@ completion and success collapse onto `cmi.core.lesson_status`:
   status restored from a previous attempt, or written explicitly by content
   (`setComplete()`, `SetCompletionStatus()`), is never downgraded — and
   merely *agreeing* with a stored status never claims it: ownership is taken
-  only when the policy successfully writes the value itself. The correction
+  only when the policy successfully writes the value itself, and the explicit
+  content entry points (`setCompleted()`, `setPassed()`, `setFailed()`,
+  `setIncomplete()`, `doContinue(status)`) *clear* the claim — even when they
+  repeat the value the policy last wrote, ratifying a verdict makes it
+  content's. The correction
   runs at two moments (`policy.reconcilePendingActivities()`): when an
   activity registers, and before every mid-session persist — so a page killed
   right after a `hidden` commit never leaves the LMS holding a stale terminal

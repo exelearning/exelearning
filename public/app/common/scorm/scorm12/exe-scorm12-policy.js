@@ -145,6 +145,24 @@
     }
 
     /**
+     * Write a lesson_status on behalf of content (the explicit setters and
+     * doContinue). Content's verdict belongs to content, not to the policy:
+     * the session claim is cleared even when the value repeats what the
+     * policy last wrote, so the late-registration correction can never
+     * downgrade a status content set explicitly.
+     *
+     * @param {string} status - A SCO-writable SCORM 1.2 lesson_status value.
+     * @returns {boolean} True when the LMS accepted the value.
+     */
+    function writeContentStatus(status) {
+        var written = writeStatus(status);
+        if (written) {
+            state.policySessionStatus = null;
+        }
+        return written;
+    }
+
+    /**
      * Aggregate the registry, falling back to the page-level scored-activities
      * flag when no iDevice registered.
      *
@@ -503,27 +521,27 @@
                 deps.warn("[exe-scorm12] Ignored invalid lesson_status value '" + status + "'.");
                 return false;
             }
-            return writeStatus(status);
+            return writeContentStatus(status);
         },
 
         /** @returns {boolean} True when the LMS accepted the value. */
         setCompleted: function () {
-            return writeStatus(STATUS.COMPLETED);
+            return writeContentStatus(STATUS.COMPLETED);
         },
 
         /** @returns {boolean} True when the LMS accepted the value. */
         setIncomplete: function () {
-            return writeStatus(STATUS.INCOMPLETE);
+            return writeContentStatus(STATUS.INCOMPLETE);
         },
 
         /** @returns {boolean} True when the LMS accepted the value. */
         setPassed: function () {
-            return writeStatus(STATUS.PASSED);
+            return writeContentStatus(STATUS.PASSED);
         },
 
         /** @returns {boolean} True when the LMS accepted the value. */
         setFailed: function () {
-            return writeStatus(STATUS.FAILED);
+            return writeContentStatus(STATUS.FAILED);
         },
 
         /**
@@ -629,7 +647,9 @@
                 if (bounds[index].value === null) {
                     continue;
                 }
-                var write = client.setValueDetailed(bounds[index].element, String(bounds[index].value));
+                // Optional-element write: a 401 answer is a conforming LMS
+                // skipping score.min/max, so nothing is logged for it.
+                var write = client.setOptionalValueDetailed(bounds[index].element, String(bounds[index].value));
                 var unsupported = !write.success && write.errorCode === 401;
                 result.optional.push({
                     element: bounds[index].element,

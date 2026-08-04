@@ -2096,6 +2096,20 @@ describe('common.js $exeDevices', () => {
       expect(set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
     });
 
+    it('showFinalScore still records the outcome when the LMS refuses the score', () => {
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+      registry.summary.mockReturnValue({ score: 90 });
+      policy.setScoreDetailed.mockReturnValue({ requiredWritten: false });
+
+      getScorm().showFinalScore({ 1: { title: 'Q', score: 90, weighted: 1 } }, game);
+
+      // Documented policy (runtime contract §8): completion is not held
+      // hostage by score storage.
+      expect(policy.recordActivityOutcome).toHaveBeenCalled();
+    });
+
     it.each([
       [90, 'passed'],
       [10, 'failed'],

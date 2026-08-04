@@ -1592,6 +1592,10 @@ var $exeDevices = {
                         // same number recorded just below — so the two can
                         // never disagree, and a page whose required activities
                         // are still pending is never marked passed or failed.
+                        // The outcome is recorded even if the LMS refuses the
+                        // score write: completion is not held hostage by score
+                        // storage (runtime contract §8), and the failure stays
+                        // visible in setScoreDetailed's report.
                         runtime.policy.setScoreDetailed(newFinalScore, 0, 100);
                         runtime.policy.recordActivityOutcome();
                     } else {
