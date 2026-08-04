@@ -1472,6 +1472,137 @@ describe('AssetManager', () => {
     it('returns application/octet-stream for unknown extensions', () => {
       expect(assetManager.getMimeType('file.unknown')).toBe('application/octet-stream');
     });
+
+    it('returns correct MIME types for subtitle files (.srt / .vtt) -- issue #2034', () => {
+      // Falls back to application/octet-stream today, which is why uploaded
+      // subtitle assets are force-downloaded / mis-typed instead of being
+      // usable as <track> resources.
+      expect(assetManager.getMimeType('subtitles.srt')).toBe('application/x-subrip');
+      expect(assetManager.getMimeType('subtitles.vtt')).toBe('text/vtt');
+    });
+  });
+
+  describe('subtitle SRT -> WebVTT for edition-mode display (issue #2034)', () => {
+    const SRT_TEXT = '1\n00:00:02,360 --> 00:00:05,760\nHola mundo\n';
+
+    describe('window.convertSrtToVtt / window.isWebVtt', () => {
+      it('detects an existing WEBVTT header', () => {
+        expect(window.isWebVtt('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nx')).toBe(true);
+        expect(window.isWebVtt('1\n00:00:01,000 --> 00:00:02,000\nx')).toBe(false);
+        expect(window.isWebVtt('')).toBe(false);
+      });
+
+      it('converts SRT cues to WebVTT (comma -> dot decimals, adds header)', () => {
+        const { vtt, converted } = window.convertSrtToVtt(SRT_TEXT);
+        expect(converted).toBe(true);
+        expect(vtt.startsWith('WEBVTT')).toBe(true);
+        expect(vtt).toContain('00:00:02.360 --> 00:00:05.760');
+        expect(vtt).toContain('Hola mundo');
+        expect(vtt).not.toContain(',360');
+      });
+
+      it('passes through already-valid WebVTT unchanged', () => {
+        const already = 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi\n';
+        const { vtt, converted } = window.convertSrtToVtt(already);
+        expect(converted).toBe(false);
+        expect(vtt).toBe(already);
+      });
+
+      it('degrades to a valid empty WebVTT document for unparseable input', () => {
+        const { vtt, error } = window.convertSrtToVtt('not a subtitle at all');
+        expect(vtt).toBe('WEBVTT\n');
+        expect(error).toBeTruthy();
+      });
+    });
+
+    describe('_isSrtSubtitleAsset', () => {
+      it('detects .srt by filename and by MIME, and ignores non-subtitles', () => {
+        expect(assetManager._isSrtSubtitleAsset({ filename: 'x.srt' })).toBe(true);
+        expect(assetManager._isSrtSubtitleAsset({ mime: 'application/x-subrip' })).toBe(true);
+        expect(assetManager._isSrtSubtitleAsset({ mime: 'text/srt' })).toBe(true);
+        expect(assetManager._isSrtSubtitleAsset({ filename: 'x.vtt', mime: 'text/vtt' })).toBe(false);
+        expect(assetManager._isSrtSubtitleAsset({ filename: 'x.png', mime: 'image/png' })).toBe(false);
+        expect(assetManager._isSrtSubtitleAsset(null)).toBe(false);
+      });
+    });
+
+    describe('_displayBlobURLForAsset', () => {
+      it('serves a .srt asset as a text/vtt blob (converted) without mutating the stored blob', async () => {
+        const srtBlob = new Blob([SRT_TEXT], { type: 'application/x-subrip' });
+        const asset = { id: 'a1', filename: 'subs.srt', mime: 'application/x-subrip', blob: srtBlob };
+
+        const url = await assetManager._displayBlobURLForAsset(asset);
+        const served = mockObjectURLs.get(url);
+
+        expect(served).toBeInstanceOf(Blob);
+        expect(served.type).toBe('text/vtt');
+        const text = await served.text();
+        expect(text.startsWith('WEBVTT')).toBe(true);
+        expect(text).toContain('Hola mundo');
+
+        // The stored asset must stay the raw .srt (round-trips to server / export
+        // pipeline runs its own conversion) -- only the display blob is converted.
+        expect(asset.blob).toBe(srtBlob);
+        expect(await asset.blob.text()).toContain(',360');
+      });
+
+      it('serves a non-subtitle asset as its original blob (no conversion)', async () => {
+        const imgBlob = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+        const asset = { id: 'a2', filename: 'p.png', mime: 'image/png', blob: imgBlob };
+
+        const url = await assetManager._displayBlobURLForAsset(asset);
+        expect(mockObjectURLs.get(url)).toBe(imgBlob);
+      });
+
+      it('decodes a Windows-1252 .srt (Latin-1 accents) for display, matching the export decode', async () => {
+        // A real-world `.srt` saved as Windows-1252: the accented "ó" is the
+        // single byte 0xF3, NOT the two-byte UTF-8 sequence. `Blob.text()`
+        // always decodes as UTF-8 (0xF3 -> U+FFFD), so the display path must
+        // decode the bytes the same strict-UTF-8-then-Windows-1252 way the
+        // exporter (`BaseExporter.readAssetDataAsText`) does, or the live
+        // workarea editor shows mojibake while the export stays correct (#2035).
+        const win1252Bytes = () => {
+          const bytes = [];
+          const pushAscii = (s) => {
+            for (const ch of s) bytes.push(ch.charCodeAt(0));
+          };
+          pushAscii('1\n00:00:02,360 --> 00:00:05,760\n');
+          pushAscii('Canci');
+          bytes.push(0xf3); // "ó" in Windows-1252 (single high byte, invalid UTF-8)
+          pushAscii('n\n');
+          return new Uint8Array(bytes);
+        };
+        const srtBlob = new Blob([win1252Bytes()], { type: 'application/x-subrip' });
+        const asset = { id: 'a3', filename: 'cancion.srt', mime: 'application/x-subrip', blob: srtBlob };
+
+        const url = await assetManager._displayBlobURLForAsset(asset);
+        const served = mockObjectURLs.get(url);
+        const text = await served.text();
+
+        expect(served.type).toBe('text/vtt');
+        expect(text).toContain('Canción');
+        expect(text).not.toContain('�');
+      });
+    });
+
+    describe('resolveAssetURL', () => {
+      it('caches a text/vtt blob URL for a .srt asset (native <track> shows cues)', async () => {
+        const srtBlob = new Blob([SRT_TEXT], { type: 'application/x-subrip' });
+        assetManager.getAsset = mock(() => undefined).mockResolvedValue({
+          id: 'srt-1',
+          filename: 'subs.srt',
+          mime: 'application/x-subrip',
+          blob: srtBlob,
+        });
+
+        const url = await assetManager.resolveAssetURL('asset://srt-1');
+        const served = mockObjectURLs.get(url);
+
+        expect(served.type).toBe('text/vtt');
+        expect((await served.text()).startsWith('WEBVTT')).toBe(true);
+        expect(assetManager.blobURLCache.get('srt-1')).toBe(url);
+      });
+    });
   });
 
   describe('generatePlaceholder', () => {
@@ -3288,6 +3419,182 @@ describe('prepareJsonForSync', () => {
     const result = assetManager.prepareJsonForSync(json);
 
     expect(result).toBe(json);
+  });
+
+  // Regression tests for issue #2177. A blob URL inside an HTML attribute is
+  // serialized as src=\"blob:...\", so rewriting the serialized JSON textually
+  // ate the backslash escaping the closing quote and produced a payload that
+  // JSON.parse rejects — which then aborted page loading in the workarea.
+  describe('blob URLs inside HTML attributes (issue #2177)', () => {
+    it('keeps the payload parseable when clearing an unrecoverable blob', () => {
+      const json = JSON.stringify({
+        textTextarea:
+          '<audio controls="controls" src="blob:https://exelearning.net/unknown-blob"><a href="">audio.webm</a></audio>',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(result).not.toContain('blob:');
+      expect(JSON.parse(result).textTextarea).toBe(
+        '<audio controls="controls" src=""><a href="">audio.webm</a></audio>'
+      );
+    });
+
+    it('recovers a registered blob instead of clearing it', () => {
+      const json = JSON.stringify({
+        textTextarea: '<img src="blob:http://localhost/abc123" alt="A photo">',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      // The URL used to be captured with its trailing backslash, so the cache
+      // lookup missed and even recoverable assets were silently cleared.
+      expect(JSON.parse(result).textTextarea).toBe(
+        '<img src="asset://asset-uuid-111" alt="A photo">'
+      );
+    });
+
+    it('keeps the payload parseable for a blob nested below the top level', () => {
+      // convertJsonProperties only walks top-level string values, so a nested
+      // blob reaches this method untouched.
+      const json = JSON.stringify({
+        ideviceId: 'gal-1',
+        img_0: { caption: '<img src="blob:http://localhost/abc123" alt="x">' },
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result).img_0.caption).toBe(
+        '<img src="asset://asset-uuid-111" alt="x">'
+      );
+    });
+
+    it('leaves an unparseable payload untouched rather than corrupting it further', () => {
+      const broken = '{"textTextarea":"<img src=\\"blob:http://localhost/abc123\\">';
+
+      expect(assetManager.prepareJsonForSync(broken)).toBe(broken);
+    });
+  });
+
+  // Electron serves blobs from the app:// origin (issue #2186), which the old
+  // https?-only pattern silently skipped: those URLs were neither recovered
+  // nor cleared and died on the next reload.
+  describe('blob URLs from non-http origin schemes (Electron app://)', () => {
+    it('recovers a registered blob:app:// URL to its asset reference', () => {
+      assetManager.reverseBlobCache.set('blob:app://exelearning/electron-blob', 'asset-uuid-333');
+      const json = JSON.stringify({
+        textTextarea: '<img src="blob:app://exelearning/electron-blob" alt="x">',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result).textTextarea).toBe(
+        '<img src="asset://asset-uuid-333" alt="x">'
+      );
+    });
+
+    it('clears an unrecoverable blob:app:// URL instead of persisting it', () => {
+      const json = JSON.stringify({ img: 'blob:app://exelearning/unknown' });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result).img).toBe('');
+      expect(result).not.toContain('blob:');
+    });
+  });
+
+  // Documented non-targets and edge shapes. blob:null/… comes from opaque
+  // origins (sandboxed iframes) and carries no authority to recover from;
+  // uppercase BLOB: never leaves URL.createObjectURL. Both stay untouched
+  // rather than being half-rewritten.
+  describe('non-target blob shapes and edge cases', () => {
+    it('leaves opaque-origin blob:null URLs untouched', () => {
+      const json = JSON.stringify({ img: 'blob:null/0a1b2c3d', title: 'x' });
+
+      expect(assetManager.prepareJsonForSync(json)).toBe(json);
+    });
+
+    it('leaves uppercase BLOB: strings untouched', () => {
+      const json = JSON.stringify({ note: 'the literal text BLOB:https://host/id is not a URL the browser emits' });
+
+      expect(assetManager.prepareJsonForSync(json)).toBe(json);
+    });
+
+    it('clears a blob URL carrying a fragment without eating adjacent text', () => {
+      const json = JSON.stringify({
+        textTextarea: 'before <a href="blob:http://localhost/abc123#frag">link</a> after',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      // The fragment makes the exact-string cache lookup miss, so it clears —
+      // but the surrounding markup and text must survive intact.
+      expect(JSON.parse(result).textTextarea).toBe('before <a href="">link</a> after');
+    });
+
+    it('recovers a blob URL followed by punctuation without eating it', () => {
+      const json = JSON.stringify({
+        note: 'see blob:http://localhost/abc123, then continue',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(JSON.parse(result).note).toBe('see asset://asset-uuid-111, then continue');
+    });
+
+    it('replaces multiple blob URLs inside one string value', () => {
+      const json = JSON.stringify({
+        html: '<img src="blob:http://localhost/abc123"> and <img src="blob:https://example.com/xyz789">',
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      const html = JSON.parse(result).html;
+      expect(html).toContain('asset://asset-uuid-111');
+      expect(html).toContain('asset://asset-uuid-222');
+      expect(html).not.toContain('blob:');
+    });
+
+    it('does not rewrite object keys containing blob URLs', () => {
+      const json = JSON.stringify({ 'blob:http://localhost/abc123': 'value untouched' });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      // Keys are identifiers, not asset carriers; only values are rewritten.
+      expect(result).toBe(json);
+    });
+  });
+
+  // Gamified iDevices store their questions as arrays (questionsGame,
+  // questionsData), so blob URLs commonly sit inside array items — both as
+  // direct string entries and embedded in HTML of nested objects.
+  describe('blob URLs nested inside arrays', () => {
+    it('walks array items and preserves the array structure', () => {
+      const json = JSON.stringify({
+        questionsGame: [
+          { question: '<img src="blob:http://localhost/abc123" alt="q1">', solution: 1 },
+          'blob:https://example.com/xyz789',
+          ['blob:http://unknown/deep', { feedback: '<audio src="blob:http://unknown/deep2"></audio>' }],
+        ],
+      });
+
+      const result = assetManager.prepareJsonForSync(json);
+
+      expect(() => JSON.parse(result)).not.toThrow();
+      const parsed = JSON.parse(result);
+      expect(parsed.questionsGame[0].question).toBe('<img src="asset://asset-uuid-111" alt="q1">');
+      expect(parsed.questionsGame[0].solution).toBe(1);
+      expect(parsed.questionsGame[1]).toBe('asset://asset-uuid-222');
+      expect(parsed.questionsGame[2][0]).toBe('');
+      expect(parsed.questionsGame[2][1].feedback).toBe('<audio src=""></audio>');
+      expect(result).not.toContain('blob:');
+    });
   });
 });
 
@@ -5941,6 +6248,38 @@ describe('window.simplifyMediaElements global function', () => {
     expect(result).toContain('src="asset://uuid/video.mp4"');
     // Should not add controls (not processed by simplify)
     expect(result).not.toContain('controls');
+  });
+
+  // Issue #2034: dropping <track> children here silently loses subtitles
+  // wherever this simplified markup is rendered (ideviceNode.js exportHtmlView()).
+  it('preserves <track> subtitle children on video elements', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input =
+      '<video class="mediaelement"><source src="asset://uuid/video.mp4" type="video/mp4">' +
+      '<track kind="subtitles" srclang="es" label="Español" src="asset://uuid2/subtitles.vtt" default></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('<track');
+    expect(result).toContain('kind="subtitles"');
+    expect(result).toContain('srclang="es"');
+    expect(result).toContain('src="asset://uuid2/subtitles.vtt"');
+  });
+
+  it('preserves <track> subtitle children on audio elements', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input =
+      '<audio><source src="asset://uuid/audio.mp3" type="audio/mpeg">' +
+      '<track kind="captions" srclang="en" src="asset://uuid2/captions.vtt"></audio>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('<track');
+    expect(result).toContain('kind="captions"');
+    expect(result).toContain('src="asset://uuid2/captions.vtt"');
+  });
+
+  it('does not add a <track> element when the source video has none', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<video class="mediaelement"><source src="asset://uuid/video.mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).not.toContain('<track');
   });
 });
 

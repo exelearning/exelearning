@@ -311,4 +311,27 @@ describe('Template Service', () => {
             expect(typeof result).toBe('string');
         });
     });
+
+    describe('workarea/modals/pages/filemanager.njk (issue #2034)', () => {
+        it('renders the media library upload input allowing .srt and .vtt subtitle files', () => {
+            const html = renderTemplate('workarea/modals/pages/filemanager.njk', {});
+
+            const inputMatch = html.match(/<input[^>]*class="media-library-upload-input"[^>]*>/);
+            expect(inputMatch).not.toBeNull();
+
+            const inputTag = inputMatch ? inputMatch[0] : '';
+            const acceptMatch = inputTag.match(/accept="([^"]*)"/);
+            expect(acceptMatch).not.toBeNull();
+
+            const accept = acceptMatch ? acceptMatch[1] : '';
+            const acceptedExtensions = accept.split(',').map(s => s.trim());
+
+            // The subtitles field in the Text iDevice video dialog is labeled
+            // "Subtitles (srt / vtt)" but the upload chooser silently rejects
+            // both extensions today -- users cannot select a .srt/.vtt file
+            // from disk in the first place.
+            expect(acceptedExtensions).toContain('.srt');
+            expect(acceptedExtensions).toContain('.vtt');
+        });
+    });
 });
