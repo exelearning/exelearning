@@ -1,17 +1,18 @@
 ---
-id: ADR-0018
+id: ADR-348-02
 title: "Address the public view via a distinct opaque identifier gated by an independent enablement flag"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 348
+legacy_id: ADR-0018
 deciders:
   - "@erseco"
 reviewers:
   - "@pabloamayab"
 related:
-  issues: [348]
   prs: [1425]
-  sdds: [SDD-0004]
-  adrs: [ADR-0017, ADR-0019]
+  changes: ["348-public-read-only-viewer-opaque-origin"]
+  adrs: [ADR-348-01, ADR-348-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,15 +20,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0018: Address the public view via a distinct opaque identifier gated by an independent enablement flag
-
-## Status
-
-Proposed
+# ADR-348-02: Address the public view via a distinct opaque identifier gated by an independent enablement flag
 
 ## Context
 
-The public read-only viewer (issue #348, ADR-0017) needs a stable, shareable address
+The public read-only viewer (issue #348, ADR-348-01) needs a stable, shareable address
 and an explicit way for the owner to turn public sharing on and off.
 
 Every project already has an internal `uuid` used throughout the editor and API
@@ -191,15 +188,15 @@ owner-only regenerate action. Disabled or non-existent public links return 404, 
 - Optional: surface an owner-visible "last shared / regenerated" indicator in the share
   modal.
 - Optional: per-project CSP profile selection tied to this same owner-only surface (see
-  ADR-0017 / ADR-0019 follow-up).
+  ADR-348-01 / ADR-348-03 follow-up).
 
 ## References
 
 - Issue #348 — public read-only URL.
 - PR #1425 — implementation.
-- SDD-0004 — Public Read-Only Viewer with Opaque-Origin Untrusted-Content Isolation.
-- ADR-0017 — opaque-origin isolation of the served content.
-- ADR-0019 — export caching by Yjs document version and cost guards.
+- the change design — Public Read-Only Viewer with Opaque-Origin Untrusted-Content Isolation.
+- ADR-348-01 — opaque-origin isolation of the served content.
+- ADR-348-03 — export caching by Yjs document version and cost guards.
 - `src/db/migrations/008_project_public_view_id.ts`,
   `src/db/migrations/009_project_public_view_enabled.ts`,
   `src/db/queries/projects.ts`, `src/routes/project.ts`, `src/routes/pages.ts`,

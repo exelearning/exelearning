@@ -1,17 +1,15 @@
 ---
-id: SDD-0004
+tracking_issue: 348
 title: "Public Read-Only Viewer with Opaque-Origin Untrusted-Content Isolation"
-status: Implemented
+status: implemented
 date: 2026-07-09
+legacy_id: SDD-0004
 authors:
   - "@erseco"
 reviewers:
   - "@pabloamayab"
-related:
-  issues: [348]
-  prs: [1425, 2149]
-  adrs: [ADR-0017, ADR-0018, ADR-0019]
-  sdds: []
+implementation_prs: [1425]
+related_adrs: [ADR-348-01, ADR-348-02, ADR-348-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,11 +17,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0004: Public Read-Only Viewer with Opaque-Origin Untrusted-Content Isolation
-
-## Status
-
-Implemented
+# Public Read-Only Viewer with Opaque-Origin Untrusted-Content Isolation — design
 
 ## Summary
 
@@ -67,7 +61,7 @@ and to do so on ordinary single-host installs without new DNS or a second deploy
 
 - No public **editing** or collaboration on the public link (read-only only).
 - No unauthenticated **bulk ZIP** download of the export.
-- No separate user-content origin/subdomain (considered, deferred — ADR-0017).
+- No separate user-content origin/subdomain (considered, deferred — ADR-348-01).
 - No change to the workarea preview: it keeps its same-origin Service Worker because
   the author previews their own content.
 - No per-IP rate limiting inside the route (delegated to the reverse proxy).
@@ -116,8 +110,8 @@ GET /view/:publicViewId/_/*        (untrusted content)
 
 The sandbox tokens and header values are the single source of truth in
 `src/shared/security/publicViewSandbox.ts`, consumed by both the iframe attribute
-(via the loader view model) and the content response CSP. See ADR-0017 for the
-isolation decision, ADR-0018 for the identifier/enablement model, and ADR-0019 for
+(via the loader view model) and the content response CSP. See ADR-348-01 for the
+isolation decision, ADR-348-02 for the identifier/enablement model, and ADR-348-03 for
 caching and cost guards. This design does **not** introduce a subdomain.
 
 ## User experience
@@ -286,7 +280,7 @@ Patch coverage target ≥ 90% per AGENTS.md.
 ## Risks and mitigations
 
 - **CSP too permissive by default (exfiltration within opaque origin).** Mitigation:
-  opaque origin protects the session; `strict` profile available. (ADR-0019/ADR-0017.)
+  opaque origin protects the session; `strict` profile available. (ADR-348-03/ADR-348-01.)
 - **Stale public view if cache keyed wrong.** Mitigation: keyed on
   `getDocumentVersion()`, not `updated_at`; regression test asserts freshness.
 - **DoS via unauthenticated builds / oversized exports.** Mitigation: coalescing +
@@ -309,9 +303,9 @@ Patch coverage target ≥ 90% per AGENTS.md.
 
 | Decision | ADR | Status |
 |---|---|---|
-| Isolate untrusted public content in a server-served opaque origin | ADR-0017 | Proposed |
-| Distinct opaque public identifier gated by an independent enablement flag | ADR-0018 | Proposed |
-| Cache the export by Yjs document version, bound cost, no unauthenticated bulk ZIP | ADR-0019 | Proposed |
+| Isolate untrusted public content in a server-served opaque origin | ADR-348-01 | Proposed |
+| Distinct opaque public identifier gated by an independent enablement flag | ADR-348-02 | Proposed |
+| Cache the export by Yjs document version, bound cost, no unauthenticated bulk ZIP | ADR-348-03 | Proposed |
 
 ## Evidence
 
@@ -386,6 +380,6 @@ Tests (present on this branch):
 
 - Issue #348 — public read-only URL.
 - PR #1425 — implementation; PR #2149 — documentation/architecture reconciliation.
-- ADR-0017, ADR-0018, ADR-0019.
+- ADR-348-01, ADR-348-02, ADR-348-03.
 - `doc/architecture.md` §8.6; `AGENTS.md`.
 - Source and test paths listed under Evidence.

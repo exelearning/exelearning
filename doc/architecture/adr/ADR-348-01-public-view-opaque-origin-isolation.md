@@ -1,17 +1,18 @@
 ---
-id: ADR-0017
+id: ADR-348-01
 title: "Isolate untrusted public viewer content in a server-served opaque origin"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 348
+legacy_id: ADR-0017
 deciders:
   - "@erseco"
 reviewers:
   - "@pabloamayab"
 related:
-  issues: [348]
   prs: [1425]
-  sdds: [SDD-0004]
-  adrs: [ADR-0018, ADR-0019]
+  changes: ["348-public-read-only-viewer-opaque-origin"]
+  adrs: [ADR-348-02, ADR-348-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,11 +20,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0017: Isolate untrusted public viewer content in a server-served opaque origin
-
-## Status
-
-Proposed
+# ADR-348-01: Isolate untrusted public viewer content in a server-served opaque origin
 
 ## Context
 
@@ -107,7 +104,7 @@ the opaque origin loadable.
 - Pros: no extra origin/DNS; strong isolation (opaque origin severs session, cookies,
   storage, parent access); isolation is a property of the document itself, so it
   survives fullscreen and direct navigation; reuses the shared `Html5Exporter`.
-- Cons: the export must be built and served server-side (cost handled in ADR-0019);
+- Cons: the export must be built and served server-side (cost handled in ADR-348-03);
   opaque origin means the content cannot use same-origin storage (acceptable for a
   read-only viewer).
 
@@ -171,14 +168,14 @@ drift apart. We do not introduce a separate origin/subdomain.
 ### Negative
 
 - The server must build and serve the export (CPU/memory cost), addressed by the
-  caching and cost guards in ADR-0019.
+  caching and cost guards in ADR-348-03.
 - Opaque-origin content cannot use same-origin persistent storage; acceptable for a
   read-only viewer but a constraint for any future interactive public feature.
 
 ### Neutral
 
 - A `compatible` CSP profile is the default; a `strict` profile is available as an
-  opt-in (see Follow-up and ADR-0019 references).
+  opt-in (see Follow-up and ADR-348-03 references).
 - The workarea preview keeps its same-origin Service Worker; only the public view is
   isolated.
 
@@ -212,15 +209,15 @@ drift apart. We do not introduce a separate origin/subdomain.
 - Re-evaluate a dedicated user-content origin (Option 2) if a future public feature
   needs same-origin storage or stronger isolation.
 - Per-IP rate limiting for the content route is left to the reverse proxy / dedicated
-  middleware (see ADR-0019).
+  middleware (see ADR-348-03).
 
 ## References
 
 - Issue #348 — public read-only URL.
 - PR #1425 — implementation.
-- SDD-0004 — Public Read-Only Viewer with Opaque-Origin Untrusted-Content Isolation.
-- ADR-0018 — public view identifier and independent enablement flag.
-- ADR-0019 — export caching by Yjs document version and cost guards.
+- the change design — Public Read-Only Viewer with Opaque-Origin Untrusted-Content Isolation.
+- ADR-348-02 — public view identifier and independent enablement flag.
+- ADR-348-03 — export caching by Yjs document version and cost guards.
 - `src/shared/security/publicViewSandbox.ts`, `src/routes/pages.ts`,
   `src/services/public-view-content.ts`, `views/viewer/viewer.njk`.
 - `doc/architecture.md` §8.6.

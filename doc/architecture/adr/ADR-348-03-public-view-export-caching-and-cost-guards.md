@@ -1,17 +1,18 @@
 ---
-id: ADR-0019
+id: ADR-348-03
 title: "Cache the public export by Yjs document version and bound its cost, removing the unauthenticated bulk ZIP endpoint"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 348
+legacy_id: ADR-0019
 deciders:
   - "@erseco"
 reviewers:
   - "@pabloamayab"
 related:
-  issues: [348]
   prs: [1425]
-  sdds: [SDD-0004]
-  adrs: [ADR-0017, ADR-0018]
+  changes: ["348-public-read-only-viewer-opaque-origin"]
+  adrs: [ADR-348-01, ADR-348-02]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,15 +20,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0019: Cache the public export by Yjs document version and bound its cost, removing the unauthenticated bulk ZIP endpoint
-
-## Status
-
-Proposed
+# ADR-348-03: Cache the public export by Yjs document version and bound its cost, removing the unauthenticated bulk ZIP endpoint
 
 ## Context
 
-ADR-0017 serves the public read-only viewer's content from the server: each request
+ADR-348-01 serves the public read-only viewer's content from the server: each request
 under `/view/:publicViewId/_/*` must return a file from the project's HTML5 export.
 Building that export is expensive — it reconstructs the Yjs document
 (`reconstructDocument()`), runs the shared `Html5Exporter`, and zips the result
@@ -209,9 +206,9 @@ public view; the server-side export API stays authenticated and owner-gated.
 
 - Issue #348 — public read-only URL.
 - PR #1425 — implementation.
-- SDD-0004 — Public Read-Only Viewer with Opaque-Origin Untrusted-Content Isolation.
-- ADR-0017 — opaque-origin isolation of the served content.
-- ADR-0018 — public view identifier and independent enablement flag.
+- the change design — Public Read-Only Viewer with Opaque-Origin Untrusted-Content Isolation.
+- ADR-348-01 — opaque-origin isolation of the served content.
+- ADR-348-02 — public view identifier and independent enablement flag.
 - `src/services/public-view-content.ts`, `src/db/queries/yjs.ts`,
   `src/routes/api/v1/export.ts`, `src/routes/pages.ts`.
 - `doc/architecture.md` §8.6.
