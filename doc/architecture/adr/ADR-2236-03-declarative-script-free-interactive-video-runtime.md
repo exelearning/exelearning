@@ -1,18 +1,19 @@
 ---
-id: ADR-0003
+id: ADR-2236-03
 title: "Declarative, script-free learner runtime for Interactive Video"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2236
+legacy_id: ADR-0003
 deciders:
   - "@erseco"
 reviewers:
   - "@mnunezcedec"
   - "@cristinavaldera"
 related:
-  issues: []
   prs: [2147]
-  sdds: [SDD-0001]
-  adrs: [ADR-0002, ADR-0004]
+  changes: ["2236-interactive-video-refactor"]
+  adrs: [ADR-2236-02, ADR-2236-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +21,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0003: Declarative, script-free learner runtime for Interactive Video
-
-## Status
-
-Proposed
+# ADR-2236-03: Declarative, script-free learner runtime for Interactive Video
 
 ## Context
 
@@ -72,7 +69,7 @@ represented as data and implemented by trusted runtime code.
   fed by the provider adapter's time events); author content is escaped;
   interaction bodies come from the JSON, not evaluated code.
 - No provider SDK in exports: the runtime embeds providers via canonical
-  privacy-enhanced iframes and drives them over raw postMessage (see ADR-0004),
+  privacy-enhanced iframes and drives them over raw postMessage (see ADR-2236-04),
   never `youtube.com/iframe_api` or any provider `<script>`.
 - Grading is pure and in the shared core (`gradeSingleChoice`,
   `gradeMultipleChoice`, `gradeDropdown`, `gradeCloze`, `gradeMatchElements`,
@@ -86,7 +83,7 @@ We will render the learner activity from **declarative JSON** with a fixed,
 shipped runtime and **no author-provided executable JavaScript** and **no
 external provider `<script>`** in exported content. Timing is event-driven
 (native `timeupdate` for local video; the provider's official embed message
-events for external embeds — see ADR-0004), not polled. All interaction behavior
+events for external embeds — see ADR-2236-04), not polled. All interaction behavior
 is implemented by trusted runtime code and represented in data.
 
 **Scope.** This guarantee constrains **exported content**. It is preserved by
@@ -111,7 +108,7 @@ provider APIs without weakening the export guarantee.
 
 - In non-opaque contexts, external embeds are **paused** and questions are
   surfaced at their timestamps via validated provider postMessage events (the
-  runtime consumes the ADR-0004 adapter's time events). The accessible timeline
+  runtime consumes the ADR-2236-04 adapter's time events). The accessible timeline
   list remains as an accessible complement and as the offline/degraded fallback
   (e.g. `file:` exports or a provider in a degraded state).
 
@@ -133,7 +130,7 @@ provider APIs without weakening the export guarantee.
 ## Follow-up work
 
 - The non-opaque timed-interaction path ships now via the provider adapter
-  (ADR-0004). Only **opaque-mode** playback still needs the parent bridge once
+  (ADR-2236-04). Only **opaque-mode** playback still needs the parent bridge once
   `exe_media_policy` / `exe_media_bridge` land (PR #1968).
 
 ## Amendment — multiple instances per page (id namespacing)
@@ -167,6 +164,6 @@ page".
 
 ## References
 
-- SDD-0001 — Interactive Video iDevice refactor.
+- the change design — Interactive Video iDevice refactor.
 - PR [#2147](https://github.com/exelearning/exelearning/pull/2147).
-- Related: ADR-0002, ADR-0004.
+- Related: ADR-2236-02, ADR-2236-04.

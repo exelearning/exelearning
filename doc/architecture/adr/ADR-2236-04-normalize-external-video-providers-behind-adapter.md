@@ -1,18 +1,19 @@
 ---
-id: ADR-0004
+id: ADR-2236-04
 title: "Normalize external video providers behind an adapter boundary"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2236
+legacy_id: ADR-0004
 deciders:
   - "@erseco"
 reviewers:
   - "@mnunezcedec"
   - "@cristinavaldera"
 related:
-  issues: []
   prs: [2147]
-  sdds: [SDD-0001]
-  adrs: [ADR-0003]
+  changes: ["2236-interactive-video-refactor"]
+  adrs: [ADR-2236-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +21,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0004: Normalize external video providers behind an adapter boundary
-
-## Status
-
-Proposed
+# ADR-2236-04: Normalize external video providers behind an adapter boundary
 
 ## Context
 
@@ -128,7 +125,7 @@ keyboard-accessible link, and is documented as not opaque-promotable.
 - The adapter is created through a single `createAdapter` factory (one adapter
   implementation per provider behind one interface); the opaque-mode parent
   bridge is a future branch of that same factory, chosen by feature detection.
-  SDD-0001 names the `VideoProviderAdapter` boundary, not a fixed
+  the change design names the `VideoProviderAdapter` boundary, not a fixed
   `LocalVideoAdapter`/`DirectEmbedAdapter`/`ExternalBridgeAdapter` split.
 
 ## Risks
@@ -174,7 +171,7 @@ leaves the adapter with no subscriptions; and the raw wire protocol emits
 `timeupdate` name used when subscribing. The adapter therefore subscribes again
 on `ready` and accepts both event names.
 
-Neither correction weakens the ADR-0003 guarantee: no provider SDK is loaded,
+Neither correction weakens the ADR-2236-03 guarantee: no provider SDK is loaded,
 control still flows over raw postMessage validated by source and origin.
 
 ## Follow-up work
@@ -190,8 +187,8 @@ control still flows over raw postMessage validated by source and origin.
 
 ## References
 
-- SDD-0001 — Interactive Video iDevice refactor.
+- the change design — Interactive Video iDevice refactor.
 - PR [#2147](https://github.com/exelearning/exelearning/pull/2147).
 - PR #1968 — opaque media bridge (`exe_media_policy` / `exe_media_bridge`),
   referenced; absent from this branch.
-- Related: ADR-0003.
+- Related: ADR-2236-03.
