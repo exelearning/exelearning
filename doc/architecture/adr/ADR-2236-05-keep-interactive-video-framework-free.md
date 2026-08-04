@@ -1,18 +1,19 @@
 ---
-id: ADR-0005
+id: ADR-2236-05
 title: "Keep the Interactive Video iDevice framework-free"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2236
+legacy_id: ADR-0005
 deciders:
   - "@erseco"
 reviewers:
   - "@mnunezcedec"
   - "@cristinavaldera"
 related:
-  issues: []
   prs: [2147]
-  sdds: [SDD-0001]
-  adrs: [ADR-0001, ADR-0003]
+  changes: ["2236-interactive-video-refactor"]
+  adrs: [ADR-2236-01, ADR-2236-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +21,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0005: Keep the Interactive Video iDevice framework-free
-
-## Status
-
-Proposed
+# ADR-2236-05: Keep the Interactive Video iDevice framework-free
 
 ## Context
 
@@ -83,7 +80,7 @@ stronger tests are required by hand, plus a small per-iDevice build script.
   directly; `src/test/bundle-contract.spec.ts` additionally evaluates the
   compiled bundles and asserts the classic-script contracts.
 - Project constraint against frameworks/H5P for iDevices: `AGENTS.md`
-  ("No framework: Vanilla JavaScript in `public/app/`") and SDD-0001 Non-goals.
+  ("No framework: Vanilla JavaScript in `public/app/`") and the change design Non-goals.
 
 ## Decision
 
@@ -141,7 +138,7 @@ manually-synchronized copies of the core proved the worse trade-off.
 
 ## References
 
-- SDD-0001 — Interactive Video iDevice refactor.
+- the change design — Interactive Video iDevice refactor.
 - PR [#2147](https://github.com/exelearning/exelearning/pull/2147).
 - `AGENTS.md` (framework policy).
-- Related: ADR-0001, ADR-0003.
+- Related: ADR-2236-01, ADR-2236-03.

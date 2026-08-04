@@ -1,18 +1,16 @@
 ---
-id: SDD-0001
+tracking_issue: 2236
 title: "Interactive Video iDevice refactor"
-status: In Review
+status: in-review
 date: 2026-07-09
+legacy_id: SDD-0001
 authors:
   - "@erseco"
 reviewers:
   - "@mnunezcedec"
   - "@cristinavaldera"
-related:
-  issues: []
-  prs: [2147, 2149]
-  adrs: [ADR-0001, ADR-0002, ADR-0003, ADR-0004, ADR-0005]
-  sdds: []
+implementation_prs: [2147]
+related_adrs: [ADR-2236-01, ADR-2236-02, ADR-2236-03, ADR-2236-04, ADR-2236-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,83 +18,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0001: Interactive Video iDevice refactor
-
-## Status
-
-In Review
-
-The ADR/SDD workflow this record follows landed in `main` on 2026-07-09
-(PR #2149, merged as commit `a3dad1366`) and is present on this branch, so the
-`doc/architecture/{sdd,adr}` README/records/template infrastructure is available
-and this PR now maintains the `records.md` index entries directly.
-
-### Review-driven design amendments (2026-07)
-
-This SDD was first written as an as-built record of the initial implementation
-pass. Reviewer **@cristinavaldera** returned a `CHANGES_REQUESTED` review with
-seven items that reject or correct that first design. The design below is
-amended **before** the corresponding implementation lands, restoring the
-SDD-first discipline: the record describes the agreed target, and the code
-follows. The seven review items are:
-
-1. **Tab structure** — the first tab must be **General settings** (a collapsed
-   Options fieldset, Video, Interactions) rather than a
-   Video-first six-tab layout; the standalone **Preview** tab is removed.
-2. **Use current time** — must read the live playhead for **all** providers, not
-   only local video (a legacy-parity regression for external video).
-3. **Single Choice exclusivity** — marking a correct answer must be exclusive
-   (exactly one correct), not the shared non-exclusive multiple-choice rows.
-4. **Dedicated True/False control** — True/False must have its own control, not
-   the shared multiple-choice answer rows.
-5. **Cloze/Dropdown authoring** — the prompt editor must never expose raw
-   `<span style="text-decoration: line-through;">` markup; blanks are authored
-   as plain-text tokens.
-6. **Interactions layout** — a single-editor accordion, not a dual list that
-   renders each question below the video **and** again in a second full list.
-7. **Preview/runtime parity** — in workarea Preview and browser exports the
-   video must pause and questions must appear at their timestamps for external
-   providers too, not only local `<video>`.
-
-The amendments below map 1:1 to these items and are reflected in the Acceptance
-criteria as unchecked, objectively phrased criteria.
-
-### Review-driven design amendments — round 2 (2026-07)
-
-After testing the first pass, a second review returned nine further
-simplifications, several of which restore behaviours/layouts of the legacy
-(pre-refactor) iDevice (still on `origin/main`). These are implemented as a
-sequence of self-consistent commits on `feature/refactor-interactive-video-idevice`:
-
-1. **Single source field** — the URL/Local-file `<select>` and split URL/file
-   inputs are replaced by one text field (`#ivVideoFile`) that accepts a URL or a
-   media-library path; the workarea auto-injects a video-filtered "Select a file"
-   button and the provider is auto-detected via `core.normalizeVideoSource()`.
-2. **Tab order** — General settings → **SCORM** → **Custom texts** (sibling parity).
-3. **Custom-texts styling** — restore the two-column grid with teal (`#0BA1A1`)
-   labels, scoped to the reordered tab.
-4. **Cover interaction kind** — a note-like element pinned to `time:0` (not
-   editable), rich-text/image body, never graded, **singleton**, always sorted
-   first; distinct magenta kind colour (`--exe-iv-cover #b5179e`). It **replaces
-   the poster option**, and `migrateDocV2toV3` converts an existing poster into a
-   cover interaction.
-5. **Note/pause duration** — an optional auto-resume time; blank keeps the legacy
-   default (pause until Continue), a positive value auto-dismisses/resumes.
-6. **Remove the per-interaction title** — dropped from the editor, row summary,
-   runtime markers/body and the schema (`migrateDocV2toV3`).
-7. **Side-panel layout** — the learner view and the editor place the interaction
-   content in a panel to the **right** of the video (stacked below on mobile); the
-   editor's right panel is a live preview of the selected interaction.
-8. **Shared lite TinyMCE** — the note/pause/cover body uses the shared
-   `$exeTinyMCE` lite editor (`.exe-html-editor`), degrading to a plain textarea.
-9. **Collapsed "Resultados" table** — the learner view renders a collapsed results
-   table (cover first, timestamp seek links, Seen/percentage/– status, Total),
-   opt-in via *Show results*, reading the existing `aggregateScore()` state.
-
-Schema note: during review these changes briefly lived as intermediate schema
-versions; none of them ever shipped, and the TypeScript refactor consolidated
-everything into the single published **schema v2** (see the amendment below and
-ADR-0002). ADR-0001 covers the inline-editor layout + body-editor widget.
+# Interactive Video iDevice refactor — design
 
 ## Amendment — TypeScript sources, two generated bundles, schema v2 (2026-07)
 
@@ -176,7 +98,7 @@ introduced.
 The change is large and cross-cutting (authoring UX, runtime, storage format,
 export registration, migration, security, accessibility), which is why it is
 captured as an SDD with the durable decisions extracted into ADRs
-(ADR-0001…ADR-0005).
+(ADR-2236-01…ADR-2236-05).
 
 ## Problem statement
 
@@ -259,27 +181,27 @@ Before this change (all paths repo-root-relative):
 
 The design (amended in review, before the corresponding implementation lands):
 
-- **Integrated inline editor** (ADR-0001) — `edition/interactive-video.js`
+- **Integrated inline editor** (ADR-2236-01) — `edition/interactive-video.js`
   renders the whole authoring UI inline in the iDevice body using the native
   `.exe-form-tab` → `$exeDevicesEdition.iDevice.tabs.init()` pattern, with
   element-scoped state (no `top.*` singletons). The detached
   editor/full-screen flow is no longer the authoring path.
-- **Versioned JSON storage** (ADR-0002) — the iDevice is `component-type=json`;
+- **Versioned JSON storage** (ADR-2236-02) — the iDevice is `component-type=json`;
   `save()` returns a plain object stored in `jsonProperties`, and export renders
   via `renderView(jsonProperties, template)`. A bounded on-open migration
   hydrates the versioned schema from the legacy `htmlView` island; already-
   generated exports are untouched.
-- **Declarative script-free runtime** (ADR-0003) — a fresh
+- **Declarative script-free runtime** (ADR-2236-03) — a fresh
   `export/interactive-video.js` (`$interactivevideo`) renders declarative,
   escaped HTML from the JSON and wires the player, scheduler, grading, scoring
   and SCORM at runtime. No author JavaScript is evaluated; no provider SDK
   `<script>` is emitted into exports.
-- **Provider normalization behind an adapter boundary** (ADR-0004) — external
+- **Provider normalization behind an adapter boundary** (ADR-2236-04) — external
   providers are stored as `{provider, videoId}` and rebuilt to canonical
   privacy-enhanced URLs; a shared adapter layer (`src/providers/`, compiled into both bundles) owns
   playback control and time events for every provider today via SDK-free
   postMessage, and the future opaque bridge remains the opaque-mode path.
-- **Framework-free** (ADR-0005) — no UI framework and no H5P runtime; the
+- **Framework-free** (ADR-2236-05) — no UI framework and no H5P runtime; the
   maintained source is TypeScript compiled into two self-contained classic-
   script bundles (see the TypeScript amendment above).
 
@@ -529,7 +451,7 @@ deep-equals migrate(x)`) is a contract test.
 
 ### Interaction model
 
-All **8 interaction/question kinds are first-class** (ADR-0001/ADR-0003):
+All **8 interaction/question kinds are first-class** (ADR-2236-01/ADR-2236-03):
 `note` (text/image), `pause`, `jump`, and `question.kind` ∈ {`singleChoice`,
 `multipleChoice`, `trueFalse`, `dropdown`, `cloze`, `matchElements`,
 `sortableList`}. Each is authored with its own dedicated control (see *Editor
@@ -575,7 +497,7 @@ implements one interface:
 ```
 
 The transports are **SDK-free** — no provider `<script>` is ever loaded, so
-ADR-0003's no-external-script guarantee holds for exports:
+ADR-2236-03's no-external-script guarantee holds for exports:
 
 - **Local HTML5** — wraps the `<video>` element: native `timeupdate` →
   `onTimeUpdate`; `play`/`pause`/`ended` → `onStateChange`; `currentTime`/
@@ -621,7 +543,7 @@ Provider capabilities, and where each degrades:
 "Best-effort" reflects provider event granularity and autoplay/gesture policies,
 not exact-time determinism; "Degrades-to-manual" keeps the accessible timeline
 list, the external link and manual time entry as the fallback. Mediateca has no
-canonical iframe embed URL and remains not opaque-promotable (ADR-0004).
+canonical iframe embed URL and remains not opaque-promotable (ADR-2236-04).
 
 ### Preview and export registration (runtime parity)
 
@@ -828,9 +750,9 @@ lossless `unsupported` round-trips.
 ## Security and privacy
 
 - Declarative runtime data only: no author-JS `eval`, no inline/external author
-  `<script>` in exported content (ADR-0003).
+  `<script>` in exported content (ADR-2236-03).
 - External providers are untrusted cross-origin: store `{provider, videoId}`,
-  rebuild canonical URLs, reject `javascript:`/non-HTTPS (ADR-0004).
+  rebuild canonical URLs, reject `javascript:`/non-HTTPS (ADR-2236-04).
 - No same-origin assumption between exported content and the LMS parent; assume
   `window.origin` may be `"null"` under an opaque sandbox.
 - Author content is escaped on render: question prompts (all kinds) and
@@ -970,10 +892,10 @@ needed.
 ## Risks and mitigations
 
 - **Storage format flip** → bounded on-open migration + round-trip fixtures;
-  legacy island reader kept for hydration (ADR-0002).
+  legacy island reader kept for hydration (ADR-2236-02).
 - **All 8 kinds** → larger UI/test surface; each kind is unit-tested.
 - **Mediateca** → mixed-content/keyed CDN, not bridge-promotable; retained
-  hardened (HTTPS) and documented as limited (ADR-0004).
+  hardened (HTTPS) and documented as limited (ADR-2236-04).
 - **SCORM regression** → grading/completion locked behind pure unit tests before
   the markup rewrite.
 
@@ -991,11 +913,11 @@ needed.
 
 | Decision | ADR | Status |
 |---|---|---|
-| Native inline editor (replace the detached full-screen editor) | ADR-0001 | Proposed |
-| Store data as versioned JSON properties + on-open migration | ADR-0002 | Proposed |
-| Declarative, script-free learner runtime | ADR-0003 | Proposed |
-| Normalize external providers behind an adapter boundary | ADR-0004 | Proposed |
-| Keep the iDevice framework-free | ADR-0005 | Proposed |
+| Native inline editor (replace the detached full-screen editor) | ADR-2236-01 | Proposed |
+| Store data as versioned JSON properties + on-open migration | ADR-2236-02 | Proposed |
+| Declarative, script-free learner runtime | ADR-2236-03 | Proposed |
+| Normalize external providers behind an adapter boundary | ADR-2236-04 | Proposed |
+| Keep the iDevice framework-free | ADR-2236-05 | Proposed |
 
 ## Evidence
 
@@ -1085,7 +1007,7 @@ All review-driven items landed 2026-07-10 (suites in *Testing strategy*):
 - [x] Rewritten E2E spec for the single-editor flow, including the SW-preview
   pause/question/resume step (local video) and the controllable-embed markup
   assertion for YouTube (no live provider network in CI).
-- [x] Docs amended in this SDD + ADR-0001…ADR-0005 (review-driven pass).
+- [x] Docs amended in this SDD + ADR-2236-01…ADR-2236-05 (review-driven pass).
 
 ## References
 
@@ -1093,5 +1015,5 @@ All review-driven items landed 2026-07-10 (suites in *Testing strategy*):
   Video iDevice refactor (this design).
 - PR [#2149](https://github.com/exelearning/exelearning/pull/2149) — ADR/SDD
   workflow this record follows.
-- ADR-0001 … ADR-0005 (this design's durable decisions).
+- ADR-2236-01 … ADR-2236-05 (this design's durable decisions).
 - `doc/elpx-format/idevices/patterns.md`, `doc/elpx-format/idevices/catalog.md`.
