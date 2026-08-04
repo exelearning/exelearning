@@ -32,7 +32,7 @@ IDs use the format `YYYYMMDDHHmmss` + 6 uppercase alphanumeric characters. The `
 
 Used by iDevices that have a structured editor backed by a JavaScript component with `component-type: json` in `config.xml`. The editor reads `jsonProperties` on open, modifies it in memory, and writes both `jsonProperties` and `htmlView` on save.
 
-**Types using this pattern:** `text`, `casestudy`, `image-gallery`, `magnifier`, `trueorfalse`, `form`, `digcompedu`, `example`, `geogebra-activity`, `scrambled-list`, `udl-content`
+**Types using this pattern:** `text`, `casestudy`, `image-gallery`, `magnifier`, `trueorfalse`, `form`, `digcompedu`, `example`, `geogebra-activity`, `scrambled-list`, `udl-content`, `file-attachment`
 
 ### Structure
 
