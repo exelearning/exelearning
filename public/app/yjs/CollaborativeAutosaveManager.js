@@ -39,7 +39,7 @@ class CollaborativeAutosaveManager {
      *   `bridge.app.capabilities`, `bridge.documentManager` and
      *   `bridge.saveManager` from it.
      * @param {Object} [options]
-     * @param {number} [options.idleDelayMs=15000] - Debounce window after the
+     * @param {number} [options.idleDelayMs=8000] - Debounce window after the
      *   last change before autosaving.
      * @param {number} [options.retryBaseMs=5000] - Base delay for backoff retry.
      * @param {number} [options.maxRetries=5] - Maximum consecutive retry attempts.
@@ -48,7 +48,7 @@ class CollaborativeAutosaveManager {
      */
     constructor(bridge, options = {}) {
         this.bridge = bridge;
-        this.idleDelayMs = options.idleDelayMs != null ? options.idleDelayMs : 15000;
+        this.idleDelayMs = options.idleDelayMs != null ? options.idleDelayMs : 8000;
         this.retryBaseMs = options.retryBaseMs != null ? options.retryBaseMs : 5000;
         this.maxRetries = options.maxRetries != null ? options.maxRetries : 5;
         this.onStatusChange = typeof options.onStatusChange === 'function' ? options.onStatusChange : null;
