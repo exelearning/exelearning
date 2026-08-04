@@ -1,8 +1,10 @@
 ---
-id: ADR-0029
+id: ADR-2237-01
 title: "Source vendored frontend libraries from npm and generate them at build time"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2237
+legacy_id: ADR-0029
 deciders:
   - "@erseco"
 reviewers:
@@ -11,10 +13,9 @@ reviewers:
   - "@juanda"
   - "@mnarvaezm"
 related:
-  issues: []
   prs: [1593]
-  sdds: [SDD-0007]
-  adrs: [ADR-0030, ADR-0031]
+  changes: ["2237-vendored-frontend-libs-build-pipeline"]
+  adrs: [ADR-2237-02, ADR-2237-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -22,11 +23,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0029: Source vendored frontend libraries from npm and generate them at build time
-
-## Status
-
-Proposed
+# ADR-2237-01: Source vendored frontend libraries from npm and generate them at build time
 
 ## Context
 
@@ -51,7 +48,7 @@ PR #1593 removes those committed artifacts (roughly 56,900 deleted lines across
 the vendor blobs) and replaces them with a declared, npm-managed source of
 truth plus a deterministic build step. This ADR records the sourcing and
 build-time-generation decision. The Yjs-specific shim strategy is recorded
-separately in ADR-0030, and the automated-update governance in ADR-0031.
+separately in ADR-2237-02, and the automated-update governance in ADR-2237-03.
 
 ## Problem
 
@@ -70,7 +67,7 @@ CDN fetch is not acceptable?
   ×2, DOMPurify ×2) must derive from one declared source, per the AGENTS.md
   "single source of truth" rule.
 - **Security update path** — libraries must be updatable through a routine
-  dependency-management flow rather than manual blob replacement (see ADR-0031).
+  dependency-management flow rather than manual blob replacement (see ADR-2237-03).
 - **Offline / desktop / static / opaque serving** — the runtime must not depend
   on a third-party CDN; assets are served from the app's own origin under the
   opaque serving model.
@@ -109,7 +106,7 @@ from `node_modules/` into the expected `public/` locations during a dedicated
 
 - Pros: explicit provenance via `package.json` + `bun.lock`; one npm source feeds
   all duplicated copies; assets are still served from the app's own origin;
-  enables automated updates (ADR-0031); removes committed blobs from the tree.
+  enables automated updates (ADR-2237-03); removes committed blobs from the tree.
 - Cons: a fresh checkout has no runtime vendor files until `bundle:vendor` runs;
   adds a build step that CI and packaging must invoke. Chosen.
 
@@ -123,7 +120,7 @@ them as standalone `<script>` files.
   (`window.jQuery`, `window.fabric`, jQuery-UI plugins, iDevice export scripts
   loaded as classic scripts). Rewriting every consumer to ESM imports is a large,
   high-risk change out of scope here. Bundler-driven generation is used only for
-  Yjs, where a single shared instance matters (see ADR-0030). Rejected as the
+  Yjs, where a single shared instance matters (see ADR-2237-02). Rejected as the
   general strategy.
 
 ## Evidence
@@ -191,7 +188,7 @@ until its own migration.
   from a single npm source, satisfying the single-source-of-truth rule.
 - Assets are still served from the app's own origin, so offline, desktop,
   static, and embedded/opaque builds keep working with no CDN dependency.
-- Automated dependency updates become possible (ADR-0031).
+- Automated dependency updates become possible (ADR-2237-03).
 - A skipped or mis-ordered vendor step fails the build loudly instead of shipping
   an incomplete `libs.zip`.
 
@@ -244,9 +241,9 @@ until its own migration.
 ## References
 
 - PR #1593
-- SDD-0007 — Vendored frontend libraries sourced from npm and generated at build time
-- ADR-0030 — Ship Yjs to the browser as esbuild-built global-`window.Y` shims
-- ADR-0031 — Govern the newly npm-managed frontend dependencies with grouped Dependabot updates
+- the change design — Vendored frontend libraries sourced from npm and generated at build time
+- ADR-2237-02 — Ship Yjs to the browser as esbuild-built global-`window.Y` shims
+- ADR-2237-03 — Govern the newly npm-managed frontend dependencies with grouped Dependabot updates
 - `scripts/copy-vendor-libs.js`, `scripts/copy-vendor-libs.spec.ts`
 - `scripts/build-resource-bundles.js`, `scripts/build-resource-bundles.spec.ts`
 - `package.json`, `.gitignore`
