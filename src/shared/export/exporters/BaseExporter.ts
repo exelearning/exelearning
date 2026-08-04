@@ -21,6 +21,7 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
@@ -1105,19 +1106,7 @@ export abstract class BaseExporter {
      * Collect all HTML content from all pages (for library detection)
      */
     collectAllHtmlContent(pages: ExportPage[]): string {
-        const htmlParts: string[] = [];
-
-        for (const page of pages) {
-            for (const block of page.blocks || []) {
-                for (const component of block.components || []) {
-                    if (component.content) {
-                        htmlParts.push(component.content);
-                    }
-                }
-            }
-        }
-
-        return htmlParts.join('\n');
+        return [...this.iteratePageContentFragments(pages), ...this.iteratePagePropertyFragments(pages)].join('\n');
     }
 
     /**
@@ -1137,14 +1126,33 @@ export abstract class BaseExporter {
     }
 
     /**
+     * Yield rich text and other string fragments nested in JSON iDevice properties.
+     */
+    private *iteratePagePropertyFragments(pages: ExportPage[]): Generator<string> {
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    yield* iterateJsonPropertyStrings(component.properties);
+                }
+            }
+        }
+    }
+
+    /**
      * Detect required libraries across all page fragments incrementally.
      */
     protected getRequiredLibraryFilesForPages(
         pages: ExportPage[],
         options: LibraryDetectionOptions = {},
     ): { files: string[]; patterns: import('../interfaces').LibraryPattern[] } {
-        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragments(
-            this.iteratePageContentFragments(pages),
+        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragmentGroups(
+            [
+                { fragments: this.iteratePageContentFragments(pages) },
+                {
+                    fragments: this.iteratePagePropertyFragments(pages),
+                    excludedLibraries: JSON_PROPERTY_LIBRARY_EXCLUSIONS,
+                },
+            ],
             options,
         );
     }

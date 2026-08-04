@@ -26,6 +26,7 @@ import {
     formatShortLicenseText,
 } from '../constants';
 import { trans } from '../../../services/translation';
+import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 
 /**
  * Precomputed lookups shared across a single navigation render so each nav node
@@ -144,10 +145,9 @@ export class PageRenderer {
 
         const pageTitle = this.buildDocumentTitle(page, projectTitle, isIndex);
 
-        // Detect libraries from ORIGINAL content (before transformation)
-        // This is important for exe-package:elp links which get transformed during rendering
-        const originalContent = this.collectPageContent(page);
-        const detectedLibraries = providedDetectedLibraries ?? this.detectContentLibraries(originalContent);
+        // Detect libraries from original component content and nested JSON rich text.
+        // This happens before rendering because protocols and data are transformed later.
+        const detectedLibraries = providedDetectedLibraries ?? this.detectLibrariesForPage(page);
 
         // Render page content (includes exe-package:elp → onclick transformation and,
         // because allPages is provided, the render-time exe-node: → static path rewrite)
@@ -863,6 +863,22 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
     }
 
     /**
+     * Collect string values nested in JSON iDevice properties.
+     * Rich text fields can appear at different depths depending on the iDevice.
+     */
+    private collectPagePropertyContent(page: ExportPage): string {
+        const parts: string[] = [];
+        for (const block of page.blocks || []) {
+            for (const component of block.components || []) {
+                for (const value of iterateJsonPropertyStrings(component.properties)) {
+                    parts.push(value);
+                }
+            }
+        }
+        return parts.join('\n');
+    }
+
+    /**
      * Replace exe-package:elp protocol with client-side download handler
      * This enables the download-source-file iDevice to generate ELPX files on-the-fly
      *
@@ -1413,10 +1429,14 @@ ${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
      * @param html - HTML content to scan
      * @returns Array of library names detected
      */
-    detectContentLibraries(html: string): string[] {
+    detectContentLibraries(html: string, excludedLibraries: ReadonlySet<string> = new Set()): string[] {
         const detectedLibs: Set<string> = new Set();
 
         for (const lib of LIBRARY_PATTERNS) {
+            if (excludedLibraries.has(lib.name)) {
+                continue;
+            }
+
             let found = false;
 
             switch (lib.type) {
@@ -1450,10 +1470,24 @@ ${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
         return Array.from(detectedLibs);
     }
 
+    private detectLibrariesForPage(page: ExportPage): string[] {
+        const detectedLibs = new Set(this.detectContentLibraries(this.collectPageContent(page)));
+        const propertyContent = this.collectPagePropertyContent(page);
+
+        // Math in JSON iDevices is handled by the selective pre-rendering pipeline.
+        // Scanning raw properties for these patterns would force MathJax for
+        // unsupported iDevices and undo that optimization.
+        for (const libName of this.detectContentLibraries(propertyContent, JSON_PROPERTY_LIBRARY_EXCLUSIONS)) {
+            detectedLibs.add(libName);
+        }
+
+        return Array.from(detectedLibs);
+    }
+
     private detectContentLibrariesForPages(pages: ExportPage[]): string[] {
         const detectedLibs = new Set<string>();
         for (const page of pages) {
-            for (const libName of this.detectContentLibraries(this.collectPageContent(page))) {
+            for (const libName of this.detectLibrariesForPage(page)) {
                 detectedLibs.add(libName);
             }
         }
