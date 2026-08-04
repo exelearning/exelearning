@@ -362,6 +362,8 @@ describe('Template Service', () => {
                 expect(parsed.locale).toBe(payload);
             });
         }
+    });
+
     describe('workarea/modals/pages/filemanager.njk (issue #2034)', () => {
         it('renders the media library upload input allowing .srt and .vtt subtitle files', () => {
             const html = renderTemplate('workarea/modals/pages/filemanager.njk', {});
