@@ -1,17 +1,18 @@
 ---
-id: ADR-0009
+id: ADR-2235-06
 title: "Emit the sandbox CSP on every scriptable preview document type, not just HTML"
 status: Accepted
 date: 2026-07-09
+tracking_issue: 2235
+legacy_id: ADR-0009
 deciders:
   - "@erseco"
 reviewers:
   - "@github-user"
 related:
-  issues: []
   prs: [1968]
-  sdds: [SDD-0002]
-  adrs: [ADR-0006, ADR-0008, ADR-0011]
+  changes: []
+  adrs: [ADR-2235-05, ADR-0008, ADR-0011]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,22 +20,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0009: Emit the sandbox CSP on every scriptable preview document type, not just HTML
-
-## Status
-
-Carried (historical). Retained from PR #1968; its insight is **applied on this
-branch** by `isScriptableDocumentType()` in `src/shared/security/previewSandbox.ts`
-and the serving route `src/routes/preview-snapshot.ts`, which emit the
-`sandbox`-first CSP on HTML, XHTML, SVG, XML **and PDF** for eXe's own capability
-snapshots (see [ADR-0004](ADR-0004-self-hosted-capability-snapshots-for-editor-preview.md)).
-
-> Cross-references to ADR-0006/0008/0011 and SDD-0002 point to PR-branch records;
-> ADR-0006 is carried here, the others are not (see ADR-0002's disposition table).
+# ADR-2235-06: Emit the sandbox CSP on every scriptable preview document type, not just HTML
 
 ## Context
 
-The opaque-origin guarantee (ADR-0006) is reinforced by a response-level
+The opaque-origin guarantee (ADR-2235-05) is reinforced by a response-level
 `sandbox`-first CSP so a preview document stays opaque even when its capability URL
 is opened directly (new tab, popup, raw URL). If that CSP is applied only to
 `text/html`, an author-controlled `image/svg+xml` (or XML with an
@@ -117,4 +107,4 @@ types.
 
 ## References
 
-- SDD-0002; ADR-0006, ADR-0008, ADR-0011. PR #1968.
+- the change design; ADR-2235-05, ADR-0008, ADR-0011. PR #1968.

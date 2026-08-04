@@ -1,16 +1,16 @@
 ---
-id: ADR-0020
+id: ADR-2235-11
 title: "Strangle the classic embed runtimes behind their own globals, switching loaders last"
 status: Accepted
 date: 2026-07-26
+tracking_issue: 2235
+legacy_id: ADR-0020
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [2199]
-  sdds: []
-  adrs: [ADR-0017, ADR-0018, ADR-0019]
+  changes: []
+  adrs: [ADR-2235-08, ADR-2235-09, ADR-2235-10]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,35 +18,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-0020: Strangle the classic embed runtimes behind their own globals, switching loaders last
-
-## Status
-
-Accepted on 2026-07-27.
-
-### Why this was accepted
-
-The alternative was a cutover: replace the classic runtimes and switch the loaders in one
-change. Rejected because the failure it risks is the one ADR-0017 exists to prevent — a
-broken child ships inside exported packages, where it cannot be rolled back.
-
-All five steps are done and each was verifiable on its own:
-
-1. artifacts build reproducibly (`--check` compares against the committed build);
-2. the equivalence gate executes the incumbent relay through 26 vectors × open/strict
-   before anything switched;
-3. loaders moved one at a time, each proven exercised by deliberately breaking its path;
-4. the legacy globals are facades that announce themselves once per session, on use;
-5. the bundle now builds from the canonical TypeScript, with the unported media half
-   concatenated after it.
-
-The strangler shape paid for itself twice over at step 5: the three-engine artifact E2E
-failed the first switched build, and both causes were real defects — a re-entrant
-promotion triggered by `replaceChild` dispatching `load` synchronously, and an initial
-`load` revoking the handshake it had just granted. A cutover would have shipped both.
-
-Accepted because the sequence is complete, each step was gated, and the gates caught
-things.
+# ADR-2235-11: Strangle the classic embed runtimes behind their own globals, switching loaders last
 
 ## Context
 
@@ -65,7 +37,7 @@ with ones built from the canonical source, and turning the old files into facade
 
 Both are security-critical: the shim decides what to promote, the relay decides what URL
 loads into a player iframe and with which sandbox. Between them they are also the code
-that ADR-0017's handshake lives in.
+that ADR-2235-08's handshake lives in.
 
 ## Problem
 
@@ -78,7 +50,7 @@ silently weakened?
 - **Failures here are silent.** A wrong sandbox token or a missed promotion does not
   throw; it degrades. That rules out "swap and see".
 - The classic-script contract is load-bearing: no imports, `file://`-safe, runnable
-  inside an exported package (ADR-0017).
+  inside an exported package (ADR-2235-08).
 - Five plugins vendor these files. Core changing how it *loads* them desynchronises the
   ecosystem until Phase 6.
 - There is already a harness that runs the **built artifacts** through both directions
@@ -129,7 +101,7 @@ demonstrated against the incumbent, not asserted.
 `previewEmbedHost.js` (host side, one call site) before `previewEmbedShim.js` (child
 side, injected into every snapshot page). Host first because its blast radius is one
 document and its failure is visible immediately; the child ships inside content and its
-failure is the silent one ADR-0017 exists to prevent.
+failure is the silent one ADR-2235-08 exists to prevent.
 
 **Step 4 — publish facades, do not delete.**
 `window.exeEmbedShim`, `exeEmbedRelay`, `exeMediaPolicy`, `exeMediaBridge` and
@@ -210,5 +182,5 @@ canonical implementation.
 - `src/shared/external-media/` — canonical registry and protocol (Phase 1)
 - `scripts/external-media/sources.ts` — the designed swap point (Phase 5)
 - `test/e2e/playwright/specs/external-media-artifacts.spec.ts` — the equivalence harness
-- [ADR-0017](ADR-0017-embed-shim-stays-inert-until-a-host-completes-the-handshake.md),
-  [ADR-0019](ADR-0019-preview-transport-matrix-as-a-single-source.md)
+- [ADR-2235-08](ADR-2235-08-embed-shim-stays-inert-until-a-host-completes-the-handshake.md),
+  [ADR-2235-10](ADR-2235-10-preview-transport-matrix-as-a-single-source.md)

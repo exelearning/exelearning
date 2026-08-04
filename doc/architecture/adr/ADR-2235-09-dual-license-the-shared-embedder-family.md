@@ -1,16 +1,16 @@
 ---
-id: ADR-0018
+id: ADR-2235-09
 title: "Dual-license the shared embedder family so one file ships under AGPL and GPL"
 status: Accepted
 date: 2026-07-26
+tracking_issue: 2235
+legacy_id: ADR-0018
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [2199]
-  sdds: []
-  adrs: [ADR-0017]
+  changes: []
+  adrs: [ADR-2235-08]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,36 +18,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-0018: Dual-license the shared embedder family so one file ships under AGPL and GPL
-
-## Status
-
-Accepted on 2026-07-27.
-
-### Why this was accepted
-
-The premise stated here originally was wrong and was corrected before acceptance: AGPLv3
-and GPLv3 are **not** mutually incompatible. §13 of each explicitly permits *combining*
-them. What combining never does is **relicense** a file — and that is the actual problem,
-because only the copyright holder can offer a file under both.
-
-So the decision is not a workaround for an incompatibility; it is the copyright holder
-exercising the one power that makes vendoring lawful. That distinction is now in the ADR,
-because a reader who believes the wrong premise would look for a technical solution to a
-non-problem.
-
-Applied and enforced, not merely declared: the grant is in all 26 mirrors, the build
-prepends it as a `/*!` legal comment so minification cannot strip it, and both verifiers
-fail a distribution whose **output** lacks it. That last part matters — every earlier check
-ran against sources, which is why the artifacts shipped with no notice at all until this
-was caught.
-
-Accepted because it is a decision only the copyright holder could make, they made it, and
-the mechanism that carries it to recipients exists and is tested.
-
-> This ADR records a licensing decision taken by the copyright holder. It is a reading
-> of the licence texts and Moodle's published contribution checklist. **It is not legal
-> advice.**
+# ADR-2235-09: Dual-license the shared embedder family so one file ships under AGPL and GPL
 
 ## Context
 
@@ -189,5 +160,5 @@ project, not a technical one.
 - [GNU licence FAQ](https://www.gnu.org/licenses/gpl-faq.en.html) — GPLv3/AGPLv3 §13
 - [Moodle plugin contribution checklist](https://moodledev.io/general/community/plugincontribution/checklist)
 - `doc/development/external-media-inventory.md` — spike S5 and the F4 correction
-- [ADR-0017](ADR-0017-embed-shim-stays-inert-until-a-host-completes-the-handshake.md) —
+- [ADR-2235-08](ADR-2235-08-embed-shim-stays-inert-until-a-host-completes-the-handshake.md) —
   the change that made the family shippable to Moodle in the first place

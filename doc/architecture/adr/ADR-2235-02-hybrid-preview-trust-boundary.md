@@ -1,28 +1,24 @@
 ---
-id: ADR-0002
+id: ADR-2235-02
 title: "Hybrid preview trust boundary: source-filtered by default, opaque-on-enable"
 status: Accepted
 date: 2026-07-22
+tracking_issue: 2235
+legacy_id: ADR-0002
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [1968]
-  sdds: []
-  adrs: [ADR-0001, ADR-0003, ADR-0004, ADR-0006, ADR-0009, ADR-0016]
-supersedes: [ADR-0001]
+  changes: []
+  adrs: [ADR-2235-01, ADR-2235-03, ADR-2235-04, ADR-2235-05, ADR-2235-06, ADR-2235-07]
+supersedes: []
 superseded_by: []
 ai_assistance:
   tool: "Claude Code"
   model: "Claude Fable 5"
 ---
 
-# ADR-0002: Hybrid preview trust boundary — source-filtered by default, opaque-on-enable
-
-## Status
-
-Proposed. Supersedes [ADR-0001](ADR-0001-source-aware-preview-filtering-and-opaque-embedded-isolation.md).
+# ADR-2235-02: Hybrid preview trust boundary — source-filtered by default, opaque-on-enable
 
 ## Context
 
@@ -40,7 +36,7 @@ Two prior efforts sit at opposite ends of a cost/safety trade-off.
   benchmark never compared against `main`. Even it concedes opacity is
   unachievable in static/PWA mode.
 
-- **The minimal approach ([ADR-0001](ADR-0001-source-aware-preview-filtering-and-opaque-embedded-isolation.md)).**
+- **The minimal approach ([ADR-2235-01](ADR-2235-01-source-aware-preview-filtering-and-opaque-embedded-isolation.md)).**
   Keeps `main`'s same-origin Service Worker preview (zero network) and disables
   author-controlled active content by default via a parser-based, source-aware,
   preview-only policy that never touches official scripts and never mutates Yjs.
@@ -65,7 +61,7 @@ handled honestly rather than pretending to isolate?
 
 - Keep the default preview at parity with `main` (zero network, no server round
   trip). Pay the cost of isolation only when a user opts in, only while opted in.
-- Close the same-origin-on-enable gap of ADR-0001 for web/server.
+- Close the same-origin-on-enable gap of ADR-2235-01 for web/server.
 - Reuse machinery that already exists (the embedded-host snapshot lifecycle)
   rather than inventing a second transport.
 - Fail closed: never silently downgrade from an isolated transport to
@@ -84,7 +80,7 @@ fallback between rows.
 | Runtime | Default preview | Active content detected | After explicit enable |
 |---|---|---|---|
 | Web / server | Same-origin SW, source-filtered | Indicator + dialog | **Opaque snapshot** served by eXe's server via a capability URL; iframe `sandbox` without `allow-same-origin` |
-| Embedded LMS/CMS | Opaque snapshot via **host** capability routes (unchanged from ADR-0001); full authored content retained — the origin boundary is the control | n/a (always isolated) | n/a |
+| Embedded LMS/CMS | Opaque snapshot via **host** capability routes (unchanged from ADR-2235-01); full authored content retained — the origin boundary is the control | n/a (always isolated) | n/a |
 | Static bundle / PWA / PHP-WASM (no backend) | Same-origin SW, source-filtered | Indicator + dialog | Same-origin with consent (**documented residual risk**; no server exists to mint capability URLs — the same limit PR #1968 accepted) |
 | Electron | Same-origin SW, source-filtered | Dialog explains restriction | **Blocked** (preview shares a renderer with the preload bridge) |
 
@@ -104,7 +100,7 @@ filtered when the snapshot routes cannot be reached — the fail-closed directio
   SMALL/MEDIUM/LARGE — well inside the 10% gate — because native DOM parsing
   makes the policy negligible. The opaque cost (full snapshot per refresh) is
   paid only while a user has opted in.
-- **vs. consent-same-origin (ADR-0001's enable path):** in web/server the author
+- **vs. consent-same-origin (ADR-2235-01's enable path):** in web/server the author
   code runs in an opaque origin (a sandboxed iframe without `allow-same-origin`,
   served from eXe's own capability URL), so it cannot read the editor DOM,
   IndexedDB, or the eXe `auth` cookie. The social-engineering "click enable"
@@ -114,14 +110,14 @@ filtered when the snapshot routes cannot be reached — the fail-closed directio
 
 The enable/disable state machine, D2 (the `allow-popups-to-escape-sandbox`
 token), and the reuse of the embedded snapshot lifecycle are specified here and
-in [ADR-0003](ADR-0003-preview-grant-revocation-under-collaboration.md) (D1
-revocation) and [ADR-0004](ADR-0004-self-hosted-capability-snapshots-for-editor-preview.md)
+in [ADR-2235-03](ADR-2235-03-preview-grant-revocation-under-collaboration.md) (D1
+revocation) and [ADR-2235-04](ADR-2235-04-self-hosted-capability-snapshots-for-editor-preview.md)
 (self-hosted snapshots). Concessions accepted explicitly:
 
 - **Static/PWA/PHP-WASM:** no backend can mint capability URLs, so enable is
   consent-same-origin — a documented residual risk, the same one PR #1968's
   ADR-0015/0016 accepted (a trusted same-origin SW, and OPFS+SW is not an opaque
-  origin; see [ADR-0016](ADR-0016-opfs-service-worker-is-not-an-opaque-origin.md)).
+  origin; see [ADR-2235-07](ADR-2235-07-opfs-service-worker-is-not-an-opaque-origin.md)).
 - **Electron:** the preview shares a renderer with the `preload.js` bridge
   (`app/main.js`), so an opaque child could still reach the exposed IPC surface;
   enable is blocked, and the dialog explains why. Revisiting this needs an
@@ -146,7 +142,7 @@ GeoGebra) for no in-scope benefit.
 ### Positive
 
 - Default preview stays at `main` parity; isolation cost is opt-in and temporary.
-- The same-origin-on-enable gap of ADR-0001 is closed for web/server.
+- The same-origin-on-enable gap of ADR-2235-01 is closed for web/server.
 - One snapshot client (`EmbeddedPreviewSnapshot`) drives both embedded hosts and
   eXe's own routes — host plugins and the editor share one contract.
 - No new always-on transport, no protocol version, no revisions, no providers.
@@ -183,15 +179,15 @@ GeoGebra) for no in-scope benefit.
 
 ## PR #1968 ADR disposition
 
-Carried forward and extended from [ADR-0001](ADR-0001-source-aware-preview-filtering-and-opaque-embedded-isolation.md):
+Carried forward and extended from [ADR-2235-01](ADR-2235-01-source-aware-preview-filtering-and-opaque-embedded-isolation.md):
 
-- **ADR-0006** and **ADR-0009**: carried to this branch (see the files) as the
+- **ADR-2235-05** and **ADR-2235-06**: carried to this branch (see the files) as the
   opaque-origin sandbox rationale and the sandbox-first-CSP-on-every-scriptable-type
   insight — both now apply to eXe's own snapshot serving, not only embedded hosts.
-- **ADR-0016**: carried as historical evidence that OPFS + a Service Worker does
+- **ADR-2235-07**: carried as historical evidence that OPFS + a Service Worker does
   not create an opaque origin (why static/PWA cannot self-host opacity).
 - **ADR-0007, ADR-0008, ADR-0011, ADR-0012, ADR-0015**: superseded for the normal
-  editor; capability serving is kept as a minimal subset (ADR-0004), not the full
+  editor; capability serving is kept as a minimal subset (ADR-2235-04), not the full
   session/provider/Electron machinery.
 - **ADR-0010, ADR-0013, ADR-0014**: not adopted — the full media bridge, layered
   revisions, and protocol-v2 rollout are out of scope. A minimal external-media

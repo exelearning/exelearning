@@ -1,16 +1,16 @@
 ---
-id: ADR-0021
+id: ADR-2235-12
 title: "eXeLearning core is canonical for the external-media family, verified by manifest"
 status: Accepted
 date: 2026-07-26
+tracking_issue: 2235
+legacy_id: ADR-0021
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [2199]
-  sdds: []
-  adrs: [ADR-0017, ADR-0018, ADR-0020]
+  changes: []
+  adrs: [ADR-2235-08, ADR-2235-09, ADR-2235-11]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,54 +18,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-0021: eXeLearning core is canonical for the external-media family, verified by manifest
-
-## Status
-
-Accepted on 2026-07-27.
-
-### Why this was accepted
-
-Two repositories claimed ownership of the same code in writing, and both claims were
-readable by whoever opened the wrong file first. The maintainer settled it: **core is
-canonical**, because core is where development happens and where the tests, contract
-vectors, three-engine E2E and coverage gate live.
-
-The alternative mechanism — keep `check-embed-sync.mjs` and treat it as the gate — was
-rejected on evidence rather than preference. It checks for the presence of about ten
-substrings, and it reports no drift across five repositories that hold five genuinely
-different relay implementations. [M] It is a smoke test wearing a gate's label.
-
-The sharpest demonstration was found by finally running it across all five checkouts
-[M, 2026-07-27]. It prints **"No drift detected"** while:
-
-- `mod_exelearning`, `wp-exelearning` and `omeka-s-exelearning` each carry the media host
-  built on **raw `postMessage`** (25 310 / 25 319 / 23 552 B), and
-- eXeLearning core carries one built on **`new YT.Player(...)`** (16 783 B), from globals
-  core never loads.
-
-Two implementations of the same file, on opposite sides of the decision in ADR-0022 — and
-the report is clean. Not by oversight: `check-embed-sync.mjs:105` lists `mod`, `wp`,
-`omeka` and `procomun` as the `mediahost` targets and simply **omits core**, with line 9
-recording why — *"core ships a separate SDK-based host fork, so it is not a 'mediahost'
-target"*.
-
-So the tool does not merely fail to notice the divergence; it is configured not to look,
-and the exclusion is where the divergence went to be forgotten. A gate you can exempt a
-file from is a gate for the files nobody was worried about.
-
-What replaces it is not a better checker but a different kind of claim: core publishes a
-`sha256` per artifact plus a `buildHash` over the digest list, and a consumer **vendors the
-bytes** and verifies them. Divergence stops being something a checker might notice and
-becomes something that cannot be expressed.
-
-The mechanism exists and is exercised: `dist/verify.mjs` ships inside the distribution,
-runs under plain `node` with no toolchain, and its seven outcomes — including a locally
-patched file, a manifest edited to cover the patch, and a wrong `--build-hash` — are
-asserted with real exit codes.
-
-Accepted with its limits stated: integrity is not provenance, and the ADR and the guide
-both say so.
+# ADR-2235-12: eXeLearning core is canonical for the external-media family, verified by manifest
 
 ## Context
 
@@ -93,7 +46,7 @@ individually). It passes because it cannot see behaviour. It is a smoke test wea
 gate's label, it lives in a client repo, and its own comment admits it is not wired into
 any CI. [M]
 
-Meanwhile the thing it was written to protect has moved. Since ADR-0020 the canonical
+Meanwhile the thing it was written to protect has moved. Since ADR-2235-11 the canonical
 implementation is the TypeScript under `src/shared/external-media/`, and the classic files
 it guards are no longer built into anything.
 
@@ -171,4 +124,4 @@ false sense of coverage.
 ## References
 
 - `doc/development/external-media-inventory.md` §2.3 (F5), §2.2 (the five divergences)
-- ADR-0020 (strangler-fig migration), ADR-0018 (dual licence, which makes vendoring lawful)
+- ADR-2235-11 (strangler-fig migration), ADR-2235-09 (dual licence, which makes vendoring lawful)

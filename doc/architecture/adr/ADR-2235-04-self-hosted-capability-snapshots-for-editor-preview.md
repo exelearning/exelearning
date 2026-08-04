@@ -1,16 +1,16 @@
 ---
-id: ADR-0004
+id: ADR-2235-04
 title: "Self-hosted capability snapshots for the editor preview (minimal subset)"
 status: Accepted
 date: 2026-07-22
+tracking_issue: 2235
+legacy_id: ADR-0004
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [1968]
-  sdds: []
-  adrs: [ADR-0002, ADR-0006, ADR-0009]
+  changes: []
+  adrs: [ADR-2235-02, ADR-2235-05, ADR-2235-06]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,18 +18,13 @@ ai_assistance:
   model: "Claude Fable 5"
 ---
 
-# ADR-0004: Self-hosted capability snapshots for the editor preview (minimal subset)
-
-## Status
-
-Proposed. Implements the web/server opaque transport of
-[ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md).
+# ADR-2235-04: Self-hosted capability snapshots for the editor preview (minimal subset)
 
 ## Context
 
 When a web/server user enables custom active content, the preview must switch to
 an opaque-origin iframe served over a same-origin, cookieless, unguessable URL
-(ADR-0002). The embedded-host case (ADR-0001) already had a client for exactly
+(ADR-2235-02). The embedded-host case (ADR-2235-01) already had a client for exactly
 this shape — `EmbeddedPreviewSnapshot` uploads a ZIP snapshot to a management
 route and points a sandboxed iframe at a capability URL. The question is what the
 **server** side should be for eXe's own routes.
@@ -37,7 +32,7 @@ route and points a sandboxed iframe at a capability URL. The question is what th
 PR #1968 built a full preview-session subsystem for this: layered
 fixed/session/generated resources, atomic incremental revisions, a provider
 abstraction, ETag/Range handling, and an Electron `app://` adapter. That is
-powerful but is the operational surface ADR-0002 deliberately rejects for the
+powerful but is the operational surface ADR-2235-02 deliberately rejects for the
 ordinary editor.
 
 ## Problem
@@ -71,10 +66,10 @@ PR #1968's `preview-serving`/`preview-session-manager`:
   reads no cookies and never sends `Set-Cookie`. Strict traversal-safe path
   normalization (reusing the ported `content-path.util`), correct MIME mapping,
   `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`, a restrictive
-  `Referrer-Policy`, and — per [ADR-0009](ADR-0009-emit-sandbox-csp-on-every-scriptable-document-type.md)
+  `Referrer-Policy`, and — per [ADR-2235-06](ADR-2235-06-emit-sandbox-csp-on-every-scriptable-document-type.md)
   — a `sandbox`-first CSP on **every** scriptable type (HTML, XHTML, SVG, XML,
   PDF), so a directly opened capability URL stays opaque
-  ([ADR-0006](ADR-0006-render-editor-preview-in-an-opaque-origin-sandbox.md)).
+  ([ADR-2235-05](ADR-2235-05-render-editor-preview-in-an-opaque-origin-sandbox.md)).
 - **Lifecycle:** sliding 30-minute idle TTL renewed on management writes **only**
   (serving does not renew — an abandoned-but-open preview should die); an 8-hour
   absolute cap from creation; a per-user quota of 2 active snapshots with
@@ -85,7 +80,7 @@ PR #1968's `preview-serving`/`preview-session-manager`:
 - **Absent where impossible:** the routes are registered only by the Bun server.
   Electron serves via its `app://` handler and static/PWA builds have no backend,
   so the transport is structurally absent there and the client's runtime
-  resolution never offers it (ADR-0002's no-silent-fallback rule).
+  resolution never offers it (ADR-2235-02's no-silent-fallback rule).
 
 ### Full-snapshot-per-refresh vs. PR #1968's incremental revisions
 
@@ -123,4 +118,4 @@ right trade for an opt-in, temporary transport.
 - `src/utils/content-path.util.ts` (ported from PR #1968)
 - `public/app/workarea/interface/elements/preview/EmbeddedPreviewSnapshot.js`
 - `test/benchmarks/preview/results/comparison.md`
-- [ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md), [ADR-0006](ADR-0006-render-editor-preview-in-an-opaque-origin-sandbox.md), [ADR-0009](ADR-0009-emit-sandbox-csp-on-every-scriptable-document-type.md)
+- [ADR-2235-02](ADR-2235-02-hybrid-preview-trust-boundary.md), [ADR-2235-05](ADR-2235-05-render-editor-preview-in-an-opaque-origin-sandbox.md), [ADR-2235-06](ADR-2235-06-emit-sandbox-csp-on-every-scriptable-document-type.md)

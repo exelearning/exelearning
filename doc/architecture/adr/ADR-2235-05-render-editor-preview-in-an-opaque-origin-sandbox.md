@@ -1,17 +1,18 @@
 ---
-id: ADR-0006
+id: ADR-2235-05
 title: "Render editor preview content in an opaque-origin sandbox"
 status: Accepted
 date: 2026-07-09
+tracking_issue: 2235
+legacy_id: ADR-0006
 deciders:
   - "@erseco"
 reviewers:
   - "@github-user"
 related:
-  issues: []
   prs: [1968]
-  sdds: [SDD-0002]
-  adrs: [ADR-0007, ADR-0009, ADR-0010, ADR-0011, ADR-0015]
+  changes: []
+  adrs: [ADR-0007, ADR-2235-06, ADR-0010, ADR-0011, ADR-0015]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,21 +20,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0006: Render editor preview content in an opaque-origin sandbox
-
-## Status
-
-Carried (historical). Retained from PR #1968 as the opaque-origin sandbox
-rationale, cited by [ADR-0002](ADR-0002-hybrid-preview-trust-boundary.md) and
-[ADR-0004](ADR-0004-self-hosted-capability-snapshots-for-editor-preview.md). On
-**this** branch the opaque origin is engaged only for the embedded-host preview
-and for the web/server preview **after the user enables custom active content**
-(ADR-0002); the default web/server preview stays same-origin and source-filtered.
-
-> Cross-references in this record to ADR-0007/0010/0011/0015 and SDD-0002 point to
-> records that live only on the unmerged PR branch; they are preserved here as
-> historical context and are **not** part of this branch. See ADR-0002's "PR #1968
-> ADR disposition" for how each was handled.
+# ADR-2235-05: Render editor preview content in an opaque-origin sandbox
 
 ## Context
 
@@ -125,7 +112,7 @@ sanitizer remains as defense-in-depth, not the primary boundary.
   shipped enabled they reintroduce the exposure. Mitigation: off by default,
   documented, and (in hosts) test-covered as off-by-default.
 - Opacity is not "secure in all contexts": the guarantee holds only where the
-  opaque transport is used; see SDD-0002 threat model for residual risks.
+  opaque transport is used; see the change design threat model for residual risks.
 
 ## Validation
 
@@ -138,5 +125,5 @@ absence of `allow-same-origin` and that the parent cannot read the child documen
 
 ## References
 
-- SDD-0002; ADR-0007, ADR-0009, ADR-0010, ADR-0011.
+- the change design; ADR-0007, ADR-2235-06, ADR-0010, ADR-0011.
 - PR #1968. `doc/development/preview-architecture.md`.
