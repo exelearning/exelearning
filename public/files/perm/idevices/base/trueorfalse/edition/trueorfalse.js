@@ -43,6 +43,19 @@ var $exeDevice = {
         this.createForm();
     },
 
+    /**
+     * The question list reaches the editor from two places — the activity's
+     * saved properties and an imported game file — and either can hand back a
+     * missing or non-array value: `transformObject` returns an already-migrated
+     * payload untouched, and an imported file is only checked for `typeGame`.
+     * Every read below assumes an array, so normalize at both boundaries. An
+     * empty list leaves the editor in the same state as a brand-new activity,
+     * which `addEvents` then seeds with one editable question.
+     */
+    toQuestionsArray: function (questions) {
+        return Array.isArray(questions) ? questions : [];
+    },
+
     transformObject: function (data) {
         if (data.typeGame && data.typeGame === 'TrueOrFalse') {
             return data;
@@ -706,7 +719,9 @@ var $exeDevice = {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (game.typeGame === 'TrueOrFalse') {
-            $exeDevice.questionsGame = game.questionsGame;
+            $exeDevice.questionsGame = $exeDevice.toQuestionsArray(
+                game.questionsGame
+            );
             game.id = $exeDevice.id;
             $exeDevice.updateFieldGame(game);
             const eXeGameInstructions = game.eXeGameInstructions || '',
@@ -800,9 +815,12 @@ var $exeDevice = {
     },
 
     deleteEmptyQuestion: function () {
-        if (tinyMCE.get('tofEQuestionEditor')) {
-            question = tinyMCE.get('tofEQuestionEditor').getContent();
-        }
+        // `question` was an implicit global assigned only when the editor
+        // exists, so reading it without one threw a ReferenceError instead of
+        // treating the missing editor as empty content, which is what the
+        // no-editor case means here.
+        const editor = tinyMCE.get('tofEQuestionEditor');
+        const question = editor ? editor.getContent() : '';
         if (question.length === 0 && $exeDevice.questionsGame.length > 1) {
             $exeDevice.removeQuestion();
         }
@@ -815,7 +833,9 @@ var $exeDevice = {
             dataGame = $exeDevice.transformObject(dataGame);
 
             $exeDevice.active = 0;
-            $exeDevice.questionsGame = dataGame.questionsGame;
+            $exeDevice.questionsGame = $exeDevice.toQuestionsArray(
+                dataGame.questionsGame
+            );
 
             const instructions = dataGame.eXeGameInstructions || '';
 

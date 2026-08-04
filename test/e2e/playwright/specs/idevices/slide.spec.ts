@@ -644,6 +644,428 @@ test.describe('Slide iDevice', () => {
         });
     });
 
+    test.describe('Text editing caret alignment', () => {
+        /**
+         * Regression for #2214 — the caret progressively drifted LEFT of the
+         * rendered glyphs while typing, proportionally to text length.
+         *
+         * Root cause: the app ships Inter as a variable font with an `opsz`
+         * (optical sizing) axis, so canvas glyph advances are non-linear in
+         * font size. Fabric measures text at CACHE_FONT_SIZE=400px (where
+         * auto optical sizing clamps opsz to the axis max) and scales down,
+         * while glyphs are painted at the object's real font size (different
+         * optical size below 32px → wider advances). Caret/selection/hit
+         * geometry use the measured advances, so the error accumulates with
+         * every typed character.
+         *
+         * The assertions compare Fabric's measured geometry against what the
+         * browser actually paints on the editor's own lower canvas, so they
+         * fail whenever measurement and rendering disagree, regardless of
+         * which side regresses.
+         */
+        const TEST_STRING =
+            'This is only a cursor alignment regression test with narrow letters iii and wide letters WWW.';
+
+        interface CaretProbe {
+            fontSize: number;
+            displayedScale: number;
+            measuredLineWidth: number;
+            renderedLineWidth: number;
+            caretOffset: number;
+            inkStart: number | null;
+            inkEnd: number | null;
+            paintedLeft: number;
+            midIndex: number;
+            midCaretOffset: number;
+            midRenderedPrefixWidth: number;
+        }
+
+        /**
+         * Measures caret vs rendered-glyph geometry inside the page, in
+         * design (canvas) pixels. Uses `getCursorRenderingData()` (public
+         * Fabric API returning the exact rectangle the caret is painted at)
+         * and reads glyph ink directly from the lower canvas backstore, so
+         * the comparison reflects what the user actually sees.
+         */
+        async function probeCaretGeometry(page: Page, midIndex: number): Promise<CaretProbe> {
+            return page.evaluate(mid => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: {
+                        getObjects: () => Array<Record<string, unknown>>;
+                        getWidth: () => number;
+                        getRetinaScaling: () => number;
+                        renderAll: () => void;
+                        lowerCanvasEl: HTMLCanvasElement;
+                    };
+                };
+                const canvas = w.__slideEditorCanvas;
+                if (!canvas) throw new Error('slide canvas not found');
+                const t = canvas.getObjects().find(o => typeof (o as { text?: string }).text === 'string') as {
+                    text: string;
+                    width: number;
+                    fontSize: number;
+                    getBoundingRect: () => { left: number; top: number; width: number; height: number };
+                    fontStyle: string;
+                    fontWeight: string | number;
+                    fontFamily: string;
+                    isEditing: boolean;
+                    getLineWidth: (line: number) => number;
+                    setSelectionStart: (i: number) => void;
+                    setSelectionEnd: (i: number) => void;
+                    getCursorRenderingData: () => { left: number; width: number };
+                    abortCursorAnimation?: () => void;
+                    renderCursorOrSelection: () => void;
+                };
+                if (!t) throw new Error('text object not found');
+                const text = t.text;
+
+                // Caret offset from the line start, in design px, when the
+                // caret is at a given selection index. getCursorRenderingData
+                // returns the painted rect relative to the object's center.
+                const caretOffsetAt = (index: number): number => {
+                    t.setSelectionStart(index);
+                    t.setSelectionEnd(index);
+                    t.abortCursorAnimation?.();
+                    const data = t.getCursorRenderingData();
+                    return t.width / 2 + data.left + data.width / 2;
+                };
+
+                // What the browser will actually paint: measure on the lower
+                // canvas' own 2D context (same element CSS as fillText uses).
+                const ctx = canvas.lowerCanvasEl.getContext('2d') as CanvasRenderingContext2D;
+                ctx.save();
+                ctx.font = `${t.fontStyle} ${t.fontWeight} ${t.fontSize}px ${t.fontFamily}`;
+                const renderedLineWidth = ctx.measureText(text).width;
+                const midRenderedPrefixWidth = ctx.measureText(text.slice(0, mid)).width;
+                ctx.restore();
+
+                // Glyph ink span read from the backstore. The lower canvas
+                // holds only the scene (grid/background are CSS), so any dark
+                // pixel in the text row band belongs to the glyphs. Fabric 7
+                // defaults objects to a center origin, so the painted box
+                // comes from the transform (getBoundingRect), never from
+                // left/top directly.
+                canvas.renderAll();
+                const box = t.getBoundingRect();
+                const retina = canvas.getRetinaScaling();
+                const bandTop = Math.max(0, Math.round((box.top - 1) * retina));
+                const bandBottom = Math.round((box.top + box.height + 1) * retina);
+                const width = canvas.lowerCanvasEl.width;
+                let inkStart: number | null = null;
+                let inkEnd: number | null = null;
+                for (let y = bandTop; y <= bandBottom; y += 2) {
+                    const row = ctx.getImageData(0, y, width, 1).data;
+                    for (let x = 0; x < width; x++) {
+                        const alpha = row[x * 4 + 3];
+                        const lum = 0.299 * row[x * 4] + 0.587 * row[x * 4 + 1] + 0.114 * row[x * 4 + 2];
+                        if (alpha > 100 && lum < 130) {
+                            if (inkStart === null || x < inkStart) inkStart = x;
+                            if (inkEnd === null || x > inkEnd) inkEnd = x;
+                        }
+                    }
+                }
+
+                const displayedScale = canvas.lowerCanvasEl.getBoundingClientRect().width / canvas.getWidth();
+                const probe = {
+                    fontSize: t.fontSize,
+                    displayedScale,
+                    measuredLineWidth: t.getLineWidth(0),
+                    renderedLineWidth,
+                    caretOffset: caretOffsetAt(text.length),
+                    inkStart: inkStart === null ? null : inkStart / retina,
+                    inkEnd: inkEnd === null ? null : inkEnd / retina,
+                    paintedLeft: box.left,
+                    midIndex: mid,
+                    midCaretOffset: caretOffsetAt(mid),
+                    midRenderedPrefixWidth,
+                };
+                // Leave the caret at the end for the screenshotable state.
+                t.setSelectionStart(text.length);
+                t.setSelectionEnd(text.length);
+                t.renderCursorOrSelection();
+                return probe;
+            }, midIndex);
+        }
+
+        test('keeps the caret aligned with rendered glyphs while typing below 32px', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide iDevice Caret Alignment');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+
+            await page.locator('[data-testid="slide-tool-text"]').first().click();
+            await waitForObjectCountAtLeast(page, 1);
+
+            // The editor shows the canvas fitted to the shell — the displayed
+            // scale must be below 1 so the regression exercises a scaled
+            // canvas exactly like the reported scenario.
+            const scaled = await page.evaluate(() => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: { getWidth: () => number; lowerCanvasEl: HTMLCanvasElement };
+                };
+                const c = w.__slideEditorCanvas;
+                if (!c) return null;
+                return c.lowerCanvasEl.getBoundingClientRect().width / c.getWidth();
+            });
+            expect(scaled).not.toBeNull();
+            expect(scaled as number).toBeLessThan(1);
+
+            // 16px is one of the toolbar font sizes below Inter's opsz max.
+            // Set it through the same object API the toolbar handler uses,
+            // then type the string through the real keyboard input path.
+            await page.evaluate(() => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: {
+                        getActiveObject: () => {
+                            set: (p: Record<string, unknown>) => void;
+                            enterEditing: () => void;
+                            selectAll: () => void;
+                        } | null;
+                        requestRenderAll: () => void;
+                    };
+                };
+                const canvas = w.__slideEditorCanvas;
+                const t = canvas?.getActiveObject();
+                if (!t) throw new Error('no active text object');
+                t.set({ fontSize: 16 });
+                canvas?.requestRenderAll();
+                t.enterEditing();
+                t.selectAll();
+            });
+            await page.keyboard.type(TEST_STRING);
+            await page.waitForFunction(
+                expected => {
+                    const w = window as unknown as {
+                        __slideEditorCanvas?: { getObjects: () => Array<{ text?: string }> };
+                    };
+                    return w.__slideEditorCanvas?.getObjects().some(o => o.text === expected) ?? false;
+                },
+                TEST_STRING,
+                { timeout: 10_000 },
+            );
+
+            const midIndex = Math.floor(TEST_STRING.length / 2);
+            const probe = await probeCaretGeometry(page, midIndex);
+
+            // Tolerances in design px. 3 design px ≈ 1.4 CSS px at the ~45%
+            // fit zoom; the bug produces a 60–95 design px divergence.
+            const METRIC_TOLERANCE = 3;
+            const INK_TOLERANCE = 3;
+
+            // 1. The advances Fabric measured (caret/selection/hit geometry)
+            //    must equal the advances the browser paints with.
+            expect(Math.abs(probe.renderedLineWidth - probe.measuredLineWidth)).toBeLessThanOrEqual(METRIC_TOLERANCE);
+
+            // 2. End-of-text caret: no glyph ink may extend beyond the caret,
+            //    and the rightmost ink must sit just behind it (trailing side
+            //    bearing only).
+            expect(probe.inkEnd).not.toBeNull();
+            const caretAbsoluteX = probe.paintedLeft + probe.caretOffset;
+            expect((probe.inkEnd as number) - caretAbsoluteX).toBeLessThanOrEqual(INK_TOLERANCE);
+            expect(caretAbsoluteX - (probe.inkEnd as number)).toBeLessThanOrEqual(12);
+
+            // 3. Mid-text caret must match the painted width of the prefix.
+            expect(Math.abs(probe.midCaretOffset - probe.midRenderedPrefixWidth)).toBeLessThanOrEqual(METRIC_TOLERANCE);
+
+            // 4. Editing mid-text must stay aligned: put the caret after the
+            //    prefix and type one more character through the keyboard.
+            await page.evaluate(mid => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: {
+                        getActiveObject: () => {
+                            setSelectionStart: (i: number) => void;
+                            setSelectionEnd: (i: number) => void;
+                        } | null;
+                    };
+                };
+                const t = w.__slideEditorCanvas?.getActiveObject();
+                if (!t) throw new Error('no active text object');
+                t.setSelectionStart(mid);
+                t.setSelectionEnd(mid);
+            }, midIndex);
+            await page.keyboard.type('X');
+            const afterEdit = await probeCaretGeometry(page, midIndex + 1);
+            expect(Math.abs(afterEdit.midCaretOffset - afterEdit.midRenderedPrefixWidth)).toBeLessThanOrEqual(
+                METRIC_TOLERANCE,
+            );
+
+            // 5. Sizes at/above the optical-sizing maximum were never
+            //    affected and must stay aligned.
+            await page.evaluate(() => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: {
+                        getActiveObject: () => { set: (p: Record<string, unknown>) => void } | null;
+                        requestRenderAll: () => void;
+                    };
+                };
+                const canvas = w.__slideEditorCanvas;
+                const t = canvas?.getActiveObject();
+                if (!t) throw new Error('no active text object');
+                t.set({ fontSize: 40 });
+                canvas?.requestRenderAll();
+            });
+            const probe40 = await probeCaretGeometry(page, midIndex);
+            expect(Math.abs(probe40.renderedLineWidth - probe40.measuredLineWidth)).toBeLessThanOrEqual(
+                METRIC_TOLERANCE,
+            );
+        });
+
+        test('keeps per-character styled sizes from corrupting other objects', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            // Serialized scenes (and the Code view) can carry Fabric
+            // per-character styles with their own fontSize. Measurements of
+            // a styled span must be stored/scaled for the span's size, and
+            // must never leak wrong-size advances into the shared width
+            // cache used by other objects.
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide iDevice Styled Spans');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+
+            const HEAD = 'Base 32px text then ';
+            const SPAN = 'a styled span with wide WWW letters iii';
+            const result = await page.evaluate(
+                ({ head, span }) => {
+                    const w = window as unknown as {
+                        __slideEditorCanvas?: {
+                            add: (o: unknown) => void;
+                            renderAll: () => void;
+                            lowerCanvasEl: HTMLCanvasElement;
+                        };
+                        fabric?: {
+                            IText: new (
+                                text: string,
+                                opts: Record<string, unknown>,
+                            ) => {
+                                styles: Record<number, Record<number, Record<string, unknown>>>;
+                                initDimensions: () => void;
+                                getLineWidth: (l: number) => number;
+                                fontFamily: string;
+                            };
+                        };
+                    };
+                    const canvas = w.__slideEditorCanvas;
+                    const fabric = w.fabric;
+                    if (!canvas || !fabric) throw new Error('canvas or fabric missing');
+                    const fontFamily = 'Inter, Arial, sans-serif';
+
+                    // Object A: base 32px with the span styled at 16px, as a
+                    // deserialized scene would carry it.
+                    const styled = new fabric.IText(head + span, { left: 40, top: 60, fontSize: 32, fontFamily });
+                    const styles: Record<number, Record<string, unknown>> = {};
+                    for (let i = head.length; i < head.length + span.length; i++) styles[i] = { fontSize: 16 };
+                    styled.styles = { 0: styles };
+                    styled.initDimensions();
+                    canvas.add(styled);
+
+                    // Object B: a separate uniform 16px object reusing the
+                    // exact same characters the styled span just measured.
+                    const plain = new fabric.IText(span, { left: 40, top: 200, fontSize: 16, fontFamily });
+                    canvas.add(plain);
+                    canvas.renderAll();
+
+                    const ctx = canvas.lowerCanvasEl.getContext('2d') as CanvasRenderingContext2D;
+                    ctx.save();
+                    ctx.font = `normal normal 16px ${fontFamily}`;
+                    const span16 = ctx.measureText(span).width;
+                    ctx.font = `normal normal 32px ${fontFamily}`;
+                    const head32 = ctx.measureText(head).width;
+                    ctx.restore();
+                    return {
+                        plainMeasured: plain.getLineWidth(0),
+                        plainRendered: span16,
+                        styledMeasured: styled.getLineWidth(0),
+                        styledRendered: head32 + span16,
+                    };
+                },
+                { head: HEAD, span: SPAN },
+            );
+
+            // The uniform 16px object must match what the browser paints at
+            // 16px — a polluted shared cache would roughly double it.
+            expect(Math.abs(result.plainMeasured - result.plainRendered)).toBeLessThanOrEqual(3);
+            // The styled object's line is head@32px + span@16px. Style-run
+            // boundaries drop one kerning pair, hence the slightly wider
+            // tolerance.
+            expect(Math.abs(result.styledMeasured - result.styledRendered)).toBeLessThanOrEqual(5);
+        });
+
+        test('keeps Fabric shared state intact: per-family cache invalidation still works', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            // The Slide editor runs against the app-global window.fabric
+            // (the bundle maps `import 'fabric'` to it), so its metric
+            // corrections must not mutate shared defaults nor break the
+            // documented `cache.clearFontCache(fontFamily)` invalidation
+            // used after lazy webfont loads.
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'Slide iDevice Fabric State');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addSlideIdevice(page);
+            const ideviceId = await getSlideIdeviceId(page);
+            await editSlideIdevice(page, ideviceId);
+            await waitForEditorReady(page);
+
+            await page.locator('[data-testid="slide-tool-text"]').first().click();
+            await waitForObjectCountAtLeast(page, 1);
+
+            const result = await page.evaluate(() => {
+                const w = window as unknown as {
+                    __slideEditorCanvas?: {
+                        getActiveObject: () => {
+                            set: (p: Record<string, unknown>) => void;
+                            initDimensions: () => void;
+                        } | null;
+                    };
+                    fabric?: {
+                        cache: { charWidthsCache: Map<string, unknown>; clearFontCache: (f?: string) => void };
+                        FabricText: { ownDefaults: { CACHE_FONT_SIZE?: number } };
+                    };
+                };
+                const fabric = w.fabric;
+                const t = w.__slideEditorCanvas?.getActiveObject();
+                if (!fabric || !t) throw new Error('fabric or text object missing');
+                const family = 'Inter, Arial, sans-serif';
+                // Populate width-cache entries for two font sizes.
+                t.set({ fontSize: 16 });
+                t.initDimensions();
+                t.set({ fontSize: 24 });
+                t.initDimensions();
+                const familyKeys = () =>
+                    [...fabric.cache.charWidthsCache.keys()].filter(k => k.startsWith(family.toLowerCase()));
+                const before = familyKeys().length;
+                fabric.cache.clearFontCache(family);
+                const after = familyKeys().length;
+                return { before, after, ownDefaultsCacheFontSize: fabric.FabricText.ownDefaults.CACHE_FONT_SIZE };
+            });
+
+            expect(result.before).toBeGreaterThanOrEqual(1);
+            // Per-family invalidation must remove every entry for the family,
+            // including any size-scoped buckets.
+            expect(result.after).toBe(0);
+            // Shared Fabric defaults must stay untouched for other consumers.
+            expect(result.ownDefaultsCacheFontSize).toBe(400);
+        });
+    });
+
     test.describe('Security', () => {
         test('strips <script> and javascript: URLs from the saved SVG', async ({
             authenticatedPage,

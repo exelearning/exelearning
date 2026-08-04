@@ -29,6 +29,7 @@ class YjsProjectBridge {
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
     this.saveManager = null; // SaveManager for saving to server with progress
     this.collaborativeAutosave = null; // CollaborativeAutosaveManager (issue #1592), only in online collaborative sessions
+    this._collabStatusView = null; // CollaborativeSaveStatusView (issue #1592), renders the compact autosave status
     this.connectionMonitor = null; // ConnectionMonitor for connection failure handling
     this.initialized = false;
     this.autoSyncEnabled = false;
@@ -2474,51 +2475,25 @@ class YjsProjectBridge {
   }
 
   /**
-   * Render the collaborative save-status notice (issue #1592).
+   * Render the collaborative save-status (issue #1592).
    *
-   * Updates the persistent toolbar notice (#exe-collab-save-status) so users in
-   * a collaborative session understand that live shared changes still need to be
-   * persisted, and are warned clearly if autosave fails. This complements — and
-   * does not replace — the red/green save button.
+   * Delegates to CollaborativeSaveStatusView, a focused presentation helper that
+   * shows the phase as a compact badge on the Save button, announces it through
+   * a visually-hidden live region, and raises a single error toast on failure.
+   * The presentation helper is loaded as a sibling Yjs module; if it is
+   * unavailable the autosave itself is unaffected — we simply skip the (purely
+   * cosmetic) status update rather than throw.
    *
    * @param {('clean'|'pending'|'saving'|'failed')} phase
    */
   _updateCollaborativeSaveStatus(phase) {
-    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') {
+    if (typeof window === 'undefined' || !window.CollaborativeSaveStatusView) {
       return;
     }
-    const el = document.getElementById('exe-collab-save-status');
-    if (!el) return;
-
-    const messages = {
-      clean: _('All collaborative changes are saved.'),
-      pending: _('Collaborative changes are shared live and will be saved automatically.'),
-      saving: _('Saving collaborative changes...'),
-      failed: _('Autosave failed. Please click Save before leaving.'),
-    };
-
-    el.classList.remove(
-      'collab-save-status--clean',
-      'collab-save-status--pending',
-      'collab-save-status--saving',
-      'collab-save-status--failed'
-    );
-
-    const message = messages[phase];
-    if (!message) {
-      // Unknown phase: keep the notice hidden rather than showing an empty pill.
-      return;
+    if (!this._collabStatusView) {
+      this._collabStatusView = new window.CollaborativeSaveStatusView();
     }
-
-    el.classList.add('collab-save-status--' + phase);
-    el.classList.remove('d-none');
-
-    const textEl = typeof el.querySelector === 'function' ? el.querySelector('.content') : null;
-    const target = textEl || el;
-    target.textContent = message;
-    if (typeof el.setAttribute === 'function') {
-      el.setAttribute('title', message);
-    }
+    this._collabStatusView.setPhase(phase);
   }
 
   /**
@@ -2848,6 +2823,9 @@ class YjsProjectBridge {
    * @param {string} ideviceType - iDevice type
    * @param {Object} initialData - Initial properties (optional)
    * @returns {string} Created component ID
+   * @throws {Error} InvalidJsonPropertiesError when `initialData.jsonProperties`
+   *   cannot be serialized/parsed. Callers that pass iDevice payloads should
+   *   handle this to avoid an uncaught rejection.
    */
   addComponent(pageId, blockId, ideviceType, initialData = {}) {
     const componentId = this.structureBinding.createComponent(pageId, blockId, ideviceType, initialData);
@@ -2865,6 +2843,9 @@ class YjsProjectBridge {
    * Update component properties
    * @param {string} componentId - Component ID
    * @param {Object} props - Properties to update
+   * @throws {Error} InvalidJsonPropertiesError when `props.jsonProperties`
+   *   cannot be serialized/parsed. Callers that pass iDevice payloads should
+   *   handle this to avoid an uncaught rejection.
    */
   updateComponent(componentId, props) {
     this.structureBinding.updateComponent(componentId, props);
@@ -3307,6 +3288,15 @@ class YjsProjectBridge {
    * In Electron/Desktop mode, always prompts for save destination (no silent overwrite).
    */
   async exportToElpx() {
+    // #2193: on a non-desktop runtime, warn before producing an ELPX that the
+    // supported desktop release could not reopen (an asset above the desktop
+    // import policy). The user may cancel or continue; cancelling leaves the
+    // project untouched and reports the same "not saved" result as an OS-dialog
+    // cancellation, which callers already handle.
+    if ((await this._checkDesktopExportCompatibility()) === 'cancelled') {
+      return { saved: false };
+    }
+
     const trace = this.createElpxExportTrace();
 
     // Ensure exelearning_version is set in metadata before export
@@ -3462,10 +3452,250 @@ class YjsProjectBridge {
   }
 
   /**
+   * Whether the app is running inside the Electron desktop shell.
+   *
+   * Electron and the static PWA both resolve to RuntimeConfig `mode === 'static'`,
+   * so the mode alone cannot distinguish them. The desktop bridge (`electronAPI`)
+   * is the reliable signal; `process.versions.electron` / the user-agent are
+   * fallbacks. This is the ONLY place import/export policy decides "am I desktop".
+   * @returns {boolean}
+   * @private
+   */
+  _isDesktopRuntime() {
+    try {
+      return !!(
+        (typeof window !== 'undefined' && window.electronAPI) ||
+        (typeof window !== 'undefined' && window.process?.versions?.electron) ||
+        (typeof navigator !== 'undefined' && navigator.userAgent?.toLowerCase().includes('electron'))
+      );
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  /**
+   * Resolve the decompression policy for the current runtime (#2193).
+   *
+   * Limits come from the shared import policy exposed by the importers bundle
+   * (`window.ExeImportPolicy`) — the single source of truth shared with the core
+   * importer and the export warning. A `window.__EXE_IMPORT_LIMITS_OVERRIDE__`
+   * object is honoured as a test seam so E2E specs can exercise the flow with
+   * small scaled limits instead of a multi-hundred-MB fixture.
+   *
+   * @returns {{isDesktop: boolean, zipLimits: (Object|undefined), confirmEntryThreshold: (number|undefined)}}
+   * @private
+   */
+  _resolveImportPolicy() {
+    const isDesktop = this._isDesktopRuntime();
+    const policy = (typeof window !== 'undefined' && window.ExeImportPolicy) || null;
+    if (!policy || typeof policy.getZipLimitsForRuntime !== 'function') {
+      // Bundle policy unavailable: degrade safely to conservative behaviour
+      // (the core importer applies conservative defaults when no limits given).
+      return { isDesktop, zipLimits: undefined, confirmEntryThreshold: undefined };
+    }
+    const runtime = isDesktop ? 'desktop' : 'hosted';
+    let zipLimits = policy.getZipLimitsForRuntime(runtime);
+    let confirmEntryThreshold = policy.DESKTOP_CONFIRM_ENTRY_BYTES;
+
+    const override = (typeof window !== 'undefined' && window.__EXE_IMPORT_LIMITS_OVERRIDE__) || null;
+    if (override) {
+      if (override[runtime]) {
+        zipLimits = { ...zipLimits, ...override[runtime] };
+      }
+      if (override.confirmEntryThreshold != null) {
+        confirmEntryThreshold = override.confirmEntryThreshold;
+      }
+    }
+    return { isDesktop, zipLimits, confirmEntryThreshold };
+  }
+
+  /**
+   * Format a byte count using the shared policy formatter when available.
+   * @param {number} bytes
+   * @returns {string}
+   * @private
+   */
+  _formatImportBytes(bytes) {
+    const policy = typeof window !== 'undefined' ? window.ExeImportPolicy : null;
+    if (policy && typeof policy.formatBytes === 'function') {
+      return policy.formatBytes(bytes);
+    }
+    return `${bytes} B`;
+  }
+
+  /**
+   * Ask the user to confirm a controlled large import (desktop only). Resolves
+   * true to proceed, false to cancel. Wraps the callback-based confirm modal in
+   * a promise so the importer can `await` the decision.
+   *
+   * @param {{entryName: string, entryBytes: number, hardLimitBytes: number}} info
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  _confirmLargeImport(info) {
+    const modals = typeof window !== 'undefined' ? window.eXeLearning?.app?.modals : null;
+    if (!modals?.confirm?.show) {
+      // No modal surface (e.g. headless): proceed — hard limits are still enforced.
+      return Promise.resolve(true);
+    }
+    const sizeText = this._formatImportBytes(info.entryBytes);
+    const limitText = this._formatImportBytes(info.hardLimitBytes);
+    const body =
+      `<p>${_('The file "%1" contains a large asset (%2).')
+        .replace('%1', info.entryName)
+        .replace('%2', sizeText)}</p>` +
+      `<p>${_('Importing it may use a large amount of memory.')}</p>` +
+      `<p>${_('The desktop application can open assets up to %1.').replace('%1', limitText)}</p>` +
+      `<p>${_('Protection against malformed or malicious archives remains active.')}</p>`;
+    return new Promise((resolve) => {
+      modals.confirm.show({
+        title: _('Import large file?'),
+        contentId: 'import-large-file',
+        body,
+        confirmButtonText: _('Import'),
+        cancelButtonText: _('Cancel'),
+        focusCancelButton: true,
+        confirmExec: () => resolve(true),
+        cancelExec: () => resolve(false),
+        closeExec: () => resolve(false),
+      });
+    });
+  }
+
+  /**
+   * Show an actionable, translated error when an archive exceeds the applicable
+   * limits and the project was NOT imported. Uses the structured error details
+   * so no message parsing is required.
+   *
+   * @param {{kind: string, entryName?: string, actualValue: number, limitValue: number}} details
+   * @private
+   */
+  _showImportTooLargeError(details) {
+    const modals = typeof window !== 'undefined' ? window.eXeLearning?.app?.modals : null;
+    const actualText = this._formatImportBytes(details.actualValue);
+    const limitText = this._formatImportBytes(details.limitValue);
+
+    let intro;
+    if (details.kind === 'entry-size' && details.entryName) {
+      intro = _('The file "%1" (%2) is larger than the maximum this application can open (%3).')
+        .replace('%1', details.entryName)
+        .replace('%2', actualText)
+        .replace('%3', limitText);
+    } else if (details.kind === 'total-size') {
+      intro = _('This project (%1) is larger than the maximum this application can open (%2).')
+        .replace('%1', actualText)
+        .replace('%2', limitText);
+    } else {
+      intro = _('This project has too many files to open (%1 of a maximum %2).')
+        .replace('%1', String(details.actualValue))
+        .replace('%2', String(details.limitValue));
+    }
+
+    const body =
+      `<p>${intro}</p>` +
+      `<p>${_('The project was not imported.')}</p>` +
+      `<p>${_('To reduce its size, open the File Manager and:')}</p>` +
+      `<ul>` +
+      `<li>${_('Sort by "Largest first" and review each asset\'s references.')}</li>` +
+      `<li>${_('Remove an unused older version of a large asset.')}</li>` +
+      `<li>${_('Optimise, replace, or remove the large file.')}</li>` +
+      `</ul>`;
+
+    if (modals?.alert?.show) {
+      modals.alert.show({ title: _('File too large to open'), body, contentId: 'error' });
+    }
+  }
+
+  /**
+   * Before generating an ELPX from a non-desktop runtime, verify the project
+   * could be reopened by the supported desktop release (#2193). Returns
+   * 'cancelled' when the user declines an incompatible export, otherwise 'ok'.
+   * Never blocks the export on an internal check failure.
+   *
+   * @returns {Promise<'ok'|'cancelled'>}
+   * @private
+   */
+  async _checkDesktopExportCompatibility() {
+    try {
+      // Exporting from the desktop app itself: no cross-runtime warning needed.
+      if (this._isDesktopRuntime()) {
+        return 'ok';
+      }
+      const policy = typeof window !== 'undefined' ? window.ExeImportPolicy : null;
+      if (!policy || typeof policy.getDesktopExportCompatibility !== 'function') {
+        return 'ok';
+      }
+      const assetManager = this.assetManager;
+      if (!assetManager || typeof assetManager.getAllAssetsMetadata !== 'function') {
+        return 'ok';
+      }
+      const metadata = assetManager.getAllAssetsMetadata() || [];
+      const assets = metadata.map((a) => ({
+        name: a.filename || a.id || 'asset',
+        size: Number(a.size) || 0,
+      }));
+      const compat = policy.getDesktopExportCompatibility(assets);
+      if (!compat || compat.compatible) {
+        return 'ok';
+      }
+      const proceed = await this._confirmDesktopIncompatibleExport(compat);
+      return proceed ? 'ok' : 'cancelled';
+    } catch (e) {
+      // A compatibility-check failure must never block a legitimate export.
+      Logger.warn?.('[YjsProjectBridge] Desktop export compatibility check failed:', e);
+      return 'ok';
+    }
+  }
+
+  /**
+   * Warn that the ELPX being exported may not reopen in the desktop app, and
+   * let the user cancel or continue. Resolves true to continue exporting.
+   *
+   * @param {{oversizedAsset: ?Object, totalBytes: number, entryLimit: number, totalLimit: number}} compat
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  _confirmDesktopIncompatibleExport(compat) {
+    const modals = typeof window !== 'undefined' ? window.eXeLearning?.app?.modals : null;
+    if (!modals?.confirm?.show) {
+      return Promise.resolve(true);
+    }
+    let detail;
+    if (compat.oversizedAsset) {
+      detail = _('The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).')
+        .replace('%1', compat.oversizedAsset.name)
+        .replace('%2', this._formatImportBytes(compat.oversizedAsset.size))
+        .replace('%3', this._formatImportBytes(compat.entryLimit));
+    } else {
+      detail = _('This project (%1) exceeds the maximum size the desktop application can open (%2).')
+        .replace('%1', this._formatImportBytes(compat.totalBytes))
+        .replace('%2', this._formatImportBytes(compat.totalLimit));
+    }
+    const body =
+      `<p>${detail}</p>` +
+      `<p>${_('The resulting ELPX may not open in the desktop application.')}</p>` +
+      `<p>${_('Do you want to continue exporting anyway?')}</p>`;
+    return new Promise((resolve) => {
+      modals.confirm.show({
+        title: _('Large ELPX export'),
+        contentId: 'export-desktop-incompatible',
+        body,
+        confirmButtonText: _('Export anyway'),
+        cancelButtonText: _('Cancel'),
+        focusCancelButton: true,
+        confirmExec: () => resolve(true),
+        cancelExec: () => resolve(false),
+        closeExec: () => resolve(false),
+      });
+    });
+  }
+
+  /**
    * Import project from .elpx file
    * @param {File} file - The .elpx file
    * @param {Object} options - Import options
    * @param {boolean} options.clearExisting - If true, clears existing structure before import (default: true)
+   * @param {boolean} options.clearPreviousProject - If true, clears the current project's assets/metadata after the preflight gate passes (static open flow)
    * @returns {Promise<Object>} Import statistics
    */
   async importFromElpx(file, options = {}) {
@@ -3473,14 +3703,59 @@ class YjsProjectBridge {
     const assetHandler = this.assetManager || this.assetCache;
     const importer = new window.ElpxImporter(this.documentManager, assetHandler);
     const clearExisting = options.clearExisting !== false; // default is true
-    let stats;
 
-    if (clearExisting && typeof this.documentManager?.withSuppressedDirtyTracking === 'function') {
-      stats = await this.documentManager.withSuppressedDirtyTracking(() =>
-        importer.importFromFile(file, options)
-      );
-    } else {
-      stats = await importer.importFromFile(file, options);
+    // Resolve the runtime-specific import policy (#2193): the Electron desktop
+    // app gets a larger per-entry limit plus a confirmation window; every other
+    // runtime stays conservative. The core importer only receives validated
+    // limits — it never detects the runtime itself.
+    const policy = this._resolveImportPolicy();
+    const importOptions = { ...options };
+    delete importOptions.clearPreviousProject;
+    if (policy.zipLimits) {
+      importOptions.zipLimits = policy.zipLimits;
+    }
+    if (policy.confirmEntryThreshold != null) {
+      importOptions.confirmEntryThreshold = policy.confirmEntryThreshold;
+    }
+    if (policy.isDesktop) {
+      importOptions.onConfirmLargeEntry = (info) => this._confirmLargeImport(info);
+    }
+    // The static "open project" flow must clear the previous project's assets
+    // and metadata only AFTER the preflight gate passes, so a cancelled or
+    // rejected large import leaves the current project unchanged.
+    if (options.clearPreviousProject) {
+      importOptions.beforeImport = async () => {
+        if (typeof this.clearAssetsForNewProject === 'function') {
+          await this.clearAssetsForNewProject();
+        }
+        if (typeof this.clearMetadataForNewProject === 'function') {
+          this.clearMetadataForNewProject();
+        }
+      };
+    }
+
+    let stats;
+    try {
+      if (clearExisting && typeof this.documentManager?.withSuppressedDirtyTracking === 'function') {
+        stats = await this.documentManager.withSuppressedDirtyTracking(() =>
+          importer.importFromFile(file, importOptions)
+        );
+      } else {
+        stats = await importer.importFromFile(file, importOptions);
+      }
+    } catch (err) {
+      // User declined a controlled large import: leave the project untouched.
+      if (err && err.name === 'ImportCancelledError') {
+        Logger.log('[YjsProjectBridge] Large import cancelled by user; project left unchanged');
+        return { cancelled: true };
+      }
+      // Archive exceeds the applicable limits: show an actionable, translated
+      // error instead of a generic one, and do not import a partial project.
+      if (err && err.name === 'ZipLimitError' && err.details) {
+        this._showImportTooLargeError(err.details);
+        return { cancelled: true, error: 'zip-limit' };
+      }
+      throw err;
     }
 
     // Announce imported assets to server for peer-to-peer collaboration
@@ -4310,6 +4585,15 @@ class YjsProjectBridge {
     if (this.collaborativeAutosave) {
       this.collaborativeAutosave.destroy();
       this.collaborativeAutosave = null;
+    }
+
+    // Clear the collaborative save-status UI (badge, live region and any
+    // lingering failure toast) so a destroyed session leaves nothing behind.
+    if (this._collabStatusView) {
+      if (typeof this._collabStatusView.destroy === 'function') {
+        this._collabStatusView.destroy();
+      }
+      this._collabStatusView = null;
     }
 
     if (this.documentManager) {

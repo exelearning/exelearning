@@ -20,6 +20,24 @@ const createYMap = (data = {}) => {
   return map;
 };
 
+/**
+ * Assert a call fails jsonProperties validation with the dedicated error.
+ *
+ * Matching on the message instead would also accept an incidental
+ * "this.prepareJsonPropertiesForSync is not a function" TypeError, so a typo or
+ * a rename could remove validation entirely with the suite still green.
+ */
+const expectInvalidJsonProperties = (fn) => {
+  let error = null;
+  try {
+    fn();
+  } catch (thrown) {
+    error = thrown;
+  }
+  expect(error).not.toBeNull();
+  expect(error.name).toBe('InvalidJsonPropertiesError');
+};
+
 const createYArray = (items = []) => {
   const arr = new window.Y.Array();
   if (items.length) arr.push(items);
@@ -1557,6 +1575,48 @@ describe('YjsStructureBinding', () => {
       expect(compId).toBeDefined();
     });
 
+    it('serializes JSON properties containing HTML quotes and line breaks', () => {
+      const jsonProperties = {
+        question: '<audio src=""><a href="">audio.webm</a></audio>\n<p>¿Dónde vive?</p>',
+        solution: false,
+      };
+
+      const compId = binding.createComponent('page-1', 'block-1', 'trueorfalse', {
+        jsonProperties,
+      });
+
+      // Assert on what is stored, not on what getComponent gives back: the
+      // legacy path stores plain objects as a Y.Map and mapToComponent rebuilds
+      // a JSON string on read, so a round-trip alone passes without the fix.
+      const stored = binding.getComponentMap(compId).get('jsonProperties');
+      expect(typeof stored).toBe('string');
+      expect(JSON.parse(stored)).toEqual(jsonProperties);
+    });
+
+    it('rejects malformed JSON before inserting a component', () => {
+      expectInvalidJsonProperties(() =>
+        binding.createComponent('page-1', 'block-1', 'trueorfalse', {
+          id: 'invalid-component',
+          jsonProperties: '{"question":"<audio src=\"">',
+        })
+      );
+
+      expect(binding.getComponents('page-1', 'block-1')).toHaveLength(0);
+    });
+
+    it('rejects circular JSON properties before inserting a component', () => {
+      const circular = { question: 'Circular' };
+      circular.self = circular;
+
+      expectInvalidJsonProperties(() =>
+        binding.createComponent('page-1', 'block-1', 'trueorfalse', {
+          jsonProperties: circular,
+        })
+      );
+
+      expect(binding.getComponents('page-1', 'block-1')).toHaveLength(0);
+    });
+
     it('uses provided ID if given in initialData', () => {
       const compId = binding.createComponent('page-1', 'block-1', 'FreeTextIdevice', {
         id: 'my-custom-id',
@@ -1636,6 +1696,12 @@ describe('YjsStructureBinding', () => {
   });
 
   describe('updateComponent', () => {
+    // Tests here stub window.eXeLearning to reach the assetManager. Clean up
+    // from a hook so a failing assertion cannot leak the stub into later tests.
+    afterEach(() => {
+      delete global.window.eXeLearning;
+    });
+
     beforeEach(() => {
       const pageMap = createYMap({
         id: 'page-1',
@@ -1717,9 +1783,6 @@ describe('YjsStructureBinding', () => {
       binding.updateComponent('comp-1', { jsonProperties: jsonData });
 
       expect(mockPrepareJsonForSync).toHaveBeenCalledWith(jsonData);
-
-      // Cleanup
-      delete global.window.eXeLearning;
     });
 
     it('handles jsonProperties when assetManager is not available', () => {
@@ -1733,9 +1796,6 @@ describe('YjsStructureBinding', () => {
       const comp = binding.getComponent('comp-1');
       // getComponent returns a plain object with jsonProperties property
       expect(comp.jsonProperties).toBe(jsonData);
-
-      // Cleanup
-      delete global.window.eXeLearning;
     });
 
     it('converts object jsonProperties to string before storing', () => {
@@ -1747,6 +1807,57 @@ describe('YjsStructureBinding', () => {
       const stored = comp.jsonProperties;
       expect(typeof stored).toBe('string');
       expect(JSON.parse(stored)).toEqual(jsonObj);
+    });
+
+    it('rejects malformed JSON without partially updating the component', () => {
+      const originalJson = JSON.stringify({ question: 'Original' });
+      binding.updateComponent('comp-1', {
+        htmlContent: '<p>Original HTML</p>',
+        jsonProperties: originalJson,
+      });
+
+      expectInvalidJsonProperties(() =>
+        binding.updateComponent('comp-1', {
+          htmlContent: '<p>Must not be stored</p>',
+          jsonProperties: '{"question":"<img src=\"">',
+        })
+      );
+
+      const component = binding.getComponent('comp-1');
+      expect(component.htmlContent).toBe('<p>Original HTML</p>');
+      expect(component.jsonProperties).toBe(originalJson);
+    });
+
+    it('rejects JSON corrupted by asset preparation without changing stored data', () => {
+      const originalJson = JSON.stringify({ image: 'asset://original' });
+      binding.updateComponent('comp-1', { jsonProperties: originalJson });
+      global.window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                prepareJsonForSync: mock(() => '{"image":"broken"'),
+              },
+            },
+          },
+        },
+      };
+
+      expectInvalidJsonProperties(() =>
+        binding.updateComponent('comp-1', {
+          jsonProperties: JSON.stringify({ image: 'blob:https://localhost/image' }),
+        })
+      );
+
+      expect(binding.getComponent('comp-1').jsonProperties).toBe(originalJson);
+    });
+
+    it('rejects undefined top-level JSON properties', () => {
+      expectInvalidJsonProperties(() =>
+        binding.updateComponent('comp-1', {
+          jsonProperties: undefined,
+        })
+      );
     });
 
     // Regression test for issue #1674: updateComponent must drop the stale
@@ -1772,6 +1883,142 @@ describe('YjsStructureBinding', () => {
       expect(comp.get('htmlView')).toBeUndefined();
       const fresh = comp.get('htmlContent');
       expect(fresh.toString()).toBe('<p>image removed</p>');
+    });
+
+    // Data-integrity guard: an empty content update must never erase existing
+    // content. Regression for the game-iDevice content wipe (classify / crossword
+    // / select-media-files lost all content after a transient empty write, because
+    // the empty value blanked htmlContent AND the #1674 branch dropped the htmlView
+    // fallback, leaving no copy behind).
+    const getComp = () =>
+      mockDocManager.getNavigation().get(0).get('blocks').get(0).get('components').get(0);
+
+    it('preserves htmlView when an empty htmlContent update arrives', () => {
+      const comp = getComp();
+      const original = '<div class="clasifica-IDevice">full game html</div>';
+      comp.set('htmlView', original);
+
+      binding.updateComponent('comp-1', { htmlContent: '' });
+
+      // The htmlView fallback must survive and no empty shadow may be created.
+      expect(comp.get('htmlView')).toBe(original);
+      expect(binding.contentLength(comp.get('htmlContent'))).toBe(0);
+    });
+
+    it('preserves an existing htmlContent Y.Text when an empty update arrives', () => {
+      const comp = getComp();
+      const game = '<div class="clasifica-IDevice">game</div>';
+      binding.updateComponent('comp-1', { htmlContent: game });
+      expect(comp.get('htmlContent').toString()).toBe(game);
+
+      // A later blank write (interrupted edit / race) must not wipe it.
+      binding.updateComponent('comp-1', { htmlContent: '' });
+      expect(comp.get('htmlContent').toString()).toBe(game);
+    });
+
+    it('preserves content on a whitespace-only content update', () => {
+      const comp = getComp();
+      const original = '<p>keep me</p>';
+      comp.set('htmlView', original);
+
+      binding.updateComponent('comp-1', { content: '   \n  ' });
+
+      expect(comp.get('htmlView')).toBe(original);
+    });
+
+    it('does not remove htmlView when the new htmlContent is empty', () => {
+      const comp = getComp();
+      comp.set('htmlView', '<p>fallback</p>');
+
+      binding.updateComponent('comp-1', { htmlContent: '' });
+
+      expect(comp.get('htmlView')).toBe('<p>fallback</p>');
+    });
+
+    it('still applies an empty content update when nothing would be lost', () => {
+      const comp = getComp();
+      // No htmlView and no htmlContent yet — an empty write is harmless.
+      binding.updateComponent('comp-1', { htmlContent: '' });
+
+      const hc = comp.get('htmlContent');
+      expect(hc).toBeDefined();
+      expect(hc.toString()).toBe('');
+    });
+
+    // Legitimate clearing is NOT blocked: every real editor emits at least the
+    // iDevice wrapper when the user deletes all content (e.g. the text iDevice
+    // renders `<div class="exe-text-template">…</div>` around an empty body),
+    // and a wrapper is a non-blank string, so it sails past the guard. Only a
+    // literally-blank write — which no production flow emits — is ignored.
+    it('applies a visually-empty wrapper update over existing content', () => {
+      const comp = getComp();
+      binding.updateComponent('comp-1', { htmlContent: '<p>previous content</p>' });
+
+      const cleared = '<div class="exe-text-template"><p><br></p></div>';
+      binding.updateComponent('comp-1', { htmlContent: cleared });
+
+      expect(comp.get('htmlContent').toString()).toBe(cleared);
+    });
+
+    it('applies an &nbsp;-only wrapper update over existing content', () => {
+      const comp = getComp();
+      binding.updateComponent('comp-1', { htmlContent: '<p>previous content</p>' });
+
+      binding.updateComponent('comp-1', { htmlContent: '<p>&nbsp;</p>' });
+
+      expect(comp.get('htmlContent').toString()).toBe('<p>&nbsp;</p>');
+    });
+
+    // Intended semantics of a batched update whose htmlContent is empty:
+    // skip ONLY the key that would erase content, and apply the rest. The other
+    // keys are independent properties, and dropping a valid jsonProperties /
+    // order update would itself be data loss. This does leave a transient
+    // old-html / new-props pairing, which is expected to be safe for the
+    // current iDevice paths: JSON iDevices re-derive htmlContent from
+    // jsonProperties on the next render, and HTML iDevices do not read
+    // jsonProperties for rendering. (A real save never hits this — its
+    // htmlContent is always a non-blank wrapper; this is the transient/corrupt
+    // write path.)
+    it('applies independent keys even when the empty content key is ignored', () => {
+      const comp = getComp();
+      const game = '<div class="clasifica-IDevice">game</div>';
+      binding.updateComponent('comp-1', { htmlContent: game });
+
+      binding.updateComponent('comp-1', {
+        htmlContent: '',
+        jsonProperties: '{"question":"still applied"}',
+      });
+
+      // Content preserved (not erased); the independent prop update applied.
+      expect(comp.get('htmlContent').toString()).toBe(game);
+      expect(comp.get('jsonProperties')).toBe('{"question":"still applied"}');
+    });
+
+    it('measures array-like and non-measurable values in contentLength', () => {
+      expect(binding.contentLength({ length: 7 })).toBe(7);
+      expect(binding.contentLength({ length: 'not-a-number' })).toBe(0);
+      expect(binding.contentLength(42)).toBe(0);
+      expect(binding.contentLength(true)).toBe(0);
+    });
+
+    it('rejects jsonProperties containing BigInt values', () => {
+      expectInvalidJsonProperties(() =>
+        binding.updateComponent('comp-1', {
+          jsonProperties: { big: BigInt(9007199254740993n) },
+        })
+      );
+    });
+
+    // JSON.stringify silently drops function- and symbol-valued properties;
+    // the serialized payload is still valid JSON, so the write is accepted.
+    // Pinned here so the (standard JSON) semantics are explicit.
+    it('drops function-valued properties instead of rejecting the whole payload', () => {
+      const comp = getComp();
+      binding.updateComponent('comp-1', {
+        jsonProperties: { keep: 1, dropped: () => {} },
+      });
+
+      expect(comp.get('jsonProperties')).toBe('{"keep":1}');
     });
   });
 
