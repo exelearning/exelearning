@@ -497,5 +497,37 @@
     pipwerks.SCORM.connection.terminate = centralizedTerminate;
     pipwerks.SCORM.quit = centralizedTerminate;
 
+    // Centralize content status writes the same way: the wrapper's own
+    // public helpers can write cmi.core.lesson_status directly
+    // (pipwerks.SCORM.set is the wrapper's alias of data.set, and
+    // pipwerks.SCORM.status('set', …) targets the status element by name).
+    // Without these bindings, a status content wrote through them would
+    // still look like the policy's own and could be downgraded by the
+    // late-registration correction. Only the runtime object's bindings
+    // change — the vendored file is untouched — and pipwerks.SCORM.data.set
+    // stays native: it is the wrapper's internal engine (this runtime's
+    // client writes through it), below the supported surface.
+    var existingSet = pipwerks.SCORM.set;
+    var nativeSet = (existingSet && existingSet.exeScorm12Native) || existingSet;
+    var routedSet = function (element, value) {
+        if (element === 'cmi.core.lesson_status') {
+            return policy.setContentStatus(value);
+        }
+        return nativeSet(element, value);
+    };
+    routedSet.exeScorm12Native = nativeSet;
+    pipwerks.SCORM.set = routedSet;
+
+    var existingStatus = pipwerks.SCORM.status;
+    var nativeStatus = (existingStatus && existingStatus.exeScorm12Native) || existingStatus;
+    var routedStatus = function (action, status) {
+        if (action === 'set') {
+            return policy.setContentStatus(status);
+        }
+        return nativeStatus(action, status);
+    };
+    routedStatus.exeScorm12Native = nativeStatus;
+    pipwerks.SCORM.status = routedStatus;
+
     global.scorm = facade;
 })(typeof window !== 'undefined' ? window : globalThis);

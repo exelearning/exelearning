@@ -406,6 +406,64 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
             expect(api.data['cmi.core.lesson_status']).toBe('passed');
         });
 
+        it('pipwerks.SCORM.set on lesson_status routes through the policy and releases the claim', () => {
+            useLms({});
+            pageWindow.loadPage();
+            pageWindow.scorm.activities.register('quiz-1', {
+                evaluable: true,
+                completionRequired: true,
+                completed: true,
+                score: 90,
+            });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            // Content ratifies the verdict through the wrapper's own helper
+            // (the alias of data.set) — the lowest-level public write path.
+            expect(pipwerks.SCORM.set('cmi.core.lesson_status', 'passed')).toBe(true);
+
+            pageWindow.scorm.activities.register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+            expect(policy.reconcilePendingActivities()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+
+            // Other elements keep flowing through the native wrapper write.
+            expect(pipwerks.SCORM.set('cmi.core.lesson_location', 'page-2')).toBe(true);
+            expect(api.data['cmi.core.lesson_location']).toBe('page-2');
+
+            // Vocabulary is validated locally, like every content entry point.
+            api.resetCalls();
+            expect(pipwerks.SCORM.set('cmi.core.lesson_status', 'not attempted')).toBe(false);
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
+        });
+
+        it("pipwerks.SCORM.status('set') routes through the policy and releases the claim", () => {
+            useLms({});
+            pageWindow.loadPage();
+            pageWindow.scorm.activities.register('quiz-1', {
+                evaluable: true,
+                completionRequired: true,
+                completed: true,
+                score: 90,
+            });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            expect(pipwerks.SCORM.status('set', 'passed')).toBe(true);
+
+            pageWindow.scorm.activities.register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+            expect(policy.reconcilePendingActivities()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+
+            // The read action stays native.
+            expect(pipwerks.SCORM.status('get')).toBe('passed');
+        });
+
         it('SetCompletionStatus releases the policy claim, so the status is never downgraded', () => {
             useLms({});
             pageWindow.loadPage();

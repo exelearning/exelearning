@@ -898,10 +898,12 @@ describe('exe-scorm12-client', () => {
             expect(consoleWarnSpy).toHaveBeenCalled();
 
             // Default clock (Date.now) drives the session timer: the elapsed
-            // time must track the real clock, not sit frozen at zero.
-            const before = Date.now();
+            // time must track the real clock, not sit frozen at zero. Spin on
+            // the observable itself — spinning on Date.now() races against
+            // the clock reading inside markSessionStart() (a tick between the
+            // two reads exits the loop with an elapsed time of exactly 0).
             client.markSessionStart();
-            while (Date.now() === before) {
+            while (client.getElapsedMs() === 0) {
                 // Spin until the wall clock advances at least one millisecond.
             }
             expect(client.getElapsedMs()).toBeGreaterThan(0);

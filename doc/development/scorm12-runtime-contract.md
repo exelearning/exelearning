@@ -425,7 +425,9 @@ completion and success collapse onto `cmi.core.lesson_status`:
   only when the policy successfully writes the value itself, and the explicit
   content entry points (`setCompleted()`, `setPassed()`, `setFailed()`,
   `setIncomplete()`, `doContinue(status)`, `SetCompletionStatus()`,
-  `scorm.set('cmi.core.lesson_status', …)`) *clear* the claim — even when they
+  `scorm.set('cmi.core.lesson_status', …)`,
+  `pipwerks.SCORM.set('cmi.core.lesson_status', …)`,
+  `pipwerks.SCORM.status('set', …)`) *clear* the claim — even when they
   repeat the value the policy last wrote, ratifying a verdict makes it
   content's. The correction
   runs at two moments (`policy.reconcilePendingActivities()`): when an
@@ -542,6 +544,18 @@ idle ──initialize──▶ active ──terminate──▶ finish_attempted 
   the same closed session the state machine enforces instead of writing into
   an attempt whose stored state is unknown (eXeLearning policy, matching the
   no-retry rule above).
+
+**External status writes.** The wrapper's own public helpers can write
+`cmi.core.lesson_status` directly: `pipwerks.SCORM.set` is the wrapper's alias
+of `data.set`, and `pipwerks.SCORM.status('set', …)` targets the element by
+name. The adapter rebinds both on the runtime object (the vendored file is
+never modified) so a lesson_status write routes through
+`policy.setContentStatus()` — validated locally and releasing the policy's
+session claim like every other content entry point; every other element flows
+through the kept native write. `pipwerks.SCORM.data.set()` itself stays
+native: it is the wrapper's internal engine (this runtime's client writes
+through it) and is **below the supported surface** — calling it directly
+bypasses eXeLearning's policy and is not supported.
 
 **External termination.** Legacy content may call
 `pipwerks.SCORM.quit()` or `pipwerks.SCORM.connection.terminate()` directly. The
