@@ -22,6 +22,7 @@ import type {
     Html5ExportOptions,
     FaviconInfo,
     ThemeData,
+    ExportAsset,
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
@@ -911,19 +912,26 @@ export class Html5Exporter extends BaseExporter {
 
         try {
             const exportPathMap = await this.buildAssetExportPathMap();
-            const assets = await this.assets.getAllAssets();
-            for (const asset of assets) {
+
+            const processAsset = async (asset: ExportAsset) => {
                 if (referencedAssetIds && referencedAssetIds.size > 0 && !referencedAssetIds.has(asset.id)) {
-                    continue;
+                    return;
                 }
                 const exportPath = exportPathMap.get(asset.id);
-                if (!exportPath) continue;
+                if (!exportPath) return;
 
                 const filePath = `content/resources/${exportPath}`;
-                files.set(filePath, await this.toPreviewAssetBuffer(asset.data));
+                // .srt subtitle assets are converted to WebVTT here too, so the
+                // Preview panel (this method) matches the real Web/SCORM export
+                // pipeline (addAssetsToZipWithResourcePath) -- see issue #2034.
+                const data = await this.resolveAssetExportData(asset);
+                files.set(filePath, await this.toPreviewAssetBuffer(data));
                 if (trackingList) trackingList.push(filePath);
                 assetsAdded++;
-            }
+            };
+
+            await this.forEachAsset(processAsset);
+
         } catch (e) {
             console.warn('[Html5Exporter] Failed to add assets to preview files:', e);
         }
@@ -947,7 +955,7 @@ export class Html5Exporter extends BaseExporter {
         return content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength) as ArrayBuffer;
     }
 
-    private async toPreviewAssetBuffer(content: Uint8Array | Blob | ArrayBuffer): Promise<ArrayBuffer> {
+    private async toPreviewAssetBuffer(content: Uint8Array | Blob | ArrayBuffer | string): Promise<ArrayBuffer> {
         if (content instanceof Blob) {
             return content.arrayBuffer();
         }

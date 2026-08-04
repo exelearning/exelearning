@@ -14,6 +14,15 @@ describe('config', () => {
             expect(ALLOWED_EXTENSIONS).toContain('woff2');
         });
 
+        it('allows video subtitle uploads (.srt / .vtt) -- issue #2034', () => {
+            // The Text iDevice video dialog offers a "Subtitles (srt / vtt)"
+            // field, but neither extension is present in the server's
+            // allow-list, so uploads are rejected before they ever reach the
+            // File Manager UI's own (also-missing) accept attribute.
+            expect(ALLOWED_EXTENSIONS).toContain('srt');
+            expect(ALLOWED_EXTENSIONS).toContain('vtt');
+        });
+
         it('contains unique extension entries', () => {
             const unique = new Set(ALLOWED_EXTENSIONS);
             expect(unique.size).toBe(ALLOWED_EXTENSIONS.length);
