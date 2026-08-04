@@ -61,7 +61,16 @@ var $magnifier = {
     renderBehaviour: function (data, accesibility, ideviceId) {
         const ldata = $magnifier.transformObject(data, ideviceId);
         let $node = $('#' + data.ideviceId);
-        if (!eXe.app.isInExe()) {
+        // renderView already built this interface through magnifier.html, so rebuilding
+        // it here would discard DOM the export engine has already processed (effects
+        // inside the description, for instance). Only build it when the container is
+        // missing, which happens when the engine falls back to the bare '{content}'
+        // template because it could not load magnifier.html. See #2170.
+        if (
+            !eXe.app.isInExe() &&
+            $node.length &&
+            !$node.find('.exe-magnifier-container').length
+        ) {
             let html = this.createInterfaceMagnifier(ldata);
             $node.html(`<div class="exe-magnifier-container">${html}</div>`);
         }

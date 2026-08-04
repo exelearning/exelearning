@@ -21,9 +21,11 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
+import { convertSrtToVtt } from '../../utils/srt-to-vtt';
 
 /**
  * Abstract base class for exporters
@@ -534,8 +536,7 @@ export abstract class BaseExporter {
                 if (this.zip.hasFile(zipPath)) {
                     return;
                 }
-                this.zip.addFile(zipPath, asset.data);
-                if (trackingList) trackingList.push(zipPath);
+                await this.writeAssetToZip(zipPath, asset, trackingList);
                 assetsAdded++;
             };
 
@@ -600,6 +601,124 @@ export abstract class BaseExporter {
      */
     getExtensionFromMime(mime: string): string {
         return getExtensionFromMimeType(mime, true);
+    }
+
+    // =========================================================================
+    // Subtitle Track Conversion (issue #2034)
+    // =========================================================================
+
+    /** MIME types used for raw SubRip (`.srt`) subtitle files. */
+    private static readonly SRT_MIME_TYPES = new Set(['application/x-subrip', 'application/srt', 'text/srt']);
+
+    /**
+     * Whether an asset is a raw SubRip (`.srt`) subtitle file, detected from
+     * its filename extension or MIME type. Native `<video><track>` only
+     * understands WebVTT, so these assets must be converted before they are
+     * written into an export or preview file set (see
+     * {@link resolveAssetExportData} and {@link buildAssetExportPathMap}).
+     */
+    protected isSrtSubtitleAsset(filename: string | undefined, mime: string | undefined): boolean {
+        const normalizedFilename = (filename || '').toLowerCase();
+        const normalizedMime = (mime || '').toLowerCase();
+        return normalizedFilename.endsWith('.srt') || BaseExporter.SRT_MIME_TYPES.has(normalizedMime);
+    }
+
+    /**
+     * Decode asset binary data (Uint8Array or Blob) to text. Subtitle files
+     * are usually UTF-8, but `.srt` files in the wild are very frequently
+     * Windows-1252/Latin-1 (accented characters). A non-fatal UTF-8 decode
+     * would silently replace every high byte with U+FFFD, so we decode UTF-8
+     * strictly first and fall back to Windows-1252 when that fails -- keeping
+     * accented captions readable instead of garbled.
+     */
+    protected async readAssetDataAsText(data: Uint8Array | Blob): Promise<string> {
+        const bytes =
+            typeof Blob !== 'undefined' && data instanceof Blob
+                ? new Uint8Array(await data.arrayBuffer())
+                : (data as Uint8Array);
+        try {
+            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch {
+            return new TextDecoder('windows-1252').decode(bytes);
+        }
+    }
+
+    /**
+     * Resolve the data that should actually be written for an asset in the
+     * export/preview file set. `.srt` subtitle assets are converted to
+     * WebVTT text on the fly (their export path is renamed `.srt` -> `.vtt`
+     * by {@link buildAssetExportPathMap}, so the written bytes must match).
+     * Every other asset passes through unchanged.
+     *
+     * Shared by {@link addAssetsToZipWithResourcePath} (real exports) and
+     * `Html5Exporter.addAssetsToPreviewFiles` (Preview panel), so the same
+     * conversion always applies regardless of which surface is rendering.
+     */
+    protected async resolveAssetExportData(asset: {
+        filename?: string;
+        mime?: string;
+        data: Uint8Array | Blob;
+    }): Promise<Uint8Array | Blob | string> {
+        if (!this.isSrtSubtitleAsset(asset.filename, asset.mime)) {
+            return asset.data;
+        }
+        try {
+            const text = await this.readAssetDataAsText(asset.data);
+            const { vtt, error } = convertSrtToVtt(text);
+            if (error) {
+                // The document is still valid (empty) WebVTT, but surface why no
+                // cues were produced -- silent export degradation is a known
+                // anti-pattern in this codebase.
+                console.warn(
+                    `[BaseExporter] SRT->WebVTT conversion produced no cues for subtitle asset "${asset.filename ?? ''}": ${error}`,
+                );
+            }
+            return vtt;
+        } catch (e) {
+            console.warn('[BaseExporter] Failed to convert .srt subtitle asset to WebVTT:', e);
+            // The export path was already renamed .srt -> .vtt, so we must NOT
+            // fall back to the raw SubRip bytes (that would ship a .vtt file
+            // full of SRT text -> zero cues). Degrade to a valid, empty WebVTT
+            // document instead.
+            return 'WEBVTT\n';
+        }
+    }
+
+    /**
+     * Write a single asset into the export ZIP at `zipPath`, applying the
+     * shared `.srt` -> WebVTT subtitle conversion via
+     * {@link resolveAssetExportData}.
+     *
+     * ALL exporters (full, filtered page/branch, component, EPUB) must route
+     * their ZIP asset writes through here. {@link buildAssetExportPathMap}
+     * renames `.srt` -> `.vtt` globally, so any writer that bypasses this and
+     * stores the raw asset bytes would emit a `.vtt` file containing SubRip
+     * text -- zero cues, i.e. the exact issue #2034 bug, on that surface.
+     * Single source of truth (AGENTS.md).
+     */
+    protected async writeAssetToZip(
+        zipPath: string,
+        asset: ExportAsset,
+        trackingList?: string[] | null,
+    ): Promise<void> {
+        const data = await this.resolveAssetExportData(asset);
+        this.zip.addFile(zipPath, data);
+        if (trackingList) trackingList.push(zipPath);
+    }
+
+    /**
+     * Force a `.vtt` extension on a subtitle asset's export filename. SRT
+     * assets are always emitted as WebVTT (see {@link resolveAssetExportData}),
+     * and this keeps the ZIP entry name and every `<track src>` reference in
+     * sync even when the asset arrived with a non-canonical MIME (e.g.
+     * `text/srt`) or without a `.srt` extension at all. Already-`.vtt` names
+     * pass through unchanged.
+     */
+    protected toWebVttExportFilename(filename: string): string {
+        if (/\.vtt$/i.test(filename)) return filename;
+        if (/\.srt$/i.test(filename)) return filename.replace(/\.srt$/i, '.vtt');
+        // Detected as SRT by MIME only, with no usable extension: append .vtt.
+        return `${filename}.vtt`;
     }
 
     /**
@@ -681,7 +800,17 @@ export abstract class BaseExporter {
                 // Ensure the export name carries an extension. Assets saved as
                 // `asset-<uuid>` (no extension) would otherwise be re-imported as
                 // application/octet-stream and force-downloaded (PDF iframes).
-                const filename = this._ensureFilenameExtension(rawFilename, item.mime);
+                let filename = this._ensureFilenameExtension(rawFilename, item.mime);
+
+                // Raw .srt subtitle assets are always exported/previewed as WebVTT
+                // (native <video><track> never understood .srt) -- see issue #2034.
+                // Rewriting the export path here keeps the ZIP file and every HTML
+                // <track src> reference in sync automatically, since both derive
+                // from this same map (addAssetsToZipWithResourcePath /
+                // addFilenamesToAssetUrls / Html5Exporter.addAssetsToPreviewFiles).
+                if (this.isSrtSubtitleAsset(filename, item.mime)) {
+                    filename = this.toWebVttExportFilename(filename);
+                }
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
                 // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
@@ -804,8 +933,14 @@ export abstract class BaseExporter {
                 return `{{context_path}}/content/resources/${filenameExportPath}`;
             }
 
-            // Unresolved: use the asset path as-is
-            return `{{context_path}}/content/resources/${assetPath}`;
+            // Unresolved: use the asset path as-is. A legacy filename-form
+            // `.srt` subtitle reference must still point at the `.vtt` name the
+            // asset map writes (buildAssetExportPathMap always renames), or the
+            // <track src> would 404 -- see issue #2034.
+            const asIs = this.isSrtSubtitleAsset(assetPath, undefined)
+                ? this.toWebVttExportFilename(assetPath)
+                : assetPath;
+            return `{{context_path}}/content/resources/${asIs}`;
         });
 
         // Fix duplicated filename patterns in existing content
@@ -971,19 +1106,7 @@ export abstract class BaseExporter {
      * Collect all HTML content from all pages (for library detection)
      */
     collectAllHtmlContent(pages: ExportPage[]): string {
-        const htmlParts: string[] = [];
-
-        for (const page of pages) {
-            for (const block of page.blocks || []) {
-                for (const component of block.components || []) {
-                    if (component.content) {
-                        htmlParts.push(component.content);
-                    }
-                }
-            }
-        }
-
-        return htmlParts.join('\n');
+        return [...this.iteratePageContentFragments(pages), ...this.iteratePagePropertyFragments(pages)].join('\n');
     }
 
     /**
@@ -1003,14 +1126,33 @@ export abstract class BaseExporter {
     }
 
     /**
+     * Yield rich text and other string fragments nested in JSON iDevice properties.
+     */
+    private *iteratePagePropertyFragments(pages: ExportPage[]): Generator<string> {
+        for (const page of pages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    yield* iterateJsonPropertyStrings(component.properties);
+                }
+            }
+        }
+    }
+
+    /**
      * Detect required libraries across all page fragments incrementally.
      */
     protected getRequiredLibraryFilesForPages(
         pages: ExportPage[],
         options: LibraryDetectionOptions = {},
     ): { files: string[]; patterns: import('../interfaces').LibraryPattern[] } {
-        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragments(
-            this.iteratePageContentFragments(pages),
+        return this.libraryDetector.getAllRequiredFilesWithPatternsFromFragmentGroups(
+            [
+                { fragments: this.iteratePageContentFragments(pages) },
+                {
+                    fragments: this.iteratePagePropertyFragments(pages),
+                    excludedLibraries: JSON_PROPERTY_LIBRARY_EXCLUSIONS,
+                },
+            ],
             options,
         );
     }
