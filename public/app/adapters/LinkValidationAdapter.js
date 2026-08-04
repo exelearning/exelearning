@@ -251,15 +251,7 @@ export default class LinkValidationAdapter {
                     return { status: result.status, error: result.error ?? null };
                 }
                 if (result?.status === 'unknown') {
-                    // The main process refuses to probe local/private addresses
-                    // automatically (LAN-scan protection); tell the user why.
-                    return {
-                        status: 'unknown',
-                        error:
-                            result.reason === 'private-address'
-                                ? _('Local or private address: open the link to review it manually')
-                                : _('Not checked automatically: open the link to review it'),
-                    };
+                    return { status: 'unknown', error: this._describeUnknownReason(result) };
                 }
             } catch (_e) {
                 // IPC unavailable (e.g. outdated desktop shell): fall through
@@ -271,6 +263,35 @@ export default class LinkValidationAdapter {
             status: 'unknown',
             error: _('Not checked automatically: open the link to review it'),
         };
+    }
+
+    /**
+     * Translate a main-process "needs manual review" result into the message
+     * shown in the report's Error column.
+     * @param {{reason?: string, detail?: string}} result
+     * @returns {string}
+     * @private
+     */
+    _describeUnknownReason(result) {
+        switch (result.reason) {
+            case 'private-address':
+                // Never probed automatically: LAN-scan protection.
+                return _('Local or private address: open the link to review it manually');
+            case 'cross-host-redirect': {
+                // 2xx answered by another host (consent gate, captive portal,
+                // login wall, URL shortener target): a human must confirm it.
+                const message = _('Redirects to another site — open the link to verify it');
+                return result.detail ? `${message} (${result.detail})` : message;
+            }
+            case 'unverified-proxy':
+                // Answered only through the system proxy, where the final host
+                // cannot be attributed.
+                return _('Could not be fully verified: open the link to confirm it');
+            case 'unresolved-redirect':
+                return _('Redirects could not be followed: open the link to review it');
+            default:
+                return _('Not checked automatically: open the link to review it');
+        }
     }
 
     /**

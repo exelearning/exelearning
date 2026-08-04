@@ -7,14 +7,30 @@
  * server-side validator (src/services/link-validator.ts) provides in online
  * mode.
  *
+ * Network stack: Node's fetch (undici) is used on purpose instead of
+ * Electron's `net.fetch`. Measured 2026-08-04 from an EU IP (PR #2208
+ * review): Chromium's stack receives Google's cookie-consent interstitial as
+ * a plain 200 — for existing and deleted YouTube channels alike — and its
+ * `response.url` is empty in Electron 43, so the redirect cannot even be
+ * detected. undici resolves the consent chain (302 → consent.youtube.com →
+ * 303 → `?ucbcb=1`) to the real page status and reports a reliable
+ * `response.url`. `net.fetch` remains as a fallback for networks undici
+ * cannot reach directly (it honors the system proxy, undici does not).
+ *
  * Security model: local and private addresses (loopback, RFC1918,
  * link-local/metadata, CGNAT…) are NEVER probed automatically — an untrusted
  * OER must not turn link validation into a LAN scan. Those links are flagged
  * for manual review instead of being requested. Public addresses are checked
  * from the user's machine, like a normal navigation would be.
  *
- * `fetchImpl` (Electron's `net.fetch` in production) and `lookupFn` are
- * injected so the policy can be unit-tested hermetically.
+ * `fetchImpl`, `fallbackFetchImpl` and `lookupFn` are injected so the policy
+ * can be unit-tested hermetically.
+ *
+ * Result contract (also the `app:checkLink` IPC contract):
+ *   { status: 'valid' }                    — the requested host answered 2xx/3xx-resolved
+ *   { status: 'broken', error }            — proven dead (HTTP error code or network failure)
+ *   { status: 'unknown', reason, detail? } — needs a manual review; the renderer
+ *                                            maps `reason` to a translated message
  */
 
 const nodeNet = require('net');
@@ -46,6 +62,31 @@ function classifyHttpStatus(status) {
 
 function isTimeoutError(err) {
     return err?.name === 'AbortError' || err?.name === 'TimeoutError';
+}
+
+/**
+ * Map a fetch failure to a readable broken-link message. Node's fetch
+ * reports failures via error.cause (code/message); Electron's net.fetch puts
+ * the Chromium code in the message (e.g. "net::ERR_NAME_NOT_RESOLVED").
+ * @param {unknown} err
+ * @returns {string}
+ */
+function mapNetworkError(err) {
+    const detail = `${err?.cause?.code || err?.code || ''} ${err?.cause?.message || ''} ${err?.message || ''}`;
+    if (detail.includes('ENOTFOUND') || detail.includes('ERR_NAME_NOT_RESOLVED')) return 'Could not resolve host';
+    if (detail.includes('ECONNREFUSED') || detail.includes('ERR_CONNECTION_REFUSED')) return 'Connection refused';
+    if (detail.includes('redirect count') || detail.includes('ERR_TOO_MANY_REDIRECTS')) return 'Too many redirects';
+    return err?.message || 'Network error';
+}
+
+/**
+ * Host of a URL, lowercased and without a leading "www." — the unit used to
+ * decide whether a redirect stayed on the requested site.
+ * @param {string} url
+ * @returns {string}
+ */
+function comparableHost(url) {
+    return new URL(url).host.replace(/^www\./, '');
 }
 
 /**
@@ -126,35 +167,20 @@ async function resolvesToPrivateAddress(url, { lookupFn } = {}) {
 }
 
 /**
- * Check one external http(s) URL. Returns null when the link is reachable or
- * an error message when it is broken (same contract as the server validator).
- *
- * A single ranged GET is used — no HEAD. Too many hosts reject HEAD
- * (405/403), lie about it (educa.madrid answers HEAD with 404 while GET
- * returns the real status) or simply hang on it. A GET is what a browser
- * sends, so hosts answer it truthfully; `Range: bytes=0-0` keeps the
- * transfer to one byte on servers that honor it, and the body is cancelled
- * unread either way.
- *
- * @param {string} url - http(s) or protocol-relative URL
- * @param {{ fetchImpl: typeof fetch, timeout?: number }} options
- * @returns {Promise<string|null>}
+ * One ranged GET with browser-like headers and a timeout, body cancelled
+ * unread. `Accept-Encoding: identity` because a compressed body sliced by
+ * Range is a truncated gzip stream that some fetch implementations refuse.
+ * @param {typeof fetch} fetchImpl
+ * @param {string} url
+ * @param {number} timeout
+ * @returns {Promise<Response>}
  */
-async function checkExternalLink(url, { fetchImpl, timeout = DEFAULT_TIMEOUT }) {
-    const normalizedUrl = url.startsWith('//') ? `https:${url}` : url;
-    try {
-        new URL(normalizedUrl);
-    } catch (_e) {
-        return 'URL using bad/illegal format';
-    }
-
+async function rangedGet(fetchImpl, url, timeout) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     try {
-        const response = await fetchImpl(normalizedUrl, {
+        const response = await fetchImpl(url, {
             method: 'GET',
-            // identity: a compressed body sliced by Range is a truncated
-            // gzip stream that some fetch implementations refuse to accept.
             headers: { ...BROWSER_HEADERS, Range: 'bytes=0-0', 'Accept-Encoding': 'identity' },
             redirect: 'follow',
             signal: controller.signal,
@@ -164,24 +190,112 @@ async function checkExternalLink(url, { fetchImpl, timeout = DEFAULT_TIMEOUT }) 
         } catch (_e) {
             // Stream already closed or locked — the status is all we need.
         }
-        return classifyHttpStatus(response.status);
-    } catch (err) {
-        if (isTimeoutError(err)) return 'Timeout';
-        // Node's fetch reports failures via error.cause.code (ENOTFOUND);
-        // Electron's net.fetch puts the Chromium code in the message
-        // (e.g. "net::ERR_NAME_NOT_RESOLVED"). Map both to readable text.
-        const detail = `${err?.cause?.code || err?.code || ''} ${err?.message || ''}`;
-        if (detail.includes('ENOTFOUND') || detail.includes('ERR_NAME_NOT_RESOLVED')) return 'Could not resolve host';
-        if (detail.includes('ECONNREFUSED') || detail.includes('ERR_CONNECTION_REFUSED')) return 'Connection refused';
-        return err?.message || 'Network error';
+        return response;
     } finally {
         clearTimeout(timeoutId);
     }
 }
 
+/**
+ * Check one external http(s) URL with a single ranged GET — no HEAD (too
+ * many hosts reject it, spoof it or hang on it).
+ *
+ * @param {string} url - http(s) or protocol-relative URL
+ * @param {{ fetchImpl: typeof fetch, fallbackFetchImpl?: typeof fetch, timeout?: number }} options
+ * @returns {Promise<{status: 'valid'|'broken'|'unknown', reason?: string, detail?: string, error: string|null}>}
+ */
+async function checkExternalLink(url, { fetchImpl, fallbackFetchImpl, timeout = DEFAULT_TIMEOUT }) {
+    const normalizedUrl = url.startsWith('//') ? `https:${url}` : url;
+    try {
+        new URL(normalizedUrl);
+    } catch (_e) {
+        return { status: 'broken', error: 'URL using bad/illegal format' };
+    }
+
+    let response;
+    try {
+        response = await rangedGet(fetchImpl, normalizedUrl, timeout);
+    } catch (err) {
+        const error = isTimeoutError(err) ? 'Timeout' : mapNetworkError(err);
+        // A redirect loop is the server's behaviour, not a reachability
+        // problem: retrying through another stack cannot improve on it.
+        if (error === 'Too many redirects') {
+            return { status: 'broken', error };
+        }
+        // Unreachable directly: retry once through Chromium's stack, which
+        // honors the system proxy that undici knows nothing about
+        // (school/corporate networks).
+        if (fallbackFetchImpl) {
+            try {
+                const proxied = await rangedGet(fallbackFetchImpl, normalizedUrl, timeout);
+                const proxiedError = classifyHttpStatus(proxied.status);
+                if (proxiedError) {
+                    return { status: 'broken', error: proxiedError };
+                }
+                // 2xx through net.fetch: its response.url is empty in
+                // Electron, so we cannot verify WHO answered (consent walls
+                // answer 200 too) — only a human can confirm this one.
+                return { status: 'unknown', reason: 'unverified-proxy', error: null };
+            } catch (_fallbackError) {
+                // Both stacks failed: report the direct error.
+            }
+        }
+        return { status: 'broken', error };
+    }
+
+    // Final-host rule (PR #2208 review): green must mean the REQUESTED host
+    // answered, not that someone answered. A 2xx that landed on another host
+    // (consent gate, captive portal, login wall, URL shortener target) needs
+    // a human; an error status on another host is broken either way.
+    if (response.url) {
+        try {
+            const requestedHost = comparableHost(normalizedUrl);
+            const finalHost = comparableHost(response.url);
+            if (finalHost !== requestedHost) {
+                const statusError = classifyHttpStatus(response.status);
+                if (statusError) {
+                    return { status: 'broken', error: statusError };
+                }
+                return { status: 'unknown', reason: 'cross-host-redirect', detail: finalHost, error: null };
+            }
+        } catch (_e) {
+            // Unparseable final URL: fall through to plain status classification.
+        }
+    }
+
+    // A response that is still a redirect after `redirect: 'follow'` (3xx
+    // without a Location header) proves nothing about the target.
+    if (response.status >= 300 && response.status < 400) {
+        return { status: 'unknown', reason: 'unresolved-redirect', error: null };
+    }
+
+    const error = classifyHttpStatus(response.status);
+    return error ? { status: 'broken', error } : { status: 'valid', error: null };
+}
+
+/**
+ * Full desktop link check: guards non-external URLs, refuses local/private
+ * addresses, then probes with {@link checkExternalLink}. This is the
+ * behaviour behind the `app:checkLink` IPC handler.
+ *
+ * @param {string} url
+ * @param {{ fetchImpl: typeof fetch, fallbackFetchImpl?: typeof fetch, lookupFn?: Function, timeout?: number }} options
+ * @returns {Promise<{status: 'valid'|'broken'|'unknown', reason?: string, detail?: string, error: string|null}>}
+ */
+async function checkLink(url, { fetchImpl, fallbackFetchImpl, lookupFn, timeout } = {}) {
+    if (typeof url !== 'string' || !/^(https?:)?\/\//.test(url)) {
+        return { status: 'unknown', reason: 'not-external', error: null };
+    }
+    if (await resolvesToPrivateAddress(url, { lookupFn })) {
+        return { status: 'unknown', reason: 'private-address', error: null };
+    }
+    return checkExternalLink(url, { fetchImpl, fallbackFetchImpl, timeout });
+}
+
 module.exports = {
     BROWSER_HEADERS,
     checkExternalLink,
+    checkLink,
     classifyHttpStatus,
     isPrivateAddress,
     resolvesToPrivateAddress,

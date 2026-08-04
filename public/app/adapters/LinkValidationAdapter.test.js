@@ -354,6 +354,40 @@ describe('LinkValidationAdapter', () => {
                 expect(result.error).toBe('Local or private address: open the link to review it manually');
             });
 
+            it('should explain a cross-host redirect (consent gates, shorteners) with the final host', async () => {
+                checkLink.mockResolvedValue({
+                    status: 'unknown',
+                    reason: 'cross-host-redirect',
+                    detail: 'consent.youtube.com',
+                    error: null,
+                });
+
+                const result = await adapter.validateLink('https://www.youtube.com/@bbc');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe(
+                    'Redirects to another site — open the link to verify it (consent.youtube.com)',
+                );
+            });
+
+            it('should explain a 2xx that could only be obtained through the system proxy', async () => {
+                checkLink.mockResolvedValue({ status: 'unknown', reason: 'unverified-proxy', error: null });
+
+                const result = await adapter.validateLink('https://example.com');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Could not be fully verified: open the link to confirm it');
+            });
+
+            it('should explain an unresolved redirect', async () => {
+                checkLink.mockResolvedValue({ status: 'unknown', reason: 'unresolved-redirect', error: null });
+
+                const result = await adapter.validateLink('https://example.com/moved');
+
+                expect(result.status).toBe('unknown');
+                expect(result.error).toBe('Redirects could not be followed: open the link to review it');
+            });
+
             it('should use the generic review message for unknown results without a reason', async () => {
                 checkLink.mockResolvedValue({ status: 'unknown', error: null });
 

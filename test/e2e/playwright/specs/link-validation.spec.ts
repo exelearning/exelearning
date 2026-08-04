@@ -20,6 +20,9 @@ import { Page } from '@playwright/test';
 const isStaticMode = process.env.STATIC_MODE === 'true';
 const reachableLinkIcon = isStaticMode ? '.text-warning-emphasis' : '.text-success';
 const brokenLinkIcon = isStaticMode ? '.text-warning-emphasis' : '.text-danger';
+// Browser-limited flavors list links instead of validating them, and the
+// closing summary says so (review of PR #2208).
+const completionText = isStaticMode ? 'Links listed' : 'Complete';
 
 /**
  * Helper to open the link validation modal
@@ -210,17 +213,17 @@ test.describe('Link Validation', () => {
 
         // Wait for completion
         await page.waitForFunction(
-            () => {
+            expected => {
                 const progressText = document.querySelector('#modalOdeBrokenLinks .progress-text');
-                return progressText?.textContent?.includes('Complete');
+                return progressText?.textContent?.includes(expected);
             },
-            undefined,
+            completionText,
             { timeout: 30000 },
         );
 
         // Verify progress text shows completion status
         const progressText = modal.locator('.progress-text');
-        await expect(progressText).toContainText('Complete');
+        await expect(progressText).toContainText(completionText);
     });
 
     test('should show "No links found" for empty content', async ({ authenticatedPage, createProject }) => {

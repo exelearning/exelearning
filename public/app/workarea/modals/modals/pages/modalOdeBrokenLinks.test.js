@@ -285,6 +285,40 @@ describe('ModalOdeBrokenLinks', () => {
         });
     });
 
+    describe('createLegendHtml', () => {
+        it('should explain that a check mark only means the server responded (soft-404s)', () => {
+            const html = modal.createLegendHtml();
+            expect(html).toContain('some sites answer 200');
+        });
+    });
+
+    describe('browser-limited relabelling', () => {
+        beforeEach(() => {
+            modal.linkManager = { isBrowserLimited: () => true };
+            modal.progressContainer = document.createElement('div');
+            modal.progressContainer.innerHTML = modal.createProgressHtml();
+        });
+
+        it('should promise a listing instead of a validation while running', () => {
+            expect(modal.createProgressHtml()).toContain('Listing links...');
+        });
+
+        it('should close with a listing summary, without validation language', () => {
+            modal.updateProgress({ total: 5, validated: 5, broken: 0, unknown: 3 });
+            const text = modal.progressContainer.querySelector('.progress-text');
+            expect(text.textContent).toBe('Links listed: 3 to review manually');
+            expect(text.textContent).not.toContain('Complete');
+            expect(text.classList.contains('text-warning-emphasis')).toBe(true);
+        });
+
+        it('should report a plain listing when nothing needs review', () => {
+            modal.updateProgress({ total: 2, validated: 2, broken: 0, unknown: 0 });
+            const text = modal.progressContainer.querySelector('.progress-text');
+            expect(text.textContent).toBe('Links listed');
+            expect(text.classList.contains('text-success')).toBe(true);
+        });
+    });
+
     describe('buildBody', () => {
         it('should build body with progress and table', () => {
             const links = [
@@ -610,6 +644,22 @@ describe('ModalOdeBrokenLinks', () => {
             expect(statusCells[1].textContent).toBe('Requires manual review');
             // The status column is no longer dropped from the CSV
             expect(tableToCSVSpy.mock.calls[0][1]).toBeUndefined();
+        });
+
+        it('should name the export after its content (broken + review rows)', () => {
+            modal.modalElement.querySelector('.modal-body').innerHTML = `
+                <table>
+                    <thead><tr><th>Status</th><th>Link</th></tr></thead>
+                    <tbody>
+                        <tr data-status="broken"><td class="link-status">X</td><td>http://broken.com</td></tr>
+                    </tbody>
+                </table>
+            `;
+            const downloadSpy = vi.spyOn(modal, 'downloadCSVFile').mockImplementation(() => {});
+
+            modal.downloadCsv();
+
+            expect(downloadSpy).toHaveBeenCalledWith(expect.any(String), 'link-report.csv');
         });
 
         it('should include broken and manual-review rows but not valid ones', () => {

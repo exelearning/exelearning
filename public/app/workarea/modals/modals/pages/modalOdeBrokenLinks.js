@@ -187,10 +187,13 @@ export default class ModalOdeBrokenLinks extends Modal {
      * @returns {string}
      */
     createProgressHtml() {
+        // Browser-limited flavors do not validate anything: promise a listing,
+        // not a validation (review of PR #2208).
+        const label = this.linkManager?.isBrowserLimited?.() ? _('Listing links...') : _('Validating links...');
         return `
             <div class="validation-progress mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <small class="progress-text text-muted">${_('Validating links...')}</small>
+                    <small class="progress-text text-muted">${label}</small>
                     <small class="progress-stats text-muted">0 / 0</small>
                 </div>
                 <div class="progress" style="height: 8px;">
@@ -229,6 +232,8 @@ export default class ModalOdeBrokenLinks extends Modal {
                 <span class="text-danger">&#10007;</span> ${_('Broken')} &middot;
                 <span class="text-warning-emphasis">&#9888;</span> ${_('Requires manual review')}
                 &mdash; ${_('the status of these links could not be checked automatically; open them to confirm.')}
+                <br>
+                ${_('A check mark means the server responded: some sites answer 200 even for pages that do not exist.')}
             </p>
         `;
     }
@@ -256,13 +261,20 @@ export default class ModalOdeBrokenLinks extends Modal {
 
         if (progressText && stats.validated === stats.total) {
             const unknown = stats.unknown || 0;
-            const summary = [
-                stats.broken > 0 ? `${stats.broken} ${_('broken')}` : _('No broken links'),
-                unknown > 0 ? `${unknown} ${_('to review')}` : '',
-            ]
-                .filter(Boolean)
-                .join(', ');
-            progressText.textContent = `${_('Complete')}: ${summary}`;
+            if (this.linkManager?.isBrowserLimited?.()) {
+                // Nothing was validated in this flavor: report a listing, with
+                // no "broken"/"Complete" language (review of PR #2208).
+                progressText.textContent =
+                    unknown > 0 ? `${_('Links listed')}: ${unknown} ${_('to review manually')}` : _('Links listed');
+            } else {
+                const summary = [
+                    stats.broken > 0 ? `${stats.broken} ${_('broken')}` : _('No broken links'),
+                    unknown > 0 ? `${unknown} ${_('to review')}` : '',
+                ]
+                    .filter(Boolean)
+                    .join(', ');
+                progressText.textContent = `${_('Complete')}: ${summary}`;
+            }
             progressText.classList.remove('text-muted', 'text-danger', 'text-warning-emphasis', 'text-success');
             if (stats.broken > 0) {
                 progressText.classList.add('text-danger');
@@ -516,8 +528,9 @@ export default class ModalOdeBrokenLinks extends Modal {
 
         const csv = this.tableToCSV(filteredTable);
 
-        // Download the CSV file
-        this.downloadCSVFile(csv, 'BrokenLinks.csv');
+        // Download the CSV file. Named for what it contains — broken AND
+        // review rows — not just broken links (review of PR #2208).
+        this.downloadCSVFile(csv, 'link-report.csv');
     }
 
     /**

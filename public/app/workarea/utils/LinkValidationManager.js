@@ -293,15 +293,22 @@ export default class LinkValidationManager {
      * Browser security restrictions (CORS) then hide the status of external
      * links, so none of them can be verified automatically.
      *
+     * Static so UI outside a validation run (menu tooltips) can ask too.
+     *
      * @returns {boolean}
      */
-    isBrowserLimited() {
+    static isBrowserLimited() {
         const streamUrl =
             typeof eXeLearning !== 'undefined'
                 ? (eXeLearning?.app?.api?.getLinkValidationStreamUrl?.() ?? null)
                 : null;
         const electronApi = typeof window !== 'undefined' ? window.electronAPI : undefined;
         return !streamUrl && typeof electronApi?.checkLink !== 'function';
+    }
+
+    /** Instance convenience for {@link LinkValidationManager.isBrowserLimited}. */
+    isBrowserLimited() {
+        return LinkValidationManager.isBrowserLimited();
     }
 
     /**
