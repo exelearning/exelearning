@@ -365,7 +365,10 @@ export class ComponentExporter extends BaseExporter {
                     const exportPath = exportPathMap.get(asset.id);
                     if (exportPath) {
                         const zipPath = `content/resources/${exportPath}`;
-                        this.zip.addFile(zipPath, asset.data);
+                        // Route through the shared writer so .srt subtitle assets are
+                        // converted to WebVTT (buildAssetExportPathMap already renamed
+                        // the path .srt -> .vtt) -- see issue #2034.
+                        await this.writeAssetToZip(zipPath, asset);
                         console.log(`[ComponentExporter] Added asset: ${zipPath}`);
                         addedCount++;
                     } else {

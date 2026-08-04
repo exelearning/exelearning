@@ -1818,6 +1818,30 @@ export default class ApiCallManager {
         const pageId = params.odeNavStructureSyncId || params.odePageId;
         const blockId = params.odePagStructureSyncId || params.odeBlockId;
         const componentId = params.odeComponentsSyncId || params.odeIdeviceId || params.id;
+        let validatedJsonProperties;
+
+        if (params.jsonProperties !== undefined) {
+            try {
+                // Validate here so an invalid payload never reaches the block
+                // creation below, which would otherwise leave an orphan block
+                // behind when the component write fails. Asset normalization is
+                // left to createComponent/updateComponent, which prepare the
+                // value themselves; running it here too would do the work twice.
+                validatedJsonProperties =
+                    structureBinding.serializeAndValidateJsonProperties(
+                        convertJsonProperties(params.jsonProperties)
+                    );
+            } catch (error) {
+                console.error(
+                    '[apiCallManager] Invalid jsonProperties, discarding save:',
+                    error
+                );
+                return {
+                    responseMessage: 'ERROR',
+                    error: _('Invalid iDevice data. The save was discarded.'),
+                };
+            }
+        }
 
         console.log('[apiCallManager] _saveIdeviceToYjs:', { pageId, blockId, componentId, params });
 
@@ -1847,22 +1871,52 @@ export default class ApiCallManager {
         if (!existingComponent && pageId && blockId && (params.odeIdeviceTypeName || componentId)) {
             // Ensure block exists - create if "new"
             let actualBlockId = blockId;
+            let blockCreatedHere = false;
             if (blockId === 'new' || !structureBinding.getBlockMap(pageId, blockId)) {
                 actualBlockId = structureBinding.createBlock(pageId, params.blockName || '');
+                blockCreatedHere = true;
                 console.log('[apiCallManager] Created new block in Yjs:', actualBlockId);
             }
 
-            const newComponentId = structureBinding.createComponent(
-                pageId,
-                actualBlockId,
-                params.odeIdeviceTypeName || 'FreeTextIdevice',
-                {
+            let newComponentId;
+            try {
+                const initialComponentData = {
                     id: componentId, // Preserve the original ID if provided
                     htmlContent: convertHtmlContent(params.htmlView) || '',
                     iconName: params.iconName,
-                    jsonProperties: params.jsonProperties ? convertJsonProperties(params.jsonProperties) : undefined,
+                };
+                if (validatedJsonProperties !== undefined) {
+                    initialComponentData.jsonProperties =
+                        validatedJsonProperties;
                 }
-            );
+                newComponentId = structureBinding.createComponent(
+                    pageId,
+                    actualBlockId,
+                    params.odeIdeviceTypeName || 'FreeTextIdevice',
+                    initialComponentData
+                );
+            } catch (error) {
+                console.error(
+                    '[apiCallManager] Error creating iDevice in Yjs:',
+                    error
+                );
+                // Do not leave behind the block we just created for this
+                // component: an empty orphan block would persist and sync.
+                if (blockCreatedHere) {
+                    try {
+                        structureBinding.deleteBlock(pageId, actualBlockId);
+                    } catch (cleanupError) {
+                        console.error(
+                            '[apiCallManager] Could not remove orphan block:',
+                            cleanupError
+                        );
+                    }
+                }
+                return {
+                    responseMessage: 'ERROR',
+                    error: _('Invalid iDevice data. The save was discarded.'),
+                };
+            }
             console.log('[apiCallManager] Created new iDevice in Yjs:', newComponentId);
             return buildResponse(newComponentId || componentId, true);
         }
@@ -1874,7 +1928,7 @@ export default class ApiCallManager {
                 updateData.htmlContent = convertHtmlContent(params.htmlView);
             }
             if (params.jsonProperties !== undefined) {
-                updateData.jsonProperties = convertJsonProperties(params.jsonProperties);
+                updateData.jsonProperties = validatedJsonProperties;
             }
             if (params.order !== undefined) {
                 updateData.order = params.order;
@@ -1885,6 +1939,10 @@ export default class ApiCallManager {
                 console.log('[apiCallManager] Updated iDevice in Yjs:', componentId);
             } catch (e) {
                 console.error('[apiCallManager] Error updating iDevice in Yjs:', e);
+                return {
+                    responseMessage: 'ERROR',
+                    error: _('Invalid iDevice data. The save was discarded.'),
+                };
             }
 
             return buildResponse(componentId, false);
