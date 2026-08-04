@@ -146,6 +146,9 @@ var $exeDevice = {
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
         this.removeLegacyRenderedArtifacts();
+        // The edition dialogs live in <body>, so a previous edition may have left
+        // them behind: start from a clean slate bound to this iDevice.
+        this.removeEditModals();
         this.createForm();
     },
 
@@ -655,6 +658,8 @@ var $exeDevice = {
             this.editor.empty();
         }
         this.cells = null;
+        // The table cells the dialogs point at are gone now.
+        this.removeEditModals();
     },
 
     exportCSV: function () {
@@ -1723,6 +1728,10 @@ var $exeDevice = {
             ? textAfterEditor.getContent()
             : ($('#eXeIdeviceTextAfter').val() || '');
 
+        // Validation passed: the edition form is about to be replaced by the
+        // rendered rubric, so take the <body>-level dialogs down with it.
+        this.removeEditModals();
+
         return this.buildSerializedRubricHTML(data, instructions, textAfter, {
             includeWrapper: true,
             wrapperClass: 'rubric-IDevice',
@@ -1928,6 +1937,65 @@ var $exeDevice = {
         $exeDevice.setMaxScore();
     },
 
+    // Ids of the table edition dialogs. Each one owns a backdrop whose id is the
+    // modal id plus the 'Backdrop' suffix (see showEditModal/hideEditModal).
+    editModalIds: ['ri_CellEditModal', 'ri_RowEditModal', 'ri_ColumnEditModal'],
+
+    /**
+     * Mount an edition dialog. Bootstrap modals must be direct children of
+     * <body>: the rubric editor is rendered inside the iDevice edition box, and
+     * that box becomes a stacking context while an iDevice is being edited
+     * (`position: absolute; z-index: 5`, see assets/styles/layout/_idevice-focus.scss).
+     * A dialog appended there has its z-index (1060, rubric.css) clamped to that
+     * context, so the <body>-level backdrop (z-index 1050) paints on top of it
+     * and swallows every click: the dialog looks open but is unusable. Keeping
+     * dialog and backdrop in the same place is what makes 1060 > 1050 effective.
+     */
+    mountEditModal: function (html) {
+        $(document.body).append(html);
+    },
+
+    showEditModal: function (modalId) {
+        $('#' + modalId)
+            .addClass('show')
+            .attr('aria-hidden', 'false')
+            .css('display', 'block');
+        $('body').addClass('modal-open');
+        var backdropId = modalId + 'Backdrop';
+        if ($('#' + backdropId).length === 0) {
+            $(document.body).append(
+                '<div id="' + backdropId + '" class="modal-backdrop fade show"></div>'
+            );
+        }
+    },
+
+    hideEditModal: function (modalId) {
+        $('#' + modalId)
+            .removeClass('show')
+            .attr('aria-hidden', 'true')
+            .css('display', 'none');
+        $('#' + modalId + 'Backdrop').remove();
+        // Other dialogs (rubric or app level) may still be open.
+        if ($('.modal-backdrop').length === 0) $('body').removeClass('modal-open');
+    },
+
+    /**
+     * Drop the dialogs and their pending state. Needed because they live in
+     * <body> and therefore survive a rebuild of #ri_TableEditor, which would
+     * otherwise leave them pointing at detached table cells (and leave stale
+     * dialogs behind once this iDevice edition ends).
+     */
+    removeEditModals: function () {
+        this.cellEditTarget = null;
+        this.rowEditState = null;
+        this.columnEditState = null;
+        this.editModalIds.forEach(function (modalId) {
+            $('#' + modalId).remove();
+            $('#' + modalId + 'Backdrop').remove();
+        });
+        if ($('.modal-backdrop').length === 0) $('body').removeClass('modal-open');
+    },
+
     ensureCellEditModal: function () {
         var modal = $('#ri_CellEditModal');
         if (modal.length === 1) return;
@@ -1971,7 +2039,7 @@ var $exeDevice = {
             '</div>' +
             '</div>';
 
-        $('#ri_TableEditor').append(html);
+        this.mountEditModal(html);
 
         $('#ri_CellEditAccept').off('click').on('click', function () {
             $exeDevice.applyCellEditModal();
@@ -1989,6 +2057,8 @@ var $exeDevice = {
 
     openCellEditModal: function (td) {
         if (!td || td.length !== 1) return;
+
+        this.ensureCellEditModal();
 
         this.cellEditTarget = td;
         var contentInput = td.find('input[type="text"]').not('.ri_Weight').first();
@@ -2012,18 +2082,12 @@ var $exeDevice = {
             _('Performance level') + (columnTitle ? ': ' + columnTitle : '')
         );
 
-        $('#ri_CellEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
-        $('body').addClass('modal-open');
-        if ($('#ri_CellEditModalBackdrop').length === 0) {
-            $('body').append('<div id="ri_CellEditModalBackdrop" class="modal-backdrop fade show"></div>');
-        }
+        this.showEditModal('ri_CellEditModal');
         $('#ri_CellEditContent').focus();
     },
 
     closeCellEditModal: function () {
-        $('#ri_CellEditModal').removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
-        $('body').removeClass('modal-open');
-        $('#ri_CellEditModalBackdrop').remove();
+        this.hideEditModal('ri_CellEditModal');
         this.cellEditTarget = null;
     },
 
@@ -2109,7 +2173,7 @@ var $exeDevice = {
             '</div>' +
             '</div>';
 
-        $('#ri_TableEditor').append(html);
+        this.mountEditModal(html);
 
         $('#ri_RowEditAccept').off('click').on('click', function () {
             $exeDevice.applyRowEditModal();
@@ -2182,11 +2246,7 @@ var $exeDevice = {
         $('#ri_RowEditModalTitle').text(_('Assessment criteria') + (criterionTitle ? ': ' + criterionTitle : ''));
         this.renderRowEditModalFields();
 
-        $('#ri_RowEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
-        $('body').addClass('modal-open');
-        if ($('#ri_RowEditModalBackdrop').length === 0) {
-            $('body').append('<div id="ri_RowEditModalBackdrop" class="modal-backdrop fade show"></div>');
-        }
+        this.showEditModal('ri_RowEditModal');
         $('#ri_RowEditContent').focus();
     },
 
@@ -2238,9 +2298,7 @@ var $exeDevice = {
     },
 
     closeRowEditModal: function () {
-        $('#ri_RowEditModal').removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
-        $('body').removeClass('modal-open');
-        $('#ri_RowEditModalBackdrop').remove();
+        this.hideEditModal('ri_RowEditModal');
         this.rowEditState = null;
     },
 
@@ -2370,7 +2428,7 @@ var $exeDevice = {
             '</div>' +
             '</div>';
 
-        $('#ri_TableEditor').append(html);
+        this.mountEditModal(html);
 
         $('#ri_ColumnEditAccept').off('click').on('click', function () {
             $exeDevice.applyColumnEditModal();
@@ -2437,11 +2495,7 @@ var $exeDevice = {
         $('#ri_ColumnEditModalTitle').text(this.columnEditState.title || _('Edit'));
         this.renderColumnEditModalFields();
 
-        $('#ri_ColumnEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
-        $('body').addClass('modal-open');
-        if ($('#ri_ColumnEditModalBackdrop').length === 0) {
-            $('body').append('<div id="ri_ColumnEditModalBackdrop" class="modal-backdrop fade show"></div>');
-        }
+        this.showEditModal('ri_ColumnEditModal');
         $('#ri_ColumnEditContent').focus();
     },
 
@@ -2492,9 +2546,7 @@ var $exeDevice = {
     },
 
     closeColumnEditModal: function () {
-        $('#ri_ColumnEditModal').removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
-        $('body').removeClass('modal-open');
-        $('#ri_ColumnEditModalBackdrop').remove();
+        this.hideEditModal('ri_ColumnEditModal');
         this.columnEditState = null;
     },
 

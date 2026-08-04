@@ -539,6 +539,119 @@ describe('rubric iDevice CSV tools (edition)', () => {
   });
 
   // ==========================================================================
+  // Table edition dialogs (mounting / stacking context)
+  // ==========================================================================
+
+  describe('table edition dialogs', () => {
+    const TABLE_HTML = `
+      <div id="ri_TableEditor"></div>
+      <table id="ri_Table">
+        <thead>
+          <tr>
+            <th><input type="text" value="" /></th>
+            <th><input type="text" value="Nivel Alto" /></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th><input type="text" value="Contenido" /></th>
+            <td>
+              <input type="text" value="Descriptor inicial" />
+              <input type="text" class="ri_Weight" value="2" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    beforeEach(() => {
+      document.body.innerHTML = TABLE_HTML;
+      document.body.className = '';
+    });
+
+    it('mounts every dialog as a direct child of <body>, never inside the editor', () => {
+      $exeDevice.ensureCellEditModal();
+      $exeDevice.ensureRowEditModal();
+      $exeDevice.ensureColumnEditModal();
+
+      $exeDevice.editModalIds.forEach((modalId) => {
+        const modal = document.getElementById(modalId);
+        expect(modal).not.toBeNull();
+        expect(modal.parentElement).toBe(document.body);
+      });
+      expect($('#ri_TableEditor').children().length).toBe(0);
+    });
+
+    it('keeps dialog and backdrop in the same stacking context so the dialog stays clickable', () => {
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+
+      const modal = document.getElementById('ri_CellEditModal');
+      const backdrop = document.getElementById('ri_CellEditModalBackdrop');
+
+      expect(backdrop).not.toBeNull();
+      // Same parent => the dialog z-index (1060) really beats the backdrop (1050).
+      expect(backdrop.parentElement).toBe(modal.parentElement);
+      expect(modal.parentElement).toBe(document.body);
+      expect(document.body.classList.contains('modal-open')).toBe(true);
+    });
+
+    it('openCellEditModal recreates the dialog when it is missing', () => {
+      $exeDevice.removeEditModals();
+      expect(document.getElementById('ri_CellEditModal')).toBeNull();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+
+      expect(document.getElementById('ri_CellEditModal')).not.toBeNull();
+      expect($('#ri_CellEditContent').val()).toBe('Descriptor inicial');
+    });
+
+    it('closing one dialog keeps modal-open while another dialog is still open', () => {
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+
+      $exeDevice.closeRowEditModal();
+
+      expect(document.getElementById('ri_RowEditModalBackdrop')).toBeNull();
+      expect(document.getElementById('ri_CellEditModalBackdrop')).not.toBeNull();
+      expect(document.body.classList.contains('modal-open')).toBe(true);
+
+      $exeDevice.closeCellEditModal();
+
+      expect(document.getElementById('ri_CellEditModalBackdrop')).toBeNull();
+      expect(document.body.classList.contains('modal-open')).toBe(false);
+      expect($('#ri_CellEditModal').css('display')).toBe('none');
+    });
+
+    it('removeEditModals drops dialogs, backdrops and pending state', () => {
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+      $exeDevice.ensureColumnEditModal();
+
+      $exeDevice.removeEditModals();
+
+      $exeDevice.editModalIds.forEach((modalId) => {
+        expect(document.getElementById(modalId)).toBeNull();
+        expect(document.getElementById(`${modalId}Backdrop`)).toBeNull();
+      });
+      expect(document.body.classList.contains('modal-open')).toBe(false);
+      expect($exeDevice.cellEditTarget).toBeNull();
+      expect($exeDevice.rowEditState).toBeNull();
+      expect($exeDevice.columnEditState).toBeNull();
+    });
+
+    it('clearCurrentRubricEdition removes dialogs pointing at the discarded table', () => {
+      $exeDevice.editor = $('#ri_TableEditor');
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+
+      $exeDevice.clearCurrentRubricEdition();
+
+      expect(document.getElementById('ri_CellEditModal')).toBeNull();
+      expect(document.getElementById('ri_CellEditModalBackdrop')).toBeNull();
+      expect($exeDevice.cellEditTarget).toBeNull();
+    });
+  });
+
+  // ==========================================================================
   // SCORM integration
   // ==========================================================================
 

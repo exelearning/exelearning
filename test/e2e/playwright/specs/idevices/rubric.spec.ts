@@ -26,6 +26,8 @@ const TEST_DATA = {
     rubricTitle: 'E2E Test Rubric',
     editedDescriptor: 'E2E edited descriptor content',
     weight: '5',
+    dialogDescriptor: 'E2E descriptor edited from the cell dialog',
+    dialogWeight: '7',
 };
 
 /**
@@ -297,6 +299,59 @@ test.describe('Rubric iDevice', () => {
             // Verify the table structure is intact
             const rubricTable = page.locator('#node-content .idevice_node.rubric .exe-table');
             await expect(rubricTable).toBeVisible({ timeout: 10000 });
+        });
+    });
+
+    test.describe('Cell edition dialog', () => {
+        test('should keep the cell dialog above its backdrop and apply the changes', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Cell Dialog Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            // The editor is wrapped in the focused-edit stacking context: that is
+            // exactly the situation where a dialog mounted inside the editor ends
+            // up painted below the <body>-level backdrop.
+            await expect(page.locator('body.exe-idevice-focus-editing')).toHaveCount(1);
+
+            const firstCell = page.locator('#ri_Table tbody tr').first().locator('td').first();
+            await firstCell.locator('a.ri_EditTD').click();
+
+            const dialog = page.locator('#ri_CellEditModal');
+            await expect(dialog).toBeVisible({ timeout: 10000 });
+
+            // Regression guard: with the dialog trapped in the editor stacking
+            // context the backdrop is the topmost element here, so the dialog
+            // looks open but cannot be used.
+            const dialogIsOnTop = await page.evaluate(() => {
+                const content = document.querySelector('#ri_CellEditModal .modal-content');
+                if (!content) return false;
+                const rect = content.getBoundingClientRect();
+                const topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                return !!topmost && !!topmost.closest('#ri_CellEditModal');
+            });
+            expect(dialogIsOnTop).toBe(true);
+
+            await page.locator('#ri_CellEditContent').fill(TEST_DATA.dialogDescriptor);
+            await page.locator('#ri_CellEditScore').fill(TEST_DATA.dialogWeight);
+
+            // A real (hit-tested) click: it fails if the backdrop covers the dialog.
+            await page.locator('#ri_CellEditAccept').click();
+
+            await expect(dialog).toBeHidden({ timeout: 5000 });
+            await expect(page.locator('#ri_CellEditModalBackdrop')).toHaveCount(0);
+            await expect(firstCell.locator('input[type="text"]:not(.ri_Weight)')).toHaveValue(
+                TEST_DATA.dialogDescriptor,
+            );
+            await expect(firstCell.locator('input.ri_Weight')).toHaveValue(TEST_DATA.dialogWeight);
         });
     });
 
