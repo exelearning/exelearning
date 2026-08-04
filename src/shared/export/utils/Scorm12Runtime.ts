@@ -24,6 +24,7 @@ export const SCORM12_VENDOR_WRAPPER_PATH = 'scorm12/vendor/pipwerks/SCORM_API_wr
 /** Project-owned runtime layers in load order (relative to app/common/scorm/). */
 export const SCORM12_RUNTIME_LAYER_PATHS = [
     'scorm12/exe-scorm12-client.js',
+    'scorm12/exe-scorm12-activities.js',
     'scorm12/exe-scorm12-policy.js',
     'scorm12/exe-scorm12-lifecycle.js',
     'scorm12/exe-scorm12-adapter.js',

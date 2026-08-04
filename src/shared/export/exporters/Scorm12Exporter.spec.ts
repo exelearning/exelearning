@@ -536,11 +536,13 @@ describe('Scorm12Exporter', () => {
             const scoFunctions = zip.files.get('libs/SCOFunctions.js') as string;
             expect(scoFunctions).toContain('SPDX-License-Identifier: AGPL-3.0-or-later');
             const clientIndex = scoFunctions.indexOf('exe-scorm12-client.js');
+            const activitiesIndex = scoFunctions.indexOf('exe-scorm12-activities.js');
             const policyIndex = scoFunctions.indexOf('exe-scorm12-policy.js');
             const lifecycleIndex = scoFunctions.indexOf('exe-scorm12-lifecycle.js');
             const adapterIndex = scoFunctions.indexOf('exe-scorm12-adapter.js');
             expect(clientIndex).toBeGreaterThan(-1);
-            expect(policyIndex).toBeGreaterThan(clientIndex);
+            expect(activitiesIndex).toBeGreaterThan(clientIndex);
+            expect(policyIndex).toBeGreaterThan(activitiesIndex);
             expect(lifecycleIndex).toBeGreaterThan(policyIndex);
             expect(adapterIndex).toBeGreaterThan(lifecycleIndex);
         });

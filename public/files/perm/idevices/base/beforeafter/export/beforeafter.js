@@ -517,7 +517,7 @@ var $eXeBeforeAfter = {
         $(`#bfafLinkMinimize-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessButton-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessE-${instance}`).off('keydown');
-        $(window).off('unload.eXeBeforeAfter beforeunload.eXeBeforeAfter');
+        $(window).off('pagehide.eXeBeforeAfter');
     },
 
     addEvents: function (instance) {
@@ -580,7 +580,7 @@ var $eXeBeforeAfter = {
             });
 
         $(window).on(
-            'unload.eXeBeforeAfter beforeunload.eXeBeforeAfter',
+            'pagehide.eXeBeforeAfter',
             function () {
                 if ($eXeBeforeAfter.mScorm) {
                     $exeDevices.iDevice.gamification.scorm.endScorm(

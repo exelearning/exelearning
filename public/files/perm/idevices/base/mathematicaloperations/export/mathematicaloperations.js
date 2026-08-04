@@ -1602,7 +1602,7 @@ var $eXeMathOperations = {
         });
 
         $('#mthoPNumber-' + instance).text(mOptions.number);
-        $(window).on('unload', function () {
+        $(window).on('pagehide', function () {
             if (typeof $eXeMathOperations.mScorm != 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
                     $eXeMathOperations.mScorm

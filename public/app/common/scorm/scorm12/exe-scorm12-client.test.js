@@ -230,13 +230,408 @@ describe('exe-scorm12-client', () => {
         });
 
         it('reports a set failure with the LMS error code and message', () => {
-            api = createFakeScorm12Api({ failures: { LMSSetValue: { result: 'false', errorCode: 403 } } });
+            api = createFakeScorm12Api();
             useWindow('self');
             client.initialize();
 
-            expect(client.setValue('cmi.core.lesson_mode', 'review')).toBe(false);
-            expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('403'));
-            expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Element is read only'));
+            // Out of the CMIDecimal 0-100 range the LMS answers 405.
+            expect(client.setValue('cmi.core.score.raw', '400')).toBe(false);
+            expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('405'));
+            expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Incorrect Data Type'));
+        });
+    });
+
+    describe('SCORM 1.2 element access rules', () => {
+        it.each([
+            'cmi.core.exit',
+            'cmi.core.session_time',
+            'cmi.interactions.0.id',
+            'cmi.interactions.0.student_response',
+        ])('never issues LMSGetValue for the write-only element %s', element => {
+            useWindow('self');
+            client.initialize();
+            api.resetCalls();
+
+            expect(client.getValue(element)).toBe('');
+            expect(api.calls).toEqual([]);
+        });
+
+        it('answers a write-only getter from the local write cache', () => {
+            useWindow('self');
+            client.initialize();
+
+            expect(client.setValue('cmi.core.exit', 'suspend')).toBe(true);
+
+            expect(client.getValue('cmi.core.exit')).toBe('suspend');
+            expect(client.getCachedValue('cmi.core.exit')).toBe('suspend');
+            expect(api.callsFor('LMSGetValue')).toEqual([]);
+        });
+
+        it('still reads the readable interaction keywords from the LMS', () => {
+            useWindow('self');
+            client.initialize();
+            client.setValue('cmi.interactions.0.id', 'q1');
+            api.resetCalls();
+
+            expect(client.getValue('cmi.interactions._count')).toBe('1');
+            expect(api.callsFor('LMSGetValue')).toEqual([['cmi.interactions._count']]);
+        });
+
+        it.each([
+            ['cmi.core.student_id', 403],
+            ['cmi.core.student_name', 403],
+            ['cmi.core.credit', 403],
+            ['cmi.core.entry', 403],
+            ['cmi.core.total_time', 403],
+            ['cmi.core.lesson_mode', 403],
+            ['cmi.launch_data', 403],
+            ['cmi.comments_from_lms', 403],
+            ['cmi.student_data.mastery_score', 403],
+            ['cmi._version', 402],
+            ['cmi.objectives._count', 402],
+            ['cmi.core._children', 402],
+        ])('refuses to write %s locally with error %d', (element, errorCode) => {
+            useWindow('self');
+            client.initialize();
+            api.resetCalls();
+
+            const result = client.setValueDetailed(element, 'whatever');
+
+            expect(result).toMatchObject({ success: false, errorCode, forwarded: false });
+            expect(api.calls).toEqual([]);
+            expect(warnSpy).toHaveBeenCalled();
+        });
+
+        it('classifies elements through the exported predicates', () => {
+            expect(client.isWriteOnlyElement('cmi.core.exit')).toBe(true);
+            expect(client.isWriteOnlyElement('cmi.interactions._count')).toBe(false);
+            expect(client.isReadOnlyElement('cmi.core.credit')).toBe(true);
+            expect(client.isReadOnlyElement('cmi.core.lesson_status')).toBe(false);
+        });
+
+        it('setValueDetailed reports a forwarded LMS rejection', () => {
+            useWindow('self');
+            client.initialize();
+
+            expect(client.setValueDetailed('cmi.core.lesson_status', 'not attempted')).toMatchObject({
+                success: false,
+                errorCode: 405,
+                forwarded: true,
+            });
+        });
+
+        it('setValueDetailed reports a rejection before initialize', () => {
+            useWindow('self');
+
+            expect(client.setValueDetailed('cmi.core.score.raw', '10')).toMatchObject({
+                success: false,
+                errorCode: 301,
+                forwarded: false,
+            });
+        });
+
+        it('setValueDetailed survives a throwing LMSSetValue', () => {
+            useWindow('self');
+            client.initialize();
+            api.LMSSetValue = () => {
+                throw new Error('LMS crashed');
+            };
+
+            expect(client.setValueDetailed('cmi.core.score.raw', '10')).toMatchObject({
+                success: false,
+                errorCode: 101,
+                forwarded: true,
+            });
+        });
+    });
+
+    describe('optional element probing', () => {
+        it('reports a supported optional element', () => {
+            api = createFakeScorm12Api({ data: { 'cmi.student_data.mastery_score': '70' } });
+            useWindow('self');
+            client.initialize();
+
+            expect(client.getOptionalValue('cmi.student_data.mastery_score')).toEqual({
+                value: '70',
+                supported: true,
+                errorCode: 0,
+            });
+        });
+
+        it('reports an unimplemented optional element without logging an error', () => {
+            api = createFakeScorm12Api({ profile: 'minimal' });
+            useWindow('self');
+            client.initialize();
+
+            expect(client.getOptionalValue('cmi.student_data.mastery_score')).toEqual({
+                value: '',
+                supported: false,
+                errorCode: 401,
+            });
+            expect(errorSpy).not.toHaveBeenCalled();
+        });
+
+        it('still reports a real failure', () => {
+            api = createFakeScorm12Api({ failures: { LMSGetValue: { errorCode: 101 } } });
+            useWindow('self');
+            client.initialize();
+
+            expect(client.getOptionalValue('cmi.core.score.max').supported).toBe(false);
+            expect(errorSpy).toHaveBeenCalled();
+        });
+
+        it('rejects the probe without an active session', () => {
+            useWindow('self');
+
+            expect(client.getOptionalValue('cmi.core.score.max')).toEqual({
+                value: '',
+                supported: false,
+                errorCode: 301,
+            });
+        });
+
+        it('survives a throwing LMSGetValue', () => {
+            useWindow('self');
+            client.initialize();
+            api.LMSGetValue = () => {
+                throw new Error('LMS crashed');
+            };
+
+            expect(client.getOptionalValue('cmi.core.score.max')).toEqual({
+                value: '',
+                supported: false,
+                errorCode: 101,
+            });
+        });
+
+        it('normalizes a stringified null probe result', () => {
+            useWindow('self');
+            client.initialize();
+            api.LMSGetValue = () => 'null';
+
+            expect(client.getOptionalValue('cmi.core.score.max').value).toBe('');
+        });
+    });
+
+    describe('termination state machine', () => {
+        /**
+         * A pipwerks stand-in whose terminate outcome is fully controlled, so
+         * the state matrix can be exercised independently of the vendored
+         * wrapper's own commit-then-finish sequencing.
+         */
+        function useStubbedWrapper(terminate) {
+            const stub = {
+                SCORM: {
+                    version: null,
+                    handleCompletionStatus: true,
+                    handleExitMode: true,
+                    API: { getHandle: () => ({}) },
+                    connection: { isActive: false, initialize: () => ((stub.SCORM.connection.isActive = true), true), terminate },
+                    data: { get: () => '', set: () => true, save: () => true },
+                    debug: { getCode: () => 0, getInfo: () => 'No error' },
+                },
+            };
+            client.configure({ getPipwerks: () => stub, now: () => fakeNow, error: errorSpy, warn: warnSpy });
+            return stub;
+        }
+
+        it('walks idle → active → finished on success', () => {
+            useWindow('self');
+            expect(client.getState()).toBe('idle');
+
+            client.initialize();
+            expect(client.getState()).toBe('active');
+
+            expect(client.terminate()).toBe(true);
+            expect(client.getState()).toBe('finished');
+            expect(client.getFinishReport()).toMatchObject({ attempted: true, result: true, source: 'runtime' });
+        });
+
+        it('records a rejected finish as finish_failed and keeps the diagnosis', () => {
+            api = createFakeScorm12Api({ failures: { LMSFinish: { result: 'false', errorCode: 101 } } });
+            useWindow('self');
+            client.initialize();
+
+            expect(client.terminate()).toBe(false);
+            expect(client.getState()).toBe('finish_failed');
+            expect(client.getFinishReport().error).toMatchObject({ code: 101 });
+        });
+
+        it('a failed finish never becomes a success on the second call', () => {
+            useStubbedWrapper(() => false);
+            client.initialize();
+
+            expect(client.terminate()).toBe(false);
+            expect(client.terminate()).toBe(false);
+            expect(client.terminate()).toBe(false);
+            expect(client.getState()).toBe('finish_failed');
+        });
+
+        it('a thrown finish is recorded as failed with its message', () => {
+            useStubbedWrapper(() => {
+                throw new Error('adapter vanished');
+            });
+            client.initialize();
+
+            expect(client.terminate()).toBe(false);
+            expect(client.getState()).toBe('finish_failed');
+            expect(client.getFinishReport().error.message).toContain('adapter vanished');
+        });
+
+        it('duplicate finish after success replays the recorded result', () => {
+            let calls = 0;
+            useStubbedWrapper(() => {
+                calls += 1;
+                return true;
+            });
+            client.initialize();
+
+            expect(client.terminate()).toBe(true);
+            expect(client.terminate()).toBe(true);
+            expect(calls).toBe(1);
+        });
+
+        it('a re-entrant terminate cannot start a second LMSFinish', () => {
+            let calls = 0;
+            useStubbedWrapper(() => {
+                calls += 1;
+                // The LMS calls back into the runtime during LMSFinish.
+                expect(client.terminate()).toBe(false);
+                return true;
+            });
+            client.initialize();
+
+            expect(client.terminate()).toBe(true);
+            expect(calls).toBe(1);
+        });
+
+        it.each(['getValue', 'setValue', 'commit'])('makes no LMS call through %s after a finish attempt', method => {
+            api = createFakeScorm12Api({ failures: { LMSFinish: { result: 'false', errorCode: 101 } } });
+            useWindow('self');
+            client.initialize();
+            client.terminate();
+            api.resetCalls();
+
+            client[method]('cmi.core.lesson_status', 'completed');
+
+            expect(api.calls).toEqual([]);
+        });
+
+        it('follows the shim installed by the adapter to the real terminate', () => {
+            let nativeCalls = 0;
+            const stub = useStubbedWrapper(() => {
+                nativeCalls += 1;
+                return true;
+            });
+            const nativeTerminate = stub.SCORM.connection.terminate;
+            const shim = () => {
+                throw new Error('the shim must never be called by the client layer');
+            };
+            shim.exeScorm12Native = nativeTerminate;
+            stub.SCORM.connection.terminate = shim;
+            client.initialize();
+
+            expect(client.terminate()).toBe(true);
+            expect(nativeCalls).toBe(1);
+        });
+
+        it('notices a connection closed outside the state machine', () => {
+            useWindow('self');
+            client.initialize();
+
+            pipwerks.SCORM.connection.isActive = false;
+
+            expect(client.isActive()).toBe(false);
+            expect(client.getState()).toBe('finished');
+            expect(client.getFinishReport().source).toBe('external');
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('closed outside the runtime'));
+        });
+
+        it('reports an external closure only once', () => {
+            useWindow('self');
+            client.initialize();
+            pipwerks.SCORM.connection.isActive = false;
+
+            client.isActive();
+            client.isActive();
+
+            expect(warnSpy.mock.calls.filter(call => String(call[0]).includes('closed outside')).length).toBe(1);
+        });
+
+        it('terminate after an external closure makes no LMS call', () => {
+            useWindow('self');
+            client.initialize();
+            pipwerks.SCORM.connection.isActive = false;
+            api.resetCalls();
+
+            expect(client.terminate()).toBe(true);
+            expect(api.calls).toEqual([]);
+        });
+    });
+
+    describe('session clock', () => {
+        it('pauses and resumes without double counting', () => {
+            useWindow('self');
+            client.initialize();
+
+            fakeNow = 4000;
+            client.pauseClock();
+            expect(client.isClockRunning()).toBe(false);
+            expect(client.getElapsedMs()).toBe(3000);
+
+            // Nothing accrues while paused, however long the pause lasts.
+            fakeNow = 100000;
+            expect(client.getElapsedMs()).toBe(3000);
+
+            client.resumeClock();
+            fakeNow = 102000;
+            expect(client.getElapsedMs()).toBe(5000);
+        });
+
+        it('pausing twice banks the running segment once', () => {
+            useWindow('self');
+            client.initialize();
+
+            fakeNow = 4000;
+            client.pauseClock();
+            fakeNow = 9000;
+            client.pauseClock();
+
+            expect(client.getElapsedMs()).toBe(3000);
+        });
+
+        it('resuming a running clock does not restart the segment', () => {
+            useWindow('self');
+            client.initialize();
+
+            fakeNow = 4000;
+            client.resumeClock();
+
+            expect(client.getElapsedMs()).toBe(3000);
+        });
+
+        it('markSessionStart drops the banked time', () => {
+            useWindow('self');
+            client.initialize();
+
+            fakeNow = 4000;
+            client.pauseClock();
+            client.markSessionStart();
+            fakeNow = 5000;
+
+            expect(client.getElapsedMs()).toBe(1000);
+        });
+
+        it('writing the session time repeatedly reports the total, not a delta', () => {
+            useWindow('self');
+            client.initialize();
+
+            fakeNow = 3000;
+            client.writeSessionTime();
+            fakeNow = 8000;
+            client.writeSessionTime();
+
+            expect(api.callsFor('LMSSetValue').map(args => args[1])).toEqual(['0000:00:02.00', '0000:00:07.00']);
         });
     });
 
@@ -353,9 +748,14 @@ describe('exe-scorm12-client', () => {
             expect(client.getValue('cmi.core.lesson_status')).toBe('');
             expect(consoleWarnSpy).toHaveBeenCalled();
 
-            // Default clock (Date.now) drives the session timer.
+            // Default clock (Date.now) drives the session timer: the elapsed
+            // time must track the real clock, not sit frozen at zero.
+            const before = Date.now();
             client.markSessionStart();
-            expect(client.getElapsedMs()).toBeGreaterThanOrEqual(0);
+            while (Date.now() === before) {
+                // Spin until the wall clock advances at least one millisecond.
+            }
+            expect(client.getElapsedMs()).toBeGreaterThan(0);
 
             // Default pipwerks lookup + no API: reported via the default
             // error channel. (Set on the page window BEFORE stubbing the

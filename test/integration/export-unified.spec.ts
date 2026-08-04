@@ -99,6 +99,7 @@ describe('Unified Export System Integration', () => {
             'SCOFunctions.js',
             'scorm12/vendor/pipwerks/SCORM_API_wrapper.js',
             'scorm12/exe-scorm12-client.js',
+            'scorm12/exe-scorm12-activities.js',
             'scorm12/exe-scorm12-policy.js',
             'scorm12/exe-scorm12-lifecycle.js',
             'scorm12/exe-scorm12-adapter.js',

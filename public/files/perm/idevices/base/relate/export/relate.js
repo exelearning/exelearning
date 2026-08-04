@@ -732,7 +732,7 @@ var $eXeRelaciona = {
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
 
-        $(window).off('unload.eXeRelaciona beforeunload.eXeRelaciona');
+        $(window).off('pagehide.eXeRelaciona');
 
         $(document).off('mousemove.eXeRlc' + instance);
         $(document).off('mouseup.eXeRlc' + instance);
@@ -806,7 +806,7 @@ var $eXeRelaciona = {
         $('#rlcPNumber-' + instance).text(mOptions.realNumberCards);
 
         $(window).on(
-            'unload.eXeRelaciona beforeunload.eXeRelaciona',
+            'pagehide.eXeRelaciona',
             function () {
                 if ($eXeRelaciona.mScorm) {
                     $exeDevices.iDevice.gamification.scorm.endScorm(

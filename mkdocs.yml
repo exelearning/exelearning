@@ -34,6 +34,7 @@ nav:
       - ADR Index: architecture/adr/records.md
       - ADR Template: architecture/adr/ADR-0000-template.md
       - "ADR-0001: SCORM 1.2 Runtime Rewrite": architecture/adr/ADR-0001-scorm12-runtime-rewrite.md
+      - "ADR-0043: SCORM 1.2 Activity Completion Registry": architecture/adr/ADR-0043-scorm12-activity-completion-registry.md
       - Software Design Documents: architecture/sdd/README.md
       - SDD Index: architecture/sdd/records.md
       - SDD Template: architecture/sdd/SDD-0000-template.md

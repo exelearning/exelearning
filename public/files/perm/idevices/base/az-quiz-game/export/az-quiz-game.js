@@ -406,7 +406,7 @@ var $azquizgame = {
         $('#roscoShowUnanswered-' + instance).off('click');
         $('#roscoCubierta-' + instance).off('click', '.rosco-audioicon');
 
-        $(window).off('unload.eXeRosco beforeunload.eXeRosco');
+        $(window).off('pagehide.eXeRosco');
     },
 
     addEvents: function (instance) {
@@ -593,7 +593,7 @@ var $azquizgame = {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
 
-        $(window).on('unload.eXeRosco beforeunload.eXeRosco', function () {
+        $(window).on('pagehide.eXeRosco', function () {
             if (typeof $azquizgame.mScorm !== 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
                     $azquizgame.mScorm

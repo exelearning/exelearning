@@ -355,7 +355,7 @@ var $periodicTable = {
             .off('click', '.Games-SendScore');
         $('#ptStartGame-' + instance).off('click');
         $('#ptStartGameMobile-' + instance).off('click');
-        $(window).off('unload.PeriodicTable beforeunload.PeriodicTable');
+        $(window).off('pagehide.PeriodicTable');
     },
 
     addEvents: function (instance) {
@@ -430,7 +430,7 @@ var $periodicTable = {
         $('#ptPNumber-' + instance).text(mOptions.number);
 
         $(window).on(
-            'unload.PeriodicTable beforeunload.PeriodicTable',
+            'pagehide.PeriodicTable',
             function () {
                 if ($periodicTable.mScorm) {
                     $exeDevices.iDevice.gamification.scorm.endScorm(

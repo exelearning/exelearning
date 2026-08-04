@@ -279,8 +279,21 @@ window.$exeExport = {
                 window.exeScorm12.setPageHasScoredActivities(isSCORM);
             } else {
                 // Legacy runtime (SCORM 2004 packages and packages exported
-                // before the SCORM 1.2 runtime rewrite).
-                window.addEventListener('unload', () => window.unloadPage(isSCORM));
+                // before the SCORM 1.2 runtime rewrite). `pagehide` rather
+                // than `unload`: this file also ships inside SCORM 1.2
+                // packages, where an unload-family listener anywhere on the
+                // page would disable the back/forward cache the SCORM 1.2
+                // runtime depends on. `pagehide` fires immediately before
+                // `unload`, and the legacy unloadPage() is guarded to run only
+                // once, so the end-of-session behaviour is unchanged.
+                //
+                // `event.persisted === true` means the page is being frozen
+                // into the back/forward cache and may come back: ending the
+                // LMS session then would be wrong, so the bridge stands down.
+                window.addEventListener('pagehide', (event) => {
+                    if (event && event.persisted) return;
+                    window.unloadPage(isSCORM);
+                });
             }
         }
     },

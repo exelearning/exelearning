@@ -511,7 +511,7 @@ var $trueorfalse = {
 
     removeEvents: function (data) {
         const instance = data.id;
-        $(window).off('unload.eXeTOF beforeunload.eXeTOF');
+        $(window).off('pagehide.eXeTOF');
 
         $(`#tofPSendScore-${instance}`).off('click');
         $(`#tofPStartGame-${instance}`).off('click');
@@ -660,7 +660,7 @@ var $trueorfalse = {
         const msgs = mOptions.msgs;
         $trueorfalse.removeEvents(data);
 
-        $(window).on('unload.eXeTOF beforeunload.eXeTOF', () => {
+        $(window).on('pagehide.eXeTOF', () => {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $trueorfalse.sendScore(true, mOptions);
                 $exeDevices.iDevice.gamification.scorm.endScorm(

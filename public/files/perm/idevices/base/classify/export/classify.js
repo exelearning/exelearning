@@ -807,7 +807,7 @@ var $eXeClasifica = {
 
         $('#clasificaPNumber-' + instance).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeClasifica beforeunload.eXeClasifica', () => {
+        $(window).on('pagehide.eXeClasifica', () => {
             if ($eXeClasifica.mScorm) {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
                     $eXeClasifica.mScorm
@@ -1012,7 +1012,7 @@ var $eXeClasifica = {
             .off('mousedown touchstart mouseup touchend');
         $('#clasificaValidateAnswers-' + instance).off('click');
 
-        $(window).off('unload.eXeClasifica beforeunload.eXeClasifica');
+        $(window).off('pagehide.eXeClasifica');
     },
 
     refreshGame: function (instance) {

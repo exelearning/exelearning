@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const pipwerks = require('./vendor/pipwerks/SCORM_API_wrapper.js');
 window.pipwerks = pipwerks;
 const client = require('./exe-scorm12-client.js');
+const activities = require('./exe-scorm12-activities.js');
 const policy = require('./exe-scorm12-policy.js');
 const lifecycle = require('./exe-scorm12-lifecycle.js');
 require('./exe-scorm12-adapter.js');
@@ -26,9 +27,9 @@ function createFakeEventTarget() {
         removeEventListener(type, handler) {
             listeners[type] = (listeners[type] || []).filter(entry => entry !== handler);
         },
-        fire(type) {
+        fire(type, event) {
             for (const handler of listeners[type] || []) {
-                handler();
+                handler(event === undefined ? { type, persisted: false } : Object.assign({ type }, event));
             }
         },
     };
@@ -41,8 +42,8 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
     let fakeDocument;
     let warnSpy;
 
-    function useLms(initialData) {
-        api = createFakeScorm12Api({ data: initialData });
+    function useLms(initialData, options = {}) {
+        api = createFakeScorm12Api(Object.assign({ data: initialData }, options));
         vi.stubGlobal('window', createFakeWindowTree('self', api));
     }
 
@@ -52,8 +53,10 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
         resetPipwerks(pipwerks);
         client.resetDependencies();
         client.configure({ getPipwerks: () => pipwerks, now: () => fakeNow, error: vi.fn(), warn: warnSpy });
+        activities.resetDependencies();
+        activities.configure({ warn: warnSpy });
         policy.resetDependencies();
-        policy.configure({ getClient: () => client, warn: warnSpy });
+        policy.configure({ getClient: () => client, getActivities: () => activities, warn: warnSpy });
         fakeWindow = createFakeEventTarget();
         fakeDocument = createFakeEventTarget();
         fakeDocument.visibilityState = 'visible';
@@ -71,6 +74,7 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
         vi.unstubAllGlobals();
         lifecycle.resetDependencies();
         policy.resetDependencies();
+        activities.resetDependencies();
         client.resetDependencies();
     });
 
@@ -107,8 +111,13 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
                 'LMSInitialize',
                 'LMSGetValue(cmi.core.lesson_status)',
                 'LMSSetValue(cmi.core.lesson_status=incomplete)',
+                // The entry policy also probes the optional mastery score and
+                // restores the activity registry from suspend_data.
+                'LMSGetValue(cmi.student_data.mastery_score)',
+                'LMSGetValue(cmi.suspend_data)',
             ]);
             expect(fakeWindow.listeners.pagehide).toHaveLength(1);
+            expect(fakeWindow.listeners.pageshow).toHaveLength(1);
         });
 
         it('preserves a terminal status on load', () => {
@@ -116,7 +125,12 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
 
             pageWindow.loadPage();
 
-            expect(api.callSignatures()).toEqual(['LMSInitialize', 'LMSGetValue(cmi.core.lesson_status)']);
+            expect(api.callSignatures()).toEqual([
+                'LMSInitialize',
+                'LMSGetValue(cmi.core.lesson_status)',
+                'LMSGetValue(cmi.student_data.mastery_score)',
+                'LMSGetValue(cmi.suspend_data)',
+            ]);
         });
 
         it('is idempotent (body onload and exe_export.js may both call it)', () => {
@@ -155,14 +169,16 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
 
             pageWindow.unloadPage(true);
 
+            // The decided status equals the stored one, so the runtime does
+            // not send a redundant LMSSetValue for it.
             expect(api.callSignatures()).toEqual([
                 'LMSGetValue(cmi.core.lesson_status)',
-                'LMSSetValue(cmi.core.lesson_status=incomplete)',
                 'LMSSetValue(cmi.core.exit=suspend)',
                 'LMSSetValue(cmi.core.session_time=0000:00:00.00)',
                 'LMSCommit',
                 'LMSFinish',
             ]);
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
         });
 
         it('is a no-op once the session ended', () => {
@@ -434,10 +450,10 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
             expect(facade.GetInteractionValue('cmi.interactions.0.student_response')).toBe('a');
 
             expect(facade.GetMode()).toBe('normal');
+            // SetMode is a documented no-op: cmi.core.lesson_mode is read-only
+            // in SCORM 1.2, so the legacy setter never had a legal LMS call.
             facade.SetMode('review');
-            expect(api.data['cmi.core.lesson_mode']).toBe('review');
-            facade.SetMode('bogus');
-            expect(api.data['cmi.core.lesson_mode']).toBe('review');
+            expect(api.data['cmi.core.lesson_mode']).toBe('normal');
             expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('SetMode'));
 
             facade.SetScoreRaw(55);
@@ -474,6 +490,17 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
             expect(pipwerks.SCORM.data.get).not.toBe(pageWindow.scorm.get);
             expect(pipwerks.SCORM.connection.initialize).toBeDefined();
         });
+
+        it('leaves the vendored isAvailable implementation in place', () => {
+            // `isAvailable` is the one extension name the upstream wrapper
+            // already defines, so it is the only real test of the
+            // "additive only" guard. Both implementations return true, so only
+            // the function identity can tell them apart: if the guard were
+            // dropped, pipwerks.SCORM.isAvailable would become the very
+            // function the facade holds.
+            expect(typeof pipwerks.SCORM.isAvailable).toBe('function');
+            expect(pipwerks.SCORM.isAvailable).not.toBe(pageWindow.scorm.isAvailable);
+        });
     });
 
     describe('exe_export.js handover', () => {
@@ -483,11 +510,259 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
             pageWindow.exeScorm12.setPageHasScoredActivities(true);
             api.calls.length = 0;
 
-            fakeWindow.fire('pagehide');
+            fakeWindow.fire('pagehide', { persisted: false });
 
             expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
             expect(api.data['cmi.core.exit']).toBe('suspend');
             expect(api.callNames()).toContain('LMSFinish');
+        });
+
+        it('the activity registry wins over the page-level flag', () => {
+            useLms({});
+            pageWindow.loadPage();
+            pageWindow.exeScorm12.setPageHasScoredActivities(true);
+            pageWindow.scorm.activities.register('quiz-1', {
+                evaluable: true,
+                completionRequired: true,
+                completed: true,
+                score: 90,
+            });
+            api.calls.length = 0;
+
+            fakeWindow.fire('pagehide', { persisted: false });
+
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+            expect(api.data['cmi.core.exit']).toBe('');
+        });
+    });
+
+    describe('compatibility methods never issue an invalid SCORM 1.2 call', () => {
+        it('GetExit reads the local cache instead of a write-only element', () => {
+            useLms({});
+            pageWindow.loadPage();
+            pageWindow.scorm.SetExit('suspend');
+            api.calls.length = 0;
+
+            expect(pageWindow.scorm.GetExit()).toBe('suspend');
+            expect(api.calls).toEqual([]);
+        });
+
+        it('GetExit answers "" before anything was written', () => {
+            useLms({});
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            expect(pageWindow.scorm.GetExit()).toBe('');
+            expect(api.calls).toEqual([]);
+        });
+
+        it('GetSessionTime reads the local cache instead of a write-only element', () => {
+            useLms({});
+            pageWindow.loadPage();
+            fakeNow = 4000;
+            pageWindow.computeTime();
+            api.calls.length = 0;
+
+            expect(pageWindow.scorm.GetSessionTime()).toBe('0000:00:03.00');
+            expect(api.calls).toEqual([]);
+        });
+
+        it('GetInteractionValue reads the local cache for write-only leaves', () => {
+            useLms({});
+            pageWindow.loadPage();
+            pageWindow.scorm.SetInteractionValue('cmi.interactions.0.result', 'correct');
+            api.calls.length = 0;
+
+            expect(pageWindow.scorm.GetInteractionValue('cmi.interactions.0.result')).toBe('correct');
+            expect(api.calls).toEqual([]);
+        });
+
+        it('GetInteractionValue still reads the readable keywords from the LMS', () => {
+            useLms({});
+            pageWindow.loadPage();
+            pageWindow.scorm.SetInteractionValue('cmi.interactions.0.id', 'q1');
+            api.calls.length = 0;
+
+            expect(pageWindow.scorm.GetInteractionValue('cmi.interactions._count')).toBe('1');
+            expect(api.callsFor('LMSGetValue')).toEqual([['cmi.interactions._count']]);
+        });
+
+        it('SetMode is a no-op with no LMS traffic', () => {
+            const consoleWarnSpy = vi.spyOn(pageWindow.console, 'warn').mockImplementation(() => {});
+            useLms({});
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pageWindow.scorm.SetMode('review');
+
+            expect(api.calls).toEqual([]);
+            expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('read-only'));
+            consoleWarnSpy.mockRestore();
+        });
+
+        it('SetSuccessStatus is a no-op with no LMS traffic', () => {
+            useLms({ 'cmi.core.lesson_status': 'incomplete' });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pageWindow.scorm.SetSuccessStatus('passed');
+            pageWindow.scorm.SetSuccessStatus('failed');
+
+            expect(api.calls).toEqual([]);
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+        });
+
+        it('SetCompletionStatus refuses "not attempted", which a SCO may not write', () => {
+            useLms({ 'cmi.core.lesson_status': 'incomplete' });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pageWindow.scorm.SetCompletionStatus('not attempted');
+
+            expect(api.calls).toEqual([]);
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+        });
+
+        it('GetMode assumes "normal" on an LMS that does not implement lesson_mode', () => {
+            useLms({}, { profile: 'minimal' });
+            pageWindow.loadPage();
+
+            expect(pageWindow.scorm.GetMode()).toBe('normal');
+        });
+
+        it('GetScoreMax/GetScoreMin answer "" on an LMS without the optional bounds', () => {
+            useLms({}, { profile: 'minimal' });
+            pageWindow.loadPage();
+
+            expect(pageWindow.scorm.GetScoreMax()).toBe('');
+            expect(pageWindow.scorm.GetScoreMin()).toBe('');
+        });
+
+        it('setScore commits the raw score even when the LMS lacks the bounds', () => {
+            useLms({}, { profile: 'minimal' });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pageWindow.setScore(85, 100, 0);
+
+            expect(api.data['cmi.core.score.raw']).toBe('85');
+            expect(api.callNames()).toContain('LMSCommit');
+        });
+
+        it('setScore does not commit when the required raw score was rejected', () => {
+            useLms({}, { elementFailures: { 'cmi.core.score.raw': { errorCode: 101 } } });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pageWindow.setScore(85);
+
+            expect(api.callNames()).not.toContain('LMSCommit');
+        });
+    });
+
+    describe('centralized finalization', () => {
+        it('routes pipwerks.SCORM.quit through the lifecycle layer', () => {
+            useLms({ 'cmi.core.lesson_status': 'incomplete' });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            expect(pipwerks.SCORM.quit()).toBe(true);
+
+            expect(api.callNames().filter(name => name === 'LMSFinish')).toHaveLength(1);
+            // Legacy parity: quit() never applies the completion rule.
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+            expect(lifecycle.hasFinished()).toBe(true);
+        });
+
+        it('routes pipwerks.SCORM.connection.terminate through the lifecycle layer', () => {
+            useLms({ 'cmi.core.lesson_status': 'incomplete' });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            expect(pipwerks.SCORM.connection.terminate()).toBe(true);
+
+            expect(api.callNames().filter(name => name === 'LMSFinish')).toHaveLength(1);
+        });
+
+        it('a direct pipwerks termination followed by pagehide finishes exactly once', () => {
+            useLms({ 'cmi.core.lesson_status': 'incomplete' });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pipwerks.SCORM.quit();
+            fakeWindow.fire('pagehide', { persisted: false });
+
+            expect(api.callNames().filter(name => name === 'LMSFinish')).toHaveLength(1);
+        });
+
+        it('an iDevice quitting before pagehide finishes exactly once', () => {
+            useLms({ 'cmi.core.lesson_status': 'incomplete' });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pageWindow.scorm.quit();
+            fakeWindow.fire('pagehide', { persisted: false });
+
+            expect(api.callNames().filter(name => name === 'LMSFinish')).toHaveLength(1);
+        });
+
+        it('two iDevices requesting finish concurrently finish exactly once', () => {
+            useLms({ 'cmi.core.lesson_status': 'incomplete' });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pageWindow.scorm.quit();
+            pipwerks.SCORM.quit();
+            pageWindow.doQuit();
+            pageWindow.unloadPage(true);
+
+            expect(api.callNames().filter(name => name === 'LMSFinish')).toHaveLength(1);
+        });
+
+        it('an iDevice saving after another requested finish makes no LMS call', () => {
+            useLms({ 'cmi.core.lesson_status': 'incomplete' });
+            pageWindow.loadPage();
+            pageWindow.scorm.quit();
+            api.calls.length = 0;
+
+            expect(pageWindow.scorm.set('cmi.suspend_data', 'late')).toBe(false);
+            expect(pageWindow.scorm.save()).toBe(false);
+
+            expect(api.calls).toEqual([]);
+        });
+
+        it('one iDevice storing local state while another updates the score both reach the LMS', () => {
+            useLms({});
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            expect(pageWindow.scorm.set('cmi.suspend_data', 'state-a')).toBe(true);
+            expect(pageWindow.scorm.SetScoreRaw(70)).toBe(true);
+
+            expect(api.data['cmi.suspend_data']).toBe('state-a');
+            expect(api.data['cmi.core.score.raw']).toBe('70');
+        });
+
+        it('keeps the shim reachable from the wrapper without editing the vendored file', () => {
+            expect(typeof pipwerks.SCORM.connection.terminate.exeScorm12Native).toBe('function');
+            expect(pipwerks.SCORM.quit).toBe(pipwerks.SCORM.connection.terminate);
+        });
+    });
+
+    describe('bfcache lifecycle through the page globals', () => {
+        it('a persisted pagehide keeps the globals usable and a later exit finishes once', () => {
+            useLms({ 'cmi.core.lesson_status': 'incomplete' });
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            fakeWindow.fire('pagehide', { persisted: true });
+            expect(api.callNames()).not.toContain('LMSFinish');
+
+            fakeWindow.fire('pageshow', { persisted: true });
+            expect(pageWindow.scorm.set('cmi.core.score.raw', '60')).toBe(true);
+
+            fakeWindow.fire('pagehide', { persisted: false });
+            expect(api.callNames().filter(name => name === 'LMSFinish')).toHaveLength(1);
         });
     });
 });

@@ -851,7 +851,7 @@ var $eXeSeleccionaMedias = {
         $('#slcmpPNumber-' + instance).text(mOptions.numberQuestions);
 
         $(window).on(
-            'unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias',
+            'pagehide.eXeSeleccionaMedias',
             function () {
                 if (typeof $eXeSeleccionaMedias.mScorm != 'undefined') {
                     $exeDevices.iDevice.gamification.scorm.endScorm(
@@ -1023,9 +1023,7 @@ var $eXeSeleccionaMedias = {
         $('#slcmpFeedBackClose-' + instance).off('click');
         $('#slcmpCodeAccessButton-' + instance).off('click touchstart');
         $('#slcmpCodeAccessE-' + instance).off('keydown');
-        $(window).off(
-            'unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias'
-        );
+        $(window).off('pagehide.eXeSeleccionaMedias');
         $('#slcmpMainContainer-' + instance)
             .closest('.seleccionamedias-IDevice')
             .off('click', '.Games-SendScore');

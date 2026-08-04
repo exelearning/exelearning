@@ -11,9 +11,15 @@
  *   never bind to a SCORM 2004 API_1484_11 instance).
  * - LMSInitialize / LMSGetValue / LMSSetValue / LMSCommit / LMSFinish with
  *   explicit error reporting via LMSGetLastError / LMSGetErrorString.
- * - Idempotent termination: repeated finish calls are no-ops and any call
- *   after termination is rejected locally, never forwarded to the LMS.
- * - cmi.core.session_time formatting (CMITimespan, HHHH:MM:SS.SS).
+ * - An explicit session state machine (idle → active → finish_attempted →
+ *   finished | finish_failed) so a failed termination stays observably failed
+ *   and no call is ever forwarded to the LMS after a finish attempt.
+ * - Refuse locally the calls SCORM 1.2 forbids: reading a write-only element
+ *   and writing a read-only one. Legacy compatibility getters read the local
+ *   write cache instead of issuing an invalid LMSGetValue.
+ * - A session clock that survives being paused (back/forward cache) without
+ *   double counting, and cmi.core.session_time formatting (CMITimespan,
+ *   HHHH:MM:SS.SS).
  *
  * This layer holds no completion policy; see exe-scorm12-policy.js.
  * Error reports never include learner data (element names and LMS error
@@ -40,6 +46,54 @@
     // Largest CMITimespan value this formatter emits (see formatSessionTime).
     var MAX_SESSION_TIME = '9999:59:59.99';
 
+    /**
+     * Session states. `finish_attempted` exists so that a termination that is
+     * in flight, or that failed, can never be mistaken for a completed one:
+     * the SCORM 1.2 API adapter is gone after LMSFinish either way, so no
+     * further call may be forwarded, but only `finished` means the LMS
+     * acknowledged it.
+     */
+    var STATE = {
+        IDLE: 'idle',
+        ACTIVE: 'active',
+        FINISH_ATTEMPTED: 'finish_attempted',
+        FINISHED: 'finished',
+        FINISH_FAILED: 'finish_failed',
+    };
+
+    /**
+     * Elements SCORM 1.2 defines as write-only. Reading one is error 404, so
+     * the runtime answers legacy getters from its own write cache instead of
+     * issuing the invalid call.
+     */
+    var WRITE_ONLY_ELEMENTS = ['cmi.core.exit', 'cmi.core.session_time'];
+
+    /**
+     * Prefixes whose leaf elements are write-only in SCORM 1.2. The whole
+     * cmi.interactions collection is reported by the SCO and never read back;
+     * only its `_count` / `_children` keywords are readable.
+     */
+    var WRITE_ONLY_PREFIXES = ['cmi.interactions.'];
+
+    /** Elements SCORM 1.2 defines as read-only (writing one is error 403). */
+    var READ_ONLY_ELEMENTS = [
+        'cmi._version',
+        'cmi.core.student_id',
+        'cmi.core.student_name',
+        'cmi.core.credit',
+        'cmi.core.entry',
+        'cmi.core.total_time',
+        'cmi.core.lesson_mode',
+        'cmi.launch_data',
+        'cmi.comments_from_lms',
+    ];
+
+    /** Prefixes whose leaf elements are read-only in SCORM 1.2. */
+    var READ_ONLY_PREFIXES = ['cmi.student_data.'];
+
+    /** Keyword suffixes: always readable, never writable. */
+    var KEYWORD_SUFFIXES = ['._children', '._count'];
+
     var defaultDeps = {
         getPipwerks: function () {
             return global.pipwerks;
@@ -61,11 +115,41 @@
 
     var deps = defaultDeps;
 
-    var state = {
-        initialized: false,
-        terminated: false,
-        sessionStartMs: null,
-    };
+    function initialState() {
+        return {
+            status: STATE.IDLE,
+            // Result and diagnostics of the single finish attempt.
+            finishResult: null,
+            finishError: null,
+            terminationSource: null,
+            // Session clock.
+            clockStartMs: null,
+            accumulatedMs: 0,
+            clockRunning: false,
+            // Last value this runtime wrote per element, used to answer legacy
+            // getters for write-only elements without an invalid LMS call.
+            writeCache: {},
+            externalTerminationReported: false,
+        };
+    }
+
+    /**
+     * Resolve the wrapper function that actually sends LMSFinish.
+     *
+     * The adapter layer replaces pipwerks.SCORM.connection.terminate with a
+     * shim that routes legacy callers through the lifecycle layer, and tags it
+     * with the untouched original. Following that tag keeps this layer talking
+     * to the real wrapper instead of recursing into the shim.
+     *
+     * @param {object} pipwerks - The wrapper object.
+     * @returns {Function} The upstream terminate implementation.
+     */
+    function resolveNativeTerminate(pipwerks) {
+        var terminate = pipwerks.SCORM.connection.terminate;
+        return terminate && terminate.exeScorm12Native ? terminate.exeScorm12Native : terminate;
+    }
+
+    var state = initialState();
 
     /**
      * Left-pad a non-negative integer with zeros.
@@ -80,6 +164,85 @@
             text = '0' + text;
         }
         return text;
+    }
+
+    /**
+     * @param {string} text - Text to inspect.
+     * @param {string} suffix - Suffix to look for.
+     * @returns {boolean} True when text ends with suffix (ES5-safe).
+     */
+    function endsWith(text, suffix) {
+        return text.length >= suffix.length && text.slice(text.length - suffix.length) === suffix;
+    }
+
+    /**
+     * @param {string} element - cmi element name.
+     * @returns {boolean} True when the name ends in a data model keyword.
+     */
+    function isKeyword(element) {
+        for (var index = 0; index < KEYWORD_SUFFIXES.length; index += 1) {
+            if (endsWith(element, KEYWORD_SUFFIXES[index])) {
+                return true;
+            }
+        }
+        return element === 'cmi._version';
+    }
+
+    /**
+     * @param {string} element - cmi element name.
+     * @returns {boolean} True when SCORM 1.2 makes the element write-only.
+     */
+    function isWriteOnly(element) {
+        if (isKeyword(element)) {
+            return false;
+        }
+        if (WRITE_ONLY_ELEMENTS.indexOf(element) !== -1) {
+            return true;
+        }
+        for (var index = 0; index < WRITE_ONLY_PREFIXES.length; index += 1) {
+            if (element.indexOf(WRITE_ONLY_PREFIXES[index]) === 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param {string} element - cmi element name.
+     * @returns {boolean} True when SCORM 1.2 makes the element read-only.
+     */
+    function isReadOnly(element) {
+        if (isKeyword(element)) {
+            return true;
+        }
+        if (READ_ONLY_ELEMENTS.indexOf(element) !== -1) {
+            return true;
+        }
+        for (var index = 0; index < READ_ONLY_PREFIXES.length; index += 1) {
+            if (element.indexOf(READ_ONLY_PREFIXES[index]) === 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Decide whether SCORM 1.2 forbids writing an element, without asking the
+     * LMS. Returns the error the LMS itself would have raised so callers can
+     * report the real reason.
+     *
+     * @param {string} element - cmi element name.
+     * @returns {{code: number, message: string}|null} The rejection, or null
+     * when the write is legal.
+     */
+    function writeRejection(element) {
+        if (isKeyword(element)) {
+            return { code: 402, message: 'Invalid set value, element is a keyword' };
+        }
+        if (isReadOnly(element)) {
+            return { code: 403, message: 'Element is read only' };
+        }
+        return null;
     }
 
     /**
@@ -108,6 +271,7 @@
      *
      * @param {string} operation - The SCORM API call that failed.
      * @param {string} [element] - The cmi element involved, if any.
+     * @returns {{code: number, message: string}} The LMS error that was read.
      */
     function reportLmsError(operation, element) {
         var lastError = getLastError();
@@ -121,6 +285,7 @@
                 ': ' +
                 lastError.message,
         );
+        return lastError;
     }
 
     /**
@@ -132,7 +297,33 @@
         deps.warn('[exe-scorm12] ' + message);
     }
 
+    /**
+     * Detect a termination performed outside this state machine — legacy
+     * content that calls pipwerks.SCORM.quit() or connection.terminate()
+     * directly closes the same connection this layer owns. The adapter wraps
+     * those entry points, but a page can still hold a reference captured
+     * before the wrap, so the state is reconciled defensively on every access.
+     */
+    function reconcileExternalTermination() {
+        if (state.status !== STATE.ACTIVE) {
+            return;
+        }
+        var pipwerks = deps.getPipwerks();
+        if (!pipwerks || !pipwerks.SCORM || pipwerks.SCORM.connection.isActive) {
+            return;
+        }
+        state.status = STATE.FINISHED;
+        state.finishResult = true;
+        state.terminationSource = 'external';
+        if (!state.externalTerminationReported) {
+            state.externalTerminationReported = true;
+            reportRejected('the SCORM connection was closed outside the runtime; the session is now treated as ended.');
+        }
+    }
+
     var client = {
+        STATE: STATE,
+
         /**
          * Override dependencies (tests only).
          *
@@ -151,26 +342,25 @@
         /** Restore default dependencies and reset session state (tests only). */
         resetDependencies: function () {
             deps = defaultDeps;
-            state.initialized = false;
-            state.terminated = false;
-            state.sessionStartMs = null;
+            state = initialState();
         },
 
         /**
-         * Open the SCORM 1.2 session. Idempotent: once initialized, further
-         * calls return true without touching the LMS. Pins the wrapper to
-         * SCORM 1.2 and disables its automatic status/exit handling before
-         * the first API discovery, so all policy lives in the project layers.
+         * Open the SCORM 1.2 session. Idempotent: once active, further calls
+         * return true without touching the LMS. Pins the wrapper to SCORM 1.2
+         * and disables its automatic status/exit handling before the first API
+         * discovery, so all policy lives in the project layers.
          *
          * @returns {boolean} True when the session is (already) active.
          */
         initialize: function () {
-            if (state.terminated) {
+            reconcileExternalTermination();
+            if (state.status !== STATE.IDLE) {
+                if (state.status === STATE.ACTIVE) {
+                    return true;
+                }
                 reportRejected('initialize() rejected: the session was already terminated.');
                 return false;
-            }
-            if (state.initialized) {
-                return true;
             }
             var pipwerks = deps.getPipwerks();
             if (!pipwerks || !pipwerks.SCORM) {
@@ -193,36 +383,74 @@
                 reportLmsError('LMSInitialize');
                 return false;
             }
-            state.initialized = true;
-            state.sessionStartMs = deps.now();
+            state.status = STATE.ACTIVE;
+            client.startClock();
             return true;
         },
 
+        /** @returns {string} The current session state (see client.STATE). */
+        getState: function () {
+            reconcileExternalTermination();
+            return state.status;
+        },
+
         /**
-         * @returns {boolean} True while the session is open (initialized and
-         * not terminated).
+         * @returns {boolean} True while the session may still receive LMS
+         * calls (initialized, and no finish has been attempted).
          */
         isActive: function () {
-            return state.initialized && !state.terminated;
+            reconcileExternalTermination();
+            return state.status === STATE.ACTIVE;
         },
 
         /** @returns {boolean} True once initialize() succeeded. */
         isInitialized: function () {
-            return state.initialized;
+            return state.status !== STATE.IDLE;
         },
 
-        /** @returns {boolean} True once terminate() ran. */
+        /**
+         * @returns {boolean} True once a finish was attempted, whatever its
+         * outcome. No LMS call may be made from this point on.
+         */
         isTerminated: function () {
-            return state.terminated;
+            reconcileExternalTermination();
+            return (
+                state.status === STATE.FINISH_ATTEMPTED ||
+                state.status === STATE.FINISHED ||
+                state.status === STATE.FINISH_FAILED
+            );
+        },
+
+        /**
+         * @returns {{attempted: boolean, result: boolean|null, error: object|null,
+         * source: string|null}} Everything recorded about the finish attempt.
+         * `error` preserves the original failure even after later calls.
+         */
+        getFinishReport: function () {
+            return {
+                attempted: client.isTerminated(),
+                result: state.finishResult,
+                error: state.finishError,
+                source: state.terminationSource,
+            };
         },
 
         /**
          * Read a data model element (LMSGetValue).
          *
+         * Reading a write-only element is error 404 in SCORM 1.2, so the value
+         * is answered from the local write cache and no LMS call is made.
+         *
          * @param {string} element - cmi element name.
          * @returns {string} The element value, or '' on error (reported).
          */
         getValue: function (element) {
+            if (isWriteOnly(element)) {
+                // Documented compatibility value: what this runtime last wrote.
+                return Object.prototype.hasOwnProperty.call(state.writeCache, element)
+                    ? state.writeCache[element]
+                    : '';
+            }
             if (!client.isActive()) {
                 reportRejected("getValue('" + element + "') rejected: no active SCORM session.");
                 return '';
@@ -248,30 +476,112 @@
         },
 
         /**
-         * Write a data model element (LMSSetValue). Values are always sent
-         * as strings, as SCORM 1.2 requires.
+         * Read an element the LMS is allowed not to implement.
+         *
+         * SCORM 1.2 makes several elements optional, and a SCO is expected to
+         * probe for them; an LMS answering 401 "not implemented" is a normal
+         * answer, not a failure, so it is reported as `supported: false`
+         * instead of being logged as an error. Every other failure is still
+         * reported through the usual path.
+         *
+         * @param {string} element - cmi element name.
+         * @returns {{value: string, supported: boolean, errorCode: number}}
+         * The value and whether the LMS implements the element.
+         */
+        getOptionalValue: function (element) {
+            if (!client.isActive()) {
+                reportRejected("getValue('" + element + "') rejected: no active SCORM session.");
+                return { value: '', supported: false, errorCode: 301 };
+            }
+            var pipwerks = deps.getPipwerks();
+            var value;
+            try {
+                value = pipwerks.SCORM.data.get(element);
+            } catch (error) {
+                deps.error("[exe-scorm12] LMSGetValue for '" + element + "' failed: " + error);
+                return { value: '', supported: false, errorCode: 101 };
+            }
+            if (value === 'null' || value === 'undefined') {
+                value = '';
+            }
+            var lastError = getLastError();
+            if (lastError.code === 0) {
+                return { value: value, supported: true, errorCode: 0 };
+            }
+            if (lastError.code !== 401) {
+                reportLmsError('LMSGetValue', element);
+            }
+            return { value: '', supported: false, errorCode: lastError.code };
+        },
+
+        /**
+         * Write a data model element (LMSSetValue) and report the outcome in
+         * full. Values are always sent as strings, as SCORM 1.2 requires.
+         *
+         * Writing a read-only element is error 403 in SCORM 1.2; the call is
+         * refused locally instead of being forwarded.
+         *
+         * @param {string} element - cmi element name.
+         * @param {string|number} value - Value to write.
+         * @returns {{success: boolean, errorCode: number, errorMessage: string,
+         * forwarded: boolean}} Outcome of the write. `forwarded` is false when
+         * the runtime refused the call without contacting the LMS.
+         */
+        setValueDetailed: function (element, value) {
+            var rejection = writeRejection(element);
+            if (rejection !== null) {
+                reportRejected("setValue('" + element + "') rejected: " + rejection.message + ' in SCORM 1.2.');
+                return {
+                    success: false,
+                    errorCode: rejection.code,
+                    errorMessage: rejection.message,
+                    forwarded: false,
+                };
+            }
+            if (!client.isActive()) {
+                reportRejected("setValue('" + element + "') rejected: no active SCORM session.");
+                return { success: false, errorCode: 301, errorMessage: 'Not initialized', forwarded: false };
+            }
+            var pipwerks = deps.getPipwerks();
+            var text = String(value);
+            var success = false;
+            try {
+                success = pipwerks.SCORM.data.set(element, text);
+            } catch (error) {
+                deps.error("[exe-scorm12] LMSSetValue for '" + element + "' failed: " + error);
+                return { success: false, errorCode: 101, errorMessage: String(error), forwarded: true };
+            }
+            if (!success) {
+                var lastError = reportLmsError('LMSSetValue', element);
+                return {
+                    success: false,
+                    errorCode: lastError.code,
+                    errorMessage: lastError.message,
+                    forwarded: true,
+                };
+            }
+            state.writeCache[element] = text;
+            return { success: true, errorCode: 0, errorMessage: 'No error', forwarded: true };
+        },
+
+        /**
+         * Write a data model element (LMSSetValue).
          *
          * @param {string} element - cmi element name.
          * @param {string|number} value - Value to write.
          * @returns {boolean} True when the LMS accepted the value.
          */
         setValue: function (element, value) {
-            if (!client.isActive()) {
-                reportRejected("setValue('" + element + "') rejected: no active SCORM session.");
-                return false;
-            }
-            var pipwerks = deps.getPipwerks();
-            var success = false;
-            try {
-                success = pipwerks.SCORM.data.set(element, String(value));
-            } catch (error) {
-                deps.error("[exe-scorm12] LMSSetValue for '" + element + "' failed: " + error);
-                return false;
-            }
-            if (!success) {
-                reportLmsError('LMSSetValue', element);
-            }
-            return success;
+            return client.setValueDetailed(element, value).success;
+        },
+
+        /**
+         * @param {string} element - cmi element name.
+         * @returns {string} The last value this runtime wrote for the element
+         * ('' when it never wrote one). Local cache — no LMS traffic.
+         */
+        getCachedValue: function (element) {
+            return Object.prototype.hasOwnProperty.call(state.writeCache, element) ? state.writeCache[element] : '';
         },
 
         /**
@@ -299,38 +609,56 @@
         },
 
         /**
-         * Close the session (LMSFinish). Idempotent: the first call ends the
-         * session — success or not — and every later call is a no-op that
-         * returns true. The wrapper commits (LMSCommit) before LMSFinish, so
-         * terminating always persists pending data first.
+         * Close the session (LMSFinish). Attempted at most once for the whole
+         * page lifetime: the first call moves the state machine through
+         * `finish_attempted` to `finished` or `finish_failed`, and every later
+         * call replays the recorded result without touching the LMS. A failed
+         * finish therefore stays failed — retrying during page teardown cannot
+         * succeed and must not loop.
          *
-         * @returns {boolean} True when the session ended (or already had).
+         * The wrapper commits (LMSCommit) before LMSFinish, so terminating
+         * always persists pending data first.
+         *
+         * @returns {boolean} True when the LMS acknowledged the termination.
          */
         terminate: function () {
-            if (state.terminated) {
-                return true;
+            reconcileExternalTermination();
+            if (client.isTerminated()) {
+                return state.finishResult === true;
             }
-            if (!state.initialized) {
+            if (state.status !== STATE.ACTIVE) {
                 reportRejected('terminate() rejected: the session was never initialized.');
                 return false;
             }
+            // Marked before the call so a re-entrant termination (a listener
+            // fired by the LMS during LMSFinish) cannot start a second one.
+            state.status = STATE.FINISH_ATTEMPTED;
+            state.terminationSource = 'runtime';
             var pipwerks = deps.getPipwerks();
+            var terminate = resolveNativeTerminate(pipwerks);
             var success = false;
-            var failure = null;
+            var thrown = null;
             try {
-                success = pipwerks.SCORM.connection.terminate();
+                success = terminate.call(pipwerks.SCORM.connection);
             } catch (error) {
-                failure = error;
+                thrown = error;
             }
-            // Mark the session closed even when LMSFinish failed: retrying
-            // during page teardown cannot succeed and must not loop.
-            state.terminated = true;
-            if (failure !== null) {
-                deps.error('[exe-scorm12] LMSFinish failed: ' + failure);
-            } else if (!success) {
-                reportLmsError('LMSFinish');
+            if (thrown !== null) {
+                state.status = STATE.FINISH_FAILED;
+                state.finishResult = false;
+                state.finishError = { code: 101, message: String(thrown) };
+                deps.error('[exe-scorm12] LMSFinish failed: ' + thrown);
+                return false;
             }
-            return success;
+            if (!success) {
+                state.status = STATE.FINISH_FAILED;
+                state.finishResult = false;
+                state.finishError = reportLmsError('LMSFinish');
+                return false;
+            }
+            state.status = STATE.FINISHED;
+            state.finishResult = true;
+            return true;
         },
 
         /**
@@ -358,25 +686,77 @@
             );
         },
 
-        /** (Re)start the session clock used for cmi.core.session_time. */
+        /**
+         * (Re)start the session clock used for cmi.core.session_time, dropping
+         * any time already accumulated. This is the legacy `startTimer()`
+         * semantics; pause/resume is what the lifecycle layer uses.
+         */
         markSessionStart: function () {
-            state.sessionStartMs = deps.now();
+            state.accumulatedMs = 0;
+            client.startClock();
+        },
+
+        /** Start (or restart) the running segment of the session clock. */
+        startClock: function () {
+            state.clockStartMs = deps.now();
+            state.clockRunning = true;
         },
 
         /**
-         * @returns {number} Milliseconds elapsed since the session clock
-         * started (0 when it never started).
+         * Bank the running segment and stop the clock. Used when the page is
+         * frozen into the back/forward cache: frozen time is not learning
+         * time. Idempotent — pausing twice banks the segment once.
          */
-        getElapsedMs: function () {
-            if (state.sessionStartMs === null) {
+        pauseClock: function () {
+            if (!state.clockRunning) {
+                return;
+            }
+            state.accumulatedMs += client.currentSegmentMs();
+            state.clockRunning = false;
+            state.clockStartMs = null;
+        },
+
+        /**
+         * Resume the clock after a pause. Idempotent — resuming a running
+         * clock keeps the current segment instead of restarting it, so
+         * repeated lifecycle events cannot double count.
+         */
+        resumeClock: function () {
+            if (state.clockRunning) {
+                return;
+            }
+            client.startClock();
+        },
+
+        /** @returns {boolean} True while the session clock is running. */
+        isClockRunning: function () {
+            return state.clockRunning;
+        },
+
+        /** @returns {number} Milliseconds in the current running segment. */
+        currentSegmentMs: function () {
+            if (!state.clockRunning || state.clockStartMs === null) {
                 return 0;
             }
-            var elapsed = deps.now() - state.sessionStartMs;
+            var elapsed = deps.now() - state.clockStartMs;
             return elapsed > 0 ? elapsed : 0;
         },
 
         /**
+         * @returns {number} Total milliseconds of this session: the banked
+         * segments plus the one currently running.
+         */
+        getElapsedMs: function () {
+            return state.accumulatedMs + client.currentSegmentMs();
+        },
+
+        /**
          * Write the elapsed session time to cmi.core.session_time.
+         *
+         * SCORM 1.2 treats cmi.core.session_time as the total duration of the
+         * current session, not a delta, so writing it repeatedly (on every
+         * visibility change, say) overwrites rather than accumulates — the
+         * value can never be double counted.
          *
          * @returns {boolean} True when the LMS accepted the value.
          */
@@ -385,6 +765,8 @@
         },
 
         getLastError: getLastError,
+        isWriteOnlyElement: isWriteOnly,
+        isReadOnlyElement: isReadOnly,
     };
 
     var exeScorm12 = (global.exeScorm12 = global.exeScorm12 || {});

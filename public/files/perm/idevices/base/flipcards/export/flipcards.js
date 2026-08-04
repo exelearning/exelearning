@@ -1563,7 +1563,7 @@ var $eXeFlipCards = {
 
         $('#flcdsPNumber-' + instance).text(mOptions.realNumberCards);
 
-        $(window).on('unload.eXeFlipCards', () => {
+        $(window).on('pagehide.eXeFlipCards', () => {
             if ($eXeFlipCards.mScorm)
                 $exeDevices.iDevice.gamification.scorm.endScorm(
                     $eXeFlipCards.mScorm
@@ -1706,7 +1706,9 @@ var $eXeFlipCards = {
         $('#flcdsMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
-        $(window).off('unload.eXeFlipcard');
+        // Namespace matches the `on()` registration above (the legacy code
+        // mistyped it as `eXeFlipcard`, so the handler was never removed).
+        $(window).off('pagehide.eXeFlipCards');
         $('#flcdsClueButton-' + instance).off('click');
         $('#flcdsNextCard-' + instance).off('click');
         $('#flcdsPreviousCard-' + instance).off('click');

@@ -1,15 +1,33 @@
 /**
  * eXeLearning SCORM 1.2 runtime — browser lifecycle layer.
  *
- * Owns end-of-session handling for SCORM 1.2 packages. Deliberately uses no
- * unload/onunload/beforeunload handlers (unreliable, and they break
- * back/forward cache):
+ * Owns end-of-session handling for SCORM 1.2 packages, and is the single
+ * place that may terminate the session: every legacy entry point
+ * (unloadPage, doQuit, doBack, doContinue, scorm.quit, pipwerks.SCORM.quit)
+ * funnels through `finish()`.
  *
- * - pagehide: end the session once (exit policy + session time + commit +
- *   LMSFinish). This is the safety net; controlled navigation and explicit
- *   activity completion remain the primary persistence path.
- * - visibilitychange to hidden: LMSCommit only. The session stays usable —
- *   the learner may come back to the tab.
+ * Deliberately uses no unload/onunload/beforeunload handlers. Those events are
+ * unreliable on mobile, and registering one makes the page ineligible for the
+ * back/forward cache, which would trade a real reliability gain for an
+ * imaginary one. The events used instead:
+ *
+ * - `visibilitychange` to hidden — the last moment guaranteed to run on
+ *   mobile. Writes cmi.core.session_time and commits. The session stays open:
+ *   the learner may come back to the tab, and SCORM 1.2 has no concept of a
+ *   hidden SCO.
+ * - `pagehide` with `event.persisted === false` — the page is really going
+ *   away. Runs the full end-of-session sequence and terminates.
+ * - `pagehide` with `event.persisted === true` — the page is being frozen
+ *   into the back/forward cache. It may be restored intact, so the session is
+ *   persisted (session time + commit) but **not** terminated; the session
+ *   clock is paused because frozen time is not learning time.
+ * - `pageshow` with `event.persisted === true` — restored from the cache.
+ *   Resumes the clock. Nothing is re-initialized: the LMS session was never
+ *   closed.
+ *
+ * A page frozen into the cache can still be discarded later without firing
+ * any further event, so the data written on a persisted `pagehide` is the last
+ * word — which is exactly why it commits rather than deferring.
  *
  * Copyright (C) 2026 The eXeLearning project contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -43,13 +61,56 @@
 
     var deps = defaultDeps;
 
-    var state = {
-        installed: false,
-        finished: false,
-    };
+    function initialState() {
+        return {
+            installed: false,
+            // Set as soon as a finalization starts, so two lifecycle paths
+            // racing each other cannot both run the end-of-session sequence.
+            finalizing: false,
+            finished: false,
+            // Recorded outcome of the single finalization.
+            report: null,
+            // True while the page is frozen in the back/forward cache.
+            frozen: false,
+        };
+    }
 
-    function onPageHide() {
+    var state = initialState();
+
+    /**
+     * Persist the current session without ending it: write the elapsed
+     * session time, then commit.
+     *
+     * @returns {{written: boolean, committed: boolean}} What the LMS accepted.
+     */
+    function persist() {
+        var client = deps.getClient();
+        if (state.finalizing || !client.isActive()) {
+            return { written: false, committed: false };
+        }
+        var written = client.writeSessionTime();
+        return { written: written, committed: client.commit() };
+    }
+
+    function onPageHide(event) {
+        if (event && event.persisted === true) {
+            // Frozen into the back/forward cache: persist, do not terminate.
+            persist();
+            deps.getClient().pauseClock();
+            state.frozen = true;
+            return;
+        }
         lifecycle.finish();
+    }
+
+    function onPageShow(event) {
+        if (!event || event.persisted !== true) {
+            // A normal load also fires pageshow; there is nothing to resume.
+            return;
+        }
+        state.frozen = false;
+        // The LMS session was never closed, so nothing is re-initialized.
+        deps.getClient().resumeClock();
     }
 
     function onVisibilityChange() {
@@ -57,10 +118,7 @@
         if (!documentRef || documentRef.visibilityState !== 'hidden') {
             return;
         }
-        var client = deps.getClient();
-        if (!state.finished && client.isActive()) {
-            client.commit();
-        }
+        persist();
     }
 
     var lifecycle = {
@@ -85,24 +143,27 @@
             var documentRef = deps.getDocument();
             if (state.installed && windowRef && windowRef.removeEventListener) {
                 windowRef.removeEventListener('pagehide', onPageHide);
+                windowRef.removeEventListener('pageshow', onPageShow);
             }
             if (state.installed && documentRef && documentRef.removeEventListener) {
                 documentRef.removeEventListener('visibilitychange', onVisibilityChange);
             }
             deps = defaultDeps;
-            state.installed = false;
-            state.finished = false;
+            state = initialState();
         },
 
         /**
-         * Attach the pagehide and visibilitychange listeners. Idempotent.
+         * Attach the pagehide, pageshow and visibilitychange listeners.
+         * Idempotent.
          */
         install: function () {
             if (state.installed) {
                 return;
             }
             state.installed = true;
-            deps.getWindow().addEventListener('pagehide', onPageHide);
+            var windowRef = deps.getWindow();
+            windowRef.addEventListener('pagehide', onPageHide);
+            windowRef.addEventListener('pageshow', onPageShow);
             var documentRef = deps.getDocument();
             if (documentRef) {
                 documentRef.addEventListener('visibilitychange', onVisibilityChange);
@@ -114,10 +175,38 @@
             return state.finished;
         },
 
+        /** @returns {boolean} True while the page sits in the bfcache. */
+        isFrozen: function () {
+            return state.frozen;
+        },
+
+        /**
+         * @returns {{finished: boolean, committed: boolean, terminated: boolean,
+         * status: string|null, exit: string|null, state: string}|null} The
+         * recorded outcome of the single finalization, or null before one ran.
+         */
+        getReport: function () {
+            return state.report;
+        },
+
+        /**
+         * Persist the session without ending it (session time + commit).
+         * Public so that content can force a save at a meaningful moment.
+         *
+         * @returns {{written: boolean, committed: boolean}} What the LMS took.
+         */
+        persist: persist,
+
         /**
          * End the SCORM session exactly once: apply the exit policy, write
-         * cmi.core.session_time, then terminate (the client commits before
-         * LMSFinish). Later calls are no-ops.
+         * cmi.core.session_time, then terminate (the vendored wrapper commits
+         * before LMSFinish, so a failed commit aborts the termination and is
+         * recorded as a failed finish — it is never retried).
+         *
+         * The `finalizing` guard is raised before any LMS traffic, so a second
+         * lifecycle path entering while the first is still running — a
+         * pagehide firing during doQuit, say — replays the recorded result
+         * instead of starting a second termination.
          *
          * @param {boolean} [applyCompletionRule] - Apply the completion rule
          * of the exit policy (default true; doQuit/doBack/doContinue pass
@@ -126,17 +215,48 @@
          * already ended, or was never active).
          */
         finish: function (applyCompletionRule) {
-            if (state.finished) {
-                return true;
+            if (state.finalizing) {
+                return state.report === null ? true : state.report.terminated;
             }
-            state.finished = true;
             var client = deps.getClient();
             if (!client.isActive()) {
+                if (!client.isInitialized()) {
+                    // Nothing has been opened yet: legacy content calling
+                    // doQuit() before the body onload handler runs must not
+                    // consume the one-shot latch, or the real end of session
+                    // would later be silenced.
+                    return true;
+                }
+                state.finalizing = true;
+                state.finished = true;
+                state.report = {
+                    finished: true,
+                    committed: false,
+                    terminated: true,
+                    status: null,
+                    exit: null,
+                    state: client.getState(),
+                    reason: 'no-active-session',
+                };
                 return true;
             }
-            deps.getPolicy().applyExitPolicy(applyCompletionRule !== false);
+            // Raised before any LMS traffic, so a second lifecycle path
+            // entering while this one runs replays the recorded result.
+            state.finalizing = true;
+            var exitResult = deps.getPolicy().applyExitPolicy(applyCompletionRule !== false);
             client.writeSessionTime();
-            return client.terminate();
+            var terminated = client.terminate();
+            state.finished = true;
+            state.report = {
+                finished: true,
+                committed: terminated,
+                terminated: terminated,
+                status: exitResult.status,
+                exit: exitResult.exit,
+                state: client.getState(),
+                reason: 'session-ended',
+            };
+            return terminated;
         },
     };
 

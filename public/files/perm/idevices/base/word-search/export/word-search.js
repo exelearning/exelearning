@@ -651,9 +651,7 @@ var $eXeSopa = {
     removeEvents: function (instanceId) {
         const $container = $('#sopaMainContainer-' + instanceId);
 
-        $(window).off(
-            'unload.eXeSopa' + instanceId + ' beforeunload.eXeSopa' + instanceId
-        );
+        $(window).off('pagehide.eXeSopa' + instanceId);
 
         $container
             .find('#sopaLinkMaximize-' + instanceId)
@@ -756,18 +754,10 @@ var $eXeSopa = {
             .find('#sopaPNumber-' + instanceId)
             .text(mOptions.numberQuestions);
 
-        $(window).on(
-            'unload.eXeSopa' +
-                instanceId +
-                ' beforeunload.eXeSopa' +
-                instanceId,
-            () => {
-                if ($eXeSopa.mScorm)
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeSopa.mScorm
-                    );
-            }
-        );
+        $(window).on('pagehide.eXeSopa' + instanceId, () => {
+            if ($eXeSopa.mScorm)
+                $exeDevices.iDevice.gamification.scorm.endScorm($eXeSopa.mScorm);
+        });
 
         if (mOptions.instructions) {
             $container

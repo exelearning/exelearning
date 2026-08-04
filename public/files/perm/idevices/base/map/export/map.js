@@ -2536,7 +2536,7 @@ var $eXeMapa = {
             return true;
         });
 
-        $(window).on('unload.eXeMapa beforeunload.eXeMapa', function () {
+        $(window).on('pagehide.eXeMapa', function () {
             if ($eXeMapa.mScorm && typeof $eXeMapa.mScorm != 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
                     $eXeMapa.mScorm
@@ -3126,7 +3126,7 @@ var $eXeMapa = {
         $('#mapaCodeAccessButton-' + instance).off('click');
         $('#mapaCodeAccessE-' + instance).off('click');
 
-        $(window).off('unload.eXeMapa beforeunload.eXeMapa');
+        $(window).off('pagehide.eXeMapa');
 
         $multimedia.off('click');
 

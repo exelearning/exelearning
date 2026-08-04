@@ -259,7 +259,7 @@ var $eXeCompleta = {
 
         $(document).off('mousemove.eXeCompleta');
         $(document).off('mouseup.eXeCompleta');
-        $(window).off('unload.eXeCompleta beforeunload.eXeCompleta');
+        $(window).off('pagehide.eXeCompleta');
 
         const gameContainer = document.querySelector(
             `#cmptGameContainer-${instance}`
@@ -429,7 +429,7 @@ var $eXeCompleta = {
         $(`#cmptPShowClue-${instance}`).hide();
 
         $(window).on(
-            'unload.eXeCompleta beforeunload.eXeCompleta',
+            'pagehide.eXeCompleta',
             function () {
                 if (typeof $eXeCompleta.mScorm !== 'undefined') {
                     $exeDevices.iDevice.gamification.scorm.endScorm(

@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Full stack below the policy: vendored wrapper + client + fake LMS API, so
+// Full stack below the policy: vendored wrapper + client + strict fake LMS, so
 // assertions run against the recorded LMS traffic, not against mocks of the
 // code under test.
 const pipwerks = require('./vendor/pipwerks/SCORM_API_wrapper.js');
 const client = require('./exe-scorm12-client.js');
+const activities = require('./exe-scorm12-activities.js');
 const policy = require('./exe-scorm12-policy.js');
 const { createFakeScorm12Api, createFakeWindowTree, resetPipwerks } = require('./fake-scorm12-api.test-util.js');
 
@@ -12,11 +13,11 @@ describe('exe-scorm12-policy', () => {
     let api;
     let warnSpy;
 
-    function startSession(initialData) {
-        api = createFakeScorm12Api({ data: initialData });
+    function startSession(initialData, options = {}) {
+        api = createFakeScorm12Api(Object.assign({ data: initialData }, options));
         vi.stubGlobal('window', createFakeWindowTree('self', api));
         expect(client.initialize()).toBe(true);
-        api.calls.length = 0;
+        api.resetCalls();
     }
 
     beforeEach(() => {
@@ -24,19 +25,22 @@ describe('exe-scorm12-policy', () => {
         resetPipwerks(pipwerks);
         client.resetDependencies();
         client.configure({ getPipwerks: () => pipwerks, now: () => 1000, error: vi.fn(), warn: vi.fn() });
+        activities.resetDependencies();
+        activities.configure({ warn: vi.fn() });
         policy.resetDependencies();
-        policy.configure({ getClient: () => client, warn: warnSpy });
+        policy.configure({ getClient: () => client, getActivities: () => activities, warn: warnSpy });
     });
 
     afterEach(() => {
         vi.unstubAllGlobals();
         policy.resetDependencies();
+        activities.resetDependencies();
         client.resetDependencies();
     });
 
     describe('entry policy', () => {
         it('promotes an empty status to incomplete', () => {
-            startSession({});
+            startSession({ 'cmi.core.lesson_status': '' });
 
             policy.applyEntryPolicy();
 
@@ -58,6 +62,37 @@ describe('exe-scorm12-policy', () => {
 
             expect(api.data['cmi.core.lesson_status']).toBe(status);
             expect(api.callsFor('LMSSetValue')).toEqual([]);
+        });
+
+        it('restores the activity registry from cmi.suspend_data', () => {
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.suspend_data': 'exe12/1|quiz;7;3;5;60;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+
+            expect(activities.get('quiz')).toMatchObject({ completed: true, answered: 3, total: 5, score: 60 });
+        });
+
+        it('adopts the LMS mastery score as the success threshold', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.student_data.mastery_score': '70' });
+
+            policy.applyEntryPolicy();
+
+            expect(policy.getSuccessThreshold()).toBe(70);
+        });
+
+        it('keeps the eXeLearning default when the LMS does not implement mastery_score', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' }, { profile: 'minimal' });
+            const errorSpy = vi.fn();
+            client.configure({ getPipwerks: () => pipwerks, now: () => 1000, error: errorSpy, warn: vi.fn() });
+
+            policy.applyEntryPolicy();
+
+            expect(policy.getSuccessThreshold()).toBe(policy.DEFAULT_SUCCESS_THRESHOLD);
+            // A "not implemented" answer to an optional probe is not an error.
+            expect(errorSpy).not.toHaveBeenCalled();
         });
     });
 
@@ -81,6 +116,12 @@ describe('exe-scorm12-policy', () => {
             expect(policy.isValidStatus('not attempted')).toBe(true);
             expect(policy.isValidStatus('unknown')).toBe(false);
             expect(policy.isValidStatus('done')).toBe(false);
+        });
+
+        it('excludes "not attempted" from what a SCO may write', () => {
+            // SCORM 1.2 requires the LMS to refuse it from a SCO.
+            expect(policy.isWritableStatus('not attempted')).toBe(false);
+            expect(policy.isWritableStatus('incomplete')).toBe(true);
         });
     });
 
@@ -120,21 +161,311 @@ describe('exe-scorm12-policy', () => {
         });
 
         it.each([
-            ['non-numeric raw', ['abc', 0, 100]],
-            ['raw below 0', [-1, 0, 100]],
-            ['raw above 100', [101, 0, 100]],
-            ['min above raw', [50, 60, 100]],
-            ['max below raw', [50, 0, 40]],
-            ['min above max', [50, 80, 60]],
-            ['NaN raw', [Number.NaN, 0, 100]],
-            ['Infinity raw', [Number.POSITIVE_INFINITY, 0, 100]],
-        ])('rejects %s and writes nothing', (_label, args) => {
+            ['non-numeric raw', ['abc', 0, 100], 'raw-not-numeric'],
+            ['raw below 0', [-1, 0, 100], 'raw-out-of-range'],
+            ['raw above 100', [101, 0, 100], 'raw-out-of-range'],
+            ['min above raw', [50, 60, 100], 'min-above-raw'],
+            ['max below raw', [50, 0, 40], 'max-below-raw'],
+            ['min above max', [50, 80, 60], 'min-above-raw'],
+            ['NaN raw', [Number.NaN, 0, 100], 'raw-not-numeric'],
+            ['Infinity raw', [Number.POSITIVE_INFINITY, 0, 100], 'raw-not-numeric'],
+            ['non-numeric min', [50, 'x', 100], 'min-not-numeric'],
+            ['non-numeric max', [50, 0, 'x'], 'max-not-numeric'],
+            ['min out of range', [50, -1, 100], 'min-out-of-range'],
+            ['max out of range', [50, 0, 101], 'max-out-of-range'],
+        ])('rejects %s and writes nothing', (_label, args, problem) => {
             startSession({});
 
-            expect(policy.setScore(args[0], args[1], args[2])).toBe(false);
+            const result = policy.setScoreDetailed(args[0], args[1], args[2]);
 
+            expect(result.valid).toBe(false);
+            expect(result.problem).toBe(problem);
+            expect(result.requiredWritten).toBe(false);
             expect(api.callsFor('LMSSetValue')).toEqual([]);
             expect(warnSpy).toHaveBeenCalled();
+        });
+
+        it('reports an inconsistent triplet through the bound that contradicts the raw score', () => {
+            startSession({});
+
+            // An inconsistent min/max is always also inconsistent with raw, so
+            // validateScore has no separate "min above max" outcome.
+            expect(policy.validateScore(70, 60, 65).problem).toBe('max-below-raw');
+            expect(policy.validateScore(50, 50, 40).problem).toBe('max-below-raw');
+            expect(policy.validateScore(50, 80, 60).problem).toBe('min-above-raw');
+            expect(policy.validateScore(50, 40, 60).valid).toBe(true);
+        });
+    });
+
+    describe('setScoreDetailed with optional score bounds', () => {
+        it('records the required raw write and both optional writes on a complete LMS', () => {
+            startSession({});
+
+            const result = policy.setScoreDetailed(80, 0, 100);
+
+            expect(result).toMatchObject({ valid: true, requiredWritten: true, ok: true, optionalFailures: [] });
+            expect(result.required).toMatchObject({ element: 'cmi.core.score.raw', written: true });
+            expect(result.optional.map(entry => entry.element)).toEqual(['cmi.core.score.min', 'cmi.core.score.max']);
+        });
+
+        it('keeps the raw score on an LMS that implements neither bound', () => {
+            // A minimal SCORM 1.2 LMS implements score.raw but not min/max.
+            startSession({}, { profile: 'minimal' });
+
+            const result = policy.setScoreDetailed(80, 0, 100);
+
+            expect(result.requiredWritten).toBe(true);
+            expect(result.ok).toBe(false);
+            expect(result.optional.every(entry => entry.unsupported)).toBe(true);
+            expect(result.optionalFailures).toEqual(['cmi.core.score.min', 'cmi.core.score.max']);
+            expect(api.data['cmi.core.score.raw']).toBe('80');
+        });
+
+        it.each([
+            ['minimum', 'cmi.core.score.min'],
+            ['maximum', 'cmi.core.score.max'],
+        ])('keeps the raw score when only the %s is unsupported', (_label, element) => {
+            startSession({}, { elementFailures: { [element]: { errorCode: 401 } } });
+
+            const result = policy.setScoreDetailed(80, 0, 100);
+
+            expect(result.requiredWritten).toBe(true);
+            expect(result.optionalFailures).toEqual([element]);
+            expect(result.optional.find(entry => entry.element === element).unsupported).toBe(true);
+            expect(api.data['cmi.core.score.raw']).toBe('80');
+        });
+
+        it('distinguishes an unsupported bound from a rejected one', () => {
+            startSession({}, { elementFailures: { 'cmi.core.score.min': { errorCode: 101 } } });
+
+            const result = policy.setScoreDetailed(80, 0, 100);
+
+            expect(result.optional[0]).toMatchObject({ written: false, unsupported: false, errorCode: 101 });
+        });
+
+        it('reports a failed required write', () => {
+            startSession({}, { elementFailures: { 'cmi.core.score.raw': { errorCode: 101 } } });
+
+            const result = policy.setScoreDetailed(80);
+
+            expect(result.requiredWritten).toBe(false);
+            expect(result.required.errorCode).toBe(101);
+        });
+    });
+
+    describe('completion decision (activity matrix)', () => {
+        function register(id, descriptor) {
+            activities.register(id, descriptor);
+        }
+
+        it('1. no iDevices at all → completed by viewing the page', () => {
+            expect(policy.decideStatus()).toMatchObject({ status: 'completed', reason: 'no-required-activities' });
+        });
+
+        it('2. one unstarted quiz → incomplete', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, total: 5 });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'incomplete' });
+        });
+
+        it('3. one partially answered quiz → incomplete', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, answered: 2, total: 5, score: 40 });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'incomplete' });
+        });
+
+        it('4. one completed passing quiz → passed', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 80 });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'passed', score: 80 });
+        });
+
+        it('5. one completed failing quiz → failed', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 20 });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'failed', score: 20 });
+        });
+
+        it('6. two quizzes, one complete and one unstarted → incomplete', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 100 });
+            register('quiz-2', { evaluable: true, completionRequired: true });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'incomplete' });
+        });
+
+        it('7. two completed quizzes average their scores', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 100 });
+            register('quiz-2', { evaluable: true, completionRequired: true, completed: true, score: 0 });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'passed', score: 50 });
+        });
+
+        it('8. a quiz plus a presentation activity is decided by the quiz alone', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            register('slides-1', { evaluable: false, completionRequired: false });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'passed', score: 90 });
+        });
+
+        it('9. presentation activities only → completed, never stuck incomplete', () => {
+            register('slides-1', { evaluable: false, completionRequired: false });
+            register('slides-2', { evaluable: false, completionRequired: false });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'completed', reason: 'no-required-activities' });
+        });
+
+        it('10. a suspended page reopened keeps its restored progress', () => {
+            activities.load('exe12/1|quiz-1;7;5;5;90;1;0;100');
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'passed', score: 90 });
+        });
+
+        it('11. a retry after failure re-decides from the new score', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 20 });
+            expect(policy.decideStatus().status).toBe('failed');
+
+            activities.update('quiz-1', { completed: true, score: 75 });
+
+            expect(policy.decideStatus().status).toBe('passed');
+        });
+
+        it('14. a score exactly at the threshold passes', () => {
+            policy.setSuccessThreshold(50);
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 50 });
+
+            expect(policy.decideStatus().status).toBe('passed');
+        });
+
+        it('15. an activity that reports no completion flag stays incomplete while required', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, score: 90 });
+
+            expect(policy.decideStatus().status).toBe('incomplete');
+        });
+
+        it('16. an activity registered after the page settled is counted', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            expect(policy.decideStatus().status).toBe('passed');
+
+            register('quiz-2', { evaluable: true, completionRequired: true });
+
+            expect(policy.decideStatus().status).toBe('incomplete');
+        });
+
+        it('17. duplicate registration does not reset progress', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            register('quiz-1', { evaluable: true, completionRequired: true, total: 5 });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'passed', score: 90 });
+        });
+
+        it('18. corrupt persisted state is ignored rather than fatal', () => {
+            expect(() => activities.load('not a payload at all')).not.toThrow();
+
+            expect(policy.decideStatus().status).toBe('completed');
+        });
+
+        it('with no threshold in force, completed required activities are just completed', () => {
+            policy.setSuccessThreshold(null);
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 10 });
+
+            expect(policy.decideStatus()).toMatchObject({ status: 'completed', reason: 'no-success-threshold' });
+        });
+
+        it('rejects an out-of-range threshold and keeps the previous one', () => {
+            policy.setSuccessThreshold(60);
+            policy.setSuccessThreshold(140);
+
+            expect(policy.getSuccessThreshold()).toBe(60);
+            expect(warnSpy).toHaveBeenCalled();
+        });
+
+        it('accepts an explicit aggregate score from the caller', () => {
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 10 });
+
+            // The gamification helper computes the aggregate itself and hands
+            // it in, so the recorded score and the decision agree.
+            expect(policy.decideStatus(90)).toMatchObject({ status: 'passed', score: 90 });
+        });
+    });
+
+    describe('in-session status re-evaluation', () => {
+        function register(id, descriptor) {
+            activities.register(id, descriptor);
+        }
+
+        it('writes the decided status while activities are still pending', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            register('quiz-1', { evaluable: true, completionRequired: true });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'incomplete', written: true });
+            // Already stored: no redundant write.
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
+        });
+
+        it('upgrades a failed activity to passed after a successful retry', () => {
+            startSession({ 'cmi.core.lesson_status': 'failed' });
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
+        it('never replaces a terminal status with a non-terminal one', () => {
+            startSession({ 'cmi.core.lesson_status': 'passed' });
+            register('quiz-1', { evaluable: true, completionRequired: true });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
+        });
+
+        it('records a failing aggregate supplied by the caller', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            expect(policy.recordActivityOutcome(20)).toMatchObject({ status: 'failed', written: true });
+            expect(api.data['cmi.core.lesson_status']).toBe('failed');
+        });
+    });
+
+    describe('lesson mode', () => {
+        it('12. review mode suppresses the doContinue status write', () => {
+            startSession({ 'cmi.core.lesson_mode': 'review' });
+
+            expect(policy.setStatusForContinue('completed')).toBe(false);
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
+        });
+
+        it('13. browse mode suppresses the doContinue status write', () => {
+            startSession({ 'cmi.core.lesson_mode': 'browse' });
+
+            expect(policy.setStatusForContinue('completed')).toBe(false);
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
+        });
+
+        it('writes a valid status in normal mode', () => {
+            startSession({ 'cmi.core.lesson_mode': 'normal' });
+
+            expect(policy.setStatusForContinue('completed')).toBe(true);
+            expect(api.data['cmi.core.lesson_status']).toBe('completed');
+        });
+
+        it('rejects invalid vocabulary', () => {
+            startSession({});
+
+            expect(policy.setStatusForContinue('unknown')).toBe(false);
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
+            expect(warnSpy).toHaveBeenCalled();
+        });
+
+        it('rejects "not attempted", which a SCO may not write', () => {
+            startSession({});
+
+            expect(policy.setStatusForContinue('not attempted')).toBe(false);
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
         });
     });
 
@@ -158,10 +489,25 @@ describe('exe-scorm12-policy', () => {
 
             policy.applyExitPolicy();
 
+            // The decided status equals the stored one, so no redundant write.
             expect(api.callSignatures()).toEqual([
                 'LMSGetValue(cmi.core.lesson_status)',
-                'LMSSetValue(cmi.core.lesson_status=incomplete)',
                 'LMSSetValue(cmi.core.exit=suspend)',
+            ]);
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+        });
+
+        it('persists the activity registry before deciding the status', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            policy.applyExitPolicy();
+
+            expect(api.callSignatures()).toEqual([
+                'LMSSetValue(cmi.suspend_data=exe12/1|quiz-1;7;0;0;90;1;0;100)',
+                'LMSGetValue(cmi.core.lesson_status)',
+                'LMSSetValue(cmi.core.lesson_status=passed)',
+                'LMSSetValue(cmi.core.exit=)',
             ]);
         });
 
@@ -206,29 +552,12 @@ describe('exe-scorm12-policy', () => {
 
             consoleWarnSpy.mockRestore();
         });
-    });
 
-    describe('setStatusForContinue', () => {
-        it('writes a valid status in normal mode', () => {
-            startSession({ 'cmi.core.lesson_mode': 'normal' });
-
-            expect(policy.setStatusForContinue('completed')).toBe(true);
-            expect(api.data['cmi.core.lesson_status']).toBe('completed');
-        });
-
-        it.each(['review', 'browse'])('does not write in %s mode', mode => {
-            startSession({ 'cmi.core.lesson_mode': mode });
-
-            expect(policy.setStatusForContinue('completed')).toBe(false);
-            expect(api.callsFor('LMSSetValue')).toEqual([]);
-        });
-
-        it('rejects invalid vocabulary', () => {
+        it('persistActivities is a no-op with an empty registry', () => {
             startSession({});
 
-            expect(policy.setStatusForContinue('unknown')).toBe(false);
+            expect(policy.persistActivities()).toBe(true);
             expect(api.callsFor('LMSSetValue')).toEqual([]);
-            expect(warnSpy).toHaveBeenCalled();
         });
     });
 });

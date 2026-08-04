@@ -426,7 +426,7 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance];
         $eXeHiddenImage.removeEvents(instance);
 
-        $(window).on('unload.eXehiP beforeunload.eXehiP', () => {
+        $(window).on('pagehide.eXehiP', () => {
             $exeDevices.iDevice.gamification.scorm.endScorm(
                 $eXeHiddenImage.mScorm
             );
@@ -601,7 +601,7 @@ var $eXeHiddenImage = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXehiP beforeunload.eXehiP');
+        $(window).off('pagehide.eXehiP');
 
         $('#hiPLinkMaximize-' + instance).off('click touchstart');
         $('#hiPLinkMinimize-' + instance).off('click touchstart');

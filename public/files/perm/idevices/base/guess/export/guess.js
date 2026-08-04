@@ -727,7 +727,7 @@ var $guess = {
 
         $pNumber.text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeAdivina beforeunload.eXeAdivina', function () {
+        $(window).on('pagehide.eXeAdivina', function () {
             if (typeof $guess.mScorm !== 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm($guess.mScorm);
             }
@@ -792,7 +792,7 @@ var $guess = {
         $(`#adivinaModeBoardKO-${instance}`).off('click');
         $(`#adivinaModeBoardMoveOn-${instance}`).off('click');
 
-        $(window).off('unload.eXeAdivina beforeunload.eXeAdivina');
+        $(window).off('pagehide.eXeAdivina');
     },
 
     enterCodeAccess: function (instance) {

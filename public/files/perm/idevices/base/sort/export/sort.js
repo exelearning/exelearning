@@ -1085,7 +1085,7 @@ var $eXeOrdena = {
 
         $(`#ordenaPNumber-${instance}`).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeOrdena beforeunload.eXeOrdena', function () {
+        $(window).on('pagehide.eXeOrdena', function () {
             $exeDevices.iDevice.gamification.scorm.endScorm($eXeOrdena.mScorm);
         });
 
@@ -1248,7 +1248,7 @@ var $eXeOrdena = {
         $(`#ordenaClueButton-${instance}`).off('click');
         $(`#ordenaValidatePhrase-${instance}`).off('click');
 
-        $(window).off('unload.eXeOrdena beforeunload.eXeOrdena');
+        $(window).off('pagehide.eXeOrdena');
 
         $eXeOrdena.removeTouchDragAndDrop(instance);
         $eXeOrdena.removeTouchPhraseDragAndDrop(instance);

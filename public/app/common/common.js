@@ -984,8 +984,72 @@ var $exeDevices = {
                     return parseFloat(rawScore) || 0;
                 },
 
+                /**
+                 * Documented no-op, kept because every game iDevice calls it
+                 * when the page is going away.
+                 *
+                 * SCORM session finalization is centralized: the SCORM 1.2
+                 * runtime ends the session exactly once from its own lifecycle
+                 * layer (pagehide), and older packages end it from
+                 * unloadPage(). An iDevice terminating the session on its own
+                 * would either close it while other iDevices are still writing
+                 * or attempt a second LMSFinish. Activity state and scores are
+                 * already written through sendScoreNew/updateActivity by the
+                 * time this runs, so there is nothing left to flush here.
+                 *
+                 * @param {Object} scormgame Unused; kept for the legacy signature.
+                 */
                 endScorm: function (scormgame) {
-                    /*if (scormgame && typeof scormgame.quit == "function") scormgame.quit();*/
+                    // Intentionally empty — see the comment above.
+                },
+
+                /**
+                 * The central SCORM 1.2 activity registry, when the page
+                 * carries the SCORM 1.2 runtime (`libs/SCOFunctions.js`).
+                 * Absent in HTML5/EPUB exports and in SCORM 2004 packages,
+                 * which keep the legacy runtime.
+                 *
+                 * @returns {Object|null} The registry, or null.
+                 */
+                getActivityRegistry: function () {
+                    if (typeof window === 'undefined' || !window.exeScorm12) return null;
+                    return window.exeScorm12.activities || null;
+                },
+
+                /**
+                 * Report an iDevice to the central activity registry.
+                 *
+                 * Every flag is passed explicitly: `isScorm > 0` is how an
+                 * eXeLearning activity declares itself evaluable and required,
+                 * and `completed` is supplied by the caller. The registry
+                 * never infers policy from incidental game properties.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @param {Object} [progress] Fields to merge (completed, answered, total, score).
+                 * @returns {Object|null} The stored record, or null when the
+                 * page has no SCORM 1.2 registry.
+                 */
+                reportActivity: function (game, progress) {
+                    const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    if (!registry || typeof game !== 'object' || game === null || !game.ideviceId) return null;
+                    const evaluable = Number(game.isScorm) > 0;
+                    const weight = parseFloat(game.weighted);
+                    return registry.register(
+                        game.ideviceId,
+                        Object.assign(
+                            {
+                                evaluable: evaluable,
+                                // A presentation or exploration iDevice is not
+                                // required: it must never hold the page at
+                                // "incomplete".
+                                completionRequired: evaluable,
+                                weight: Number.isNaN(weight) || weight <= 0 ? 1 : weight,
+                                minimumScore: 0,
+                                maximumScore: 100,
+                            },
+                            progress || {}
+                        )
+                    );
                 },
 
                 addButtonScoreNew: function (game, hasSCORMbutton, isInExe) {
@@ -1172,6 +1236,13 @@ var $exeDevices = {
                         .find('header .box-title').text() || '').replace(/"/g, ' ');
                     game.ideviceNumber = $('.idevice_node').index($ideviceNode) + 1;
 
+                    // Declare the activity to the central registry (SCORM 1.2
+                    // packages only) before any score is reported, so the
+                    // completion policy knows the page's shape from the start.
+                    $exeDevices.iDevice.gamification.scorm.reportActivity(game, {
+                        total: parseFloat(game.numberQuestions) || 0,
+                    });
+
                     let lmsData = {};
                     if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
                         $exeDevices.iDevice.gamification.scorm.createScoreScormHtml(game);
@@ -1280,6 +1351,10 @@ var $exeDevices = {
                     let message = '';
                     if (game.gameStarted || game.gameOver) {
                         game.repeatActivity = true;
+                        // Explicit completion signal for the activity registry:
+                        // the learner either finished the activity (gameOver)
+                        // or submitted their score by hand (!auto).
+                        const activityCompleted = game.gameOver === true || auto !== true;
                         const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
                         const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
                         const scoreVal = parseFloat(lmsData[game.ideviceNumber]?.score);
@@ -1297,7 +1372,7 @@ var $exeDevices = {
                                     : game.msgs.msgOnlySaveScore;
                             } else {
                                 game.previousScore = formattedScore;
-                                $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData);
+                                $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);
 
                                 message = game.userName !== ''
                                     ? (game.userName + '. ' + game.msgs.msgYouScore + ': ' + formattedScore)
@@ -1311,7 +1386,7 @@ var $exeDevices = {
                             }
                         } else {
                             game.previousScore = formattedScore;
-                            $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData);
+                            $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);
                             message = game.msgs.msgYouScore + ': ' + formattedScore;
                             $repeatActivity.text(message).show();
                         }
@@ -1327,7 +1402,16 @@ var $exeDevices = {
 
                 },
 
-                updateActivity: function (game, lmsData) {
+                /**
+                 * Record an activity's score.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @param {Object} lmsData Parsed suspend_data keyed by activity index.
+                 * @param {boolean} [completed] Whether the learner finished the
+                 * activity. Supplied explicitly by the caller — the completion
+                 * policy never infers it from a game property.
+                 */
+                updateActivity: function (game, lmsData, completed) {
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM || typeof game !== 'object' || game === null) {
                         return;
                     }
@@ -1343,6 +1427,12 @@ var $exeDevices = {
 
                     pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
 
+                    $exeDevices.iDevice.gamification.scorm.reportActivity(game, {
+                        completed: completed === true,
+                        score: updatedData.score,
+                        answered: parseFloat(game.answered) || 0,
+                    });
+
                     $exeDevices.iDevice.gamification.scorm.showFinalScore(lmsData, game);
 
                 },
@@ -1357,14 +1447,28 @@ var $exeDevices = {
                         lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
                     }
 
+                    // Single source of truth for the aggregate: getFinalScore
+                    // keeps the weighting algorithm published packages rely on.
                     const newFinalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
 
-                    pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-
-                    if (newFinalScore >= 50) {
-                        pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
+                    const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
+                    if (runtime && runtime.policy) {
+                        // SCORM 1.2 packages: the runtime owns score validation
+                        // and the completion/success policy, so the recorded
+                        // score and the status decision cannot disagree, and a
+                        // page whose required activities are still pending is
+                        // never marked passed or failed.
+                        runtime.policy.setScoreDetailed(newFinalScore, 0, 100);
+                        runtime.policy.recordActivityOutcome(newFinalScore);
                     } else {
-                        pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
+                        // Legacy runtime (SCORM 2004 packages and packages
+                        // exported before the SCORM 1.2 runtime rewrite).
+                        pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
+                        if (newFinalScore >= 50) {
+                            pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
+                        } else {
+                            pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
+                        }
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);

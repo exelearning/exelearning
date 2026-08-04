@@ -1809,6 +1809,177 @@ describe('common.js $exeDevices', () => {
     });
   });
 
+  // The SCORM 1.2 activity registry only exists in SCORM 1.2 packages, so
+  // every call site is feature-detected. These tests stand in for that
+  // runtime, exercising both the "present" and "absent" branches.
+  describe('gamification.scorm activity registry bridge', () => {
+    const getScorm = () => global.$exeDevices.iDevice.gamification.scorm;
+    let registry;
+    let policy;
+
+    beforeEach(() => {
+      registry = { register: vi.fn(descriptor => descriptor) };
+      policy = { setScoreDetailed: vi.fn(), recordActivityOutcome: vi.fn() };
+      window.exeScorm12 = { activities: registry, policy };
+    });
+
+    afterEach(() => {
+      delete window.exeScorm12;
+      delete global.pipwerks;
+    });
+
+    it('getActivityRegistry returns the runtime registry when present', () => {
+      expect(getScorm().getActivityRegistry()).toBe(registry);
+    });
+
+    it('getActivityRegistry returns null without the SCORM 1.2 runtime', () => {
+      delete window.exeScorm12;
+      expect(getScorm().getActivityRegistry()).toBeNull();
+    });
+
+    it('getActivityRegistry returns null when the runtime has no registry', () => {
+      window.exeScorm12 = {};
+      expect(getScorm().getActivityRegistry()).toBeNull();
+    });
+
+    it('reportActivity declares an evaluable, required activity', () => {
+      getScorm().reportActivity({ ideviceId: 'id-1', isScorm: 1, weighted: 3 }, { total: 5 });
+
+      expect(registry.register).toHaveBeenCalledWith('id-1', {
+        evaluable: true,
+        completionRequired: true,
+        weight: 3,
+        minimumScore: 0,
+        maximumScore: 100,
+        total: 5,
+      });
+    });
+
+    it('reportActivity declares a presentation activity as not required', () => {
+      getScorm().reportActivity({ ideviceId: 'id-2', isScorm: 0 });
+
+      expect(registry.register).toHaveBeenCalledWith(
+        'id-2',
+        expect.objectContaining({ evaluable: false, completionRequired: false, weight: 1 })
+      );
+    });
+
+    it('reportActivity falls back to weight 1 for a missing or invalid weight', () => {
+      getScorm().reportActivity({ ideviceId: 'id-3', isScorm: 1, weighted: 'x' });
+      getScorm().reportActivity({ ideviceId: 'id-4', isScorm: 1, weighted: -2 });
+
+      expect(registry.register).toHaveBeenNthCalledWith(1, 'id-3', expect.objectContaining({ weight: 1 }));
+      expect(registry.register).toHaveBeenNthCalledWith(2, 'id-4', expect.objectContaining({ weight: 1 }));
+    });
+
+    it.each([
+      ['no registry', () => delete window.exeScorm12, { ideviceId: 'id' }],
+      ['no game', () => {}, null],
+      ['no stable identifier', () => {}, { isScorm: 1 }],
+    ])('reportActivity is a no-op with %s', (_label, prepare, game) => {
+      prepare();
+      expect(getScorm().reportActivity(game, {})).toBeNull();
+      expect(registry.register).not.toHaveBeenCalled();
+    });
+
+    it('updateActivity reports the explicit completion flag and the score', () => {
+      global.pipwerks = { SCORM: { get: () => '', set: vi.fn(() => true) } };
+      const game = {
+        ideviceId: 'id-1',
+        ideviceNumber: 1,
+        isScorm: 1,
+        weighted: 1,
+        scorerp: 8,
+        answered: 4,
+        title: 'Quiz',
+        msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+      };
+
+      getScorm().updateActivity(game, {}, true);
+
+      expect(registry.register).toHaveBeenCalledWith(
+        'id-1',
+        expect.objectContaining({ completed: true, score: 80, answered: 4 })
+      );
+    });
+
+    it.each([
+      ['a finished game reported automatically', { gameOver: true, gameStarted: true }, true, true],
+      ['an unfinished game reported automatically', { gameOver: false, gameStarted: true }, true, false],
+      ['a score the learner submitted by hand', { gameOver: false, gameStarted: true }, false, true],
+    ])('sendScoreNew reports %s with the right completion flag', (_label, flags, auto, expected) => {
+      // The manual-submit branch ends with an alert(); happy-dom has none.
+      const originalAlert = window.alert;
+      window.alert = vi.fn();
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = Object.assign(
+        {
+          ideviceId: 'id-1',
+          ideviceNumber: 1,
+          isScorm: 1,
+          weighted: 1,
+          scorerp: 7,
+          main: 'game-main',
+          title: 'Quiz',
+          userName: '',
+          msgs: {
+            msgScore: 'Score',
+            msgWeight: 'Weight',
+            msgYouScore: 'Score',
+            msgEndGameScore: 'end',
+            msgOnlySaveScore: 'only',
+            msgSaveAuto: 'auto',
+            msgPlaySeveralTimes: 'again',
+            msgActityComply: 'ok',
+            msgYouLastScore: 'last',
+            msgScoreScorm: 'scorm',
+          },
+        },
+        flags
+      );
+      const container = document.createElement('div');
+      container.id = 'game-main';
+      container.className = 'idevice_node';
+      document.body.appendChild(container);
+
+      getScorm().sendScoreNew(auto, game);
+
+      expect(registry.register).toHaveBeenCalledWith('id-1', expect.objectContaining({ completed: expected }));
+      container.remove();
+      window.alert = originalAlert;
+    });
+
+    it('showFinalScore delegates score and status to the SCORM 1.2 runtime', () => {
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+
+      getScorm().showFinalScore({ 1: { title: 'Q', score: 90, weighted: 1 } }, game);
+
+      expect(policy.setScoreDetailed).toHaveBeenCalledWith(90, 0, 100);
+      expect(policy.recordActivityOutcome).toHaveBeenCalledWith(90);
+      // Nothing is written behind the runtime's back.
+      expect(set).not.toHaveBeenCalledWith('cmi.core.score.raw', expect.anything());
+      expect(set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
+    });
+
+    it.each([
+      [90, 'passed'],
+      [10, 'failed'],
+    ])('showFinalScore keeps the legacy path for a score of %d without the runtime', (score, expected) => {
+      delete window.exeScorm12;
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+
+      getScorm().showFinalScore({ 1: { title: 'Q', score, weighted: 1 } }, game);
+
+      expect(set).toHaveBeenCalledWith('cmi.core.score.raw', score);
+      expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
+    });
+  });
+
   describe('gamification.media', () => {
     const getMedia = () => global.$exeDevices.iDevice.gamification.media;
 

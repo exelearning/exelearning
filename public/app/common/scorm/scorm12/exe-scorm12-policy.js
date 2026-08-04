@@ -1,19 +1,25 @@
 /**
  * eXeLearning SCORM 1.2 runtime — completion policy layer.
  *
- * eXeLearning-specific status and score policy for SCORM 1.2 packages, on top
- * of the client layer (exe-scorm12-client.js). SCORM 1.2 only:
- * cmi.core.lesson_status is the single status element — there is no
- * completion/success separation in this layer.
+ * Turns the activity registry's summary (exe-scorm12-activities.js) into
+ * SCORM 1.2 data model writes through the client layer
+ * (exe-scorm12-client.js). SCORM 1.2 has a single status element,
+ * cmi.core.lesson_status, so this layer is where eXeLearning's separate
+ * notions of *completion* and *success* collapse onto one vocabulary.
  *
- * Policy (see doc/development/scorm12-runtime-contract.md and ADR-0001):
- * - Entry: an empty or "not attempted" status becomes "incomplete";
- *   any other stored status is preserved — a status is never downgraded.
- * - Exit: when the page recorded no terminal status ("completed", "passed",
- *   "failed"), a page without scored activities is marked "completed" by
- *   viewing it, a page with scored activities is marked "incomplete".
- *   cmi.core.exit is "suspend" while the attempt is resumable and "" once a
- *   terminal status is recorded.
+ * Which rules come from where:
+ *
+ * - SCORM 1.2 requirement: the lesson_status vocabulary; the LMS refuses
+ *   "not attempted" from a SCO ([CR] 1.6.5); cmi.core.score.raw is mandatory
+ *   while .min/.max are optional ([CR] §2.1.1.3a); cmi.core.exit is
+ *   "suspend" for a resumable attempt.
+ * - eXeLearning policy: an empty/"not attempted" status becomes "incomplete"
+ *   on entry; a page with no required evaluable activity is "completed" by
+ *   being viewed; the success threshold and its default; presentation-only
+ *   activities never block completion; scores are validated to 0-100 before
+ *   being sent.
+ *
+ * Both are spelled out in doc/development/scorm12-runtime-contract.md.
  *
  * Copyright (C) 2026 The eXeLearning project contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -32,7 +38,12 @@
 
     var LESSON_STATUS = 'cmi.core.lesson_status';
     var LESSON_MODE = 'cmi.core.lesson_mode';
+    var MASTERY_SCORE = 'cmi.student_data.mastery_score';
     var EXIT = 'cmi.core.exit';
+    var SCORE_RAW = 'cmi.core.score.raw';
+    var SCORE_MIN = 'cmi.core.score.min';
+    var SCORE_MAX = 'cmi.core.score.max';
+    var SUSPEND_DATA = 'cmi.suspend_data';
 
     // SCORM 1.2 cmi.core.lesson_status vocabulary.
     var STATUS = {
@@ -51,12 +62,34 @@
         STATUS.BROWSED,
         STATUS.NOT_ATTEMPTED,
     ];
+    /**
+     * The subset a SCO may write. "not attempted" is LMS-only: SCORM 1.2
+     * requires the LMS to reject it from a SCO, so sending it would be an
+     * invalid call, not a downgrade.
+     */
+    var WRITABLE_STATUSES = [
+        STATUS.PASSED,
+        STATUS.COMPLETED,
+        STATUS.FAILED,
+        STATUS.INCOMPLETE,
+        STATUS.BROWSED,
+    ];
     // Statuses that end the attempt: never overwritten by this policy.
     var TERMINAL_STATUSES = [STATUS.PASSED, STATUS.COMPLETED, STATUS.FAILED];
+
+    /**
+     * eXeLearning default success threshold, as a percentage of the aggregate
+     * score. Used when the LMS publishes no cmi.student_data.mastery_score.
+     * Matches the threshold eXeLearning game iDevices have always applied.
+     */
+    var DEFAULT_SUCCESS_THRESHOLD = 50;
 
     var defaultDeps = {
         getClient: function () {
             return global.exeScorm12 && global.exeScorm12.client;
+        },
+        getActivities: function () {
+            return global.exeScorm12 && global.exeScorm12.activities;
         },
         warn: function (message) {
             if (global.console && global.console.warn) {
@@ -67,9 +100,17 @@
 
     var deps = defaultDeps;
 
-    var state = {
-        hasScoredActivities: false,
-    };
+    function initialState() {
+        return {
+            // Fallback signal for pages whose iDevices do not register with
+            // the activity registry (previously the only completion input).
+            pageHasScoredActivities: false,
+            successThreshold: DEFAULT_SUCCESS_THRESHOLD,
+            thresholdResolved: false,
+        };
+    }
+
+    var state = initialState();
 
     /**
      * Coerce a score input to a finite number, accepting numeric strings.
@@ -91,15 +132,43 @@
     /**
      * Write a validated status value to cmi.core.lesson_status.
      *
-     * @param {string} status - A valid SCORM 1.2 lesson_status value.
+     * @param {string} status - A SCO-writable SCORM 1.2 lesson_status value.
      * @returns {boolean} True when the LMS accepted the value.
      */
     function writeStatus(status) {
         return deps.getClient().setValue(LESSON_STATUS, status);
     }
 
+    /**
+     * Aggregate the registry, falling back to the page-level scored-activities
+     * flag when no iDevice registered.
+     *
+     * @returns {{hasRequired: boolean, allRequiredComplete: boolean,
+     * score: number|null, source: string}} The completion inputs.
+     */
+    function completionInputs() {
+        var activities = deps.getActivities();
+        var summary = activities ? activities.summary() : null;
+        if (summary && summary.total > 0) {
+            return {
+                hasRequired: summary.hasRequired,
+                allRequiredComplete: summary.allRequiredComplete,
+                score: summary.score,
+                source: 'registry',
+            };
+        }
+        return {
+            hasRequired: state.pageHasScoredActivities,
+            // Nothing reported progress, so a scored page cannot be complete.
+            allRequiredComplete: !state.pageHasScoredActivities,
+            score: null,
+            source: 'page-flag',
+        };
+    }
+
     var policy = {
         STATUS: STATUS,
+        DEFAULT_SUCCESS_THRESHOLD: DEFAULT_SUCCESS_THRESHOLD,
 
         /**
          * Override dependencies (tests only).
@@ -119,7 +188,7 @@
         /** Restore default dependencies and reset state (tests only). */
         resetDependencies: function () {
             deps = defaultDeps;
-            state.hasScoredActivities = false;
+            state = initialState();
         },
 
         /**
@@ -128,6 +197,14 @@
          */
         isValidStatus: function (status) {
             return VALID_STATUSES.indexOf(status) !== -1;
+        },
+
+        /**
+         * @param {string} status - Candidate status value.
+         * @returns {boolean} True when a SCO is allowed to write the value.
+         */
+        isWritableStatus: function (status) {
+            return WRITABLE_STATUSES.indexOf(status) !== -1;
         },
 
         /**
@@ -141,60 +218,219 @@
         /**
          * Entry policy, applied once after LMSInitialize: promote an empty or
          * "not attempted" status to "incomplete" (the learner is attempting
-         * the SCO now); preserve every other stored status.
+         * the SCO now); preserve every other stored status. Restores the
+         * activity registry from cmi.suspend_data and adopts the LMS mastery
+         * score as the success threshold when the LMS publishes one.
          */
         applyEntryPolicy: function () {
-            var status = deps.getClient().getValue(LESSON_STATUS);
+            var client = deps.getClient();
+            var status = client.getValue(LESSON_STATUS);
             if (status === '' || status === STATUS.NOT_ATTEMPTED) {
                 writeStatus(STATUS.INCOMPLETE);
+            }
+            policy.resolveSuccessThreshold();
+            var activities = deps.getActivities();
+            if (activities) {
+                activities.load(client.getValue(SUSPEND_DATA));
             }
         },
 
         /**
+         * Adopt cmi.student_data.mastery_score as the success threshold when
+         * the LMS publishes one. The element is optional in SCORM 1.2, so a
+         * minimal LMS answering "not implemented" simply leaves the
+         * eXeLearning default in place — that is not an error.
+         *
+         * @returns {number|null} The threshold now in force.
+         */
+        resolveSuccessThreshold: function () {
+            state.thresholdResolved = true;
+            var mastery = toFiniteNumber(deps.getClient().getOptionalValue(MASTERY_SCORE).value);
+            if (mastery !== null && mastery >= 0 && mastery <= 100) {
+                state.successThreshold = mastery;
+            }
+            return state.successThreshold;
+        },
+
+        /**
+         * Override the success threshold.
+         *
+         * @param {number|null} threshold - Percentage in 0-100, or null to
+         * drop the pass/fail distinction (completion only).
+         */
+        setSuccessThreshold: function (threshold) {
+            if (threshold === null) {
+                state.successThreshold = null;
+                return;
+            }
+            var numeric = toFiniteNumber(threshold);
+            if (numeric === null || numeric < 0 || numeric > 100) {
+                deps.warn('[exe-scorm12] Ignored an out-of-range success threshold (expected 0-100 or null).');
+                return;
+            }
+            state.successThreshold = numeric;
+        },
+
+        /** @returns {number|null} The success threshold currently in force. */
+        getSuccessThreshold: function () {
+            return state.successThreshold;
+        },
+
+        /**
          * Record whether the current page contains activities that save a
-         * SCORM score. Drives the exit completion policy.
+         * SCORM score. Fallback signal for pages whose iDevices never register
+         * with the activity registry.
          *
          * @param {boolean} hasScoredActivities - True when at least one
          * activity on the page reports SCORM score saving.
          */
         setHasScoredActivities: function (hasScoredActivities) {
-            state.hasScoredActivities = hasScoredActivities === true;
+            state.pageHasScoredActivities = hasScoredActivities === true;
         },
 
         /** @returns {boolean} Current scored-activities flag (tests). */
         getHasScoredActivities: function () {
-            return state.hasScoredActivities;
+            return state.pageHasScoredActivities;
+        },
+
+        /**
+         * Decide the lesson status the page has earned, from the activity
+         * registry alone (no LMS traffic). eXeLearning policy:
+         *
+         * | Registry state                                     | Status     |
+         * |----------------------------------------------------|------------|
+         * | no required evaluable activity                      | completed  |
+         * | at least one required activity still incomplete     | incomplete |
+         * | all required complete, no threshold in force        | completed  |
+         * | all required complete, aggregate >= threshold       | passed     |
+         * | all required complete, aggregate < threshold        | failed     |
+         *
+         * Presentation-only and exploration activities register with
+         * `completionRequired: false`, so they never hold a page at
+         * "incomplete" — they are not evaluable and nothing is inferred from
+         * whether they happen to expose a game-over state.
+         *
+         * @param {number} [aggregateScore] - Aggregate score, 0-100, when the
+         * caller computes its own. The gamification helper in common.js does,
+         * because published packages depend on its historical weighting
+         * algorithm; passing it here keeps the recorded score and the status
+         * decision from ever disagreeing.
+         * @returns {{status: string, reason: string, score: number|null}} The
+         * decision and why it was taken.
+         */
+        decideStatus: function (aggregateScore) {
+            var inputs = completionInputs();
+            var score = aggregateScore === undefined ? inputs.score : toFiniteNumber(aggregateScore);
+            if (!inputs.hasRequired) {
+                return { status: STATUS.COMPLETED, reason: 'no-required-activities', score: score };
+            }
+            if (!inputs.allRequiredComplete) {
+                return { status: STATUS.INCOMPLETE, reason: 'required-activities-pending', score: score };
+            }
+            var threshold = state.successThreshold;
+            if (threshold === null || score === null) {
+                return { status: STATUS.COMPLETED, reason: 'no-success-threshold', score: score };
+            }
+            return {
+                status: score >= threshold ? STATUS.PASSED : STATUS.FAILED,
+                reason: 'threshold-evaluated',
+                score: score,
+            };
+        },
+
+        /**
+         * Re-evaluate the status during the session, after activity progress
+         * changed.
+         *
+         * Unlike the exit policy this may move between terminal statuses — a
+         * learner who retries a failed activity and passes must end up
+         * "passed" — but it never replaces a terminal status with a
+         * non-terminal one, so progress is never erased.
+         *
+         * @param {number} [aggregateScore] - See decideStatus.
+         * @returns {{status: string, written: boolean, reason: string}} What
+         * happened.
+         */
+        recordActivityOutcome: function (aggregateScore) {
+            var current = deps.getClient().getValue(LESSON_STATUS);
+            var decision = policy.decideStatus(aggregateScore);
+            if (policy.isTerminalStatus(current) && !policy.isTerminalStatus(decision.status)) {
+                return { status: current, written: false, reason: 'terminal-status-preserved' };
+            }
+            if (decision.status === current) {
+                return { status: current, written: true, reason: decision.reason };
+            }
+            return { status: decision.status, written: writeStatus(decision.status), reason: decision.reason };
+        },
+
+        /**
+         * Apply the decided status to cmi.core.lesson_status, unless a
+         * terminal status is already recorded (a status is never downgraded).
+         *
+         * @returns {{status: string, written: boolean, reason: string}} What
+         * happened.
+         */
+        applyDecidedStatus: function (aggregateScore) {
+            var current = deps.getClient().getValue(LESSON_STATUS);
+            if (policy.isTerminalStatus(current)) {
+                return { status: current, written: false, reason: 'terminal-status-preserved' };
+            }
+            var decision = policy.decideStatus(aggregateScore);
+            var written = decision.status === current ? true : writeStatus(decision.status);
+            return { status: decision.status, written: written, reason: decision.reason };
+        },
+
+        /**
+         * Persist the activity registry into cmi.suspend_data.
+         *
+         * @returns {boolean} True when the LMS accepted the value (also true
+         * when there is nothing to persist).
+         */
+        persistActivities: function () {
+            var activities = deps.getActivities();
+            if (!activities || activities.list().length === 0) {
+                return true;
+            }
+            return deps.getClient().setValue(SUSPEND_DATA, activities.serialize());
         },
 
         /**
          * Exit policy, applied once when the session ends.
          *
          * With the completion rule (unloadPage and the pagehide safety net —
-         * the legacy unload sites): when no terminal status was recorded, a
-         * page without scored activities is marked "completed" by viewing
-         * it and a page with scored activities stays "incomplete". Without
-         * it (doQuit/doBack/doContinue/scorm.quit — legacy parity), the
-         * stored status is left untouched.
+         * the legacy unload sites), the status decided from the activity
+         * registry is written unless a terminal status is already recorded.
+         * Without it (doQuit/doBack/doContinue/scorm.quit — legacy parity),
+         * the stored status is left untouched.
          *
          * In both cases cmi.core.exit is then set to "" (normal end) for a
          * terminal status or "suspend" (resumable attempt) otherwise.
          *
          * @param {boolean} [applyCompletionRule] - Apply the completion rule
          * (default true).
+         * @returns {{status: string, exit: string}} What was recorded.
          */
         applyExitPolicy: function (applyCompletionRule) {
             var client = deps.getClient();
-            var status = client.getValue(LESSON_STATUS);
-            if (applyCompletionRule !== false && !policy.isTerminalStatus(status)) {
-                status = state.hasScoredActivities ? STATUS.INCOMPLETE : STATUS.COMPLETED;
-                writeStatus(status);
+            policy.persistActivities();
+            var status;
+            if (applyCompletionRule !== false) {
+                status = policy.applyDecidedStatus().status;
+            } else {
+                status = client.getValue(LESSON_STATUS);
             }
-            client.setValue(EXIT, policy.isTerminalStatus(status) ? '' : 'suspend');
+            var exit = policy.isTerminalStatus(status) ? '' : 'suspend';
+            client.setValue(EXIT, exit);
+            return { status: status, exit: exit };
         },
 
         /**
          * Legacy doContinue(status) semantics: outside review/browse mode,
-         * store the given status when it is valid SCORM 1.2 vocabulary.
+         * store the given status when a SCO may write it.
+         *
+         * Suppressing the write in review/browse mode is eXeLearning policy,
+         * not a SCORM 1.2 rule — the specification only makes the LMS ignore
+         * status changes when cmi.core.credit is "no-credit".
          *
          * @param {string} status - Requested lesson_status value.
          * @returns {boolean} True when a status was written.
@@ -205,7 +441,7 @@
             if (mode === 'review' || mode === 'browse') {
                 return false;
             }
-            if (!policy.isValidStatus(status)) {
+            if (!policy.isWritableStatus(status)) {
                 deps.warn("[exe-scorm12] Ignored invalid lesson_status value '" + status + "'.");
                 return false;
             }
@@ -233,10 +469,133 @@
         },
 
         /**
-         * Write the score to cmi.core.score.raw (and .min/.max when given) as
-         * strings. SCORM 1.2 constrains raw/min/max to the 0-100 CMIDecimal
-         * range; invalid or inconsistent input is rejected and nothing is
-         * written.
+         * Validate a raw/min/max score triplet without writing anything.
+         *
+         * SCORM 1.2 constrains all three to the 0-100 CMIDecimal range.
+         * Requiring min <= raw <= max on top of that is eXeLearning policy: an
+         * inconsistent triplet is a content bug, and sending it would record a
+         * meaningless score.
+         *
+         * @param {number|string} raw - Raw score.
+         * @param {number|string} [min] - Minimum score.
+         * @param {number|string} [max] - Maximum score.
+         * @returns {{valid: boolean, raw: number|null, min: number|null,
+         * max: number|null, problem: string|null}} The validation result.
+         */
+        validateScore: function (raw, min, max) {
+            var rawNumber = toFiniteNumber(raw);
+            var minGiven = min !== undefined && min !== null;
+            var maxGiven = max !== undefined && max !== null;
+            var minNumber = minGiven ? toFiniteNumber(min) : null;
+            var maxNumber = maxGiven ? toFiniteNumber(max) : null;
+            var problem = null;
+            if (rawNumber === null) {
+                problem = 'raw-not-numeric';
+            } else if (rawNumber < 0 || rawNumber > 100) {
+                problem = 'raw-out-of-range';
+            } else if (minGiven && minNumber === null) {
+                problem = 'min-not-numeric';
+            } else if (maxGiven && maxNumber === null) {
+                problem = 'max-not-numeric';
+            } else if (minNumber !== null && (minNumber < 0 || minNumber > 100)) {
+                problem = 'min-out-of-range';
+            } else if (maxNumber !== null && (maxNumber < 0 || maxNumber > 100)) {
+                problem = 'max-out-of-range';
+            } else if (minNumber !== null && minNumber > rawNumber) {
+                // min > raw and max < raw together cover min > max, because
+                // reaching this point already implies min <= raw <= max.
+                problem = 'min-above-raw';
+            } else if (maxNumber !== null && maxNumber < rawNumber) {
+                problem = 'max-below-raw';
+            }
+            return {
+                valid: problem === null,
+                raw: rawNumber,
+                min: minNumber,
+                max: maxNumber,
+                problem: problem,
+            };
+        },
+
+        /**
+         * Write the score to cmi.core.score.raw (and .min/.max when given).
+         *
+         * cmi.core.score.raw is mandatory in SCORM 1.2 while .min and .max are
+         * optional, so an LMS may accept the raw score and answer "not
+         * implemented" (401) for the bounds. That must not be reported as a
+         * failed score write, and it must not stop the caller from committing
+         * a score the LMS did record.
+         *
+         * @param {number|string} raw - Raw score, 0-100.
+         * @param {number|string} [min] - Minimum score, 0-100.
+         * @param {number|string} [max] - Maximum score, 0-100.
+         * @returns {{valid: boolean, problem: string|null,
+         * required: {element: string, attempted: boolean, written: boolean,
+         *            errorCode: number}|null,
+         * optional: Array<{element: string, written: boolean,
+         *                  unsupported: boolean, errorCode: number}>,
+         * requiredWritten: boolean, optionalFailures: string[],
+         * ok: boolean}} Structured outcome. `ok` is the legacy boolean: every
+         * attempted write succeeded.
+         */
+        setScoreDetailed: function (raw, min, max) {
+            var client = deps.getClient();
+            var validation = policy.validateScore(raw, min, max);
+            var result = {
+                valid: validation.valid,
+                problem: validation.problem,
+                required: null,
+                optional: [],
+                requiredWritten: false,
+                optionalFailures: [],
+                ok: false,
+            };
+            if (!validation.valid) {
+                deps.warn('[exe-scorm12] Ignored invalid score (raw/min/max must be numbers within 0-100).');
+                return result;
+            }
+            var rawWrite = client.setValueDetailed(SCORE_RAW, String(validation.raw));
+            result.required = {
+                element: SCORE_RAW,
+                attempted: true,
+                written: rawWrite.success,
+                errorCode: rawWrite.errorCode,
+            };
+            result.requiredWritten = rawWrite.success;
+
+            var bounds = [
+                { element: SCORE_MIN, value: validation.min },
+                { element: SCORE_MAX, value: validation.max },
+            ];
+            for (var index = 0; index < bounds.length; index += 1) {
+                if (bounds[index].value === null) {
+                    continue;
+                }
+                var write = client.setValueDetailed(bounds[index].element, String(bounds[index].value));
+                var unsupported = !write.success && write.errorCode === 401;
+                result.optional.push({
+                    element: bounds[index].element,
+                    written: write.success,
+                    unsupported: unsupported,
+                    errorCode: write.errorCode,
+                });
+                if (!write.success) {
+                    result.optionalFailures.push(bounds[index].element);
+                }
+            }
+            result.ok =
+                result.requiredWritten &&
+                result.optional.every(function (entry) {
+                    return entry.written;
+                });
+            return result;
+        },
+
+        /**
+         * Write the score, reporting only whether every attempted element was
+         * accepted. Kept for the documented boolean contract; callers that
+         * need to know whether the *required* raw score landed should use
+         * setScoreDetailed().
          *
          * @param {number|string} raw - Raw score, 0-100.
          * @param {number|string} [min] - Minimum score, 0-100.
@@ -244,31 +603,7 @@
          * @returns {boolean} True when every provided element was accepted.
          */
         setScore: function (raw, min, max) {
-            var client = deps.getClient();
-            var rawNumber = toFiniteNumber(raw);
-            var minNumber = min === undefined || min === null ? null : toFiniteNumber(min);
-            var maxNumber = max === undefined || max === null ? null : toFiniteNumber(max);
-            var rejected =
-                rawNumber === null ||
-                rawNumber < 0 ||
-                rawNumber > 100 ||
-                (min !== undefined && min !== null && minNumber === null) ||
-                (max !== undefined && max !== null && maxNumber === null) ||
-                (minNumber !== null && (minNumber < 0 || minNumber > 100 || minNumber > rawNumber)) ||
-                (maxNumber !== null && (maxNumber < 0 || maxNumber > 100 || maxNumber < rawNumber)) ||
-                (minNumber !== null && maxNumber !== null && minNumber > maxNumber);
-            if (rejected) {
-                deps.warn('[exe-scorm12] Ignored invalid score (raw/min/max must be numbers within 0-100).');
-                return false;
-            }
-            var success = client.setValue('cmi.core.score.raw', String(rawNumber));
-            if (minNumber !== null) {
-                success = client.setValue('cmi.core.score.min', String(minNumber)) && success;
-            }
-            if (maxNumber !== null) {
-                success = client.setValue('cmi.core.score.max', String(maxNumber)) && success;
-            }
-            return success;
+            return policy.setScoreDetailed(raw, min, max).ok;
         },
     };
 

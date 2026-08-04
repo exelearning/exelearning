@@ -418,7 +418,7 @@ var $eXeDesafio = {
 
         $eXeDesafio.removeEvents(instance);
 
-        $(window).on('unload.eXeChallenger beforeunload.eXeChallenger', () => {
+        $(window).on('pagehide.eXeChallenger', () => {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeDesafio.saveDataStorage(instance);
                 $exeDevices.iDevice.gamification.scorm.endScorm(
@@ -589,7 +589,7 @@ var $eXeDesafio = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXeChallenger beforeunload.eXeChallenger');
+        $(window).off('pagehide.eXeChallenger');
         $(`#desafioLinkMaximize-${instance}`).off('click touchstart');
         $(`#desafioLinkMinimize-${instance}`).off('click touchstart');
         $(`#desafioSolution-${instance}`).off('keydown');

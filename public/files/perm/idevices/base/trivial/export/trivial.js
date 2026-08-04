@@ -2065,7 +2065,7 @@ var $eXeTrivial = {
 
         mOptions.respuesta = '';
 
-        $(window).on('unload.eXeTrivial beforeunload.eXeTrivial', function () {
+        $(window).on('pagehide.eXeTrivial', function () {
             $eXeTrivial.sendScore(true, instance);
             $exeDevices.iDevice.gamification.scorm.endScorm($eXeTrivial.mScorm);
         });
@@ -2442,7 +2442,7 @@ var $eXeTrivial = {
             .find('input')
             .eq(0)
             .focus();
-        $(window).on('unload.eXeTrivial beforeunload.eXeTrivial', function () {
+        $(window).on('pagehide.eXeTrivial', function () {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeTrivial.saveDataStorage(instance);
             }

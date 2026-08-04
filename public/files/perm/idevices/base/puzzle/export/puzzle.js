@@ -1038,7 +1038,7 @@ var $eXePuzzle = {
         $('#pzlImagePuzzle-' + instance).off('click', '.PZLP-NextPuzzle');
         $('#pzlImagePuzzle-' + instance).off('click', '.PZLP-RepeatPuzzle');
 
-        $(window).off('unload.eXePuzzle beforeunload.eXePuzzle');
+        $(window).off('pagehide.eXePuzzle');
 
         let container = document.getElementById('pzlGameContainer-' + instance);
         if (container && mOptions.resizeObserver) {
@@ -1139,7 +1139,7 @@ var $eXePuzzle = {
 
         $('#pzlPNumber-' + instance).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXePuzzle beforeunload.eXePuzzle', function () {
+        $(window).on('pagehide.eXePuzzle', function () {
             if (typeof $eXePuzzle.mScorm != 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
                     $eXePuzzle.mScorm

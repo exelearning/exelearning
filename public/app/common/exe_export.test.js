@@ -343,7 +343,7 @@ describe('exe_export.js', () => {
     intervalSpy.mockRestore();
   });
 
-  it('detects scorm data in idevices and wires unload handler', () => {
+  it('detects scorm data in idevices and wires the legacy pagehide handler', () => {
     window.scorm = {};
     window.loadPage = vi.fn();
     window.unloadPage = vi.fn();
@@ -369,9 +369,35 @@ describe('exe_export.js', () => {
     document.body.append(jsNode, jsonNode);
 
     window.$exeExport.initScorm();
-    window.dispatchEvent(new Event('unload'));
+    window.dispatchEvent(new Event('pagehide'));
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
+    expect(window.unloadPage).toHaveBeenCalledWith(true);
+  });
+
+  it('the legacy pagehide bridge stands down when the page enters the back/forward cache', () => {
+    window.scorm = {};
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
+
+    const jsonNode = document.createElement('div');
+    jsonNode.className = 'idevice_node';
+    jsonNode.setAttribute('data-idevice-component-type', 'json');
+    jsonNode.setAttribute('data-idevice-type', 'json-idevice');
+    jsonNode.setAttribute('data-idevice-json-data', JSON.stringify({ isScorm: 1 }));
+    document.body.appendChild(jsonNode);
+
+    window.$exeExport.initScorm();
+
+    // A frozen page may be restored intact: ending the LMS session then would
+    // close an attempt the learner has not left.
+    const frozen = new Event('pagehide');
+    Object.defineProperty(frozen, 'persisted', { value: true });
+    window.dispatchEvent(frozen);
+    expect(window.unloadPage).not.toHaveBeenCalled();
+
+    // A real teardown still ends it.
+    window.dispatchEvent(new Event('pagehide'));
     expect(window.unloadPage).toHaveBeenCalledWith(true);
   });
 
@@ -389,7 +415,7 @@ describe('exe_export.js', () => {
     document.body.appendChild(jsonNode);
 
     window.$exeExport.initScorm();
-    window.dispatchEvent(new Event('unload'));
+    window.dispatchEvent(new Event('pagehide'));
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
     expect(window.unloadPage).toHaveBeenCalledWith(true);
@@ -414,8 +440,11 @@ describe('exe_export.js', () => {
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
     expect(window.exeScorm12.setPageHasScoredActivities).toHaveBeenCalledWith(true);
-    // The new runtime owns end-of-session handling: no unload listener.
+    // The new runtime owns end-of-session handling: exe_export.js wires
+    // neither the legacy pagehide bridge nor any unload-family listener.
     expect(addEventListenerSpy).not.toHaveBeenCalledWith('unload', expect.any(Function));
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('beforeunload', expect.any(Function));
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('pagehide', expect.any(Function));
 
     addEventListenerSpy.mockRestore();
     delete window.exeScorm12;
@@ -1170,7 +1199,7 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsonNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
+      window.dispatchEvent(new Event('pagehide'));
 
       expect(window.unloadPage).toHaveBeenCalledWith(false);
     });
@@ -1188,7 +1217,7 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
+      window.dispatchEvent(new Event('pagehide'));
 
       expect(window.unloadPage).toHaveBeenCalledWith(false);
     });
@@ -1206,7 +1235,7 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
+      window.dispatchEvent(new Event('pagehide'));
 
       expect(window.unloadPage).toHaveBeenCalledWith(false);
     });

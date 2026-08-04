@@ -422,7 +422,7 @@ var $eXeIdentifica = {
             $startGameButton = $(`#idfStartGame-${instance}`);
 
         $(window).on(
-            'unload.eXeIdentifica beforeunload.eXeIdentifica',
+            'pagehide.eXeIdentifica',
             function () {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
                     $eXeIdentifica.mScorm
@@ -610,7 +610,7 @@ var $eXeIdentifica = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXeIdentifica beforeunload.eXeIdentifica');
+        $(window).off('pagehide.eXeIdentifica');
 
         $(`#idfLinkMaximize-${instance}`).off('click touchstart');
         $(`#idfLinkMinimize-${instance}`).off('click touchstart');

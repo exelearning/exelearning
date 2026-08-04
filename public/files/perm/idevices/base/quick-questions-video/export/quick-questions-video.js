@@ -666,7 +666,7 @@ var $quickquestionsvideo = {
         const mOptions = $quickquestionsvideo.options[instance];
         $quickquestionsvideo.removeEvents(instance);
         $(window).on(
-            'unload.eXeVideoQuext beforeunload.eXeVideoQuext',
+            'pagehide.eXeVideoQuext',
             function () {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
                     $quickquestionsvideo.mScorm
@@ -1017,7 +1017,7 @@ var $quickquestionsvideo = {
         $(`#vquextModeBoardOK-${instance}, #vquextModeBoardKO-${instance}`).off(
             'click'
         );
-        $(window).off('unload.eXeVideoQuext beforeunload.eXeVideoQuext');
+        $(window).off('pagehide.eXeVideoQuext');
     },
 
     goEnd: function (instance, time) {

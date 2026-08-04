@@ -4,7 +4,7 @@
  * The only file in the SCORM 1.2 runtime that creates globals. It defines
  * exactly the public contract recorded in
  * doc/development/scorm12-runtime-contract.md and delegates everything to the
- * client/policy/lifecycle layers:
+ * client/activities/policy/lifecycle layers:
  *
  * - Page lifecycle globals called by exported pages and legacy content:
  *   loadPage, unloadPage, doQuit, doContinue, doBack, startTimer,
@@ -13,6 +13,19 @@
  * - Additive extension methods on pipwerks.SCORM (verified callers invoke
  *   them on the pipwerks object directly). The vendored wrapper file itself
  *   is never modified.
+ * - A wrap of the wrapper's own termination entry points, so legacy content
+ *   calling pipwerks.SCORM.quit() reaches the central lifecycle instead of
+ *   closing the session behind the state machine's back.
+ *
+ * Compatibility methods fall into four documented kinds, marked per method
+ * below and tabulated in the runtime contract:
+ *
+ *   LMS call        — a legal SCORM 1.2 data model operation.
+ *   local cache     — answered from what this runtime last wrote, because the
+ *                     element is write-only and reading it would be error 404.
+ *   no-op           — the element is read-only, or the concept does not exist
+ *                     in SCORM 1.2; the method stays callable and reports.
+ *   central         — routed through the lifecycle layer.
  *
  * Copyright (C) 2026 The eXeLearning project contributors
  * SPDX-License-Identifier: AGPL-3.0-or-later
@@ -32,7 +45,14 @@
     var exeScorm12 = global.exeScorm12;
     var pipwerks = global.pipwerks;
 
-    if (!exeScorm12 || !exeScorm12.client || !exeScorm12.policy || !exeScorm12.lifecycle || !pipwerks) {
+    if (
+        !exeScorm12 ||
+        !exeScorm12.client ||
+        !exeScorm12.activities ||
+        !exeScorm12.policy ||
+        !exeScorm12.lifecycle ||
+        !pipwerks
+    ) {
         if (global.console && global.console.error) {
             global.console.error(
                 '[exe-scorm12] Runtime layers or the pipwerks wrapper are missing; SCORM tracking is disabled.',
@@ -42,6 +62,7 @@
     }
 
     var client = exeScorm12.client;
+    var activities = exeScorm12.activities;
     var policy = exeScorm12.policy;
     var lifecycle = exeScorm12.lifecycle;
 
@@ -64,7 +85,9 @@
 
     /**
      * Record whether the current page contains SCORM score-saving activities.
-     * Called by exe_export.js instead of registering an unload handler.
+     * Called by exe_export.js instead of registering an unload handler. This
+     * is the fallback completion signal for pages whose iDevices do not
+     * register with the activity registry.
      *
      * @param {boolean} hasScoredActivities - Flag computed from the page's
      * iDevices.
@@ -125,7 +148,7 @@
         lifecycle.finish(false);
     };
 
-    /** (Re)start the session-time clock. */
+    /** (Re)start the session-time clock, dropping the time already counted. */
     global.startTimer = function () {
         client.markSessionStart();
     };
@@ -163,12 +186,16 @@
     /**
      * Write the score and commit. Keeps the legacy fallback argument order.
      *
+     * Commits whenever the *required* cmi.core.score.raw was accepted, even
+     * when the LMS does not implement the optional bounds — a score the LMS
+     * recorded must not be lost because an optional element is missing.
+     *
      * @param {number|string} score - Raw score (0-100).
      * @param {number|string} [maxScore] - Maximum score.
      * @param {number|string} [minScore] - Minimum score.
      */
     global.setScore = function (score, maxScore, minScore) {
-        if (policy.setScore(score, minScore, maxScore)) {
+        if (policy.setScoreDetailed(score, minScore, maxScore).requiredWritten) {
             client.commit();
         }
     };
@@ -178,48 +205,57 @@
     // ------------------------------------------------------------------ //
 
     var extensions = {
-        /** @returns {boolean} Always true (legacy Flash handshake). */
+        /** no-op — always true (legacy Flash handshake). @returns {boolean} */
         isAvailable: function () {
             return true;
         },
-        /** @returns {string} cmi._version. */
+        /** LMS call. @returns {string} cmi._version. */
         GetDataModelVersion: function () {
             return client.getValue('cmi._version');
         },
-        /** @returns {string} cmi.core.lesson_status. */
+        /** LMS call. @returns {string} cmi.core.lesson_status. */
         GetCompletionStatus: function () {
             return client.getValue('cmi.core.lesson_status');
         },
         /**
-         * Write cmi.core.lesson_status. Only valid SCORM 1.2 vocabulary is
-         * accepted; in particular the SCORM 2004 value "unknown" is rejected
-         * instead of being downgraded to "not attempted" (the legacy
-         * behavior that erased progress).
+         * LMS call. Write cmi.core.lesson_status.
+         *
+         * Only values a SCO may write are forwarded: SCORM 1.2 requires the
+         * LMS to refuse "not attempted" from a SCO, and the SCORM 2004 value
+         * "unknown" is not 1.2 vocabulary at all (the legacy runtime mapped it
+         * to "not attempted", which erased progress).
          *
          * @param {string} status - lesson_status value.
          */
         SetCompletionStatus: function (status) {
-            if (policy.isValidStatus(status)) {
+            if (policy.isWritableStatus(status)) {
                 client.setValue('cmi.core.lesson_status', status);
             } else {
-                warn("SetCompletionStatus ignored invalid status '" + status + "'.");
+                warn("SetCompletionStatus ignored status '" + status + "' (not writable by a SCO in SCORM 1.2).");
             }
         },
         /**
-         * Legacy activity-completion helper (writes lesson_status in 1.2).
+         * LMS call. Legacy activity-completion helper (writes lesson_status
+         * in 1.2).
          *
          * @param {string} status - lesson_status value.
          */
         SetCompletionScormActivity: function (status) {
             extensions.SetCompletionStatus(status);
         },
-        /** @returns {string} cmi.core.exit (write-only in 1.2; LMS-dependent). */
+        /**
+         * local cache — cmi.core.exit is write-only in SCORM 1.2, so reading
+         * it from the LMS would be error 404. Returns what this runtime last
+         * wrote ('' when it never wrote one).
+         *
+         * @returns {string} The cached cmi.core.exit value.
+         */
         GetExit: function () {
-            return client.getValue('cmi.core.exit');
+            return client.getCachedValue('cmi.core.exit');
         },
         /**
-         * Write cmi.core.exit ("time-out", "suspend", "logout" or "";
-         * the SCORM 2004 value "normal" maps to "").
+         * LMS call. Write cmi.core.exit ("time-out", "suspend", "logout" or
+         * ""; the SCORM 2004 value "normal" maps to "").
          *
          * @param {string} exitValue - cmi.core.exit value.
          */
@@ -232,6 +268,11 @@
             }
         },
         /**
+         * local cache for interaction leaves — every cmi.interactions.n.*
+         * element is write-only in SCORM 1.2 (reading one is error 404), so
+         * the value comes from this runtime's write cache. The readable
+         * keywords (cmi.interactions._count / ._children) still reach the LMS.
+         *
          * @param {string} key - cmi.interactions element (1.2 notation).
          * @returns {string} The element value.
          */
@@ -239,81 +280,114 @@
             return client.getValue(key);
         },
         /**
+         * LMS call.
+         *
          * @param {string} key - cmi.interactions element (1.2 notation).
          * @param {string} value - Value to write.
          */
         SetInteractionValue: function (key, value) {
             client.setValue(key, value);
         },
-        /** @returns {string} cmi.core.student_id. */
+        /** LMS call. @returns {string} cmi.core.student_id. */
         GetLearnerId: function () {
             return client.getValue('cmi.core.student_id');
         },
-        /** @returns {string} cmi.core.student_name. */
+        /** LMS call. @returns {string} cmi.core.student_name. */
         GetLearnerName: function () {
             return client.getValue('cmi.core.student_name');
         },
-        /** @returns {string} cmi.core.lesson_mode. */
+        /**
+         * LMS call. cmi.core.lesson_mode is optional in SCORM 1.2; a SCO must
+         * assume "normal" when the LMS does not implement it.
+         *
+         * @returns {string} cmi.core.lesson_mode.
+         */
         GetMode: function () {
-            return client.getValue('cmi.core.lesson_mode');
+            var read = client.getOptionalValue('cmi.core.lesson_mode');
+            return read.supported && read.value !== '' ? read.value : 'normal';
         },
         /**
-         * Legacy mode setter (cmi.core.lesson_mode is read-only in SCORM 1.2;
-         * the LMS rejection is reported by the client layer).
+         * no-op — cmi.core.lesson_mode is read-only in SCORM 1.2, so the
+         * legacy setter can only ever have produced error 403. The method
+         * stays callable and reports instead of issuing an invalid call.
          *
          * @param {string} mode - "browse", "normal" or "review".
          */
         SetMode: function (mode) {
-            if (mode === 'browse' || mode === 'normal' || mode === 'review') {
-                client.setValue('cmi.core.lesson_mode', mode);
-            } else {
-                warn("SetMode ignored invalid mode '" + mode + "'.");
-            }
+            warn(
+                "SetMode('" +
+                    mode +
+                    "') is a no-op: cmi.core.lesson_mode is read-only in SCORM 1.2 and is set by the LMS.",
+            );
         },
-        /** @returns {string} cmi.core.score.max. */
+        /**
+         * LMS call. cmi.core.score.max is optional in SCORM 1.2.
+         *
+         * @returns {string} cmi.core.score.max ('' when unsupported).
+         */
         GetScoreMax: function () {
-            return client.getValue('cmi.core.score.max');
+            return client.getOptionalValue('cmi.core.score.max').value;
         },
-        /** @param {number|string} maxScore - cmi.core.score.max value. */
+        /**
+         * LMS call. @param {number|string} maxScore - cmi.core.score.max value.
+         * @returns {boolean} True when the LMS accepted it (false also means
+         * "optional element not implemented", which is not an error).
+         */
         SetScoreMax: function (maxScore) {
-            client.setValue('cmi.core.score.max', maxScore);
+            return client.setValue('cmi.core.score.max', maxScore);
         },
-        /** @returns {string} cmi.core.score.min. */
+        /**
+         * LMS call. cmi.core.score.min is optional in SCORM 1.2.
+         *
+         * @returns {string} cmi.core.score.min ('' when unsupported).
+         */
         GetScoreMin: function () {
-            return client.getValue('cmi.core.score.min');
+            return client.getOptionalValue('cmi.core.score.min').value;
         },
-        /** @param {number|string} minScore - cmi.core.score.min value. */
+        /**
+         * LMS call. @param {number|string} minScore - cmi.core.score.min value.
+         * @returns {boolean} True when the LMS accepted it.
+         */
         SetScoreMin: function (minScore) {
-            client.setValue('cmi.core.score.min', minScore);
+            return client.setValue('cmi.core.score.min', minScore);
         },
-        /** @returns {string} cmi.core.score.raw. */
+        /** LMS call. @returns {string} cmi.core.score.raw. */
         GetScoreRaw: function () {
             return client.getValue('cmi.core.score.raw');
         },
-        /** @param {number|string} score - cmi.core.score.raw value. */
+        /**
+         * LMS call. @param {number|string} score - cmi.core.score.raw value.
+         * @returns {boolean} True when the LMS accepted it.
+         */
         SetScoreRaw: function (score) {
-            client.setValue('cmi.core.score.raw', score);
+            return client.setValue('cmi.core.score.raw', score);
         },
-        /** SCORM 2004 concept; no scaled score exists in 1.2. */
+        /** no-op — SCORM 2004 concept; no scaled score exists in 1.2. */
         SetScoreScaled: function () {
             // Intentional no-op (parity with the legacy wrapper in 1.2).
         },
-        /** @returns {string} cmi.core.session_time (write-only in 1.2). */
+        /**
+         * local cache — cmi.core.session_time is write-only in SCORM 1.2, so
+         * reading it from the LMS would be error 404.
+         *
+         * @returns {string} The cached cmi.core.session_time value.
+         */
         GetSessionTime: function () {
-            return client.getValue('cmi.core.session_time');
+            return client.getCachedValue('cmi.core.session_time');
         },
-        /** @param {string} time - CMITimespan value (HHHH:MM:SS.SS). */
+        /** LMS call. @param {string} time - CMITimespan value (HHHH:MM:SS.SS). */
         SetSessionTime: function (time) {
             client.setValue('cmi.core.session_time', time);
         },
-        /** @returns {string} cmi.core.lesson_status (single status in 1.2). */
+        /** LMS call. @returns {string} cmi.core.lesson_status (single status in 1.2). */
         GetSuccessStatus: function () {
             return client.getValue('cmi.core.lesson_status');
         },
         /**
-         * Success/completion separation does not exist in SCORM 1.2;
-         * validated no-op for parity with the legacy wrapper (which never
-         * wrote success status in 1.2 either).
+         * no-op — success/completion separation does not exist in SCORM 1.2,
+         * where cmi.core.lesson_status is the single status element. Parity
+         * with the legacy wrapper, which never wrote a success status in 1.2
+         * either. Use SetCompletionStatus('passed'|'failed') to record success.
          *
          * @param {string} status - "passed", "failed" or "unknown".
          */
@@ -363,14 +437,17 @@
             return client.commit();
         },
         /**
-         * End the session (exit status + session time + commit + finish)
-         * without applying the completion rule (legacy parity). Idempotent.
+         * central — end the session through the lifecycle layer (exit status
+         * + session time + commit + finish) without applying the completion
+         * rule (legacy parity). Idempotent.
          *
          * @returns {boolean} True when the session ended (or already had).
          */
         quit: function () {
             return lifecycle.finish(false);
         },
+        /** The activity registry, so iDevices can report completion. */
+        activities: activities,
     };
 
     var name;
@@ -386,6 +463,19 @@
             pipwerks.SCORM[name] = extensions[name];
         }
     }
+
+    // Centralize termination: legacy content that calls the wrapper's own
+    // quit()/connection.terminate() must go through the lifecycle layer, so
+    // the session is finalized once and the state machine stays coherent.
+    // The untouched implementation is carried on the shim so the client layer
+    // can still reach the real LMSFinish exactly once (the vendored file
+    // itself is never modified — only this runtime object binding is).
+    var centralizedTerminate = function () {
+        return lifecycle.finish(false);
+    };
+    centralizedTerminate.exeScorm12Native = pipwerks.SCORM.connection.terminate;
+    pipwerks.SCORM.connection.terminate = centralizedTerminate;
+    pipwerks.SCORM.quit = centralizedTerminate;
 
     global.scorm = facade;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -905,7 +905,7 @@ var $eXeMathProblems = {
         });
 
         $('#mthpPNumber-' + instance).text(mOptions.numberQuestions);
-        $(window).on('unload', function () {
+        $(window).on('pagehide', function () {
             if (typeof $eXeMathProblems.mScorm != 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
                     $eXeMathProblems.mScorm
