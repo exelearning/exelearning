@@ -1,16 +1,16 @@
 ---
-id: ADR-0021
+id: ADR-2006-02
 title: "Single bounded ZIP-decompression guard for every server-side inflate"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2006
+legacy_id: ADR-0021
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: [2006]
   prs: [2007]
-  sdds: [SDD-0005]
-  adrs: [ADR-0020, ADR-0022, ADR-0023, ADR-0024]
+  changes: ["2006-backend-security-audit-hardening"]
+  adrs: [ADR-2006-01, ADR-2006-03, ADR-2006-04, ADR-2006-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,11 +18,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0021: Single bounded ZIP-decompression guard for every server-side inflate
-
-## Status
-
-Proposed
+# ADR-2006-02: Single bounded ZIP-decompression guard for every server-side inflate
 
 ## Context
 
@@ -155,14 +151,14 @@ limitation.
 
 - Evaluate a streaming decompressor that measures actual inflated bytes and
   aborts mid-entry, to also defeat under-declared bombs (Option 2). Tracked as
-  future work in SDD-0005.
+  future work in the change design.
 - Revisit the default caps if legitimate large-archive use cases appear.
 
 ## References
 
 - Issue #2006, PR #2007. Commit `eb775aabd`.
-- SDD-0005 — Backend Security Audit Hardening.
-- Sibling ADRs: ADR-0020, ADR-0022, ADR-0023, ADR-0024.
+- the change design — Backend Security Audit Hardening.
+- Sibling ADRs: ADR-2006-01, ADR-2006-03, ADR-2006-04, ADR-2006-05.
 - Code: `src/utils/safe-unzip.ts`, `src/shared/import/ElpxImporter.ts`,
   `src/services/admin-upload-validator.ts`, `src/services/zip.ts`,
   `src/services/folder-manager.ts`.

@@ -1,16 +1,16 @@
 ---
-id: ADR-0022
+id: ADR-2006-03
 title: "Database-backed project authorization; in-memory sessions never grant access and fail closed"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2006
+legacy_id: ADR-0022
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: [2006]
   prs: [2007]
-  sdds: [SDD-0005]
-  adrs: [ADR-0020, ADR-0021, ADR-0023, ADR-0024]
+  changes: ["2006-backend-security-audit-hardening"]
+  adrs: [ADR-2006-01, ADR-2006-02, ADR-2006-04, ADR-2006-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,11 +18,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0022: Database-backed project authorization; in-memory sessions never grant access and fail closed
-
-## Status
-
-Proposed
+# ADR-2006-03: Database-backed project authorization; in-memory sessions never grant access and fail closed
 
 ## Context
 
@@ -181,8 +177,8 @@ listing and deletion are scoped to the calling user.
 ## References
 
 - Issue #2006, PR #2007.
-- SDD-0005 — Backend Security Audit Hardening.
-- Sibling ADRs: ADR-0020, ADR-0021, ADR-0023, ADR-0024.
+- the change design — Backend Security Audit Hardening.
+- Sibling ADRs: ADR-2006-01, ADR-2006-02, ADR-2006-04, ADR-2006-05.
 - Code: `src/db/queries/projects.ts`, `src/websocket/yjs-websocket.ts`,
   `src/utils/route-auth.ts`, `src/routes/project.ts`,
   `src/routes/platform-integration.ts`.

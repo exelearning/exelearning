@@ -1,16 +1,16 @@
 ---
-id: ADR-0020
+id: ADR-2006-01
 title: "Fail-closed production secrets with a single environment source of truth"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2006
+legacy_id: ADR-0020
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: [2006]
   prs: [2007]
-  sdds: [SDD-0005]
-  adrs: [ADR-0021, ADR-0022, ADR-0023, ADR-0024]
+  changes: ["2006-backend-security-audit-hardening"]
+  adrs: [ADR-2006-02, ADR-2006-03, ADR-2006-04, ADR-2006-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,11 +18,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0020: Fail-closed production secrets with a single environment source of truth
-
-## Status
-
-Proposed
+# ADR-2006-01: Fail-closed production secrets with a single environment source of truth
 
 ## Context
 
@@ -166,7 +162,7 @@ that single predicate. The check is implemented as pure functions in
   acceptable, since such a value is already compromised by being in the repo.
 - The strength check is intentionally shallow (missing/default only). A weak
   operator-chosen secret is out of scope and remains a residual risk documented
-  in SDD-0005.
+  in the change design.
 
 ## Validation
 
@@ -181,15 +177,15 @@ that single predicate. The check is implemented as pure functions in
 ## Follow-up work
 
 - Optional future hardening: reject low-entropy secrets, not only known
-  defaults (out of scope for #2007; noted in SDD-0005 residual risks).
+  defaults (out of scope for #2007; noted in the change design residual risks).
 - Keep `.env.dist`, `env.ts` default sets, and the upgrade documentation in sync
   whenever a placeholder secret changes.
 
 ## References
 
 - Issue #2006 (backend security audit summary), PR #2007 (hardening).
-- SDD-0005 — Backend Security Audit Hardening.
-- Sibling ADRs: ADR-0021, ADR-0022, ADR-0023, ADR-0024.
+- the change design — Backend Security Audit Hardening.
+- Sibling ADRs: ADR-2006-02, ADR-2006-03, ADR-2006-04, ADR-2006-05.
 - Code: `src/utils/env.ts`, `src/index.ts`, `src/routes/auth.ts`,
   `src/utils/platform-jwt.ts`, `.env.dist`, `playwright.config.ts`.
 - Tests: `src/utils/env.spec.ts`.

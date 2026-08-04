@@ -1,16 +1,16 @@
 ---
-id: ADR-0024
+id: ADR-2006-05
 title: "Untrusted input crosses filesystem and HTML/inline-JS sinks only through shared validation and encoding helpers"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2006
+legacy_id: ADR-0024
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: [2006]
   prs: [2007]
-  sdds: [SDD-0005]
-  adrs: [ADR-0020, ADR-0021, ADR-0022, ADR-0023]
+  changes: ["2006-backend-security-audit-hardening"]
+  adrs: [ADR-2006-01, ADR-2006-02, ADR-2006-03, ADR-2006-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,11 +18,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0024: Untrusted input crosses filesystem and HTML/inline-JS sinks only through shared validation and encoding helpers
-
-## Status
-
-Proposed
+# ADR-2006-05: Untrusted input crosses filesystem and HTML/inline-JS sinks only through shared validation and encoding helpers
 
 ## Context
 
@@ -173,8 +169,8 @@ these helpers.
 ## References
 
 - Issue #2006, PR #2007.
-- SDD-0005 — Backend Security Audit Hardening.
-- Sibling ADRs: ADR-0020, ADR-0021, ADR-0022, ADR-0023.
+- the change design — Backend Security Audit Hardening.
+- Sibling ADRs: ADR-2006-01, ADR-2006-02, ADR-2006-03, ADR-2006-04.
 - Code: `src/utils/safe-path.ts`, `src/services/template.ts`,
   `views/workarea/workarea.njk`, `views/admin/index.njk`, and the routed sinks
   in `src/routes/{idevices,project,resources,assets,upload-session,convert,

@@ -1,16 +1,16 @@
 ---
-id: ADR-0023
+id: ADR-2006-04
 title: "SSRF egress policy: parsed-URL allow-list and per-hop egress filtering for outbound platform requests"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 2006
+legacy_id: ADR-0023
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: [2006]
   prs: [2007]
-  sdds: [SDD-0005]
-  adrs: [ADR-0020, ADR-0021, ADR-0022, ADR-0024]
+  changes: ["2006-backend-security-audit-hardening"]
+  adrs: [ADR-2006-01, ADR-2006-02, ADR-2006-03, ADR-2006-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,11 +18,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0023: SSRF egress policy: parsed-URL allow-list and per-hop egress filtering for outbound platform requests
-
-## Status
-
-Proposed
+# ADR-2006-04: SSRF egress policy: parsed-URL allow-list and per-hop egress filtering for outbound platform requests
 
 ## Context
 
@@ -188,15 +184,15 @@ guarantee.
 
 - Pin the validated IP into the outbound connection (custom
   agent/dispatcher) or front outbound traffic with an egress proxy / network
-  policy to close DNS rebinding. Tracked as future work in SDD-0005.
+  policy to close DNS rebinding. Tracked as future work in the change design.
 - Keep `EXTRA_BLOCKED_V4_CIDRS` aligned with special-use registries; add IPv6
   special-range coverage as needed.
 
 ## References
 
 - Issue #2006, PR #2007.
-- SDD-0005 — Backend Security Audit Hardening.
-- Sibling ADRs: ADR-0020, ADR-0021, ADR-0022, ADR-0024.
+- the change design — Backend Security Audit Hardening.
+- Sibling ADRs: ADR-2006-01, ADR-2006-02, ADR-2006-03, ADR-2006-05.
 - Code: `src/utils/ssrf-guard.ts`, `src/utils/platform-jwt.ts`,
   `src/services/platform-integration.ts`, `src/services/link-validator.ts`,
   `src/index.ts`.

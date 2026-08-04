@@ -1,16 +1,13 @@
 ---
-id: SDD-0005
+tracking_issue: 2006
 title: "Backend Security Audit Hardening"
-status: Implemented
+status: implemented
 date: 2026-07-09
+legacy_id: SDD-0005
 authors:
   - "@erseco"
-reviewers: []
-related:
-  issues: [2006]
-  prs: [2007, 2149]
-  adrs: [ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0024]
-  sdds: []
+implementation_prs: [2007]
+related_adrs: [ADR-2006-01, ADR-2006-02, ADR-2006-03, ADR-2006-04, ADR-2006-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,11 +15,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0005: Backend Security Audit Hardening
-
-## Status
-
-Implemented
+# Backend Security Audit Hardening — design
 
 ## Summary
 
@@ -31,8 +24,8 @@ confirmed findings (4 HIGH, 7 MEDIUM, 5 LOW), tracked as a summary-only report i
 issue #2006 (per `SECURITY.md`). This SDD describes the design of the hardening
 delivered in PR #2007: 13 of the 16 findings fixed, each through a shared,
 tested helper so that a whole *class* of the bug is closed rather than a single
-call site. The work introduces five durable decisions, recorded as ADR-0020
-through ADR-0024. The remaining three LOW findings are deferred with explicit
+call site. The work introduces five durable decisions, recorded as ADR-2006-01
+through ADR-2006-05. The remaining three LOW findings are deferred with explicit
 rationale. The intent is defence at the sink and single-source-of-truth guards,
 not a bespoke patch per report.
 
@@ -64,7 +57,7 @@ findings, their end users.
 
 - A complete rewrite of authentication or the platform-integration protocol.
 - A network-level egress firewall or DNS-pinning outbound stack (noted as future
-  work in ADR-0023).
+  work in ADR-2006-04).
 - Client-side (`public/app/**`) security review — this audit scoped `src/**`.
 - Resolving the three deferred LOW findings that need a product/infra decision
   (OIDC `id_token` verification, login rate-limiting, storage-quota
@@ -97,27 +90,27 @@ truth, session model, file storage, import/export/embedding flows).
 Five workstreams, one per ADR. Each replaces per-call-site handling with a single
 hardened helper reused at every sink.
 
-1. **Fail-closed production secrets, single env source of truth (ADR-0020).**
+1. **Fail-closed production secrets, single env source of truth (ADR-2006-01).**
    Pure functions in `env.ts` decide "is production" (`APP_ENV=prod` OR
    `NODE_ENV=production`) and whether the JWT secret / `APP_SECRET` is
    missing/default; `src/index.ts` refuses to boot in production otherwise. The
    same `isProductionEnv` predicate drives the cookie `Secure` flag.
 
-2. **One bounded ZIP inflate (ADR-0021).** `safeUnzipSync` enforces per-entry,
+2. **One bounded ZIP inflate (ADR-2006-02).** `safeUnzipSync` enforces per-entry,
    cumulative, and entry-count caps inside fflate's pre-inflation `filter`; every
    inflate sink delegates to it.
 
-3. **DB-backed authorization, fail-closed sessions (ADR-0022).** The persisted
+3. **DB-backed authorization, fail-closed sessions (ADR-2006-03).** The persisted
    project is authoritative and always checked via `checkProjectAccess`; an
    in-memory session grants access only to its creator and never on a missing
    `userId`. REST routes use `enforceProjectAccess`; the platform callback adds
    an ownership gate.
 
-4. **SSRF egress policy (ADR-0023).** A fail-closed parsed-URL provider
+4. **SSRF egress policy (ADR-2006-04).** A fail-closed parsed-URL provider
    allow-list, a synchronous IP-literal guard, and a DNS-aware `safeFetch` that
    re-validates every redirect hop guard all outbound requests.
 
-5. **Shared helpers at untrusted sinks (ADR-0024).** `safe-path` validators for
+5. **Shared helpers at untrusted sinks (ADR-2006-05).** `safe-path` validators for
    every filesystem path built from user input; `jsonScript` + a single
    quote-safe `escapeHtml` for HTML/inline-JS sinks.
 
@@ -202,14 +195,14 @@ enumeration.
 Mitigations map to the five ADRs. Residual risks (explicitly documented, not
 overclaimed):
 
-- **ZIP (ADR-0021):** `originalSize` is attacker-declared; an under-declared
+- **ZIP (ADR-2006-02):** `originalSize` is attacker-declared; an under-declared
   entry can still inflate past the cap because `fflate.unzipSync` cannot abort
   mid-entry. The over-declared bomb (the common case) is blocked cheaply.
-- **SSRF (ADR-0023):** `safeFetch` does not pin the validated IP into the socket,
+- **SSRF (ADR-2006-04):** `safeFetch` does not pin the validated IP into the socket,
   so DNS rebinding / TOCTOU by an attacker controlling authoritative DNS is not
   fully prevented; literal-IP, static-resolve, and redirect cases are blocked.
   Treated as defence-in-depth.
-- **Secrets (ADR-0020):** the boot guard rejects missing/known-default secrets,
+- **Secrets (ADR-2006-01):** the boot guard rejects missing/known-default secrets,
   not weak operator-chosen ones (no entropy check).
 - **Deferred LOW findings (still open in #2006):** OIDC `id_token` is not yet
   cryptographically verified (fix is ~1 line but needs migrating ~11 OIDC tests
@@ -218,7 +211,7 @@ overclaimed):
   TOCTOU best-effort, policy decision). These are future work, not implemented on
   this branch.
 
-Privacy: no new PII is collected. The constant-time login change (ADR-0020's
+Privacy: no new PII is collected. The constant-time login change (ADR-2006-01's
 sibling fix in `verifyUserPassword`) removes a user-existence side channel.
 
 ## Accessibility
@@ -278,7 +271,7 @@ the corresponding product/infra decisions are made.
   `[SECURITY] Refusing to start` message, and the one-time `PROVIDER_URLS`
   startup warning.
 - **A new sink skips a shared helper** — likelihood medium, severity high:
-  mitigated by tests and code review; ADR-0022/ADR-0024 note a possible future
+  mitigated by tests and code review; ADR-2006-03/ADR-2006-05 note a possible future
   lint/wrapper to enforce mechanically.
 - **Residual SSRF via DNS rebinding and residual ZIP DoS via under-declared
   entry** — documented limitations; mitigated at the network layer / by upstream
@@ -291,7 +284,7 @@ the corresponding product/infra decisions are made.
 - Which login rate-limiting substrate (Redis vs. in-memory) fits the supported
   deployment topologies? (Deferred LOW.)
 - Should outbound egress be centralised behind an IP-pinning dispatcher or an
-  egress proxy to close DNS rebinding? (ADR-0023 follow-up.)
+  egress proxy to close DNS rebinding? (ADR-2006-04 follow-up.)
 - Should storage-quota enforcement be a shared upload gate, and what is the
   policy? (Deferred LOW.)
 
@@ -299,11 +292,11 @@ the corresponding product/infra decisions are made.
 
 | Decision | ADR | Status |
 |---|---|---|
-| Fail-closed production secrets with a single environment source of truth | ADR-0020 | Proposed |
-| Single bounded ZIP-decompression guard for every server-side inflate | ADR-0021 | Proposed |
-| DB-backed project authorization; in-memory sessions never grant access and fail closed | ADR-0022 | Proposed |
-| SSRF egress policy: parsed-URL allow-list and per-hop egress filtering | ADR-0023 | Proposed |
-| Untrusted input crosses filesystem and HTML/inline-JS sinks only through shared helpers | ADR-0024 | Proposed |
+| Fail-closed production secrets with a single environment source of truth | ADR-2006-01 | Proposed |
+| Single bounded ZIP-decompression guard for every server-side inflate | ADR-2006-02 | Proposed |
+| DB-backed project authorization; in-memory sessions never grant access and fail closed | ADR-2006-03 | Proposed |
+| SSRF egress policy: parsed-URL allow-list and per-hop egress filtering | ADR-2006-04 | Proposed |
+| Untrusted input crosses filesystem and HTML/inline-JS sinks only through shared helpers | ADR-2006-05 | Proposed |
 
 ## Evidence
 
@@ -325,7 +318,7 @@ the corresponding product/infra decisions are made.
   [doc/development/environment.md](../../development/environment.md),
   [doc/development/authentication.md](../../development/authentication.md),
   [doc/architecture.md](../../architecture.md).
-- ADRs: ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0024 (this directory's
+- ADRs: ADR-2006-01, ADR-2006-02, ADR-2006-03, ADR-2006-04, ADR-2006-05 (this directory's
   sibling `../adr/`).
 
 ## Acceptance criteria
@@ -359,13 +352,13 @@ the corresponding product/infra decisions are made.
 - [x] Add constant-time `verifyUserPassword`.
 - [x] Colocated tests for every helper and sink; E2E under `APP_ENV=prod`.
 - [x] Update `.env.dist`, `UPGRADE.md`, and environment/authentication docs.
-- [ ] Author ADR-0020..ADR-0024 (this proposal) and move them to Accepted on
+- [ ] Author ADR-2006-01..ADR-2006-05 (this proposal) and move them to Accepted on
       review.
 
 ## References
 
 - Issue #2006, PR #2007.
-- ADR-0020, ADR-0021, ADR-0022, ADR-0023, ADR-0024.
+- ADR-2006-01, ADR-2006-02, ADR-2006-03, ADR-2006-04, ADR-2006-05.
 - Operational docs: `SECURITY.md`, `UPGRADE.md`,
   `doc/development/environment.md`, `doc/development/authentication.md`,
   `doc/architecture.md`.
