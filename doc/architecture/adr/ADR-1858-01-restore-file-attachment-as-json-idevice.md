@@ -1,8 +1,10 @@
 ---
-id: ADR-0035
+id: ADR-1858-01
 title: "Restore File Attachment as a JSON api-v3 Media-Library-backed iDevice"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1858
+legacy_id: ADR-0035
 deciders:
   - "@erseco"
 reviewers:
@@ -10,10 +12,9 @@ reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  issues: [1858]
   prs: [2011]
-  sdds: [SDD-0009]
-  adrs: [ADR-0036, ADR-0037, ADR-0038]
+  changes: ["1858-file-attachment-restoration"]
+  adrs: [ADR-1858-02, ADR-1858-03, ADR-1858-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,11 +22,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0035: Restore File Attachment as a JSON api-v3 Media-Library-backed iDevice
-
-## Status
-
-Proposed
+# ADR-1858-01: Restore File Attachment as a JSON api-v3 Media-Library-backed iDevice
 
 ## Context
 
@@ -83,7 +80,7 @@ selected/uploaded through the existing File Manager modal (or a native
   ELPX round-trips; no new server endpoints.
 - Cons: requires wiring the iDevice against internal AssetManager APIs that have
   no dedicated change event (worked around by observing the shared Yjs map — see
-  ADR-0038).
+  ADR-1858-04).
 
 ### Option 2: Keep mapping legacy attachments to `text` (status quo)
 
@@ -112,7 +109,7 @@ Embed file bytes directly in the component state.
 - Pros: self-contained component.
 - Cons: bloats the Y.Doc and every snapshot; defeats asset de-duplication;
   contradicts the asset architecture (binaries belong in the Media Library, not
-  in document state). Rejected — see ADR-0036 for the reference model chosen
+  in document state). Rejected — see ADR-1858-02 for the reference model chosen
   instead.
 
 ## Evidence
@@ -158,8 +155,8 @@ We will restore File Attachment as a first-class JSON iDevice named
 `public/files/perm/idevices/base/file-attachment/`. Authors add files through the
 existing Media Library / File Manager modal (with a native file-input fallback),
 files are stored via the shared `AssetManager`, and the iDevice keeps its state in
-`jsonProperties`. The reference/storage model is specified in ADR-0036, the legacy
-import remap in ADR-0037, and the resilience/accessibility behaviour in ADR-0038.
+`jsonProperties`. The reference/storage model is specified in ADR-1858-02, the legacy
+import remap in ADR-1858-03, and the resilience/accessibility behaviour in ADR-1858-04.
 
 ## Consequences
 
@@ -178,13 +175,13 @@ import remap in ADR-0037, and the resilience/accessibility behaviour in ADR-0038
   (`_yjsBridge.assetManager`, `modals.filemanager`) that are not a formal public
   contract; changes there can ripple into this iDevice.
 - The AssetManager exposes no dedicated "asset changed" event, forcing the
-  edition code to observe the shared Yjs assets map (see ADR-0038).
+  edition code to observe the shared Yjs assets map (see ADR-1858-04).
 
 ### Neutral
 
 - Adds a new entry to the iDevice catalog and to the `jsonOnlyIdevices` allow-list.
 - The legacy `download-source-file` iDevice remains, now with no legacy class
-  mapped to it (that mapping moves to `file-attachment` — see ADR-0037).
+  mapped to it (that mapping moves to `file-attachment` — see ADR-1858-03).
 
 ## Risks
 
@@ -209,7 +206,7 @@ import remap in ADR-0037, and the resilience/accessibility behaviour in ADR-0038
 ## Follow-up work
 
 - Consider a formal AssetManager change-event API so iDevices no longer need to
-  observe the raw Yjs map (see ADR-0038 follow-ups).
+  observe the raw Yjs map (see ADR-1858-04 follow-ups).
 - Evaluate optional enhancements (drag-and-drop upload, per-attachment size
   display refinements) after the restoration lands.
 
@@ -217,8 +214,8 @@ import remap in ADR-0037, and the resilience/accessibility behaviour in ADR-0038
 
 - Issue #1858 — File Attachment iDevice regression.
 - PR #2011 — restore the File Attachment iDevice.
-- SDD-0009 — File Attachment iDevice Restoration.
-- ADR-0036, ADR-0037, ADR-0038 — sibling decisions.
+- the #1858 change design — File Attachment iDevice Restoration.
+- ADR-1858-02, ADR-1858-03, ADR-1858-04 — sibling decisions.
 - `doc/elpx-format/idevices/catalog.md`, `doc/elpx-format/idevices/patterns.md`,
   `doc/elpx-format/idevices/snippets.md`.
 - `.agents/skills/idevice/SKILL.md` — iDevice authoring contract.

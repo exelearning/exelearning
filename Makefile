@@ -437,10 +437,21 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests
+lint: check-bun lint-ts lint-js lint-tests architecture-check
 
 .PHONY: fix
 fix: check-bun fix-ts fix-js fix-tests
+
+# Regenerate the architecture record indexes from document frontmatter.
+# The indexes are generated artifacts — never edit records.md by hand.
+.PHONY: architecture-records
+architecture-records: check-bun
+	bun run scripts/architecture-records.ts generate
+
+# Validate architecture record identifiers, metadata, links and index freshness.
+.PHONY: architecture-check
+architecture-check: check-bun
+	bun run scripts/architecture-records.ts check
 
 # Lint TypeScript source files (src/)
 .PHONY: lint-ts
