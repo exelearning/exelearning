@@ -1,17 +1,16 @@
 ---
-id: ADR-0043
+id: ADR-2234-02
 title: "Track SCORM 1.2 page completion through a central activity registry"
 status: Proposed
 date: 2026-08-04
+tracking_issue: 2234
+legacy_id: ADR-0043
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: []
-  sdds: []
-  adrs:
-    - ADR-0001
+  changes: []
+  adrs: [ADR-2234-01]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,11 +18,7 @@ ai_assistance:
   model: "claude-opus-5"
 ---
 
-# ADR-0043: Track SCORM 1.2 page completion through a central activity registry
-
-## Status
-
-Proposed
+# ADR-2234-02: Track SCORM 1.2 page completion through a central activity registry
 
 ## Context
 
@@ -36,7 +31,7 @@ status element, `cmi.core.lesson_status`, drawn from
 refuse `"not attempted"` from a SCO, *SCORM 1.2 Conformance Requirements* 1.6.5).
 
 Before this decision, the runtime introduced by
-[ADR-0001](ADR-0001-scorm12-runtime-rewrite.md) decided that single status from
+[ADR-2234-01](ADR-2234-01-scorm12-runtime-rewrite.md) decided that single status from
 one boolean:
 
 ```js
@@ -334,7 +329,7 @@ scorm.activities.summary();
 
 ## References
 
-- [ADR-0001](ADR-0001-scorm12-runtime-rewrite.md) — the runtime this layer joins.
+- [ADR-2234-01](ADR-2234-01-scorm12-runtime-rewrite.md) — the runtime this layer joins.
 - [doc/development/scorm12-runtime-contract.md](../../development/scorm12-runtime-contract.md) §9.
 - ADL, *SCORM Version 1.2 — The SCORM Run-Time Environment* (2001-10-01).
 - ADL, *SCORM Version 1.2 Conformance Requirements*.

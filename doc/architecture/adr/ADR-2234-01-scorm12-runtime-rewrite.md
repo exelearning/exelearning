@@ -1,17 +1,16 @@
 ---
-id: ADR-0001
+id: ADR-2234-01
 title: "Rewrite the SCORM 1.2 content runtime with clean AGPL provenance"
 status: Proposed
 date: 2026-07-24
+tracking_issue: 2234
+legacy_id: ADR-0001
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: []
-  sdds: []
-  adrs:
-    - ADR-0043
+  changes: []
+  adrs: [ADR-2234-02]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -19,11 +18,7 @@ ai_assistance:
   model: "claude-fable-5"
 ---
 
-# ADR-0001: Rewrite the SCORM 1.2 content runtime with clean AGPL provenance
-
-## Status
-
-Proposed
+# ADR-2234-01: Rewrite the SCORM 1.2 content runtime with clean AGPL provenance
 
 ## Context
 
@@ -151,7 +146,7 @@ We will:
      by a pausable session clock.
    - `exe-scorm12-activities.js` — the activity registry: aggregation only,
      no LMS traffic and no policy. Decided separately in
-     [ADR-0043](ADR-0043-scorm12-activity-completion-registry.md).
+     [ADR-2234-02](ADR-2234-02-scorm12-activity-completion-registry.md).
    - `exe-scorm12-policy.js` — eXe completion policy: on load, empty/
      `not attempted` → `incomplete`, anything else preserved (never
      downgraded); on exit, the completion decision taken from the activity
