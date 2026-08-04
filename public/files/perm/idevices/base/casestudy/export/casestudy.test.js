@@ -29,6 +29,46 @@ describe('casestudy iDevice export', () => {
         document.body.innerHTML = '';
     });
 
+    describe('generateActivities', () => {
+        // A case study whose saved jsonProperties was lost or discarded reaches
+        // renderView as {}, with no activities array to iterate.
+        it('renders an empty activity list instead of throwing', () => {
+            let html;
+
+            expect(() => {
+                html = $casestudy.generateActivities({ msgs: $casestudy.msgs });
+            }).not.toThrow();
+
+            expect(html).toBe('');
+        });
+
+        it('renders an activity that has no feedback', () => {
+            let html;
+
+            expect(() => {
+                html = $casestudy.generateActivities({
+                    msgs: $casestudy.msgs,
+                    activities: [{ activity: '<p>Analiza el caso</p>' }],
+                });
+            }).not.toThrow();
+
+            expect(html).toContain('Analiza el caso');
+            expect(html).not.toContain('CSP-FeedbackBtn');
+        });
+
+        it('still renders activities with feedback', () => {
+            const html = $casestudy.generateActivities({
+                msgs: $casestudy.msgs,
+                activities: [
+                    { activity: '<p>Analiza el caso</p>', feedback: '<p>Respuesta</p>' },
+                ],
+            });
+
+            expect(html).toContain('Analiza el caso');
+            expect(html).toContain('CSP-FeedbackBtn');
+        });
+    });
+
     describe('addEvents — feedback button A|B toggle', () => {
         let origIs;
 
