@@ -1,15 +1,15 @@
 ---
-id: ADR-0043
+id: ADR-1243-01
 title: "Assets own attribution: iDevices drop per-media author/license fields in favor of a show-attribution toggle"
 status: Proposed
 date: 2026-07-22
+tracking_issue: 1243
+legacy_id: ADR-0043
 deciders:
   - "@erseco"
-reviewers: []
 related:
-  issues: []
   prs: [1868]
-  sdds: []
+  changes: []
   adrs: []
 supersedes: []
 superseded_by: []
@@ -18,11 +18,7 @@ ai_assistance:
   model: "claude-fable-5"
 ---
 
-# ADR-0043: Assets own attribution: iDevices drop per-media author/license fields in favor of a show-attribution toggle
-
-## Status
-
-Proposed
+# ADR-1243-01: Assets own attribution: iDevices drop per-media author/license fields in favor of a show-attribution toggle
 
 ## Context
 
