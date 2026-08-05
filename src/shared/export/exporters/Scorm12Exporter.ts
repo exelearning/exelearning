@@ -480,7 +480,7 @@ export class Scorm12Exporter extends Html5Exporter {
             // No onUnloadScript: the SCORM 1.2 runtime owns end-of-session
             // handling (pagehide/visibilitychange) — unload/beforeunload
             // handlers are unreliable and break the back/forward cache.
-            // See doc/development/scorm12-runtime-contract.md and ADR-0001.
+            // See doc/development/scorm12-runtime-contract.md and ADR-2209-01.
             // Hide navigation elements - LMS handles navigation in SCORM
             hideNavigation: true,
             hideNavButtons: true,

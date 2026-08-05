@@ -4,11 +4,11 @@ This document records the **public contract** between exported SCORM 1.2 content
 and the SCORM runtime scripts that ship inside every SCORM 1.2 package
 (`libs/SCORM_API_wrapper.js` and `libs/SCOFunctions.js`). It was extracted by
 auditing every consumer in this repository before the runtime rewrite
-(see [ADR-0001](../architecture/adr/ADR-0001-scorm12-runtime-rewrite.md)) and is
+(see [ADR-2209-01](../architecture/adr/ADR-2209-01-scorm12-runtime-rewrite.md)) and is
 the specification the project-owned runtime in
 `public/app/common/scorm/scorm12/` implements. The activity completion model it
 refers to is decided in
-[ADR-0043](../architecture/adr/ADR-0043-scorm12-activity-completion-registry.md).
+[ADR-2209-02](../architecture/adr/ADR-2209-02-scorm12-activity-completion-registry.md).
 
 Anything listed here is load-bearing: exported packages, the
 [moodle-mod_exelearning](https://github.com/exelearning/moodle-mod_exelearning)
@@ -348,7 +348,7 @@ in `setScoreDetailed()`'s report (`requiredWritten: false`).
 
 ## 9. Activity registry and completion policy
 
-Full rationale: [ADR-0043](../architecture/adr/ADR-0043-scorm12-activity-completion-registry.md).
+Full rationale: [ADR-2209-02](../architecture/adr/ADR-2209-02-scorm12-activity-completion-registry.md).
 
 `window.scorm.activities` (`exeScorm12.activities`) tracks every activity on the
 page. It performs **aggregation only** — it never talks to the LMS and holds no

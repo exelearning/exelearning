@@ -608,7 +608,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             expect(midSuspend).toContain(nodeIds[1]);
 
             // ---- Second activity: the learner submits by hand ---------------
-            // ADR-0043: a manual submission is the learner's explicit act of
+            // ADR-2209-02: a manual submission is the learner's explicit act of
             // finishing the attempt, so it completes the activity.
             await page.evaluate(() => {
                 const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;

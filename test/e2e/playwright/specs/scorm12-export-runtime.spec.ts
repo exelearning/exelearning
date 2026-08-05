@@ -10,7 +10,7 @@
  *   3. no page carries `onunload`/`onbeforeunload` attributes (the runtime
  *      owns end-of-session handling via pagehide/visibilitychange).
  *
- * See doc/development/scorm12-runtime-contract.md and ADR-0001.
+ * See doc/development/scorm12-runtime-contract.md and ADR-2209-01.
  */
 
 import { test, expect } from '../fixtures/auth.fixture';

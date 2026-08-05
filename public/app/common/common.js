@@ -1451,7 +1451,7 @@ var $exeDevices = {
                         // the learner either finished the activity (gameOver)
                         // or submitted their score by hand (!auto). Counting a
                         // manual submission as completion is a documented
-                        // policy decision (ADR-0043): submitting is the
+                        // policy decision (ADR-2209-02): submitting is the
                         // learner's explicit act of finishing the attempt, and
                         // it is the only completion signal games without a
                         // game-over state can give.

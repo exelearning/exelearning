@@ -5,7 +5,7 @@
  * page ineligible for the back/forward cache, the event is unreliable on
  * mobile, and the SCORM 1.2 runtime deliberately owns end-of-session handling
  * through `pagehide` / `visibilitychange` instead. See
- * doc/development/scorm12-runtime-contract.md and ADR-0001.
+ * doc/development/scorm12-runtime-contract.md and ADR-2209-01.
  *
  * The scan covers every HTML and JavaScript file of a package — body
  * attributes, inline `<script>` blocks, external scripts and the iDevice
