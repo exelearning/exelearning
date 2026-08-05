@@ -50,7 +50,33 @@ export {
 } from './interfaces';
 
 // Main importer
-export { ElpxImporter } from './ElpxImporter';
+export { ElpxImporter, inspectZipArchive } from './ElpxImporter';
+
+// Import policy: single source of truth for decompression limits (per runtime)
+// and the desktop-export compatibility check. See #2193.
+export {
+    CONSERVATIVE_ZIP_LIMITS,
+    DEFAULT_ZIP_LIMITS,
+    DESKTOP_ZIP_LIMITS,
+    DESKTOP_CONFIRM_ENTRY_BYTES,
+    getZipLimitsForRuntime,
+    validateZipLimits,
+    assertInspectionWithinLimits,
+    getDesktopExportCompatibility,
+    formatBytes,
+    ZipLimitError,
+    ImportCancelledError,
+} from './importPolicy';
+export type {
+    ZipDecompressionLimits,
+    ZipLimitDetails,
+    ZipLimitKind,
+    ArchiveInspection,
+    ArchiveEntryInfo,
+    ImportRuntime,
+    ExportAssetInfo,
+    DesktopExportCompatibility,
+} from './importPolicy';
 
 // Legacy format parser
 export { LegacyXmlParser } from './LegacyXmlParser';
