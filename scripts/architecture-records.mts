@@ -7,8 +7,12 @@
  * identifiers, metadata and cross-references, and generates the two indexes.
  *
  * Usage:
- *   bun run scripts/architecture-records.ts list    # print the record index
- *   bun run scripts/architecture-records.ts check   # validate, non-zero on failure
+ *   bun run <this file> list     # print the record index      (core)
+ *   node <this file> check       # validate, non-zero on failure (plugins)
+ *
+ * One source, two runtimes: core runs it with Bun, where `bun test` covers it;
+ * the plugin repositories copy it verbatim and run it with the Node that ships
+ * on the CI image. It must therefore avoid runtime-specific APIs.
  *
  * The index is deliberately NOT a committed file. It is contributor-facing, it
  * is derived entirely from frontmatter, and a generated file checked into git is
@@ -749,7 +753,7 @@ export function run(mode: 'list' | 'check', root: string): number {
 if (import.meta.main) {
     const mode = process.argv[2];
     if (mode !== 'list' && mode !== 'check') {
-        console.error('Usage: bun run scripts/architecture-records.ts <list|check>');
+        console.error('Usage: bun run scripts/architecture-records.mts <list|check>');
         process.exit(2);
     }
     process.exit(run(mode, process.cwd()));

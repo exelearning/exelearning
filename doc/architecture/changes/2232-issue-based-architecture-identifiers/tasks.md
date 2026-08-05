@@ -41,7 +41,7 @@ ai_assistance:
 
 ### Tooling
 
-- [x] Write `scripts/architecture-records.ts` (`generate` / `check`).
+- [x] Write `scripts/architecture-records.mts` (`generate` / `check`).
 - [x] Write `scripts/architecture-records.spec.ts`.
 - [x] Add `make architecture-records` and `make architecture-check`.
 - [x] Add the check to `make lint`.

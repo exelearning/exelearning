@@ -186,7 +186,7 @@ Status is recorded in frontmatter **only**. A `## Status` section duplicating it
 
 ## 7. Validation
 
-`bun run scripts/architecture-records.ts check` **must** fail when any of the
+`bun run scripts/architecture-records.mts check` **must** fail when any of the
 following holds:
 
 1. A required field is missing.
@@ -214,8 +214,8 @@ Error messages **must** name the offending file, the field, and the expected val
 
 ## 8. Acceptance criteria
 
-- [ ] `bun run scripts/architecture-records.ts check` exits 0 on this branch.
-- [ ] `bun run scripts/architecture-records.ts list` prints both indexes.
+- [ ] `bun run scripts/architecture-records.mts check` exits 0 on this branch.
+- [ ] `bun run scripts/architecture-records.mts list` prints both indexes.
 - [ ] No `ADR-[0-9]{4}-*` or `SDD-[0-9]{4}-*` file exists under `doc/architecture/`.
 - [ ] No legacy identifier is referenced outside the migration map and `legacy_id`.
 - [ ] Every legacy identifier resolves through the migration map to a current path.

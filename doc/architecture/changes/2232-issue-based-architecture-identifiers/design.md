@@ -42,14 +42,14 @@ doc/architecture/
 
 ## Tool
 
-`scripts/architecture-records.ts`, run by Bun. This matches the existing
+`scripts/architecture-records.mts`, run by Bun. This matches the existing
 repository tooling convention — `scripts/` already holds `check-coverage.ts`,
 `build-static-bundle.ts` and friends, each a Bun-executed TypeScript file with a
 colocated `*.spec.ts`.
 
 ```bash
-bun run scripts/architecture-records.ts list    # print the index to stdout
-bun run scripts/architecture-records.ts check   # validate; non-zero on failure
+bun run scripts/architecture-records.mts list    # print the index to stdout
+bun run scripts/architecture-records.mts check   # validate; non-zero on failure
 ```
 
 Wrapped by `make architecture-records` and `make architecture-check`.

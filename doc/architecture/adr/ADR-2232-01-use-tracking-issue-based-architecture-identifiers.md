@@ -290,7 +290,7 @@ Concretely:
 
 ## Validation
 
-- `bun run scripts/architecture-records.ts check` passes in CI on every PR
+- `bun run scripts/architecture-records.mts check` passes in CI on every PR
   touching `doc/architecture/**`.
 - No `records.md` exists under `doc/architecture/`.
 - No file matching `ADR-[0-9]{4}-` or `SDD-[0-9]{4}-` exists under
