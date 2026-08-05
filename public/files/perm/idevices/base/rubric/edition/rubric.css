@@ -296,9 +296,29 @@
   background-position: 0 0;
 }
 
-#ri_CellEditModal {
-  z-index: 1060;
+/*
+ * The edition dialogs are mounted in <body> (see mountEditModal in rubric.js),
+ * so they share the stacking layer of the workarea dialogs. The workarea forces
+ * `.modal { z-index: 20009 !important }` (assets/styles/components/_modals.scss),
+ * which would also apply here: the rubric dialogs would end up tied with the app
+ * dialogs and, being appended later, paint above them. The unsaved-changes
+ * confirmation would then open *behind* the rubric dialog, with its buttons
+ * unreachable. An id-level !important keeps the rubric layer just below.
+ *
+ * Layering: rubric backdrop (20004) < rubric dialog (20005) < app dialogs (20009).
+ */
+#ri_CellEditModal,
+#ri_RowEditModal,
+#ri_ColumnEditModal {
+  z-index: 20005 !important;
 }
+
+#ri_CellEditModalBackdrop,
+#ri_RowEditModalBackdrop,
+#ri_ColumnEditModalBackdrop {
+  z-index: 20004;
+}
+
 #ri_CellEditModal .modal-dialog {
   width: 90%;
   max-width: 560px;
@@ -309,9 +329,6 @@
   width: 100%;
 }
 
-#ri_RowEditModal {
-  z-index: 1060;
-}
 #ri_RowEditModal .modal-dialog {
   width: 90%;
   max-width: 560px;
@@ -357,9 +374,6 @@
   font-size: 18px;
 }
 
-#ri_ColumnEditModal {
-  z-index: 1060;
-}
 #ri_ColumnEditModal .modal-dialog {
   width: 90%;
   max-width: 560px;

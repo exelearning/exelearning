@@ -1197,6 +1197,76 @@ describe('IdeviceNode', () => {
 
             expect(global.$exeDevice).toBeUndefined();
         });
+
+        it('lets the edition script clean up before dropping it', () => {
+            idevice.isSync = false;
+            const destroy = vi.fn();
+            global.$exeDevice = { destroy };
+
+            idevice.restartExeIdeviceValue();
+
+            expect(destroy).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not clean up when the idevice is being synced', () => {
+            idevice.isSync = true;
+            const destroy = vi.fn();
+            global.$exeDevice = { destroy };
+
+            idevice.restartExeIdeviceValue();
+
+            expect(destroy).not.toHaveBeenCalled();
+            expect(global.$exeDevice).toBeDefined();
+        });
+    });
+
+    describe('releaseExeDevice', () => {
+        afterEach(() => {
+            global.$exeDevice = undefined;
+        });
+
+        it('calls destroy before dropping the edition class', () => {
+            const calls = [];
+            global.$exeDevice = {
+                destroy: () => calls.push(typeof global.$exeDevice),
+            };
+
+            idevice.releaseExeDevice();
+
+            // Cleanup must run while the edition class is still the active one.
+            expect(calls).toEqual(['object']);
+            expect(global.$exeDevice).toBeUndefined();
+        });
+
+        it('drops edition classes that do not implement destroy', () => {
+            global.$exeDevice = { some: 'value' };
+
+            idevice.releaseExeDevice();
+
+            expect(global.$exeDevice).toBeUndefined();
+        });
+
+        it('drops the edition class even if its cleanup throws', () => {
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            global.$exeDevice = {
+                destroy: () => {
+                    throw new Error('broken cleanup');
+                },
+            };
+
+            idevice.releaseExeDevice();
+
+            expect(global.$exeDevice).toBeUndefined();
+            expect(warn).toHaveBeenCalled();
+            warn.mockRestore();
+        });
+
+        it('does nothing when there is no edition class', () => {
+            global.$exeDevice = undefined;
+
+            expect(() => idevice.releaseExeDevice()).not.toThrow();
+            expect(global.$exeDevice).toBeUndefined();
+        });
     });
 
     describe('showLockedPlaceholder', () => {
@@ -1718,6 +1788,16 @@ describe('IdeviceNode', () => {
             expect(global.$exeDevice).toBeUndefined();
         });
 
+        it('lets the edition script clean up when deleting an idevice being edited', () => {
+            idevice.mode = 'edition';
+            const destroy = vi.fn();
+            global.$exeDevice = { destroy };
+
+            idevice.remove(false);
+
+            expect(destroy).toHaveBeenCalledTimes(1);
+        });
+
         it('calls apiDeleteIdevice when bbdd is true', () => {
             const spy = vi.spyOn(idevice, 'apiDeleteIdevice').mockResolvedValue({});
 
@@ -1919,6 +1999,17 @@ describe('IdeviceNode', () => {
             idevice.idevice = null;
 
             expect(() => idevice.loadScriptsEdition()).not.toThrow();
+        });
+
+        it('loadEditionIdevice cleans up the previously active edition class', async () => {
+            idevice.scriptsElements = [];
+            const destroy = vi.fn();
+            global.$exeDevice = { destroy };
+
+            await idevice.loadEditionIdevice();
+
+            expect(destroy).toHaveBeenCalledTimes(1);
+            expect(global.$exeDevice).toBeUndefined();
         });
     });
 

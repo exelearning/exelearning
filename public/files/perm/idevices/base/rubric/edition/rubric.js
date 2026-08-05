@@ -152,6 +152,15 @@ var $exeDevice = {
         this.createForm();
     },
 
+    /**
+     * Called by the workarea when this edition class stops being the active one,
+     * whichever way the user left edition mode: save, discard or delete. The
+     * dialogs are mounted in <body> and would otherwise outlive the edition form.
+     */
+    destroy: function () {
+        this.removeEditModals();
+    },
+
     removeLegacyRenderedArtifacts: function () {
         if (!this.ideviceBody) return;
 
@@ -1946,10 +1955,12 @@ var $exeDevice = {
      * <body>: the rubric editor is rendered inside the iDevice edition box, and
      * that box becomes a stacking context while an iDevice is being edited
      * (`position: absolute; z-index: 5`, see assets/styles/layout/_idevice-focus.scss).
-     * A dialog appended there has its z-index (1060, rubric.css) clamped to that
-     * context, so the <body>-level backdrop (z-index 1050) paints on top of it
-     * and swallows every click: the dialog looks open but is unusable. Keeping
-     * dialog and backdrop in the same place is what makes 1060 > 1050 effective.
+     * A dialog appended there has its z-index clamped to that context, so the
+     * <body>-level backdrop paints on top of it and swallows every click: the
+     * dialog looks open but is unusable. Keeping dialog and backdrop in the same
+     * place is what lets the z-index values in rubric.css order them, and those
+     * values also keep the app dialogs (the unsaved-changes confirmation, for
+     * one) above the rubric layer.
      */
     mountEditModal: function (html) {
         $(document.body).append(html);

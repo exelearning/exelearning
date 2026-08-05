@@ -1643,9 +1643,7 @@ export default class IdeviceNode {
         // Remove head scripts/styles elements
         this.clearFilesElements();
         // Restart $exeDevice value
-        if (typeof $exeDevice !== 'undefined') {
-            $exeDevice = undefined;
-        }
+        this.releaseExeDevice();
         // Load idevice edition files
         this.loadScriptsEdition();
         await this.loadStylesEdition();
@@ -1764,10 +1762,31 @@ export default class IdeviceNode {
         if (this.isSync == true) {
             this.isSync = false;
         } else {
-            if (typeof $exeDevice !== 'undefined') {
-                $exeDevice = undefined;
+            this.releaseExeDevice();
+        }
+    }
+
+    /**
+     * Drop the current idevice edition class.
+     *
+     * Edition scripts may mount UI outside their own container -- Bootstrap
+     * dialogs, for instance, must be direct children of <body> to stack
+     * correctly. Such nodes survive the removal of the edition form, so give the
+     * script a chance to take them down before it is discarded. This is the
+     * single place where an edition class stops being the active one, whether
+     * the user saved, discarded the changes or deleted the iDevice.
+     *
+     */
+    releaseExeDevice() {
+        if (typeof $exeDevice === 'undefined') return;
+        if (typeof $exeDevice.destroy === 'function') {
+            try {
+                $exeDevice.destroy();
+            } catch (error) {
+                console.warn('iDevice edition cleanup failed', error);
             }
         }
+        $exeDevice = undefined;
     }
 
     /**
@@ -3211,9 +3230,7 @@ export default class IdeviceNode {
             // Release Yjs editing lock
             this.releaseYjsEditingLock();
 
-            if (typeof $exeDevice !== 'undefined') {
-                $exeDevice = undefined;
-            }
+            this.releaseExeDevice();
         }
         // Remove content element
         this.ideviceContent.remove();

@@ -39,6 +39,18 @@ public/files/perm/idevices/base/<name>/
     └── <name>.css          # Export styles (optional)
 ```
 
+## Edition Lifecycle
+
+The workarea drives `$exeDevice` (the object exported by `edition/<name>.js`) through three calls:
+
+| Hook | Required | When |
+|------|----------|------|
+| `init(element, previousData, path)` | yes | Edition mode starts. Build the form inside `element`. |
+| `save()` | yes | The user saves. Return the HTML/JSON to persist, or a falsy value to block the save after showing a validation message. |
+| `destroy()` | no | This edition class stops being the active one — **save, discard and delete alike**. Tear down anything mounted outside `element`. |
+
+`destroy()` exists because some editors must mount UI outside their own container: a Bootstrap dialog only stacks correctly as a direct child of `<body>`, since the edition box is itself a stacking context (`assets/styles/layout/_idevice-focus.scss`). Such nodes survive the removal of the edition form, so the iDevice has to take them down itself. See `removeEditModals` in `base/rubric/edition/rubric.js`.
+
 ## Testing — Round-Trip Is Mandatory
 
 Every iDevice **must** have a round-trip test: save data → load data → verify all fields are preserved. This is the #1 source of iDevice bugs — fields silently disappear when `loadData()` doesn't restore what `save()` stored. _Example: PR #1581._
@@ -99,6 +111,7 @@ make fix
 - **Both `edition/` and `export/` are required** — missing either causes silent failures.
 - **Icon naming** — must follow `<name>-icon.svg` pattern.
 - **Use `escape()` for metadata persistence** — some iDevices use `escape()` for special characters in saved data. Be consistent with the existing pattern.
+- **`<body>`-level UI outlives edition** — anything appended outside the edition container (dialogs, backdrops, overlays) stays in the DOM when edition ends. Remove it in `destroy()`, and keep its `z-index` below the workarea dialog layer (`.modal { z-index: 20009 !important }`) so app confirmations stay on top and clickable. _Example: PR #2231._
 
 ## Done When
 

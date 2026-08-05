@@ -8,6 +8,7 @@ import {
     getPreviewFrame,
     waitForPreviewContent,
 } from '../../helpers/workarea-helpers';
+import { enableAdvancedMode } from '../../helpers/content-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -178,6 +179,50 @@ async function getRubricRootInPreview(page: Page) {
     const fallback = iframe.locator('.idevice_node.rubric').first();
     await fallback.waitFor({ state: 'visible', timeout: 10000 });
     return fallback;
+}
+
+/** Ids of the rubric edition dialogs, mirroring $exeDevice.editModalIds. */
+const EDIT_MODAL_IDS = ['ri_CellEditModal', 'ri_RowEditModal', 'ri_ColumnEditModal'];
+
+/**
+ * The dialogs are mounted in <body>, so they outlive the edition form unless the
+ * iDevice takes them down when edition mode ends.
+ */
+async function expectNoRubricDialogsLeftBehind(page: Page): Promise<void> {
+    for (const modalId of EDIT_MODAL_IDS) {
+        await expect(page.locator(`#${modalId}`)).toHaveCount(0);
+        await expect(page.locator(`#${modalId}Backdrop`)).toHaveCount(0);
+    }
+    await expect(page.locator('body.modal-open')).toHaveCount(0);
+}
+
+/**
+ * Open the row editor of the first criterion and leave an unsaved change in it.
+ */
+async function openRowDialogWithUnsavedChanges(page: Page): Promise<void> {
+    await page.locator('#ri_Table tbody tr').first().locator('a.ri_EditTR').click();
+
+    const dialog = page.locator('#ri_RowEditModal');
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+
+    await page.locator('#ri_RowEditContent').fill(TEST_DATA.dialogDescriptor);
+}
+
+/**
+ * Add a rubric, create the default table and use the cell dialog once, closing
+ * it afterwards. Closing only hides the dialog: the element stays in <body>, so
+ * this is the state that must not survive the end of edition mode.
+ */
+async function addRubricWithMountedCellDialog(page: Page): Promise<void> {
+    await addRubricIdeviceFromPanel(page);
+    await createNewRubric(page);
+
+    await page.locator('#ri_Table tbody tr').first().locator('td').first().locator('a.ri_EditTD').click();
+    await expect(page.locator('#ri_CellEditModal')).toBeVisible({ timeout: 10000 });
+
+    await page.locator('#ri_CellEditCancel').click();
+    await expect(page.locator('#ri_CellEditModal')).toBeHidden({ timeout: 5000 });
+    await expect(page.locator('#ri_CellEditModal')).toHaveCount(1);
 }
 test.describe('Rubric iDevice', () => {
     test.describe('Basic Operations', () => {
@@ -352,6 +397,140 @@ test.describe('Rubric iDevice', () => {
                 TEST_DATA.dialogDescriptor,
             );
             await expect(firstCell.locator('input.ri_Weight')).toHaveValue(TEST_DATA.dialogWeight);
+        });
+    });
+
+    test.describe('Row edition dialog', () => {
+        test('should show the unsaved-changes confirmation above the row dialog and keep it clickable', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Row Confirm Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            await openRowDialogWithUnsavedChanges(page);
+
+            // Closing with pending changes hands over to the workarea confirmation.
+            await page.locator('#ri_RowEditCancel').click();
+
+            const confirmDialog = page.locator('[data-testid="modal-confirm"]');
+            await expect(confirmDialog).toBeVisible({ timeout: 10000 });
+
+            // Regression guard: both dialogs live in <body>, and the workarea
+            // forces `.modal { z-index: 20009 !important }`. If the rubric dialog
+            // is not kept below that layer it paints over the confirmation --
+            // appended later, same z-index -- and blocks the whole interface.
+            const confirmIsOnTop = await page.evaluate(() => {
+                const button = document.querySelector('[data-testid="confirm-action"]');
+                if (!button) return false;
+                const rect = button.getBoundingClientRect();
+                const topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                return !!topmost && !!topmost.closest('[data-testid="modal-confirm"]');
+            });
+            expect(confirmIsOnTop).toBe(true);
+
+            // A real (hit-tested) click: it fails if the rubric dialog covers it.
+            await page.locator('[data-testid="confirm-action"]').click();
+
+            await expect(page.locator('#ri_RowEditModal')).toBeHidden({ timeout: 10000 });
+            await expect(page.locator('#ri_RowEditModalBackdrop')).toHaveCount(0);
+
+            // The change was discarded, so the criterion keeps its original text.
+            const firstDescriptor = page
+                .locator('#ri_Table tbody tr')
+                .first()
+                .locator('td')
+                .first()
+                .locator('input[type="text"]:not(.ri_Weight)');
+            await expect(firstDescriptor).not.toHaveValue(TEST_DATA.dialogDescriptor);
+        });
+    });
+
+    test.describe('Edition mode teardown', () => {
+        test('should remove the dialogs and backdrops when the rubric is saved', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Save Teardown Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricWithMountedCellDialog(page);
+
+            await saveRubricIdevice(page);
+
+            await expectNoRubricDialogsLeftBehind(page);
+        });
+
+        test('should remove the dialogs and backdrops when the changes are discarded', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Discard Teardown Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricWithMountedCellDialog(page);
+
+            const rubricNode = page.locator('#node-content article .idevice_node.rubric').first();
+            await rubricNode.locator('.btn-undo-idevice').first().click();
+
+            await expect(page.locator('[data-testid="modal-confirm"]')).toBeVisible({ timeout: 10000 });
+            await page.locator('[data-testid="confirm-action"]').click();
+
+            // Wait for edition mode to end before checking what survived it.
+            await page.waitForFunction(
+                () => {
+                    const node = document.querySelector('#node-content article .idevice_node.rubric');
+                    return !node || node.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            await expectNoRubricDialogsLeftBehind(page);
+        });
+
+        test('should remove the dialogs and backdrops when the iDevice is deleted while editing', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Delete Teardown Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricWithMountedCellDialog(page);
+
+            // While editing, the delete action is only offered in advanced mode.
+            await enableAdvancedMode(page);
+
+            const rubricNode = page.locator('#node-content article .idevice_node.rubric').first();
+            await rubricNode.locator('.btn-delete-idevice').first().click();
+
+            await expect(page.locator('[data-testid="modal-confirm"]')).toBeVisible({ timeout: 10000 });
+            await page.locator('[data-testid="confirm-action"]').click();
+
+            await expect(page.locator('#node-content article .idevice_node.rubric')).toHaveCount(0, {
+                timeout: 15000,
+            });
+
+            await expectNoRubricDialogsLeftBehind(page);
         });
     });
 

@@ -589,7 +589,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
       const backdrop = document.getElementById('ri_CellEditModalBackdrop');
 
       expect(backdrop).not.toBeNull();
-      // Same parent => the dialog z-index (1060) really beats the backdrop (1050).
+      // Same parent => the z-index values in rubric.css really order the two.
       expect(backdrop.parentElement).toBe(modal.parentElement);
       expect(modal.parentElement).toBe(document.body);
       expect(document.body.classList.contains('modal-open')).toBe(true);
@@ -637,6 +637,50 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect($exeDevice.cellEditTarget).toBeNull();
       expect($exeDevice.rowEditState).toBeNull();
       expect($exeDevice.columnEditState).toBeNull();
+    });
+
+    it('destroy takes the <body>-level dialogs down when edition mode ends', () => {
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+      $exeDevice.openColumnEditModal($('#ri_Table thead th').eq(1));
+
+      // The workarea calls destroy() on save, discard and delete alike: nothing
+      // this iDevice mounted outside its own container may outlive edition.
+      $exeDevice.destroy();
+
+      $exeDevice.editModalIds.forEach((modalId) => {
+        expect(document.getElementById(modalId)).toBeNull();
+        expect(document.getElementById(`${modalId}Backdrop`)).toBeNull();
+      });
+      expect(document.body.classList.contains('modal-open')).toBe(false);
+    });
+
+    it('requestCloseRowEditModal keeps the row dialog mounted until the confirmation is accepted', () => {
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+      $('#ri_RowEditContent').val('Descriptor cambiado').trigger('input');
+
+      let confirmExec = null;
+      const originalConfirm = eXe.app.confirm;
+      eXe.app.confirm = (title, body, exec) => {
+        confirmExec = exec;
+      };
+
+      try {
+        $exeDevice.requestCloseRowEditModal();
+
+        // The confirmation is an app dialog rendered on top: the row dialog must
+        // still be there, otherwise there is nothing left to discard.
+        expect(typeof confirmExec).toBe('function');
+        expect(document.getElementById('ri_RowEditModal')).not.toBeNull();
+        expect($('#ri_RowEditModal').css('display')).toBe('block');
+
+        confirmExec();
+      } finally {
+        eXe.app.confirm = originalConfirm;
+      }
+
+      expect($('#ri_RowEditModal').css('display')).toBe('none');
+      expect(document.getElementById('ri_RowEditModalBackdrop')).toBeNull();
+      expect($exeDevice.rowEditState).toBeNull();
     });
 
     it('clearCurrentRubricEdition removes dialogs pointing at the discarded table', () => {
