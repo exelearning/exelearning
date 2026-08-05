@@ -30,7 +30,7 @@
  * artifacts are built from. This file stays as the EQUIVALENCE REFERENCE: the parity
  * specs execute it and compare both implementations vector by vector, which is what
  * keeps "the rewrite behaves the same" a measured claim. Editing it changes nothing
- * that ships -- change the TypeScript. Removed at Phase 8 (ADR-0020).
+ * that ships -- change the TypeScript. Removed at Phase 8 (ADR-2199-11).
  *
  * Canonicity lives in eXeLearning core and flows outward to the host plugins
  * (mod_exelearning, wp-exelearning, omeka-s-exelearning, procomun, nextcloud); they

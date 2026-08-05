@@ -17,7 +17,7 @@
  *
  * Adapted from the maximal opaque-preview branch
  * (fix/opaque-iframe-external-media, `previewSandbox.ts`): the sandbox-first
- * CSP and the scriptable-type insight (its ADR-0009) are kept; the resource
+ * CSP and the scriptable-type insight (its ADR-2199-06) are kept; the resource
  * directives are NOT — the hybrid threat model only protects the editor from
  * author code, and explicitly leaves network requests initiated from inside
  * the opaque frame out of scope, so restricting `frame-src`/`connect-src`
@@ -32,7 +32,7 @@
  * all access to the editor session, cookies, storage and the parent window.
  *
  * `allow-popups-to-escape-sandbox` is a deliberate addition (open decision D2
- * of the trust-boundary work, ADR-0002): the external-media fallback replaces
+ * of the trust-boundary work, ADR-2199-02): the external-media fallback replaces
  * YouTube/Vimeo iframes with an "open in a new tab" link while the opaque
  * preview is active, and without this token the opened tab would inherit the
  * sandbox and the video would not play. The popup is always author-initiated

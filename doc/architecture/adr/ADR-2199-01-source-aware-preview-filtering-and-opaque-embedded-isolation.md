@@ -1,9 +1,9 @@
 ---
-id: ADR-2235-01
+id: ADR-2199-01
 title: "Use source-aware preview filtering in the editor and opaque iframe isolation in embedded hosts"
 status: Superseded
 date: 2026-07-14
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0001
 deciders:
   - "@erseco"
@@ -18,7 +18,7 @@ ai_assistance:
   model: "GPT-5"
 ---
 
-# ADR-2235-01: Use source-aware preview filtering in the editor and opaque iframe isolation in embedded hosts
+# ADR-2199-01: Use source-aware preview filtering in the editor and opaque iframe isolation in embedded hosts
 
 ## Context
 
@@ -178,11 +178,11 @@ does not claim to prevent those behaviours.
 
 The following records exist only on the unmerged PR branch and are not copied to this branch:
 
-- ADR-2235-05 and ADR-2235-06: retained as useful embedded-host security reasoning and refined by
+- ADR-2199-05 and ADR-2199-06: retained as useful embedded-host security reasoning and refined by
   this decision.
 - ADR-0007, ADR-0008, ADR-0011, ADR-0012, and ADR-0015: superseded for the normal editor;
   capability serving remains applicable only to embedded hosts.
 - ADR-0010, ADR-0013, and ADR-0014: superseded; the media overlay, layered revisions, and
   protocol-v2 rollout are not adopted.
-- ADR-2235-07: retained as historical evidence that OPFS plus a Service Worker does not create an
+- ADR-2199-07: retained as historical evidence that OPFS plus a Service Worker does not create an
   opaque origin.

@@ -34,7 +34,7 @@ test.describe('report: editor preview', () => {
         // The DEFAULT preview is source-filtered, so the external embeds are author active
         // content: flagged, and not executed. Capturing this state first is the point —
         // the report should show that promotion is something a user opts into, not the
-        // default (ADR-0002).
+        // default (ADR-2199-02).
         const warning = page.locator('#preview-active-content-button');
         await expect(warning).toBeVisible();
         await expect(warning).toHaveAttribute('aria-pressed', 'false');

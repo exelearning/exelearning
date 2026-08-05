@@ -116,7 +116,7 @@ a placeholder no host will ever fill, i.e. a permanent black box.
 
 - **The media half is adopted separately from the embed half**, so a host can promote every
   declarative embed correctly and still not answer an iDevice asking it to drive a video
-  (ADR-0024). Both failures look like a healthy page. The walk now asks, from inside the
+  (ADR-2199-15). Both failures look like a healthy page. The walk now asks, from inside the
   content, whether a fresh media handshake is welcomed, and `mediaHost: true` in `PLATFORMS`
   turns that from a recorded number into an assertion. Omeka S does **not** answer it yet;
   that gap is measured and printed rather than assumed away.

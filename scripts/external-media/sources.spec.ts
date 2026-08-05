@@ -25,7 +25,7 @@ describe('source set', () => {
 
     /**
      * Both remainders are empty: every byte of both bundles is built from the canonical
-     * TypeScript. This is the end state ADR-0020 was aiming at, so what is asserted is
+     * TypeScript. This is the end state ADR-2199-11 was aiming at, so what is asserted is
      * that it STAYS reached — a source reappearing here means something was un-ported.
      */
     it('builds the child bundle from canonical source alone', () => {
@@ -92,7 +92,7 @@ describe('source set', () => {
         expect(DIST_DIR).toContain('exe_external_media');
     });
 
-    /** Every distributed source carries the dual grant recorded in ADR-0018. */
+    /** Every distributed source carries the dual grant recorded in ADR-2199-09. */
     it('only bundles sources that carry the dual-licence grant', () => {
         for (const relative of new Set(all)) {
             expect(read(relative), `missing SPDX grant: ${relative}`).toContain(

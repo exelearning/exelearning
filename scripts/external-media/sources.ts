@@ -2,7 +2,7 @@
  * The source set for each distributable bundle, split by PRIVILEGE.
  *
  * Each bundle is built in two parts, which is the strangler-fig migration made literal
- * (ADR-0020):
+ * (ADR-2199-11):
  *
  *  - a CANONICAL ENTRY — TypeScript under `src/shared/external-media/`, bundled by
  *    esbuild into a classic IIFE. This is the embed half, the part that was rewritten.
@@ -50,7 +50,7 @@ export const CHILD_LEGACY_SOURCES = [] as const;
  * `exe_media_policy.js` and `exe-media-host.js` are no longer built into the host bundle.
  * The policy's knowledge lives in `providers/registry.ts` and `protocol/schemas.ts`; the
  * host's behaviour in `media/`, ported from the raw-`postMessage` implementation the host
- * plugins actually run rather than from core's SDK-based fork (ADR-0022).
+ * plugins actually run rather than from core's SDK-based fork (ADR-2199-13).
  */
 export const HOST_LEGACY_SOURCES = [] as const;
 

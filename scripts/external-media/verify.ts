@@ -30,7 +30,7 @@ export const CONTRACT_FILE = 'exe-external-media.contract.json';
 export const CHILD_GZIP_BUDGET_BYTES = 14 * 1024;
 
 /**
- * The grant that must survive into the shipped bytes (ADR-0018).
+ * The grant that must survive into the shipped bytes (ADR-2199-09).
  *
  * These artifacts are vendored into five host-plugin repositories that never see our
  * source tree, so a licence notice that lives only in the source is no grant at all to

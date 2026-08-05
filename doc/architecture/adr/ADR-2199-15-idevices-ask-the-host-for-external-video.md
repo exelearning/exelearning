@@ -1,16 +1,16 @@
 ---
-id: ADR-2235-15
+id: ADR-2199-15
 title: "iDevices ask the host for external video; they never mount a provider player"
 status: Accepted
 date: 2026-07-28
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0024
 deciders:
   - "@erseco"
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2235-08, ADR-2235-11, ADR-2235-13, ADR-2235-14]
+  adrs: [ADR-2199-08, ADR-2199-11, ADR-2199-13, ADR-2199-14]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,11 +18,11 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# iDevices ask the host for external video; they never mount a provider player
+# ADR-2199-15: iDevices ask the host for external video; they never mount a provider player
 
 ## Context
 
-ADR-2235-14 establishes that **no provider player survives an opaque origin**, and the
+ADR-2199-14 establishes that **no provider player survives an opaque origin**, and the
 external-media design answers that by having the trusted page mount players on the content's
 behalf. That covers *declarative* embeds: the child scans the document, replaces each
 provider iframe with a geometry placeholder, and the host overlays a real player.
@@ -68,7 +68,7 @@ has to load first. In an opaque document it fails on both counts. Swapping raw m
 the SDK changes the error message, not the outcome.
 
 The raw-versus-SDK choice is only meaningful **on a page with a real origin**, which is the
-trusted page — and there ADR-2235-13 already answers it: no third-party JavaScript on the
+trusted page — and there ADR-2199-13 already answers it: no third-party JavaScript on the
 trusted origin, control by dialect. Those dialects are measured to advance a real clock for
 YouTube and Vimeo.
 
@@ -131,9 +131,9 @@ deliberately not smuggled in here.
 ## Alternatives considered
 
 - **Load the provider SDK instead of raw messages.** Rejected on measurement: blocked by the
-  content CSP, and unusable from a null origin even if it loaded. See ADR-2235-13.
+  content CSP, and unusable from a null origin even if it loaded. See ADR-2199-13.
 - **Keep the local player and relax the sandbox for packages with video.** Rejected outright:
   `allow-same-origin` on untrusted content is the boundary the whole design exists to hold
-  (ADR-2235-14 uses it only as a measurement control).
+  (ADR-2199-14 uses it only as a measurement control).
 - **Let the iDevice fail quietly and show a poster.** Rejected: it is indistinguishable from
   a page that never had a video, which is exactly how this survived unnoticed.

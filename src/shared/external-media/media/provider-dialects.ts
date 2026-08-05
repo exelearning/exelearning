@@ -8,9 +8,9 @@
  * PROVENANCE. Ported from `mod_exelearning/js/exe_media_host.js` — the raw-`postMessage`
  * implementation that has actually been running in a host plugin. Core's own media host
  * used the provider SDKs and constructed `new YT.Player(...)` from globals core never
- * loads, so there was no working implementation here to preserve (ADR-0022). The flow is
+ * loads, so there was no working implementation here to preserve (ADR-2199-13). The flow is
  * normally core → plugins; in this one case the better implementation was downstream, and
- * bringing it up is what ADR-0021 requires rather than pushing core's inferior one out.
+ * bringing it up is what ADR-2199-12 requires rather than pushing core's inferior one out.
  *
  * WHY RAW MESSAGES AT ALL. The player iframe is mounted by the HOST, on a page with a real
  * origin, so it can satisfy YouTube's `enablejsapi=1` + `origin` requirement. That is the

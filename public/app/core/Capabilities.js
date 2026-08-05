@@ -106,7 +106,7 @@ export class Capabilities {
         });
 
         /**
-         * Preview trust-boundary transports (ADR-0002). Which isolation the
+         * Preview trust-boundary transports (ADR-2199-02). Which isolation the
          * preview can offer is a property of the RUNTIME, never of content,
          * and there is no fallback between transports. Kept consistent with
          * resolvePreviewTransport() in utils/previewContentPolicy.js (a unit

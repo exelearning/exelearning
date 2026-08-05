@@ -10,7 +10,7 @@ Applies to `mod_exelearning`, `wp-exelearning`, `omeka-s-exelearning`, `procomun
 
 ## Why this changed
 
-eXeLearning core is canonical (ADR-0021). Until now that was a claim in a comment: five
+eXeLearning core is canonical (ADR-2199-12). Until now that was a claim in a comment: five
 repositories held five copies that had genuinely diverged, and the only thing checking
 them looked for the presence of about ten substrings — which every divergent copy
 satisfied.
@@ -19,7 +19,7 @@ Vendoring built artifacts replaces the claim with a property. A plugin holds the
 bytes core published, and can prove it. Divergence stops being something a checker might
 notice and becomes something that cannot be expressed.
 
-Distributing them is lawful because ADR-0018 dual-licenses the family
+Distributing them is lawful because ADR-2199-09 dual-licenses the family
 `AGPL-3.0-or-later OR GPL-3.0-or-later`, so the same bytes can live in eXeLearning and in
 a GPL-3.0 plugin without either project relicensing anything. GPL-3.0 plugins should list
 the artifacts in their third-party libraries declaration (Moodle: `thirdpartylibs.xml`).
@@ -110,7 +110,7 @@ Include it in the rendered page's `<head>`:
 ```
 
 Starting is not activating. The child announces itself and waits; a document whose host
-never answers stays exactly as the author wrote it (ADR-0017). This is what keeps exported
+never answers stays exactly as the author wrote it (ADR-2199-08). This is what keeps exported
 packages usable on `file://`, in an ePub reader, or in a third-party LMS.
 
 ### The legacy names still work
@@ -118,7 +118,7 @@ packages usable on `file://`, in an ePub reader, or in a third-party LMS.
 `window.exeEmbedRelay.init(config)` and `window.exeEmbedShim` are kept as facades over the
 same runtime, so a plugin can vendor the artifacts **before** changing how it calls them.
 They log a deprecation notice once per session naming the replacement, and are removed in
-a later major (ADR-0020). Migrate when convenient, not as a precondition.
+a later major (ADR-2199-11). Migrate when convenient, not as a precondition.
 
 ## When core changes
 
@@ -146,7 +146,7 @@ which is the intended outcome, not an obstacle to route around. Fix it in core.
 
 ## References
 
-- ADR-0021 — core is canonical, verified by manifest
-- ADR-0020 — strangler-fig migration and the deprecation facades
-- ADR-0018 — the dual licence that makes vendoring lawful
-- ADR-0017 — why the child stays inert without a host
+- ADR-2199-12 — core is canonical, verified by manifest
+- ADR-2199-11 — strangler-fig migration and the deprecation facades
+- ADR-2199-09 — the dual licence that makes vendoring lawful
+- ADR-2199-08 — why the child stays inert without a host

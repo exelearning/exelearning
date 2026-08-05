@@ -4,7 +4,7 @@ import type { EmbedRecord } from './embed-scanner';
 
 /**
  * These mirror the incumbent `exe_embed_shim.test.js` case for case. Equivalence on the
- * tested surface is the point: ADR-0020 switches loaders only once the canonical runtime
+ * tested surface is the point: ADR-2199-11 switches loaders only once the canonical runtime
  * does everything the shipped one does.
  *
  * The scanner is injected, so this exercises the handshake — the part with the security

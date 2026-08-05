@@ -1,16 +1,16 @@
 ---
-id: ADR-2235-13
+id: ADR-2199-13
 title: "Control external players with raw postMessage, keeping provider SDKs off the critical path"
 status: Accepted
 date: 2026-07-26
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0022
 deciders:
   - "@erseco"
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2235-08, ADR-2235-12]
+  adrs: [ADR-2199-08, ADR-2199-12]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,7 +18,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-2235-13: Control external players with raw postMessage, keeping provider SDKs off the critical path
+# ADR-2199-13: Control external players with raw postMessage, keeping provider SDKs off the critical path
 
 ## Context
 
@@ -85,7 +85,7 @@ We take on what the SDK was doing for us, explicitly:
 Dailymotion is the first provider to force the question: its legacy JavaScript Player API
 has been removed, and three probes of both embed forms (object command, bare-string
 command, modern `geo.dailymotion.com/player.html`) returned nothing but a `get` handshake
-probe — no `apiready`, no `timeupdate`, no acknowledgement. See ADR-2235-14.
+probe — no `apiready`, no `timeupdate`, no acknowledgement. See ADR-2199-14.
 
 Its Web SDK would work inside an own player host, but it requires a **Player ID bound to a
 Dailymotion account**, and their documentation states the ID exists "to ensure accurate
@@ -157,7 +157,7 @@ deliberately not opened here.
 ## References
 
 - `doc/development/external-media-inventory.md` §5 (P3, P6), §4 S4 (usage evidence), §1.2 (F3)
-- ADR-2235-12 (core is canonical), ADR-2235-08 (the handshake that gates promotion)
+- ADR-2199-12 (core is canonical), ADR-2199-08 (the handshake that gates promotion)
 
 [dm-getting-started]: https://developers.dailymotion.com/docs/getting-started-with-the-web-sdk
 [dm-library-script]: https://developers.dailymotion.com/docs/player-library-script

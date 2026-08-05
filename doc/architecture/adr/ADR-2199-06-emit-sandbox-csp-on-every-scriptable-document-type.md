@@ -1,9 +1,9 @@
 ---
-id: ADR-2235-06
+id: ADR-2199-06
 title: "Emit the sandbox CSP on every scriptable preview document type, not just HTML"
 status: Accepted
 date: 2026-07-09
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0009
 deciders:
   - "@erseco"
@@ -12,7 +12,7 @@ reviewers:
 related:
   prs: [1968]
   changes: []
-  adrs: [ADR-2235-05, ADR-0008, ADR-0011]
+  adrs: [ADR-2199-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,11 +20,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-2235-06: Emit the sandbox CSP on every scriptable preview document type, not just HTML
+# ADR-2199-06: Emit the sandbox CSP on every scriptable preview document type, not just HTML
 
 ## Context
 
-The opaque-origin guarantee (ADR-2235-05) is reinforced by a response-level
+The opaque-origin guarantee (ADR-2199-05) is reinforced by a response-level
 `sandbox`-first CSP so a preview document stays opaque even when its capability URL
 is opened directly (new tab, popup, raw URL). If that CSP is applied only to
 `text/html`, an author-controlled `image/svg+xml` (or XML with an
@@ -107,4 +107,4 @@ types.
 
 ## References
 
-- the change design; ADR-2235-05, ADR-0008, ADR-0011. PR #1968.
+- the change design; ADR-2199-05, ADR-0008, ADR-0011. PR #1968.

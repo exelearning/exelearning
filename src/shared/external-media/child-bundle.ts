@@ -11,7 +11,7 @@
  * The child self-starts, unlike the host: nothing inside the content document is going
  * to call it. Starting is not the same as activating — `startChild` only announces
  * itself and waits, and a document whose host never answers stays exactly as authored
- * (ADR-0017).
+ * (ADR-2199-08).
  *
  * Copyright (C) 2026 eXeLearning Team
  *

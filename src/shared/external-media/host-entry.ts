@@ -10,7 +10,7 @@
  * It publishes two names:
  *
  *   window.exeExternalMediaHost   what new code should use
- *   window.exeEmbedRelay          the legacy name, kept working, announced once (ADR-0020)
+ *   window.exeEmbedRelay          the legacy name, kept working, announced once (ADR-2199-11)
  *
  * Built to a classic IIFE with no imports at runtime, so it stays loadable exactly where
  * the file it replaces was — including from `file://` inside an exported package.
@@ -303,7 +303,7 @@ export function publishHost(win: HostWindow & Record<string, unknown>, options: 
         attachMedia: (iframe: HostFrame) => attachMedia(win, iframe),
     };
 
-    // The legacy media name, kept working over the canonical runtime (ADR-0020). Its
+    // The legacy media name, kept working over the canonical runtime (ADR-2199-11). Its
     // `attach(iframe, opts)` shape is what the host plugins call today.
     const legacyMediaHost = {
         attach(iframe: HostFrame) {

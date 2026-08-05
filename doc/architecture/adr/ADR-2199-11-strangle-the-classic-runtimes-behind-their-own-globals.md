@@ -1,16 +1,16 @@
 ---
-id: ADR-2235-11
+id: ADR-2199-11
 title: "Strangle the classic embed runtimes behind their own globals, switching loaders last"
 status: Accepted
 date: 2026-07-26
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0020
 deciders:
   - "@erseco"
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2235-08, ADR-2235-09, ADR-2235-10]
+  adrs: [ADR-2199-08, ADR-2199-09, ADR-2199-10]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,7 +18,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-2235-11: Strangle the classic embed runtimes behind their own globals, switching loaders last
+# ADR-2199-11: Strangle the classic embed runtimes behind their own globals, switching loaders last
 
 ## Context
 
@@ -37,7 +37,7 @@ with ones built from the canonical source, and turning the old files into facade
 
 Both are security-critical: the shim decides what to promote, the relay decides what URL
 loads into a player iframe and with which sandbox. Between them they are also the code
-that ADR-2235-08's handshake lives in.
+that ADR-2199-08's handshake lives in.
 
 ## Problem
 
@@ -50,7 +50,7 @@ silently weakened?
 - **Failures here are silent.** A wrong sandbox token or a missed promotion does not
   throw; it degrades. That rules out "swap and see".
 - The classic-script contract is load-bearing: no imports, `file://`-safe, runnable
-  inside an exported package (ADR-2235-08).
+  inside an exported package (ADR-2199-08).
 - Five plugins vendor these files. Core changing how it *loads* them desynchronises the
   ecosystem until Phase 6.
 - There is already a harness that runs the **built artifacts** through both directions
@@ -101,7 +101,7 @@ demonstrated against the incumbent, not asserted.
 `previewEmbedHost.js` (host side, one call site) before `previewEmbedShim.js` (child
 side, injected into every snapshot page). Host first because its blast radius is one
 document and its failure is visible immediately; the child ships inside content and its
-failure is the silent one ADR-2235-08 exists to prevent.
+failure is the silent one ADR-2199-08 exists to prevent.
 
 **Step 4 — publish facades, do not delete.**
 `window.exeEmbedShim`, `exeEmbedRelay`, `exeMediaPolicy`, `exeMediaBridge` and
@@ -182,5 +182,5 @@ canonical implementation.
 - `src/shared/external-media/` — canonical registry and protocol (Phase 1)
 - `scripts/external-media/sources.ts` — the designed swap point (Phase 5)
 - `test/e2e/playwright/specs/external-media-artifacts.spec.ts` — the equivalence harness
-- [ADR-2235-08](ADR-2235-08-embed-shim-stays-inert-until-a-host-completes-the-handshake.md),
-  [ADR-2235-10](ADR-2235-10-preview-transport-matrix-as-a-single-source.md)
+- [ADR-2199-08](ADR-2199-08-embed-shim-stays-inert-until-a-host-completes-the-handshake.md),
+  [ADR-2199-10](ADR-2199-10-preview-transport-matrix-as-a-single-source.md)

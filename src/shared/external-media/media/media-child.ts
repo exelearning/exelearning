@@ -54,7 +54,7 @@ export function createMediaBridge({ win, createHelloId }: MediaBridgeOptions): M
     function establish(): Promise<MediaPortLike | null> {
         const parent = win.parent;
         // Unframed, or framed by nothing that can hear us. Not an error: a package opened
-        // directly has no host, which is the case ADR-0017 exists to keep quiet.
+        // directly has no host, which is the case ADR-2199-08 exists to keep quiet.
         if (!parent) return Promise.resolve(null);
 
         return new Promise<MediaPortLike | null>(resolve => {

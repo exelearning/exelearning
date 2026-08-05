@@ -123,7 +123,7 @@ test('an opaque document opens a controllable video on the trusted page', async 
     expect(src.searchParams.get('enablejsapi')).toBe('1');
     expect(src.searchParams.get('origin')).toBe(base);
 
-    // No provider SDK was fetched: control is raw postMessage (ADR-0022).
+    // No provider SDK was fetched: control is raw postMessage (ADR-2199-13).
     const sdks = await page.evaluate(() => ({
         yt: typeof (window as never as Record<string, unknown>).YT,
         vimeo: typeof (window as never as Record<string, unknown>).Vimeo,
@@ -174,7 +174,7 @@ test('no video opens without a host to answer', async ({ page }) => {
     await page.waitForTimeout(2000);
 
     // Nothing is mounted, and nothing is half-mounted: no dialog, no player, no placeholder
-    // for a host that will never arrive (ADR-0017).
+    // for a host that will never arrive (ADR-2199-08).
     await expect(page.locator('dialog.exe-media-modal')).toHaveCount(0);
     expect(await page.locator('iframe').count()).toBe(1); // only the content frame itself
 });

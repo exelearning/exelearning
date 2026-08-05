@@ -1,16 +1,16 @@
 ---
-id: ADR-2235-10
+id: ADR-2199-10
 title: "The preview transport matrix is a single source with a consistency gate"
 status: Accepted
 date: 2026-07-26
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0019
 deciders:
   - "@erseco"
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2235-02, ADR-2235-03, ADR-2235-05, ADR-2235-06, ADR-2235-07, ADR-2235-08]
+  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-05, ADR-2199-06, ADR-2199-07, ADR-2199-08]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,13 +18,13 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-2235-10: The preview transport matrix is a single source with a consistency gate
+# ADR-2199-10: The preview transport matrix is a single source with a consistency gate
 
 ## Context
 
 Which isolation the editor preview uses is a security decision with one input — the
 runtime — and one modifier — whether the author has enabled custom active content.
-[ADR-2235-02](ADR-2235-02-hybrid-preview-trust-boundary.md) established the hybrid boundary;
+[ADR-2199-02](ADR-2199-02-hybrid-preview-trust-boundary.md) established the hybrid boundary;
 what it did not establish is *where the decision lives*.
 
 In practice it was spread across `previewContentPolicy.js` (`resolvePreviewTransport`,
@@ -158,5 +158,5 @@ machine-readable `reason`, and `requiresConsentWarning`. An unmodelled runtime
 - `public/app/utils/previewContentPolicy.js`
 - `src/shared/security/previewSandbox.ts` — the sandbox token owner
 - `doc/development/external-media-inventory.md` — spikes S1, S2, S3, S7
-- [ADR-2235-02](ADR-2235-02-hybrid-preview-trust-boundary.md),
-  [ADR-2235-07](ADR-2235-07-opfs-service-worker-is-not-an-opaque-origin.md)
+- [ADR-2199-02](ADR-2199-02-hybrid-preview-trust-boundary.md),
+  [ADR-2199-07](ADR-2199-07-opfs-service-worker-is-not-an-opaque-origin.md)

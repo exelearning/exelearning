@@ -38,7 +38,7 @@ import { join } from 'node:path';
 
 export const MANIFEST_FILE = 'exe-external-media.manifest.json';
 
-/** ADR-0018. Checked on the received bytes, because that is where it has to be. */
+/** ADR-2199-09. Checked on the received bytes, because that is where it has to be. */
 export const EXPECTED_GRANT = 'SPDX-License-Identifier: AGPL-3.0-or-later OR GPL-3.0-or-later';
 
 const sha256 = contents => createHash('sha256').update(contents, 'utf8').digest('hex');

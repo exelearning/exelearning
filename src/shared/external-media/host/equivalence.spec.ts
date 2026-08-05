@@ -7,7 +7,7 @@ import { describePlayer } from './player-descriptor';
 import { clampPlayer, overlayBox, reconcilePlayers } from './overlay-geometry';
 
 /**
- * ADR-0020 Step 2: the canonical host policy could only replace the incumbent relay once
+ * ADR-2199-11 Step 2: the canonical host policy could only replace the incumbent relay once
  * it decided the same thing for the same input. This executes `exe_embed_relay.js` as the
  * classic script it is and drives both implementations through the same vectors —
  * including the adversarial ones, where agreeing to REFUSE matters as much as agreeing to

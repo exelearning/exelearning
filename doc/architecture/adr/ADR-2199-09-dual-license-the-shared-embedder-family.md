@@ -1,16 +1,16 @@
 ---
-id: ADR-2235-09
+id: ADR-2199-09
 title: "Dual-license the shared embedder family so one file ships under AGPL and GPL"
 status: Accepted
 date: 2026-07-26
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0018
 deciders:
   - "@erseco"
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2235-08]
+  adrs: [ADR-2199-08]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,7 +18,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-2235-09: Dual-license the shared embedder family so one file ships under AGPL and GPL
+# ADR-2199-09: Dual-license the shared embedder family so one file ships under AGPL and GPL
 
 ## Context
 
@@ -160,5 +160,5 @@ project, not a technical one.
 - [GNU licence FAQ](https://www.gnu.org/licenses/gpl-faq.en.html) — GPLv3/AGPLv3 §13
 - [Moodle plugin contribution checklist](https://moodledev.io/general/community/plugincontribution/checklist)
 - `doc/development/external-media-inventory.md` — spike S5 and the F4 correction
-- [ADR-2235-08](ADR-2235-08-embed-shim-stays-inert-until-a-host-completes-the-handshake.md) —
+- [ADR-2199-08](ADR-2199-08-embed-shim-stays-inert-until-a-host-completes-the-handshake.md) —
   the change that made the family shippable to Moodle in the first place

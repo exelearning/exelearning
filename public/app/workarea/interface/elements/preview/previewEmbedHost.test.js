@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PreviewEmbedHost } from './previewEmbedHost.js';
 
 // The editor loads the built, hash-verified ARTIFACT, not a raw source file
-// (ADR-0020 step 3). The artifact carries the same relay plus the media half.
+// (ADR-2199-11 step 3). The artifact carries the same relay plus the media half.
 const RELAY_SRC = 'app/common/exe_external_media/dist/exe-external-media-host.min.js';
 
 describe('PreviewEmbedHost', () => {

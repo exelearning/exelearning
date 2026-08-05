@@ -5,7 +5,7 @@
  * host's own location as a parameter rather than reading a global, and returns a verdict
  * rather than touching the DOM. Everything here is unit-testable without a browser.
  *
- * Ported faithfully from the shipped `exe_embed_relay.js` — ADR-0020 Step 1 requires
+ * Ported faithfully from the shipped `exe_embed_relay.js` — ADR-2199-11 Step 1 requires
  * equivalence, so known policy *changes* are deliberately NOT folded in here. In
  * particular the remote-PDF question raised in Phase 0 (§7.2 of the design brief: a
  * server may answer `text/html` to a URL ending in `.pdf`) is left exactly as it ships

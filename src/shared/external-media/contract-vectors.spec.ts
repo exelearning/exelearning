@@ -182,7 +182,7 @@ describe('contract vectors — parity with the incumbent runtimes', () => {
  * The media half had no parity gate at all — every media vector was checked against the
  * canonical validator and nothing else. That is precisely how `open` came to accept any
  * two strings where the incumbent required a known provider and a well-formed id: a
- * loosening with no test to notice it (ADR-0020's named risk, realised).
+ * loosening with no test to notice it (ADR-2199-11's named risk, realised).
  *
  * The incumbent additionally demands a nonce. That is its own requirement, not the
  * protocol's — commands travel over a transferred MessagePort that only two endpoints can

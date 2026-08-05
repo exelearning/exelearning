@@ -67,7 +67,7 @@ async function bundleEntry(relative: string, label: string): Promise<string> {
         format: 'iife',
         platform: 'browser',
         target: 'es2017',
-        legalComments: 'inline', // keep the dual-licence notices (ADR-0018)
+        legalComments: 'inline', // keep the dual-licence notices (ADR-2199-09)
         logLevel: 'silent',
     });
     for (const warning of result.warnings) {
@@ -85,7 +85,7 @@ async function bundleEntry(relative: string, label: string): Promise<string> {
  * every minifier — drops ordinary comments, so the grants written in the sources do NOT
  * survive into the output. These bytes are vendored into five host-plugin repositories
  * that never see our source tree, and a grant that does not travel with the file it
- * licenses is no grant at all to whoever received it (ADR-0018). `verifyArtifacts`
+ * licenses is no grant at all to whoever received it (ADR-2199-09). `verifyArtifacts`
  * enforces this on the output, not on the input, for exactly that reason.
  */
 function banner(label: string): string {

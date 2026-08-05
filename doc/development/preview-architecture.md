@@ -8,10 +8,10 @@ runtime must keep working; author-controlled active content must not reach the
 editor's DOM, storage, or session on the default path.
 
 This page documents the **hybrid trust boundary**: source-filtered by default,
-opaque-on-enable. See [ADR-0002](../architecture/adr/ADR-0002-hybrid-preview-trust-boundary.md)
-for the decision, [ADR-0003](../architecture/adr/ADR-0003-preview-grant-revocation-under-collaboration.md)
+opaque-on-enable. See [ADR-2199-02](../architecture/adr/ADR-2199-02-hybrid-preview-trust-boundary.md)
+for the decision, [ADR-2199-03](../architecture/adr/ADR-2199-03-preview-grant-revocation-under-collaboration.md)
 for revocation under collaboration, and
-[ADR-0004](../architecture/adr/ADR-0004-self-hosted-capability-snapshots-for-editor-preview.md)
+[ADR-2199-04](../architecture/adr/ADR-2199-04-self-hosted-capability-snapshots-for-editor-preview.md)
 for the capability-snapshot server.
 
 ## Transport matrix
@@ -215,7 +215,7 @@ after a full adapter pass.
 - **Static bundle / PWA / PHP-WASM:** enabling runs author code same-origin
   (documented residual risk) — no backend exists to mint capability URLs, and
   OPFS + a Service Worker does not create an opaque origin
-  ([ADR-0016](../architecture/adr/ADR-0016-opfs-service-worker-is-not-an-opaque-origin.md)).
+  ([ADR-2199-07](../architecture/adr/ADR-2199-07-opfs-service-worker-is-not-an-opaque-origin.md)).
 - **Full-snapshot refresh while opaque-enabled:** each scheduled refresh
   re-uploads the whole snapshot. Acceptable because it is opt-in and temporary;
   see the [benchmark](../../test/benchmarks/preview/README.md) for the payload

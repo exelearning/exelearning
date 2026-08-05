@@ -107,7 +107,7 @@ const results = PLUGINS.map(plugin => {
     const manifestPath = join(vendoredDir, 'exe-external-media.manifest.json');
     const vendoredManifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : null;
 
-    // Byte identity against what core published, which is the claim ADR-0021 makes.
+    // Byte identity against what core published, which is the claim ADR-2199-12 makes.
     const files = {};
     for (const [key, record] of Object.entries(coreManifest.files)) {
         const local = join(vendoredDir, record.path);

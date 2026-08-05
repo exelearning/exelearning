@@ -2,7 +2,7 @@
  * The closed message vocabulary spoken between untrusted content and its trusted host.
  *
  * Two families exist today and are unified here:
- *  - EMBED: geometry promotion (`hello`/`welcome`/`request`/`sync`), ADR-0017.
+ *  - EMBED: geometry promotion (`hello`/`welcome`/`request`/`sync`), ADR-2199-08.
  *  - MEDIA: player control over a private MessageChannel.
  *
  * Everything is a closed enum. An unknown `action` is dropped before any work happens,

@@ -93,7 +93,7 @@ describe('applyPreviewEmbedShim', () => {
 describe('EMBED_CHILD_SCRIPT_PATH', () => {
     /**
      * The preview injects the built CHILD ARTIFACT, not a raw source file
-     * (ADR-0020 step 3). The artifact is versioned and hash-verified, and is the
+     * (ADR-2199-11 step 3). The artifact is versioned and hash-verified, and is the
      * same thing host plugins vendor — so what authors get in the preview is what
      * ships inside their exported packages.
      */
