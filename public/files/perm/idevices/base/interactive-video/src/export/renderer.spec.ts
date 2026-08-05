@@ -210,7 +210,7 @@ describe('renderPlayerHtml', () => {
         );
         expect(html).toContain('data-iv-provider="youtube"');
         expect(html).toContain('<iframe class="exe-iv-embed-frame"');
-        // enablejsapi=1 is what makes raw postMessage control possible (ADR-0003).
+        // enablejsapi=1 is what makes raw postMessage control possible (ADR-2147-03).
         expect(html).toContain('youtube-nocookie.com/embed/dQw4w9WgXcQ?enablejsapi=1&amp;rel=0');
         expect(html).toContain('origin=' + encodeURIComponent(window.location.origin).replace(/&/g, '&amp;'));
         expect(html).not.toContain('target="_blank"');

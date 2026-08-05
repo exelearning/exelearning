@@ -37,7 +37,7 @@ These apply to every skill below. If you cannot meet them, stop and ask the user
 | `src/**/*.ts` | Backend | `bun test` | `make fix` |
 | `public/app/**/*.js` | Frontend | `vitest` | `make fix` |
 | `public/files/perm/idevices/**` | iDevice | `vitest` | `make fix` |
-| `public/files/perm/idevices/*/src/**` | iDevice (TypeScript, see [ADR-0006](doc/architecture/adr/ADR-0006-typescript-idevices-build-convention.md)) | `vitest` (`*.spec.ts`) | `make fix` |
+| `public/files/perm/idevices/*/src/**` | iDevice (TypeScript, see [ADR-2147-06](doc/architecture/adr/ADR-2147-06-typescript-idevices-build-convention.md)) | `vitest` (`*.spec.ts`) | `make fix` |
 | `src/shared/export/**` | Exporter | `bun test` | `make fix` |
 | `src/db/migrations/**` | Database | `bun test` | `make fix` |
 | `src/routes/api/v1/**` | API v1 | `bun test` | `make fix` |

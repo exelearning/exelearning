@@ -1,5 +1,5 @@
 ---
-tracking_issue: 2236
+tracking_issue: 2147
 title: "Interactive Video iDevice refactor"
 status: in-review
 date: 2026-07-09
@@ -10,7 +10,7 @@ reviewers:
   - "@mnunezcedec"
   - "@cristinavaldera"
 implementation_prs: [2147]
-related_adrs: [ADR-2236-01, ADR-2236-02, ADR-2236-03, ADR-2236-04, ADR-2236-05]
+related_adrs: [ADR-2147-01, ADR-2147-02, ADR-2147-03, ADR-2147-04, ADR-2147-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -98,7 +98,7 @@ introduced.
 The change is large and cross-cutting (authoring UX, runtime, storage format,
 export registration, migration, security, accessibility), which is why it is
 captured as an SDD with the durable decisions extracted into ADRs
-(ADR-2236-01…ADR-2236-05).
+(ADR-2147-01…ADR-2147-05).
 
 ## Problem statement
 
@@ -181,27 +181,27 @@ Before this change (all paths repo-root-relative):
 
 The design (amended in review, before the corresponding implementation lands):
 
-- **Integrated inline editor** (ADR-2236-01) — `edition/interactive-video.js`
+- **Integrated inline editor** (ADR-2147-01) — `edition/interactive-video.js`
   renders the whole authoring UI inline in the iDevice body using the native
   `.exe-form-tab` → `$exeDevicesEdition.iDevice.tabs.init()` pattern, with
   element-scoped state (no `top.*` singletons). The detached
   editor/full-screen flow is no longer the authoring path.
-- **Versioned JSON storage** (ADR-2236-02) — the iDevice is `component-type=json`;
+- **Versioned JSON storage** (ADR-2147-02) — the iDevice is `component-type=json`;
   `save()` returns a plain object stored in `jsonProperties`, and export renders
   via `renderView(jsonProperties, template)`. A bounded on-open migration
   hydrates the versioned schema from the legacy `htmlView` island; already-
   generated exports are untouched.
-- **Declarative script-free runtime** (ADR-2236-03) — a fresh
+- **Declarative script-free runtime** (ADR-2147-03) — a fresh
   `export/interactive-video.js` (`$interactivevideo`) renders declarative,
   escaped HTML from the JSON and wires the player, scheduler, grading, scoring
   and SCORM at runtime. No author JavaScript is evaluated; no provider SDK
   `<script>` is emitted into exports.
-- **Provider normalization behind an adapter boundary** (ADR-2236-04) — external
+- **Provider normalization behind an adapter boundary** (ADR-2147-04) — external
   providers are stored as `{provider, videoId}` and rebuilt to canonical
   privacy-enhanced URLs; a shared adapter layer (`src/providers/`, compiled into both bundles) owns
   playback control and time events for every provider today via SDK-free
   postMessage, and the future opaque bridge remains the opaque-mode path.
-- **Framework-free** (ADR-2236-05) — no UI framework and no H5P runtime; the
+- **Framework-free** (ADR-2147-05) — no UI framework and no H5P runtime; the
   maintained source is TypeScript compiled into two self-contained classic-
   script bundles (see the TypeScript amendment above).
 
@@ -451,7 +451,7 @@ deep-equals migrate(x)`) is a contract test.
 
 ### Interaction model
 
-All **8 interaction/question kinds are first-class** (ADR-2236-01/ADR-2236-03):
+All **8 interaction/question kinds are first-class** (ADR-2147-01/ADR-2147-03):
 `note` (text/image), `pause`, `jump`, and `question.kind` ∈ {`singleChoice`,
 `multipleChoice`, `trueFalse`, `dropdown`, `cloze`, `matchElements`,
 `sortableList`}. Each is authored with its own dedicated control (see *Editor
@@ -497,7 +497,7 @@ implements one interface:
 ```
 
 The transports are **SDK-free** — no provider `<script>` is ever loaded, so
-ADR-2236-03's no-external-script guarantee holds for exports:
+ADR-2147-03's no-external-script guarantee holds for exports:
 
 - **Local HTML5** — wraps the `<video>` element: native `timeupdate` →
   `onTimeUpdate`; `play`/`pause`/`ended` → `onStateChange`; `currentTime`/
@@ -543,7 +543,7 @@ Provider capabilities, and where each degrades:
 "Best-effort" reflects provider event granularity and autoplay/gesture policies,
 not exact-time determinism; "Degrades-to-manual" keeps the accessible timeline
 list, the external link and manual time entry as the fallback. Mediateca has no
-canonical iframe embed URL and remains not opaque-promotable (ADR-2236-04).
+canonical iframe embed URL and remains not opaque-promotable (ADR-2147-04).
 
 ### Preview and export registration (runtime parity)
 
@@ -750,9 +750,9 @@ lossless `unsupported` round-trips.
 ## Security and privacy
 
 - Declarative runtime data only: no author-JS `eval`, no inline/external author
-  `<script>` in exported content (ADR-2236-03).
+  `<script>` in exported content (ADR-2147-03).
 - External providers are untrusted cross-origin: store `{provider, videoId}`,
-  rebuild canonical URLs, reject `javascript:`/non-HTTPS (ADR-2236-04).
+  rebuild canonical URLs, reject `javascript:`/non-HTTPS (ADR-2147-04).
 - No same-origin assumption between exported content and the LMS parent; assume
   `window.origin` may be `"null"` under an opaque sandbox.
 - Author content is escaped on render: question prompts (all kinds) and
@@ -892,10 +892,10 @@ needed.
 ## Risks and mitigations
 
 - **Storage format flip** → bounded on-open migration + round-trip fixtures;
-  legacy island reader kept for hydration (ADR-2236-02).
+  legacy island reader kept for hydration (ADR-2147-02).
 - **All 8 kinds** → larger UI/test surface; each kind is unit-tested.
 - **Mediateca** → mixed-content/keyed CDN, not bridge-promotable; retained
-  hardened (HTTPS) and documented as limited (ADR-2236-04).
+  hardened (HTTPS) and documented as limited (ADR-2147-04).
 - **SCORM regression** → grading/completion locked behind pure unit tests before
   the markup rewrite.
 
@@ -913,11 +913,11 @@ needed.
 
 | Decision | ADR | Status |
 |---|---|---|
-| Native inline editor (replace the detached full-screen editor) | ADR-2236-01 | Proposed |
-| Store data as versioned JSON properties + on-open migration | ADR-2236-02 | Proposed |
-| Declarative, script-free learner runtime | ADR-2236-03 | Proposed |
-| Normalize external providers behind an adapter boundary | ADR-2236-04 | Proposed |
-| Keep the iDevice framework-free | ADR-2236-05 | Proposed |
+| Native inline editor (replace the detached full-screen editor) | ADR-2147-01 | Proposed |
+| Store data as versioned JSON properties + on-open migration | ADR-2147-02 | Proposed |
+| Declarative, script-free learner runtime | ADR-2147-03 | Proposed |
+| Normalize external providers behind an adapter boundary | ADR-2147-04 | Proposed |
+| Keep the iDevice framework-free | ADR-2147-05 | Proposed |
 
 ## Evidence
 
@@ -1007,7 +1007,7 @@ All review-driven items landed 2026-07-10 (suites in *Testing strategy*):
 - [x] Rewritten E2E spec for the single-editor flow, including the SW-preview
   pause/question/resume step (local video) and the controllable-embed markup
   assertion for YouTube (no live provider network in CI).
-- [x] Docs amended in this SDD + ADR-2236-01…ADR-2236-05 (review-driven pass).
+- [x] Docs amended in this SDD + ADR-2147-01…ADR-2147-05 (review-driven pass).
 
 ## References
 
@@ -1015,5 +1015,5 @@ All review-driven items landed 2026-07-10 (suites in *Testing strategy*):
   Video iDevice refactor (this design).
 - PR [#2149](https://github.com/exelearning/exelearning/pull/2149) — ADR/SDD
   workflow this record follows.
-- ADR-2236-01 … ADR-2236-05 (this design's durable decisions).
+- ADR-2147-01 … ADR-2147-05 (this design's durable decisions).
 - `doc/elpx-format/idevices/patterns.md`, `doc/elpx-format/idevices/catalog.md`.

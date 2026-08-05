@@ -1,9 +1,9 @@
 ---
-id: ADR-2236-01
+id: ADR-2147-01
 title: "Native inline editor for the Interactive Video iDevice"
 status: Proposed
 date: 2026-07-09
-tracking_issue: 2236
+tracking_issue: 2147
 legacy_id: ADR-0001
 deciders:
   - "@erseco"
@@ -12,8 +12,8 @@ reviewers:
   - "@cristinavaldera"
 related:
   prs: [2147]
-  changes: ["2236-interactive-video-refactor"]
-  adrs: [ADR-2236-02, ADR-2236-03, ADR-2236-05]
+  changes: ["2147-interactive-video-refactor"]
+  adrs: [ADR-2147-02, ADR-2147-03, ADR-2147-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,7 +21,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-2236-01: Native inline editor for the Interactive Video iDevice
+# ADR-2147-01: Native inline editor for the Interactive Video iDevice
 
 ## Context
 
@@ -107,7 +107,7 @@ legacy iframe editor is removed.
 
 - Feature-parity gaps with the old editor. One such gap materialized in review:
   "Use current time" worked only for local video, regressing the legacy YouTube
-  behavior. It is resolved by the provider adapter (ADR-2236-04), which exposes
+  behavior. It is resolved by the provider adapter (ADR-2147-04), which exposes
   `getCurrentTime` for every provider, so the editor reads the live playhead for
   external video too. Parity is otherwise held by re-implementing all legacy
   options (video sources, custom texts, SCORM, all 8 interaction kinds) and
@@ -142,7 +142,7 @@ Two refinements within the native-inline decision (the decision itself stands):
 - **Body-editor widget** — the note/pause/cover body uses the **shared lite
   TinyMCE** (`$exeTinyMCE`, `.exe-html-editor`) rather than a plain textarea,
   degrading gracefully when TinyMCE is absent. The runtime stays declarative and
-  script-free (ADR-2236-03 unaffected): TinyMCE is an **edit-time** widget only.
+  script-free (ADR-2147-03 unaffected): TinyMCE is an **edit-time** widget only.
 
 ## Amendment — the body field is eXe's own editor, not a bespoke one
 
@@ -170,4 +170,4 @@ the hook — the same pattern `udl-content` uses.
 
 - the change design — Interactive Video iDevice refactor.
 - PR [#2147](https://github.com/exelearning/exelearning/pull/2147).
-- Related: ADR-2236-02, ADR-2236-03, ADR-2236-05.
+- Related: ADR-2147-02, ADR-2147-03, ADR-2147-05.
