@@ -358,6 +358,52 @@ test.describe('Rubric iDevice', () => {
             expect(scope.centreOffset).toBeLessThan(2);
         });
 
+        test('should keep the rubric out of reach of the keyboard while a dialog is open', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Dialog Inert Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            await page.locator('#ri_Table tbody tr').first().locator('td').first().locator('a.ri_EditTD').click();
+            await expect(page.locator('#ri_CellEditModal')).toBeVisible({ timeout: 10000 });
+
+            // The backdrop only stops the pointer, so the rubric is made inert:
+            // focusing one of its inputs must be a no-op.
+            const whileOpen = await page.evaluate(() => {
+                const input = document.querySelector('#ri_Table caption input') as HTMLElement;
+                input.focus();
+                return {
+                    tookFocus: document.activeElement === input,
+                    dialogFieldTakesFocus: (() => {
+                        const field = document.getElementById('ri_CellEditContent');
+                        field?.focus();
+                        return document.activeElement === field;
+                    })(),
+                };
+            });
+            expect(whileOpen.tookFocus).toBe(false);
+            // The dialog itself stays operable
+            expect(whileOpen.dialogFieldTakesFocus).toBe(true);
+
+            await page.locator('#ri_CellEditCancel').click();
+            await expect(page.locator('#ri_CellEditModal')).toBeHidden({ timeout: 10000 });
+
+            const afterClose = await page.evaluate(() => {
+                const input = document.querySelector('#ri_Table caption input') as HTMLElement;
+                input.focus();
+                return document.activeElement === input;
+            });
+            expect(afterClose).toBe(true);
+        });
+
         test('should return the focus to the control that opened the dialog', async ({
             authenticatedPage,
             createProject,

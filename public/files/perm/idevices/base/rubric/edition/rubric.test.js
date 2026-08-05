@@ -557,6 +557,42 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
     });
 
+    it('makes the rubric inert while a dialog is open, but not the dialog itself', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+
+      const editor = document.getElementById('ri_TableEditor');
+      const table = document.getElementById('ri_Table');
+      const dialog = document.getElementById('ri_CellEditModal');
+      const backdrop = document.getElementById('ri_CellEditModalBackdrop');
+
+      expect(editor.hasAttribute('inert')).toBe(true);
+      expect(table.hasAttribute('inert')).toBe(true);
+      expect(dialog.hasAttribute('inert')).toBe(false);
+      expect(backdrop.hasAttribute('inert')).toBe(false);
+
+      $exeDevice.closeCellEditModal();
+
+      expect(editor.hasAttribute('inert')).toBe(false);
+      expect(table.hasAttribute('inert')).toBe(false);
+    });
+
+    it('keeps the rubric inert while another dialog is still open', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+
+      $exeDevice.closeCellEditModal();
+
+      expect(document.getElementById('ri_Table').hasAttribute('inert')).toBe(true);
+
+      $exeDevice.closeRowEditModal();
+
+      expect(document.getElementById('ri_Table').hasAttribute('inert')).toBe(false);
+    });
+
     it('returns the focus to the control that opened the dialog', () => {
       buildTable();
 

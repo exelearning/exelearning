@@ -1971,6 +1971,28 @@ var $exeDevice = {
 
         $(element).addClass('show').attr('aria-hidden', 'false');
         this.centreEditModal(element);
+        this.setEditModalScopeInert(true);
+    },
+
+    /**
+     * Take the rubric out of the tab order and of the accessibility tree while a
+     * dialog is open: the backdrop only stops the pointer, so without this the
+     * controls it covers stay reachable by keyboard and assistive technology.
+     *
+     * Only the form is made inert. The dialog belongs to the iDevice, not to the
+     * application, so the rest of the workarea stays available as usual.
+     */
+    setEditModalScopeInert: function (inert) {
+        var form = document.getElementById('ri_IdeviceForm');
+        if (!form) return;
+
+        Array.prototype.forEach.call(form.children, function (child) {
+            if (child.classList.contains('ri-edit-dialog')) return;
+            if (child.classList.contains('ri-edit-backdrop')) return;
+
+            if (inert) child.setAttribute('inert', '');
+            else child.removeAttribute('inert');
+        });
     },
 
     /**
@@ -1997,6 +2019,10 @@ var $exeDevice = {
             .removeClass('show')
             .attr('aria-hidden', 'true');
         $('#' + id + 'Backdrop').remove();
+
+        // Lift the inertness before restoring the focus: the control that opened
+        // the dialog lives in the form, and focusing an inert element is a no-op.
+        this.setEditModalScopeInert($('.ri-edit-dialog.show').length > 0);
         this.restoreEditModalFocus();
     },
 
