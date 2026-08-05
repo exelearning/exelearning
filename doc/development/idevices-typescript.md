@@ -6,7 +6,7 @@ Most iDevices are classic-script vanilla JavaScript committed directly under
 `export/*.js` files are **generated bundles** (gitignored — never edit or
 commit them) compiled by the centralized build. Slide and Interactive Video
 follow this model today. The decision record is
-[ADR-0006](../architecture/adr/ADR-0006-typescript-idevices-build-convention.md).
+[ADR-2147-06](../architecture/adr/ADR-2147-06-typescript-idevices-build-convention.md).
 
 ## The convention
 

@@ -1,9 +1,9 @@
 ---
-id: ADR-2236-05
+id: ADR-2147-05
 title: "Keep the Interactive Video iDevice framework-free"
 status: Proposed
 date: 2026-07-09
-tracking_issue: 2236
+tracking_issue: 2147
 legacy_id: ADR-0005
 deciders:
   - "@erseco"
@@ -12,8 +12,8 @@ reviewers:
   - "@cristinavaldera"
 related:
   prs: [2147]
-  changes: ["2236-interactive-video-refactor"]
-  adrs: [ADR-2236-01, ADR-2236-03]
+  changes: ["2147-interactive-video-refactor"]
+  adrs: [ADR-2147-01, ADR-2147-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,7 +21,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-2236-05: Keep the Interactive Video iDevice framework-free
+# ADR-2147-05: Keep the Interactive Video iDevice framework-free
 
 ## Context
 
@@ -141,4 +141,4 @@ manually-synchronized copies of the core proved the worse trade-off.
 - the change design — Interactive Video iDevice refactor.
 - PR [#2147](https://github.com/exelearning/exelearning/pull/2147).
 - `AGENTS.md` (framework policy).
-- Related: ADR-2236-01, ADR-2236-03.
+- Related: ADR-2147-01, ADR-2147-03.

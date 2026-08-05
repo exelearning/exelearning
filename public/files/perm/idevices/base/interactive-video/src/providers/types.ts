@@ -5,7 +5,7 @@
  *
  * Cross-origin embeds are driven by RAW postMessage — the same wire protocols
  * the official IFrame APIs use — so NO provider SDK `<script>` is ever loaded
- * into exported content (ADR-0003/ADR-0004). All time signals are event-push;
+ * into exported content (ADR-2147-03/ADR-2147-04). All time signals are event-push;
  * there is no polling.
  */
 

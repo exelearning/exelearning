@@ -3,7 +3,7 @@
  *
  * External providers are treated as untrusted cross-origin: we store only
  * `{provider, videoId}` and rebuild canonical HTTPS URLs, never trusting an
- * author-supplied embed URL verbatim (see SDD-0001, Security principles).
+ * author-supplied embed URL verbatim (see the changes/2147-interactive-video-refactor design, Security principles).
  */
 
 import type { NormalizedVideoSource, ProviderId } from './types';
