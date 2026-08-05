@@ -8,9 +8,15 @@
                 <span class="auto-icon" aria-hidden="true">download</span>
                 <span class="btn-label">{{ t.download or 'Download' }}</span>
             </button>
-            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2 {% if config.platformIntegration %}d-none{% endif %}" title="{{ t.save or 'Save' }}" data-testid="save-button">
+            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2 {% if config.platformIntegration %}d-none{% endif %}" title="{{ t.save or 'Save' }}" data-testid="save-button" aria-describedby="exe-collab-save-status">
                 <div class="small-icon save-icon-white"></div>
                 <span>{{ t.save or 'Save' }}</span>
+                {# Collaborative autosave badge (issue #1592): a compact glyph
+                   overlaid on the Save button, shown via JS only in online
+                   collaborative sessions. Decorative — the state is exposed to
+                   assistive tech through the #exe-collab-save-status live region
+                   referenced by aria-describedby above. #}
+                <span class="collab-autosave-badge exe-online d-none" data-testid="collab-autosave-indicator" aria-hidden="true"></span>
             </button>
             <button id="head-bottom-preview" class="btn button-display display-outline button-square d-flex justify-content-center align-items-center" title="{{ t.preview or 'Preview' }}">
                 <div class="small-icon preview-icon-green"></div>
@@ -37,10 +43,11 @@
                 <span>{{ 'Finish' | trans }}</span>
             </button>
             {% endif %}
-            {# Collaborative autosave notice (issue #1592): only shown, via JS, in
-               online collaborative sessions to clarify that live shared changes
-               are autosaved, and to warn clearly if autosave fails. #}
-            <div id="exe-collab-save-status" class="collab-save-status exe-online d-none" role="status" aria-live="polite">
+            {# Collaborative autosave live region (issue #1592): a visually-hidden
+               status region (no toolbar space) that announces autosave state
+               transitions to screen readers. The compact visible state lives in
+               the Save-button badge above; failures also raise an error toast. #}
+            <div id="exe-collab-save-status" class="collab-save-status exe-online" role="status" aria-live="polite" aria-atomic="true">
                 <span class="content"></span>
             </div>
             <div id="exe-last-edition" class="btn">

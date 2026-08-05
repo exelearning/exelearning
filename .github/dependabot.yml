@@ -7,6 +7,15 @@ updates:
     schedule:
       interval: "weekly"
 
+  # Electron main-process dependencies. app/ has its own manifest and lockfile,
+  # which the "/" entry above does not cover, so electron-updater, electron-log,
+  # electron-context-menu and fflate had gone unmanaged since #1103 even though
+  # they are the packages that ship inside app.asar.
+  - package-ecosystem: "npm"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
+
   # Dockerfile dependencies (e.g., base images)
   - package-ecosystem: "docker"
     directory: "/"
