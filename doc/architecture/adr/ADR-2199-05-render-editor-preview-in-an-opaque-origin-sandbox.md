@@ -1,9 +1,9 @@
 ---
-id: ADR-2235-05
+id: ADR-2199-05
 title: "Render editor preview content in an opaque-origin sandbox"
 status: Accepted
 date: 2026-07-09
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0006
 deciders:
   - "@erseco"
@@ -12,7 +12,7 @@ reviewers:
 related:
   prs: [1968]
   changes: []
-  adrs: [ADR-0007, ADR-2235-06, ADR-0010, ADR-0011, ADR-0015]
+  adrs: [ADR-2199-06]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -20,7 +20,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-2235-05: Render editor preview content in an opaque-origin sandbox
+# ADR-2199-05: Render editor preview content in an opaque-origin sandbox
 
 ## Context
 
@@ -125,5 +125,5 @@ absence of `allow-same-origin` and that the parent cannot read the child documen
 
 ## References
 
-- the change design; ADR-0007, ADR-2235-06, ADR-0010, ADR-0011.
+- the change design; ADR-0007, ADR-2199-06, ADR-0010, ADR-0011.
 - PR #1968. `doc/development/preview-architecture.md`.

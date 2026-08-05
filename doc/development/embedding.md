@@ -358,7 +358,7 @@ web/server user enables custom active content. One client, two servers. A host
 integration only needs to implement the create/replace/serve/delete lifecycle;
 `selfHostedPreviewSnapshotConfig()` shows the eXe-side shape. See
 [preview-architecture.md](preview-architecture.md) and
-[ADR-0004](../architecture/adr/ADR-0004-self-hosted-capability-snapshots-for-editor-preview.md).
+[ADR-2199-04](../architecture/adr/ADR-2199-04-self-hosted-capability-snapshots-for-editor-preview.md).
 
 ## YouTube "Error 153" and `referrerpolicy`
 

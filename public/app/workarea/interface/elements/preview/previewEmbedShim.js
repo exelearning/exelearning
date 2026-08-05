@@ -30,7 +30,7 @@ export const EMBED_SHIM_FILENAME = 'exe-embed-shim.js';
 /**
  * Where the in-content runtime is fetched from, relative to the app base path.
  *
- * The built CHILD ARTIFACT, not a raw source file (ADR-0020 step 3). It is
+ * The built CHILD ARTIFACT, not a raw source file (ADR-2199-11 step 3). It is
  * versioned, hash-verified by `check-external-media-artifacts`, and is the same
  * thing host plugins vendor — so what an author sees in the preview is what runs
  * inside the package they export. Produced by `bundle:external-media`, which

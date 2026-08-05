@@ -126,7 +126,7 @@ test('no provider player survives an opaque origin, and promotion is what buys t
         expect(
             opaque[id],
             `${id} PLAYED inside an opaque iframe (${opaque[id]} samples changed). ` +
-                'If that is reproducible, this provider no longer needs promoting and ADR-0023 should be revisited.',
+                'If that is reproducible, this provider no longer needs promoting and ADR-2199-14 should be revisited.',
         ).toBeLessThanOrEqual(MOVING);
     }
 });

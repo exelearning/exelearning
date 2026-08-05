@@ -10,7 +10,7 @@
  * warning at all. The point is that a maintainer sees it, learns the replacement, and is
  * not punished for it afterwards.
  *
- * These facades are removed in a later major (ADR-0020 step 4), never here.
+ * These facades are removed in a later major (ADR-2199-11 step 4), never here.
  */
 
 export interface DeprecationOptions {

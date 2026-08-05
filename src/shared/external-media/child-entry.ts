@@ -8,12 +8,12 @@
  *
  * The load-bearing property is WHEN the observers are installed: not at load, but on
  * activation. A document with no host — a `file://` package, a third-party LMS, an ePub
- * reader — is left exactly as authored, and pays for no observers either (ADR-0017).
+ * reader — is left exactly as authored, and pays for no observers either (ADR-2199-08).
  *
  * It publishes two names:
  *
  *   window.exeExternalMediaChild   what new code should use
- *   window.exeEmbedShim            the legacy name, kept working, announced once (ADR-0020)
+ *   window.exeEmbedShim            the legacy name, kept working, announced once (ADR-2199-11)
  */
 import { createDeprecations, withDeprecationNotice, type DeprecationOptions } from './compatibility/legacy-globals';
 import { createMediaBridge, type MediaBridge } from './media/media-child';
@@ -157,7 +157,7 @@ export function publishChild(win: ChildWindow & Record<string, unknown>, options
 
     win.exeExternalMediaChild = { start: () => startChild(win), createDomScanner, media };
 
-    // The legacy media name, kept working over the canonical runtime (ADR-0020). Only the
+    // The legacy media name, kept working over the canonical runtime (ADR-2199-11). Only the
     // programmatic path survives: the declarative scan was already unreachable whenever
     // the embed half is present, which in this bundle is always.
     const legacyMediaBridge = {

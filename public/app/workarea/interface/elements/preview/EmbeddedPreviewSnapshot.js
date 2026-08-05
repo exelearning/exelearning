@@ -3,7 +3,7 @@
 // the effective sandbox of a framed document is the INTERSECTION of the CSP
 // directive and this attribute, so any divergence silently drops capabilities.
 // A drift test in previewSandbox.spec.ts enforces the equality.
-// `allow-popups-to-escape-sandbox` is decision D2 (ADR-0002): the external
+// `allow-popups-to-escape-sandbox` is decision D2 (ADR-2199-02): the external
 // media fallback's author-initiated "open in a new tab" must land in a clean,
 // non-sandboxed tab or the video would not play there either.
 const EMBEDDED_PREVIEW_SANDBOX =

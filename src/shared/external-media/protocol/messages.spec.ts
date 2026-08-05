@@ -26,7 +26,7 @@ describe('protocol vocabulary', () => {
         expect([...EMBED_CHILD_ACTIONS]).toEqual(['hello', 'sync']);
         expect([...EMBED_HOST_ACTIONS]).toEqual(['welcome', 'request']);
         // No action may be legal in both directions: 'welcome' is what unlocks
-        // promotion, so a child able to send it could unlock itself (ADR-0017).
+        // promotion, so a child able to send it could unlock itself (ADR-2199-08).
         const overlap = EMBED_CHILD_ACTIONS.filter(a => (EMBED_HOST_ACTIONS as readonly string[]).includes(a));
         expect(overlap).toEqual([]);
     });

@@ -398,7 +398,7 @@ export function canEnableActivePreviewContent() {
 }
 
 /**
- * Preview transports — one per row of the trust-boundary matrix (ADR-0002).
+ * Preview transports — one per row of the trust-boundary matrix (ADR-2199-02).
  * The transport is decided by the runtime, never by content, and there is no
  * fallback between rows: a transport that cannot deliver fails visibly.
  */
@@ -429,7 +429,7 @@ export function resolvePreviewTransport(runtimeConfig) {
     return PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE;
 }
 
-/** Trust states of the enable/disable machine (ADR-0002 §state machine). */
+/** Trust states of the enable/disable machine (ADR-2199-02 §state machine). */
 export const PREVIEW_TRUST_STATES = Object.freeze({
     FILTERED: 'filtered',
     OPAQUE_ENABLED: 'opaque-enabled',
@@ -461,7 +461,7 @@ export function getActivePreviewTrustState(projectId, runtimeConfig) {
 }
 
 /**
- * Revocation rule under collaboration (decision D1, ADR-0003).
+ * Revocation rule under collaboration (decision D1, ADR-2199-03).
  *
  * The grant survives only updates whose origin is POSITIVELY identified as a
  * local user action:

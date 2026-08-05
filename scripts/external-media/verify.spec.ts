@@ -96,7 +96,7 @@ describe('verifyArtifacts', () => {
     });
 
     /**
-     * ADR-0018 grants the dual licence so host plugins can vendor these bytes. A grant
+     * ADR-2199-09 grants the dual licence so host plugins can vendor these bytes. A grant
      * that does not travel WITH the bytes is no grant at all to whoever received them —
      * and these artifacts are copied into five repositories that never see our source.
      */

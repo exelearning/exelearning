@@ -8,7 +8,7 @@ import { getDialect, PROVIDER_DIALECTS } from './provider-dialects';
  *
  * Ported from `mod_exelearning/js/exe_media_host.js`, which is the implementation that has
  * actually been running — core's own media host used the provider SDKs and depended on
- * globals core never loads (ADR-0022). The flow is normally core → plugins; here the
+ * globals core never loads (ADR-2199-13). The flow is normally core → plugins; here the
  * better implementation was downstream, so it comes up rather than being reinvented.
  *
  * Keeping these separate from the iframe wiring is what makes them testable at all: the

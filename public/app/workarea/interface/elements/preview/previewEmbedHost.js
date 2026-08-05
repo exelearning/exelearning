@@ -7,7 +7,7 @@
  * trusted-side runtime, which overlays the real player in place. It loads
  * lazily: most previews embed nothing.
  *
- * The editor loads the built ARTIFACT rather than a raw source file (ADR-0020
+ * The editor loads the built ARTIFACT rather than a raw source file (ADR-2199-11
  * step 3). The artifact is versioned, hash-verified by
  * `check-external-media-artifacts`, and is the same thing host plugins vendor —
  * so what the editor exercises is what ships. It carries the same relay the raw

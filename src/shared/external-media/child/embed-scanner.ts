@@ -41,7 +41,7 @@ function cssSize(value: string | null, fallback: string): string {
  * Replace every promotable iframe under `root` with a same-size placeholder.
  *
  * Callers must not invoke this before a host has answered the handshake: a placeholder
- * only the host can fill is a permanent black box if no host exists (ADR-0017).
+ * only the host can fill is a permanent black box if no host exists (ADR-2199-08).
  */
 export function promote(
     root: ParentNode & { ownerDocument?: Document | null },

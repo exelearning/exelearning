@@ -16,7 +16,7 @@ const ARTIFACT_NAMES = {
  * sources they were built from — are what has to work. Minification, concatenation
  * order and the classic-script contract all only fail here.
  *
- * Both directions of ADR-0017 are covered: a host that welcomes the child promotes the
+ * Both directions of ADR-2199-08 are covered: a host that welcomes the child promotes the
  * embeds, and a page with no relay at all leaves the author's iframes untouched.
  *
  * The artifacts are built into a temp directory by this spec, so it never depends on

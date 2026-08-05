@@ -631,7 +631,7 @@ export default class PreviewPanelManager {
                 // Skip system-originated updates (initial sync, etc.)
                 if (origin === 'system' || origin === 'initial') return;
 
-                // D1 (ADR-0003): a positively identified LOCAL edit keeps the
+                // D1 (ADR-2199-03): a positively identified LOCAL edit keeps the
                 // active-content grant — the person who enabled is the one
                 // editing. Anything else (remote collaborator, import, unknown
                 // origin) revokes it, and any live opaque snapshot session is

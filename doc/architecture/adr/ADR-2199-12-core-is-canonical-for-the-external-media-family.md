@@ -1,16 +1,16 @@
 ---
-id: ADR-2235-12
+id: ADR-2199-12
 title: "eXeLearning core is canonical for the external-media family, verified by manifest"
 status: Accepted
 date: 2026-07-26
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0021
 deciders:
   - "@erseco"
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2235-08, ADR-2235-09, ADR-2235-11]
+  adrs: [ADR-2199-08, ADR-2199-09, ADR-2199-11]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,7 +18,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-2235-12: eXeLearning core is canonical for the external-media family, verified by manifest
+# ADR-2199-12: eXeLearning core is canonical for the external-media family, verified by manifest
 
 ## Context
 
@@ -46,7 +46,7 @@ individually). It passes because it cannot see behaviour. It is a smoke test wea
 gate's label, it lives in a client repo, and its own comment admits it is not wired into
 any CI. [M]
 
-Meanwhile the thing it was written to protect has moved. Since ADR-2235-11 the canonical
+Meanwhile the thing it was written to protect has moved. Since ADR-2199-11 the canonical
 implementation is the TypeScript under `src/shared/external-media/`, and the classic files
 it guards are no longer built into anything.
 
@@ -124,4 +124,4 @@ false sense of coverage.
 ## References
 
 - `doc/development/external-media-inventory.md` §2.3 (F5), §2.2 (the five divergences)
-- ADR-2235-11 (strangler-fig migration), ADR-2235-09 (dual licence, which makes vendoring lawful)
+- ADR-2199-11 (strangler-fig migration), ADR-2199-09 (dual licence, which makes vendoring lawful)

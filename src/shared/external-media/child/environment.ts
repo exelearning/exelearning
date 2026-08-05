@@ -22,7 +22,7 @@ export interface RuntimeWindow {
  * In an opaque origin `window.origin` is the string `"null"` and cookie access throws.
  * **This is never sufficient to act on**: `file://` is also an opaque origin in every
  * engine, which is exactly how the incumbent came to destroy embeds in unhosted content
- * (ADR-0017). Promotion is gated on an answered handshake, not on this.
+ * (ADR-2199-08). Promotion is gated on an answered handshake, not on this.
  */
 export function isOpaqueOrigin(win: RuntimeWindow): boolean {
     try {

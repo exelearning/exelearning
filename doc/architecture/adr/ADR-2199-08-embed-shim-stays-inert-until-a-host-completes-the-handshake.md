@@ -1,16 +1,16 @@
 ---
-id: ADR-2235-08
+id: ADR-2199-08
 title: "The in-content embed shim stays inert until a host completes the handshake"
 status: Accepted
 date: 2026-07-26
-tracking_issue: 2235
+tracking_issue: 2199
 legacy_id: ADR-0017
 deciders:
   - "@erseco"
 related:
   prs: [2199]
   changes: []
-  adrs: [ADR-2235-02, ADR-2235-05, ADR-2235-07]
+  adrs: [ADR-2199-02, ADR-2199-05, ADR-2199-07]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -18,7 +18,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-2235-08: The in-content embed shim stays inert until a host completes the handshake
+# ADR-2199-08: The in-content embed shim stays inert until a host completes the handshake
 
 ## Context
 
@@ -57,7 +57,7 @@ should gate promotion instead?
 - An unfilled placeholder is **strictly worse than an unprotected embed**: the
   unprotected embed at least plays.
 - The shim cannot know its host by origin — in an opaque origin `event.origin` is the
-  string `"null"`, so window identity is the only usable anchor (ADR-2235-05).
+  string `"null"`, so window identity is the only usable anchor (ADR-2199-05).
 - The pre-handshake relay was **never published**, so no backward compatibility is owed.
 - Whatever gate is chosen must be cheap: it runs in every page of every package.
 
@@ -196,6 +196,6 @@ failure mode is designed out rather than compensated for.
 - `mod_exelearning`: `classes/local/package_manager.php:259`,
   `classes/local/scorm/scorm_injector.php:109`, `tools/check-embed-sync.mjs`
 - `doc/development/external-media-inventory.md` — F1, spike S6, and the plugin port
-- [ADR-2235-05](ADR-2235-05-render-editor-preview-in-an-opaque-origin-sandbox.md) — why
+- [ADR-2199-05](ADR-2199-05-render-editor-preview-in-an-opaque-origin-sandbox.md) — why
   `event.origin` is unusable and window identity is the anchor
-- [ADR-2235-02](ADR-2235-02-hybrid-preview-trust-boundary.md) — the trust boundary this serves
+- [ADR-2199-02](ADR-2199-02-hybrid-preview-trust-boundary.md) — the trust boundary this serves

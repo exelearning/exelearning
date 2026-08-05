@@ -225,7 +225,7 @@ const editorJson = existsSync(join(DIR, 'shots', 'editor-preview.json'))
 const editorSection = editorJson ? `
 <section class="card">
   <h3>Vista previa del editor <span class="badge good">promoción bajo consentimiento</span></h3>
-  <p>Las dos mitades del argumento de la ADR-0002: por defecto el contenido activo se
+  <p>Las dos mitades del argumento de la ADR-2199-02: por defecto el contenido activo se
   <strong>detecta y no se ejecuta</strong>; solo al habilitarlo el transporte pasa a opaco y el
   embed se promueve a un player real.</p>
   <table>

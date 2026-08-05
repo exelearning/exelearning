@@ -117,7 +117,7 @@ describe('verifying a vendored distribution', () => {
         expect(verifyVendoredArtifacts(dir).join(' ')).toContain('manifest');
     });
 
-    /** ADR-0018: the grant has to travel with the bytes, so a consumer can check it did. */
+    /** ADR-2199-09: the grant has to travel with the bytes, so a consumer can check it did. */
     it('requires the dual-licence grant in what was vendored', () => {
         writeDist({ child: 'child();' });
 

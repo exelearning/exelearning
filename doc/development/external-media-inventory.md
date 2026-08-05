@@ -610,11 +610,11 @@ DEC-0071). Reconciling that is part of the first ADR.
 5. **PDF policy** (§7.2)
 6. **Poster strategy** (§7.7) — GDPR argument
 7. ~~**Child-bundle inertness without a host** (§7.6)~~ — **written**:
-   [ADR-0017](../architecture/adr/ADR-0017-embed-shim-stays-inert-until-a-host-completes-the-handshake.md)
+   [ADR-2199-08](../architecture/adr/ADR-2199-08-embed-shim-stays-inert-until-a-host-completes-the-handshake.md)
 8. **Dedicated origin** (S7) — split (a) https origin vs (b) custom scheme
 9. **Consent scope and revocation** (§4.5)
 10. **Artefact distribution and licensing** (§9.1, S5) — the **licensing** half is
-    written: [ADR-0018](../architecture/adr/ADR-0018-dual-license-the-shared-embedder-family.md).
+    written: [ADR-2199-09](../architecture/adr/ADR-2199-09-dual-license-the-shared-embedder-family.md).
     The artefact-distribution half (§9.1 bundles/manifest) is still open, for Phase 5
 11. **NEW: provider control transport** — raw `postMessage` vs vendor SDK (P3/D4);
     not in the brief's list, but it is a durable architectural decision that four
@@ -867,7 +867,7 @@ The child is well inside the 14 KB gzip budget Phase 0 set (Phase 0 measured the
 - Reproducible: two builds byte-identical (`--check` mode automates it).
 - `scripts/external-media/` — 33 unit tests; coverage 95.5 / 100 / 100 / 96.9 %.
 - `test/e2e/playwright/specs/external-media-artifacts.spec.ts` drives the **built**
-  bundles through both directions of ADR-0017 over HTTP. Confirmed failing against a
+  bundles through both directions of ADR-2199-08 over HTTP. Confirmed failing against a
   build made from the pre-handshake shim — and it fails at the *build* step, because
   the contract assertion refuses to emit artifacts whose sources lost the handshake.
 - Served over HTTP deliberately: a sandboxed frame on `file://` cannot load local
@@ -967,7 +967,7 @@ passes in isolation and untouched by this work), external-media + preview E2E 11
 
 ## 13. Phase 2 — the transport matrix as a single source (2026-07-26)
 
-`src/shared/preview/preview-mode-matrix.ts` declares the decision once; ADR-0019 records
+`src/shared/preview/preview-mode-matrix.ts` declares the decision once; ADR-2199-10 records
 the reasoning. Three things are worth calling out.
 
 **The matrix models only what the code can produce.** The design brief's fifth runtime
@@ -1046,11 +1046,11 @@ recorded above; it should be planned with its own ADR rather than folded in here
 
 ---
 
-## 15. Phase 3, second half — ADR-0020 and Step 1 (2026-07-26)
+## 15. Phase 3, second half — ADR-2199-11 and Step 1 (2026-07-26)
 
 ### The plan, before the code
 
-[ADR-0020](../architecture/adr/ADR-0020-strangle-the-classic-runtimes-behind-their-own-globals.md)
+[ADR-2199-11](../architecture/adr/ADR-2199-11-strangle-the-classic-runtimes-behind-their-own-globals.md)
 records how 1 192 lines of security-critical classic JavaScript move onto the canonical
 source without a window in which the preview is silently broken. The shape: **strangler,
 in four ordered steps, loaders switched last.**
@@ -1070,7 +1070,7 @@ compiler with none of the benefits.
 src/shared/external-media/child/
 ├── environment.ts      where am I, and what may I conclude from it
 ├── embed-scanner.ts    promote / collect
-└── child-runtime.ts    the ADR-0017 handshake
+└── child-runtime.ts    the ADR-2199-08 handshake
 ```
 
 Nothing in the product imports it. The incumbent files are still the ones loaded, so
@@ -1102,7 +1102,7 @@ unaffected.
 
 ### Remaining
 
-Steps 2–4 of ADR-0020: the host runtime, the equivalence gate, the loader switches
+Steps 2–4 of ADR-2199-11: the host runtime, the equivalence gate, the loader switches
 (host before child), and the deprecation facades. Then Phase 6 migrates the plugins onto
 the artifacts.
 
@@ -1112,7 +1112,7 @@ the artifacts.
 src/shared/external-media/host/
 ├── url-policy.ts          the structural invariant, PDFs, strict mode — pure
 ├── player-descriptor.ts   the sandbox decisions — pure
-└── equivalence.spec.ts    ADR-0020 Step 2, against the shipped relay
+└── equivalence.spec.ts    ADR-2199-11 Step 2, against the shipped relay
 ```
 
 Same decomposition lesson as the child: the parts with security consequences are pure —
@@ -1171,7 +1171,7 @@ the loader is touched once: a later step changes what is inside the bundle witho
 back here. It also means the editor now exercises the same bytes host plugins vendor, and
 those bytes are hash-verified by `check-external-media-artifacts`.
 
-**The handshake makes this self-checking.** Since ADR-0017 the shim creates placeholders
+**The handshake makes this self-checking.** Since ADR-2199-08 the shim creates placeholders
 only *after* the relay welcomes it, so `[data-exe-embed-id] > 0` inside the preview is
 proof that the trusted-side runtime loaded and answered. Verified by breaking the path on
 purpose: `preview-external-media-fixture.spec.ts` fails with 0 placeholders. Before the
@@ -1220,7 +1220,7 @@ Verified the same way as the host loader — by breaking it on purpose. With the
 path pointed at a file that does not exist, `preview-external-media-fixture.spec.ts`
 fails. The path is genuinely exercised, not incidentally satisfied.
 
-Both loaders are now on artifacts. What remains of ADR-0020 is Step 4 (facades with a
+Both loaders are now on artifacts. What remains of ADR-2199-11 is Step 4 (facades with a
 once-per-session deprecation notice) and then swapping what is *inside* the bundles for
 the canonical modules — which, by design, does not touch either loader again.
 
@@ -1259,7 +1259,7 @@ the canonical functions must reproduce what those expressions compute over a ran
 inputs. Mutation-tested: removing the clamp reddens three assertions, one of them the
 equivalence check.
 
-**Why Step 4 is not next.** ADR-0020 Step 4 publishes facades "delegating to the new
+**Why Step 4 is not next.** ADR-2199-11 Step 4 publishes facades "delegating to the new
 runtime". The host runtime is not yet complete enough to be that target — it now has the
 URL policy, the sandbox decisions and the overlay rules, but not the session/frame
 registry or the observer wiring. Writing facades before it exists would mean facades that
@@ -1297,7 +1297,7 @@ sender at all — an unaddressed message authenticating itself.
 Mutation-tested on both rules: accepting an absent sender reddens the trust-anchor spec,
 and making `invalidate()` preserve the welcome reddens two navigation assertions.
 
-**What is left before ADR-0020 Step 4:** the observer wiring — the `MutationObserver`,
+**What is left before ADR-2199-11 Step 4:** the observer wiring — the `MutationObserver`,
 `ResizeObserver`, scroll, resize and `transitionend`/`animationend` listeners that drive
 re-reporting, plus the thin DOM applier that turns a `PlayerDescriptor` and a clamped rect
 into an actual iframe. Those are the browser-only parts; everything they decide is now
@@ -1339,7 +1339,7 @@ that decides *when* to re-report — `MutationObserver`, `ResizeObserver`, scrol
 `transitionend`/`animationend`, and the drift poll. Neither contains a decision; both are
 covered end to end by the three-engine artifact E2E once wired.
 
-Then ADR-0020 Step 4 (facades over the canonical runtime, with a once-per-session
+Then ADR-2199-11 Step 4 (facades over the canonical runtime, with a once-per-session
 deprecation notice) is mechanical, and the bundle contents can swap from the incumbent
 sources to the canonical entries without touching either loader again.
 
@@ -1385,11 +1385,11 @@ players.
 
 What remains before the bundle contents can swap is the observer wiring — deciding *when*
 to re-report — and the two entry files that assemble these modules and publish the legacy
-globals as facades (ADR-0020 Step 4).
+globals as facades (ADR-2199-11 Step 4).
 
 ---
 
-## ADR-0020 Steps 4 and 5 — facades, then the switch
+## ADR-2199-11 Steps 4 and 5 — facades, then the switch
 
 Both are done. The shipped artifacts are now built from the canonical TypeScript.
 
@@ -1459,7 +1459,7 @@ The builder now prepends an explicit `/*!` banner, and `verifyArtifacts` fails a
 whose **output** lacks the grant. Checking the output rather than the input is the whole
 point: these bytes are vendored into five repositories that never see our source tree, and
 a grant that does not travel with the file it licenses is no grant at all to whoever
-received it (ADR-0018).
+received it (ADR-2199-09).
 
 ### State
 
@@ -1481,7 +1481,7 @@ Both were open questions for the maintainer. Both now have answers, and both are
 as ADRs rather than left in this document, because they are durable decisions that outlive
 the phase that raised them.
 
-### F5 — core is canonical (ADR-0021)
+### F5 — core is canonical (ADR-2199-12)
 
 Decided: **eXeLearning core is canonical**; development happens there and flows outward to
 the plugins. Inside core, canonical means `src/shared/external-media/`, not the classic
@@ -1509,7 +1509,7 @@ plus a `buildHash` over the file list, and a plugin vendors the artifact and ver
 bytes. Divergence stops being something a checker might notice and becomes something that
 cannot be expressed.
 
-### P3 — raw postMessage is the control transport (ADR-0022)
+### P3 — raw postMessage is the control transport (ADR-2199-13)
 
 Decided: **raw `postMessage`**, SDKs off the critical path, `MediaAdapter` kept as the
 seam.
@@ -1527,7 +1527,7 @@ What the check turned up while confirming it [M]:
   and raw postMessage only exists because the player lives on the trusted side.
 
 The honest cost is that we take on ready-state tracking and command buffering, which the
-SDK was doing. That is real work with real failure modes, and ADR-0022 lists the tests it
+SDK was doing. That is real work with real failure modes, and ADR-2199-13 lists the tests it
 needs rather than assuming it will be fine.
 
 ### Weight of the unported media half [M]
@@ -1638,7 +1638,7 @@ just a fix: **the media half had no parity gate at all**. The embed half has one
 (`host/equivalence.spec.ts`, executing the incumbent relay). Media vectors were checked
 against the canonical validator and nothing else.
 
-That is exactly the risk ADR-0020 named — "the canonical rewrite silently drops a
+That is exactly the risk ADR-2199-11 named — "the canonical rewrite silently drops a
 behaviour that has no test" — and it had already happened.
 
 ### What was lost [M]
@@ -1748,7 +1748,7 @@ reintroduces it as a security control.
 | `open` argument validation | canonical, and now stricter than before (see previous section) |
 | session and private-port pairing | **canonical, this section** |
 | child-side controller (command serialisation, async round-trips) | not yet |
-| host-side player adapters | not yet — and per ADR-0022 they get raw `postMessage`, not SDKs |
+| host-side player adapters | not yet — and per ADR-2199-13 they get raw `postMessage`, not SDKs |
 | modal presentation | Phase 4 (`facade-modal`) |
 
 ---
@@ -1802,12 +1802,12 @@ at Phase 6 with no flag day.
 | protocol, commands, events, `open` validation | canonical |
 | session and private-port pairing | canonical |
 | content-side controller | **canonical, this section** |
-| host-side player adapters | not yet — raw `postMessage` per ADR-0022 |
+| host-side player adapters | not yet — raw `postMessage` per ADR-2199-13 |
 | modal presentation | Phase 4 (`facade-modal`) |
 
 The adapters are the piece with genuinely new logic: the `listening` handshake,
 ready-state tracking, and buffering commands issued before the player answers — what the
-SDK was doing, and what ADR-0022 accepted as the cost of removing it.
+SDK was doing, and what ADR-2199-13 accepted as the cost of removing it.
 
 ---
 
@@ -1818,12 +1818,12 @@ tests plus a 26-case parity gate against the implementation they came from.
 
 ### Why this port runs the wrong way, and why that is right
 
-The flow is normally core → plugins (ADR-0021). Here the better implementation was
+The flow is normally core → plugins (ADR-2199-12). Here the better implementation was
 **downstream**: `mod_exelearning/js/exe_media_host.js` is 25 310 B of raw-`postMessage`
 adapters that have been running in production, while core's `exe-media-host.js` is 16 783 B
 built on `new YT.Player(...)` from globals core never loads.
 
-So ADR-0022's accepted "cost" — ready-state tracking, command encoding, event decoding —
+So ADR-2199-13's accepted "cost" — ready-state tracking, command encoding, event decoding —
 was already paid, by someone else. Reinventing it would have been the mistake; bringing it
 up is what canonicity actually requires.
 
@@ -1882,7 +1882,7 @@ earlier sweeps could only reach two.
 | **eXeLearning core** | 16 783 B | **`new YT.Player(...)` / `new Vimeo.Player(...)`** |
 
 Three plugins independently ship the raw implementation. Core is the outlier, and core is
-the one whose globals are never loaded. ADR-0022 was decided on two of these; it is now
+the one whose globals are never loaded. ADR-2199-13 was decided on two of these; it is now
 measured on three.
 
 ### The parity gate runs against all three
@@ -1903,7 +1903,7 @@ Not an oversight — a configured exemption. Line 105 lists `mod`, `wp`, `omeka`
 ships a separate SDK-based host fork, so it is not a 'mediahost' target"*.
 
 The divergence was known, written down, and excluded from the check that existed to catch
-divergence. This is now the headline evidence in ADR-0021, because it says something a
+divergence. This is now the headline evidence in ADR-2199-12, because it says something a
 substring count cannot: **a gate you can exempt a file from is a gate for the files nobody
 was worried about.**
 
@@ -1924,7 +1924,7 @@ that has to survive a mixed fleet. It is part of cutting a release.
 
 ### What it does NOT remove, and this is the part I had wrong
 
-ADR-0020 justified the legacy facades as "a plugin that has not migrated yet keeps
+ADR-2199-11 justified the legacy facades as "a plugin that has not migrated yet keeps
 working". That reason is void under a lockstep release model — and the facades are still
 necessary, for a different consumer entirely.
 
@@ -1943,7 +1943,7 @@ distinction decides *when* the field can die: not when the plugins have migrated
 wrong reason would have implied, but when packages carrying the old child runtime are no
 longer supported. Those are very different dates.
 
-Corrected in ADR-0020, in `media/session.ts`, in `media/controller.ts` and in the
+Corrected in ADR-2199-11, in `media/session.ts`, in `media/controller.ts` and in the
 vendoring guide, because a rationale that points at the wrong consumer would have licensed
 removing the protection exactly when it was still needed.
 
@@ -2078,7 +2078,7 @@ Two properties are structural:
 
 ### No command buffering, and that is a consequence rather than an omission
 
-ADR-0022 accepted buffering as a cost of dropping the SDKs. It turns out not to be needed:
+ADR-2199-13 accepted buffering as a cost of dropping the SDKs. It turns out not to be needed:
 the providers **volunteer** time and duration in their event stream, so `currentTime()` is
 answered from cache instead of round-tripping. A command sent before the player is
 listening is lost, which is exactly what "pressed play before it loaded" already means.
@@ -2164,7 +2164,7 @@ being a regression for the three plugins that already ship the raw implementatio
 
 `CHILD_LEGACY_SOURCES` and `HOST_LEGACY_SOURCES` are **empty**. Every byte of both
 artifacts is built from the TypeScript under `src/shared/external-media/`. This is the end
-state ADR-0020 was aiming at.
+state ADR-2199-11 was aiming at.
 
 ### What it cost, and what it saved [M]
 

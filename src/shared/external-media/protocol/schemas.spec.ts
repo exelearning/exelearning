@@ -82,7 +82,7 @@ describe('media commands', () => {
     /**
      * The incumbent policy gated `open` on `isAllowedProvider(provider)` AND
      * `isValidVideoId(provider, videoId)`. The first canonical version accepted any two
-     * strings, which is a silent loosening of exactly the kind ADR-0020 warned about: a
+     * strings, which is a silent loosening of exactly the kind ADR-2199-11 warned about: a
      * behaviour with no test, dropped in the rewrite. The id check is the load-bearing
      * half — it is what stops a crafted id from being pasted into a provider URL.
      *

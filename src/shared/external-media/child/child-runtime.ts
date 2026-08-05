@@ -1,7 +1,7 @@
 /**
  * The in-content runtime: announce, wait to be welcomed, then promote.
  *
- * This is ADR-0017 in canonical form. The runtime NEVER promotes on its own authority.
+ * This is ADR-2199-08 in canonical form. The runtime NEVER promotes on its own authority.
  * It announces itself to its parent and waits for an addressed `welcome`; without one
  * the author's document is left exactly as written, because a placeholder only the host
  * can fill is a permanent black box — strictly worse than an unprotected embed — and
