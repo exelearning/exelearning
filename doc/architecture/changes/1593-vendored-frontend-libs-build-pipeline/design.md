@@ -1,5 +1,5 @@
 ---
-tracking_issue: 2237
+tracking_issue: 1593
 title: "Vendored frontend libraries sourced from npm and generated at build time"
 status: implemented
 date: 2026-07-09
