@@ -15617,6 +15617,70 @@
         <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="rsf87hp" resname="Requires manual review">
+        <source>Requires manual review</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kzlezob" resname="Broken">
+        <source>Broken</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="yxibg39" resname="Listing links...">
+        <source>Listing links...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="stkvmy7" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
+        <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ekaugw5" resname="the status of these links could not be checked automatically; open them to confirm.">
+        <source>the status of these links could not be checked automatically; open them to confirm.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="e1rj71o" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
+        <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bk821zl" resname="Links listed">
+        <source>Links listed</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gcnsymu" resname="to review manually">
+        <source>to review manually</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vn15ldd" resname="to review">
+        <source>to review</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x9eycuc" resname="No links to export">
+        <source>No links to export</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qh5ch16" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
+        <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="z9nay5a" resname="Not checked automatically: open the link to review it">
+        <source>Not checked automatically: open the link to review it</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2p1vzdt" resname="Local or private address: open the link to review it manually">
+        <source>Local or private address: open the link to review it manually</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bj39iok" resname="Redirects to another site — open the link to verify it">
+        <source>Redirects to another site — open the link to verify it</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rt4ldg3" resname="Could not be fully verified: open the link to confirm it">
+        <source>Could not be fully verified: open the link to confirm it</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3pyi6wu" resname="Redirects could not be followed: open the link to review it">
+        <source>Redirects could not be followed: open the link to review it</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
