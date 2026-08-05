@@ -9,6 +9,8 @@
 - GeoGebra iDevice: width and height controls are now available in General Settings
 - Link Validator: improved link validation with more reliable results
 - LOMLOE iDevice: added official curriculum dataset for Euskadi / País Vasco (ES-PV)
+- Reviewed and completed Spanish (ES) translation
+- Added automated placeholder translations for new strings in incomplete translations
 
 ### Changed
 
