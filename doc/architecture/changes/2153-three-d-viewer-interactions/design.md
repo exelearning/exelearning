@@ -9,7 +9,7 @@ authors:
 reviewers:
   - "@erseco"
 implementation_prs: []
-related_adrs: [1]
+related_adrs: [ADR-2153-01]
 supersedes: []
 superseded_by: []
 ai_assistance:
