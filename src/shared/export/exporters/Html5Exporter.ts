@@ -22,6 +22,7 @@ import type {
     Html5ExportOptions,
     FaviconInfo,
     ThemeData,
+    ExportAsset,
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
@@ -843,12 +844,16 @@ export class Html5Exporter extends BaseExporter {
         try {
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            const processAsset = async (asset: { id: string; data: Uint8Array | Blob }) => {
+            const processAsset = async (asset: ExportAsset) => {
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) return;
 
                 const filePath = `content/resources/${exportPath}`;
-                files.set(filePath, await this.toPreviewAssetBuffer(asset.data));
+                // .srt subtitle assets are converted to WebVTT here too, so the
+                // Preview panel (this method) matches the real Web/SCORM export
+                // pipeline (addAssetsToZipWithResourcePath) -- see issue #2034.
+                const data = await this.resolveAssetExportData(asset);
+                files.set(filePath, await this.toPreviewAssetBuffer(data));
                 if (trackingList) trackingList.push(filePath);
                 assetsAdded++;
             };
@@ -877,7 +882,7 @@ export class Html5Exporter extends BaseExporter {
         return content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength) as ArrayBuffer;
     }
 
-    private async toPreviewAssetBuffer(content: Uint8Array | Blob | ArrayBuffer): Promise<ArrayBuffer> {
+    private async toPreviewAssetBuffer(content: Uint8Array | Blob | ArrayBuffer | string): Promise<ArrayBuffer> {
         if (content instanceof Blob) {
             return content.arrayBuffer();
         }

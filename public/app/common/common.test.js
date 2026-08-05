@@ -1378,10 +1378,14 @@ describe('common.js $exeDevices', () => {
       expect(result50.length).toBe(5);
     });
 
-    it('getQuestions returns non-array inputs as-is', () => {
+    // Callers assign the result straight back and then read .length off it, so
+    // a non-array has to become an empty array here or it crashes there.
+    it('getQuestions returns an empty array for non-array inputs', () => {
       const helpers = getHelpers();
-      expect(helpers.getQuestions(undefined, 50)).toBeUndefined();
-      expect(helpers.getQuestions(null, 50)).toBeNull();
+      expect(helpers.getQuestions(undefined, 50)).toEqual([]);
+      expect(helpers.getQuestions(null, 50)).toEqual([]);
+      expect(helpers.getQuestions(false, 50)).toEqual([]);
+      expect(helpers.getQuestions({ questions: [] }, 50)).toEqual([]);
     });
 
     it('arrayMove moves element in array', () => {

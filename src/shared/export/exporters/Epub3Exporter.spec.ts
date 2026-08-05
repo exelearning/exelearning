@@ -254,6 +254,47 @@ describe('Epub3Exporter', () => {
         exporter = new Epub3Exporter(document, resources, assets, zip);
     });
 
+    describe('subtitle .srt -> WebVTT conversion (issue #2034)', () => {
+        it('ships a converted .vtt subtitle (never raw .srt bytes) with a text/vtt manifest entry', async () => {
+            const SRT_UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+            const srtProvider = {
+                getAsset: async () => null,
+                getProjectAssets: async () => [],
+                getAllAssets: async () => [
+                    {
+                        id: SRT_UUID,
+                        filename: 'subs.srt',
+                        originalPath: '',
+                        mime: 'application/x-subrip',
+                        data: Buffer.from('1\n00:00:01,000 --> 00:00:02,000\nHola\n', 'utf-8'),
+                    },
+                ],
+            } as unknown as AssetProvider;
+            const srtExporter = new Epub3Exporter(document, resources, srtProvider, zip);
+
+            await srtExporter.export();
+
+            const vttPath = zip.getFilePaths().find(p => p.endsWith('.vtt'));
+            expect(vttPath, 'EPUB export must ship a converted .vtt subtitle').toBeTruthy();
+            const written = zip.files.get(vttPath as string);
+            const text = Buffer.isBuffer(written) ? written.toString('utf-8') : String(written ?? '');
+            expect(text.startsWith('WEBVTT')).toBe(true);
+            expect(text).toContain('Hola');
+            expect(zip.getFilePaths().some(p => p.endsWith('.srt'))).toBe(false);
+
+            // The OPF manifest must declare the WebVTT media-type, not the raw SubRip MIME.
+            const opfEntry = zip.getFilePaths().find(p => p.endsWith('.opf'));
+            const opf = opfEntry
+                ? (() => {
+                      const c = zip.files.get(opfEntry);
+                      return Buffer.isBuffer(c) ? c.toString('utf-8') : String(c ?? '');
+                  })()
+                : '';
+            expect(opf).toContain('text/vtt');
+            expect(opf).not.toContain('application/x-subrip');
+        });
+    });
+
     describe('Accessibility toolbar (addAccessibilityToolbar)', () => {
         // Regression test for #1978: when the author enables the accessibility toolbar,
         // every exported page must load exe_atools (JS + CSS) in its <head>, and the

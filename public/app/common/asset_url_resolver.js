@@ -655,9 +655,18 @@
 
         // For anchor elements reading 'href'
         if (name === 'href' && this.tagName === 'A') {
-            // If href is still asset://, try to return the resolved blob:// from cache
-            // This helps SimpleLightbox and similar libraries get the real URL
-            if (value && value.startsWith('asset://') && resolvedCache.has(value)) {
+            // If href is still asset://, return the resolved blob:// from cache, but
+            // only for anchors that live in the document. SimpleLightbox and similar
+            // libraries operate on the rendered page and need a loadable URL before
+            // the MutationObserver has rewritten the href.
+            //
+            // Detached anchors are never rendered: they belong to the throwaway
+            // wrappers iDevices build to parse their own stored HTML back into form
+            // data (e.g. classify's `$('<div></div>').html(previousData)`). Handing
+            // them an ephemeral blob: URL makes them persist a reference that dies
+            // with the page, wiping the media on reload (issue #2186). Those reads
+            // must see the persistent asset:// URL that is literally in the DOM.
+            if (this.isConnected && value && value.startsWith('asset://') && resolvedCache.has(value)) {
                 return resolvedCache.get(value);
             }
             // For persistence: return the original asset:// URL if we have one stored

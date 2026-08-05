@@ -13,6 +13,7 @@ const {
     attachEditorWindowCloseGuard: attachCloseGuard,
     windowHasUnsavedChanges,
 } = require('./editor-window-close-guard');
+const { checkLink } = require('./link-check');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -1502,6 +1503,14 @@ ipcMain.handle('app:readFile', async (_e, { filePath }) => {
     } catch (err) {
         return { ok: false, error: err.message };
     }
+});
+
+// Check an external link from the main process, where CORS does not apply,
+// and report the real HTTP status — same outcome as server-side validation.
+// Policy, network-stack rationale (undici primary, net.fetch as proxy
+// fallback) and the private-address guard live in link-check.js.
+ipcMain.handle('app:checkLink', async (_e, { url } = {}) => {
+    return checkLink(url, { fetchImpl: fetch, fallbackFetchImpl: net.fetch.bind(net) });
 });
 
 ipcMain.handle('app:getMemoryUsage', async (e) => {
