@@ -52,7 +52,7 @@ Serve preview into an iframe sandboxed without `allow-same-origin`, reinforced b
 response-level `Content-Security-Policy: sandbox …` so the document stays opaque
 even when the capability URL is opened top-level. Pros: browser-enforced isolation;
 no subdomain; works with any real serving transport. Cons: breaks direct external
-embeds (needs a relay, ADR-0010); cannot use a Service Worker to serve (ADR-0007).
+embeds (needs a relay, draft ADR 0010); cannot use a Service Worker to serve (draft ADR 0007).
 
 ### Option 2: Keep the same-origin Service Worker preview
 
@@ -99,8 +99,8 @@ sanitizer remains as defense-in-depth, not the primary boundary.
 ### Negative
 
 - External provider embeds break under opacity and need a trusted-parent relay
-  (ADR-0010).
-- The Service Worker can no longer serve preview (ADR-0007); transports change.
+  (draft ADR 0010).
+- The Service Worker can no longer serve preview (draft ADR 0007); transports change.
 
 ### Neutral
 
@@ -121,9 +121,9 @@ absence of `allow-same-origin` and that the parent cannot read the child documen
 
 ## Follow-up work
 
-- Retire the Electron interim same-origin path in favor of `app://` (ADR-0011).
+- Retire the Electron interim same-origin path in favor of `app://` (draft ADR 0011).
 
 ## References
 
-- the change design; ADR-0007, ADR-2199-06, ADR-0010, ADR-0011.
+- the change design; draft ADR 0007, ADR-2199-06, draft ADR 0010, draft ADR 0011.
 - PR #1968. `doc/development/preview-architecture.md`.

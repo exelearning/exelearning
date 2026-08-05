@@ -22,7 +22,7 @@ ai_assistance:
 
 ## Context
 
-Untrusted packages run sandboxed **without `allow-same-origin`** (ADR-2199-02/ADR-0026 in the
+Untrusted packages run sandboxed **without `allow-same-origin`** (ADR-2199-02/draft ADR 0026 in the
 host plugins). The external-media host therefore *promotes* embedded videos: the child
 replaces each provider iframe with a geometry placeholder, and the trusted page mounts the
 real player over it.

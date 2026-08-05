@@ -116,7 +116,7 @@ revocation) and [ADR-2199-04](ADR-2199-04-self-hosted-capability-snapshots-for-e
 
 - **Static/PWA/PHP-WASM:** no backend can mint capability URLs, so enable is
   consent-same-origin — a documented residual risk, the same one PR #1968's
-  ADR-0015/0016 accepted (a trusted same-origin SW, and OPFS+SW is not an opaque
+  draft ADR 0015/0016 accepted (a trusted same-origin SW, and OPFS+SW is not an opaque
   origin; see [ADR-2199-07](ADR-2199-07-opfs-service-worker-is-not-an-opaque-origin.md)).
 - **Electron:** the preview shares a renderer with the `preload.js` bridge
   (`app/main.js`), so an opaque child could still reach the exposed IPC surface;
@@ -186,12 +186,12 @@ Carried forward and extended from [ADR-2199-01](ADR-2199-01-source-aware-preview
   insight — both now apply to eXe's own snapshot serving, not only embedded hosts.
 - **ADR-2199-07**: carried as historical evidence that OPFS + a Service Worker does
   not create an opaque origin (why static/PWA cannot self-host opacity).
-- **ADR-0007, ADR-0008, ADR-0011, ADR-0012, ADR-0015**: superseded for the normal
+- **draft ADR 0007, draft ADR 0008, draft ADR 0011, draft ADR 0012, draft ADR 0015**: superseded for the normal
   editor; capability serving is kept as a minimal subset (ADR-2199-04), not the full
   session/provider/Electron machinery.
-- **ADR-0010, ADR-0013, ADR-0014**: not adopted — the full media bridge, layered
+- **draft ADR 0010, draft ADR 0013, draft ADR 0014**: not adopted — the full media bridge, layered
   revisions, and protocol-v2 rollout are out of scope. A minimal external-media
-  placeholder replaces ADR-0010's bridge for the opaque-enabled editor preview.
+  placeholder replaces draft ADR 0010's bridge for the opaque-enabled editor preview.
 
 ## References
 
