@@ -2,12 +2,27 @@
  * E2E Tests for Progressive Link Validation
  *
  * Tests the link validation modal that shows all links immediately with spinners,
- * then updates each to show valid (checkmark) or broken (X) status as validation completes.
+ * then updates each to show valid (checkmark), broken (X) or "requires manual
+ * review" (warning sign) as validation completes.
  */
 
 import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, addTextIdevice, selectFirstPage, gotoWorkarea } from '../helpers/workarea-helpers';
 import { Page } from '@playwright/test';
+
+/**
+ * In static mode the check runs in a plain browser, where CORS makes every
+ * cross-origin response opaque: no external link can be checked at all, so all
+ * of them are reported as "requires manual review" and the modal explains the
+ * limitation up front. The server-side validator (online mode) and the
+ * Electron main process (desktop app) read the real HTTP status instead.
+ */
+const isStaticMode = process.env.STATIC_MODE === 'true';
+const reachableLinkIcon = isStaticMode ? '.text-warning-emphasis' : '.text-success';
+const brokenLinkIcon = isStaticMode ? '.text-warning-emphasis' : '.text-danger';
+// Browser-limited flavors list links instead of validating them, and the
+// closing summary says so (review of PR #2208).
+const completionText = isStaticMode ? 'Links listed' : 'Complete';
 
 /**
  * Helper to open the link validation modal
@@ -104,21 +119,43 @@ test.describe('Link Validation', () => {
             { timeout: 60000 },
         );
 
-        // Verify google.com is valid (checkmark)
+        // Verify google.com is reported as reachable: a checkmark when the server
+        // read its status, a manual-review warning when only the browser could look
         const googleRow = modal.locator('tr', {
             has: page.locator('td.link-url:has-text("google.com")'),
         });
-        await expect(googleRow.locator('.text-success')).toBeVisible();
+        await expect(googleRow.locator(reachableLinkIcon)).toBeVisible();
 
-        // Verify broken domain shows error (X mark)
+        // Verify the broken domain shows an error: an X mark when the status
+        // could actually be read, the manual-review warning in a plain browser
         const brokenRow = modal.locator('tr', {
             has: page.locator('td.link-url:has-text("this-domain-definitely")'),
         });
-        await expect(brokenRow.locator('.text-danger')).toBeVisible();
+        await expect(brokenRow.locator(brokenLinkIcon)).toBeVisible();
 
         // Verify exe-node links are NOT shown (they should be skipped)
         const exeNodeLinks = modal.locator('td.link-url:has-text("exe-node")');
         await expect(exeNodeLinks).toHaveCount(0);
+
+        // Every reported URL is clickable so it can be reviewed in a new tab
+        // (review of PR #2208 by @ignaciogros)
+        const googleLink = googleRow.locator('td.link-url a');
+        await expect(googleLink).toHaveAttribute('href', /google\.com/);
+        await expect(googleLink).toHaveAttribute('target', '_blank');
+        await expect(googleLink).toHaveAttribute('rel', 'noopener noreferrer');
+
+        // The legend explains the three possible outcomes
+        await expect(modal.locator('.validation-legend')).toContainText('Requires manual review');
+
+        // Browser-limited flavors say up front that external links cannot be
+        // checked automatically; flavors with real statuses show no such notice
+        const staticNotice = modal.locator('.validation-static-notice');
+        if (isStaticMode) {
+            await expect(staticNotice).toBeVisible();
+            await expect(staticNotice).toContainText('browser security restrictions');
+        } else {
+            await expect(staticNotice).toHaveCount(0);
+        }
 
         // Verify CSV button is enabled after validation completes
         const csvButton = modal.locator('button.confirm');
@@ -176,17 +213,17 @@ test.describe('Link Validation', () => {
 
         // Wait for completion
         await page.waitForFunction(
-            () => {
+            expected => {
                 const progressText = document.querySelector('#modalOdeBrokenLinks .progress-text');
-                return progressText?.textContent?.includes('Complete');
+                return progressText?.textContent?.includes(expected);
             },
-            undefined,
+            completionText,
             { timeout: 30000 },
         );
 
         // Verify progress text shows completion status
         const progressText = modal.locator('.progress-text');
-        await expect(progressText).toContainText('Complete');
+        await expect(progressText).toContainText(completionText);
     });
 
     test('should show "No links found" for empty content', async ({ authenticatedPage, createProject }) => {
