@@ -442,13 +442,13 @@ lint: check-bun lint-ts lint-js lint-tests architecture-check
 .PHONY: fix
 fix: check-bun fix-ts fix-js fix-tests
 
-# Regenerate the architecture record indexes from document frontmatter.
-# The indexes are generated artifacts — never edit records.md by hand.
+# Print the architecture record index, derived from document frontmatter.
+# Deliberately not a committed file: it would conflict on every concurrent branch.
 .PHONY: architecture-records
 architecture-records: check-bun
-	bun run scripts/architecture-records.ts generate
+	@bun run scripts/architecture-records.ts list
 
-# Validate architecture record identifiers, metadata, links and index freshness.
+# Validate architecture record identifiers, metadata and cross-references.
 .PHONY: architecture-check
 architecture-check: check-bun
 	bun run scripts/architecture-records.ts check

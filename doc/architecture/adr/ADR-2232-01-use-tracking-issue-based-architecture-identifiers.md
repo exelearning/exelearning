@@ -217,11 +217,15 @@ Concretely:
    documents, and "SDD" stops being the primary artifact name — the ambiguity with
    "Spec-Driven Development" is resolved by naming the concrete file instead.
 
-5. **Indexes are generated from frontmatter**, never hand-maintained.
+5. **The record index is never committed.** `make architecture-records` prints it
+   from frontmatter on demand. A generated file in version control conflicts on
+   every concurrent branch — exactly the class of problem this ADR removes — and
+   these records are contributor-facing, so they are also excluded from the
+   published MkDocs site.
 
 6. **CI validates** identifiers, required fields, statuses, dates, cross-references,
-   supersession symmetry, legacy-ID references, and that the committed indexes match
-   the generated ones.
+   supersession symmetry, legacy-ID references, and that no index file has been
+   committed.
 
 7. **PR numbers are traceability metadata only** (`implementation_prs`,
    `related_prs`). They are never the primary identifier, because a change may have
@@ -245,7 +249,8 @@ Concretely:
   coordinated.
 - A change with several decisions is modelled as such, and adding a fifth decision
   to issue #1858 never renames the first four.
-- Indexes cannot silently rot: CI fails when they drift.
+- Indexes cannot rot, because none is stored: the listing is derived on demand.
+- No generated file sits in version control, so no branch conflicts on one.
 - Contributors and AI agents no longer follow an instruction (`max(existing) + 1`)
   that is unsafe by construction.
 
@@ -287,6 +292,7 @@ Concretely:
 
 - `bun run scripts/architecture-records.ts check` passes in CI on every PR
   touching `doc/architecture/**`.
+- No `records.md` exists under `doc/architecture/`.
 - No file matching `ADR-[0-9]{4}-` or `SDD-[0-9]{4}-` exists under
   `doc/architecture/`.
 - `mkdocs build --strict` succeeds.

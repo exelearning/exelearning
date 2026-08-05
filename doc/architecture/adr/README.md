@@ -101,8 +101,9 @@ ADR-1858-04-fail-safe-accessible-attachment-rendering.md
 
 - ADRs live in `doc/architecture/adr/`.
 - [`template.md`](template.md) is the canonical template.
-- [`records.md`](records.md) is the ADR index. It is **generated** — never edit it
-  by hand.
+- There is **no committed index**. Run `make architecture-records` to print one,
+  derived from frontmatter. A generated file in git conflicts on every concurrent
+  branch, and this index is contributor-facing — it is not published docs.
 - [`../migration-map.md`](../migration-map.md) maps every retired identifier to
   its current path.
 
@@ -216,7 +217,7 @@ To change an accepted decision:
 1. Create a new ADR under the tracking issue that motivates the change.
 2. Set `supersedes: [ADR-<old-id>]` in the new ADR's frontmatter.
 3. Set `status: Superseded` and `superseded_by: [ADR-<new-id>]` in the old ADR.
-4. Run `make architecture-records` to regenerate [`records.md`](records.md).
+4. Run `make architecture-check` to validate the relationship.
 
 CI rejects a one-sided relationship: both directions must be present, and a
 superseded ADR must carry `status: Superseded`.
@@ -245,8 +246,8 @@ appear in new content. CI fails on them; use
    sequence **for that tracking number only** (`01` if it is the first).
 4. Fill in context, problem, options, evidence, decision and consequences.
    Start at `status: Proposed`.
-5. Run `make architecture-records` to regenerate the index, and
-   `make architecture-check` to validate.
+5. Run `make architecture-check` to validate. `make architecture-records` prints
+   the current index if you want to read it.
 6. Open (or reference) a PR. Reviewers discuss and, if agreed, the status moves
    to `Accepted`.
 7. If a later change reverses the decision, supersede it — never edit the
@@ -268,5 +269,4 @@ appear in new content. CI fails on them; use
 - [ ] `ai_assistance` is filled in (values or `none`).
 - [ ] Superseding ADRs set `supersedes` / the old ADR sets `superseded_by` and
       `status: Superseded`.
-- [ ] `make architecture-check` passes. [`records.md`](records.md) is regenerated,
-      not hand-edited.
+- [ ] `make architecture-check` passes.

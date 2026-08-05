@@ -38,8 +38,7 @@ How to use this template:
 7. Cite a verifiable source for each technical claim (repo path + commit,
    documentation, benchmark, experiment, issue, PR, change document, or prior ADR).
 8. Record AI assistance in `ai_assistance` (values, or `none` if not used).
-9. Run `make architecture-records` to regenerate the index and
-   `make architecture-check` to validate.
+9. Run `make architecture-check` to validate.
 
 See ./README.md for the full policy, and
 ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md for why

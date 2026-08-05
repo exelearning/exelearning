@@ -52,8 +52,8 @@ for no benefit.
 | `adr/ADR-0000-template.md` | [`adr/template.md`](adr/template.md) | `ADR-0000` is not a valid identifier under the new grammar. |
 | `sdd/SDD-0000-template.md` | [`changes/template.md`](changes/template.md) | Consolidated: one template covering all five change documents. |
 | `sdd/README.md` | [`changes/README.md`](changes/README.md) | Rewritten for the change-directory model. |
-| `adr/records.md` | [`adr/records.md`](adr/records.md) | Same path, now **generated** by `make architecture-records`. |
-| `sdd/records.md` | [`changes/records.md`](changes/records.md) | Now **generated**. |
+| `adr/records.md` | *removed* | The index is no longer committed. `make architecture-records` prints it from frontmatter. |
+| `sdd/records.md` | *removed* | Same. |
 
 The `doc/architecture/sdd/` directory no longer exists; its contents moved to
 `doc/architecture/changes/`.

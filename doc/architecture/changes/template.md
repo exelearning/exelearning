@@ -33,8 +33,7 @@ How to use this template:
    proposal.md, spec.md, design.md, research.md, tasks.md that exists.
 7. Status lives in the frontmatter only. Do not add a `## Status` section.
 8. Record AI assistance in `ai_assistance` (values, or `none` if not used).
-9. Run `make architecture-records` to regenerate the index and
-   `make architecture-check` to validate.
+9. Run `make architecture-check` to validate.
 
 Delete these guidance comments before submitting.
 See ./README.md for the full policy.

@@ -173,13 +173,16 @@ Status is recorded in frontmatter **only**. A `## Status` section duplicating it
 
 ## 6. Indexes
 
-- `doc/architecture/adr/records.md` and `doc/architecture/changes/records.md` are
-  **generated**. They **must not** be edited by hand.
-- Both carry a generation banner naming the command that produces them.
-- ADRs are sorted by tracking issue ascending, then local sequence ascending.
-- Changes are sorted by tracking issue ascending.
-- Generation **must** be deterministic: the same input produces byte-identical
+- The record index **must not** be committed. It is derived entirely from
+  frontmatter, it is contributor-facing rather than published documentation, and a
+  generated file in version control conflicts on every concurrent branch.
+- `make architecture-records` **must** print it to stdout on demand.
+- ADRs are sorted by tracking number ascending, then local sequence ascending.
+- Changes are sorted by tracking number ascending.
+- Rendering **must** be deterministic: the same input produces byte-identical
   output.
+- `doc/architecture/adr/` and `doc/architecture/changes/` **must** be excluded
+  from the MkDocs site.
 
 ## 7. Validation
 
@@ -205,14 +208,14 @@ following holds:
 16. A change directory contains no recognised document.
 17. A non-canonical change document declares `implementation_prs`.
 18. An ADR H1 does not match `# <id>: <title>`.
-19. A committed index differs from the generated one.
+19. A `records.md` is committed under `doc/architecture/`.
 
 Error messages **must** name the offending file, the field, and the expected value.
 
 ## 8. Acceptance criteria
 
 - [ ] `bun run scripts/architecture-records.ts check` exits 0 on this branch.
-- [ ] `bun run scripts/architecture-records.ts generate` produces no diff.
+- [ ] `bun run scripts/architecture-records.ts list` prints both indexes.
 - [ ] No `ADR-[0-9]{4}-*` or `SDD-[0-9]{4}-*` file exists under `doc/architecture/`.
 - [ ] No legacy identifier is referenced outside the migration map and `legacy_id`.
 - [ ] Every legacy identifier resolves through the migration map to a current path.
@@ -220,3 +223,4 @@ Error messages **must** name the offending file, the field, and the expected val
 - [ ] `make fix` and `make lint` are clean.
 - [ ] The validator's own unit tests pass.
 - [ ] CI runs the check on every PR touching `doc/architecture/**`.
+- [ ] No `records.md` is committed under `doc/architecture/`.

@@ -61,9 +61,8 @@ increment, and you should never open an issue just to obtain a number.
   AI-assisted generation policy.
 - When a design contains a durable decision, link it to an existing ADR or propose
   a new one — don't bury the decision in the design.
-- **Indexes are generated.** Do not hand-edit `records.md`. Run
-  `make architecture-records` to regenerate and `make architecture-check` to
-  validate before pushing; CI runs the same check.
+- **There is no committed index.** `make architecture-records` prints one on
+  demand. Run `make architecture-check` before pushing; CI runs the same check.
 - Mention any ADRs or change documents your PR creates or updates in the PR
   description.
 
@@ -78,7 +77,7 @@ files. To bring one up to date:
    `02`, … in the order the decisions were written.
 3. Update each file's `id` and `tracking_issue`, and make the H1 `# <id>: <title>`.
 4. Move design documents into `doc/architecture/changes/<number>-<slug>/`.
-5. Revert any manual edit to `records.md` — it is generated now.
+5. Delete any `records.md` your branch adds — the index is no longer committed.
 6. Run `make architecture-check`.
 
 See the [ADR](../architecture/adr/README.md) and

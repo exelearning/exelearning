@@ -14,6 +14,7 @@ import {
     isPositiveInteger,
     isValidDate,
     parseFrontmatter,
+    findCommittedIndexes,
     renderAdrIndex,
     renderChangeIndex,
     sortAdrs,
@@ -382,7 +383,19 @@ describe('findLegacyReferences', () => {
     });
 });
 
-describe('index generation', () => {
+describe('findCommittedIndexes', () => {
+    test('rejects a committed record index', () => {
+        const problems = findCommittedIndexes([`${ADR_DIR}/records.md`, 'README.md']);
+        expect(problems).toHaveLength(1);
+        expect(problems[0].message).toContain('must not be committed');
+    });
+
+    test('accepts a tree with no index file', () => {
+        expect(findCommittedIndexes(['README.md', `${ADR_DIR}/ADR-1858-01-a.md`])).toEqual([]);
+    });
+});
+
+describe('index rendering', () => {
     test('sorts by issue then local sequence', () => {
         writeAdr('ADR-2193-01-later-issue.md', { title: 'Later issue' });
         writeAdr('ADR-1858-02-second.md', { title: 'Second' });
@@ -391,7 +404,7 @@ describe('index generation', () => {
         expect(sortAdrs(adrs).map(a => a.id)).toEqual(['ADR-1858-01', 'ADR-1858-02', 'ADR-2193-01']);
     });
 
-    test('is deterministic and carries the generated banner', () => {
+    test('is deterministic and says it is not a committed file', () => {
         writeAdr('ADR-1858-01-a-decision.md', { title: 'A decision' });
         writeChangeDoc('1858-a-change', 'proposal.md');
         const { adrs } = discoverAdrs(root);
@@ -399,7 +412,7 @@ describe('index generation', () => {
 
         expect(renderAdrIndex(adrs)).toBe(renderAdrIndex(adrs));
         expect(renderChangeIndex(changes)).toBe(renderChangeIndex(changes));
-        expect(renderAdrIndex(adrs)).toContain('Do not edit by hand');
+        expect(renderAdrIndex(adrs)).toContain('Not a committed file');
         expect(renderAdrIndex(adrs)).toContain('[ADR-1858-01](ADR-1858-01-a-decision.md)');
         expect(renderChangeIndex(changes)).toContain('`1858-a-change`');
     });

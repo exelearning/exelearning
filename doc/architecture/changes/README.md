@@ -110,8 +110,7 @@ tracking number — but that is the single, stable number in `tracking_issue`, n
 the growing list in `implementation_prs`.
 
 - [`template.md`](template.md) is the canonical starting point.
-- [`records.md`](records.md) is the change index. It is **generated** — never edit
-  it by hand.
+- There is **no committed index**. Run `make architecture-records` to print one.
 
 ## Status values
 
@@ -204,8 +203,8 @@ Retired identifiers must not appear in new content. CI fails on them; use
    you actually need. Start at `status: draft`.
 4. Capture durable decisions as [ADRs](../adr/README.md) named
    `ADR-<number>-<NN>-<decision-slug>.md`, and list them in `related_adrs`.
-5. Run `make architecture-records` to regenerate the index and
-   `make architecture-check` to validate.
+5. Run `make architecture-check` to validate. `make architecture-records` prints
+   the current index if you want to read it.
 6. Open (or reference) a PR and move to `in-review`.
 7. On approval, set `accepted` and implement. When it ships, set `implemented`
    and record the PRs in `implementation_prs`.
@@ -223,5 +222,4 @@ Retired identifiers must not appear in new content. CI fails on them; use
 - [ ] Every technical claim cites a verifiable source.
 - [ ] `status` reflects reality, and appears only in the frontmatter.
 - [ ] `ai_assistance` is filled in (values or `none`).
-- [ ] `make architecture-check` passes. [`records.md`](records.md) is regenerated,
-      not hand-edited.
+- [ ] `make architecture-check` passes.

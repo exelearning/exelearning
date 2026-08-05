@@ -25,13 +25,11 @@ doc/architecture/
 ├── adr/
 │   ├── README.md                        ADR policy
 │   ├── template.md                      ADR template
-│   ├── records.md                       GENERATED index
-│   └── ADR-<issue>-<NN>-<slug>.md       the records
+│   └── ADR-<number>-<NN>-<slug>.md      the records
 └── changes/
     ├── README.md                        change-document policy
     ├── template.md                      change template (all five documents)
-    ├── records.md                       GENERATED index
-    └── <issue>-<slug>/
+    └── <number>-<slug>/
         ├── proposal.md
         ├── spec.md
         ├── design.md
@@ -50,11 +48,24 @@ repository tooling convention — `scripts/` already holds `check-coverage.ts`,
 colocated `*.spec.ts`.
 
 ```bash
-bun run scripts/architecture-records.ts generate   # write both indexes
-bun run scripts/architecture-records.ts check      # validate; non-zero on failure
+bun run scripts/architecture-records.ts list    # print the index to stdout
+bun run scripts/architecture-records.ts check   # validate; non-zero on failure
 ```
 
 Wrapped by `make architecture-records` and `make architecture-check`.
+
+### Why the index is not a file
+
+An index derived entirely from frontmatter has no business being committed. A
+generated file in version control conflicts on **every** concurrent branch — the
+same class of problem this change exists to remove — and CI would then be
+enforcing that contributors keep re-generating an artifact nobody edits by hand.
+
+These records are also contributor-facing rather than published documentation, so
+`doc/architecture/adr/` and `doc/architecture/changes/` are excluded from the
+MkDocs site via `exclude_docs`. That removes the one reason to keep a rendered
+index around. Contributors read the directory on GitHub, or run
+`make architecture-records`.
 
 ### Why no YAML dependency
 
@@ -81,9 +92,9 @@ findLegacyReferences()  → Diagnostic[]  (retired identifiers across `git ls-fi
 renderAdrIndex/renderChangeIndex → deterministic Markdown
 ```
 
-`generate` refuses to write when structural problems exist — an index built from
-a half-parsed corpus is worse than no index. `check` additionally compares the
-generated output against what is committed and reports drift.
+`list` refuses to print when structural problems exist — an index built from a
+half-parsed corpus is worse than no index. `check` reports every diagnostic and
+exits non-zero.
 
 ### Identifier grammars
 
@@ -117,17 +128,17 @@ Runs over `git ls-files`, so it respects `.gitignore` and never walks
 
 ### Determinism
 
-ADRs sort by `(tracking issue, local sequence)`; changes sort by
-`(tracking issue, slug)`. Both are total orders over valid records, so generation
-is reproducible and `check` never reports spurious drift.
+ADRs sort by `(tracking number, local sequence)`; changes sort by
+`(tracking number, slug)`. Both are total orders over valid records, so the
+listing is reproducible.
 
 ## Integration
 
 | Surface | Change |
 |---|---|
-| `Makefile` | `architecture-records` (generate) and `architecture-check` (validate); `architecture-check` added to `lint` |
+| `Makefile` | `architecture-records` (print) and `architecture-check` (validate); `architecture-check` added to `lint` |
 | `.github/workflows/ci.yml` | runs `make architecture-check` |
-| `mkdocs.yml` | nav points at `adr/README.md`, `adr/records.md`, `adr/template.md`, `changes/README.md`, `changes/records.md`, `changes/template.md`, `migration-map.md` |
+| `mkdocs.yml` | architecture records excluded from the site via `exclude_docs`; nav keeps only the Overview |
 | `AGENTS.md` §7.11 | rewritten: issue-based identifiers, no `max(existing) + 1` |
 | `doc/development/contributing.md` | rewritten to match |
 | `doc/architecture.md` | section rewritten to match |
@@ -135,7 +146,7 @@ is reproducible and `check` never reports spurious drift.
 ## Testing
 
 `scripts/architecture-records.spec.ts`, run by `bun test`, covers the parser, the
-grammars, each validation rule, the legacy scan and index determinism, using
+grammars, each validation rule, the legacy scan and listing determinism, using
 in-memory fixtures written to a temporary directory. The tool is pure with respect
 to its `root` argument, so no fixture touches the real `doc/` tree.
 
