@@ -15619,67 +15619,67 @@
       </trans-unit>
       <trans-unit id="hug22jj" resname="Requires manual review">
         <source>Requires manual review</source>
-        <target></target>
+        <target>Requiere revisión manual</target>
       </trans-unit>
       <trans-unit id="1izvuof" resname="Broken">
         <source>Broken</source>
-        <target></target>
+        <target>Roto</target>
       </trans-unit>
       <trans-unit id="hrhw389" resname="Listing links...">
         <source>Listing links...</source>
-        <target></target>
+        <target>Listando enlaces...</target>
       </trans-unit>
       <trans-unit id="508w7j7" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
         <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
-        <target></target>
+        <target>Por restricciones de seguridad del navegador, esta versión de eXeLearning no puede comprobar los enlaces externos automáticamente. Abre cada enlace para revisarlo manualmente.</target>
       </trans-unit>
       <trans-unit id="1pj3vzd" resname="the status of these links could not be checked automatically; open them to confirm.">
         <source>the status of these links could not be checked automatically; open them to confirm.</source>
-        <target></target>
+        <target>Estos enlaces no se han podido comprobar automáticamente.</target>
       </trans-unit>
       <trans-unit id="la5izo8" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
         <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
-        <target></target>
+        <target>Una marca de verificación significa que el servidor respondió, pero algunos sitios responden 200 incluso para páginas que no existen.</target>
       </trans-unit>
       <trans-unit id="tlngypu" resname="Links listed">
         <source>Links listed</source>
-        <target></target>
+        <target>Enlaces listados</target>
       </trans-unit>
       <trans-unit id="tb0otmy" resname="to review manually">
         <source>to review manually</source>
-        <target></target>
+        <target>~para revisar manualmente</target>
       </trans-unit>
       <trans-unit id="9zmqhc7" resname="to review">
         <source>to review</source>
-        <target></target>
+        <target>~para revisar</target>
       </trans-unit>
       <trans-unit id="m83ni1k" resname="No links to export">
         <source>No links to export</source>
-        <target></target>
+        <target>~No hay enlaces que exportar</target>
       </trans-unit>
       <trans-unit id="c4qr71u" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
         <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
-        <target></target>
+        <target>Los enlaces externos no se pueden comprobar automáticamente en esta versión de eXeLearning: obtendrás una lista de enlaces para revisar manualmente.</target>
       </trans-unit>
       <trans-unit id="0tnfagc" resname="Not checked automatically: open the link to review it">
         <source>Not checked automatically: open the link to review it</source>
-        <target></target>
+        <target>No comprobado automáticamente</target>
       </trans-unit>
       <trans-unit id="qra0lne" resname="Local or private address: open the link to review it manually">
         <source>Local or private address: open the link to review it manually</source>
-        <target></target>
+        <target>Dirección local o privada</target>
       </trans-unit>
       <trans-unit id="grjc9mf" resname="Redirects to another site — open the link to verify it">
         <source>Redirects to another site — open the link to verify it</source>
-        <target></target>
+        <target>Redirige a otro sitio</target>
       </trans-unit>
       <trans-unit id="zfpn6li" resname="Could not be fully verified: open the link to confirm it">
         <source>Could not be fully verified: open the link to confirm it</source>
-        <target></target>
+        <target>Verificación incompleta</target>
       </trans-unit>
       <trans-unit id="97ouscv" resname="Redirects could not be followed: open the link to review it">
         <source>Redirects could not be followed: open the link to review it</source>
-        <target></target>
+        <target>No se han podido seguir las redirecciones</target>
       </trans-unit>
     </body>
   </file>
