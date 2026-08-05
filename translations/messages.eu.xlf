@@ -12593,18 +12593,6 @@
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target>Idatzi hitz edo esaldia zuzena eta klik egin "Erantzun" botoian.</target>
       </trans-unit>
-      <trans-unit id="gq6h75d" resname="Timeout">
-        <source>Timeout</source>
-        <target>Denbora agortuta</target>
-      </trans-unit>
-      <trans-unit id="w08twkp" resname="Network error">
-        <source>Network error</source>
-        <target>Sareko errorea</target>
-      </trans-unit>
-      <trans-unit id="ak9atm4" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target>URL baliogabea</target>
-      </trans-unit>
       <trans-unit id="p52q932" resname="Session Expired">
         <source>Session Expired</source>
         <target>Saioa amaitu da</target>
@@ -12980,10 +12968,6 @@
       <trans-unit id="ygr39q7" resname="Error validating links">
         <source>Error validating links</source>
         <target>Errorea loturak egiaztatzean</target>
-      </trans-unit>
-      <trans-unit id="bl20ry1" resname="No broken links to export">
-        <source>No broken links to export</source>
-        <target>Ez dago lotura hautsirik esportatzeko</target>
       </trans-unit>
       <trans-unit id="hxmruro" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
@@ -14080,10 +14064,6 @@
       <trans-unit id="atbpe78" resname="Close without saving">
         <source>Close without saving</source>
         <target>Gorde gabe itxi</target>
-      </trans-unit>
-      <trans-unit id="u313fkb" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
-        <target>Ezin izan da egiaztatu: HTTP edukia blokeatuta dago HTTPS orrialdeetan.</target>
       </trans-unit>
       <trans-unit id="69v4nt9" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>

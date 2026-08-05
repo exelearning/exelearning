@@ -12589,18 +12589,6 @@
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="qk38x4a" resname="Timeout">
-        <source>Timeout</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="tvxzpz9" resname="Network error">
-        <source>Network error</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="z2ck209" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="1lm64xb" resname="Session Expired">
         <source>Session Expired</source>
         <target></target>
@@ -12975,10 +12963,6 @@
       </trans-unit>
       <trans-unit id="ucoghve" resname="Error validating links">
         <source>Error validating links</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="iqw5hdg" resname="No broken links to export">
-        <source>No broken links to export</source>
         <target></target>
       </trans-unit>
       <trans-unit id="530jqwf" resname="Click to open resource in new window">
@@ -14079,10 +14063,6 @@
       </trans-unit>
       <trans-unit id="5z9cxvw" resname="Close without saving">
         <source>Close without saving</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="i7odfbn" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="mrlo6kg" resname="You can only add one Rubric iDevice per page.">

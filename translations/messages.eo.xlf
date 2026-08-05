@@ -12593,18 +12593,6 @@
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target>~ Skribu la ĝustan vorton aŭ frazon kaj alklaku la butonon "Respondi".</target>
       </trans-unit>
-      <trans-unit id="84avriw" resname="Timeout">
-        <source>Timeout</source>
-        <target>~Tempa limdato elĉerpita</target>
-      </trans-unit>
-      <trans-unit id="iml7r85" resname="Network error">
-        <source>Network error</source>
-        <target>~Retera eraro</target>
-      </trans-unit>
-      <trans-unit id="u6ftl4b" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target>~Nevalida URL</target>
-      </trans-unit>
       <trans-unit id="x4yfmx9" resname="Session Expired">
         <source>Session Expired</source>
         <target>~Sesio eksvalidiĝis</target>
@@ -12980,10 +12968,6 @@
       <trans-unit id="tbkygy8" resname="Error validating links">
         <source>Error validating links</source>
         <target>~Eraro dum validiĝo de la ligoj</target>
-      </trans-unit>
-      <trans-unit id="3e5lsew" resname="No broken links to export">
-        <source>No broken links to export</source>
-        <target>~Sen rompitaj ne-eksporteblaj ligiloj</target>
       </trans-unit>
       <trans-unit id="v69fwx3" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
@@ -14080,10 +14064,6 @@
       <trans-unit id="nvcevbg" resname="Close without saving">
         <source>Close without saving</source>
         <target>~Ĉu fermi sen konservi</target>
-      </trans-unit>
-      <trans-unit id="pmcify3" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
-        <target>~Ne povis esti kontrolita: HTTP-enhavo estas blokita en HTTPS-paĝoj.</target>
       </trans-unit>
       <trans-unit id="3oxnt5a" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
