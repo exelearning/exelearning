@@ -1,9 +1,9 @@
 ---
-id: ADR-2237-03
+id: ADR-1593-03
 title: "Govern the newly npm-managed frontend dependencies with grouped Dependabot updates"
 status: Proposed
 date: 2026-07-09
-tracking_issue: 2237
+tracking_issue: 1593
 legacy_id: ADR-0031
 deciders:
   - "@erseco"
@@ -14,8 +14,8 @@ reviewers:
   - "@mnarvaezm"
 related:
   prs: [1593]
-  changes: ["2237-vendored-frontend-libs-build-pipeline"]
-  adrs: [ADR-2237-01, ADR-2237-02]
+  changes: ["1593-vendored-frontend-libs-build-pipeline"]
+  adrs: [ADR-1593-01, ADR-1593-02]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -23,12 +23,12 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-2237-03: Govern the newly npm-managed frontend dependencies with grouped Dependabot updates
+# ADR-1593-03: Govern the newly npm-managed frontend dependencies with grouped Dependabot updates
 
 ## Context
 
-ADR-2237-01 moves the frontend's third-party libraries from committed blobs to
-npm-declared dependencies, and ADR-2237-02 generates the browser-side Yjs runtime
+ADR-1593-01 moves the frontend's third-party libraries from committed blobs to
+npm-declared dependencies, and ADR-1593-02 generates the browser-side Yjs runtime
 from those packages with esbuild. That only delivers a real security-update path
 if the newly npm-managed dependencies are actually kept current. Manual bumps do
 not scale across the enlarged dependency set (jQuery, Bootstrap, showdown,
@@ -39,11 +39,11 @@ toolchains).
 Two properties of this repository make ungrouped, one-PR-per-package updates a
 poor fit:
 
-- **Coupled packages must move together.** The Yjs shim build (ADR-2237-02) assumes
+- **Coupled packages must move together.** The Yjs shim build (ADR-1593-02) assumes
   a compatible `yjs` / `y-websocket` / `lib0` set; bumping one without the others
   can reintroduce duplicate-instance or protocol mismatches.
 - **Some packages need manual validation and must not auto-bump silently.**
-  MathJax (`mathjax-full`) backs the customized `exe_math/` subset that ADR-2237-01
+  MathJax (`mathjax-full`) backs the customized `exe_math/` subset that ADR-1593-01
   explicitly leaves out of the copy flow.
 
 PR #1593 adds a Dependabot configuration to automate updates with grouping that
@@ -58,10 +58,10 @@ separately — without drowning maintainers in per-package PRs?
 
 ## Decision drivers
 
-- **Timely security updates** — the whole point of ADR-2237-01 is a working update
+- **Timely security updates** — the whole point of ADR-1593-01 is a working update
   path; it must run on a schedule, not on memory.
 - **Lockstep for coupled packages** — the Yjs ecosystem must be bumped as a set
-  so the shim build stays valid (ADR-2237-02).
+  so the shim build stays valid (ADR-1593-02).
 - **Isolation for risky packages** — MathJax must be updatable on its own so its
   manual `exe_math/` validation is not bundled into an unrelated PR.
 - **Reviewable PR volume** — grouping related packages reduces churn versus one
@@ -100,20 +100,20 @@ Docker Compose, and GitHub Actions.
 - `.github/dependabot.yml` — `version: 2`, an `npm` ecosystem at `/` on a weekly
   schedule with `open-pull-requests-limit: 10` and these `groups`:
   - `yjs-ecosystem`: patterns `yjs`, `y-*`, `lib0` — commented "keep in sync —
-    shim build depends on compatible versions" (the ADR-2237-02 constraint).
+    shim build depends on compatible versions" (the ADR-1593-02 constraint).
   - `mathjax`: pattern `mathjax-full` — commented "pinned separately — exe_math/
-    is a custom subset requiring manual validation" (the ADR-2237-01 exclusion).
+    is a custom subset requiring manual validation" (the ADR-1593-01 exclusion).
   - `elysia`: patterns `elysia`, `@elysiajs/*`.
   - `test-tools`: patterns `vitest`, `@vitest/*`, `@playwright/test`, `happy-dom`.
   - `build-tools`: patterns `esbuild`, `vite`, `sass`, `@biomejs/*` — covers the
-    `esbuild` used by the Yjs shim build (ADR-2237-02).
+    `esbuild` used by the Yjs shim build (ADR-1593-02).
 - The same file adds `docker` (at `/`), `docker-compose` (at `/doc/deploy`), and
   `github-actions` (at `/`) ecosystems, each weekly.
 - `package.json` — the packages these groups govern are the runtime dependencies
   (`yjs`, `y-websocket`, `lib0`, `mermaid`, `pdfjs-dist`, `mathjax-full`,
   `elysia`) and devDependencies (`esbuild`, `vite`, `sass`, `@biomejs/biome`,
   `vitest`, `@vitest/*`, `@playwright/test`, `happy-dom`, and the newly added UI
-  libraries) introduced or relied on by ADR-2237-01 / ADR-2237-02.
+  libraries) introduced or relied on by ADR-1593-01 / ADR-1593-02.
 - `.github/workflows/ci.yml` runs `bun run bundle:vendor` and the unit-test job,
   so a Dependabot bump is validated against the vendor build and tests before it
   can merge.
@@ -133,8 +133,8 @@ GitHub Actions on the same weekly cadence.
 ### Positive
 
 - Security and maintenance updates arrive on a schedule, realizing the update
-  path ADR-2237-01 created.
-- The Yjs ecosystem bumps as one PR, keeping the shim build (ADR-2237-02) valid.
+  path ADR-1593-01 created.
+- The Yjs ecosystem bumps as one PR, keeping the shim build (ADR-1593-02) valid.
 - MathJax updates arrive as isolated PRs so their manual validation is not mixed
   into unrelated changes.
 - Grouping the test and build toolchains, plus Docker/Compose/Actions, keeps PR
@@ -160,7 +160,7 @@ GitHub Actions on the same weekly cadence.
   Mitigated by CI running `bundle:vendor` + the full test suite on each PR
   (`.github/workflows/ci.yml`).
 - **esbuild bump changes Yjs shim output** — the `build-tools` group can move
-  esbuild; a behavioral change could alter the generated Yjs files (ADR-2237-02).
+  esbuild; a behavioral change could alter the generated Yjs files (ADR-1593-02).
   Mitigated by frontend tests loading the real shim and by the group isolating
   build-tool bumps for focused review.
 - **Group too broad** — an over-broad pattern could sweep an unintended package
@@ -176,7 +176,7 @@ GitHub Actions on the same weekly cadence.
 ## Follow-up work
 
 - Fold MathJax into a grouped/automated flow once its `exe_math/` migration
-  (ADR-2237-01 follow-up) removes the manual-validation constraint.
+  (ADR-1593-01 follow-up) removes the manual-validation constraint.
 - Revisit group membership and the open-PR cap after a few update cycles to tune
   noise versus latency.
 
@@ -184,8 +184,8 @@ GitHub Actions on the same weekly cadence.
 
 - PR #1593
 - the change design — Vendored frontend libraries sourced from npm and generated at build time
-- ADR-2237-01 — Source vendored frontend libraries from npm and generate them at build time
-- ADR-2237-02 — Ship Yjs to the browser as esbuild-built global-`window.Y` shims
+- ADR-1593-01 — Source vendored frontend libraries from npm and generate them at build time
+- ADR-1593-02 — Ship Yjs to the browser as esbuild-built global-`window.Y` shims
 - `.github/dependabot.yml`
 - `.github/workflows/ci.yml`
 - `package.json`

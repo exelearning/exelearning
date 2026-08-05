@@ -1,9 +1,9 @@
 ---
-id: ADR-2237-02
+id: ADR-1593-02
 title: "Ship Yjs to the browser as esbuild-built global-window.Y shims generated from root dependencies"
 status: Proposed
 date: 2026-07-09
-tracking_issue: 2237
+tracking_issue: 1593
 legacy_id: ADR-0030
 deciders:
   - "@erseco"
@@ -14,8 +14,8 @@ reviewers:
   - "@mnarvaezm"
 related:
   prs: [1593]
-  changes: ["2237-vendored-frontend-libs-build-pipeline"]
-  adrs: [ADR-2237-01, ADR-2237-03]
+  changes: ["1593-vendored-frontend-libs-build-pipeline"]
+  adrs: [ADR-1593-01, ADR-1593-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -23,7 +23,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-2237-02: Ship Yjs to the browser as esbuild-built global-window.Y shims generated from root dependencies
+# ADR-1593-02: Ship Yjs to the browser as esbuild-built global-window.Y shims generated from root dependencies
 
 ## Context
 
@@ -38,7 +38,7 @@ and the app code reads those globals (`window.Y`, `window.WebsocketProvider`,
 Historically the three Yjs runtime files (`public/libs/yjs/yjs.min.js`,
 `y-websocket.min.js`, `y-indexeddb.min.js`, plus a `build/package.json`) were
 committed as pre-minified blobs, sharing the general problems described in
-ADR-2237-01. This ADR records how those three files are generated from npm-declared
+ADR-1593-01. This ADR records how those three files are generated from npm-declared
 Yjs packages while preserving two hard constraints unique to Yjs:
 
 1. **A single shared Yjs instance.** Yjs relies on `instanceof`/constructor
@@ -67,7 +67,7 @@ committed as opaque blobs?
 - **Global-script contract** — the existing loader and consumers read
   `window.Y` / `window.WebsocketProvider` / `window.IndexeddbPersistence`.
 - **Provenance** — Yjs must come from the root `package.json` / `bun.lock`, not a
-  committed blob (aligns with ADR-2237-01).
+  committed blob (aligns with ADR-1593-01).
 - **No app-bundler rewrite** — do not force the vanilla collaboration path onto
   ESM imports.
 - **Deterministic, reproducible output** — regenerating from source must yield
@@ -79,7 +79,7 @@ committed as opaque blobs?
 
 - Pros: files present in a checkout; already "working."
 - Cons: no provenance/version; unreviewable minified diffs; no update path;
-  shares every drawback in ADR-2237-01. Rejected.
+  shares every drawback in ADR-1593-01. Rejected.
 
 ### Option 2: Import Yjs into the application bundle as ESM
 
@@ -168,7 +168,7 @@ by the same step.
   provider, eliminating the duplicate-import class of collaboration bugs.
 - The existing vanilla `yjs-loader.js` global contract is preserved unchanged.
 - Yjs traces to `package.json` + `bun.lock`; the committed Yjs blobs leave the
-  tree (part of ADR-2237-01's cleanup).
+  tree (part of ADR-1593-01's cleanup).
 - Frontend tests load the real generated Yjs shim, so tests exercise the shipped
   runtime.
 
@@ -177,7 +177,7 @@ by the same step.
 - The alias/shim mechanism and the hand-written IndexedDB persistence are
   bespoke sources that must be maintained and understood by future contributors.
 - Output is coupled to the esbuild version and options; an esbuild upgrade can
-  change the generated bundle (see ADR-2237-03's build-tools group).
+  change the generated bundle (see ADR-1593-03's build-tools group).
 - The global-window pattern forgoes tree-shaking for these files.
 
 ### Neutral
@@ -194,10 +194,10 @@ by the same step.
 - **esbuild upgrade changes shim output** — a bundler behavior change could alter
   the generated globals. Mitigated by unit tests loading the real shim
   (`vitest.setup.js`) and the collaboration E2E suite; the Dependabot build-tools
-  group (ADR-2237-03) surfaces esbuild bumps in isolation for review.
+  group (ADR-1593-03) surfaces esbuild bumps in isolation for review.
 - **Version skew inside the Yjs ecosystem** — a mismatched `yjs` / `y-websocket`
   / `lib0` set could reintroduce duplicate-instance or protocol issues. Mitigated
-  by the Dependabot `yjs-ecosystem` group (ADR-2237-03) that bumps `yjs`, `y-*`, and
+  by the Dependabot `yjs-ecosystem` group (ADR-1593-03) that bumps `yjs`, `y-*`, and
   `lib0` together.
 - **Hand-written IndexedDB persistence drift** — it tracks upstream y-indexeddb
   behavior manually and can lag fixes. Mitigated by the collaboration/persistence
@@ -224,8 +224,8 @@ by the same step.
 
 - PR #1593
 - the change design — Vendored frontend libraries sourced from npm and generated at build time
-- ADR-2237-01 — Source vendored frontend libraries from npm and generate them at build time
-- ADR-2237-03 — Govern the newly npm-managed frontend dependencies with grouped Dependabot updates
+- ADR-1593-01 — Source vendored frontend libraries from npm and generate them at build time
+- ADR-1593-03 — Govern the newly npm-managed frontend dependencies with grouped Dependabot updates
 - `scripts/build-yjs-shims.js`
 - `public/libs/yjs/build/yjs-global-shim.js`, `y-websocket-entry.js`, `y-indexeddb-browser.js`
 - `public/app/yjs/yjs-loader.js`, `public/app/yjs/YjsDocumentManager.js`, `public/app/yjs/YjsProviderFactory.js`
