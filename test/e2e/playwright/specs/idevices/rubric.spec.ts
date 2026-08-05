@@ -260,20 +260,14 @@ test.describe('Rubric iDevice', () => {
             await addRubricIdeviceFromPanel(page);
             await createNewRubric(page);
 
-            // The editor is wrapped in the focused-edit stacking context: that is
-            // exactly the situation where a <body>-level backdrop would paint over
-            // the dialog and swallow every click.
-            await expect(page.locator('body.exe-idevice-focus-editing')).toHaveCount(1);
-
             // Open the descriptor dialog from the first cell
             const firstCell = page.locator('#ri_Table tbody tr').first().locator('td').first();
             await firstCell.locator('a.ri_EditTD').first().click();
 
-            // Dialog and backdrop are mounted together inside the editor
-            const dialog = page.locator('#ri_TableEditor > #ri_CellEditModal');
+            // Dialog and backdrop belong to the iDevice, so both hang from its form
+            const dialog = page.locator('#ri_IdeviceForm > #ri_CellEditModal');
             await expect(dialog).toBeVisible({ timeout: 10000 });
-            await expect(page.locator('#ri_TableEditor > #ri_CellEditModalBackdrop')).toHaveCount(1);
-            await expect(page.locator('body > .modal-backdrop')).toHaveCount(0);
+            await expect(page.locator('#ri_IdeviceForm > #ri_CellEditModalBackdrop')).toHaveCount(1);
 
             // Regression guard for #2227: the dialog, not the backdrop, is the
             // topmost element at its own centre.
@@ -295,7 +289,7 @@ test.describe('Rubric iDevice', () => {
             await dialog.locator('#ri_CellEditAccept').click();
 
             await expect(dialog).toBeHidden({ timeout: 10000 });
-            await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+            await expect(page.locator('.ri-edit-backdrop')).toHaveCount(0);
 
             // The edited values land in the rubric table
             await expect(firstCell.locator('input[type="text"]:not(.ri_Weight)').first()).toHaveValue(
@@ -308,6 +302,60 @@ test.describe('Rubric iDevice', () => {
             await expect(page.locator('#node-content .idevice_node.rubric')).toContainText(TEST_DATA.editedDescriptor, {
                 timeout: 10000,
             });
+        });
+
+        test('should block the rubric controls but leave the rest of the app usable', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Dialog Scope Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            await page.locator('#ri_Table tbody tr').first().locator('td').first().locator('a.ri_EditTD').click();
+            await expect(page.locator('#ri_CellEditModal')).toBeVisible({ timeout: 10000 });
+
+            const scope = await page.evaluate(() => {
+                const reach = (selector: string) => {
+                    const el = document.querySelector(selector) as HTMLElement | null;
+                    if (!el) return 'absent';
+                    const rect = el.getBoundingClientRect();
+                    const topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                    if (!topmost) return 'none';
+                    if (topmost.closest('#ri_CellEditModalBackdrop')) return 'blocked';
+                    return el.contains(topmost) || topmost.contains(el) ? 'reachable' : 'other';
+                };
+                const form = document.getElementById('ri_IdeviceForm');
+                const panel = document.querySelector('#ri_CellEditModal .modal-content');
+                const formRect = form?.getBoundingClientRect();
+                const panelRect = panel?.getBoundingClientRect();
+
+                return {
+                    rubricTable: reach('#ri_Table caption input'),
+                    topBarPreview: reach('#head-bottom-preview'),
+                    backdropCoversForm: document.getElementById('ri_CellEditModalBackdrop')?.parentElement?.id ?? null,
+                    pageScrollLocked: document.body.classList.contains('modal-open'),
+                    centreOffset:
+                        formRect && panelRect
+                            ? Math.abs((panelRect.left + panelRect.right) / 2 - (formRect.left + formRect.right) / 2)
+                            : null,
+                };
+            });
+
+            // The dialog belongs to the iDevice: it blocks the rubric underneath …
+            expect(scope.rubricTable).not.toBe('reachable');
+            expect(scope.backdropCoversForm).toBe('ri_IdeviceForm');
+            // … and nothing else.
+            expect(scope.topBarPreview).toBe('reachable');
+            expect(scope.pageScrollLocked).toBe(false);
+            // The panel is horizontally centred on the iDevice, not on the window.
+            expect(scope.centreOffset).toBeLessThan(2);
         });
 
         test('should show the unsaved-changes confirmation above the row dialog', async ({
@@ -394,7 +442,7 @@ test.describe('Rubric iDevice', () => {
                 await expect(page.locator('#ri_CellEditModal')).toHaveCount(0);
                 await expect(page.locator('#ri_RowEditModal')).toHaveCount(0);
                 await expect(page.locator('#ri_ColumnEditModal')).toHaveCount(0);
-                await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+                await expect(page.locator('.ri-edit-backdrop')).toHaveCount(0);
             });
         }
 

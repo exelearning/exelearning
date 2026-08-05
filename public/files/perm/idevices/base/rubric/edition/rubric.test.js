@@ -4,35 +4,16 @@
 
 /* eslint-disable no-undef */
 
-import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-/**
- * Load the real Bootstrap bundle (5.3.6) from public/libs.
- *
- * The edit dialogs are driven by the Bootstrap Modal API, which happy-dom does
- * not provide. A stub would not do: the unsaved-changes guard relies on
- * Bootstrap emitting namespaced jQuery events and honouring their
- * preventDefault(), so the real library is what the tests must exercise.
- */
-function loadBootstrap() {
-  if (window.bootstrap) return;
-
-  const bootstrapPath = join(__dirname, '../../../../../../libs/bootstrap/bootstrap.bundle.min.js');
-  // Bootstrap expects 'window' to be defined (provided by happy-dom)
-  // eslint-disable-next-line no-eval
-  (0, eval)(readFileSync(bootstrapPath, 'utf-8'));
-}
-
 describe('rubric iDevice CSV tools (edition)', () => {
   let $exeDevice;
 
   beforeEach(() => {
-    loadBootstrap();
     global.$exeDevice = undefined;
     $exeDevice = global.loadIdevice(join(__dirname, 'rubric.js'));
   });
@@ -380,6 +361,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
   it('openCellEditModal shows assessment criteria title and performance level from selected cell', () => {
     document.body.innerHTML = `
+      <div id="ri_IdeviceForm">
       <div id="ri_TableEditor"></div>
       <table id="ri_Table">
         <thead>
@@ -398,6 +380,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
           </tr>
         </tbody>
       </table>
+      </div>
     `;
 
     $exeDevice.ensureCellEditModal();
@@ -459,6 +442,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
   it('applyRowEditModal saves current draft and closes the row modal', () => {
     document.body.innerHTML = `
+      <div id="ri_IdeviceForm">
       <div id="ri_TableEditor"></div>
       <table id="ri_Table">
         <thead>
@@ -477,6 +461,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
           </tr>
         </tbody>
       </table>
+      </div>
     `;
 
     $exeDevice.ensureRowEditModal();
@@ -493,76 +478,83 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     expect(descriptorInput.val()).toBe('Descriptor actualizado');
     expect(scoreInput.val()).toBe('5');
-    expect($('#ri_RowEditModal').css('display')).toBe('none');
+    expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
     expect($exeDevice.rowEditState).toBeNull();
   });
 
   describe('edit dialogs', () => {
     const buildTable = () => {
-      // Bootstrap's scroll lock lives on <body>, and neither the class nor its
-      // inline styles are cleared by replacing innerHTML: reset them so a test
-      // that ends with a dialog open cannot bleed into the next one.
-      document.body.className = '';
-      document.body.removeAttribute('style');
       document.body.innerHTML = `
-        <div id="ri_TableEditor"></div>
-        <table id="ri_Table">
-          <thead>
-            <tr>
-              <th><input type="text" value="" /></th>
-              <th><input type="text" value="Nivel Alto" /></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th><input type="text" value="Contenido" /></th>
-              <td>
-                <input type="text" value="Descriptor inicial" />
-                <input type="text" class="ri_Weight" value="2" />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div id="ri_IdeviceForm">
+          <div id="ri_TableEditor"></div>
+          <table id="ri_Table">
+            <thead>
+              <tr>
+                <th><input type="text" value="" /></th>
+                <th><input type="text" value="Nivel Alto" /></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th><input type="text" value="Contenido" /></th>
+                <td>
+                  <input type="text" value="Descriptor inicial" />
+                  <input type="text" class="ri_Weight" value="2" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       `;
     };
 
-    it('mounts the cell dialog and its backdrop inside the editor, never in body', () => {
+    it('mounts the cell dialog and its backdrop inside the iDevice form', () => {
       buildTable();
 
       $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
 
-      const modal = document.getElementById('ri_CellEditModal');
+      const dialog = document.getElementById('ri_CellEditModal');
       const backdrop = document.getElementById('ri_CellEditModalBackdrop');
-      const editor = document.getElementById('ri_TableEditor');
+      const form = document.getElementById('ri_IdeviceForm');
 
-      expect(modal.parentElement).toBe(editor);
-      // Same parent => same stacking context => the dialog paints above its backdrop.
-      expect(backdrop.parentElement).toBe(editor);
-      expect(document.querySelectorAll('body > .modal-backdrop').length).toBe(0);
+      expect(dialog.parentElement).toBe(form);
+      // The backdrop covers the form, so only the rubric controls are blocked.
+      expect(backdrop.parentElement).toBe(form);
       expect($('#ri_CellEditModal').hasClass('show')).toBe(true);
-      expect(document.body.classList.contains('modal-open')).toBe(true);
+      expect(dialog.getAttribute('aria-hidden')).toBe('false');
 
       $exeDevice.closeCellEditModal();
 
       expect($('#ri_CellEditModal').hasClass('show')).toBe(false);
-      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
-      expect(document.body.classList.contains('modal-open')).toBe(false);
+      expect(dialog.getAttribute('aria-hidden')).toBe('true');
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
       expect($exeDevice.cellEditTarget).toBeNull();
     });
 
-    it('removes every dialog and backdrop when the editor DOM is discarded', () => {
+    it('leaves the rest of the page untouched: no scroll lock, no page-level backdrop', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+
+      // The dialog belongs to the iDevice, so it must not claim the whole page.
+      expect(document.body.classList.contains('modal-open')).toBe(false);
+      expect(document.querySelectorAll('body > .ri-edit-backdrop').length).toBe(0);
+      expect(document.getElementById('ri_CellEditModal').hasAttribute('aria-modal')).toBe(false);
+    });
+
+    it('removes every dialog and backdrop when the iDevice form is discarded', () => {
       buildTable();
 
       $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
       $exeDevice.closeCellEditModal();
       $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
 
-      // What the app does when edition ends: the editor subtree goes away.
-      $('#ri_TableEditor').remove();
+      // What the app does when edition ends: the form subtree goes away.
+      $('#ri_IdeviceForm').remove();
 
       expect(document.getElementById('ri_CellEditModal')).toBeNull();
       expect(document.getElementById('ri_RowEditModal')).toBeNull();
-      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
     });
 
     it('row dialog confirms before closing when there are unsaved changes', () => {
@@ -591,7 +583,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
       acceptClose();
 
       expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
-      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
       expect($exeDevice.rowEditState).toBeNull();
       expect($exeDevice.rowEditClosing).toBe(false);
 
@@ -668,7 +660,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
       acceptClose();
 
       expect($('#ri_ColumnEditModal').hasClass('show')).toBe(false);
-      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
       expect($exeDevice.columnEditState).toBeNull();
       expect($exeDevice.columnEditClosing).toBe(false);
 
@@ -696,7 +688,7 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
       expect(() => $exeDevice.showEditModal('ri_MissingModal')).not.toThrow();
       expect(() => $exeDevice.hideEditModal('ri_MissingModal')).not.toThrow();
-      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
+      expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
     });
 
     it('hideEditModal ignores dialogs that were never shown', () => {
