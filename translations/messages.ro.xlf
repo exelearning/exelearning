@@ -15463,223 +15463,223 @@
       </trans-unit>
       <trans-unit id="hw3akd4" resname="Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.">
         <source>Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.</source>
-        <target></target>
+        <target>~Conținutul marcat ca fiind doar pentru profesori este ascuns în mod implicit în exporturi și previzualizări. Deschide-l cu ?exe-teacher=1 pentru a-l afișa.</target>
       </trans-unit>
       <trans-unit id="2k8fct7" resname="The file &quot;%1&quot; contains a large asset (%2).">
         <source>The file "%1" contains a large asset (%2).</source>
-        <target></target>
+        <target>~Fișierul "%1" conține o resursă de dimensiuni mari (%2).</target>
       </trans-unit>
       <trans-unit id="0qnprjk" resname="Importing it may use a large amount of memory.">
         <source>Importing it may use a large amount of memory.</source>
-        <target></target>
+        <target>~Importarea sa poate consuma multă memorie.</target>
       </trans-unit>
       <trans-unit id="a2z9ysp" resname="The desktop application can open assets up to %1.">
         <source>The desktop application can open assets up to %1.</source>
-        <target></target>
+        <target>~Aplicația desktop poate deschide resurse de până la %1.</target>
       </trans-unit>
       <trans-unit id="9lzvnpg" resname="Protection against malformed or malicious archives remains active.">
         <source>Protection against malformed or malicious archives remains active.</source>
-        <target></target>
+        <target>~Protecția împotriva arhivelor deteriorate sau rău intenționate rămâne activă.</target>
       </trans-unit>
       <trans-unit id="jr3avg7" resname="Import large file?">
         <source>Import large file?</source>
-        <target></target>
+        <target>~Imporți un fișier mare?</target>
       </trans-unit>
       <trans-unit id="tjlr0mw" resname="The file &quot;%1&quot; (%2) is larger than the maximum this application can open (%3).">
         <source>The file "%1" (%2) is larger than the maximum this application can open (%3).</source>
-        <target></target>
+        <target>~Fișierul "%1" (%2) depășește dimensiunea maximă pe care această aplicație o poate deschide (%3).</target>
       </trans-unit>
       <trans-unit id="0zkw6rn" resname="This project (%1) is larger than the maximum this application can open (%2).">
         <source>This project (%1) is larger than the maximum this application can open (%2).</source>
-        <target></target>
+        <target>~Acest proiect (%1) depășește dimensiunea maximă pe care această aplicație o poate deschide (%2).</target>
       </trans-unit>
       <trans-unit id="o3wmw2p" resname="This project has too many files to open (%1 of a maximum %2).">
         <source>This project has too many files to open (%1 of a maximum %2).</source>
-        <target></target>
+        <target>~Acest proiect are prea multe fișiere pentru a putea fi deschis (%1 dintr-un maxim de %2).</target>
       </trans-unit>
       <trans-unit id="i8tsgyf" resname="The project was not imported.">
         <source>The project was not imported.</source>
-        <target></target>
+        <target>~Proiectul nu a fost importat.</target>
       </trans-unit>
       <trans-unit id="m2qpc8s" resname="To reduce its size, open the File Manager and:">
         <source>To reduce its size, open the File Manager and:</source>
-        <target></target>
+        <target>~Pentru a-i reduce dimensiunea, deschide Managerul de fișiere și:</target>
       </trans-unit>
       <trans-unit id="0fwy6uu" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
         <source>Sort by "Largest first" and review each asset\'s references.</source>
-        <target></target>
+        <target>~Sortează după "Cele mai mari primele" și verifică referințele fiecărei resurse.</target>
       </trans-unit>
       <trans-unit id="433vch3" resname="Remove an unused older version of a large asset.">
         <source>Remove an unused older version of a large asset.</source>
-        <target></target>
+        <target>~Șterge o versiune mai veche, nefolosită, a unei resurse mari.</target>
       </trans-unit>
       <trans-unit id="8gyfp92" resname="Optimise, replace, or remove the large file.">
         <source>Optimise, replace, or remove the large file.</source>
-        <target></target>
+        <target>~Optimizează, înlocuiește sau șterge fișierul mare.</target>
       </trans-unit>
       <trans-unit id="2gzjtqv" resname="File too large to open">
         <source>File too large to open</source>
-        <target></target>
+        <target>~Fișier prea mare pentru a fi deschis</target>
       </trans-unit>
       <trans-unit id="zzxigfy" resname="The asset &quot;%1&quot; (%2) exceeds the maximum size the desktop application can open (%3).">
         <source>The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).</source>
-        <target></target>
+        <target>~Resursa "%1" (%2) depășește dimensiunea maximă pe care aplicația desktop o poate deschide (%3).</target>
       </trans-unit>
       <trans-unit id="642164b" resname="This project (%1) exceeds the maximum size the desktop application can open (%2).">
         <source>This project (%1) exceeds the maximum size the desktop application can open (%2).</source>
-        <target></target>
+        <target>~Acest proiect (%1) depășește dimensiunea maximă pe care aplicația desktop o poate deschide (%2).</target>
       </trans-unit>
       <trans-unit id="yvfq4ct" resname="The resulting ELPX may not open in the desktop application.">
         <source>The resulting ELPX may not open in the desktop application.</source>
-        <target></target>
+        <target>~Este posibil ca fișierul ELPX rezultat să nu poată fi deschis în aplicația desktop.</target>
       </trans-unit>
       <trans-unit id="8volti6" resname="Do you want to continue exporting anyway?">
         <source>Do you want to continue exporting anyway?</source>
-        <target></target>
+        <target>~Vrei să continui exportul oricum?</target>
       </trans-unit>
       <trans-unit id="71ak8oq" resname="Large ELPX export">
         <source>Large ELPX export</source>
-        <target></target>
+        <target>~Export ELPX de dimensiuni mari</target>
       </trans-unit>
       <trans-unit id="arohwab" resname="Export anyway">
         <source>Export anyway</source>
-        <target></target>
+        <target>~Exportă oricum</target>
       </trans-unit>
       <trans-unit id="35jiqow" resname="Page title">
         <source>Page title</source>
-        <target></target>
+        <target>~Titlul paginii</target>
       </trans-unit>
       <trans-unit id="uf0y4cf" resname="This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.">
         <source>This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.</source>
-        <target></target>
+        <target>~Acest iDevice nu poate fi editat deoarece datele salvate sunt deteriorate. Conținutul existent a fost păstrat.</target>
       </trans-unit>
       <trans-unit id="natonzb" resname="Invalid iDevice data. The save was discarded.">
         <source>Invalid iDevice data. The save was discarded.</source>
-        <target></target>
+        <target>~Date iDevice nevalide. Salvarea a fost anulată.</target>
       </trans-unit>
       <trans-unit id="5v2694j" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).">
         <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).</source>
-        <target></target>
+        <target>~Generează 5 întrebări cu variante multiple despre circuite electrice. O întrebare pe linie. Fiecare linie trebuie să conțină toate câmpurile separate prin #: o descriere scurtă, codul TikZ (folosind circuitikz) pentru schema circuitului, răspunsul corect sub formă de litere (de exemplu, A, AB), întrebarea și 2 până la 4 variante de răspuns. Nu folosi caracterul # în interiorul niciunui câmp. Nu adăuga întreruperi de linie în interiorul unei întrebări. IMPORTANT: codul TikZ trebuie să fie compatibil cu circuitikz versiunea 0.9.6. Folosește doar componente disponibile în această versiune: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diodă), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (cu t=A pentru ampermetru, t=V pentru voltmetru), and gate, or gate, not gate, nand gate, nor gate. NU folosi componente din circuitikz 1.0 sau mai nou, precum dipchip, qfpchip, muxdemux, flipflop, latch sau afișaje cu 7 segmente. Schema este redată de TikZJax, care încarcă doar pachetele LaTeX circuitikz, amsmath și amssymb; NU folosi comenzi din alte pachete. Scrie unitățile ca text simplu sau Unicode (de exemplu Ω, µ, V, A, W, F, H, Hz, kΩ, µF), niciodată ca macrocomenzi siunitx sau gensymb, precum \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} sau \\qty{...}{...}, și nu încadra niciodată o unitate între paranteze unghiulare (scrie 100 Ω, nu 100&lt;\\ohm&gt;).</target>
       </trans-unit>
       <trans-unit id="2ai5wv3" resname="Attachment">
         <source>Attachment</source>
-        <target></target>
+        <target>~Atașament</target>
       </trans-unit>
       <trans-unit id="oot0wwg" resname="No files attached.">
         <source>No files attached.</source>
-        <target></target>
+        <target>~Niciun fișier atașat.</target>
       </trans-unit>
       <trans-unit id="x93yt3b" resname="File unavailable">
         <source>File unavailable</source>
-        <target></target>
+        <target>~Fișier indisponibil</target>
       </trans-unit>
       <trans-unit id="irj1e9o" resname="File attachments">
         <source>File attachments</source>
-        <target></target>
+        <target>~Fișiere atașate</target>
       </trans-unit>
       <trans-unit id="dbv56q5" resname="Show file descriptions">
         <source>Show file descriptions</source>
-        <target></target>
+        <target>~Afișează descrierile fișierelor</target>
       </trans-unit>
       <trans-unit id="2bfxuxm" resname="No files attached yet.">
         <source>No files attached yet.</source>
-        <target></target>
+        <target>~Încă nu există fișiere atașate.</target>
       </trans-unit>
       <trans-unit id="wz41bq7" resname="Unknown file">
         <source>Unknown file</source>
-        <target></target>
+        <target>~Fișier necunoscut</target>
       </trans-unit>
       <trans-unit id="9qlmvx0" resname="The attached file is missing. Re-add it from the Media Library.">
         <source>The attached file is missing. Re-add it from the Media Library.</source>
-        <target></target>
+        <target>~Fișierul atașat lipsește. Adaugă-l din nou din Biblioteca media.</target>
       </trans-unit>
       <trans-unit id="29vvtlz" resname="The Media Library is not available.">
         <source>The Media Library is not available.</source>
-        <target></target>
+        <target>~Biblioteca media nu este disponibilă.</target>
       </trans-unit>
       <trans-unit id="sfdbk93" resname="The file could not be uploaded.">
         <source>The file could not be uploaded.</source>
-        <target></target>
+        <target>~Fișierul nu a putut fi încărcat.</target>
       </trans-unit>
       <trans-unit id="2uj370g" resname="File properties">
         <source>File properties</source>
-        <target></target>
+        <target>~Proprietățile fișierului</target>
       </trans-unit>
       <trans-unit id="o63ujl7" resname="Please wait">
         <source>Please wait</source>
-        <target></target>
+        <target>~Așteaptă, te rog</target>
       </trans-unit>
       <trans-unit id="yzos8rj" resname="Generating the circuit images, this may take a few minutes, please wait…">
         <source>Generating the circuit images, this may take a few minutes, please wait…</source>
-        <target></target>
+        <target>~Se generează imaginile circuitelor; poate dura câteva minute, așteaptă…</target>
       </trans-unit>
       <trans-unit id="xu6y81n" resname="Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.">
         <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
-        <target></target>
+        <target>~Unele întrebări nu au putut fi adăugate deoarece circuitul lor nu a putut fi generat. Au fost păstrate în caseta de text ca să le poți corecta și încerca din nou.</target>
       </trans-unit>
       <trans-unit id="2qi9rfm" resname="Requires manual review">
         <source>Requires manual review</source>
-        <target></target>
+        <target>~Necesită verificare manuală</target>
       </trans-unit>
       <trans-unit id="6xxjher" resname="Broken">
         <source>Broken</source>
-        <target></target>
+        <target>~Defect</target>
       </trans-unit>
       <trans-unit id="q4thivq" resname="Listing links...">
         <source>Listing links...</source>
-        <target></target>
+        <target>~Se listează linkurile...</target>
       </trans-unit>
       <trans-unit id="8a1u1p0" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
         <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
-        <target></target>
+        <target>~Din cauza restricțiilor de securitate ale navigatorului, această versiune de eXeLearning nu poate verifica automat linkurile externe. Deschide fiecare link pentru a-l verifica manual.</target>
       </trans-unit>
       <trans-unit id="yd7777v" resname="the status of these links could not be checked automatically; open them to confirm.">
         <source>the status of these links could not be checked automatically; open them to confirm.</source>
-        <target></target>
+        <target>~Aceste linkuri nu au putut fi verificate automat.</target>
       </trans-unit>
       <trans-unit id="uzj2ltx" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
         <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
-        <target></target>
+        <target>~O bifă înseamnă că serverul a răspuns, dar unele site-uri răspund 200 chiar și pentru pagini care nu există.</target>
       </trans-unit>
       <trans-unit id="40mi6sg" resname="Links listed">
         <source>Links listed</source>
-        <target></target>
+        <target>~Linkuri listate</target>
       </trans-unit>
       <trans-unit id="81jara4" resname="to review manually">
         <source>to review manually</source>
-        <target></target>
+        <target>~de verificat manual</target>
       </trans-unit>
       <trans-unit id="rb8phqd" resname="to review">
         <source>to review</source>
-        <target></target>
+        <target>~de verificat</target>
       </trans-unit>
       <trans-unit id="v0o4iey" resname="No links to export">
         <source>No links to export</source>
-        <target></target>
+        <target>~Niciun link de exportat</target>
       </trans-unit>
       <trans-unit id="1s7oo7f" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
         <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
-        <target></target>
+        <target>~În această versiune de eXeLearning linkurile externe nu pot fi verificate automat: vei primi o listă de linkuri de verificat manual.</target>
       </trans-unit>
       <trans-unit id="zf0ku04" resname="Not checked automatically: open the link to review it">
         <source>Not checked automatically: open the link to review it</source>
-        <target></target>
+        <target>~Neverificat automat</target>
       </trans-unit>
       <trans-unit id="y8542f9" resname="Local or private address: open the link to review it manually">
         <source>Local or private address: open the link to review it manually</source>
-        <target></target>
+        <target>~Adresă locală sau privată</target>
       </trans-unit>
       <trans-unit id="klqips2" resname="Redirects to another site — open the link to verify it">
         <source>Redirects to another site — open the link to verify it</source>
-        <target></target>
+        <target>~Redirecționează către alt site</target>
       </trans-unit>
       <trans-unit id="pkgrpn8" resname="Could not be fully verified: open the link to confirm it">
         <source>Could not be fully verified: open the link to confirm it</source>
-        <target></target>
+        <target>~Verificare incompletă</target>
       </trans-unit>
       <trans-unit id="mliqr0z" resname="Redirects could not be followed: open the link to review it">
         <source>Redirects could not be followed: open the link to review it</source>
-        <target></target>
+        <target>~Redirecționările nu au putut fi urmărite</target>
       </trans-unit>
     </body>
   </file>
