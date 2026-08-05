@@ -446,12 +446,12 @@ fix: check-bun fix-ts fix-js fix-tests
 # Deliberately not a committed file: it would conflict on every concurrent branch.
 .PHONY: architecture-records
 architecture-records: check-bun
-	@bun run scripts/architecture-records.ts list
+	@bun run scripts/architecture-records.mts list
 
 # Validate architecture record identifiers, metadata and cross-references.
 .PHONY: architecture-check
 architecture-check: check-bun
-	bun run scripts/architecture-records.ts check
+	bun run scripts/architecture-records.mts check
 
 # Lint TypeScript source files (src/)
 .PHONY: lint-ts

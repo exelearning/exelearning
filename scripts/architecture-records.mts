@@ -18,6 +18,7 @@
  * `doc/architecture/changes/2232-issue-based-architecture-identifiers/spec.md`
  * and decided in `doc/architecture/adr/ADR-2232-01-*.md`.
  */
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -25,37 +26,71 @@ import { join } from 'node:path';
 // Configuration
 // ---------------------------------------------------------------------------
 
-export const ADR_DIR = 'doc/architecture/adr';
-export const CHANGES_DIR = 'doc/architecture/changes';
-export const MIGRATION_MAP = 'doc/architecture/migration-map.md';
+export const CONFIG_NAME = 'architecture-records.json';
 
 export const ADR_STATUSES = ['Proposed', 'Accepted', 'Rejected', 'Superseded'] as const;
 export const CHANGE_STATUSES = ['draft', 'in-review', 'accepted', 'implemented', 'superseded', 'abandoned'] as const;
 
 export const CHANGE_DOCUMENTS = ['proposal.md', 'spec.md', 'design.md', 'research.md', 'tasks.md'] as const;
 
-export const ADR_FILENAME_RE = /^ADR-([1-9][0-9]*)-([0-9]{2})-([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/;
-export const CHANGE_DIR_RE = /^([1-9][0-9]*)-([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 /**
- * A retired identifier is `ADR-NNNN` / `SDD-NNNN` that is *not* followed by a
- * two-digit local sequence. Without that lookahead, a current identifier such
- * as `ADR-1858-01` would match on its own four-digit prefix.
+ * `0` marks a record that predates tracking — written when the repository
+ * itself was bootstrapped. GitHub numbers issues and pull requests from 1, so
+ * 0 can never collide with a real one, and unlike `1` it does not claim a pull
+ * request that exists and is about something else.
  */
-export const LEGACY_ID_RE = /\b(?:ADR|SDD)-[0-9]{4}(?!-[0-9]{2})\b/;
-export const LEGACY_FILENAME_RE = /^(?:ADR|SDD)-[0-9]{4}-/;
+export const BOOTSTRAP_NUMBER = 0;
+
+const NUMBER = '(0|[1-9][0-9]*)';
+const SLUG = '([a-z0-9]+(?:-[a-z0-9]+)*)';
+
+export const POSITIVE_INT_RE = /^(0|[1-9][0-9]*)$/;
+export const HTTP_URL_RE = /^https?:\/\/\S+$/;
+
+export type Config = {
+    prefix: string;
+    recordsDir: string;
+    changesDir: string;
+    legacyAllowlist: string[];
+    legacyPatterns: string[];
+    recordRe: RegExp;
+    changeDirRe: RegExp;
+    retiredRe: RegExp | null;
+    retiredNameRe: RegExp;
+};
+
+const DEFAULTS = {
+    prefix: 'ADR',
+    records_dir: 'doc/architecture/adr',
+    changes_dir: 'doc/architecture/changes',
+    legacy_allowlist: [] as string[],
+    legacy_patterns: ['\\b(?:ADR|SDD)-[0-9]{4}(?!-[0-9]{2})\\b'],
+};
 
 /**
- * Files allowed to mention legacy `ADR-NNNN` / `SDD-NNNN` identifiers, because
- * documenting the migration requires naming what was migrated. Everything else
- * in the repository must use current identifiers.
+ * Everything repository-specific lives in `architecture-records.json`, so this
+ * file stays byte-identical everywhere it is copied. Only paths and the record
+ * prefix vary; every rule is the same in every repository.
  */
-export const LEGACY_REFERENCE_ALLOWLIST = [
-    MIGRATION_MAP,
-    `${ADR_DIR}/ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md`,
-    `${CHANGES_DIR}/2232-issue-based-architecture-identifiers/`,
-    // This detector's own tests need retired identifiers as fixtures.
-    'scripts/architecture-records.spec.ts',
-];
+export function loadConfig(root: string): Config {
+    const merged = { ...DEFAULTS };
+    const path = join(root, CONFIG_NAME);
+    if (existsSync(path)) {
+        Object.assign(merged, JSON.parse(readFileSync(path, 'utf8')));
+    }
+    const prefix = merged.prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return {
+        prefix: merged.prefix,
+        recordsDir: merged.records_dir,
+        changesDir: merged.changes_dir,
+        legacyAllowlist: merged.legacy_allowlist,
+        legacyPatterns: merged.legacy_patterns,
+        recordRe: new RegExp(`^${prefix}-${NUMBER}-([0-9]{2})-${SLUG}\\.md$`),
+        changeDirRe: new RegExp(`^${NUMBER}-${SLUG}$`),
+        retiredRe: merged.legacy_patterns.length > 0 ? new RegExp(merged.legacy_patterns.join('|')) : null,
+        retiredNameRe: new RegExp(`^(?:ADR|SDD|${prefix})-[0-9]{4}-`),
+    };
+}
 
 const GENERATED_BANNER = '<!-- Produced by `make architecture-records`. Not a committed file. -->';
 
@@ -213,8 +248,8 @@ function nested(data: Record<string, YamlValue>, key: string, sub: string): Yaml
 // Discovery
 // ---------------------------------------------------------------------------
 
-export function discoverAdrs(root: string): { adrs: Adr[]; errors: Diagnostic[] } {
-    const dir = join(root, ADR_DIR);
+export function discoverAdrs(root: string, config: Config): { adrs: Adr[]; errors: Diagnostic[] } {
+    const dir = join(root, config.recordsDir);
     const adrs: Adr[] = [];
     const errors: Diagnostic[] = [];
     if (!existsSync(dir)) return { adrs, errors };
@@ -223,15 +258,15 @@ export function discoverAdrs(root: string): { adrs: Adr[]; errors: Diagnostic[] 
         if (!file.endsWith('.md')) continue;
         if (file === 'README.md' || file === 'records.md' || file === 'template.md') continue;
 
-        const rel = `${ADR_DIR}/${file}`;
+        const rel = `${config.recordsDir}/${file}`;
 
         // The new grammar is checked first: `ADR-1858-01-slug.md` also starts with
         // four digits, so the legacy pattern would otherwise shadow it.
-        const match = file.match(ADR_FILENAME_RE);
+        const match = file.match(config.recordRe);
         if (!match) {
             errors.push({
                 file: rel,
-                message: LEGACY_FILENAME_RE.test(file)
+                message: config.retiredNameRe.test(file)
                     ? 'uses the retired global numbering. Rename to ADR-<issue>-<NN>-<decision-slug>.md ' +
                       '(see doc/architecture/adr/README.md).'
                     : 'filename does not match ADR-<issue>-<NN>-<decision-slug>.md',
@@ -274,8 +309,8 @@ export function discoverAdrs(root: string): { adrs: Adr[]; errors: Diagnostic[] 
     return { adrs, errors };
 }
 
-export function discoverChanges(root: string): { changes: Change[]; errors: Diagnostic[] } {
-    const dir = join(root, CHANGES_DIR);
+export function discoverChanges(root: string, config: Config): { changes: Change[]; errors: Diagnostic[] } {
+    const dir = join(root, config.changesDir);
     const changes: Change[] = [];
     const errors: Diagnostic[] = [];
     if (!existsSync(dir)) return { changes, errors };
@@ -284,8 +319,8 @@ export function discoverChanges(root: string): { changes: Change[]; errors: Diag
         const full = join(dir, entry);
         if (!statSync(full).isDirectory()) continue;
 
-        const rel = `${CHANGES_DIR}/${entry}`;
-        const match = entry.match(CHANGE_DIR_RE);
+        const rel = `${config.changesDir}/${entry}`;
+        const match = entry.match(config.changeDirRe);
         if (!match) {
             errors.push({ file: rel, message: 'directory name does not match <issue>-<change-slug>' });
             continue;
@@ -342,11 +377,16 @@ export function isValidDate(value: string): boolean {
     return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
+/** A tracking number: a real GitHub number, or the bootstrap sentinel `0`. */
+export function isTrackingNumber(value: string): boolean {
+    return POSITIVE_INT_RE.test(value);
+}
+
 export function isPositiveInteger(value: string): boolean {
     return /^[1-9][0-9]*$/.test(value);
 }
 
-export function validate(adrs: Adr[], changes: Change[]): Diagnostic[] {
+export function validate(adrs: Adr[], changes: Change[], config: Config): Diagnostic[] {
     const problems: Diagnostic[] = [];
     const add = (file: string, message: string): void => {
         problems.push({ file, message });
@@ -358,7 +398,7 @@ export function validate(adrs: Adr[], changes: Change[]): Diagnostic[] {
     const seenSequences = new Map<string, string>();
 
     for (const adr of adrs) {
-        const expectedId = `ADR-${adr.issue}-${adr.sequence}`;
+        const expectedId = `${config.prefix}-${adr.issue}-${adr.sequence}`;
 
         if (adr.id === '') add(adr.path, 'missing required field `id`');
         else if (adr.id !== expectedId) {
@@ -375,13 +415,15 @@ export function validate(adrs: Adr[], changes: Change[]): Diagnostic[] {
         }
 
         if (adr.trackingIssue === '') add(adr.path, 'missing required field `tracking_issue`');
-        else if (!isPositiveInteger(adr.trackingIssue)) {
+        else if (!isTrackingNumber(adr.trackingIssue)) {
             add(adr.path, `tracking_issue "${adr.trackingIssue}" is not a positive integer`);
         } else if (Number(adr.trackingIssue) !== adr.issue) {
             add(adr.path, `tracking_issue ${adr.trackingIssue} does not match filename issue ${adr.issue}`);
         }
 
-        if (adr.deciders.length === 0) add(adr.path, 'missing required field `deciders`');
+        // `deciders` is optional: two repositories legitimately hold records
+        // written without one, and inventing authorship is worse than leaving
+        // it unrecorded.
         if (adr.aiTool === null || adr.aiTool === '') {
             add(adr.path, 'missing required field `ai_assistance.tool` (use `none` if no AI tool was used)');
         }
@@ -496,9 +538,9 @@ export function validate(adrs: Adr[], changes: Change[]): Diagnostic[] {
  * The index is derived, not stored. Committing it reintroduces exactly the
  * merge-conflict class this convention removes, so its presence is an error.
  */
-export function findCommittedIndexes(files: string[]): Diagnostic[] {
+export function findCommittedIndexes(files: string[], config: Config): Diagnostic[] {
     return files
-        .filter(file => file === `${ADR_DIR}/records.md` || file === `${CHANGES_DIR}/records.md`)
+        .filter(file => file === `${config.recordsDir}/records.md` || file === `${config.changesDir}/records.md`)
         .map(file => ({
             file,
             message:
@@ -508,10 +550,10 @@ export function findCommittedIndexes(files: string[]): Diagnostic[] {
 }
 
 /** Scans tracked files for retired identifiers outside the documented allowlist. */
-export function findLegacyReferences(root: string, files: string[]): Diagnostic[] {
+export function findLegacyReferences(root: string, files: string[], config: Config): Diagnostic[] {
     const problems: Diagnostic[] = [];
     for (const file of files) {
-        if (LEGACY_REFERENCE_ALLOWLIST.some(allowed => file === allowed || file.startsWith(allowed))) {
+        if (config.legacyAllowlist.some(allowed => file === allowed || file.startsWith(allowed))) {
             continue;
         }
         const full = join(root, file);
@@ -533,12 +575,12 @@ export function findLegacyReferences(root: string, files: string[]): Diagnostic[
 
         content.split(/\r?\n/).forEach((line, index) => {
             if (line.includes('legacy_id:')) return;
-            const hit = line.match(LEGACY_ID_RE);
+            const hit = config.retiredRe ? line.match(config.retiredRe) : null;
             if (hit && ownLegacyId !== undefined && hit[0] === ownLegacyId) return;
             if (hit) {
                 problems.push({
                     file: `${file}:${index + 1}`,
-                    message: `references retired identifier "${hit[0]}". Use the current identifier (see ${MIGRATION_MAP}).`,
+                    message: `references retired identifier "${hit[0]}". Use the current identifier.`,
                 });
             }
         });
@@ -562,7 +604,7 @@ function issueLink(issue: number): string {
     return `[#${issue}](https://github.com/exelearning/exelearning/issues/${issue})`;
 }
 
-export function renderAdrIndex(adrs: Adr[]): string {
+export function renderAdrIndex(adrs: Adr[], config: Config): string {
     const sorted = sortAdrs(adrs);
     const lines: string[] = [
         GENERATED_BANNER,
@@ -599,7 +641,7 @@ export function renderAdrIndex(adrs: Adr[]): string {
     return `${lines.join('\n')}\n`;
 }
 
-export function renderChangeIndex(changes: Change[]): string {
+export function renderChangeIndex(changes: Change[], config: Config): string {
     const sorted = sortChanges(changes);
     const lines: string[] = [
         GENERATED_BANNER,
@@ -649,11 +691,18 @@ export function renderChangeIndex(changes: Change[]): string {
  * and only fails in CI, once it has been committed.
  */
 function trackedFiles(root: string): string[] {
-    const result = Bun.spawnSync(['git', 'ls-files', '--cached', '--others', '--exclude-standard'], {
-        cwd: root,
-    });
-    if (result.exitCode !== 0) return [];
-    return [...new Set(result.stdout.toString().split('\n').filter(Boolean))];
+    // node:child_process rather than Bun.spawnSync: this file is copied verbatim
+    // into the plugin repositories, which run it with the Node that ships on the
+    // CI image. It must execute identically under both runtimes.
+    try {
+        const out = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
+            cwd: root,
+            encoding: 'utf8',
+        });
+        return [...new Set(out.split('\n').filter(Boolean))];
+    } catch {
+        return [];
+    }
 }
 
 function report(title: string, problems: Diagnostic[]): void {
@@ -663,8 +712,9 @@ function report(title: string, problems: Diagnostic[]): void {
 }
 
 export function run(mode: 'list' | 'check', root: string): number {
-    const { adrs, errors: adrErrors } = discoverAdrs(root);
-    const { changes, errors: changeErrors } = discoverChanges(root);
+    const config = loadConfig(root);
+    const { adrs, errors: adrErrors } = discoverAdrs(root, config);
+    const { changes, errors: changeErrors } = discoverChanges(root, config);
     const structural = [...adrErrors, ...changeErrors];
 
     if (mode === 'list') {
@@ -673,24 +723,25 @@ export function run(mode: 'list' | 'check', root: string): number {
             console.error('\nRefusing to list records while structural problems remain.');
             return 1;
         }
-        console.log(renderAdrIndex(adrs));
-        console.log(renderChangeIndex(changes));
+        console.log(renderAdrIndex(adrs, config));
+        console.log(renderChangeIndex(changes, config));
         return 0;
     }
 
     const files = trackedFiles(root);
-    const metadata = validate(adrs, changes);
-    const legacy = findLegacyReferences(root, files);
-    const committedIndexes = findCommittedIndexes(files);
+    const metadata = validate(adrs, changes, config);
+    const legacy = findLegacyReferences(root, files, config);
+    const committedIndexes = findCommittedIndexes(files, config);
 
     report('Structural problems:', structural);
     report('Metadata problems:', metadata);
     report('Retired identifier references:', legacy);
     report('Committed index:', committedIndexes);
 
+    const bootstrap = adrs.filter(adr => adr.issue === BOOTSTRAP_NUMBER).length;
     const total = structural.length + metadata.length + legacy.length + committedIndexes.length;
     if (total === 0) {
-        console.log(`Architecture records OK — ${adrs.length} ADRs, ${changes.length} changes.`);
+        console.log(`Architecture records OK — ${adrs.length} records${bootstrap > 0 ? ` (${bootstrap} from repository bootstrap)` : ''}, ${changes.length} changes.`);
         return 0;
     }
     console.error(`\n${total} problem(s) found.`);

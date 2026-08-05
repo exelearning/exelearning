@@ -3,12 +3,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-    ADR_DIR,
-    ADR_FILENAME_RE,
-    CHANGE_DIR_RE,
-    CHANGES_DIR,
-    LEGACY_ID_RE,
+    type Config,
     discoverAdrs,
+    loadConfig,
     discoverChanges,
     findLegacyReferences,
     isPositiveInteger,
@@ -19,14 +16,16 @@ import {
     renderChangeIndex,
     sortAdrs,
     validate,
-} from './architecture-records.ts';
+} from './architecture-records.mts';
 
 let root: string;
+let config: Config;
 
 beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'arch-records-'));
-    mkdirSync(join(root, ADR_DIR), { recursive: true });
-    mkdirSync(join(root, CHANGES_DIR), { recursive: true });
+    config = loadConfig(root);
+    mkdirSync(join(root, config.recordsDir), { recursive: true });
+    mkdirSync(join(root, config.changesDir), { recursive: true });
 });
 
 afterEach(() => {
@@ -68,14 +67,14 @@ function writeAdr(file: string, overrides: Record<string, string> = {}): void {
         '',
         body,
     ];
-    writeFileSync(join(root, ADR_DIR, file), lines.join('\n'));
+    writeFileSync(join(root, config.recordsDir, file), lines.join('\n'));
 }
 
 function writeChangeDoc(dir: string, name: string, extra: string[] = []): void {
-    mkdirSync(join(root, CHANGES_DIR, dir), { recursive: true });
+    mkdirSync(join(root, config.changesDir, dir), { recursive: true });
     const issue = dir.split('-')[0];
     writeFileSync(
-        join(root, CHANGES_DIR, dir, name),
+        join(root, config.changesDir, dir, name),
         [
             '---',
             `tracking_issue: ${issue}`,
@@ -138,7 +137,7 @@ describe('parseFrontmatter', () => {
 
 describe('identifier grammars', () => {
     test('accepts the issue-based ADR filename', () => {
-        const match = 'ADR-1858-02-use-asset-uri-references.md'.match(ADR_FILENAME_RE);
+        const match = 'ADR-1858-02-use-asset-uri-references.md'.match(config.recordRe);
         expect(match).not.toBeNull();
         expect(match?.[1]).toBe('1858');
         expect(match?.[2]).toBe('02');
@@ -152,21 +151,21 @@ describe('identifier grammars', () => {
         'ADR-01858-02-leading-zero.md', // issue must not have a leading zero
         'SDD-0009-a-design.md',
     ])('rejects %s', file => {
-        expect(ADR_FILENAME_RE.test(file)).toBe(false);
+        expect(config.recordRe.test(file)).toBe(false);
     });
 
     test('accepts issue-based change directories', () => {
-        expect(CHANGE_DIR_RE.test('1858-file-attachment-restoration')).toBe(true);
-        expect(CHANGE_DIR_RE.test('2232-issue-based-architecture-identifiers')).toBe(true);
-        expect(CHANGE_DIR_RE.test('Not-Kebab')).toBe(false);
-        expect(CHANGE_DIR_RE.test('sdd-0009')).toBe(false);
+        expect(config.changeDirRe.test('1858-file-attachment-restoration')).toBe(true);
+        expect(config.changeDirRe.test('2232-issue-based-architecture-identifiers')).toBe(true);
+        expect(config.changeDirRe.test('Not-Kebab')).toBe(false);
+        expect(config.changeDirRe.test('sdd-0009')).toBe(false);
     });
 
     test('legacy id pattern does not match the prefix of a new identifier', () => {
-        expect(LEGACY_ID_RE.test('see ADR-0035 for details')).toBe(true);
-        expect(LEGACY_ID_RE.test('see SDD-0009 for details')).toBe(true);
-        expect(LEGACY_ID_RE.test('see ADR-1858-01 for details')).toBe(false);
-        expect(LEGACY_ID_RE.test('ADR-2232-01')).toBe(false);
+        expect((config.retiredRe as RegExp).test('see ADR-0035 for details')).toBe(true);
+        expect((config.retiredRe as RegExp).test('see SDD-0009 for details')).toBe(true);
+        expect((config.retiredRe as RegExp).test('see ADR-1858-01 for details')).toBe(false);
+        expect((config.retiredRe as RegExp).test('ADR-2232-01')).toBe(false);
     });
 });
 
@@ -189,27 +188,27 @@ describe('scalar validators', () => {
 
 describe('discovery', () => {
     test('skips README, records and template', () => {
-        writeFileSync(join(root, ADR_DIR, 'README.md'), '# Policy\n');
-        writeFileSync(join(root, ADR_DIR, 'records.md'), '# Index\n');
-        writeFileSync(join(root, ADR_DIR, 'template.md'), '# Template\n');
+        writeFileSync(join(root, config.recordsDir, 'README.md'), '# Policy\n');
+        writeFileSync(join(root, config.recordsDir, 'records.md'), '# Index\n');
+        writeFileSync(join(root, config.recordsDir, 'template.md'), '# Template\n');
         writeAdr('ADR-1858-01-a-decision.md');
 
-        const { adrs, errors } = discoverAdrs(root);
+        const { adrs, errors } = discoverAdrs(root, config);
         expect(adrs).toHaveLength(1);
         expect(errors).toHaveLength(0);
     });
 
     test('reports retired global numbering with an actionable message', () => {
-        writeFileSync(join(root, ADR_DIR, 'ADR-0042-a-decision.md'), '---\nid: ADR-0042\n---\n\n# x\n');
-        const { errors } = discoverAdrs(root);
+        writeFileSync(join(root, config.recordsDir, 'ADR-0042-a-decision.md'), '---\nid: ADR-0042\n---\n\n# x\n');
+        const { errors } = discoverAdrs(root, config);
         expect(errors).toHaveLength(1);
         expect(errors[0].message).toContain('retired global numbering');
     });
 
     test('a change directory with no recognised document is an error', () => {
-        mkdirSync(join(root, CHANGES_DIR, '1858-empty'), { recursive: true });
-        writeFileSync(join(root, CHANGES_DIR, '1858-empty', 'notes.txt'), 'x');
-        const { changes, errors } = discoverChanges(root);
+        mkdirSync(join(root, config.changesDir, '1858-empty'), { recursive: true });
+        writeFileSync(join(root, config.changesDir, '1858-empty', 'notes.txt'), 'x');
+        const { changes, errors } = discoverChanges(root, config);
         expect(changes).toHaveLength(0);
         expect(errors[0].message).toContain('no recognised document');
     });
@@ -217,7 +216,7 @@ describe('discovery', () => {
     test('the canonical carrier is the first recognised document present', () => {
         writeChangeDoc('1858-a-change', 'design.md');
         writeChangeDoc('1858-a-change', 'proposal.md');
-        const { changes } = discoverChanges(root);
+        const { changes } = discoverChanges(root, config);
         expect(changes[0].canonical?.name).toBe('proposal.md');
     });
 });
@@ -226,38 +225,38 @@ describe('validate', () => {
     test('passes a well-formed corpus', () => {
         writeAdr('ADR-1858-01-first-decision.md', { title: 'First decision' });
         writeChangeDoc('1858-a-change', 'proposal.md');
-        const { adrs } = discoverAdrs(root);
-        const { changes } = discoverChanges(root);
-        expect(validate(adrs, changes)).toEqual([]);
+        const { adrs } = discoverAdrs(root, config);
+        const { changes } = discoverChanges(root, config);
+        expect(validate(adrs, changes, config)).toEqual([]);
     });
 
     test('rejects an id that disagrees with the filename', () => {
         writeAdr('ADR-1858-01-first-decision.md', { id: 'ADR-1858-02' });
-        const { adrs } = discoverAdrs(root);
-        const problems = validate(adrs, []);
+        const { adrs } = discoverAdrs(root, config);
+        const problems = validate(adrs, [], config);
         expect(problems.some(p => p.message.includes('does not match filename'))).toBe(true);
     });
 
     test('rejects a tracking_issue that disagrees with the filename', () => {
         writeAdr('ADR-1858-01-first-decision.md', { tracking_issue: '2193' });
-        const { adrs } = discoverAdrs(root);
-        const problems = validate(adrs, []);
+        const { adrs } = discoverAdrs(root, config);
+        const problems = validate(adrs, [], config);
         expect(problems.some(p => p.message.includes('does not match filename issue'))).toBe(true);
     });
 
     test('detects a duplicate local sequence within one issue', () => {
         writeAdr('ADR-1858-01-first.md', { title: 'First' });
         writeAdr('ADR-1858-01-second.md', { title: 'Second' });
-        const { adrs } = discoverAdrs(root);
-        const problems = validate(adrs, []);
+        const { adrs } = discoverAdrs(root, config);
+        const problems = validate(adrs, [], config);
         expect(problems.some(p => p.message.includes('duplicate ADR id'))).toBe(true);
     });
 
     test('the same local sequence under different issues is fine', () => {
         writeAdr('ADR-1858-01-first.md', { title: 'First' });
         writeAdr('ADR-2193-01-second.md', { title: 'Second' });
-        const { adrs } = discoverAdrs(root);
-        expect(validate(adrs, [])).toEqual([]);
+        const { adrs } = discoverAdrs(root, config);
+        expect(validate(adrs, [], config)).toEqual([]);
     });
 
     test.each([
@@ -265,27 +264,27 @@ describe('validate', () => {
         ['date', { date: '2026-13-99' }, 'not a valid YYYY-MM-DD'],
     ])('rejects an invalid %s', (_field, overrides, expected) => {
         writeAdr('ADR-1858-01-a-decision.md', overrides as Record<string, string>);
-        const { adrs } = discoverAdrs(root);
-        expect(validate(adrs, []).some(p => p.message.includes(expected))).toBe(true);
+        const { adrs } = discoverAdrs(root, config);
+        expect(validate(adrs, [], config).some(p => p.message.includes(expected))).toBe(true);
     });
 
     test('rejects a reference to an ADR that does not exist', () => {
         writeAdr('ADR-1858-01-a-decision.md', { adrs: '[ADR-9999-01]' });
-        const { adrs } = discoverAdrs(root);
-        expect(validate(adrs, []).some(p => p.message.includes('unknown ADR'))).toBe(true);
+        const { adrs } = discoverAdrs(root, config);
+        expect(validate(adrs, [], config).some(p => p.message.includes('unknown ADR'))).toBe(true);
     });
 
     test('rejects a non-numeric PR reference', () => {
         writeAdr('ADR-1858-01-a-decision.md', { prs: '["#2011"]' });
-        const { adrs } = discoverAdrs(root);
-        expect(validate(adrs, []).some(p => p.message.includes('not a positive integer'))).toBe(true);
+        const { adrs } = discoverAdrs(root, config);
+        expect(validate(adrs, [], config).some(p => p.message.includes('not a positive integer'))).toBe(true);
     });
 
     test('rejects a one-sided supersession', () => {
         writeAdr('ADR-1858-01-old.md', { title: 'Old' });
         writeAdr('ADR-2232-01-new.md', { title: 'New', supersedes: '[ADR-1858-01]' });
-        const { adrs } = discoverAdrs(root);
-        const problems = validate(adrs, []);
+        const { adrs } = discoverAdrs(root, config);
+        const problems = validate(adrs, [], config);
         expect(problems.some(p => p.message.includes('does not list superseded_by'))).toBe(true);
     });
 
@@ -296,35 +295,35 @@ describe('validate', () => {
             superseded_by: '[ADR-2232-01]',
         });
         writeAdr('ADR-2232-01-new.md', { title: 'New', supersedes: '[ADR-1858-01]' });
-        const { adrs } = discoverAdrs(root);
-        expect(validate(adrs, [])).toEqual([]);
+        const { adrs } = discoverAdrs(root, config);
+        expect(validate(adrs, [], config)).toEqual([]);
     });
 
     test('flags a superseded ADR left at the wrong status', () => {
         writeAdr('ADR-1858-01-old.md', { title: 'Old', superseded_by: '[ADR-2232-01]' });
         writeAdr('ADR-2232-01-new.md', { title: 'New', supersedes: '[ADR-1858-01]' });
-        const { adrs } = discoverAdrs(root);
-        expect(validate(adrs, []).some(p => p.message.includes('not "Superseded"'))).toBe(true);
+        const { adrs } = discoverAdrs(root, config);
+        expect(validate(adrs, [], config).some(p => p.message.includes('not "Superseded"'))).toBe(true);
     });
 
     test('rejects an H1 that disagrees with the frontmatter', () => {
         writeAdr('ADR-1858-01-a-decision.md', { body: '# Something else\n\n## Context\n\nText.\n' });
-        const { adrs } = discoverAdrs(root);
-        expect(validate(adrs, []).some(p => p.message.includes('H1 is'))).toBe(true);
+        const { adrs } = discoverAdrs(root, config);
+        expect(validate(adrs, [], config).some(p => p.message.includes('H1 is'))).toBe(true);
     });
 
     test('rejects implementation_prs outside the canonical carrier', () => {
         writeChangeDoc('1858-a-change', 'proposal.md', ['implementation_prs: [2011]']);
         writeChangeDoc('1858-a-change', 'design.md', ['implementation_prs: [2011]']);
-        const { changes } = discoverChanges(root);
-        const problems = validate([], changes);
+        const { changes } = discoverChanges(root, config);
+        const problems = validate([], changes, config);
         expect(problems.some(p => p.message.includes('canonical metadata carrier'))).toBe(true);
     });
 
     test('rejects a change document whose tracking_issue disagrees with its directory', () => {
-        mkdirSync(join(root, CHANGES_DIR, '1858-a-change'), { recursive: true });
+        mkdirSync(join(root, config.changesDir, '1858-a-change'), { recursive: true });
         writeFileSync(
-            join(root, CHANGES_DIR, '1858-a-change', 'proposal.md'),
+            join(root, config.changesDir, '1858-a-change', 'proposal.md'),
             [
                 '---',
                 'tracking_issue: 2193',
@@ -338,8 +337,8 @@ describe('validate', () => {
                 '# Mismatched',
             ].join('\n'),
         );
-        const { changes } = discoverChanges(root);
-        const problems = validate([], changes);
+        const { changes } = discoverChanges(root, config);
+        const problems = validate([], changes, config);
         expect(problems.some(p => p.message.includes('does not match change directory issue'))).toBe(true);
     });
 });
@@ -347,7 +346,7 @@ describe('validate', () => {
 describe('findLegacyReferences', () => {
     test('flags a retired identifier in an ordinary file', () => {
         writeFileSync(join(root, 'notes.md'), 'See ADR-0035 for the rationale.\n');
-        const problems = findLegacyReferences(root, ['notes.md']);
+        const problems = findLegacyReferences(root, ['notes.md'], config);
         expect(problems).toHaveLength(1);
         expect(problems[0].file).toBe('notes.md:1');
         expect(problems[0].message).toContain('ADR-0035');
@@ -355,7 +354,7 @@ describe('findLegacyReferences', () => {
 
     test('does not flag a current identifier', () => {
         writeFileSync(join(root, 'notes.md'), 'See ADR-1858-01 and ADR-2232-01.\n');
-        expect(findLegacyReferences(root, ['notes.md'])).toEqual([]);
+        expect(findLegacyReferences(root, ['notes.md'], config)).toEqual([]);
     });
 
     test('allows a document to name its own legacy_id', () => {
@@ -363,7 +362,7 @@ describe('findLegacyReferences', () => {
             join(root, 'design.md'),
             ['---', 'legacy_id: SDD-0009', '---', '', 'Written as SDD-0009.', ''].join('\n'),
         );
-        expect(findLegacyReferences(root, ['design.md'])).toEqual([]);
+        expect(findLegacyReferences(root, ['design.md'], config)).toEqual([]);
     });
 
     test('still flags a different legacy id inside a migrated document', () => {
@@ -371,7 +370,7 @@ describe('findLegacyReferences', () => {
             join(root, 'design.md'),
             ['---', 'legacy_id: SDD-0009', '---', '', 'See ADR-0035.', ''].join('\n'),
         );
-        const problems = findLegacyReferences(root, ['design.md']);
+        const problems = findLegacyReferences(root, ['design.md'], config);
         expect(problems).toHaveLength(1);
         expect(problems[0].message).toContain('ADR-0035');
     });
@@ -379,19 +378,20 @@ describe('findLegacyReferences', () => {
     test('skips the documented allowlist', () => {
         mkdirSync(join(root, 'doc/architecture'), { recursive: true });
         writeFileSync(join(root, 'doc/architecture/migration-map.md'), 'ADR-0035 -> ADR-1858-01\n');
-        expect(findLegacyReferences(root, ['doc/architecture/migration-map.md'])).toEqual([]);
+        const allowed = { ...config, legacyAllowlist: ['doc/architecture/migration-map.md'] };
+        expect(findLegacyReferences(root, ['doc/architecture/migration-map.md'], allowed)).toEqual([]);
     });
 });
 
 describe('findCommittedIndexes', () => {
     test('rejects a committed record index', () => {
-        const problems = findCommittedIndexes([`${ADR_DIR}/records.md`, 'README.md']);
+        const problems = findCommittedIndexes([`${config.recordsDir}/records.md`, 'README.md'], config);
         expect(problems).toHaveLength(1);
         expect(problems[0].message).toContain('must not be committed');
     });
 
     test('accepts a tree with no index file', () => {
-        expect(findCommittedIndexes(['README.md', `${ADR_DIR}/ADR-1858-01-a.md`])).toEqual([]);
+        expect(findCommittedIndexes(['README.md', `${config.recordsDir}/ADR-1858-01-a.md`], config)).toEqual([]);
     });
 });
 
@@ -400,26 +400,26 @@ describe('index rendering', () => {
         writeAdr('ADR-2193-01-later-issue.md', { title: 'Later issue' });
         writeAdr('ADR-1858-02-second.md', { title: 'Second' });
         writeAdr('ADR-1858-01-first.md', { title: 'First' });
-        const { adrs } = discoverAdrs(root);
+        const { adrs } = discoverAdrs(root, config);
         expect(sortAdrs(adrs).map(a => a.id)).toEqual(['ADR-1858-01', 'ADR-1858-02', 'ADR-2193-01']);
     });
 
     test('is deterministic and says it is not a committed file', () => {
         writeAdr('ADR-1858-01-a-decision.md', { title: 'A decision' });
         writeChangeDoc('1858-a-change', 'proposal.md');
-        const { adrs } = discoverAdrs(root);
-        const { changes } = discoverChanges(root);
+        const { adrs } = discoverAdrs(root, config);
+        const { changes } = discoverChanges(root, config);
 
-        expect(renderAdrIndex(adrs)).toBe(renderAdrIndex(adrs));
-        expect(renderChangeIndex(changes)).toBe(renderChangeIndex(changes));
-        expect(renderAdrIndex(adrs)).toContain('Not a committed file');
-        expect(renderAdrIndex(adrs)).toContain('[ADR-1858-01](ADR-1858-01-a-decision.md)');
-        expect(renderChangeIndex(changes)).toContain('`1858-a-change`');
+        expect(renderAdrIndex(adrs, config)).toBe(renderAdrIndex(adrs, config));
+        expect(renderChangeIndex(changes, config)).toBe(renderChangeIndex(changes, config));
+        expect(renderAdrIndex(adrs, config)).toContain('Not a committed file');
+        expect(renderAdrIndex(adrs, config)).toContain('[ADR-1858-01](ADR-1858-01-a-decision.md)');
+        expect(renderChangeIndex(changes, config)).toContain('`1858-a-change`');
     });
 
     test('renders empty status groups rather than omitting them', () => {
         writeAdr('ADR-1858-01-a-decision.md');
-        const { adrs } = discoverAdrs(root);
-        expect(renderAdrIndex(adrs)).toContain('_No accepted ADRs._');
+        const { adrs } = discoverAdrs(root, config);
+        expect(renderAdrIndex(adrs, config)).toContain('_No accepted ADRs._');
     });
 });
