@@ -358,6 +358,34 @@ test.describe('Rubric iDevice', () => {
             expect(scope.centreOffset).toBeLessThan(2);
         });
 
+        test('should keep the edits pending in a dialog when the iDevice is saved', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Save With Dialog Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            // Type into the row dialog and save the iDevice without accepting it:
+            // its Save button is outside the rubric form, so it stays clickable.
+            await page.locator('#ri_Table tbody tr').first().locator('a.ri_EditTR').click();
+            await expect(page.locator('#ri_RowEditModal')).toBeVisible({ timeout: 10000 });
+            const pendingDescriptor = 'Descriptor pending in the dialog';
+            await page.locator('#ri_RowEditContent').fill(pendingDescriptor);
+
+            await saveRubricIdevice(page);
+
+            await expect(page.locator('#node-content .idevice_node.rubric')).toContainText(pendingDescriptor, {
+                timeout: 10000,
+            });
+        });
+
         test('should show the unsaved-changes confirmation above the row dialog', async ({
             authenticatedPage,
             createProject,

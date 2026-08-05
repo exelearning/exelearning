@@ -557,6 +557,63 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
     });
 
+    it('commitOpenEditModal writes back what the cell dialog is holding', () => {
+      buildTable();
+
+      const cell = $('#ri_Table tbody tr td').first();
+      $exeDevice.openCellEditModal(cell);
+      $('#ri_CellEditContent').val('Descriptor pendiente');
+      $('#ri_CellEditScore').val('9');
+
+      $exeDevice.commitOpenEditModal();
+
+      expect(cell.find('input[type="text"]').not('.ri_Weight').first().val()).toBe('Descriptor pendiente');
+      expect(cell.find('input.ri_Weight').first().val()).toBe('9');
+      expect($('#ri_CellEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.cellEditTarget).toBeNull();
+    });
+
+    it('commitOpenEditModal writes back every draft of the row dialog', () => {
+      buildTable();
+
+      const row = $('#ri_Table tbody tr').first();
+      $exeDevice.openRowEditModal(row);
+      $('#ri_RowEditContent').val('Fila pendiente');
+      $('#ri_RowEditScore').val('7');
+
+      $exeDevice.commitOpenEditModal();
+
+      expect(row.find('td input[type="text"]').not('.ri_Weight').first().val()).toBe('Fila pendiente');
+      expect(row.find('td input.ri_Weight').first().val()).toBe('7');
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.rowEditState).toBeNull();
+    });
+
+    it('commitOpenEditModal does nothing when no dialog is open', () => {
+      buildTable();
+
+      const cell = $('#ri_Table tbody tr td').first();
+
+      expect(() => $exeDevice.commitOpenEditModal()).not.toThrow();
+      expect(cell.find('input[type="text"]').not('.ri_Weight').first().val()).toBe('Descriptor inicial');
+    });
+
+    it('saving the iDevice keeps the edits pending in an open dialog', () => {
+      buildTable();
+
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+      $('#ri_RowEditContent').val('Descriptor sin aceptar');
+
+      // save() bails out on this minimal fixture, but the drafts must already
+      // have reached the table by then.
+      $exeDevice.save();
+
+      expect(
+        $('#ri_Table tbody tr').first().find('td input[type="text"]').not('.ri_Weight').first().val()
+      ).toBe('Descriptor sin aceptar');
+      expect($exeDevice.rowEditState).toBeNull();
+    });
+
     it('row dialog confirms before closing when there are unsaved changes', () => {
       buildTable();
 

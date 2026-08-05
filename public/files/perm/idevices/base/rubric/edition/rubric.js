@@ -1602,6 +1602,12 @@ var $exeDevice = {
     },
 
     save: function () {
+        // The iDevice Save button sits outside the rubric form, so it can be
+        // pressed while a dialog is still open. Its pending edits only live in
+        // the dialog until accepted, and saving reads the table, so commit them
+        // first instead of dropping them silently.
+        this.commitOpenEditModal();
+
         // Validate (and remove any HTML tags)
 
         var table = $('#ri_TableEditor table');
@@ -1941,6 +1947,17 @@ var $exeDevice = {
      */
     mountEditModal: function (html) {
         $('#ri_IdeviceForm').append(html);
+    },
+
+    /**
+     * Write back whatever an open dialog is holding, as if the user had accepted
+     * it. Each apply function already syncs the active field, updates the table,
+     * resets the unsaved-changes baseline and closes its dialog.
+     */
+    commitOpenEditModal: function () {
+        if (this.cellEditTarget) this.applyCellEditModal();
+        if (this.rowEditState) this.applyRowEditModal();
+        if (this.columnEditState) this.applyColumnEditModal();
     },
 
     showEditModal: function (id) {
