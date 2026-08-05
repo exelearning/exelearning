@@ -358,6 +358,36 @@ test.describe('Rubric iDevice', () => {
             expect(scope.centreOffset).toBeLessThan(2);
         });
 
+        test('should return the focus to the control that opened the dialog', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Dialog Focus Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            const editLink = page.locator('#ri_Table tbody tr').first().locator('td').first().locator('a.ri_EditTD');
+            await editLink.click();
+            await expect(page.locator('#ri_CellEditModal')).toBeVisible({ timeout: 10000 });
+
+            // Esc closes the dialog, so keyboard users must land back on the pencil
+            await page.keyboard.press('Escape');
+            await expect(page.locator('#ri_CellEditModal')).toBeHidden({ timeout: 10000 });
+
+            const focusIsBack = await page.evaluate(() => {
+                const active = document.activeElement;
+                const opener = document.querySelector('#ri_Table tbody tr td a.ri_EditTD');
+                return !!active && active === opener;
+            });
+            expect(focusIsBack).toBe(true);
+        });
+
         test('should keep the edits pending in a dialog when the iDevice is saved', async ({
             authenticatedPage,
             createProject,

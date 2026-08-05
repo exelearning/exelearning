@@ -1841,14 +1841,14 @@ var $exeDevice = {
         // Edit row via modal (save all row changes on accept)
         $('.ri_EditTR').click(function () {
             var row = $(this).parents('tr:first');
-            $exeDevice.openRowEditModal(row);
+            $exeDevice.openRowEditModal(row, this);
             return false;
         });
 
         // Edit cell via modal
         $('.ri_EditTD').click(function () {
             var td = $(this).closest('td');
-            $exeDevice.openCellEditModal(td);
+            $exeDevice.openCellEditModal(td, this);
             return false;
         });
 
@@ -1903,7 +1903,7 @@ var $exeDevice = {
         // Edit column via modal (save all column changes on accept)
         $('.ri_EditColumn').click(function () {
             var th = $(this).closest('th');
-            $exeDevice.openColumnEditModal(th);
+            $exeDevice.openColumnEditModal(th, this);
             return false;
         });
         // Delete column
@@ -1997,6 +1997,19 @@ var $exeDevice = {
             .removeClass('show')
             .attr('aria-hidden', 'true');
         $('#' + id + 'Backdrop').remove();
+        this.restoreEditModalFocus();
+    },
+
+    /**
+     * Hand the focus back to the control that opened the dialog, so keyboard
+     * users carry on from where they were instead of at the top of the document.
+     */
+    restoreEditModalFocus: function () {
+        var opener = this.editModalOpener;
+        this.editModalOpener = null;
+
+        // The table may have been rebuilt while the dialog was open.
+        if (opener && opener.isConnected) opener.focus();
     },
 
     ensureCellEditModal: function () {
@@ -2066,10 +2079,11 @@ var $exeDevice = {
         });
     },
 
-    openCellEditModal: function (td) {
+    openCellEditModal: function (td, opener) {
         if (!td || td.length !== 1) return;
 
         this.ensureCellEditModal();
+        this.editModalOpener = opener || null;
 
         this.cellEditTarget = td;
         var contentInput = td.find('input[type="text"]').not('.ri_Weight').first();
@@ -2221,10 +2235,11 @@ var $exeDevice = {
             });
     },
 
-    openRowEditModal: function (row) {
+    openRowEditModal: function (row, opener) {
         if (!row || row.length !== 1) return;
 
         this.ensureRowEditModal();
+        this.editModalOpener = opener || null;
 
         var titleInput = row.find('th input[type="text"]').first();
         var cells = row.find('td');
@@ -2488,13 +2503,14 @@ var $exeDevice = {
             });
     },
 
-    openColumnEditModal: function (th) {
+    openColumnEditModal: function (th, opener) {
         if (!th || th.length !== 1) return;
 
         var colIndex = th.prevAll('th').length;
         if (colIndex === 0) return;
 
         this.ensureColumnEditModal();
+        this.editModalOpener = opener || null;
 
         var titleInput = th.find('input[type="text"]').first();
         var drafts = [];

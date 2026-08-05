@@ -557,6 +557,38 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect(document.querySelectorAll('.ri-edit-backdrop').length).toBe(0);
     });
 
+    it('returns the focus to the control that opened the dialog', () => {
+      buildTable();
+
+      const cell = $('#ri_Table tbody tr td').first();
+      const opener = document.createElement('a');
+      opener.href = '#';
+      cell[0].appendChild(opener);
+
+      $exeDevice.openCellEditModal(cell, opener);
+      expect(document.activeElement).not.toBe(opener);
+
+      $exeDevice.closeCellEditModal();
+
+      expect(document.activeElement).toBe(opener);
+      expect($exeDevice.editModalOpener).toBeNull();
+    });
+
+    it('does not restore the focus when the opener is gone from the DOM', () => {
+      buildTable();
+
+      const cell = $('#ri_Table tbody tr td').first();
+      const opener = document.createElement('a');
+      opener.href = '#';
+      cell[0].appendChild(opener);
+
+      $exeDevice.openCellEditModal(cell, opener);
+      opener.remove();
+
+      expect(() => $exeDevice.closeCellEditModal()).not.toThrow();
+      expect(document.activeElement).not.toBe(opener);
+    });
+
     it('commitOpenEditModal writes back what the cell dialog is holding', () => {
       buildTable();
 
