@@ -455,6 +455,27 @@ describe('ModalOdeBrokenLinks', () => {
             );
         });
 
+        it('should not paint rows amber in browser-limited flavors', () => {
+            // Every external link is unknown there, so the amber background adds
+            // nothing over the notice and floods the table with yellow.
+            modal.linkManager = { isBrowserLimited: () => true };
+
+            modal.updateLinkRow('test-id', 'unknown', 'Not checked automatically');
+
+            const row = modal.rowElements.get('test-id');
+            expect(row.classList.contains('table-warning')).toBe(false);
+            expect(row.querySelector('.text-warning-emphasis')).not.toBeNull();
+            expect(row.dataset.status).toBe('unknown');
+        });
+
+        it('should still paint broken rows red in browser-limited flavors', () => {
+            modal.linkManager = { isBrowserLimited: () => true };
+
+            modal.updateLinkRow('test-id', 'broken', '404');
+
+            expect(modal.rowElements.get('test-id').classList.contains('table-danger')).toBe(true);
+        });
+
         it('should handle non-existent row', () => {
             // Should not throw
             modal.updateLinkRow('non-existent', 'valid', null);

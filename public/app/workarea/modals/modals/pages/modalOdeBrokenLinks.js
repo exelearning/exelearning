@@ -310,11 +310,14 @@ export default class ModalOdeBrokenLinks extends Modal {
             errorCell.textContent = error || '';
         }
 
-        // Visual indicator: red for broken links, amber for inconclusive checks
+        // Visual indicator: red for broken links, amber for inconclusive checks.
+        // In browser-limited flavors every external link ends up unknown, so the
+        // amber highlight carries no information and turns the whole table yellow
+        // on top of the already amber notice: the ⚠ icon is marker enough there.
         row.classList.remove('table-danger', 'table-warning');
         if (status === 'broken') {
             row.classList.add('table-danger');
-        } else if (status === 'unknown') {
+        } else if (status === 'unknown' && !this.linkManager?.isBrowserLimited?.()) {
             row.classList.add('table-warning');
         }
     }
