@@ -46,6 +46,8 @@ export const CHANGE_DOCUMENTS = ['proposal.md', 'spec.md', 'design.md', 'researc
 export const BOOTSTRAP_NUMBER = 0;
 
 const NUMBER = '(0|[1-9][0-9]*)';
+// The local sequence starts at 01: `00` is not a valid ordinal.
+const SEQUENCE = '(0[1-9]|[1-9][0-9])';
 const SLUG = '([a-z0-9]+(?:-[a-z0-9]+)*)';
 
 export const POSITIVE_INT_RE = /^(0|[1-9][0-9]*)$/;
@@ -57,6 +59,8 @@ export type Config = {
     changesDir: string;
     legacyAllowlist: string[];
     legacyPatterns: string[];
+    issuesUrl: string;
+    repositoryLabel: string;
     recordRe: RegExp;
     changeDirRe: RegExp;
     retiredRe: RegExp | null;
@@ -69,6 +73,10 @@ const DEFAULTS = {
     changes_dir: 'doc/architecture/changes',
     legacy_allowlist: [] as string[],
     legacy_patterns: ['\\b(?:ADR|SDD)-[0-9]{4}(?!-[0-9]{2})\\b'],
+    // Where this repository's tracking numbers resolve. The index is rendered
+    // in every repository that copies this file, so it must not hard-code core.
+    issues_url: 'https://github.com/exelearning/exelearning/issues',
+    repository_label: 'the main eXeLearning repository',
 };
 
 /**
@@ -89,10 +97,14 @@ export function loadConfig(root: string): Config {
         changesDir: merged.changes_dir,
         legacyAllowlist: merged.legacy_allowlist,
         legacyPatterns: merged.legacy_patterns,
-        recordRe: new RegExp(`^${prefix}-${NUMBER}-([0-9]{2})-${SLUG}\\.md$`),
+        issuesUrl: merged.issues_url,
+        repositoryLabel: merged.repository_label,
+        recordRe: new RegExp(`^${prefix}-${NUMBER}-${SEQUENCE}-${SLUG}\\.md$`),
         changeDirRe: new RegExp(`^${NUMBER}-${SLUG}$`),
         retiredRe: merged.legacy_patterns.length > 0 ? new RegExp(merged.legacy_patterns.join('|')) : null,
-        retiredNameRe: new RegExp(`^(?:ADR|SDD|${prefix})-[0-9]{4}-`),
+        // Four digits NOT followed by a two-digit sequence: `ADR-2193-01-…` is
+        // current and must not match on its own four-digit prefix.
+        retiredNameRe: new RegExp(`^(?:ADR|SDD|${prefix})-[0-9]{4}-(?![0-9]{2}-)`),
     };
 }
 
@@ -520,6 +532,31 @@ export function validate(adrs: Adr[], changes: Change[], config: Config): Diagno
 
             if (asString(doc.data.title) === '') add(doc.path, 'missing required field `title`');
 
+            // Every document carries the schema, not just the canonical one:
+            // an incomplete design.md is as wrong as an incomplete proposal.md.
+            const docStatus = asString(doc.data.status);
+            if (docStatus === '') add(doc.path, 'missing required field `status`');
+            else if (!(CHANGE_STATUSES as readonly string[]).includes(docStatus)) {
+                add(doc.path, `status "${docStatus}" is not one of ${CHANGE_STATUSES.join(', ')}`);
+            }
+
+            const docDate = asString(doc.data.date);
+            if (docDate === '') add(doc.path, 'missing required field `date`');
+            else if (!isValidDate(docDate)) add(doc.path, `date "${docDate}" is not a valid YYYY-MM-DD date`);
+
+            if (asList(doc.data.authors).length === 0) add(doc.path, 'missing required field `authors`');
+
+            const docAi = doc.data.ai_assistance;
+            const aiTool = docAi && typeof docAi === 'object' && !Array.isArray(docAi) ? asString(docAi.tool) : '';
+            const aiModel = docAi && typeof docAi === 'object' && !Array.isArray(docAi) ? asString(docAi.model) : '';
+            if (aiTool === '' || aiModel === '') {
+                add(doc.path, 'missing `ai_assistance.tool` / `ai_assistance.model` (use `none` if unused)');
+            }
+
+            for (const ref of asList(doc.data.related_adrs)) {
+                if (!adrIds.has(ref)) add(doc.path, `related_adrs references unknown ADR "${ref}"`);
+            }
+
             for (const pr of asList(doc.data.related_prs)) {
                 if (!isPositiveInteger(pr)) add(doc.path, `related_prs value "${pr}" is not a positive integer`);
             }
@@ -548,6 +585,28 @@ export function findCommittedIndexes(files: string[], config: Config): Diagnosti
             message:
                 'the record index must not be committed — it is derived from frontmatter and ' +
                 'conflicts on every concurrent branch. Delete it; `make architecture-records` prints it.',
+        }));
+}
+
+/**
+ * A retired filename anywhere under the architecture tree, not just directly in
+ * the records directory: a four-digit `SDD-NNNN-old.md` dropped into a change
+ * directory is ignored by
+ * discovery (it is not one of the five recognised documents) and its content
+ * need never mention its own id, so only the path catches it.
+ * (Example spelled without a literal retired id, so this file does not trip
+ * its own detector.)
+ */
+export function findRetiredFilenames(files: string[], config: Config): Diagnostic[] {
+    const roots = [config.recordsDir, config.changesDir];
+    return files
+        .filter(file => roots.some(root => file.startsWith(`${root}/`)))
+        .filter(file => config.retiredNameRe.test(file.slice(file.lastIndexOf('/') + 1)))
+        .map(file => ({
+            file,
+            message:
+                'uses the retired global numbering in its filename. Rename it to the ' +
+                'tracking-number form, or move it out of the architecture tree.',
         }));
 }
 
@@ -602,8 +661,9 @@ export function sortChanges(changes: Change[]): Change[] {
     return [...changes].sort((a, b) => a.issue - b.issue || a.slug.localeCompare(b.slug));
 }
 
-function issueLink(issue: number): string {
-    return `[#${issue}](https://github.com/exelearning/exelearning/issues/${issue})`;
+function issueLink(issue: number, config: Config): string {
+    if (issue === BOOTSTRAP_NUMBER) return 'bootstrap';
+    return `[#${issue}](${config.issuesUrl}/${issue})`;
 }
 
 export function renderAdrIndex(adrs: Adr[], config: Config): string {
@@ -613,7 +673,7 @@ export function renderAdrIndex(adrs: Adr[], config: Config): string {
         '',
         '# ADR Index',
         '',
-        'Architecture Decision Records for the main eXeLearning repository, ordered by',
+        `Architecture Decision Records for ${config.repositoryLabel}, ordered by`,
         'tracking number and then by local sequence. See doc/architecture/adr/README.md',
         'for the policy.',
         '',
@@ -623,7 +683,7 @@ export function renderAdrIndex(adrs: Adr[], config: Config): string {
 
     for (const adr of sorted) {
         lines.push(
-            `| [${adr.id}](${adr.file}) | ${adr.title} | ${adr.status} | ${issueLink(adr.issue)} | ${adr.date} |`,
+            `| [${adr.id}](${adr.file}) | ${adr.title} | ${adr.status} | ${issueLink(adr.issue, config)} | ${adr.date} |`,
         );
     }
 
@@ -650,7 +710,7 @@ export function renderChangeIndex(changes: Change[], config: Config): string {
         '',
         '# Change Index',
         '',
-        'Change proposals, specifications and designs for the main eXeLearning repository,',
+        `Change proposals, specifications and designs for ${config.repositoryLabel},`,
         'ordered by tracking number. Each change lives in its own directory named',
         '`<number>-<change-slug>`. See doc/architecture/changes/README.md for the policy.',
         '',
@@ -663,7 +723,7 @@ export function renderChangeIndex(changes: Change[], config: Config): string {
             .map(doc => `[${doc.name.replace(/\.md$/, '')}](${change.name}/${doc.name})`)
             .join(', ');
         lines.push(
-            `| \`${change.name}\` | ${change.title} | ${change.status} | ${issueLink(change.issue)} | ${change.date} | ${docs} |`,
+            `| \`${change.name}\` | ${change.title} | ${change.status} | ${issueLink(change.issue, config)} | ${change.date} | ${docs} |`,
         );
     }
 
@@ -734,14 +794,17 @@ export function run(mode: 'list' | 'check', root: string): number {
     const metadata = validate(adrs, changes, config);
     const legacy = findLegacyReferences(root, files, config);
     const committedIndexes = findCommittedIndexes(files, config);
+    const retiredNames = findRetiredFilenames(files, config);
 
     report('Structural problems:', structural);
     report('Metadata problems:', metadata);
     report('Retired identifier references:', legacy);
     report('Committed index:', committedIndexes);
+    report('Retired filenames:', retiredNames);
 
     const bootstrap = adrs.filter(adr => adr.issue === BOOTSTRAP_NUMBER).length;
-    const total = structural.length + metadata.length + legacy.length + committedIndexes.length;
+    const total =
+        structural.length + metadata.length + legacy.length + committedIndexes.length + retiredNames.length;
     if (total === 0) {
         console.log(`Architecture records OK — ${adrs.length} records${bootstrap > 0 ? ` (${bootstrap} from repository bootstrap)` : ''}, ${changes.length} changes.`);
         return 0;

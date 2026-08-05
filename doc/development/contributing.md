@@ -49,10 +49,10 @@ increment, and you should never open an issue just to obtain a number.
   design gates and multi-step implementations. Each change gets a directory,
   `doc/architecture/changes/<number>-<change-slug>/`, holding any of `proposal.md`,
   `spec.md`, `design.md`, `research.md` and `tasks.md`. Create only the files that
-  carry real content. See [the change guide](../architecture/changes/README.md).
+  carry real content. See [the change guide](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md).
 - Write an **Architecture Decision Record (ADR)** for durable decisions likely to
   affect future work. ADRs live under
-  [`doc/architecture/adr/`](../architecture/adr/README.md) and are named
+  [`doc/architecture/adr/`](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md) and are named
   `ADR-<number>-<NN>-<decision-slug>.md`, where `<NN>` is a two-digit sequence
   scoped to that tracking number and starting at `01`.
 - An ADR is expected for changes affecting architecture, storage model, file
@@ -80,9 +80,9 @@ files. To bring one up to date:
 5. Delete any `records.md` your branch adds — the index is no longer committed.
 6. Run `make architecture-check`.
 
-See the [ADR](../architecture/adr/README.md) and
-[change](../architecture/changes/README.md) guides for templates, identifiers and
-statuses, and [`migration-map.md`](../architecture/migration-map.md) to resolve a
+See the [ADR](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md) and
+[change](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md) guides for templates, identifiers and
+statuses, and [`migration-map.md`](https://github.com/exelearning/exelearning/blob/main/doc/architecture/migration-map.md) to resolve a
 retired identifier.
 
 ## Coding Standards

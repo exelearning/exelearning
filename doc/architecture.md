@@ -789,20 +789,20 @@ Significant technical designs and design-gated proposals are tracked as **change
 
 The two complement each other: a design describes how a change will be implemented, while an ADR records a specific decision and its rationale. When a design contains a durable decision, that decision should link to an existing ADR or propose a new one.
 
-Both are identified by their **GitHub tracking issue** rather than a global counter: ADRs are named `ADR-<issue>-<NN>-<decision-slug>.md` and changes live in `changes/<issue>-<change-slug>/`. The rationale is recorded in [ADR-2232-01](architecture/adr/ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md).
+Both are identified by their **GitHub tracking issue** rather than a global counter: ADRs are named `ADR-<issue>-<NN>-<decision-slug>.md` and changes live in `changes/<issue>-<change-slug>/`. The rationale is recorded in [ADR-2232-01](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md).
 
 See:
 
-- [Architecture Decision Records](architecture/adr/README.md)
-- [Architecture changes](architecture/changes/README.md)
-- [Migration map](architecture/migration-map.md) — retired identifiers and where they went
+- [Architecture Decision Records](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md)
+- [Architecture changes](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md)
+- [Migration map](https://github.com/exelearning/exelearning/blob/main/doc/architecture/migration-map.md) — retired identifiers and where they went
 
 ---
 
 ## Further Reading
 
-- [Architecture Decision Records](architecture/adr/README.md) - Durable decisions and their rationale
-- [Architecture changes](architecture/changes/README.md) - Design gates for significant changes
+- [Architecture Decision Records](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md) - Durable decisions and their rationale
+- [Architecture changes](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md) - Design gates for significant changes
 - [Real-Time Collaboration](development/real-time.md) - WebSocket and Yjs details
 - [REST API](development/rest-api.md) - API endpoints
 - [Testing](development/testing.md) - Test patterns and coverage

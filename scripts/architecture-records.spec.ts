@@ -12,6 +12,7 @@ import {
     isValidDate,
     parseFrontmatter,
     findCommittedIndexes,
+    findRetiredFilenames,
     renderAdrIndex,
     renderChangeIndex,
     sortAdrs,
@@ -392,6 +393,56 @@ describe('findCommittedIndexes', () => {
 
     test('accepts a tree with no index file', () => {
         expect(findCommittedIndexes(['README.md', `${config.recordsDir}/ADR-1858-01-a.md`], config)).toEqual([]);
+    });
+});
+
+describe('review findings', () => {
+    test('rejects local sequence 00 — the ordinal starts at 01', () => {
+        expect(config.recordRe.test('ADR-2232-00-invalid-sequence.md')).toBe(false);
+        expect(config.recordRe.test('ADR-2232-01-valid-sequence.md')).toBe(true);
+    });
+
+    test('a non-canonical change document must carry the full schema', () => {
+        writeChangeDoc('90-a-change', 'proposal.md');
+        writeFileSync(
+            join(root, config.changesDir, '90-a-change', 'design.md'),
+            ['---', 'tracking_issue: 90', 'title: "Incomplete"', '---', '', '# Incomplete', ''].join('\n'),
+        );
+        const { changes } = discoverChanges(root, config);
+        const messages = validate([], changes, config).map(p => p.message);
+        for (const field of ['`status`', '`date`', '`authors`', 'ai_assistance']) {
+            expect(messages.some(m => m.includes(field))).toBe(true);
+        }
+    });
+
+    test('a non-canonical change document cannot cite a missing ADR', () => {
+        writeChangeDoc('90-a-change', 'proposal.md');
+        writeChangeDoc('90-a-change', 'design.md', ['related_adrs: [ADR-99-01]']);
+        const { changes } = discoverChanges(root, config);
+        expect(validate([], changes, config).some(p => p.message.includes('unknown ADR'))).toBe(true);
+    });
+
+    test('a retired filename inside a change directory is rejected', () => {
+        const inside = `${config.changesDir}/9999-example/SDD-0010-old-design.md`;
+        expect(findRetiredFilenames([inside], config)).toHaveLength(1);
+    });
+
+    test('a current identifier is not mistaken for a retired filename', () => {
+        expect(findRetiredFilenames([`${config.recordsDir}/ADR-2193-01-a-decision.md`], config)).toEqual([]);
+    });
+
+    test('the index links to the configured repository, not always core', () => {
+        writeAdr('ADR-90-01-a-decision.md', { title: 'A decision' });
+        const { adrs } = discoverAdrs(root, config);
+        const plugin = {
+            ...config,
+            issuesUrl: 'https://github.com/exelearning/wp-exelearning/issues',
+            repositoryLabel: 'the WordPress plugin',
+        };
+        const rendered = renderAdrIndex(adrs, plugin);
+        expect(rendered).toContain('exelearning/wp-exelearning/issues/90');
+        expect(rendered).toContain('the WordPress plugin');
+        expect(rendered).not.toContain('exelearning/exelearning/issues');
     });
 });
 
