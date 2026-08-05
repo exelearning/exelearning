@@ -89,7 +89,10 @@ policy document had to disambiguate the two in prose.
 
 ## Proposed solution
 
-Use the GitHub tracking issue number as the namespace for a change. See
+Use the GitHub tracking number as the namespace for a change — the issue when the
+change has one, and the pull request when it does not. GitHub allocates issue and
+pull-request numbers from a single repository-wide sequence, so the two can never
+collide, and no issue ever has to be opened purely to obtain an identifier. See
 [ADR-2232-01](../../adr/ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md)
 for the decision and the options that were rejected, [`spec.md`](spec.md) for the
 normative rules, [`design.md`](design.md) for the tooling design, and

@@ -169,6 +169,17 @@ Relevance: the only option that eliminates file conflicts outright. Rejected
 because records would disappear from PR diffs, from MkDocs, and from ordinary
 repository browsing.
 
+### 2.8 Issue and pull-request numbers share one sequence
+
+GitHub allocates issue and pull-request numbers from a single per-repository
+sequence, and models a pull request as a kind of issue — `/issues/<n>` resolves to
+a pull request. This change is its own evidence: the tracking issue was allocated
+#2232 and the pull request that implements it was allocated #2233, consecutively.
+
+Consequence: a pull-request number is exactly as collision-free as an issue number,
+so a change with no issue can safely use its PR number as the namespace instead of
+having an issue opened for it.
+
 ## 3. Conclusion
 
 The Kubernetes precedent matches our problem exactly — many parallel proposals,

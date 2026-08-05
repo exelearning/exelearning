@@ -84,12 +84,18 @@ PR number ([rust-lang/rfcs](https://github.com/rust-lang/rfcs)).
   the identity of a *durable decision* becomes a property of a *review artifact*;
   and a change delivered by several PRs has no single number.
 
-### Option 3: Use the PR number as the identifier
+### Option 3: Use the PR number as the identifier, always
 
-- **Pros:** same allocation benefit, no placeholder phase.
-- **Cons:** the sharpest form of Option 2's flaw. Issue #1858 produced one design
-  and four decisions delivered by PR #2011; a follow-up fix PR would either have to
-  borrow #2011's namespace or fragment the change across two numbers.
+- **Pros:** same allocation benefit, no placeholder phase, and nothing extra to
+  create — every change has a pull request eventually.
+- **Cons:** as the *only* rule it is the sharpest form of Option 2's flaw. Issue
+  #1858 produced one design and four decisions delivered by PR #2011; a follow-up
+  fix PR would either have to borrow #2011's namespace or fragment the change
+  across two numbers. It also has no identifier until the branch is pushed.
+- **Partially adopted.** Issue and pull-request numbers come from a single
+  repository-wide sequence, so a PR number is exactly as collision-free as an
+  issue number. Option 6 therefore uses the PR number as the namespace whenever a
+  change has no tracking issue, rather than forcing an issue to be opened.
 
 ### Option 4: Dates plus slugs
 
@@ -106,17 +112,20 @@ PR number ([rust-lang/rfcs](https://github.com/rust-lang/rfcs)).
 - **Cons:** unreadable and effectively uncitable. `ADR-01J8XQ3M…` cannot be used
   in a review conversation or a code comment.
 
-### Option 6: Tracking-issue-based identifiers
+### Option 6: Tracking-number-based identifiers
 
-`ADR-<issue>-<local-sequence>-<slug>.md`, with change documents in
-`doc/architecture/changes/<issue>-<slug>/`.
+`ADR-<number>-<local-sequence>-<slug>.md`, with change documents in
+`doc/architecture/changes/<number>-<slug>/`, where `<number>` is the tracking
+issue when the change has one and the pull request otherwise.
 
-- **Pros:** GitHub allocates the namespace; the collision domain shrinks to a
-  single issue, whose participants are already coordinating; the number is a
+- **Pros:** GitHub allocates the namespace from one shared sequence, so issues and
+  pull requests can be mixed without ever colliding; the collision domain shrinks
+  to a single change, whose participants are already coordinating; the number is a
   working breadcrumb back to the discussion; several decisions per change are
-  modelled explicitly; the identifier exists before any PR.
-- **Cons:** a tracking issue becomes mandatory; identifiers are longer; the
-  sequence is sparse and not globally sortable.
+  modelled explicitly; when an issue exists the identifier predates any PR; and no
+  issue ever has to be opened just to obtain a number.
+- **Cons:** identifiers are longer; the sequence is sparse and not globally
+  sortable; the number alone does not reveal whether it is an issue or a PR.
 
 ### Option 7: Store records outside the working tree in Git notes
 
@@ -169,8 +178,9 @@ no merge conflicts".
 
 ## Decision
 
-We will identify architecture records by their **GitHub tracking issue**, and
-generate every index from document metadata.
+We will identify architecture records by their **GitHub tracking number** — the
+issue when the change has one, otherwise the pull request — and generate every
+index from document metadata.
 
 Concretely:
 
@@ -178,9 +188,20 @@ Concretely:
    `max(existing) + 1` rule is removed from the active policy and is not replaced
    by any other global counter, registry or reservation mechanism.
 
-2. **The tracking issue number is the namespace for a change.** Every new
-   architecture change must have a GitHub tracking issue before its durable
-   artifacts are finalized.
+2. **The GitHub tracking number is the namespace for a change** — the tracking
+   issue when the change has one, otherwise its pull request. GitHub draws issue
+   and pull-request numbers from a **single repository-wide sequence**, so the
+   two can never collide: this ADR's tracking issue is
+   [#2232](https://github.com/exelearning/exelearning/issues/2232) and the pull
+   request that implements it is
+   [#2233](https://github.com/exelearning/exelearning/pull/2233). In GitHub's own
+   data model a pull request *is* an issue, which is why `/issues/2233` resolves
+   to that pull request.
+
+   Prefer the issue when one exists: it predates implementation, survives a
+   change delivered by several pull requests, and is where the discussion lives.
+   But **nobody should open an issue merely to obtain an identifier** — a change
+   that starts life as a pull request uses that pull request's number.
 
 3. **ADRs are named** `ADR-<issue>-<local-sequence>-<decision-slug>.md`, with
    frontmatter `id` matching the filename and `tracking_issue` matching the issue.
@@ -214,9 +235,12 @@ Concretely:
 
 ### Positive
 
-- Two branches can only collide on an identifier if they share a tracking issue,
+- Two branches can only collide on an identifier if they share a tracking number,
   at which point their authors are already coordinating. The 16 current collisions
   become zero.
+- No new process is forced on anyone: a change that never had an issue uses its
+  pull-request number, so the convention never requires opening an issue purely to
+  obtain an identifier.
 - The identifier is a working link back to the discussion where the change is
   coordinated.
 - A change with several decisions is modelled as such, and adding a fifth decision
@@ -227,9 +251,14 @@ Concretely:
 
 ### Negative
 
-- A tracking issue is now mandatory before durable artifacts are finalized. This is
-  extra process for someone who wants to record a single decision.
+- A change must have *some* GitHub number — an issue or an open pull request —
+  before its durable artifacts are finalized. In practice every change already
+  has one, so this is close to free, but a record written entirely offline has
+  no identifier until the branch is pushed.
 - Identifiers are longer: `ADR-0035` becomes `ADR-1858-01`.
+- The number alone does not say whether it refers to an issue or a pull request.
+  That is deliberate — both resolve under `/issues/<n>` — but it means a reader
+  cannot tell the two apart without following the link.
 - The identifier space is sparse and not globally sortable. Chronology moves to the
   generated index, which can sort by date, status or issue — none of which the
   integer actually encoded either.

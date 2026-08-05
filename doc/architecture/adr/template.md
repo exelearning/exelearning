@@ -3,7 +3,7 @@ id: ADR-NNNN-01
 title: "Short decision title"
 status: Proposed
 date: YYYY-MM-DD
-tracking_issue: NNNN
+tracking_issue: NNNN   # issue number, or PR number when there is no issue
 deciders:
   - "@github-user"
 reviewers:
@@ -22,12 +22,14 @@ ai_assistance:
 <!--
 How to use this template:
 
-1. Make sure the change has a GitHub tracking issue. Its number IS the
-   identifier — there is no global counter and nothing to compute.
-2. Copy this file to `ADR-<issue>-<NN>-<decision-slug>.md`, where <NN> is the
-   next free two-digit sequence FOR THAT ISSUE ONLY (`01` if it is the first).
-   The slug names the decision, not the topic.
-3. Set `id` to `ADR-<issue>-<NN>` and `tracking_issue` to the issue number.
+1. Find the change's GitHub tracking NUMBER: its issue if it has one, otherwise
+   its pull request. GitHub numbers issues and PRs from one shared sequence, so
+   they never collide. That number IS the identifier — there is no global counter
+   and nothing to compute. NEVER open an issue just to get a number.
+2. Copy this file to `ADR-<number>-<NN>-<decision-slug>.md`, where <NN> is the
+   next free two-digit sequence FOR THAT TRACKING NUMBER ONLY (`01` if it is the
+   first). The slug names the decision, not the topic.
+3. Set `id` to `ADR-<number>-<NN>` and `tracking_issue` to that number.
    They must match the filename; CI enforces this.
 4. Make the H1 below `# <id>: <title>`.
 5. Fill every section. Delete these guidance comments before submitting.

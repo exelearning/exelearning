@@ -39,19 +39,22 @@ Details: [development/version-control.md](version-control.md)
 
 Significant technical work is documented before or alongside the code.
 
-**Start with a GitHub tracking issue.** Its number identifies the change and every
-document it produces — there is no global ADR counter to look up or increment.
+**Start from the change's GitHub number.** That is its tracking issue if it has
+one, and otherwise its pull request — GitHub numbers issues and pull requests from
+a single sequence, so the two never collide. That number identifies the change and
+every document it produces; there is no global ADR counter to look up or
+increment, and you should never open an issue just to obtain a number.
 
 - Write a **change document set** for large feature proposals, major refactors,
   design gates and multi-step implementations. Each change gets a directory,
-  `doc/architecture/changes/<issue>-<change-slug>/`, holding any of `proposal.md`,
+  `doc/architecture/changes/<number>-<change-slug>/`, holding any of `proposal.md`,
   `spec.md`, `design.md`, `research.md` and `tasks.md`. Create only the files that
   carry real content. See [the change guide](../architecture/changes/README.md).
 - Write an **Architecture Decision Record (ADR)** for durable decisions likely to
   affect future work. ADRs live under
   [`doc/architecture/adr/`](../architecture/adr/README.md) and are named
-  `ADR-<issue>-<NN>-<decision-slug>.md`, where `<NN>` is a two-digit sequence
-  scoped to that issue and starting at `01`.
+  `ADR-<number>-<NN>-<decision-slug>.md`, where `<NN>` is a two-digit sequence
+  scoped to that tracking number and starting at `01`.
 - An ADR is expected for changes affecting architecture, storage model, file
   formats, database migrations, import/export behavior, the collaboration model,
   security/sandboxing, accessibility strategy, public API contracts, or
@@ -69,11 +72,12 @@ document it produces — there is no global ADR counter to look up or increment.
 Branches opened before the migration may still contain `ADR-NNNN` or `SDD-NNNN`
 files. To bring one up to date:
 
-1. Find (or open) the tracking issue for the change.
-2. `git mv` each ADR to `ADR-<issue>-<NN>-<decision-slug>.md`, numbering `01`,
+1. Find the change's tracking number: its issue, or this pull request's number if
+   there is no issue.
+2. `git mv` each ADR to `ADR-<number>-<NN>-<decision-slug>.md`, numbering `01`,
    `02`, … in the order the decisions were written.
 3. Update each file's `id` and `tracking_issue`, and make the H1 `# <id>: <title>`.
-4. Move design documents into `doc/architecture/changes/<issue>-<slug>/`.
+4. Move design documents into `doc/architecture/changes/<number>-<slug>/`.
 5. Revert any manual edit to `records.md` — it is generated now.
 6. Run `make architecture-check`.
 

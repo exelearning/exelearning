@@ -47,7 +47,7 @@ prose.
 One directory per tracking issue:
 
 ```text
-doc/architecture/changes/<issue-number>-<change-slug>/
+doc/architecture/changes/<tracking-number>-<change-slug>/
 ```
 
 ```text
@@ -55,8 +55,11 @@ doc/architecture/changes/1858-file-attachment-restoration/
 doc/architecture/changes/2232-issue-based-architecture-identifiers/
 ```
 
-- **A tracking issue is required.** Its number *is* the change's identity. There
-  is no global counter and no next-free-number to compute.
+- **A GitHub tracking number is required.** It is the change's issue when it has
+  one, and its pull request when it does not — GitHub draws both from a single
+  repository-wide sequence, so they never collide. Its number *is* the change's
+  identity. There is no global counter and no next-free-number to compute, and
+  no issue should be opened just to obtain one.
 - `<change-slug>` is lowercase kebab-case.
 - Every document in the directory carries `tracking_issue`, and it must match the
   directory prefix. CI enforces this.
@@ -101,9 +104,10 @@ related_adrs:
   - ADR-1858-02
 ```
 
-PR numbers are **traceability metadata only**, never an identifier: a change may
-take several implementation PRs, and the identifier has to exist before any of
-them.
+`implementation_prs` is **traceability metadata**: it lists every PR that
+implements the change. When a change has no issue, its PR number *is* the
+tracking number — but that is the single, stable number in `tracking_issue`, not
+the growing list in `implementation_prs`.
 
 - [`template.md`](template.md) is the canonical starting point.
 - [`records.md`](records.md) is the change index. It is **generated** — never edit
@@ -193,12 +197,13 @@ Retired identifiers must not appear in new content. CI fails on them; use
 
 ## Workflow
 
-1. Make sure the change has a **GitHub tracking issue**. Open one if it does not.
-2. Create `doc/architecture/changes/<issue>-<change-slug>/`.
+1. Identify the change's **GitHub tracking number** — its issue if it has one,
+   otherwise its pull request. Do not open an issue just to get a number.
+2. Create `doc/architecture/changes/<number>-<change-slug>/`.
 3. Copy the relevant sections of [`template.md`](template.md) into the documents
    you actually need. Start at `status: draft`.
 4. Capture durable decisions as [ADRs](../adr/README.md) named
-   `ADR-<issue>-<NN>-<decision-slug>.md`, and list them in `related_adrs`.
+   `ADR-<number>-<NN>-<decision-slug>.md`, and list them in `related_adrs`.
 5. Run `make architecture-records` to regenerate the index and
    `make architecture-check` to validate.
 6. Open (or reference) a PR and move to `in-review`.
@@ -207,7 +212,8 @@ Retired identifiers must not appear in new content. CI fails on them; use
 
 ## Review checklist
 
-- [ ] The change has a tracking issue, and the directory uses its number.
+- [ ] The change has a tracking number (issue, or PR when there is no issue),
+      and the directory uses it.
 - [ ] Every document's `tracking_issue` matches the directory.
 - [ ] Only documents with real content exist; no empty placeholders.
 - [ ] Content is not duplicated across `proposal.md`, `spec.md` and `design.md`.

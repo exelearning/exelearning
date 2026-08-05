@@ -1,5 +1,5 @@
 ---
-tracking_issue: NNNN
+tracking_issue: NNNN   # issue number, or PR number when there is no issue
 title: "Short change title"
 status: draft
 date: YYYY-MM-DD
@@ -19,9 +19,11 @@ ai_assistance:
 <!--
 How to use this template:
 
-1. Make sure the change has a GitHub tracking issue. Its number IS the change's
-   identity — there is no global counter and nothing to compute.
-2. Create `doc/architecture/changes/<issue>-<change-slug>/`.
+1. Find the change's GitHub tracking NUMBER: its issue if it has one, otherwise
+   its pull request. GitHub numbers issues and PRs from one shared sequence, so
+   they never collide. That number IS the change's identity — there is no global
+   counter and nothing to compute. NEVER open an issue just to get a number.
+2. Create `doc/architecture/changes/<number>-<change-slug>/`.
 3. Copy the frontmatter above into each document you create, and copy the
    matching section skeleton below into that document.
 4. CREATE ONLY THE DOCUMENTS THAT CARRY REAL CONTENT. Empty placeholders are not

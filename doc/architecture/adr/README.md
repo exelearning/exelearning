@@ -45,14 +45,22 @@ a whole design document into an ADR.
 
 ## Identification
 
-ADRs are identified by their **GitHub tracking issue**, not by a global counter.
+ADRs are identified by their **GitHub tracking number**, not by a global counter.
 The rationale, the rejected alternatives and the evidence are recorded in
 [ADR-2232-01](ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md).
+
+The tracking number is the change's **issue** when it has one, and its **pull
+request** when it does not. GitHub draws issue and pull-request numbers from a
+single repository-wide sequence, so the two can never collide — in GitHub's data
+model a pull request *is* an issue, which is why `/issues/<n>` resolves to a pull
+request. Prefer the issue when one exists, because it predates implementation and
+survives a change delivered by several pull requests, but **never open an issue
+just to obtain an identifier**.
 
 ### Filename
 
 ```text
-ADR-<issue-number>-<local-sequence>-<decision-slug>.md
+ADR-<tracking-number>-<local-sequence>-<decision-slug>.md
 ```
 
 For example, issue [#1858](https://github.com/exelearning/exelearning/issues/1858)
@@ -67,21 +75,27 @@ ADR-1858-04-fail-safe-accessible-attachment-rendering.md
 
 ### Rules
 
-- **A tracking issue is required** before an ADR is finalized. Open one first if
-  the change does not have one; the issue number *is* the identifier.
-- `<issue-number>` is the GitHub tracking issue number, with no leading zeros.
-- `<local-sequence>` is two digits, scoped **only** to that issue, starting at
-  `01`. It is present even when an issue has a single ADR, so that adding a
-  second one later never renames the first.
-- A local sequence is never reused within the same issue, even if a record is
-  rejected or removed.
+- **A GitHub tracking number is required** before an ADR is finalized: the
+  change's issue if it has one, otherwise its pull request. Do not open an issue
+  solely to get a number.
+- `<tracking-number>` has no leading zeros.
+- `<local-sequence>` is two digits, scoped **only** to that tracking number,
+  starting at `01`. It is present even when a change has a single ADR, so that
+  adding a second one later never renames the first.
+- A local sequence is never reused within the same tracking number, even if a
+  record is rejected or removed.
 - `<decision-slug>` is lowercase kebab-case and names the **decision**, not the
   topic. `use-asset-uri-references` is a decision; `file-attachment` is a topic.
-- The frontmatter `id` must equal `ADR-<issue-number>-<local-sequence>`, and
-  `tracking_issue` must equal the issue number. CI enforces both.
+- The frontmatter `id` must equal `ADR-<tracking-number>-<local-sequence>`, and
+  `tracking_issue` must equal the tracking number. CI enforces both. The field
+  keeps the name `tracking_issue` because GitHub models a pull request as an
+  issue; it holds whichever number identifies the change.
 - The document H1 must be `# <id>: <title>`.
 - There is **no global counter** and no next-free-number to compute. Two branches
-  can only collide if they share a tracking issue.
+  can only collide if they share a tracking number.
+- If a change starts as a pull request and later gets an issue, **keep the
+  original identifier**. Identifiers are stable once published; record the issue
+  in the change document instead.
 
 ### Where things live
 
@@ -115,7 +129,7 @@ repeats it — one canonical source per mutable field.
 | `title` | yes | the record's title (mirrored by the H1) |
 | `status` | yes | lifecycle state |
 | `date` | yes | creation date, `YYYY-MM-DD` |
-| `tracking_issue` | yes | the issue that owns this decision |
+| `tracking_issue` | yes | the GitHub number that owns this decision — issue, or PR when there is no issue |
 | `legacy_id` | migrated records only | the retired identifier |
 | `deciders` | yes | who decided |
 | `reviewers` | no | who reviewed |
@@ -125,9 +139,11 @@ repeats it — one canonical source per mutable field.
 | `supersedes` / `superseded_by` | no | decision history |
 | `ai_assistance.tool` / `.model` | yes | provenance (`none` if unused) |
 
-PR numbers are **traceability metadata only**. They are never an identifier: a
-change may take several implementation PRs, and the identifier has to exist before
-any of them.
+`related.prs` is **traceability metadata**: it lists every PR that implements or
+reviews the decision, and it is not what identifies the record. When a change has
+no issue, its PR number *is* the tracking number — but that is the single number
+in `tracking_issue`, chosen once and then stable, not the growing list in
+`related.prs`.
 
 ## When an ADR is required
 
@@ -221,11 +237,12 @@ appear in new content. CI fails on them; use
 
 ## Workflow
 
-1. Make sure the change has a **GitHub tracking issue**. Open one if it does not.
+1. Identify the change's **GitHub tracking number** — its issue if it has one,
+   otherwise its pull request. Do not open an issue just to get a number.
 2. Identify the durable decision (see *When an ADR is required*).
 3. Copy [`template.md`](template.md) to
-   `ADR-<issue>-<NN>-<decision-slug>.md`, where `<NN>` is the next free local
-   sequence **for that issue only** (`01` if it is the first).
+   `ADR-<number>-<NN>-<decision-slug>.md`, where `<NN>` is the next free local
+   sequence **for that tracking number only** (`01` if it is the first).
 4. Fill in context, problem, options, evidence, decision and consequences.
    Start at `status: Proposed`.
 5. Run `make architecture-records` to regenerate the index, and
@@ -237,10 +254,11 @@ appear in new content. CI fails on them; use
 
 ## Review checklist
 
-- [ ] The change has a tracking issue, and the filename uses its number.
-- [ ] The local sequence is the next free one **for that issue**, starting at `01`.
+- [ ] The change has a tracking number (issue, or PR when there is no issue),
+      and the filename uses it.
+- [ ] The local sequence is the next free one **for that number**, starting at `01`.
 - [ ] The slug names the decision, not the topic.
-- [ ] Frontmatter `id` matches the filename; `tracking_issue` matches the issue.
+- [ ] Frontmatter `id` matches the filename; `tracking_issue` matches the number.
 - [ ] The H1 is `# <id>: <title>`.
 - [ ] Context, problem, options, decision and consequences are all present.
 - [ ] Every technical claim cites a verifiable source.

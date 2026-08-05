@@ -16,14 +16,22 @@ ai_assistance:
 Normative rules for architecture record identification, metadata and validation.
 Keywords **must**, **must not** and **may** are used in the usual sense.
 
-## 1. Tracking issues
+## 1. Tracking numbers
 
-- Every architecture change **must** have a GitHub tracking issue before its
+- Every architecture change **must** have a GitHub **tracking number** before its
   durable artifacts are finalized.
-- The issue number is the change's namespace. It is repository-wide, allocated by
-  GitHub, and exists before any pull request.
-- A change **may** be implemented by several pull requests. PR numbers **must not**
-  be used as the primary identifier.
+- The tracking number is the change's **issue** when it has one, and its **pull
+  request** when it does not. GitHub allocates issue and pull-request numbers from
+  a single repository-wide sequence, so the two **can never collide**; in GitHub's
+  data model a pull request is an issue, and `/issues/<n>` resolves to it.
+- An issue **must not** be opened for the sole purpose of obtaining an identifier.
+- The issue **should** be preferred when one exists: it predates implementation and
+  survives a change delivered by several pull requests.
+- The tracking number is chosen once and is then **stable**. If a change that
+  started as a pull request later gains an issue, the identifier **must not**
+  change.
+- `implementation_prs` / `related.prs` are traceability lists and **must not** be
+  treated as the identifier.
 
 ## 2. ADR identifiers
 
@@ -33,7 +41,7 @@ Keywords **must**, **must not** and **may** are used in the usual sense.
 ADR-<issue>-<local-sequence>-<decision-slug>.md
 ```
 
-- `<issue>` — the tracking issue number, one or more digits, no leading zeros.
+- `<issue>` — the tracking number, one or more digits, no leading zeros.
 - `<local-sequence>` — exactly two digits, scoped to that issue, starting at `01`.
 - `<decision-slug>` — lowercase kebab-case, `[a-z0-9]+(-[a-z0-9]+)*`.
 
@@ -119,7 +127,7 @@ second source of truth.
 | `title` | yes | string |
 | `status` | yes | `Proposed` \| `Accepted` \| `Rejected` \| `Superseded` |
 | `date` | yes | `YYYY-MM-DD` |
-| `tracking_issue` | yes | positive integer |
+| `tracking_issue` | yes | positive integer — the tracking number (issue, or PR when there is no issue) |
 | `legacy_id` | no | previous identifier, migrated records only |
 | `deciders` | yes | list of `@handle` |
 | `reviewers` | no | list of `@handle` |
@@ -135,7 +143,7 @@ second source of truth.
 
 | Field | Required | Type |
 |---|---|---|
-| `tracking_issue` | yes | positive integer, equal to the directory prefix |
+| `tracking_issue` | yes | positive integer, equal to the directory prefix (issue, or PR when there is no issue) |
 | `title` | yes | string |
 | `status` | yes | `draft` \| `in-review` \| `accepted` \| `implemented` \| `superseded` \| `abandoned` |
 | `date` | yes | `YYYY-MM-DD` |
