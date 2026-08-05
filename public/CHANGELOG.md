@@ -4,45 +4,45 @@
 
 ### Added
 
-- New File Attachment iDevice: attach one or more files to a page and present them as a download area with file-type icons, optional titles and descriptions, and file sizes
-- Slide iDevice: the editor now supports keyboard undo/redo, drag-to-select with a rubber-band marquee, and arrow-key nudging of the selection
-- GeoGebra iDevice: the width and height controls are now available in General Settings, so embedded constructions are no longer stuck at the default size
-- Link Validator: the desktop app now checks links itself and reports real HTTP statuses, while static web builds warn up front that links must be reviewed manually
-- LOMLOE iDevice: added the official Euskadi / País Vasco (ES-PV) curriculum dataset in Basque (Decreto 75/2023 — Educación Infantil; Decreto 77/2023 — Educación Básica)
+- New File Attachment iDevice for attaching one or more files to a page
+- Slide iDevice: added keyboard undo/redo, multi-object selection and fine positioning with the keyboard
+- GeoGebra iDevice: width and height controls are now available in General Settings
+- Link Validator: improved link validation with more reliable results
+- LOMLOE iDevice: added official curriculum dataset for Euskadi / País Vasco (ES-PV)
 
 ### Changed
 
-- Collaboration: the autosave status in the toolbar is now a compact indicator instead of a full sentence, and the idle autosave delay is shorter (15 s → 8 s)
+- Collaboration: improved the autosave status indicator and reduced the autosave delay
 
 ### Fixed
 
-- The unsaved-changes warning no longer appears when closing a project that has just been saved
-- Rubric iDevice: cells can be edited again from the pencil button, and the edition dialogs no longer lock the rest of the work area
-- iDevices: fixed the corruption of activity data caused by image references stored inside HTML attributes, the root cause of several activities losing their content
-- iDevices: a damaged activity no longer stops the rest of the page from loading, and its original data is preserved instead of being overwritten
-- iDevices: invalid activity data is now rejected before it is saved, keeping the last valid version of the activity
-- Game iDevices: an interrupted or empty save can no longer wipe the content of Classify, Crossword, Select media files and other game activities
-- Game iDevices: activities with missing questions now render empty instead of breaking the page
-- Game iDevices: media references stored inside activities are no longer saved as temporary links that stop working after a reload
-- Classify iDevice: cards containing only an audio can now be saved
-- Workarea: an iDevice sharing a block with a video or another tall activity can now be edited, as the other iDevices in the block are hidden during focused editing
-- File Manager: the Insert button is now enabled only while an iDevice is being edited
-- Image optimizer: the confirmation button is now the same size as the other modal buttons
-- Text iDevice: video subtitles can now be uploaded and `.srt` files are converted to WebVTT, so captions work in the preview and in exported packages
-- Media: YouTube and Vimeo embeds no longer fail with Error 153 in exported content
-- Import: images inside legacy dropdown and cloze activities are now displayed correctly
-- Import: legacy pages no longer show the content of a different page
-- Import: LaTeX control sequences in legacy `.elp` files are no longer corrupted
+- The unsaved-changes warning no longer appears when closing a project immediately after saving
+- Rubric iDevice: restored cell editing from the pencil button and prevented edit dialogs from blocking the rest of the work area
+- iDevices: fixed activity data corruption caused by image references stored in HTML attributes
+- iDevices: invalid or damaged activities no longer prevent the rest of the page from loading
+- iDevices: invalid activity data is now rejected before saving, preserving the last valid version of the activity
+- Game iDevices: interrupted or invalid saves no longer erase activity content, preserving the last valid version
+- Game iDevices: activities with missing questions now render correctly without breaking the page
+- Game iDevices: media references are no longer stored as temporary links that become invalid after reloading
+- Classify iDevice: cards containing only audio can now be saved correctly
+- Slide iDevice: fixed text cursor positioning while editing
+- Workarea: iDevices can now be edited correctly when sharing a block with videos or other large content
+- File Manager: the Insert button is now enabled only while editing an iDevice
+- Image Optimizer: the confirmation button now matches the size of the other modal buttons
+- Text iDevice: subtitle files can now be uploaded for videos, with `.srt` files automatically converted to WebVTT for correct display in preview and exported content
+- Media: fixed YouTube and Vimeo embeds failing with Error 153 in exported content
+- Import: legacy Dropdown and Cloze iDevice images are now displayed correctly
+- Import: fixed page content assignment when importing legacy projects
+- Import: LaTeX control sequences are now preserved correctly when importing legacy `.elp` projects
 - Desktop: `.elpx` projects containing large assets, such as long videos, can now be imported
-- Desktop: fixed a startup crash in the packaged application caused by a missing internal module
-- Export: the Download source file iDevice now produces a complete `.elpx` that can be reopened and edited
+- Desktop: fixed a startup crash caused by a missing internal module
+- Export: the Download Source File iDevice now generates complete `.elpx` projects that can be reopened and edited
 - Export: LaTeX now renders correctly in FX tab labels
-- Export: FX effects such as tabs and accordions now work in Form and Magnifier iDevices in the preview and in exports
-- The page footer is now hidden by default when it has no content and no license, so styles can no longer display an empty block that the user cannot remove
-- Slide iDevice: fixed the text cursor drifting away from the actual typing position
-- Link Validator: links that the browser cannot check are no longer reported as broken
-- LOMLOE iDevice: completed the Euskadi ESO subject distribution, restored competencia-level operational descriptors in the curriculum browser, and prevented adjacent PDF sections from bleeding into each other
-- LOMLOE iDevice: corrected the visible Euskadi Infantil cycle age labels to 0-2 and 3-5 while preserving the canonical stored level keys
+- Export: FX effects such as tabs and accordions now work correctly in Form and Magnifier iDevices
+- The page footer is now hidden by default when it contains no content or license information
+- Link Validator: fixed false broken-link reports for links that cannot be checked by the browser
+- LOMLOE iDevice: restored competencia-level operational descriptors in the curriculum browser
+- LOMLOE iDevice: fixed display issues between adjacent PDF sections
 
 ### Upgraded
 
@@ -51,7 +51,6 @@
 - kysely-bun-worker: 1.2.1 → 2.0.1
 - pdfjs-dist: 6.1.200 → 6.2.108
 - typescript: 6.0.3 → 7.0.2
-- GitHub Actions: actions/setup-node 6 → 7, actions/setup-python 6 → 7, hadolint/hadolint-action 3.3.0 → 3.4.0
 
 ---
 
