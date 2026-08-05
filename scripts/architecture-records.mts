@@ -421,9 +421,7 @@ export function validate(adrs: Adr[], changes: Change[], config: Config): Diagno
             add(adr.path, `tracking_issue ${adr.trackingIssue} does not match filename issue ${adr.issue}`);
         }
 
-        // `deciders` is optional: two repositories legitimately hold records
-        // written without one, and inventing authorship is worse than leaving
-        // it unrecorded.
+        if (adr.deciders.length === 0) add(adr.path, 'missing required field `deciders`');
         if (adr.aiTool === null || adr.aiTool === '') {
             add(adr.path, 'missing required field `ai_assistance.tool` (use `none` if no AI tool was used)');
         }
