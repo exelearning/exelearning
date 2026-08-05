@@ -14285,10 +14285,6 @@
         <source>The battery drains</source>
         <target>~A batería esgótase</target>
       </trans-unit>
-      <trans-unit id="fznu3r0" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.">
-        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
-        <target>~Xera 5 preguntas de opción múltiple sobre circuítos eléctricos. Unha pregunta por liña. Cada liña debe conter todos os campos separados por #: unha descrición curta, código TikZ (usando circuitikz) para o diagrama do circuíto, a resposta correcta en letras (p. ex.: A, AB), a pregunta e de 2 a 4 opcións de resposta. Non uses o carácter # dentro de ningún campo. Non engadas saltos de liña dentro dunha pregunta. IMPORTANTE: O código TikZ debe ser compatible coa versión 0.9.6 de circuitikz. Só usa compoñentes dispoñibles nesta versión: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diodo), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (con t=A para amperímetro, t=V para voltímetro), and gate, or gate, not gate, nand gate, nor gate. NON uses compoñentes de circuitikz 1.0 ou posterior como dipchip, qfpchip, muxdemux, flipflop, latch ou pantallas de 7 segmentos.</target>
-      </trans-unit>
       <trans-unit id="nxu7bnp" resname="Drop an .elpx file here to open it">
         <source>Drop an .elpx file here to open it</source>
         <target>~Solta un ficheiro .elpx aquí para abrilo</target>
@@ -15465,22 +15461,6 @@
         <source>Save or discard the open iDevice before saving the project.</source>
         <target>~Garda ou descarta o iDevice aberto antes de gardar o proxecto.</target>
       </trans-unit>
-      <trans-unit id="48f8iy9" resname="All collaborative changes are saved.">
-        <source>All collaborative changes are saved.</source>
-        <target>~Todos os cambios colaborativos están gardados.</target>
-      </trans-unit>
-      <trans-unit id="rbxe4yu" resname="Collaborative changes are shared live and will be saved automatically.">
-        <source>Collaborative changes are shared live and will be saved automatically.</source>
-        <target>~Os cambios colaborativos compártense en tempo real e gardaranse automaticamente.</target>
-      </trans-unit>
-      <trans-unit id="iohduda" resname="Saving collaborative changes...">
-        <source>Saving collaborative changes...</source>
-        <target>~Gardando cambios colaborativos...</target>
-      </trans-unit>
-      <trans-unit id="9dy5xl0" resname="Autosave failed. Please click Save before leaving.">
-        <source>Autosave failed. Please click Save before leaving.</source>
-        <target>~O gardado automático fallou. Fai clic en Gardar antes de saír.</target>
-      </trans-unit>
       <trans-unit id="yvag2x6" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
         <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
         <target>~Os cambios de idioma poden requirir recargar ou volver a abrir eXeLearning para actualizar toda a interface.</target>
@@ -15500,6 +15480,162 @@
       <trans-unit id="ymsl04n" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
         <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
         <target>~Algúns cambios colaborativos aínda non foron gardados. Fai clic en Gardar antes de saír para evitar perdelos.</target>
+      </trans-unit>
+      <trans-unit id="cb52pe0" resname="Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.">
+        <source>Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uy3a05c" resname="The file &quot;%1&quot; contains a large asset (%2).">
+        <source>The file "%1" contains a large asset (%2).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="afkl0zv" resname="Importing it may use a large amount of memory.">
+        <source>Importing it may use a large amount of memory.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bp30h1o" resname="The desktop application can open assets up to %1.">
+        <source>The desktop application can open assets up to %1.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bkb2tns" resname="Protection against malformed or malicious archives remains active.">
+        <source>Protection against malformed or malicious archives remains active.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tbpa1z6" resname="Import large file?">
+        <source>Import large file?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0ed3h4b" resname="The file &quot;%1&quot; (%2) is larger than the maximum this application can open (%3).">
+        <source>The file "%1" (%2) is larger than the maximum this application can open (%3).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nrag80f" resname="This project (%1) is larger than the maximum this application can open (%2).">
+        <source>This project (%1) is larger than the maximum this application can open (%2).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0cmw56j" resname="This project has too many files to open (%1 of a maximum %2).">
+        <source>This project has too many files to open (%1 of a maximum %2).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bqczvt5" resname="The project was not imported.">
+        <source>The project was not imported.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ogrztzc" resname="To reduce its size, open the File Manager and:">
+        <source>To reduce its size, open the File Manager and:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6ywxewe" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
+        <source>Sort by "Largest first" and review each asset\'s references.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mrv6o7k" resname="Remove an unused older version of a large asset.">
+        <source>Remove an unused older version of a large asset.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="z91shy0" resname="Optimise, replace, or remove the large file.">
+        <source>Optimise, replace, or remove the large file.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="38d7h2h" resname="File too large to open">
+        <source>File too large to open</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l3atfao" resname="The asset &quot;%1&quot; (%2) exceeds the maximum size the desktop application can open (%3).">
+        <source>The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ar1yn6s" resname="This project (%1) exceeds the maximum size the desktop application can open (%2).">
+        <source>This project (%1) exceeds the maximum size the desktop application can open (%2).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vldqg6a" resname="The resulting ELPX may not open in the desktop application.">
+        <source>The resulting ELPX may not open in the desktop application.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="y1ofkzs" resname="Do you want to continue exporting anyway?">
+        <source>Do you want to continue exporting anyway?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3p4fx1k" resname="Large ELPX export">
+        <source>Large ELPX export</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0m9c3ob" resname="Export anyway">
+        <source>Export anyway</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j97wf1l" resname="Page title">
+        <source>Page title</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="c0xybw3" resname="This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.">
+        <source>This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tx6g7uc" resname="Invalid iDevice data. The save was discarded.">
+        <source>Invalid iDevice data. The save was discarded.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uw6saq3" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rtteh41" resname="Attachment">
+        <source>Attachment</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jztolvl" resname="No files attached.">
+        <source>No files attached.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cz4borf" resname="File unavailable">
+        <source>File unavailable</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5lg7np6" resname="File attachments">
+        <source>File attachments</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="de3ircm" resname="Show file descriptions">
+        <source>Show file descriptions</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8zz0z34" resname="No files attached yet.">
+        <source>No files attached yet.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1ukkzzp" resname="Unknown file">
+        <source>Unknown file</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vdnacx3" resname="The attached file is missing. Re-add it from the Media Library.">
+        <source>The attached file is missing. Re-add it from the Media Library.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4ci12j7" resname="The Media Library is not available.">
+        <source>The Media Library is not available.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mwgf397" resname="The file could not be uploaded.">
+        <source>The file could not be uploaded.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="222tmgp" resname="File properties">
+        <source>File properties</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="m94v877" resname="Please wait">
+        <source>Please wait</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3neyf4j" resname="Generating the circuit images, this may take a few minutes, please wait…">
+        <source>Generating the circuit images, this may take a few minutes, please wait…</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="sllnlva" resname="Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.">
+        <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>
