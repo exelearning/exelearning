@@ -32,12 +32,13 @@ nav:
       - Overview: architecture.md
       - Architecture Decision Records: architecture/adr/README.md
       - ADR Index: architecture/adr/records.md
-      - ADR Template: architecture/adr/ADR-0000-template.md
+      - ADR Template: architecture/adr/template.md
       - "ADR-2209-01: SCORM 1.2 Runtime Rewrite": architecture/adr/ADR-2209-01-scorm12-runtime-rewrite.md
       - "ADR-2209-02: SCORM 1.2 Activity Completion Registry": architecture/adr/ADR-2209-02-scorm12-activity-completion-registry.md
-      - Software Design Documents: architecture/sdd/README.md
-      - SDD Index: architecture/sdd/records.md
-      - SDD Template: architecture/sdd/SDD-0000-template.md
+      - Architecture Changes: architecture/changes/README.md
+      - Change Index: architecture/changes/records.md
+      - Change Template: architecture/changes/template.md
+      - Migration Map: architecture/migration-map.md
   - Conventions: conventions.md
   - Development:
       - Environment: development/environment.md
