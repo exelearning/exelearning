@@ -5,7 +5,7 @@
  * HTML from the versioned document; `renderBehaviour(data, ...)` wires the
  * video player, the deterministic interaction scheduler, question grading,
  * scoring and SCORM at learner runtime. Data is declarative JSON — no author
- * JavaScript is ever evaluated (SDD-0001).
+ * JavaScript is ever evaluated (the changes/2147-interactive-video-refactor design).
  *
  * The shared core and the provider adapters are compiled INTO the bundle, so
  * the old "wait for the classic core script" retry loop is gone; the provider

@@ -25,7 +25,7 @@ export const SEGMENT_MERGE_EPSILON = 0.5;
  * 0.95 rather than 1: the last frames are routinely never reported (the player
  * stops firing time events, or `ended` arrives from 0.3 s short), so demanding
  * 100% would make watch-completion unreachable on some providers. Not
- * author-configurable yet — see SDD-0001 for the reasoning.
+ * author-configurable yet — see the changes/2147-interactive-video-refactor design for the reasoning.
  */
 export const WATCH_COMPLETION_THRESHOLD = 0.95;
 

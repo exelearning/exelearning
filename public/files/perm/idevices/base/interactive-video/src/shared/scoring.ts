@@ -198,7 +198,7 @@ export function aggregateScore(
 /**
  * Whether the activity is complete per its explicit completion mode. Never
  * auto-completes in `none`/`manual`; other modes gate on watched / all
- * questions answered / score threshold (SDD-0001 §13).
+ * questions answered / score threshold (the changes/2147-interactive-video-refactor design §13).
  */
 export function computeCompletion(
     doc: Pick<InteractiveVideoDocumentV2, 'completion' | 'interactions'> | null | undefined,

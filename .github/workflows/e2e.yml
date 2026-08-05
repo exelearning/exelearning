@@ -49,7 +49,7 @@ jobs:
 
       # The path list must include every GENERATED (gitignored) file the
       # workarea serves — the test runners get a fresh checkout, so anything
-      # missing here 404s at runtime (e.g. TypeScript-iDevice bundles, ADR-0006).
+      # missing here 404s at runtime (e.g. TypeScript-iDevice bundles, ADR-2147-06).
       - name: Upload dynamic bundles (chromium/firefox)
         uses: actions/upload-artifact@v7
         with:

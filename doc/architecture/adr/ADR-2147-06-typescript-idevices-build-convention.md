@@ -1,9 +1,9 @@
 ---
-id: ADR-2236-06
+id: ADR-2147-06
 title: "TypeScript iDevices: src/ sources compiled by one convention-based build"
 status: Proposed
 date: 2026-07-30
-tracking_issue: 2236
+tracking_issue: 2147
 legacy_id: ADR-0006
 deciders:
   - "@erseco"
@@ -12,8 +12,8 @@ reviewers:
   - "@cristinavaldera"
 related:
   prs: [2147]
-  changes: ["2236-interactive-video-refactor"]
-  adrs: [ADR-2236-05]
+  changes: ["2147-interactive-video-refactor"]
+  adrs: [ADR-2147-05]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,7 +21,7 @@ ai_assistance:
   model: "claude-fable-5"
 ---
 
-# ADR-2236-06: TypeScript iDevices — `src/` sources compiled by one convention-based build
+# ADR-2147-06: TypeScript iDevices: src/ sources compiled by one convention-based build
 
 ## Context
 
@@ -42,7 +42,7 @@ maintained source is TypeScript, without a new build pipeline per iDevice?
 ## Decision drivers
 
 - One obvious convention for the next TypeScript iDevice (zero new scripts).
-- The shipped output must remain plain classic-script IIFEs (ADR-2236-05: the
+- The shipped output must remain plain classic-script IIFEs (ADR-2147-05: the
   language and compile step are not a framework).
 - Generated artifacts must never be committed; a clean checkout must
   regenerate them through the existing pipeline (`build:all` / `make bundle`).
@@ -118,5 +118,5 @@ runner header and `doc/development/idevices-typescript.md`).
 
 - `scripts/build-idevices.ts` (runner; manifest schema in its header).
 - `doc/development/idevices-typescript.md` (developer guide).
-- ADR-2236-05 — framework-free stance for Interactive Video.
+- ADR-2147-05 — framework-free stance for Interactive Video.
 - PR [#2147](https://github.com/exelearning/exelearning/pull/2147).

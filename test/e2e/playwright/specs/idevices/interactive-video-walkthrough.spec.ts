@@ -140,7 +140,7 @@ const QUESTIONS: IvQuestionSpec[] = [
 /**
  * Run the real HTML5 export, unpack it and read its `index.html`. Also asserts
  * the invariants every export must hold: the runtime ships as classic scripts
- * and no provider SDK is ever pulled in (ADR-0003).
+ * and no provider SDK is ever pulled in (ADR-2147-03).
  */
 async function exportAndRead(page: Page): Promise<{ indexPath: string; indexHtml: string }> {
     await saveProject(page);
