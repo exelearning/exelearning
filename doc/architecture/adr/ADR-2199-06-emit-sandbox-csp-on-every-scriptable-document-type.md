@@ -94,7 +94,7 @@ every preview serving path.
 ## Risks
 
 - A new scriptable type could be missed. Mitigation: single detector to update;
-  cross-repo CSP parity checked by `check-embed-sync.mjs` (ADR-0012).
+  cross-repo CSP parity checked by `check-embed-sync.mjs` (draft ADR 0012).
 
 ## Validation
 
@@ -107,4 +107,4 @@ types.
 
 ## References
 
-- the change design; ADR-2199-05, ADR-0008, ADR-0011. PR #1968.
+- the change design; ADR-2199-05, draft ADR 0008, draft ADR 0011. PR #1968.
