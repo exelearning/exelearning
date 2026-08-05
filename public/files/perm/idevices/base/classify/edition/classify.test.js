@@ -365,4 +365,83 @@ describe('classify iDevice', () => {
       expect(normalized.audio).toBe('files/sound.mp3');
     });
   });
+
+  describe('isQuestionComplete', () => {
+    describe('type 0 (Image)', () => {
+      it('accepts a card with an image', () => {
+        expect($exeDevice.isQuestionComplete({ type: 0, url: 'files/img.png', eText: '', audio: '' })).toBe(true);
+      });
+
+      // Regression for #2187: the player renders an audio-only card as a big
+      // audio button (CQP-LinkAudioBig), so the editor must accept it. The 2.9
+      // manual ships exactly this card (type 0, no image, only COW2.mp3).
+      it('accepts a card that only has an audio', () => {
+        expect($exeDevice.isQuestionComplete({ type: 0, url: '', eText: '', audio: 'resources/COW2.mp3' })).toBe(true);
+      });
+
+      it('rejects a card with neither image nor audio', () => {
+        expect($exeDevice.isQuestionComplete({ type: 0, url: '', eText: '', audio: '' })).toBe(false);
+      });
+
+      it('rejects a card whose text alone would not render', () => {
+        expect($exeDevice.isQuestionComplete({ type: 0, url: '', eText: 'ignored', audio: '' })).toBe(false);
+      });
+    });
+
+    describe('type 1 (Text)', () => {
+      it('accepts a card with text', () => {
+        expect($exeDevice.isQuestionComplete({ type: 1, url: '', eText: 'Cat', audio: '' })).toBe(true);
+      });
+
+      it('accepts a card that only has an audio', () => {
+        expect($exeDevice.isQuestionComplete({ type: 1, url: '', eText: '', audio: 'resources/cat.mp3' })).toBe(true);
+      });
+
+      it('rejects a card with neither text nor audio', () => {
+        expect($exeDevice.isQuestionComplete({ type: 1, url: '', eText: '', audio: '' })).toBe(false);
+      });
+
+      it('rejects whitespace-only text', () => {
+        expect($exeDevice.isQuestionComplete({ type: 1, url: '', eText: '   ', audio: '' })).toBe(false);
+      });
+    });
+
+    describe('type 2 (Both)', () => {
+      it('accepts a card with image and text', () => {
+        expect($exeDevice.isQuestionComplete({ type: 2, url: 'files/img.png', eText: 'Pig', audio: '' })).toBe(true);
+      });
+
+      it('rejects a card missing the text', () => {
+        expect($exeDevice.isQuestionComplete({ type: 2, url: 'files/img.png', eText: '', audio: '' })).toBe(false);
+      });
+
+      it('rejects a card missing the image', () => {
+        expect($exeDevice.isQuestionComplete({ type: 2, url: '', eText: 'Pig', audio: '' })).toBe(false);
+      });
+
+      // "Both" promises an image *and* a text, so an audio must not rescue it.
+      it('does not let an audio stand in for the missing half', () => {
+        expect($exeDevice.isQuestionComplete({ type: 2, url: 'files/img.png', eText: '', audio: 'a.mp3' })).toBe(false);
+      });
+    });
+
+    describe('edge cases', () => {
+      it('rejects a missing question', () => {
+        expect($exeDevice.isQuestionComplete(null)).toBe(false);
+        expect($exeDevice.isQuestionComplete(undefined)).toBe(false);
+      });
+
+      it('treats non-string media fields as empty', () => {
+        expect($exeDevice.isQuestionComplete({ type: 0, url: undefined, eText: '', audio: null })).toBe(false);
+      });
+
+      it('treats a url shorter than the minimum as empty', () => {
+        expect($exeDevice.isQuestionComplete({ type: 0, url: 'a.p', eText: '', audio: '' })).toBe(false);
+      });
+
+      it('treats an audio shorter than the minimum as empty', () => {
+        expect($exeDevice.isQuestionComplete({ type: 1, url: '', eText: '', audio: 'a.p' })).toBe(false);
+      });
+    });
+  });
 });
