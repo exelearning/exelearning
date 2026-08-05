@@ -2,10 +2,15 @@
  * LinkValidationAdapter
  *
  * Client-side link validation adapter for static/offline mode.
- * Extracts links from HTML content and validates them where possible.
+ * Extracts links from HTML content (a port of the server-side
+ * link-validator.ts extraction logic) and validates them where possible:
  *
- * This adapter ports the server-side link-validator.ts logic to run in the browser,
- * allowing link validation to work without a backend server.
+ * - Electron desktop app: external links are checked by the main process
+ *   (window.electronAPI.checkLink), where CORS does not apply, so the report
+ *   shows real HTTP statuses just like online mode.
+ * - Plain browser (static web, embeds): CORS makes cross-origin responses
+ *   opaque, so external links cannot be checked at all and are reported as
+ *   needing a manual review.
  */
 
 export default class LinkValidationAdapter {
@@ -73,7 +78,7 @@ export default class LinkValidationAdapter {
      * Validate a single link (called by LinkValidationManager for client-side validation)
      *
      * @param {string} url - The URL to validate
-     * @returns {Promise<{status: 'valid'|'broken', error: string|null}>}
+     * @returns {Promise<{status: 'valid'|'broken'|'unknown', error: string|null}>}
      */
     async validateLink(url) {
         // Skip non-validatable URLs (internal links like exe-node:, asset://, files/)
@@ -222,71 +227,82 @@ export default class LinkValidationAdapter {
     // =====================================================
 
     /**
-     * Validate an external HTTP(S) URL
-     * Note: CORS restrictions may prevent validation of many external URLs
+     * Validate an external HTTP(S) URL.
+     *
+     * A web page cannot read the HTTP status of a cross-origin response: CORS
+     * makes it opaque, so a 200 and a 404 are indistinguishable from the
+     * browser. In the desktop app the check is delegated to the Electron main
+     * process, where CORS does not apply and the real status is available. In
+     * a plain browser (static/offline flavors) no automatic check is possible,
+     * so the link is reported as needing a manual review.
+     *
      * @param {string} url
-     * @returns {Promise<{status: 'valid'|'broken', error: string|null}>}
+     * @returns {Promise<{status: 'valid'|'broken'|'unknown', error: string|null}>}
      * @private
      */
     async _validateExternalUrl(url) {
-        try {
-            let normalizedUrl = url;
+        const normalizedUrl = url.startsWith('//') ? `https:${url}` : url;
 
-            // Handle protocol-relative URLs
-            if (url.startsWith('//')) {
-                normalizedUrl = 'https:' + url;
-            }
-
-            // Browsers block HTTP fetches from HTTPS pages (mixed content policy).
-            // Detect this condition early and return a clear message instead of a
-            // generic NetworkError.
-            if (
-                normalizedUrl.startsWith('http://') &&
-                typeof window !== 'undefined' &&
-                window.location.protocol === 'https:'
-            ) {
-                return {
-                    status: 'broken',
-                    error: _('Could not be checked: HTTP content is blocked on HTTPS pages.'),
-                };
-            }
-
-            // Create abort controller for timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-
+        const electronCheck = this._getElectronLinkChecker();
+        if (electronCheck) {
             try {
-                // Try HEAD request first (lighter, but may be blocked by CORS)
-                const response = await fetch(normalizedUrl, {
-                    method: 'HEAD',
-                    mode: 'no-cors', // Use no-cors to avoid CORS errors
-                    signal: controller.signal,
-                });
-
-                clearTimeout(timeoutId);
-
-                // In no-cors mode, we can't read the response status
-                // A successful fetch (no network error) suggests the URL is reachable
-                // This is the best we can do from browser without CORS cooperation
-
-                // If we got here without error, consider it valid
-                return { status: 'valid', error: null };
-            } catch (fetchError) {
-                clearTimeout(timeoutId);
-
-                // Check for specific error types
-                if (fetchError.name === 'AbortError') {
-                    return { status: 'broken', error: _('Timeout') };
+                const result = await electronCheck(normalizedUrl);
+                if (result?.status === 'valid' || result?.status === 'broken') {
+                    return { status: result.status, error: result.error ?? null };
                 }
-
-                // Network errors (DNS failure, connection refused, etc.)
-                // These indicate the URL is genuinely broken
-                return { status: 'broken', error: fetchError.message || _('Network error') };
+                if (result?.status === 'unknown') {
+                    return { status: 'unknown', error: this._describeUnknownReason(result) };
+                }
+            } catch (_e) {
+                // IPC unavailable (e.g. outdated desktop shell): fall through
+                // to the browser-limited outcome below.
             }
-        } catch (error) {
-            // URL parsing or other errors
-            return { status: 'broken', error: _('Invalid URL') };
         }
+
+        return {
+            status: 'unknown',
+            error: _('Not checked automatically: open the link to review it'),
+        };
+    }
+
+    /**
+     * Translate a main-process "needs manual review" result into the message
+     * shown in the report's Error column.
+     * @param {{reason?: string, detail?: string}} result
+     * @returns {string}
+     * @private
+     */
+    _describeUnknownReason(result) {
+        switch (result.reason) {
+            case 'private-address':
+                // Never probed automatically: LAN-scan protection.
+                return _('Local or private address: open the link to review it manually');
+            case 'cross-host-redirect': {
+                // 2xx answered by another host (consent gate, captive portal,
+                // login wall, URL shortener target): a human must confirm it.
+                const message = _('Redirects to another site — open the link to verify it');
+                return result.detail ? `${message} (${result.detail})` : message;
+            }
+            case 'unverified-proxy':
+                // Answered only through the system proxy, where the final host
+                // cannot be attributed.
+                return _('Could not be fully verified: open the link to confirm it');
+            case 'unresolved-redirect':
+                return _('Redirects could not be followed: open the link to review it');
+            default:
+                return _('Not checked automatically: open the link to review it');
+        }
+    }
+
+    /**
+     * Main-process link checker exposed by the Electron preload, or null when
+     * running in a plain browser.
+     * @returns {Function|null}
+     * @private
+     */
+    _getElectronLinkChecker() {
+        const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+        return typeof api?.checkLink === 'function' ? api.checkLink : null;
     }
 
     // =====================================================
