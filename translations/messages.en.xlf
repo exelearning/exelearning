@@ -14285,10 +14285,6 @@
         <source>The battery drains</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="lr2khxu" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.">
-        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="dnf13h4" resname="Drop an .elpx file here to open it">
         <source>Drop an .elpx file here to open it</source>
         <target></target>
@@ -15463,22 +15459,6 @@
       </trans-unit>
       <trans-unit id="g6nbb8b" resname="Save or discard the open iDevice before saving the project.">
         <source>Save or discard the open iDevice before saving the project.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="8709ssa" resname="All collaborative changes are saved.">
-        <source>All collaborative changes are saved.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="633mn8l" resname="Collaborative changes are shared live and will be saved automatically.">
-        <source>Collaborative changes are shared live and will be saved automatically.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="tzzhqkm" resname="Saving collaborative changes...">
-        <source>Saving collaborative changes...</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="cf2a71k" resname="Autosave failed. Please click Save before leaving.">
-        <source>Autosave failed. Please click Save before leaving.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="qif62ox" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
