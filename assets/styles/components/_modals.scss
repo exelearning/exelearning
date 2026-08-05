@@ -1943,6 +1943,14 @@
     #odeBrokenLinks {
         overflow: auto;
         margin-bottom: 20px;
+
+        /* The default link color has poor contrast on the amber and red row
+           backgrounds. Inheriting the row's own text color gives the same
+           contrast as `.alert-link` would, without turning links bold. */
+        tr.table-warning a,
+        tr.table-danger a {
+            color: inherit;
+        }
     }
 }
 
