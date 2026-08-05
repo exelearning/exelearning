@@ -1411,6 +1411,41 @@ describe('NavbarFile', () => {
             vi.useRealTimers();
         });
 
+        it('should NOT show success UI when Yjs import is cancelled/rejected', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            // The bridge resolves to { cancelled: true } (large-file confirmation
+            // declined, or an over-limit archive) instead of throwing. #2198
+            eXeLearning.app.project.importFromElpxViaYjs = vi.fn().mockResolvedValue({
+                cancelled: true,
+            });
+            vi.useFakeTimers();
+            navbarFile.setImportElpEvent();
+
+            const clickHandler = mockButtons.importElpButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            const confirmArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            confirmArgs.confirmExec();
+
+            const input = document.querySelector('input[type="file"]');
+            const file = new File([new Uint8Array([1, 2, 3])], 'import.elpx');
+            Object.defineProperty(input, 'files', {
+                value: [file],
+            });
+
+            input.dispatchEvent(new Event('change'));
+            await Promise.resolve();
+            await vi.runAllTimersAsync();
+
+            expect(eXeLearning.app.project.importFromElpxViaYjs).toHaveBeenCalledWith(file, {
+                clearExisting: false,
+            });
+            // A cancelled/rejected import must not report success.
+            expect(eXeLearning.app.modals.uploadprogress.setComplete).not.toHaveBeenCalled();
+            expect(eXeLearning.app.modals.uploadprogress.hide).toHaveBeenCalled();
+            vi.useRealTimers();
+        });
+
         it('should import via legacy upload flow', async () => {
             vi.useFakeTimers();
             eXeLearning.app.api.postLocalLargeOdeFile.mockResolvedValue({
