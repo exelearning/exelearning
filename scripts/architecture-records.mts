@@ -59,6 +59,7 @@ export type Config = {
     changesDir: string;
     legacyAllowlist: string[];
     legacyPatterns: string[];
+    architectureRoot: string;
     issuesUrl: string;
     repositoryLabel: string;
     recordRe: RegExp;
@@ -75,6 +76,10 @@ const DEFAULTS = {
     legacy_patterns: ['\\b(?:ADR|SDD)-[0-9]{4}(?!-[0-9]{2})\\b'],
     // Where this repository's tracking numbers resolve. The index is rendered
     // in every repository that copies this file, so it must not hard-code core.
+    // The whole tree the convention governs. Derived by default from the
+    // records directory, so a stray `sdd/` or `archive/` re-created by an old
+    // branch is still caught.
+    architecture_root: '',
     issues_url: 'https://github.com/exelearning/exelearning/issues',
     repository_label: 'the main eXeLearning repository',
 };
@@ -97,6 +102,8 @@ export function loadConfig(root: string): Config {
         changesDir: merged.changes_dir,
         legacyAllowlist: merged.legacy_allowlist,
         legacyPatterns: merged.legacy_patterns,
+        architectureRoot:
+            merged.architecture_root || merged.records_dir.slice(0, merged.records_dir.lastIndexOf('/')),
         issuesUrl: merged.issues_url,
         repositoryLabel: merged.repository_label,
         recordRe: new RegExp(`^${prefix}-${NUMBER}-${SEQUENCE}-${SLUG}\\.md$`),
@@ -132,6 +139,10 @@ export function parseFrontmatter(raw: string): { data: Record<string, YamlValue>
     let currentKey: string | null = null;
     let currentList: string[] | null = null;
     let currentMap: Record<string, YamlValue> | null = null;
+    // A `-` item belongs to this nested key when the mapping opened one, so
+    // `related:\n  adrs:\n    - X` keeps X under `adrs` instead of replacing
+    // the whole mapping with a flat list.
+    let pendingNestedKey: string | null = null;
 
     const flush = (): void => {
         if (currentKey === null) return;
@@ -140,6 +151,7 @@ export function parseFrontmatter(raw: string): { data: Record<string, YamlValue>
         currentList = null;
         currentMap = null;
         currentKey = null;
+        pendingNestedKey = null;
     };
 
     for (const line of lines) {
@@ -160,9 +172,16 @@ export function parseFrontmatter(raw: string): { data: Record<string, YamlValue>
 
         const listItem = line.match(/^\s+-\s*(.*)$/);
         if (listItem && currentKey !== null) {
+            const value = stripQuotes(listItem[1].trim());
+            if (pendingNestedKey !== null) {
+                currentMap ??= {};
+                if (!Array.isArray(currentMap[pendingNestedKey])) currentMap[pendingNestedKey] = [];
+                (currentMap[pendingNestedKey] as YamlValue[]).push(value);
+                continue;
+            }
             currentMap = null;
             currentList ??= [];
-            currentList.push(stripQuotes(listItem[1].trim()));
+            currentList.push(value);
             continue;
         }
 
@@ -170,7 +189,14 @@ export function parseFrontmatter(raw: string): { data: Record<string, YamlValue>
         if (nested && currentKey !== null) {
             currentList = null;
             currentMap ??= {};
-            currentMap[nested[1]] = parseScalarOrInlineList(nested[2].trim());
+            const rest = nested[2].trim();
+            if (rest === '') {
+                pendingNestedKey = nested[1];
+                currentMap[pendingNestedKey] = [];
+            } else {
+                pendingNestedKey = null;
+                currentMap[nested[1]] = parseScalarOrInlineList(rest);
+            }
         }
     }
     flush();
@@ -532,12 +558,21 @@ export function validate(adrs: Adr[], changes: Change[], config: Config): Diagno
 
             if (asString(doc.data.title) === '') add(doc.path, 'missing required field `title`');
 
-            // Every document carries the schema, not just the canonical one:
-            // an incomplete design.md is as wrong as an incomplete proposal.md.
-            const docStatus = asString(doc.data.status);
-            if (docStatus === '') add(doc.path, 'missing required field `status`');
-            else if (!(CHANGE_STATUSES as readonly string[]).includes(docStatus)) {
-                add(doc.path, `status "${docStatus}" is not one of ${CHANGE_STATUSES.join(', ')}`);
+            // Split by what the field describes. `date`, `authors` and
+            // `ai_assistance` describe THIS document, so every document carries
+            // them. `status` and `related_adrs` describe the CHANGE, so they
+            // live in the canonical document alone — duplicating them is how the
+            // two sources drift, which is exactly what this convention removes.
+            if (doc.name !== canonical.name) {
+                for (const field of ['status', 'related_adrs'] as const) {
+                    if (doc.data[field] !== undefined) {
+                        add(
+                            doc.path,
+                            `declares \`${field}\`, but ${canonical.name} is the canonical carrier ` +
+                                'for it — a second copy can only drift',
+                        );
+                    }
+                }
             }
 
             const docDate = asString(doc.data.date);
@@ -553,9 +588,7 @@ export function validate(adrs: Adr[], changes: Change[], config: Config): Diagno
                 add(doc.path, 'missing `ai_assistance.tool` / `ai_assistance.model` (use `none` if unused)');
             }
 
-            for (const ref of asList(doc.data.related_adrs)) {
-                if (!adrIds.has(ref)) add(doc.path, `related_adrs references unknown ADR "${ref}"`);
-            }
+
 
             for (const pr of asList(doc.data.related_prs)) {
                 if (!isPositiveInteger(pr)) add(doc.path, `related_prs value "${pr}" is not a positive integer`);
@@ -579,7 +612,9 @@ export function validate(adrs: Adr[], changes: Change[], config: Config): Diagno
  */
 export function findCommittedIndexes(files: string[], config: Config): Diagnostic[] {
     return files
-        .filter(file => file === `${config.recordsDir}/records.md` || file === `${config.changesDir}/records.md`)
+        // Anywhere under the architecture tree, not two fixed paths: an old
+        // branch can re-create `sdd/records.md`.
+        .filter(file => file.startsWith(`${config.architectureRoot}/`) && file.endsWith('/records.md'))
         .map(file => ({
             file,
             message:
@@ -598,9 +633,8 @@ export function findCommittedIndexes(files: string[], config: Config): Diagnosti
  * its own detector.)
  */
 export function findRetiredFilenames(files: string[], config: Config): Diagnostic[] {
-    const roots = [config.recordsDir, config.changesDir];
     return files
-        .filter(file => roots.some(root => file.startsWith(`${root}/`)))
+        .filter(file => file.startsWith(`${config.architectureRoot}/`))
         .filter(file => config.retiredNameRe.test(file.slice(file.lastIndexOf('/') + 1)))
         .map(file => ({
             file,
@@ -636,12 +670,16 @@ export function findLegacyReferences(root: string, files: string[], config: Conf
 
         content.split(/\r?\n/).forEach((line, index) => {
             if (line.includes('legacy_id:')) return;
-            const hit = config.retiredRe ? line.match(config.retiredRe) : null;
-            if (hit && ownLegacyId !== undefined && hit[0] === ownLegacyId) return;
-            if (hit) {
+            // matchAll, not match: a line may name its own legacy id AND another
+            // retired one, and the first hit must not swallow the second.
+            const global = config.retiredRe ? new RegExp(config.retiredRe.source, 'g') : null;
+            const hit = global
+                ? [...line.matchAll(global)].map(m => m[0]).find(id => id !== ownLegacyId)
+                : undefined;
+            if (hit !== undefined) {
                 problems.push({
                     file: `${file}:${index + 1}`,
-                    message: `references retired identifier "${hit[0]}". Use the current identifier.`,
+                    message: `references retired identifier "${hit}". Use the current identifier.`,
                 });
             }
         });
@@ -674,7 +712,7 @@ export function renderAdrIndex(adrs: Adr[], config: Config): string {
         '# ADR Index',
         '',
         `Architecture Decision Records for ${config.repositoryLabel}, ordered by`,
-        'tracking number and then by local sequence. See doc/architecture/adr/README.md',
+        `tracking number and then by local sequence. See ${config.recordsDir}/README.md`,
         'for the policy.',
         '',
         '| ID | Title | Status | Issue | Date |',
@@ -712,7 +750,7 @@ export function renderChangeIndex(changes: Change[], config: Config): string {
         '',
         `Change proposals, specifications and designs for ${config.repositoryLabel},`,
         'ordered by tracking number. Each change lives in its own directory named',
-        '`<number>-<change-slug>`. See doc/architecture/changes/README.md for the policy.',
+        `\`<number>-<change-slug>\`. See ${config.changesDir}/README.md for the policy.`,
         '',
         '| Change | Title | Status | Issue | Date | Documents |',
         '|---|---|---|---|---|---|',

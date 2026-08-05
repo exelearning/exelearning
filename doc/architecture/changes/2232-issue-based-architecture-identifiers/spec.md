@@ -1,11 +1,9 @@
 ---
 tracking_issue: 2232
 title: "Issue-based architecture identifiers — specification"
-status: in-review
 date: 2026-08-05
 authors:
   - "@erseco"
-related_adrs: [ADR-2232-01]
 ai_assistance:
   tool: "Claude Code"
   model: "claude-opus-5"

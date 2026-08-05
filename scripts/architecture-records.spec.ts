@@ -396,13 +396,58 @@ describe('findCommittedIndexes', () => {
     });
 });
 
+describe('second review findings', () => {
+    test('a block list nested under a mapping key survives', () => {
+        const parsed = parseFrontmatter(
+            ['---', 'related:', '  prs:', '    - 2011', '  adrs:', '    - ADR-9999-01', '---', '', '# x'].join('\n'),
+        );
+        expect(parsed?.data.related).toEqual({ prs: ['2011'], adrs: ['ADR-9999-01'] });
+    });
+
+    test('a dangling ADR in a nested block list is still caught', () => {
+        writeFileSync(
+            join(root, config.recordsDir, 'ADR-90-01-a.md'),
+            ['---', 'id: ADR-90-01', 'title: "A"', 'status: Proposed', 'date: 2026-08-05',
+             'tracking_issue: 90', 'deciders:', '  - "@e"', 'related:', '  adrs:', '    - ADR-9999-01',
+             'ai_assistance:', '  tool: "none"', '  model: "none"', '---', '', '# ADR-90-01: A', ''].join('\n'),
+        );
+        const { adrs } = discoverAdrs(root, config);
+        expect(validate(adrs, [], config).some(p => p.message.includes('unknown ADR'))).toBe(true);
+    });
+
+    test('a self legacy_id does not hide another retired id on the same line', () => {
+        writeFileSync(
+            join(root, 'design.md'),
+            ['---', 'legacy_id: SDD-0009', '---', '', 'Previously SDD-0009; see ADR-0035 too.', ''].join('\n'),
+        );
+        const problems = findLegacyReferences(root, ['design.md'], config);
+        expect(problems).toHaveLength(1);
+        expect(problems[0].message).toContain('ADR-0035');
+    });
+
+    test('status may not be repeated outside the canonical document', () => {
+        writeChangeDoc('90-a-change', 'proposal.md');
+        writeChangeDoc('90-a-change', 'design.md');
+        const { changes } = discoverChanges(root, config);
+        expect(validate([], changes, config).some(p => p.message.includes('canonical carrier'))).toBe(true);
+    });
+
+    test('a retired file anywhere under the architecture tree is caught', () => {
+        expect(findRetiredFilenames([`${config.architectureRoot}/archive/SDD-0010-old.md`], config)).toHaveLength(1);
+    });
+
+    test('a records.md anywhere under the architecture tree is caught', () => {
+        expect(findCommittedIndexes([`${config.architectureRoot}/sdd/records.md`], config)).toHaveLength(1);
+    });
+});
+
 describe('review findings', () => {
     test('rejects local sequence 00 — the ordinal starts at 01', () => {
         expect(config.recordRe.test('ADR-2232-00-invalid-sequence.md')).toBe(false);
         expect(config.recordRe.test('ADR-2232-01-valid-sequence.md')).toBe(true);
     });
 
-    test('a non-canonical change document must carry the full schema', () => {
+    test('a non-canonical change document must carry its own document fields', () => {
         writeChangeDoc('90-a-change', 'proposal.md');
         writeFileSync(
             join(root, config.changesDir, '90-a-change', 'design.md'),
@@ -410,16 +455,16 @@ describe('review findings', () => {
         );
         const { changes } = discoverChanges(root, config);
         const messages = validate([], changes, config).map(p => p.message);
-        for (const field of ['`status`', '`date`', '`authors`', 'ai_assistance']) {
+        for (const field of ['`date`', '`authors`', 'ai_assistance']) {
             expect(messages.some(m => m.includes(field))).toBe(true);
         }
     });
 
-    test('a non-canonical change document cannot cite a missing ADR', () => {
+    test('a non-canonical change document may not carry related_adrs at all', () => {
         writeChangeDoc('90-a-change', 'proposal.md');
         writeChangeDoc('90-a-change', 'design.md', ['related_adrs: [ADR-99-01]']);
         const { changes } = discoverChanges(root, config);
-        expect(validate([], changes, config).some(p => p.message.includes('unknown ADR'))).toBe(true);
+        expect(validate([], changes, config).some(p => p.message.includes('canonical carrier'))).toBe(true);
     });
 
     test('a retired filename inside a change directory is rejected', () => {
