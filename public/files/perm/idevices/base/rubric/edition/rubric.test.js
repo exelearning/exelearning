@@ -4,16 +4,35 @@
 
 /* eslint-disable no-undef */
 
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+/**
+ * Load the real Bootstrap bundle (5.3.6) from public/libs.
+ *
+ * The edit dialogs are driven by the Bootstrap Modal API, which happy-dom does
+ * not provide. A stub would not do: the unsaved-changes guard relies on
+ * Bootstrap emitting namespaced jQuery events and honouring their
+ * preventDefault(), so the real library is what the tests must exercise.
+ */
+function loadBootstrap() {
+  if (window.bootstrap) return;
+
+  const bootstrapPath = join(__dirname, '../../../../../../libs/bootstrap/bootstrap.bundle.min.js');
+  // Bootstrap expects 'window' to be defined (provided by happy-dom)
+  // eslint-disable-next-line no-eval
+  (0, eval)(readFileSync(bootstrapPath, 'utf-8'));
+}
+
 describe('rubric iDevice CSV tools (edition)', () => {
   let $exeDevice;
 
   beforeEach(() => {
+    loadBootstrap();
     global.$exeDevice = undefined;
     $exeDevice = global.loadIdevice(join(__dirname, 'rubric.js'));
   });
@@ -476,6 +495,218 @@ describe('rubric iDevice CSV tools (edition)', () => {
     expect(scoreInput.val()).toBe('5');
     expect($('#ri_RowEditModal').css('display')).toBe('none');
     expect($exeDevice.rowEditState).toBeNull();
+  });
+
+  describe('edit dialogs', () => {
+    const buildTable = () => {
+      // Bootstrap's scroll lock lives on <body>, and neither the class nor its
+      // inline styles are cleared by replacing innerHTML: reset them so a test
+      // that ends with a dialog open cannot bleed into the next one.
+      document.body.className = '';
+      document.body.removeAttribute('style');
+      document.body.innerHTML = `
+        <div id="ri_TableEditor"></div>
+        <table id="ri_Table">
+          <thead>
+            <tr>
+              <th><input type="text" value="" /></th>
+              <th><input type="text" value="Nivel Alto" /></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th><input type="text" value="Contenido" /></th>
+              <td>
+                <input type="text" value="Descriptor inicial" />
+                <input type="text" class="ri_Weight" value="2" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+    };
+
+    it('mounts the cell dialog and its backdrop inside the editor, never in body', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+
+      const modal = document.getElementById('ri_CellEditModal');
+      const backdrop = document.getElementById('ri_CellEditModalBackdrop');
+      const editor = document.getElementById('ri_TableEditor');
+
+      expect(modal.parentElement).toBe(editor);
+      // Same parent => same stacking context => the dialog paints above its backdrop.
+      expect(backdrop.parentElement).toBe(editor);
+      expect(document.querySelectorAll('body > .modal-backdrop').length).toBe(0);
+      expect($('#ri_CellEditModal').hasClass('show')).toBe(true);
+      expect(document.body.classList.contains('modal-open')).toBe(true);
+
+      $exeDevice.closeCellEditModal();
+
+      expect($('#ri_CellEditModal').hasClass('show')).toBe(false);
+      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
+      expect(document.body.classList.contains('modal-open')).toBe(false);
+      expect($exeDevice.cellEditTarget).toBeNull();
+    });
+
+    it('removes every dialog and backdrop when the editor DOM is discarded', () => {
+      buildTable();
+
+      $exeDevice.openCellEditModal($('#ri_Table tbody tr td').first());
+      $exeDevice.closeCellEditModal();
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+
+      // What the app does when edition ends: the editor subtree goes away.
+      $('#ri_TableEditor').remove();
+
+      expect(document.getElementById('ri_CellEditModal')).toBeNull();
+      expect(document.getElementById('ri_RowEditModal')).toBeNull();
+      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
+    });
+
+    it('row dialog confirms before closing when there are unsaved changes', () => {
+      buildTable();
+
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+      $('#ri_RowEditContent').val('Descriptor modificado');
+
+      let acceptClose = null;
+      const confirmSpy = vi
+        .spyOn(eXe.app, 'confirm')
+        .mockImplementation((title, message, onAccept) => {
+          acceptClose = onAccept;
+        });
+
+      $exeDevice.closeRowEditModal();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Attention',
+        'There are unsaved changes in this row. Close and lose them?',
+        expect.any(Function)
+      );
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(true);
+      expect($exeDevice.rowEditState).not.toBeNull();
+
+      acceptClose();
+
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
+      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
+      expect($exeDevice.rowEditState).toBeNull();
+      expect($exeDevice.rowEditClosing).toBe(false);
+
+      confirmSpy.mockRestore();
+    });
+
+    it('row dialog closes without confirmation when drafts are untouched', () => {
+      buildTable();
+
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+
+      const confirmSpy = vi.spyOn(eXe.app, 'confirm');
+
+      $exeDevice.closeRowEditModal();
+
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.rowEditState).toBeNull();
+
+      confirmSpy.mockRestore();
+    });
+
+    it('the Esc key goes through the same unsaved-changes guard as the buttons', () => {
+      buildTable();
+
+      $exeDevice.openRowEditModal($('#ri_Table tbody tr').first());
+      $('#ri_RowEditContent').val('Descriptor modificado');
+
+      let acceptClose = null;
+      const confirmSpy = vi
+        .spyOn(eXe.app, 'confirm')
+        .mockImplementation((title, message, onAccept) => {
+          acceptClose = onAccept;
+        });
+
+      document
+        .getElementById('ri_RowEditModal')
+        .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(confirmSpy).toHaveBeenCalled();
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(true);
+
+      acceptClose();
+
+      expect($('#ri_RowEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.rowEditState).toBeNull();
+
+      confirmSpy.mockRestore();
+    });
+
+    it('column dialog confirms before closing when there are unsaved changes', () => {
+      buildTable();
+
+      $exeDevice.openColumnEditModal($('#ri_Table thead th').eq(1));
+      $('#ri_ColumnEditScore').val('9');
+
+      let acceptClose = null;
+      const confirmSpy = vi
+        .spyOn(eXe.app, 'confirm')
+        .mockImplementation((title, message, onAccept) => {
+          acceptClose = onAccept;
+        });
+
+      $exeDevice.closeColumnEditModal();
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Attention',
+        'There are unsaved changes in this column. Close and lose them?',
+        expect.any(Function)
+      );
+      expect($('#ri_ColumnEditModal').hasClass('show')).toBe(true);
+      expect($exeDevice.columnEditState).not.toBeNull();
+
+      acceptClose();
+
+      expect($('#ri_ColumnEditModal').hasClass('show')).toBe(false);
+      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
+      expect($exeDevice.columnEditState).toBeNull();
+      expect($exeDevice.columnEditClosing).toBe(false);
+
+      confirmSpy.mockRestore();
+    });
+
+    it('column dialog closes without confirmation when drafts are untouched', () => {
+      buildTable();
+
+      $exeDevice.openColumnEditModal($('#ri_Table thead th').eq(1));
+
+      const confirmSpy = vi.spyOn(eXe.app, 'confirm');
+
+      $exeDevice.closeColumnEditModal();
+
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect($('#ri_ColumnEditModal').hasClass('show')).toBe(false);
+      expect($exeDevice.columnEditState).toBeNull();
+
+      confirmSpy.mockRestore();
+    });
+
+    it('showEditModal and hideEditModal ignore dialogs that are not in the DOM', () => {
+      document.body.innerHTML = '';
+
+      expect(() => $exeDevice.showEditModal('ri_MissingModal')).not.toThrow();
+      expect(() => $exeDevice.hideEditModal('ri_MissingModal')).not.toThrow();
+      expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
+    });
+
+    it('hideEditModal ignores dialogs that were never shown', () => {
+      buildTable();
+
+      $exeDevice.ensureCellEditModal();
+
+      expect(() => $exeDevice.hideEditModal('ri_CellEditModal')).not.toThrow();
+      expect($('#ri_CellEditModal').hasClass('show')).toBe(false);
+    });
   });
 
   it('getTableHTML does not leak implicit loop variables to global scope', () => {

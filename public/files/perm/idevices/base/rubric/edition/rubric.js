@@ -1928,6 +1928,54 @@ var $exeDevice = {
         $exeDevice.setMaxScore();
     },
 
+    /**
+     * Mount a dialog inside the rubric editor, never in <body>.
+     *
+     * Living in the editor means the dialog is destroyed together with
+     * #ri_TableEditor, so no dialog can outlive the iDevice edition, and the
+     * app modals (z-index 20009, root stacking context) always paint above it.
+     */
+    mountEditModal: function (html) {
+        $('#ri_TableEditor').append(html);
+    },
+
+    /**
+     * Show a rubric dialog through the Bootstrap Modal API, which owns the focus
+     * trap, the scroll lock, the Esc key and the aria state.
+     *
+     * Bootstrap always appends its own backdrop to <body>, and the editor sits in
+     * a stacking context of its own (`position: absolute; z-index: 5`, see
+     * assets/styles/layout/_idevice-focus.scss). A <body>-level backdrop would
+     * therefore paint over a dialog it is supposed to sit behind, swallowing
+     * every click. So Bootstrap's backdrop is disabled and replaced by one
+     * mounted next to the dialog: same stacking context, correct paint order,
+     * and it is torn down with the editor like the dialog itself.
+     */
+    showEditModal: function (id) {
+        var element = document.getElementById(id);
+        if (!element) return;
+
+        var backdropId = id + 'Backdrop';
+        if ($('#' + backdropId).length === 0) {
+            $(element).before('<div id="' + backdropId + '" class="modal-backdrop fade show"></div>');
+        }
+
+        window.bootstrap.Modal.getOrCreateInstance(element, { backdrop: false }).show();
+    },
+
+    hideEditModal: function (id) {
+        var element = document.getElementById(id);
+        if (!element) return;
+
+        var instance = window.bootstrap.Modal.getInstance(element);
+        if (instance) instance.hide();
+    },
+
+    /** Drop the scoped backdrop once Bootstrap has finished hiding the dialog. */
+    removeEditModalBackdrop: function (id) {
+        $('#' + id + 'Backdrop').remove();
+    },
+
     ensureCellEditModal: function () {
         var modal = $('#ri_CellEditModal');
         if (modal.length === 1) return;
@@ -1971,7 +2019,14 @@ var $exeDevice = {
             '</div>' +
             '</div>';
 
-        $('#ri_TableEditor').append(html);
+        this.mountEditModal(html);
+
+        $('#ri_CellEditModal')
+            .off('hidden.bs.modal')
+            .on('hidden.bs.modal', function () {
+                $exeDevice.removeEditModalBackdrop('ri_CellEditModal');
+                $exeDevice.cellEditTarget = null;
+            });
 
         $('#ri_CellEditAccept').off('click').on('click', function () {
             $exeDevice.applyCellEditModal();
@@ -1989,6 +2044,8 @@ var $exeDevice = {
 
     openCellEditModal: function (td) {
         if (!td || td.length !== 1) return;
+
+        this.ensureCellEditModal();
 
         this.cellEditTarget = td;
         var contentInput = td.find('input[type="text"]').not('.ri_Weight').first();
@@ -2012,19 +2069,12 @@ var $exeDevice = {
             _('Performance level') + (columnTitle ? ': ' + columnTitle : '')
         );
 
-        $('#ri_CellEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
-        $('body').addClass('modal-open');
-        if ($('#ri_CellEditModalBackdrop').length === 0) {
-            $('body').append('<div id="ri_CellEditModalBackdrop" class="modal-backdrop fade show"></div>');
-        }
+        this.showEditModal('ri_CellEditModal');
         $('#ri_CellEditContent').focus();
     },
 
     closeCellEditModal: function () {
-        $('#ri_CellEditModal').removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
-        $('body').removeClass('modal-open');
-        $('#ri_CellEditModalBackdrop').remove();
-        this.cellEditTarget = null;
+        this.hideEditModal('ri_CellEditModal');
     },
 
     applyCellEditModal: function () {
@@ -2109,18 +2159,30 @@ var $exeDevice = {
             '</div>' +
             '</div>';
 
-        $('#ri_TableEditor').append(html);
+        this.mountEditModal(html);
+
+        $('#ri_RowEditModal')
+            .off('hide.bs.modal')
+            .on('hide.bs.modal', function (event) {
+                if (!$exeDevice.allowRowEditClose()) event.preventDefault();
+            })
+            .off('hidden.bs.modal')
+            .on('hidden.bs.modal', function () {
+                $exeDevice.removeEditModalBackdrop('ri_RowEditModal');
+                $exeDevice.rowEditClosing = false;
+                $exeDevice.rowEditState = null;
+            });
 
         $('#ri_RowEditAccept').off('click').on('click', function () {
             $exeDevice.applyRowEditModal();
             return false;
         });
         $('#ri_RowEditCancel').off('click').on('click', function () {
-            $exeDevice.requestCloseRowEditModal();
+            $exeDevice.closeRowEditModal();
             return false;
         });
         $('#ri_RowEditClose').off('click').on('click', function () {
-            $exeDevice.requestCloseRowEditModal();
+            $exeDevice.closeRowEditModal();
             return false;
         });
         $('#ri_RowEditPrev').off('click').on('click', function () {
@@ -2182,11 +2244,7 @@ var $exeDevice = {
         $('#ri_RowEditModalTitle').text(_('Assessment criteria') + (criterionTitle ? ': ' + criterionTitle : ''));
         this.renderRowEditModalFields();
 
-        $('#ri_RowEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
-        $('body').addClass('modal-open');
-        if ($('#ri_RowEditModalBackdrop').length === 0) {
-            $('body').append('<div id="ri_RowEditModalBackdrop" class="modal-backdrop fade show"></div>');
-        }
+        this.showEditModal('ri_RowEditModal');
         $('#ri_RowEditContent').focus();
     },
 
@@ -2238,10 +2296,7 @@ var $exeDevice = {
     },
 
     closeRowEditModal: function () {
-        $('#ri_RowEditModal').removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
-        $('body').removeClass('modal-open');
-        $('#ri_RowEditModalBackdrop').remove();
-        this.rowEditState = null;
+        this.hideEditModal('ri_RowEditModal');
     },
 
     hasUnsavedRowEditChanges: function () {
@@ -2260,26 +2315,27 @@ var $exeDevice = {
         return false;
     },
 
-    requestCloseRowEditModal: function () {
-        if (!this.rowEditState) {
-            this.closeRowEditModal();
-            return;
-        }
+    /**
+     * Guard shared by every way of dismissing the row dialog, the Close and Cancel
+     * buttons and the Esc key: unsaved drafts must be confirmed before it closes.
+     */
+    allowRowEditClose: function () {
+        if (this.rowEditClosing || !this.rowEditState) return true;
 
         this.syncActiveRowEditDraft();
 
-        if (!this.hasUnsavedRowEditChanges()) {
-            this.closeRowEditModal();
-            return;
-        }
+        if (!this.hasUnsavedRowEditChanges()) return true;
 
         eXe.app.confirm(
             _('Attention'),
             _('There are unsaved changes in this row. Close and lose them?'),
             function () {
+                $exeDevice.rowEditClosing = true;
                 $exeDevice.closeRowEditModal();
             }
         );
+
+        return false;
     },
 
     applyRowEditModal: function () {
@@ -2370,18 +2426,30 @@ var $exeDevice = {
             '</div>' +
             '</div>';
 
-        $('#ri_TableEditor').append(html);
+        this.mountEditModal(html);
+
+        $('#ri_ColumnEditModal')
+            .off('hide.bs.modal')
+            .on('hide.bs.modal', function (event) {
+                if (!$exeDevice.allowColumnEditClose()) event.preventDefault();
+            })
+            .off('hidden.bs.modal')
+            .on('hidden.bs.modal', function () {
+                $exeDevice.removeEditModalBackdrop('ri_ColumnEditModal');
+                $exeDevice.columnEditClosing = false;
+                $exeDevice.columnEditState = null;
+            });
 
         $('#ri_ColumnEditAccept').off('click').on('click', function () {
             $exeDevice.applyColumnEditModal();
             return false;
         });
         $('#ri_ColumnEditCancel').off('click').on('click', function () {
-            $exeDevice.requestCloseColumnEditModal();
+            $exeDevice.closeColumnEditModal();
             return false;
         });
         $('#ri_ColumnEditClose').off('click').on('click', function () {
-            $exeDevice.requestCloseColumnEditModal();
+            $exeDevice.closeColumnEditModal();
             return false;
         });
         $('#ri_ColumnEditUp').off('click').on('click', function () {
@@ -2437,11 +2505,7 @@ var $exeDevice = {
         $('#ri_ColumnEditModalTitle').text(this.columnEditState.title || _('Edit'));
         this.renderColumnEditModalFields();
 
-        $('#ri_ColumnEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
-        $('body').addClass('modal-open');
-        if ($('#ri_ColumnEditModalBackdrop').length === 0) {
-            $('body').append('<div id="ri_ColumnEditModalBackdrop" class="modal-backdrop fade show"></div>');
-        }
+        this.showEditModal('ri_ColumnEditModal');
         $('#ri_ColumnEditContent').focus();
     },
 
@@ -2492,10 +2556,7 @@ var $exeDevice = {
     },
 
     closeColumnEditModal: function () {
-        $('#ri_ColumnEditModal').removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
-        $('body').removeClass('modal-open');
-        $('#ri_ColumnEditModalBackdrop').remove();
-        this.columnEditState = null;
+        this.hideEditModal('ri_ColumnEditModal');
     },
 
     hasUnsavedColumnEditChanges: function () {
@@ -2514,26 +2575,27 @@ var $exeDevice = {
         return false;
     },
 
-    requestCloseColumnEditModal: function () {
-        if (!this.columnEditState) {
-            this.closeColumnEditModal();
-            return;
-        }
+    /**
+     * Guard shared by every way of dismissing the column dialog, the Close and Cancel
+     * buttons and the Esc key: unsaved drafts must be confirmed before it closes.
+     */
+    allowColumnEditClose: function () {
+        if (this.columnEditClosing || !this.columnEditState) return true;
 
         this.syncActiveColumnEditDraft();
 
-        if (!this.hasUnsavedColumnEditChanges()) {
-            this.closeColumnEditModal();
-            return;
-        }
+        if (!this.hasUnsavedColumnEditChanges()) return true;
 
         eXe.app.confirm(
             _('Attention'),
             _('There are unsaved changes in this column. Close and lose them?'),
             function () {
+                $exeDevice.columnEditClosing = true;
                 $exeDevice.closeColumnEditModal();
             }
         );
+
+        return false;
     },
 
     applyColumnEditModal: function () {

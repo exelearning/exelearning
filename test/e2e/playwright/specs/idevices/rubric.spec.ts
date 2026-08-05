@@ -249,6 +249,155 @@ test.describe('Rubric iDevice', () => {
             });
         });
 
+        test('should edit a descriptor through the cell dialog', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Cell Dialog Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            // The editor is wrapped in the focused-edit stacking context: that is
+            // exactly the situation where a <body>-level backdrop would paint over
+            // the dialog and swallow every click.
+            await expect(page.locator('body.exe-idevice-focus-editing')).toHaveCount(1);
+
+            // Open the descriptor dialog from the first cell
+            const firstCell = page.locator('#ri_Table tbody tr').first().locator('td').first();
+            await firstCell.locator('a.ri_EditTD').first().click();
+
+            // Dialog and backdrop are mounted together inside the editor
+            const dialog = page.locator('#ri_TableEditor > #ri_CellEditModal');
+            await expect(dialog).toBeVisible({ timeout: 10000 });
+            await expect(page.locator('#ri_TableEditor > #ri_CellEditModalBackdrop')).toHaveCount(1);
+            await expect(page.locator('body > .modal-backdrop')).toHaveCount(0);
+
+            // Regression guard for #2227: the dialog, not the backdrop, is the
+            // topmost element at its own centre.
+            const dialogIsOnTop = await page.evaluate(() => {
+                const content = document.querySelector('#ri_CellEditModal .modal-content');
+                if (!content) return false;
+                const rect = content.getBoundingClientRect();
+                const topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                return !!topmost && !!topmost.closest('#ri_CellEditModal');
+            });
+            expect(dialogIsOnTop).toBe(true);
+
+            // A real (hit-tested) click: it fails if the backdrop covers the dialog
+            const descriptorField = dialog.locator('#ri_CellEditContent');
+            await descriptorField.click();
+            await descriptorField.fill(TEST_DATA.editedDescriptor);
+            await dialog.locator('#ri_CellEditScore').fill(TEST_DATA.weight);
+
+            await dialog.locator('#ri_CellEditAccept').click();
+
+            await expect(dialog).toBeHidden({ timeout: 10000 });
+            await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+
+            // The edited values land in the rubric table
+            await expect(firstCell.locator('input[type="text"]:not(.ri_Weight)').first()).toHaveValue(
+                TEST_DATA.editedDescriptor,
+            );
+            await expect(firstCell.locator('input.ri_Weight').first()).toHaveValue(TEST_DATA.weight);
+
+            await saveRubricIdevice(page);
+
+            await expect(page.locator('#node-content .idevice_node.rubric')).toContainText(TEST_DATA.editedDescriptor, {
+                timeout: 10000,
+            });
+        });
+
+        test('should show the unsaved-changes confirmation above the row dialog', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Rubric Row Dialog Confirm Test');
+            await gotoWorkarea(page, projectUuid);
+
+            await waitForAppReady(page);
+
+            await addRubricIdeviceFromPanel(page);
+            await createNewRubric(page);
+
+            // Dirty the row dialog and close it without saving
+            await page.locator('#ri_Table tbody tr').first().locator('a.ri_EditTR').click();
+            const rowDialog = page.locator('#ri_RowEditModal');
+            await expect(rowDialog).toBeVisible({ timeout: 10000 });
+            await page.locator('#ri_RowEditContent').fill('Descriptor sin guardar');
+            await page.locator('#ri_RowEditCancel').click();
+
+            const confirmDialog = page.locator('#modalConfirm');
+            await expect(confirmDialog).toBeVisible({ timeout: 10000 });
+
+            // The app confirm lives in the root stacking context, the rubric dialog
+            // inside the editor, so the confirmation must paint above it.
+            const confirmIsOnTop = await page.evaluate(() => {
+                const button = document.querySelector('#modalConfirm .modal-footer button');
+                if (!button) return false;
+                const rect = button.getBoundingClientRect();
+                const topmost = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                return !!topmost && !!topmost.closest('#modalConfirm');
+            });
+            expect(confirmIsOnTop).toBe(true);
+
+            // A real (hit-tested) click: it fails if the rubric dialog covers the confirmation
+            await confirmDialog.locator('.modal-footer button').first().click();
+            await expect(rowDialog).toBeHidden({ timeout: 10000 });
+        });
+
+        for (const exit of ['save', 'discard', 'delete'] as const) {
+            test(`should leave no dialog behind when leaving edition through ${exit}`, async ({
+                authenticatedPage,
+                createProject,
+            }) => {
+                const page = authenticatedPage;
+
+                const projectUuid = await createProject(page, `Rubric Dialog Cleanup ${exit}`);
+                await gotoWorkarea(page, projectUuid);
+
+                await waitForAppReady(page);
+
+                await addRubricIdeviceFromPanel(page);
+                await createNewRubric(page);
+
+                // Open and close a dialog so it exists in the DOM
+                await page.locator('#ri_Table tbody tr').first().locator('td').first().locator('a.ri_EditTD').click();
+                await expect(page.locator('#ri_CellEditModal')).toBeVisible({ timeout: 10000 });
+                await page.locator('#ri_CellEditCancel').click();
+                await expect(page.locator('#ri_CellEditModal')).toBeHidden({ timeout: 10000 });
+
+                const rubricNode = page.locator('#node-content .idevice_node.rubric');
+                if (exit === 'save') {
+                    await rubricNode.locator('.btn-save-idevice').first().click();
+                } else {
+                    const button = exit === 'discard' ? '.btn-undo-idevice' : '.btn-delete-idevice';
+                    await rubricNode.locator(button).first().click();
+                    await expect(page.locator('#modalConfirm')).toBeVisible({ timeout: 10000 });
+                    await page.locator('#modalConfirm .modal-footer button').first().click();
+                }
+
+                await page.waitForFunction(
+                    () => {
+                        const node = document.querySelector('#node-content article .idevice_node.rubric');
+                        return !node || node.getAttribute('mode') !== 'edition';
+                    },
+                    undefined,
+                    { timeout: 15000 },
+                );
+
+                // The dialogs live inside the editor, so they die with it
+                await expect(page.locator('#ri_CellEditModal')).toHaveCount(0);
+                await expect(page.locator('#ri_RowEditModal')).toHaveCount(0);
+                await expect(page.locator('#ri_ColumnEditModal')).toHaveCount(0);
+                await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+            });
+        }
+
         test('should persist rubric after reload', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);

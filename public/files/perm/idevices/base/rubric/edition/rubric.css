@@ -296,9 +296,6 @@
   background-position: 0 0;
 }
 
-#ri_CellEditModal {
-  z-index: 1060;
-}
 #ri_CellEditModal .modal-dialog {
   width: 90%;
   max-width: 560px;
@@ -309,9 +306,6 @@
   width: 100%;
 }
 
-#ri_RowEditModal {
-  z-index: 1060;
-}
 #ri_RowEditModal .modal-dialog {
   width: 90%;
   max-width: 560px;
@@ -357,9 +351,6 @@
   font-size: 18px;
 }
 
-#ri_ColumnEditModal {
-  z-index: 1060;
-}
 #ri_ColumnEditModal .modal-dialog {
   width: 90%;
   max-width: 560px;
