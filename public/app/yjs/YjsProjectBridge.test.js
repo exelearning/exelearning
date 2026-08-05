@@ -7900,4 +7900,306 @@ describe('YjsProjectBridge', () => {
       expect(instances[0].setPhase).toHaveBeenCalledWith('saving');
     });
   });
+
+  // ==========================================================================
+  // #2193 — desktop large-asset import policy + export compatibility warning
+  // ==========================================================================
+  describe('#2193 desktop large-asset import policy', () => {
+    const MiB = 1024 * 1024;
+    let stubPolicy;
+
+    function installPolicy() {
+      stubPolicy = {
+        CONSERVATIVE_ZIP_LIMITS: { maxTotalBytes: 500 * MiB, maxEntryBytes: 200 * MiB, maxEntries: 10000 },
+        DESKTOP_ZIP_LIMITS: { maxTotalBytes: 2048 * MiB, maxEntryBytes: 1024 * MiB, maxEntries: 10000 },
+        DESKTOP_CONFIRM_ENTRY_BYTES: 200 * MiB,
+        getZipLimitsForRuntime: (rt) =>
+          rt === 'desktop' ? stubPolicy.DESKTOP_ZIP_LIMITS : stubPolicy.CONSERVATIVE_ZIP_LIMITS,
+        getDesktopExportCompatibility: mock(() => ({
+          compatible: true,
+          oversizedAsset: null,
+          exceedsTotal: false,
+          largestAsset: null,
+          totalBytes: 0,
+          entryLimit: 1024 * MiB,
+          totalLimit: 2048 * MiB,
+        })),
+        formatBytes: (n) => `${Math.round(n / MiB)} MB`,
+      };
+      global.window.ExeImportPolicy = stubPolicy;
+    }
+
+    function installModals() {
+      global.window.eXeLearning = global.window.eXeLearning || {};
+      global.window.eXeLearning.app = global.window.eXeLearning.app || {};
+      const confirmShow = mock(() => {});
+      const alertShow = mock(() => {});
+      global.window.eXeLearning.app.modals = { confirm: { show: confirmShow }, alert: { show: alertShow } };
+      global.eXeLearning = global.window.eXeLearning;
+      return { confirmShow, alertShow };
+    }
+
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      installPolicy();
+      delete global.window.electronAPI;
+    });
+
+    afterEach(() => {
+      delete global.window.electronAPI;
+      delete global.window.__EXE_IMPORT_LIMITS_OVERRIDE__;
+      delete global.window.ExeImportPolicy;
+    });
+
+    describe('_isDesktopRuntime', () => {
+      it('is true when electronAPI is present', () => {
+        global.window.electronAPI = { save: () => {} };
+        expect(bridge._isDesktopRuntime()).toBe(true);
+      });
+
+      it('is false on hosted/static without electronAPI', () => {
+        delete global.window.electronAPI;
+        expect(bridge._isDesktopRuntime()).toBe(false);
+      });
+    });
+
+    describe('_resolveImportPolicy', () => {
+      it('selects desktop limits and confirmation threshold in Electron', () => {
+        global.window.electronAPI = { save: () => {} };
+        const p = bridge._resolveImportPolicy();
+        expect(p.isDesktop).toBe(true);
+        expect(p.zipLimits.maxEntryBytes).toBe(1024 * MiB);
+        expect(p.confirmEntryThreshold).toBe(200 * MiB);
+      });
+
+      it('selects conservative limits on hosted/static (no desktop leakage)', () => {
+        const p = bridge._resolveImportPolicy();
+        expect(p.isDesktop).toBe(false);
+        expect(p.zipLimits.maxEntryBytes).toBe(200 * MiB);
+      });
+
+      it('applies a test limits override when present', () => {
+        global.window.electronAPI = { save: () => {} };
+        global.window.__EXE_IMPORT_LIMITS_OVERRIDE__ = {
+          desktop: { maxEntryBytes: 5000, maxTotalBytes: 20000, maxEntries: 100 },
+          confirmEntryThreshold: 1000,
+        };
+        const p = bridge._resolveImportPolicy();
+        expect(p.zipLimits.maxEntryBytes).toBe(5000);
+        expect(p.confirmEntryThreshold).toBe(1000);
+      });
+    });
+
+    describe('importFromElpx runtime wiring', () => {
+      function captureImportOptions(resolveValue = { assets: 0 }, impl) {
+        let captured = null;
+        const mockImporter = {
+          importFromFile: mock((file, options) => {
+            captured = options;
+            return impl ? impl(file, options) : Promise.resolve(resolveValue);
+          }),
+        };
+        global.window.ElpxImporter = mock(function () {
+          return mockImporter;
+        });
+        return () => captured;
+      }
+
+      it('passes desktop limits and a confirmation callback in Electron', async () => {
+        global.window.electronAPI = { save: () => {} };
+        const getOpts = captureImportOptions();
+        bridge.announceAssets = mock(() => Promise.resolve());
+        await bridge.importFromElpx(new Blob(['x']));
+        const opts = getOpts();
+        expect(opts.zipLimits.maxEntryBytes).toBe(1024 * MiB);
+        expect(typeof opts.onConfirmLargeEntry).toBe('function');
+      });
+
+      it('passes conservative limits and no confirmation callback on hosted', async () => {
+        const getOpts = captureImportOptions();
+        bridge.announceAssets = mock(() => Promise.resolve());
+        await bridge.importFromElpx(new Blob(['x']));
+        const opts = getOpts();
+        expect(opts.zipLimits.maxEntryBytes).toBe(200 * MiB);
+        expect(opts.onConfirmLargeEntry).toBeUndefined();
+      });
+
+      it('routes the confirmation callback through the confirm modal (accept => true)', async () => {
+        global.window.electronAPI = { save: () => {} };
+        const { confirmShow } = installModals();
+        confirmShow.mockImplementation((data) => data.confirmExec());
+        let confirmResult = null;
+        captureImportOptions({ assets: 0 }, async (file, options) => {
+          confirmResult = await options.onConfirmLargeEntry({
+            entryName: 'v.mp4',
+            entryBytes: 300 * MiB,
+            totalBytes: 300 * MiB,
+            entryCount: 2,
+            confirmThreshold: 200 * MiB,
+            hardLimitBytes: 1024 * MiB,
+          });
+          return { assets: 0 };
+        });
+        bridge.announceAssets = mock(() => Promise.resolve());
+        await bridge.importFromElpx(new Blob(['x']));
+        expect(confirmShow).toHaveBeenCalled();
+        expect(confirmResult).toBe(true);
+      });
+
+      it('routes the confirmation callback through the confirm modal (cancel => false)', async () => {
+        global.window.electronAPI = { save: () => {} };
+        const { confirmShow } = installModals();
+        confirmShow.mockImplementation((data) => data.cancelExec());
+        let confirmResult = null;
+        captureImportOptions({ assets: 0 }, async (file, options) => {
+          confirmResult = await options.onConfirmLargeEntry({
+            entryName: 'v.mp4',
+            entryBytes: 300 * MiB,
+            totalBytes: 300 * MiB,
+            entryCount: 2,
+            confirmThreshold: 200 * MiB,
+            hardLimitBytes: 1024 * MiB,
+          });
+          const e = new Error('cancelled');
+          e.name = 'ImportCancelledError';
+          throw e;
+        });
+        const result = await bridge.importFromElpx(new Blob(['x']));
+        expect(confirmResult).toBe(false);
+        expect(result.cancelled).toBe(true);
+      });
+
+      it('shows an actionable error and resolves (no throw) on a ZipLimitError', async () => {
+        const { alertShow } = installModals();
+        captureImportOptions({}, () => {
+          const e = new Error('too big');
+          e.name = 'ZipLimitError';
+          e.details = {
+            kind: 'entry-size',
+            archiveLabel: 'ELP/ELPX archive',
+            entryName: 'huge.mp4',
+            actualValue: 359357639,
+            limitValue: 209715200,
+          };
+          return Promise.reject(e);
+        });
+        const result = await bridge.importFromElpx(new Blob(['x']));
+        expect(alertShow).toHaveBeenCalled();
+        expect(result.cancelled).toBe(true);
+        const body = alertShow.mock.calls[0][0].body;
+        expect(body).toContain('huge.mp4');
+      });
+
+      it('silently returns cancelled on ImportCancelledError without an error dialog', async () => {
+        const { alertShow } = installModals();
+        captureImportOptions({}, () => {
+          const e = new Error('cancelled');
+          e.name = 'ImportCancelledError';
+          return Promise.reject(e);
+        });
+        const result = await bridge.importFromElpx(new Blob(['x']));
+        expect(alertShow).not.toHaveBeenCalled();
+        expect(result.cancelled).toBe(true);
+      });
+
+      it('wires clearPreviousProject to a post-gate beforeImport hook', async () => {
+        const getOpts = captureImportOptions();
+        bridge.clearAssetsForNewProject = mock(() => Promise.resolve());
+        bridge.clearMetadataForNewProject = mock(() => {});
+        bridge.announceAssets = mock(() => Promise.resolve());
+        await bridge.importFromElpx(new Blob(['x']), { clearPreviousProject: true });
+        const opts = getOpts();
+        expect(typeof opts.beforeImport).toBe('function');
+        // Not cleared until the hook runs (i.e. only after the gate passes).
+        expect(bridge.clearAssetsForNewProject).not.toHaveBeenCalled();
+        await opts.beforeImport();
+        expect(bridge.clearAssetsForNewProject).toHaveBeenCalled();
+        expect(bridge.clearMetadataForNewProject).toHaveBeenCalled();
+      });
+    });
+
+    describe('exportToElpx desktop-compatibility warning', () => {
+      function installExporter() {
+        const exportFn = mock(() => Promise.resolve({ success: true, data: new Uint8Array([1, 2, 3]), filename: 'p.elpx' }));
+        const createExporter = mock(() => ({ export: exportFn }));
+        global.window.SharedExporters = { createExporter };
+        return { createExporter, exportFn };
+      }
+
+      function installDomForDownload() {
+        global.document.body = { appendChild: mock(() => {}), removeChild: mock(() => {}) };
+        global.document.createElement = mock(() => ({ href: '', download: '', click: mock(() => {}) }));
+        // The browser-download branch uses object URLs; keep it self-contained
+        // so it does not depend on setup-level mocks that other tests may reset.
+        if (typeof global.URL === 'undefined') {
+          global.URL = {};
+        }
+        global.URL.createObjectURL = mock(() => 'blob:mock-2193');
+        global.URL.revokeObjectURL = mock(() => {});
+      }
+
+      beforeEach(() => {
+        bridge.ensureScreenshotForExport = mock(() => Promise.resolve());
+        bridge.assetManager = {
+          getAllAssetsMetadata: mock(() => [{ filename: 'big.mp4', size: 1500 * MiB, id: 'a1' }]),
+        };
+      });
+
+      it('does not warn when assets are within desktop limits', async () => {
+        installModals();
+        installDomForDownload();
+        const { createExporter } = installExporter();
+        await bridge.exportToElpx();
+        expect(createExporter).toHaveBeenCalled();
+      });
+
+      it('warns and aborts on cancel when an asset exceeds desktop limits', async () => {
+        const { confirmShow } = installModals();
+        confirmShow.mockImplementation((data) => data.cancelExec());
+        stubPolicy.getDesktopExportCompatibility = mock(() => ({
+          compatible: false,
+          oversizedAsset: { name: 'big.mp4', size: 1500 * MiB },
+          exceedsTotal: false,
+          largestAsset: { name: 'big.mp4', size: 1500 * MiB },
+          totalBytes: 1500 * MiB,
+          entryLimit: 1024 * MiB,
+          totalLimit: 2048 * MiB,
+        }));
+        const { createExporter } = installExporter();
+        const result = await bridge.exportToElpx();
+        expect(confirmShow).toHaveBeenCalled();
+        expect(createExporter).not.toHaveBeenCalled();
+        expect(result).toEqual({ saved: false });
+        const body = confirmShow.mock.calls[0][0].body;
+        expect(body).toContain('big.mp4');
+      });
+
+      it('continues export on confirm when an asset exceeds desktop limits', async () => {
+        const { confirmShow } = installModals();
+        confirmShow.mockImplementation((data) => data.confirmExec());
+        stubPolicy.getDesktopExportCompatibility = mock(() => ({
+          compatible: false,
+          oversizedAsset: { name: 'big.mp4', size: 1500 * MiB },
+          exceedsTotal: false,
+          largestAsset: { name: 'big.mp4', size: 1500 * MiB },
+          totalBytes: 1500 * MiB,
+          entryLimit: 1024 * MiB,
+          totalLimit: 2048 * MiB,
+        }));
+        installDomForDownload();
+        const { createExporter } = installExporter();
+        await bridge.exportToElpx();
+        expect(createExporter).toHaveBeenCalled();
+      });
+
+      it('does not run the compatibility check in the desktop runtime', async () => {
+        global.window.electronAPI = { save: () => {} };
+        installModals();
+        installDomForDownload();
+        installExporter();
+        await bridge.exportToElpx();
+        expect(stubPolicy.getDesktopExportCompatibility).not.toHaveBeenCalled();
+      });
+    });
+  });
 });

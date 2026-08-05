@@ -2,6 +2,7 @@
 const Logger = window.AppLogger || console;
 
 import ImportProgress from '../../../interface/importProgress.js';
+import { isImportCancelled } from '../../../interface/importResult.js';
 import {
     supportsFileSystemAccess,
     openProjectFolderInBrowser,
@@ -1129,6 +1130,16 @@ export default class NavbarFile {
                                     file,
                                     { clearExisting: false }
                                 );
+
+                                // Import was cancelled (large-file confirmation
+                                // declined) or rejected (over the applicable limit).
+                                // The bridge already surfaced any actionable error;
+                                // the project is unchanged, so skip the success UI.
+                                if (isImportCancelled(stats)) {
+                                    Logger.log('[NavbarFile] Yjs import cancelled/rejected:', file.name);
+                                    progressModal.hide();
+                                    return;
+                                }
 
                                 Logger.log('[NavbarFile] Yjs import complete:', stats);
                                 progressModal.setComplete(
