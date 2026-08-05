@@ -36,8 +36,8 @@ export const ADR_FILENAME_RE = /^ADR-([1-9][0-9]*)-([0-9]{2})-([a-z0-9]+(?:-[a-z
 export const CHANGE_DIR_RE = /^([1-9][0-9]*)-([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 /**
  * A retired identifier is `ADR-NNNN` / `SDD-NNNN` that is *not* followed by a
- * two-digit local sequence — otherwise `ADR-1858-01` would match its own
- * `ADR-1858` prefix.
+ * two-digit local sequence. Without that lookahead, a current identifier such
+ * as `ADR-1858-01` would match on its own four-digit prefix.
  */
 export const LEGACY_ID_RE = /\b(?:ADR|SDD)-[0-9]{4}(?!-[0-9]{2})\b/;
 export const LEGACY_FILENAME_RE = /^(?:ADR|SDD)-[0-9]{4}-/;
@@ -51,6 +51,8 @@ export const LEGACY_REFERENCE_ALLOWLIST = [
     MIGRATION_MAP,
     `${ADR_DIR}/ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md`,
     `${CHANGES_DIR}/2232-issue-based-architecture-identifiers/`,
+    // This detector's own tests need retired identifiers as fixtures.
+    'scripts/architecture-records.spec.ts',
 ];
 
 const GENERATED_BANNER =
@@ -625,10 +627,17 @@ export function renderChangeIndex(changes: Change[]): string {
 // CLI
 // ---------------------------------------------------------------------------
 
+/**
+ * Tracked files plus not-yet-added ones, honouring .gitignore. Including
+ * untracked files matters: otherwise a brand-new file passes `check` locally
+ * and only fails in CI, once it has been committed.
+ */
 function trackedFiles(root: string): string[] {
-    const result = Bun.spawnSync(['git', 'ls-files'], { cwd: root });
+    const result = Bun.spawnSync(['git', 'ls-files', '--cached', '--others', '--exclude-standard'], {
+        cwd: root,
+    });
     if (result.exitCode !== 0) return [];
-    return result.stdout.toString().split('\n').filter(Boolean);
+    return [...new Set(result.stdout.toString().split('\n').filter(Boolean))];
 }
 
 function report(title: string, problems: Diagnostic[]): void {
