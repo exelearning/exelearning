@@ -22,6 +22,8 @@ import {
     getLicenseClass,
     formatLicenseText,
     shouldShowLicenseFooter,
+    hasSiteFooterContent,
+    hasUserFooterContent,
     getLicenseUrl,
     formatShortLicenseText,
 } from '../constants';
@@ -1072,7 +1074,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         const { license, licenseUrl = '', userFooterContent, language = 'en', navLabels } = options;
 
         let userFooterHtml = '';
-        if (userFooterContent) {
+        // Whitespace-only footer content is treated as no content at all
+        if (hasUserFooterContent(userFooterContent)) {
             userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
         }
 
@@ -1080,7 +1083,9 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // - Empty license (no license specified, legacy content with unknown license)
         // - "propietary license" and "not appropriate" (no meaningful license to display)
         if (!shouldShowLicenseFooter(license)) {
-            return `<footer id="siteFooter"><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
+            // Tag footers with neither license nor user content so CSS can hide them
+            const emptyClass = hasSiteFooterContent(license, userFooterContent) ? '' : ' class="siteFooter-empty"';
+            return `<footer id="siteFooter"${emptyClass}><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
         }
 
         const licenseText = formatLicenseText(license);

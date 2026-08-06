@@ -11,6 +11,7 @@ import {
     validateLinkWithResult,
     validateLinksStream,
     toBrokenLinkInfo,
+    classifyHttpStatus,
     type ExtractedLink,
     type RawExtractedLink,
     type IdeviceContent,
@@ -350,38 +351,30 @@ describe('Link Validator Service', () => {
             expect(result).toBeNull(); // 301 is considered valid
         });
 
-        it('should fallback to GET with Range header when HEAD returns 405', async () => {
-            // Mock fetch to return 405 on HEAD, then 200 on GET.
+        it('should validate with a single ranged GET using browser-like headers', async () => {
+            // No HEAD phase: too many hosts reject, lie about or hang on HEAD
+            // (educa.madrid answers HEAD with 404 while GET has the real status).
             let callCount = 0;
             const fetchImpl = (async (_url: string, options?: RequestInit) => {
                 callCount++;
-                if (options?.method === 'HEAD') {
-                    return mockResponse({ status: 405, ok: false });
-                }
-                // GET request with Range header
                 expect(options?.method).toBe('GET');
-                expect(options?.headers).toHaveProperty('Range', 'bytes=0-0');
+                expect(options?.headers).toMatchObject({ Range: 'bytes=0-0' });
+                expect(options?.headers).toHaveProperty('User-Agent');
                 return mockResponse({ status: 200, ok: true });
             }) as unknown as typeof fetch;
 
-            const result = await validateLink('https://example.com/head-not-allowed', {
+            const result = await validateLink('https://example.com/page', {
                 filesDir: tempDir,
                 timeout: 5000,
                 lookupFn: publicLookup,
                 fetchImpl,
             });
-            expect(result).toBeNull(); // Should be valid after GET fallback
-            expect(callCount).toBe(2); // HEAD then GET
+            expect(result).toBeNull();
+            expect(callCount).toBe(1);
         });
 
-        it('should return error when GET fallback also fails', async () => {
-            // Mock fetch to return 405 on HEAD, then 404 on GET.
-            const fetchImpl = (async (_url: string, options?: RequestInit) => {
-                if (options?.method === 'HEAD') {
-                    return mockResponse({ status: 405, ok: false });
-                }
-                return mockResponse({ status: 404, ok: false });
-            }) as unknown as typeof fetch;
+        it('should report the real status code on 404', async () => {
+            const fetchImpl = (async () => mockResponse({ status: 404, ok: false })) as unknown as typeof fetch;
 
             const result = await validateLink('https://example.com/not-found', {
                 filesDir: tempDir,
@@ -390,6 +383,69 @@ describe('Link Validator Service', () => {
                 fetchImpl,
             });
             expect(result).toBe('404');
+        });
+
+        it('should treat 416 as valid (zero-length resource cannot satisfy bytes=0-0)', async () => {
+            const fetchImpl = (async () => mockResponse({ status: 416, ok: false })) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/empty-file', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+        });
+
+        it('should cancel the response body without reading it', async () => {
+            let cancelled = false;
+            const fetchImpl = (async () => ({
+                ...mockResponse({ status: 200, ok: true }),
+                body: {
+                    cancel: async () => {
+                        cancelled = true;
+                    },
+                },
+            })) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/big-file', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+            expect(cancelled).toBe(true);
+        });
+
+        it('should report Timeout when the request times out', async () => {
+            const fetchImpl = (async () => {
+                const abortError = new Error('The operation was aborted');
+                abortError.name = 'AbortError';
+                throw abortError;
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/slow', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBe('Timeout');
+        });
+
+        it('should report a broken URL when the request fails with a network error', async () => {
+            const fetchImpl = (async () => {
+                throw new Error('The socket connection was closed unexpectedly');
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/dead', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBe('The socket connection was closed unexpectedly');
         });
 
         it('should block a host that resolves to a private/loopback address (SSRF guard)', async () => {
@@ -558,6 +614,25 @@ describe('Link Validator Service', () => {
 
             // All 7 links should be processed
             expect(results).toHaveLength(7);
+        });
+    });
+
+    describe('classifyHttpStatus', () => {
+        it('should treat 2xx and 3xx as valid', () => {
+            expect(classifyHttpStatus(200)).toBeNull();
+            expect(classifyHttpStatus(204)).toBeNull();
+            expect(classifyHttpStatus(301)).toBeNull();
+            expect(classifyHttpStatus(302)).toBeNull();
+            expect(classifyHttpStatus(303)).toBeNull();
+        });
+
+        it('should treat 416 as valid (zero-length resource cannot satisfy bytes=0-0)', () => {
+            expect(classifyHttpStatus(416)).toBeNull();
+        });
+
+        it('should report 4xx/5xx as the status string', () => {
+            expect(classifyHttpStatus(404)).toBe('404');
+            expect(classifyHttpStatus(500)).toBe('500');
         });
     });
 

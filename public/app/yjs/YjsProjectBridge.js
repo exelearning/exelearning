@@ -3426,6 +3426,7 @@ class YjsProjectBridge {
             }, trace);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
           }
+          this.assetManager?.markAssetsSavedLocally?.();
           return { saved: true };
         } else {
           this.finalizeElpxExportTrace('error', {
