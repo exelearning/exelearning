@@ -15663,23 +15663,23 @@
       </trans-unit>
       <trans-unit id="bz6yh80" resname="Not checked automatically: open the link to review it">
         <source>Not checked automatically: open the link to review it</source>
-        <target>~Ne kontrolita aŭtomate</target>
+        <target>~Ne kontrolita aŭtomate; malfermu por kontroli</target>
       </trans-unit>
       <trans-unit id="87ozze8" resname="Local or private address: open the link to review it manually">
         <source>Local or private address: open the link to review it manually</source>
-        <target>~Loka aŭ privata adreso</target>
+        <target>~Loka aŭ privata adreso; malfermu por kontroli</target>
       </trans-unit>
       <trans-unit id="x1u7s0c" resname="Redirects to another site — open the link to verify it">
         <source>Redirects to another site — open the link to verify it</source>
-        <target>~Alidirektas al alia retejo</target>
+        <target>~Alidirektas al alia retejo; malfermu por kontroli</target>
       </trans-unit>
       <trans-unit id="jftz7f6" resname="Could not be fully verified: open the link to confirm it">
         <source>Could not be fully verified: open the link to confirm it</source>
-        <target>~Nekompleta kontrolo</target>
+        <target>~Nekompleta kontrolo; malfermu por kontroli</target>
       </trans-unit>
       <trans-unit id="rusuym5" resname="Redirects could not be followed: open the link to review it">
         <source>Redirects could not be followed: open the link to review it</source>
-        <target>~Ne eblis sekvi la alidirektojn</target>
+        <target>~Ne eblis sekvi la alidirektojn; malfermu por kontroli</target>
       </trans-unit>
     </body>
   </file>

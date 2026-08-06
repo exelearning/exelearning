@@ -15663,23 +15663,23 @@
       </trans-unit>
       <trans-unit id="z9nay5a" resname="Not checked automatically: open the link to review it">
         <source>Not checked automatically: open the link to review it</source>
-        <target>~Non comprobado automaticamente</target>
+        <target>~Non comprobado automaticamente; abrir para revisar</target>
       </trans-unit>
       <trans-unit id="2p1vzdt" resname="Local or private address: open the link to review it manually">
         <source>Local or private address: open the link to review it manually</source>
-        <target>~Enderezo local ou privado</target>
+        <target>~Enderezo local ou privado; abrir para revisar</target>
       </trans-unit>
       <trans-unit id="bj39iok" resname="Redirects to another site — open the link to verify it">
         <source>Redirects to another site — open the link to verify it</source>
-        <target>~Redirixe a outro sitio</target>
+        <target>~Redirixe a outro sitio; abrir para revisar</target>
       </trans-unit>
       <trans-unit id="rt4ldg3" resname="Could not be fully verified: open the link to confirm it">
         <source>Could not be fully verified: open the link to confirm it</source>
-        <target>~Verificación incompleta</target>
+        <target>~Verificación incompleta; abrir para revisar</target>
       </trans-unit>
       <trans-unit id="3pyi6wu" resname="Redirects could not be followed: open the link to review it">
         <source>Redirects could not be followed: open the link to review it</source>
-        <target>~Non se puideron seguir as redireccións</target>
+        <target>~Non se puideron seguir as redireccións; abrir para revisar</target>
       </trans-unit>
     </body>
   </file>

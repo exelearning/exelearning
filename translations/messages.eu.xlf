@@ -15663,23 +15663,23 @@
       </trans-unit>
       <trans-unit id="6kzqbc9" resname="Not checked automatically: open the link to review it">
         <source>Not checked automatically: open the link to review it</source>
-        <target>~Ez da automatikoki egiaztatu</target>
+        <target>~Ez da automatikoki egiaztatu; ireki berrikusteko</target>
       </trans-unit>
       <trans-unit id="m4ta5pp" resname="Local or private address: open the link to review it manually">
         <source>Local or private address: open the link to review it manually</source>
-        <target>~Helbide lokala edo pribatua</target>
+        <target>~Helbide lokala edo pribatua; ireki berrikusteko</target>
       </trans-unit>
       <trans-unit id="xgf171h" resname="Redirects to another site — open the link to verify it">
         <source>Redirects to another site — open the link to verify it</source>
-        <target>~Beste gune batera birbideratzen du</target>
+        <target>~Beste gune batera birbideratzen du; ireki berrikusteko</target>
       </trans-unit>
       <trans-unit id="8jhwdio" resname="Could not be fully verified: open the link to confirm it">
         <source>Could not be fully verified: open the link to confirm it</source>
-        <target>~Egiaztapen osatugabea</target>
+        <target>~Egiaztapen osatugabea; ireki berrikusteko</target>
       </trans-unit>
       <trans-unit id="hmcqtin" resname="Redirects could not be followed: open the link to review it">
         <source>Redirects could not be followed: open the link to review it</source>
-        <target>~Ezin izan dira birbideratzeak jarraitu</target>
+        <target>~Ezin izan dira birbideratzeak jarraitu; ireki berrikusteko</target>
       </trans-unit>
     </body>
   </file>

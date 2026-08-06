@@ -15663,23 +15663,23 @@
       </trans-unit>
       <trans-unit id="zf0ku04" resname="Not checked automatically: open the link to review it">
         <source>Not checked automatically: open the link to review it</source>
-        <target>~Neverificat automat</target>
+        <target>~Neverificat automat; deschideți pentru verificare</target>
       </trans-unit>
       <trans-unit id="y8542f9" resname="Local or private address: open the link to review it manually">
         <source>Local or private address: open the link to review it manually</source>
-        <target>~Adresă locală sau privată</target>
+        <target>~Adresă locală sau privată; deschideți pentru verificare</target>
       </trans-unit>
       <trans-unit id="klqips2" resname="Redirects to another site — open the link to verify it">
         <source>Redirects to another site — open the link to verify it</source>
-        <target>~Redirecționează către alt site</target>
+        <target>~Redirecționează către alt site; deschideți pentru verificare</target>
       </trans-unit>
       <trans-unit id="pkgrpn8" resname="Could not be fully verified: open the link to confirm it">
         <source>Could not be fully verified: open the link to confirm it</source>
-        <target>~Verificare incompletă</target>
+        <target>~Verificare incompletă; deschideți pentru verificare</target>
       </trans-unit>
       <trans-unit id="mliqr0z" resname="Redirects could not be followed: open the link to review it">
         <source>Redirects could not be followed: open the link to review it</source>
-        <target>~Redirecționările nu au putut fi urmărite</target>
+        <target>~Redirecționările nu au putut fi urmărite; deschideți pentru verificare</target>
       </trans-unit>
     </body>
   </file>
