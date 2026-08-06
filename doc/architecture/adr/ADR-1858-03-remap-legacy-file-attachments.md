@@ -1,8 +1,10 @@
 ---
-id: ADR-0037
+id: ADR-1858-03
 title: "Remap legacy File Attachment iDevices to file-attachment instead of text"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1858
+legacy_id: ADR-0037
 deciders:
   - "@erseco"
 reviewers:
@@ -10,10 +12,9 @@ reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  issues: [1858]
   prs: [2011]
-  sdds: [SDD-0009]
-  adrs: [ADR-0035, ADR-0036, ADR-0038]
+  changes: ["1858-file-attachment-restoration"]
+  adrs: [ADR-1858-01, ADR-1858-02, ADR-1858-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,11 +22,7 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0037: Remap legacy File Attachment iDevices to file-attachment instead of text
-
-## Status
-
-Proposed
+# ADR-1858-03: Remap legacy File Attachment iDevices to file-attachment instead of text
 
 ## Context
 
@@ -36,7 +33,7 @@ attachments with the Python-era classes
 `exe.engine.attachmentidevice.AttachmentIdevice`. On the 4.x import path these
 were caught by the generic text-based iDevice list and converted to `text`,
 throwing away the download semantics, the per-file description, and the attachment
-structure — the very regression ADR-0035 restores the iDevice for.
+structure — the very regression ADR-1858-01 restores the iDevice for.
 
 The importer already has a handler-registry pattern: `LegacyHandlerRegistry`
 selects a handler by legacy class name (first match wins, `DefaultHandler` last),
@@ -56,8 +53,8 @@ import pipeline must that mapping be changed so they no longer degrade to `text`
 
 - **Do not lose existing content** (AGENTS.md philosophy): imported attachments
   must keep their files, instructions and per-file descriptions.
-- **Feature parity with the restored iDevice** (ADR-0035): imported state must
-  match the `file-attachment` JSON shape (ADR-0036).
+- **Feature parity with the restored iDevice** (ADR-1858-01): imported state must
+  match the `file-attachment` JSON shape (ADR-1858-02).
 - **Single, unambiguous mapping**: the class must not be simultaneously claimed by
   the `text` path and a dedicated handler.
 - **Preserve legacy author intent**: the legacy per-file description was shown as
@@ -94,7 +91,7 @@ Route legacy attachments to the existing `download-source-file` iDevice.
 - Pros: an existing "download" type.
 - Cons: semantic mismatch (that iDevice downloads the whole exported source
   package, htmlView-only, no per-file list) — same reason it was rejected for the
-  authoring surface in ADR-0035.
+  authoring surface in ADR-1858-01.
 
 ## Evidence
 
@@ -107,7 +104,7 @@ All paths verified on the PR #2011 branch.
   `extractProperties()` returns `{ intro, showDescriptions, attachments }`;
   `toAttachment()` maps the legacy `fileDescription` (or display name) to the
   modern `title` and emits `url: "resources/<filename>"` (rewritten to `asset://`
-  by the importer, per ADR-0036); `extractShowDesc()` defaults to `true`.
+  by the importer, per ADR-1858-02); `extractShowDesc()` defaults to `true`.
 - Registry: `src/shared/import/legacy-handlers/HandlerRegistry.ts` —
   `LEGACY_TYPE_MAP` maps `FileAttachIdevice`, `FileAttachIdeviceInc`,
   `AttachmentIdevice` → `'file-attachment'`; `FileAttachHandler` is registered in
@@ -136,7 +133,7 @@ All paths verified on the PR #2011 branch.
 We will import legacy `FileAttachIdevice`, `FileAttachIdeviceInc` and
 `AttachmentIdevice` components as the modern `file-attachment` iDevice via a
 dedicated `FileAttachHandler`. The handler builds the JSON shape defined in
-ADR-0036, mapping the legacy per-file description to the attachment `title` and
+ADR-1858-02, mapping the legacy per-file description to the attachment `title` and
 defaulting `showDescriptions` to `true`. The three classes are mapped in
 `LEGACY_TYPE_MAP`, the handler is registered ahead of `FreeTextHandler`, and the
 classes are removed from `LegacyXmlParser`'s `textBasedIdevices` list so they are
@@ -149,7 +146,7 @@ no longer routed to `text`.
 - Legacy attachment content survives import with files, instructions,
   visibility intent, and description→title mapping intact.
 - Imported components use the restored iDevice and immediately benefit from its
-  rendering, export rewrite, and resilience behaviour (ADR-0036, ADR-0038).
+  rendering, export rewrite, and resilience behaviour (ADR-1858-02, ADR-1858-04).
 - Covered by unit + integration tests, reducing regression risk on future import
   changes.
 
@@ -194,8 +191,8 @@ no longer routed to `text`.
 
 ## References
 
-- Issue #1858, PR #2011, SDD-0009.
-- ADR-0035 (iDevice restoration), ADR-0036 (reference model), ADR-0038
+- Issue #1858, PR #2011, the #1858 change design.
+- ADR-1858-01 (iDevice restoration), ADR-1858-02 (reference model), ADR-1858-04
   (resilience/accessibility).
 - `src/shared/import/legacy-handlers/FileAttachHandler.ts`,
   `src/shared/import/legacy-handlers/HandlerRegistry.ts`,

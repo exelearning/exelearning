@@ -101,6 +101,11 @@ class AssetManager {
     // Yjs bridge reference (set externally) - source of truth for metadata
     this.yjsBridge = null;
 
+    // Assets included in the latest successful local ELPX/folder save. These
+    // remain uploaded=false because no server upload occurred, but they are no
+    // longer unsaved from the user's point of view.
+    this.locallySavedAssetIds = new Set();
+
     // Cache API persistence may be unavailable under custom schemes such as
     // app:// in Electron. Disable repeated attempts after the first hard failure
     // to avoid thousands of slow exceptions during large imports.
@@ -612,6 +617,9 @@ class AssetManager {
       }
     }
     assetsMap.set(assetId, entry);
+    if (metadata.uploaded !== true) {
+      this.locallySavedAssetIds.delete(assetId);
+    }
     Logger.log(`[AssetManager] Set metadata for ${assetId.substring(0, 8)}... in Yjs`);
   }
 
@@ -713,6 +721,7 @@ class AssetManager {
     const assetsMap = this.getAssetsYMap();
     if (!assetsMap) return;
     assetsMap.delete(assetId);
+    this.locallySavedAssetIds.delete(assetId);
     Logger.log(`[AssetManager] Deleted metadata for ${assetId.substring(0, 8)}... from Yjs`);
   }
 
@@ -2997,6 +3006,7 @@ class AssetManager {
       ...metadata,
       uploaded: true
     });
+    this.locallySavedAssetIds.delete(id);
 
     // Evict from memory cache - blob is safely on server + Cache API
     this.releaseUploadedBlob(id);
@@ -5829,7 +5839,7 @@ class AssetManager {
     // blobs may have been evicted from blobCache to save memory.
     const allMetadata = this.getAllAssetsMetadata();
     for (const meta of allMetadata) {
-      if (!meta.uploaded) {
+      if (!meta.uploaded && !this.locallySavedAssetIds.has(meta.id)) {
         return true;
       }
     }
@@ -5844,11 +5854,23 @@ class AssetManager {
     const allMetadata = this.getAllAssetsMetadata();
     let count = 0;
     for (const meta of allMetadata) {
-      if (!meta.uploaded) {
+      if (!meta.uploaded && !this.locallySavedAssetIds.has(meta.id)) {
         count++;
       }
     }
     return count;
+  }
+
+  /**
+   * Record that every current asset was included in a completed local save.
+   * This does not claim that assets were uploaded to a server.
+   */
+  markAssetsSavedLocally() {
+    this.locallySavedAssetIds = new Set(
+      this.getAllAssetsMetadata()
+        .filter(meta => !meta.uploaded)
+        .map(meta => meta.id)
+    );
   }
 }
 

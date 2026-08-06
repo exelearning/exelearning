@@ -1,6 +1,15 @@
 # mkdocs.yml
 site_name: eXeLearning Docs
 docs_dir: doc
+
+# Architecture decision records and change documents are contributor-facing.
+# They live in the repository and are read on GitHub or with
+# `make architecture-records`; publishing them to the user docs site adds noise
+# without adding value.
+exclude_docs: |
+  architecture/adr/
+  architecture/changes/
+  architecture/migration-map.md
 repo_url: https://github.com/exelearning/exelearning
 edit_uri: edit/main/doc/
 
@@ -30,12 +39,6 @@ nav:
   - "Deploy: Sample Configs": deploy/README.md
   - Architecture:
       - Overview: architecture.md
-      - Architecture Decision Records: architecture/adr/README.md
-      - ADR Index: architecture/adr/records.md
-      - ADR Template: architecture/adr/ADR-0000-template.md
-      - Software Design Documents: architecture/sdd/README.md
-      - SDD Index: architecture/sdd/records.md
-      - SDD Template: architecture/sdd/SDD-0000-template.md
   - Conventions: conventions.md
   - Development:
       - Environment: development/environment.md
