@@ -15681,6 +15681,18 @@
         <source>Redirects could not be followed: open the link to review it</source>
         <target>No se han podido seguir las redirecciones; abrir para revisar</target>
       </trans-unit>
+      <trans-unit id="t0fqkmh" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~y %1 más</target>
+      </trans-unit>
+      <trans-unit id="rcsvykh" resname="Missing files">
+        <source>Missing files</source>
+        <target>Archivos que faltan</target>
+      </trans-unit>
+      <trans-unit id="im812rj" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>Estas actividades hacen referencia a archivos que no están en el contenido importado. Se han conservado las referencias. Si vuelves a añadir los archivos, el contenido volverá a estar completo.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
