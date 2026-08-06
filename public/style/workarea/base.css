@@ -757,6 +757,14 @@ html:not(.mode-teacher) .js .teacher-only {
     font-size: 0.95em;
 }
 
+/* Footer with neither license nor "Page footer" content: themes give #siteFooter
+   a background and border, so an empty one shows as a stray bar. Hidden here so
+   every theme (including custom ones) gets it, and so a theme that wants to keep
+   showing it can opt out by overriding display. */
+#siteFooter.siteFooter-empty {
+    display: none;
+}
+
 /* Skip navigation link */
 #skipNav {
     position: fixed;
