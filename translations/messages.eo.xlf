@@ -15681,6 +15681,18 @@
         <source>Redirects could not be followed: open the link to review it</source>
         <target>~Ne eblis sekvi la alidirektojn; malfermu por kontroli</target>
       </trans-unit>
+      <trans-unit id="hpobut5" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~kaj %1 pli</target>
+      </trans-unit>
+      <trans-unit id="41ib2vk" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Mankantaj dosieroj</target>
+      </trans-unit>
+      <trans-unit id="ued0rzd" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Ĉi tiuj agadoj referencas dosierojn, kiuj ne estas inkluzivitaj en la importita pakaĵo. La referencoj estas konservitaj, do realdono de la dosieroj restarigos ilin.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
