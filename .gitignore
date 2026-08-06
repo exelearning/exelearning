@@ -29,6 +29,13 @@
 #!/public/files/perm/odes/.gitkeep
 #!/public/files/tmp/.gitkeep
 ###< files ###
+
+###> architecture records ###
+# Derived index, produced on demand by `make architecture-records`. Never commit
+# it: a generated file in git conflicts on every concurrent branch.
+doc/architecture/adr/records.md
+doc/architecture/changes/records.md
+###< architecture records ###
 /data
 vendor
 

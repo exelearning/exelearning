@@ -437,10 +437,21 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests
+lint: check-bun lint-ts lint-js lint-tests architecture-check
 
 .PHONY: fix
 fix: check-bun fix-ts fix-js fix-tests
+
+# Print the architecture record index, derived from document frontmatter.
+# Deliberately not a committed file: it would conflict on every concurrent branch.
+.PHONY: architecture-records
+architecture-records: check-bun
+	@bun run scripts/architecture-records.mts list
+
+# Validate architecture record identifiers, metadata and cross-references.
+.PHONY: architecture-check
+architecture-check: check-bun
+	bun run scripts/architecture-records.mts check
 
 # Lint TypeScript source files (src/)
 .PHONY: lint-ts
