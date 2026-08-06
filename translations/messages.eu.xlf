@@ -15681,6 +15681,18 @@
         <source>Redirects could not be followed: open the link to review it</source>
         <target>~Ezin izan dira birbideratzeak jarraitu; ireki berrikusteko</target>
       </trans-unit>
+      <trans-unit id="jqq60ty" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~eta beste %1</target>
+      </trans-unit>
+      <trans-unit id="02ry0db" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Falta diren fitxategiak</target>
+      </trans-unit>
+      <trans-unit id="sj7jfai" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Jarduera hauek inportatutako paketean sartuta ez dauden fitxategiei egiten diete erreferentzia. Erreferentziak gorde egin dira, beraz, fitxategiak berriro gehitzean leheneratuko dira.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

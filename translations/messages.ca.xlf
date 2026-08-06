@@ -15681,6 +15681,18 @@
         <source>Redirects could not be followed: open the link to review it</source>
         <target>~No s’han pogut seguir les redireccions; obrir per revisar</target>
       </trans-unit>
+      <trans-unit id="7xpdvd3" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~i %1 més</target>
+      </trans-unit>
+      <trans-unit id="rwfxiot" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Fitxers que falten</target>
+      </trans-unit>
+      <trans-unit id="qx81u52" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Aquestes activitats fan referència a fitxers que no s'inclouen en el paquet importat. S'han conservat les referències, de manera que en tornar a afegir els fitxers es restauraran.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

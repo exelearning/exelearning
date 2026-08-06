@@ -15681,6 +15681,18 @@
         <source>Redirects could not be followed: open the link to review it</source>
         <target>~Redirecționările nu au putut fi urmărite; deschideți pentru verificare</target>
       </trans-unit>
+      <trans-unit id="sggcaxs" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~și încă %1</target>
+      </trans-unit>
+      <trans-unit id="j74ftlu" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Fișiere lipsă</target>
+      </trans-unit>
+      <trans-unit id="nxr31oi" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Aceste activități fac referire la fișiere care nu sunt incluse în pachetul importat. Referințele au fost păstrate, așa că adăugarea din nou a fișierelor le va restaura.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
