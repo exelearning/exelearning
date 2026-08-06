@@ -1,8 +1,10 @@
 ---
-id: ADR-0036
+id: ADR-1858-02
 title: "Store attachments as stable asset:// references with render-at-view-time export rewrite"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1858
+legacy_id: ADR-0036
 deciders:
   - "@erseco"
 reviewers:
@@ -10,10 +12,9 @@ reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  issues: [1858]
   prs: [2011]
-  sdds: [SDD-0009]
-  adrs: [ADR-0035, ADR-0037, ADR-0038]
+  changes: ["1858-file-attachment-restoration"]
+  adrs: [ADR-1858-01, ADR-1858-03, ADR-1858-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,15 +22,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0036: Store attachments as stable asset:// references with render-at-view-time export rewrite
-
-## Status
-
-Proposed
+# ADR-1858-02: Store attachments as stable asset:// references with render-at-view-time export rewrite
 
 ## Context
 
-The restored `file-attachment` iDevice (ADR-0035) is a JSON iDevice: its state
+The restored `file-attachment` iDevice (ADR-1858-01) is a JSON iDevice: its state
 lives in `jsonProperties` inside the Y.Doc, and its downloadable files are binary
 assets that must survive editing, preview, real-time collaboration, ELPX
 round-trips, and export to HTML5/SCORM/EPUB. eXeLearning already has one canonical
@@ -62,7 +59,7 @@ of those stages?
   and export rewrite that images already rely on (single source of truth).
 - **Small document state**: keep binaries out of the Y.Doc.
 - **Offline/resilient rendering**: attachments should still show a filename and
-  size even if the live asset cannot be resolved (see ADR-0038).
+  size even if the live asset cannot be resolved (see ADR-1858-04).
 - **Export correctness**: the download link must point at a packaged file in the
   exported HTML5/SCORM/EPUB output.
 
@@ -113,7 +110,7 @@ Embed the file in the component state.
 - Pros: fully self-contained.
 - Cons: bloats the Y.Doc and every snapshot, breaks asset de-duplication, and
   contradicts the "binaries live in the Media Library" architecture. Rejected in
-  ADR-0035 as well.
+  ADR-1858-01 as well.
 
 ## Evidence
 
@@ -175,7 +172,7 @@ never stores file bytes.
   specific to attachments beyond emitting `asset://` links.
 - Document state stays small; assets de-duplicate via the Media Library.
 - The metadata snapshot lets the iDevice render a filename and size even when the
-  live asset cannot be resolved (basis for ADR-0038).
+  live asset cannot be resolved (basis for ADR-1858-04).
 
 ### Negative
 
@@ -184,7 +181,7 @@ never stores file bytes.
   "resolve before use" obligation the image pipeline already carries.
 - The metadata snapshot can drift from the live asset (e.g. after a rename by
   another collaborator); the edition code reconciles it against the live asset map
-  (ADR-0038), but a stale snapshot may persist until reconciliation runs.
+  (ADR-1858-04), but a stale snapshot may persist until reconciliation runs.
 
 ### Neutral
 
@@ -198,10 +195,10 @@ never stores file bytes.
   `assetExportPathMap` lacks the UUID, the rewrite leaves the original `asset://`
   link, producing a non-working download in the export. Mitigation: the same map
   drives image export and is populated for all packaged assets; missing assets
-  additionally fall back to the placeholder rendering in ADR-0038.
+  additionally fall back to the placeholder rendering in ADR-1858-04.
 - **Snapshot/asset divergence** (medium likelihood, low severity): filename/size
   shown may lag the live asset. Mitigation: `refreshRowFromAsset()` reconciliation
-  (ADR-0038).
+  (ADR-1858-04).
 
 ## Validation
 
@@ -221,8 +218,8 @@ never stores file bytes.
 
 ## References
 
-- Issue #1858, PR #2011, SDD-0009.
-- ADR-0035 (iDevice restoration), ADR-0037 (legacy remap), ADR-0038 (resilience).
+- Issue #1858, PR #2011, the #1858 change design.
+- ADR-1858-01 (iDevice restoration), ADR-1858-03 (legacy remap), ADR-1858-04 (resilience).
 - `src/shared/export/renderers/IdeviceRenderer.ts`,
   `src/shared/export/interfaces.ts`.
 - `src/shared/import/ElpxImporter.ts`, `public/app/yjs/ComponentImporter.js`.
