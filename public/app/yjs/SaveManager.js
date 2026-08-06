@@ -758,26 +758,9 @@ class SaveManager {
       }
     };
 
-    const onBatchComplete = async (data) => {
-      const { uploaded, failed, results } = data;
+    const onBatchComplete = (data) => {
+      const { uploaded, failed } = data;
       Logger.log(`[SaveManager] Session batch complete: ${uploaded} uploaded, ${failed} failed`);
-
-      // Mark successful uploads
-      for (const result of results) {
-        if (result.success) {
-          try {
-            await this.sampleSaveMemory('save:session-batch:before-mark-uploaded', {
-              assetId: result.clientId,
-            });
-            await assetManager.markAssetUploaded(result.clientId);
-            await this.sampleSaveMemory('save:session-batch:after-mark-uploaded', {
-              assetId: result.clientId,
-            });
-          } catch (err) {
-            console.warn(`[SaveManager] Failed to mark asset uploaded: ${result.clientId}`, err);
-          }
-        }
-      }
     };
 
     // Register listeners
@@ -900,6 +883,22 @@ class SaveManager {
           `[SaveManager] Session batch ${chunkIndex + 1}/${chunks.length} complete:`,
           result
         );
+
+        const successfulResults = Array.isArray(result.results)
+          ? result.results.filter(assetResult => assetResult.success)
+          : result.failed === 0 && result.uploaded === chunk.length
+            ? chunk.map(asset => ({ clientId: asset.id, success: true }))
+            : [];
+
+        for (const assetResult of successfulResults) {
+          await this.sampleSaveMemory('save:session-batch:before-mark-uploaded', {
+            assetId: assetResult.clientId,
+          });
+          await assetManager.markAssetUploaded(assetResult.clientId);
+          await this.sampleSaveMemory('save:session-batch:after-mark-uploaded', {
+            assetId: assetResult.clientId,
+          });
+        }
 
         // Update cumulative counters for next batch's progress display
         cumulativeUploaded += result.uploaded || 0;
@@ -1250,7 +1249,18 @@ class SaveManager {
               toast.toastBody.innerHTML = _('Uploading assets...');
             }
             // Pass metadata directly — upload methods load blobs per-batch to avoid memory spike
-            await this.uploadAssets(projectId, assetManager, pendingAssetsMetadata, toast, progressTracker);
+            const uploadResult = await this.uploadAssets(
+              projectId,
+              assetManager,
+              pendingAssetsMetadata,
+              toast,
+              progressTracker
+            );
+            if (uploadResult.failed > 0 || uploadResult.uploaded !== pendingAssetsMetadata.length) {
+              throw new Error(
+                `Failed to upload ${uploadResult.failed || pendingAssetsMetadata.length - uploadResult.uploaded} asset(s)`
+              );
+            }
           } else {
             Logger.log('[SaveManager] Step 2: No pending assets to upload');
           }
@@ -1258,6 +1268,7 @@ class SaveManager {
           // Log the actual error for debugging
           console.error('[SaveManager] Step 2: Asset error:', assetError);
           console.error('[SaveManager] AssetManager projectId:', assetManager.projectId, 'type:', typeof assetManager.projectId);
+          throw assetError;
         }
       } else {
         Logger.log('[SaveManager] Step 2: AssetManager not initialized, skipping asset upload');
