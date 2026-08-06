@@ -5,10 +5,11 @@
 ### Added
 
 - New File Attachment iDevice for attaching one or more files to a page
-- Slide iDevice: added keyboard undo/redo, multi-object selection and fine positioning with the keyboard
 - GeoGebra iDevice: width and height controls are now available in General Settings
-- Link Validator: improved link validation with more reliable results
 - LOMLOE iDevice: added official curriculum dataset for Euskadi / País Vasco (ES-PV)
+- Slide iDevice: added keyboard undo/redo, multi-object selection and fine positioning with the keyboard
+- Link Validator: improved link validation with more reliable results
+- Import: activities with missing asset files now report the affected references
 - Reviewed and completed Spanish (ES) translation
 - Added automated placeholder translations for new strings in incomplete translations
 
