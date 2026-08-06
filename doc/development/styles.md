@@ -131,6 +131,32 @@ Example:
 
 ---
 
+## Empty Site Footer
+
+Every page ends with `<footer id="siteFooter">`, which holds the license and the
+content of the **Page footer** project property. When a project has neither — no
+license to display (empty, *propietary* or *not appropriate*) and a **Page footer**
+that is empty or whitespace only — the footer is rendered with an extra class:
+
+```html
+<footer id="siteFooter" class="siteFooter-empty"><div id="siteFooterContent"></div></footer>
+```
+
+`content/css/base.css` hides those footers, so a theme that gives `#siteFooter` a
+background, border or padding does not show a stray empty bar.
+
+The element stays in the DOM on purpose: a theme that wants to keep showing the
+footer area even when it is empty (a decorative bottom band, for instance) can opt
+out with a rule of equal or higher specificity:
+
+```css
+#siteFooter.siteFooter-empty {
+    display: block;
+}
+```
+
+---
+
 ## JavaScript in Styles
 
 You can use jQuery (already included in exported content).  

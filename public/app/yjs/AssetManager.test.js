@@ -2525,6 +2525,33 @@ describe('AssetManager', () => {
 
       expect(assetManager.hasUnsavedAssets()).toBe(true);
     });
+
+    it('returns false after pending assets are included in a successful local save', () => {
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test.jpg',
+        uploaded: false,
+      });
+
+      assetManager.markAssetsSavedLocally();
+
+      expect(assetManager.hasUnsavedAssets()).toBe(false);
+      expect(mockYjsBridge._assetsMap.get('asset-1').uploaded).toBe(false);
+    });
+
+    it('returns true again when a locally saved asset is modified', () => {
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test.jpg',
+        uploaded: false,
+      });
+      assetManager.markAssetsSavedLocally();
+
+      assetManager.setAssetMetadata('asset-1', {
+        filename: 'renamed.jpg',
+        uploaded: false,
+      });
+
+      expect(assetManager.hasUnsavedAssets()).toBe(true);
+    });
   });
 
   describe('getUnsavedAssetCount', () => {
