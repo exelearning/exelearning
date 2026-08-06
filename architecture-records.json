@@ -1,0 +1,10 @@
+{
+  "records_dir": "doc/architecture/adr",
+  "changes_dir": "doc/architecture/changes",
+  "legacy_allowlist": [
+    "doc/architecture/migration-map.md",
+    "doc/architecture/adr/ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md",
+    "doc/architecture/changes/2232-issue-based-architecture-identifiers/",
+    "scripts/architecture-records.spec.ts"
+  ]
+}

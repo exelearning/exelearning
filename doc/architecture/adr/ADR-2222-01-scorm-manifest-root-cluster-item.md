@@ -1,17 +1,16 @@
 ---
-id: ADR-0043
+id: ADR-2222-01
 title: "Wrap every exported page in a root cluster item in SCORM/IMS manifests"
 status: Proposed
 date: 2026-08-06
+tracking_issue: 2222
 deciders:
   - "@mnarvaezm"
 reviewers:
   - "@erseco"
 related:
-  issues:
-    - "#2222"
   prs: []
-  sdds: []
+  changes: []
   adrs: []
 supersedes: []
 superseded_by: []
@@ -20,11 +19,7 @@ ai_assistance:
   model: "Claude Opus 5"
 ---
 
-# ADR-0043: Wrap every exported page in a root cluster item in SCORM/IMS manifests
-
-## Status
-
-Proposed
+# ADR-2222-01: Wrap every exported page in a root cluster item in SCORM/IMS manifests
 
 ## Context
 

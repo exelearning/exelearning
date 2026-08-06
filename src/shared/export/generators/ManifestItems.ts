@@ -30,7 +30,7 @@
  * Wrapping the whole outline in one non-launchable cluster `<item>` restores
  * sibling navigation in stock `mod_scorm` while keeping the authored hierarchy
  * intact (`Home` stays a sibling of `Topic 1`, not its parent). See
- * ADR-0043.
+ * ADR-2222-01.
  */
 
 import type { ExportPage } from '../interfaces';

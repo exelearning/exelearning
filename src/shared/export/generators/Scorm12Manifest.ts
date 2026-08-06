@@ -198,7 +198,7 @@ export class Scorm12ManifestGenerator {
      * Generate item elements for pages in hierarchical structure.
      *
      * All pages hang from a single non-launchable root cluster item — see
-     * {@link generateManifestItems} and ADR-0043 for why Moodle's stock
+     * {@link generateManifestItems} and ADR-2222-01 for why Moodle's stock
      * `mod_scorm` needs it (exelearning/exelearning#2222).
      *
      * @returns Items XML

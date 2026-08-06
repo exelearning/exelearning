@@ -9,7 +9,7 @@ import { gotoWorkarea, waitForAppReady } from '../helpers/workarea-helpers';
  * `parentscoid`, and top-level `<item>` elements never get one. Exporting the
  * outline as several top-level items therefore killed `#nav_skipnext` /
  * `#nav_skipprev` for every top-level page. Every page must hang from a single
- * non-launchable root cluster item instead — see ADR-0043.
+ * non-launchable root cluster item instead — see ADR-2222-01.
  */
 
 type ManifestItem = {
