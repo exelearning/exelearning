@@ -1,8 +1,10 @@
 ---
-id: ADR-0038
+id: ADR-1858-04
 title: "Missing-asset resilience and accessibility strategy for attachments"
 status: Proposed
 date: 2026-07-09
+tracking_issue: 1858
+legacy_id: ADR-0038
 deciders:
   - "@erseco"
 reviewers:
@@ -10,10 +12,9 @@ reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  issues: [1858]
   prs: [2011]
-  sdds: [SDD-0009]
-  adrs: [ADR-0035, ADR-0036, ADR-0037]
+  changes: ["1858-file-attachment-restoration"]
+  adrs: [ADR-1858-01, ADR-1858-02, ADR-1858-03]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,15 +22,11 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# ADR-0038: Missing-asset resilience and accessibility strategy for attachments
-
-## Status
-
-Proposed
+# ADR-1858-04: Missing-asset resilience and accessibility strategy for attachments
 
 ## Context
 
-Because attachments are stored as `asset://` references (ADR-0036) rather than
+Because attachments are stored as `asset://` references (ADR-1858-02) rather than
 embedded bytes, the referenced binary can legitimately be *absent* at several
 points: an author (or a collaborator) deletes or renames the file in the Media
 Library while the iDevice is open; a legacy `.elp` is imported whose `resources/`
@@ -288,7 +285,7 @@ from export code.
 
 ## References
 
-- Issue #1858, PR #2011, SDD-0009.
+- Issue #1858, PR #2011, the #1858 change design.
 - WCAG 2.2 SC 3.2.5 *Change on Request*
   (<https://www.w3.org/WAI/WCAG22/Understanding/change-on-request.html>),
   technique G200 *Opening new windows and tabs from a link only when necessary*
@@ -303,7 +300,7 @@ from export code.
   (<https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe#sandbox>).
 - Electron `window.open` — `target="_blank"` creates a new `BrowserWindow` subject
   to `setWindowOpenHandler` (<https://www.electronjs.org/docs/latest/api/window-open>).
-- ADR-0035 (iDevice restoration), ADR-0036 (reference model), ADR-0037 (legacy
+- ADR-1858-01 (iDevice restoration), ADR-1858-02 (reference model), ADR-1858-03 (legacy
   remap).
 - `public/files/perm/idevices/base/file-attachment/edition/file-attachment.js`,
   `.../export/file-attachment.js`, `.../export/file-attachment.css`.

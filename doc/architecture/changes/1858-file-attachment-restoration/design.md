@@ -1,19 +1,18 @@
 ---
-id: SDD-0009
+tracking_issue: 1858
 title: "File Attachment iDevice Restoration"
-status: Implemented
+status: implemented
 date: 2026-07-09
+legacy_id: SDD-0009
 authors:
   - "@erseco"
 reviewers:
   - "@ignaciogros"
   - "@cristinavaldera"
   - "@mnunezcedec"
-related:
-  issues: [1858]
-  prs: [2011, 2149]
-  adrs: [ADR-0035, ADR-0036, ADR-0037, ADR-0038]
-  sdds: []
+implementation_prs: [2011]
+related_prs: [2149]
+related_adrs: [ADR-1858-01, ADR-1858-02, ADR-1858-03, ADR-1858-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -21,11 +20,12 @@ ai_assistance:
   model: "claude-opus-4-8"
 ---
 
-# SDD-0009: File Attachment iDevice Restoration
+# File Attachment iDevice Restoration — design
 
-## Status
-
-Implemented
+> Historical record. This document was written as `SDD-0009` and is preserved
+> whole as the design record for the [#1858](https://github.com/exelearning/exelearning/issues/1858)
+> change. See [`doc/architecture/changes/README.md`](../README.md) for the
+> current change-document model.
 
 ## Summary
 
@@ -111,9 +111,9 @@ Legacy import (src/shared/import/legacy-handlers/FileAttachHandler.ts)
     → ElpxImporter rewrites resources/<file> → asset://
 ```
 
-The reference/storage model is specified in ADR-0036; the legacy remap in
-ADR-0037; the resilience/accessibility behaviour in ADR-0038; the overall
-iDevice-restoration decision in ADR-0035.
+The reference/storage model is specified in ADR-1858-02; the legacy remap in
+ADR-1858-03; the resilience/accessibility behaviour in ADR-1858-04; the overall
+iDevice-restoration decision in ADR-1858-01.
 
 ## User experience
 
@@ -181,7 +181,7 @@ JSON-only iDevice):
 ```
 
 - `url` is the stable Media Library reference (`asset://<uuid>.<ext>`); the binary
-  asset is the source of truth (ADR-0036).
+  asset is the source of truth (ADR-1858-02).
 - `filename`/`mimeType`/`size` are a display + fallback snapshot; `size`/`mimeType`
   may be `0`/empty when the source does not provide them.
 - On export, `url` is rewritten to `content/resources/<exportPath>`. The full
@@ -190,7 +190,7 @@ JSON-only iDevice):
 ## Migration and compatibility
 
 - Legacy `FileAttachIdevice` / `FileAttachIdeviceInc` / `AttachmentIdevice` import
-  as `file-attachment` (ADR-0037); the legacy per-file `fileDescription` maps to
+  as `file-attachment` (ADR-1858-03); the legacy per-file `fileDescription` maps to
   the attachment `title`, `introHTML` to `intro`, `showDesc` to `showDescriptions`
   (default `true`).
 - Legacy `resources/<filename>` paths are rewritten to `asset://` by
@@ -214,7 +214,7 @@ JSON-only iDevice):
   AssetManager; the export rewrite only transforms `asset://`/`resources` forms. A
   hand-edited or hostile ELPX could carry a different scheme in `url` that would be
   emitted as an `href` — the normal Media Library flow never produces this, but the
-  iDevice does not itself enforce a scheme allow-list on `url`. See ADR-0038 for
+  iDevice does not itself enforce a scheme allow-list on `url`. See ADR-1858-04 for
   the full residual-risk statement.
 - No new PII, secrets, auth surface, or server endpoints are introduced; file
   storage remains the existing per-project Media Library asset store.
@@ -228,7 +228,7 @@ JSON-only iDevice):
   title/description panel uses `aria-expanded`; the instructions textarea has an
   `aria-label`.
 - Icons are dependency-free inline SVG (no icon font), so they render in every
-  export target. Details in ADR-0038.
+  export target. Details in ADR-1858-04.
 
 ## Internationalization
 
@@ -242,18 +242,18 @@ JSON-only iDevice):
   helpers do not exist in an exported site and must not be called from export code;
   the keys themselves are declared with `c_()` in
   `public/app/common/common_i18n.js`, which is resolved at build time. Details in
-  ADR-0038.
+  ADR-1858-04.
 - Per project policy, no `translations/**` files are added or edited by this
   work; string extraction is handled by a separate process (AGENTS.md §7.4).
 
 ## Performance
 
 - State stays small: only references + a metadata snapshot live in the Y.Doc;
-  binaries live once in the Media Library (no base64 bloat, ADR-0036).
+  binaries live once in the Media Library (no base64 bloat, ADR-1858-02).
 - Rendering is linear in the number of attachments; no per-attachment network
   calls beyond the AssetManager blob resolution already used for images.
 - The edition observer reconciles rows on Media Library asset-map changes; the
-  observer self-detaches on teardown to avoid leaks (ADR-0038).
+  observer self-detaches on teardown to avoid leaks (ADR-1858-04).
 
 ## Testing strategy
 
@@ -286,14 +286,14 @@ JSON-only iDevice):
 ## Risks and mitigations
 
 - **Internal-API drift** (AssetManager / File Manager): mitigated by a native
-  file-input fallback and defensive null-checks (ADR-0035).
+  file-input fallback and defensive null-checks (ADR-1858-01).
 - **Missing asset-change event**: mitigated by observing the shared Yjs assets map
-  with a self-detaching observer (ADR-0038); flagged as follow-up for a formal API.
+  with a self-detaching observer (ADR-1858-04); flagged as follow-up for a formal API.
 - **Legacy-shape coverage gaps**: mitigated by multi-strategy extraction in
-  `FileAttachHandler.extractFiles()` plus unit + integration tests (ADR-0037).
+  `FileAttachHandler.extractFiles()` plus unit + integration tests (ADR-1858-03).
 - **Broken export links if the export-path map lacks the UUID**: mitigated by the
-  same map used for image export and by the missing-asset placeholder (ADR-0036,
-  ADR-0038).
+  same map used for image export and by the missing-asset placeholder (ADR-1858-02,
+  ADR-1858-04).
 
 ## Open questions
 
@@ -305,12 +305,12 @@ JSON-only iDevice):
 
 ## ADRs required or referenced
 
-| Decision | ADR | Status |
-|---|---|---|
-| Restore File Attachment as a JSON api-v3 Media-Library-backed iDevice | ADR-0035 | Proposed |
-| Store attachments as stable `asset://` references with render-at-view-time export rewrite | ADR-0036 | Proposed |
-| Remap legacy File Attachment iDevices to `file-attachment` instead of `text` | ADR-0037 | Proposed |
-| Missing-asset resilience and accessibility strategy for attachments | ADR-0038 | Proposed |
+| Decision | ADR |
+|---|---|
+| Restore File Attachment as a JSON api-v3 Media-Library-backed iDevice | [ADR-1858-01](../../adr/ADR-1858-01-restore-file-attachment-as-json-idevice.md) |
+| Store attachments as stable `asset://` references with render-at-view-time export rewrite | [ADR-1858-02](../../adr/ADR-1858-02-use-asset-uri-references.md) |
+| Remap legacy File Attachment iDevices to `file-attachment` instead of `text` | [ADR-1858-03](../../adr/ADR-1858-03-remap-legacy-file-attachments.md) |
+| Missing-asset resilience and accessibility strategy for attachments | [ADR-1858-04](../../adr/ADR-1858-04-fail-safe-accessible-attachment-rendering.md) |
 
 ## Evidence
 
@@ -335,11 +335,11 @@ Implemented on the PR #2011 branch (paths verified to exist):
   `test/integration/legacy-file-attachment.spec.ts`,
   `test/e2e/playwright/specs/idevices/file-attachment.spec.ts`.
 - Operational docs (existing; linked, not duplicated here):
-  [`doc/elpx-format/idevices/catalog.md`](../../elpx-format/idevices/catalog.md)
+  [`doc/elpx-format/idevices/catalog.md`](../../../elpx-format/idevices/catalog.md)
   (catalog row + legacy class→type table),
-  [`doc/elpx-format/idevices/snippets.md`](../../elpx-format/idevices/snippets.md)
+  [`doc/elpx-format/idevices/snippets.md`](../../../elpx-format/idevices/snippets.md)
   (`## file-attachment` JSON shape),
-  [`doc/elpx-format/idevices/patterns.md`](../../elpx-format/idevices/patterns.md)
+  [`doc/elpx-format/idevices/patterns.md`](../../../elpx-format/idevices/patterns.md)
   (Standard JSON pattern list).
 
 ## Acceptance criteria
@@ -362,10 +362,10 @@ Implemented on the PR #2011 branch (paths verified to exist):
 
 - [x] Add `file-attachment` iDevice (config, edition, export, template, icon, CSS).
 - [x] Register in `jsonOnlyIdevices` (`public/app/common/exe_export.js`).
-- [x] Store/resolve attachments as `asset://` references (ADR-0036).
+- [x] Store/resolve attachments as `asset://` references (ADR-1858-02).
 - [x] Add `FileAttachHandler` and remap legacy classes; remove them from
-      `textBasedIdevices` (ADR-0037).
-- [x] Implement missing-asset resilience + accessibility + escaping (ADR-0038).
+      `textBasedIdevices` (ADR-1858-03).
+- [x] Implement missing-asset resilience + accessibility + escaping (ADR-1858-04).
 - [x] Add edition/export Vitest specs, handler Bun specs, integration spec, and
       Playwright spec.
 - [x] Update operational docs (`catalog.md`, `snippets.md`, `patterns.md`).
@@ -374,7 +374,7 @@ Implemented on the PR #2011 branch (paths verified to exist):
 
 - Issue #1858 — File Attachment iDevice regression.
 - PR #2011 — restore the File Attachment iDevice.
-- ADR-0035, ADR-0036, ADR-0037, ADR-0038.
+- ADR-1858-01, ADR-1858-02, ADR-1858-03, ADR-1858-04.
 - `doc/elpx-format/idevices/catalog.md`, `doc/elpx-format/idevices/snippets.md`,
   `doc/elpx-format/idevices/patterns.md`.
 - `AGENTS.md` (Definition of Done, §7.1/§7.3/§7.4/§7.9),
