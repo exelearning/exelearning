@@ -97,6 +97,28 @@ describe('Scorm12ManifestGenerator', () => {
             expect(section11Index).toBeGreaterThan(chapter1Index);
             expect(closingItemIndex).toBeGreaterThan(section11Index);
         });
+
+        it('should wrap every page in a non-launchable root item (#2222)', () => {
+            const xml = generator.generate();
+
+            const rootTag = /<item identifier="ITEM-ROOT-test-project-123"[^>]*>/.exec(xml)?.[0];
+            expect(rootTag).toBeDefined();
+            expect(rootTag).not.toContain('identifierref');
+            expect(rootTag).toContain('isvisible="true"');
+        });
+
+        it('should keep top-level pages as siblings of each other (#2222)', () => {
+            const xml = generator.generate();
+            const indentOf = (needle: string): number => {
+                const line = xml.split('\n').find(l => l.includes(needle)) ?? '';
+                return (/^\s*/.exec(line)?.[0] ?? '').length;
+            };
+
+            // Introduction and Chapter 1 are both root pages: Moodle only links
+            // them as siblings when they share a parent item in the manifest.
+            expect(indentOf('identifier="ITEM-page-2"')).toBe(indentOf('identifier="ITEM-page-1"'));
+            expect(indentOf('identifier="ITEM-page-3"')).toBeGreaterThan(indentOf('identifier="ITEM-page-2"'));
+        });
     });
 
     describe('generateResources', () => {

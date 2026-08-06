@@ -18,6 +18,7 @@
 
 import type { ExportPage, ScormManifestOptions } from '../interfaces';
 import { SCORM_2004_NAMESPACES } from '../constants';
+import { generateManifestItems, escapeXml } from './ManifestItems';
 
 /**
  * Page file info for resource generation
@@ -207,56 +208,22 @@ export class Scorm2004ManifestGenerator {
     }
 
     /**
-     * Generate item elements for pages in hierarchical structure
+     * Generate item elements for pages in hierarchical structure.
+     *
+     * All pages hang from a single non-launchable root cluster item — see
+     * {@link generateManifestItems} and ADR-0043 for why Moodle's stock
+     * `mod_scorm` needs it (exelearning/exelearning#2222). Every cluster item,
+     * the root included, carries its own `<imsss:sequencing>` block.
+     *
      * @returns Items XML
      */
     generateItems(): string {
-        // Build a map of pages by ID for quick lookup
-        const pageMap = new Map<string, ExportPage>();
-        for (const page of this.pages) {
-            pageMap.set(page.id, page);
-        }
-
-        // Find root pages (no parent)
-        const rootPages = this.pages.filter(p => !p.parentId);
-
-        // Generate items recursively
-        let xml = '';
-        for (const page of rootPages) {
-            xml += this.generateItemRecursive(page, pageMap, 3);
-        }
-
-        return xml;
-    }
-
-    /**
-     * Generate item element recursively for nested pages
-     * @param page - Page object
-     * @param pageMap - Map of all pages by ID
-     * @param indent - Indentation level
-     * @returns Item XML
-     */
-    generateItemRecursive(page: ExportPage, pageMap: Map<string, ExportPage>, indent: number): string {
-        const indentStr = '  '.repeat(indent);
-        const isVisible = 'true'; // Default visibility
-        const children = this.pages.filter(p => p.parentId === page.id);
-        const hasChildren = children.length > 0;
-
-        let xml = `${indentStr}<item identifier="ITEM-${this.escapeXml(page.id)}" identifierref="RES-${this.escapeXml(page.id)}" isvisible="${isVisible}">\n`;
-        xml += `${indentStr}  <title>${this.escapeXml(page.title || 'Page')}</title>\n`;
-
-        // Generate children
-        for (const child of children) {
-            xml += this.generateItemRecursive(child, pageMap, indent + 1);
-        }
-
-        // Add sequencing for items with children (clusters)
-        if (hasChildren) {
-            xml += this.generateItemSequencing(indentStr + '  ');
-        }
-
-        xml += `${indentStr}</item>\n`;
-        return xml;
+        return generateManifestItems({
+            pages: this.pages,
+            projectId: this.projectId,
+            rootTitle: this.metadata.title || 'eXeLearning',
+            renderClusterExtras: indentStr => this.generateItemSequencing(indentStr),
+        });
     }
 
     /**
@@ -346,13 +313,7 @@ ${indentStr}</imsss:sequencing>
      * @returns Escaped string
      */
     escapeXml(str: string): string {
-        if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        return escapeXml(str);
     }
 
     /**
