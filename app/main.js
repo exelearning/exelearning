@@ -9,6 +9,11 @@ const fflate = require('fflate');
 const https = require('https');
 
 const { initAutoUpdater } = require('./update-manager');
+const {
+    attachEditorWindowCloseGuard: attachCloseGuard,
+    windowHasUnsavedChanges,
+} = require('./editor-window-close-guard');
+const { checkLink } = require('./link-check');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -213,8 +218,6 @@ let isShuttingDown = false; // Flag to ensure the app only shuts down once
 let updaterInited = false; // guard
 let youtubeHeadersConfigured = false;
 let protocolHandlerRegistered = false;
-const windowsClosingByConfirmation = new WeakSet();
-const windowsCheckingUnsavedChanges = new WeakSet();
 const UNSAVED_CHANGES_CLOSE_ACTION = Object.freeze({
     STAY: 0,
     DISCARD: 1,
@@ -633,31 +636,6 @@ function confirmWindowCloseWithUnsavedChanges(ownerWindow, copy) {
     return response === UNSAVED_CHANGES_CLOSE_ACTION.DISCARD;
 }
 
-async function windowHasUnsavedChanges(win) {
-    if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) {
-        return false;
-    }
-
-    try {
-        return await win.webContents.executeJavaScript(
-            `(() => {
-                const bridge = window.eXeLearning?.app?.project?._yjsBridge;
-                const documentManager = bridge?.documentManager;
-                const assetManager = bridge?.assetManager;
-                const hasUnsavedAssets =
-                    assetManager &&
-                    typeof assetManager.hasUnsavedAssets === 'function' &&
-                    assetManager.hasUnsavedAssets();
-                return documentManager?.isDirty === true || Boolean(hasUnsavedAssets);
-            })()`,
-            true,
-        );
-    } catch (error) {
-        console.warn('[Electron] Failed to read unsaved changes state from renderer:', error);
-        return false;
-    }
-}
-
 function getUnsavedChangesCloseCopy() {
     return {
         title: tOrDefault(
@@ -731,46 +709,12 @@ async function getCloseCopyFromRenderer(win) {
  * @returns {void}
  */
 function attachEditorWindowCloseGuard(win) {
-    win.on('close', async (event) => {
-        if (isShuttingDown || windowsClosingByConfirmation.has(win)) return;
-        if (windowsCheckingUnsavedChanges.has(win)) {
-            event.preventDefault();
-            return;
-        }
-
-        event.preventDefault();
-        windowsCheckingUnsavedChanges.add(win);
-
-        try {
-            const hasUnsavedChanges = await windowHasUnsavedChanges(win);
-
-            if (!hasUnsavedChanges) {
-                windowsClosingByConfirmation.add(win);
-                win.close();
-                return;
-            }
-
-            const copy = (await getCloseCopyFromRenderer(win)) 
-                      || getUnsavedChangesCloseCopy();
-
-            const shouldProceed = confirmWindowCloseWithUnsavedChanges(win, copy);
-
-            if (!shouldProceed) {
-                console.log('[Electron] Close cancelled: unsaved changes');
-                return;
-            }
-
-            console.log('[Electron] User confirmed closing with unsaved changes');
-            windowsClosingByConfirmation.add(win);
-            win.close();
-        } finally {
-            windowsCheckingUnsavedChanges.delete(win);
-        }
-    });
-
-    win.on('closed', () => {
-        windowsClosingByConfirmation.delete(win);
-        windowsCheckingUnsavedChanges.delete(win);
+    attachCloseGuard(win, {
+        hasUnsavedChanges: windowHasUnsavedChanges,
+        getCloseCopy: async (ownerWindow) =>
+            (await getCloseCopyFromRenderer(ownerWindow)) || getUnsavedChangesCloseCopy(),
+        confirmClose: confirmWindowCloseWithUnsavedChanges,
+        isShuttingDown: () => isShuttingDown,
     });
 }
 
@@ -1559,6 +1503,14 @@ ipcMain.handle('app:readFile', async (_e, { filePath }) => {
     } catch (err) {
         return { ok: false, error: err.message };
     }
+});
+
+// Check an external link from the main process, where CORS does not apply,
+// and report the real HTTP status — same outcome as server-side validation.
+// Policy, network-stack rationale (undici primary, net.fetch as proxy
+// fallback) and the private-address guard live in link-check.js.
+ipcMain.handle('app:checkLink', async (_e, { url } = {}) => {
+    return checkLink(url, { fetchImpl: fetch, fallbackFetchImpl: net.fetch.bind(net) });
 });
 
 ipcMain.handle('app:getMemoryUsage', async (e) => {

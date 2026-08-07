@@ -1,3 +1,5 @@
+import LinkValidationManager from '../../../utils/LinkValidationManager.js';
+
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
@@ -112,6 +114,16 @@ export default class NavbarFile {
     setOdeBrokenLinksEvent() {
         this.brokenLinksButton.addEventListener('click', () => {
             this.odeBrokenLinksEvent();
+        });
+        // Anticipate the browser limitation before the dialog opens (review of
+        // PR #2208). Evaluated lazily when the dropdown opens: the static-mode
+        // adapters this depends on register after the menu is built.
+        this.button?.addEventListener('click', () => {
+            if (LinkValidationManager.isBrowserLimited()) {
+                this.brokenLinksButton.title = _(
+                    'External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.'
+                );
+            }
         });
     }
 
