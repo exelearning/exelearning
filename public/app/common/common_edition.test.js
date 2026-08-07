@@ -1174,6 +1174,49 @@ describe('common_edition.js', () => {
         document.body.innerHTML = '';
       });
 
+      describe('prompt assembly', () => {
+        async function capturePrompt(type = 0, options = {}) {
+          const getGenerateQuestions = vi.fn().mockResolvedValue({ questions: [] });
+          globalThis.eXeLearning = { app: { api: { getGenerateQuestions } } };
+          await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(
+            type,
+            vi.fn(),
+            options
+          );
+          return getGenerateQuestions.mock.calls[0][0];
+        }
+
+        it('separates every appended sentence with a space', async () => {
+          const prompt = await capturePrompt();
+          // Used to read "...topic: X.Generate 3 questionsWith the following formats:".
+          expect(prompt).not.toMatch(/\w\.\w/);
+          expect(prompt).toContain(' Generate 3 questions. ');
+          expect(prompt).toContain(' With the following formats:');
+        });
+
+        it('includes the per-game instruction, with the teacher count after it', async () => {
+          const prompt = await capturePrompt(0);
+          const gameInstruction = 'Generate 10 words followed by their definitions, separated by #';
+          expect(prompt).toContain(gameInstruction);
+          // The teacher's count must come last so it overrides the count baked
+          // into the per-game instruction.
+          expect(prompt.indexOf(gameInstruction)).toBeLessThan(prompt.indexOf('Generate 3 questions.'));
+        });
+
+        it('introduces the format block even when the count field is absent', async () => {
+          document.getElementById('eXeNumberOfQuestionsIA').remove();
+          const prompt = await capturePrompt();
+          expect(prompt).toContain('With the following formats:');
+          expect(prompt).not.toContain('questions.');
+        });
+
+        it('falls back to 10 questions when the count field is empty', async () => {
+          document.getElementById('eXeNumberOfQuestionsIA').value = '';
+          const prompt = await capturePrompt();
+          expect(prompt).toContain('Generate 10 questions.');
+        });
+      });
+
       it('surfaces the backend error message instead of a generic "Incorrect format"', async () => {
         globalThis.eXeLearning = {
           app: {

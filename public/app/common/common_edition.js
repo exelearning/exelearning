@@ -1148,6 +1148,7 @@ var $exeDevicesEdition = {
                     const $course = $('#eXeCourseIA');
                     const $numQuestions = $('#eXeNumberOfQuestionsIA');
                     const $theme = $('#eXeThemeIA');
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type, options);
                     let promptText = `${_("Act as a highly experienced teacher.")}`;
 
                     if ($specialty.length) {
@@ -1168,18 +1169,21 @@ var $exeDevicesEdition = {
                             promptText += ` ${_('on the following topic')}: ${tm}.`;
                         }
                     }
-                    if ($numQuestions.length) {
-                        let np = $numQuestions.val();
-                        np = np ?? 10;
-                        promptText += `${_('Generate')} ${np} ${_('questions')}`;
+                    // The per-game instruction carries rules the format list alone does not
+                    // convey (allowed circuitikz components, adaptative-quiz level structure...).
+                    // It states its own question count, so the teacher's count goes after it
+                    // and is the one that wins.
+                    if (fprompt.prompt) {
+                        promptText += ` ${fprompt.prompt}`;
                     }
                     if ($numQuestions.length) {
-                        let np = $numQuestions.val();
-                        np = np ?? 10;
-                        promptText += `${_('With the following formats:')}`;
+                        // .val() yields '' for an empty or invalid number input, never
+                        // null/undefined, so `||` is what actually reaches the fallback.
+                        const np = $numQuestions.val().trim() || 10;
+                        promptText += ` ${_('Generate')} ${np} ${_('questions')}.`;
                     }
+                    promptText += ` ${_('With the following formats:')}`;
 
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type, options);
                     let prompt = `
                         ${promptText}
                         ${fprompt.format.join('\n')}
