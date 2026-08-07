@@ -560,15 +560,27 @@ var $exeDevicesEdition = {
                     // The "Generate" tab and its Create surface only exist in managed
                     // mode (server-side generation). In external mode the user copies
                     // the prompt and opens a public assistant instead.
+                    //
+                    // In managed mode Generate is the landing tab and the Prompt tab is
+                    // not offered at all: the prompt it shows is not the one the server
+                    // sends, so exposing it would only mislead. The textarea itself stays
+                    // in the DOM (hidden) because refreshIAPrompt still writes into it.
                     const generateTab = managed
                         ? `<li class="nav-item">
-                                        <a id="eXeETabIA" class="nav-link bg-light border-end" href="#">
+                                        <a id="eXeETabIA" class="nav-link bg-light border-end active" href="#">
                                         ${_('Generate')}
                                         </a>
                                     </li>`
                         : '';
+                    const promptTab = managed
+                        ? ''
+                        : `<li class="nav-item">
+                                        <a id="eXeETabPrompt" class="nav-link bg-light border-end active" href="#">
+                                        ${_('Prompt')}
+                                        </a>
+                                    </li>`;
                     const iaDiv = managed
-                        ? `<div  class="form-control font-monospace fs-6 h-auto" id="eXeEIADiv"  style="display:none">
+                        ? `<div  class="form-control font-monospace fs-6 h-auto" id="eXeEIADiv">
                                         ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
                                         <textarea class="form-control font-monospace fs-6" style="display:none" id="eXeEQuestionsIA"> </textarea>
                                     </div>`
@@ -591,11 +603,7 @@ var $exeDevicesEdition = {
                             <p style="display:none"><input type="button" class="btn btn-primary ms-2"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_('Add questions')}" /></p>
                             <div class="bg-white rounded w-100 position-relative" style="max-width: 1400px;" id="eXeEAddArea">
                                 <ul class="nav nav-tabs">
-                                    <li class="nav-item">
-                                        <a id="eXeETabPrompt" class="nav-link bg-light border-end active" href="#">
-                                        ${_('Prompt')}
-                                        </a>
-                                    </li>
+                                    ${promptTab}
                                     <li class="nav-item">
                                         <a id="eXeETabQuestions" class="nav-link bg-light border-end"  href="#">
                                          ${_('Questions')}
@@ -604,7 +612,7 @@ var $exeDevicesEdition = {
                                     ${generateTab}
                                 </ul>
                                 <div class="eXeE-LightboxContent p-2">
-                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">${promptText}</textarea>
+                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;${managed ? 'display:none;' : ''}" id="eXeEPromptArea">${promptText}</textarea>
                                     <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
                                     ${iaDiv}
                                 </div>
@@ -971,12 +979,15 @@ var $exeDevicesEdition = {
                     $saveButton.hide();
                     $textQuestionsArea.hide();
 
-                    $textPrompt.show()
-                    $copyButton.show();
+                    // Managed mode opens on Generate: the Prompt tab is not rendered, so
+                    // its textarea and the Copy button that belongs to it stay hidden.
+                    const managed = $tabIA.length > 0;
+                    $textPrompt.toggle(!managed);
+                    $copyButton.toggle(!managed);
+                    $divEIA.toggle(managed);
                     $openChatGPTButton.show();
                     $iaButton.hide();
                     $iaSelect.show()
-                    $divEIA.hide();                   
 
                     // File input custom UI events
                     $(document).off('click.exeFileTrigger').on('click.exeFileTrigger', '[data-exe-file-trigger]', function () {
@@ -1202,12 +1213,18 @@ var $exeDevicesEdition = {
                         if (data.questions) {
                             let questions = $exeDevicesEdition.iDevice.gamification.share.checkQuestions(data.questions);
                             if (questions) {
-                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions, options);
-                                // Managed Create auto-inserts the generated questions.
-                                // Do NOT also re-stage them into the Save textarea or
-                                // switch to the primed Save tab: that would lead the user
-                                // to click Save and insert every question a second time (#1998).
-                                saveQuestions(correctsQuestions);
+                                // Every generated question is staged in the Questions tab
+                                // rather than inserted straight away, so the teacher can
+                                // review them -- above all which answer was marked as
+                                // correct -- and fix them before pressing Save. Inserting
+                                // here as well would add every question twice (#1998).
+                                //
+                                // Malformed lines are staged too instead of being dropped
+                                // here: Save runs validateAndSave, which inserts the valid
+                                // ones, lists the invalid ones and leaves them in the
+                                // textarea for the teacher to correct.
+                                $('#eXeEQuestionsArea').val(questions.join('\n'));
+                                $('#eXeETabQuestions').trigger('click');
                                 $('#eXeIAMessage').hide();
                             } else {
                                 sdata = _('The questions could not be generated');

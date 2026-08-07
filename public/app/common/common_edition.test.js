@@ -1150,12 +1150,78 @@ describe('common_edition.js', () => {
         expect(html).not.toContain('eXeEOpenChatGPTButton');
       });
 
+      it('managed mode drops the Prompt tab and lands on Generate', () => {
+        // The Prompt tab shows a prompt the server never sends, so it is not
+        // offered when the managed generator is available.
+        setAi({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        const html = share().getTabIA(0);
+        expect(html).not.toContain('eXeETabPrompt');
+        expect(html).toMatch(/<a id="eXeETabIA" class="[^"]*\bactive\b/);
+        // The textarea stays in the DOM (refreshIAPrompt writes into it) but hidden,
+        // and the Create surface is the one visible on open.
+        expect(html).toMatch(/id="eXeEPromptArea"/);
+        expect(html).toMatch(/style="min-height:350px;display:none;" id="eXeEPromptArea"/);
+        expect(html).not.toMatch(/id="eXeEIADiv"[^>]*display:none/);
+      });
+
+      it('non-managed modes keep the Prompt tab active', () => {
+        for (const ai of [
+          { enabled: true, provider: 'external', mode: 'external', configured: true },
+          { enabled: false, provider: 'external', mode: 'external', configured: true },
+        ]) {
+          setAi(ai);
+          const html = share().getTabIA(0);
+          expect(html).toMatch(/<a id="eXeETabPrompt" class="[^"]*\bactive\b/);
+          expect(html).not.toContain('eXeETabIA');
+          expect(html).toMatch(/style="min-height:350px;" id="eXeEPromptArea"/);
+        }
+      });
+
       it('gives eXeEIADiv an automatic height so its content is not clipped', () => {
         // .form-control:not(textarea) is pinned to 36px in _reset.scss; h-auto
         // releases it so the Create form is not cut off (see #1998).
         setAi({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
         const html = share().getTabIA(0);
         expect(html).toMatch(/<div[^>]*class="[^"]*h-auto[^"]*"[^>]*id="eXeEIADiv"/);
+      });
+    });
+
+    describe('addEvents landing tab', () => {
+      const share = () => globalThis.$exeDevicesEdition.iDevice.gamification.share;
+      // jQuery's :visible is useless under jsdom (every box is 0x0), so assert
+      // the inline display that .show()/.hide() actually write.
+      const hidden = (id) => document.getElementById(id).style.display === 'none';
+
+      function mount(ai) {
+        globalThis.eXeLearning.app.api.parameters = { ai };
+        document.body.innerHTML = share().getTabIA(0);
+        share().addEvents(0, vi.fn(), {});
+      }
+
+      afterEach(() => {
+        delete globalThis.eXeLearning.app.api.parameters;
+        document.body.innerHTML = '';
+      });
+
+      it('opens on the Create surface in managed mode', () => {
+        mount({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        expect(hidden('eXeEIADiv')).toBe(false);
+        expect(hidden('eXeEPromptArea')).toBe(true);
+        // Copy belongs to the Prompt tab, which is not offered in this mode.
+        expect(hidden('eXeECopyButton')).toBe(true);
+      });
+
+      it('opens on the prompt in external mode', () => {
+        mount({ enabled: true, provider: 'external', mode: 'external', configured: true });
+        expect(hidden('eXeEPromptArea')).toBe(false);
+        expect(hidden('eXeECopyButton')).toBe(false);
+        expect(document.getElementById('eXeEIADiv')).toBeNull();
+      });
+
+      it('opens on the prompt when AI is disabled', () => {
+        mount({ enabled: false, provider: 'external', mode: 'external', configured: true });
+        expect(hidden('eXeEPromptArea')).toBe(false);
+        expect(hidden('eXeECopyButton')).toBe(false);
       });
     });
 
@@ -1234,7 +1300,7 @@ describe('common_edition.js', () => {
         expect(document.getElementById('eXeIAMessage').textContent).toContain('not fully configured');
       });
 
-      it('auto-inserts the generated questions and hides the message without priming the Save surface', async () => {
+      it('stages the generated questions in the Questions tab for review instead of inserting them', async () => {
         globalThis.eXeLearning = {
           app: { api: { getGenerateQuestions: vi.fn().mockResolvedValue({ questions: ['Word1#Definition1', 'Word2#Definition2'] }) } },
         };
@@ -1245,13 +1311,31 @@ describe('common_edition.js', () => {
         const saveQuestions = vi.fn();
         await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(0, saveQuestions, {});
 
-        // Managed Create auto-inserts the generated questions once...
-        expect(saveQuestions).toHaveBeenCalledWith(['Word1#Definition1', 'Word2#Definition2']);
-        // ...but must NOT re-stage them into the Save textarea nor switch the user to the
-        // primed Save tab; otherwise clicking Save re-inserts everything a second time (#1998).
-        expect(document.getElementById('eXeEQuestionsArea').value).toBe('');
-        expect(tabClicked).not.toHaveBeenCalled();
+        // The teacher reviews and fixes the questions before saving, so nothing is
+        // inserted yet; inserting here as well would add each question twice (#1998).
+        expect(saveQuestions).not.toHaveBeenCalled();
+        expect(document.getElementById('eXeEQuestionsArea').value).toBe('Word1#Definition1\nWord2#Definition2');
+        expect(tabClicked).toHaveBeenCalled();
         expect(document.getElementById('eXeIAMessage').style.display).toBe('none');
+      });
+
+      it('stages malformed lines too, so Save can report them for correction', async () => {
+        // Type 0 requires Word#Definition; "NoSeparator" and the 3-field line are
+        // rejected by the regex. They must still reach the Questions tab.
+        globalThis.eXeLearning = {
+          app: {
+            api: {
+              getGenerateQuestions: vi.fn().mockResolvedValue({
+                questions: ['Word1#Definition1', 'NoSeparator', 'Word2#Definition2'],
+              }),
+            },
+          },
+        };
+        await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(0, vi.fn(), {});
+
+        const staged = document.getElementById('eXeEQuestionsArea').value;
+        expect(staged.split('\n')).toHaveLength(3);
+        expect(staged).toContain('NoSeparator');
       });
     });
 
