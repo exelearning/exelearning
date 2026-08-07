@@ -46,6 +46,7 @@ import {
     defaultLogger,
 } from './interfaces';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
+import { addUnresolvedAssetRefs, type UnresolvedAssetRef } from './unresolvedAssetRefs';
 import {
     DEFAULT_ZIP_LIMITS,
     ZipLimitError,
@@ -133,6 +134,8 @@ export class ElpxImporter {
     private onProgress: ((progress: ImportProgress) => void) | null = null;
     private logger: Logger;
     private zipLimits: ZipDecompressionLimits;
+    /** Activities whose asset references the package could not satisfy (#2223). */
+    private unresolvedAssets: UnresolvedAssetRef[] = [];
 
     /**
      * Create a new ElpxImporter
@@ -537,6 +540,19 @@ export class ElpxImporter {
     }
 
     /**
+     * Note that an activity still carries asset references the package could
+     * not satisfy, so the caller can tell the author which files are missing
+     * instead of leaving them to read a raw placeholder in a form field (#2223).
+     *
+     * @param componentId - id of the activity the text belongs to
+     * @param ideviceType - iDevice type, so the notice can name the activity
+     * @param text - HTML or serialized properties, after asset conversion ran
+     */
+    private recordUnresolvedAssets(componentId: string, ideviceType: string, text: string): void {
+        addUnresolvedAssetRefs(this.unresolvedAssets, componentId, ideviceType, text);
+    }
+
+    /**
      * Import document structure from parsed XML
      */
     async importStructure(
@@ -546,6 +562,7 @@ export class ElpxImporter {
     ): Promise<ElpxImportResult> {
         const { clearExisting = true, parentId = null } = options;
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+        this.unresolvedAssets = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -726,6 +743,7 @@ export class ElpxImporter {
 
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
+        stats.missingAssets = this.unresolvedAssets;
 
         const { zipContents: _zip, ...statsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Import complete:', statsWithoutZip);
@@ -742,6 +760,7 @@ export class ElpxImporter {
     ): Promise<ElpxImportResult> {
         const { clearExisting = true, parentId = null } = options;
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+        this.unresolvedAssets = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -835,6 +854,7 @@ export class ElpxImporter {
 
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
+        stats.missingAssets = this.unresolvedAssets;
 
         const { zipContents: _zipLegacy, ...legacyStatsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Legacy import complete:', legacyStatsWithoutZip);
@@ -946,6 +966,7 @@ export class ElpxImporter {
                 this.logger.warn(`[ElpxImporter] Error converting asset paths for ${legacyIdevice.id}:`, convErr);
             }
         }
+        this.recordUnresolvedAssets(legacyIdevice.id, legacyIdevice.type || 'unknown', htmlView);
 
         // For text iDevices, the editor expects the content in jsonProperties.textTextarea
         // So we need to populate it from htmlView
@@ -1506,6 +1527,7 @@ export class ElpxImporter {
             }
 
             compData.htmlView = typeof htmlContent === 'string' ? htmlContent : '';
+            this.recordUnresolvedAssets(componentId, ideviceType, compData.htmlView);
         }
 
         // Extract JSON properties
@@ -1571,6 +1593,7 @@ export class ElpxImporter {
                 }
 
                 compData.properties = props;
+                this.recordUnresolvedAssets(componentId, ideviceType, JSON.stringify(props));
             } catch (e) {
                 this.logger.warn(`[ElpxImporter] Failed to process JSON properties for ${componentId}:`, e);
             }

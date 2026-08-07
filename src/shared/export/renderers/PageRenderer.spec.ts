@@ -788,6 +788,59 @@ describe('PageRenderer', () => {
             // But no license section
             expect(html).not.toContain('id="packageLicense"');
         });
+
+        describe('siteFooter-empty class', () => {
+            it('should tag the footer as empty when there is no license and no user content', () => {
+                const html = renderer.renderFooterSection({ license: '' });
+
+                expect(html).toBe(
+                    '<footer id="siteFooter" class="siteFooter-empty"><div id="siteFooterContent"></div></footer>',
+                );
+            });
+
+            it('should tag the footer as empty for licenses hidden from the footer', () => {
+                for (const license of ['propietary license', 'not appropriate']) {
+                    const html = renderer.renderFooterSection({ license, licenseUrl: 'https://example.com' });
+
+                    expect(html).toContain('class="siteFooter-empty"');
+                }
+            });
+
+            it('should tag the footer as empty when user content is only whitespace', () => {
+                const html = renderer.renderFooterSection({ license: '', userFooterContent: '  \n  ' });
+
+                expect(html).toContain('class="siteFooter-empty"');
+                expect(html).not.toContain('id="siteUserFooter"');
+            });
+
+            it('should not tag the footer when user content is present without a license', () => {
+                const html = renderer.renderFooterSection({
+                    license: 'not appropriate',
+                    userFooterContent: '<p>Custom footer</p>',
+                });
+
+                expect(html).not.toContain('siteFooter-empty');
+                expect(html).toContain('id="siteUserFooter"');
+            });
+
+            it('should not tag the footer when a license is displayed', () => {
+                const html = renderer.renderFooterSection({
+                    license: 'creative commons: attribution 4.0',
+                    licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+                });
+
+                expect(html).not.toContain('siteFooter-empty');
+            });
+
+            it('should tag the empty footer in a full page render', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], license: '' });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<footer id="siteFooter" class="siteFooter-empty">');
+            });
+        });
     });
 
     describe('renderMadeWithEXe', () => {

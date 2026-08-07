@@ -4809,6 +4809,41 @@ describe('YjsProjectBridge', () => {
       expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('base', file, mockZipContents);
     });
 
+    /**
+     * #2223. This is the only funnel every import goes through: the online menu
+     * reaches it via projectManager.importFromElpxViaYjs, but the static build
+     * and the embedding bridge call it directly.
+     */
+    it('reports the missing-asset result to the project manager', async () => {
+      const stats = {
+        assets: 0,
+        missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+      };
+      global.window.ElpxImporter = mock(function() {
+        return { importFromFile: mock(() => Promise.resolve(stats)) };
+      });
+      bridge._checkAndImportTheme = mock(() => Promise.resolve());
+      const showMissingAssetsNotice = mock(() => undefined);
+      global.window.eXeLearning.app.project = { showMissingAssetsNotice };
+
+      await bridge.importFromElpx(new Blob(['test'], { type: 'application/zip' }));
+
+      expect(showMissingAssetsNotice).toHaveBeenCalledWith(stats);
+    });
+
+    it('imports fine when no project manager is listening for the report', async () => {
+      const stats = { assets: 0 };
+      global.window.ElpxImporter = mock(function() {
+        return { importFromFile: mock(() => Promise.resolve(stats)) };
+      });
+      bridge._checkAndImportTheme = mock(() => Promise.resolve());
+      global.window.eXeLearning.app.project = undefined;
+
+      const result = await bridge.importFromElpx(new Blob(['test'], { type: 'application/zip' }));
+
+      expect(result).toBe(stats);
+    });
+
     it('imports theme when clearExisting is explicitly true', async () => {
       const mockZipContents = { 'content.xml': new Uint8Array([60, 63]) };
       const mockImporter = {
@@ -5026,6 +5061,7 @@ describe('YjsProjectBridge', () => {
           },
         })),
       };
+      bridge.assetManager.markAssetsSavedLocally = mock(() => {});
 
       const result = await bridge.exportToElpx();
 
@@ -5035,6 +5071,7 @@ describe('YjsProjectBridge', () => {
         'test-project-123',
         'project.elpx'
       );
+      expect(bridge.assetManager.markAssetsSavedLocally).toHaveBeenCalled();
 
       // Cleanup
       delete global.eXeLearning;
@@ -5070,10 +5107,12 @@ describe('YjsProjectBridge', () => {
           },
         })),
       };
+      bridge.assetManager.markAssetsSavedLocally = mock(() => {});
 
       const result = await bridge.exportToElpx();
 
       expect(result).toEqual({ saved: false });
+      expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
 
       // Cleanup
       delete global.eXeLearning;

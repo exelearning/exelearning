@@ -7,6 +7,8 @@
  * - Backend (CLI): Using filesystem for assets
  */
 
+import type { UnresolvedAssetRef } from './unresolvedAssetRefs';
+
 /**
  * Progress phases during import
  */
@@ -128,6 +130,12 @@ export interface ElpxImportResult {
      * Only populated in browser environment for performance optimization.
      */
     zipContents?: Record<string, Uint8Array>;
+    /**
+     * Activities that reference files the package does not contain (#2223).
+     * Their references are preserved as-is; this is what lets the caller tell
+     * the author which files are missing instead of showing a raw placeholder.
+     */
+    missingAssets?: UnresolvedAssetRef[];
 }
 
 /**
