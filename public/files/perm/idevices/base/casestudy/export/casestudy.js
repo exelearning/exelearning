@@ -89,10 +89,11 @@ var $casestudy = {
     },
 
     generateActivities: function (data) {
-        return data.activities
+        const activities = Array.isArray(data.activities) ? data.activities : [];
+        return activities
             .map((activity, index) => {
                 const activity1 = activity.activity;
-                const feedback = activity.feedback;
+                const feedback = activity.feedback || '';
                 const button = activity.buttonCaption || data.msgs.msgFeedback;
                 const bgClass = index % 2 ? 'CSP-ActivityDivBlack' : '';
                 const hasFeedback = feedback.trim().length > 0;

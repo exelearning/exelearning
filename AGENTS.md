@@ -241,18 +241,24 @@ The UI **tries browser-side first**, falling back to server-side.
 
 Static editor embeds in LMS plugins (WordPress, Moodle, Drupal, Omeka-S) via iframe + postMessage. Key files: `RuntimeConfig.js`, `Capabilities.js`, `EmbeddingBridge.js`, `app.js`, `previewPanel.js`, `main.scss`. See `doc/development/embedding.md`.
 
-### 7.11 Architecture Decision Records (ADR) & Software Design Documents (SDD)
+### 7.11 Architecture Decision Records (ADR) & change documents
 
-Significant technical work is documented before or alongside the code. Full policy: [ADR guide](doc/architecture/adr/README.md), [SDD guide](doc/architecture/sdd/README.md).
+Significant technical work is documented before or alongside the code. Full policy: [ADR guide](doc/architecture/adr/README.md), [change guide](doc/architecture/changes/README.md).
 
-- **Create or update an ADR** when a change introduces or modifies a **durable architecture decision**. ADRs are required for decisions affecting: architecture, storage model, file formats (ELP/ELPX), import/export behavior, the collaboration model, security/sandboxing, accessibility strategy, public APIs (REST v1, embedding bridge), or AI-generation workflows.
-- **Create an SDD** for significant features, major refactors, design gates, cross-cutting changes, or proposals with multiple implementation phases. SDDs may describe the feature plan, but **durable decisions inside an SDD must link to an ADR** (existing or newly proposed) — don't bury the decision.
-- Locations: ADRs live under `doc/architecture/adr/`, SDDs under `doc/architecture/sdd/`.
-- Templates: `doc/architecture/adr/ADR-0000-template.md`, `doc/architecture/sdd/SDD-0000-template.md`. IDs are monotonic and never reused.
-- **Do not rewrite accepted ADRs** — supersede them with a new ADR (`supersedes` / `superseded_by`). **Do not rewrite implemented SDDs** except for typo/link fixes; supersede them if the design changes substantially.
-- While a decision or design is still under discussion, use `status: Proposed` (ADR) or `status: Draft` / `In Review` (SDD).
-- Document AI assistance in the ADR/SDD frontmatter (`ai_assistance.tool` / `ai_assistance.model`; `none` if not used).
-- Mention any ADRs or SDDs a PR creates or updates in the PR description.
+**Identifiers are based on the GitHub tracking number — there is NO global counter.** Never compute `max(existing) + 1`; that rule is retired (see [ADR-2232-01](doc/architecture/adr/ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md)). The tracking number is the change's **issue** if it has one, otherwise its **pull request** — GitHub draws both from one repository-wide sequence, so they never collide. **Never open an issue just to obtain an identifier.**
+
+- **ADR filename**: `ADR-<number>-<NN>-<decision-slug>.md`, e.g. `ADR-1858-02-use-asset-uri-references.md`. `<NN>` is a two-digit sequence scoped **only to that tracking number**, starting at `01`; it is present even for a single ADR. The slug names the decision, not the topic. Frontmatter `id` and `tracking_issue` must match the filename (`tracking_issue` keeps its name because GitHub models a PR as an issue).
+- **Change documents**: one directory per change, `doc/architecture/changes/<number>-<change-slug>/`, holding any of `proposal.md`, `spec.md`, `design.md`, `research.md`, `tasks.md`. **Create only the files with real content** — no empty placeholders — and don't duplicate content across them.
+- **Create or update an ADR** when a change introduces or modifies a **durable architecture decision**: architecture, storage model, file formats (ELP/ELPX), import/export behavior, the collaboration model, security/sandboxing, accessibility strategy, public APIs (REST v1, embedding bridge), or AI-generation workflows. Don't create one ADR per section of a design, and don't create empty ADRs to fill sequence gaps — gaps are expected.
+- **Create a change directory** for significant features, major refactors, design gates, cross-cutting changes, or proposals with multiple implementation phases. **Durable decisions inside a design must link to an ADR** (existing or newly proposed) — don't bury the decision.
+- Templates: `doc/architecture/adr/template.md`, `doc/architecture/changes/template.md`.
+- **There is no committed index.** `make architecture-records` prints one on demand; `make architecture-check` validates identifiers and metadata and runs in CI. Never create a `records.md` — a generated file in git conflicts on every concurrent branch, and these records are contributor-facing, so they are excluded from the published docs site.
+- **Do not rewrite accepted ADRs** — supersede them with a new ADR (`supersedes` / `superseded_by`, and set the old one to `status: Superseded`). **Do not rewrite implemented designs** except for typo/link fixes.
+- Status values: ADRs use `Proposed` / `Accepted` / `Rejected` / `Superseded`; change documents use `draft` / `in-review` / `accepted` / `implemented` / `superseded` / `abandoned`. Status lives in the frontmatter **only** — never add a `## Status` section.
+- `implementation_prs` / `related.prs` are traceability lists, not the identifier. The identifier is the single stable number in `tracking_issue`.
+- Retired `ADR-NNNN` / `SDD-NNNN` identifiers must not appear in new content; CI fails on them. See [`doc/architecture/migration-map.md`](doc/architecture/migration-map.md).
+- Document AI assistance in the frontmatter (`ai_assistance.tool` / `ai_assistance.model`; `none` if not used).
+- Mention any ADRs or change documents a PR creates or updates in the PR description.
 
 ## 8. Environment Configuration
 

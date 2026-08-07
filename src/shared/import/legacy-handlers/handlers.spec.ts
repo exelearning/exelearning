@@ -2774,17 +2774,13 @@ describe('FileAttachHandler', () => {
     });
 
     describe('getTargetType', () => {
-        it('should return text', () => {
-            expect(handler.getTargetType()).toBe('text');
+        it('should return file-attachment', () => {
+            expect(handler.getTargetType()).toBe('file-attachment');
         });
     });
 
     describe('extractHtmlView', () => {
-        it('should return empty for null dict', () => {
-            expect(handler.extractHtmlView(null as unknown as Element)).toBe('');
-        });
-
-        it('should extract introHTML content', () => {
+        it('should return empty (file-attachment renders from JSON properties)', () => {
             const dict = createDomElement(`
                 <dictionary>
                     <string role="key" value="introHTML"/>
@@ -2796,10 +2792,45 @@ describe('FileAttachHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            expect(handler.extractHtmlView(dict)).toContain('These are the instructions');
+            expect(handler.extractHtmlView(dict)).toBe('');
+        });
+    });
+
+    describe('extractFeedback', () => {
+        it('should return empty feedback', () => {
+            const dict = createDomElement(`<dictionary/>`);
+            const result = handler.extractFeedback(dict);
+            expect(result.content).toBe('');
+            expect(result.buttonCaption).toBe('');
+        });
+    });
+
+    describe('extractProperties', () => {
+        it('should return an empty file-attachment state when there is no content', () => {
+            const dict = createDomElement(`<dictionary/>`);
+            const props = handler.extractProperties(dict);
+            expect(props.intro).toBe('');
+            expect(props.showDescriptions).toBe(true);
+            expect(props.attachments).toEqual([]);
         });
 
-        it('should generate file links from fileAttachmentFields', () => {
+        it('should extract intro instructions', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="introHTML"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content_w_resourcePaths"/>
+                            <unicode value="&lt;p&gt;Read me&lt;/p&gt;"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict);
+            expect(props.intro).toContain('Read me');
+        });
+
+        it('should build attachments from fileAttachmentFields with resources/ paths', () => {
             const dict = createDomElement(`
                 <dictionary>
                     <string role="key" value="fileAttachmentFields"/>
@@ -2825,45 +2856,16 @@ describe('FileAttachHandler', () => {
                     </list>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('resources/document.pdf');
-            expect(result).toContain('Important Document');
-            expect(result).toContain('target="_blank"');
-            expect(result).toContain('download="document.pdf"');
+            const props = handler.extractProperties(dict);
+            const attachments = props.attachments as Array<Record<string, unknown>>;
+            expect(attachments.length).toBe(1);
+            expect(attachments[0].url).toBe('resources/document.pdf');
+            expect(attachments[0].filename).toBe('document.pdf');
+            // The legacy file description becomes the modern link label (title).
+            expect(attachments[0].title).toBe('Important Document');
         });
 
-        it('should combine intro and file links', () => {
-            const dict = createDomElement(`
-                <dictionary>
-                    <string role="key" value="introHTML"/>
-                    <instance class="TextAreaField">
-                        <dictionary>
-                            <string role="key" value="content"/>
-                            <unicode value="Intro text"/>
-                        </dictionary>
-                    </instance>
-                    <string role="key" value="fileAttachmentFields"/>
-                    <list>
-                        <instance class="FileField">
-                            <dictionary>
-                                <string role="key" value="fileResource"/>
-                                <instance class="Resource">
-                                    <dictionary>
-                                        <string role="key" value="_storageName"/>
-                                        <string value="file.txt"/>
-                                    </dictionary>
-                                </instance>
-                            </dictionary>
-                        </instance>
-                    </list>
-                </dictionary>
-            `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('Intro text');
-            expect(result).toContain('file.txt');
-        });
-
-        it('should use filename as link text when no description', () => {
+        it('should leave the title empty when there is no real description', () => {
             const dict = createDomElement(`
                 <dictionary>
                     <string role="key" value="fileAttachmentFields"/>
@@ -2882,28 +2884,58 @@ describe('FileAttachHandler', () => {
                     </list>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('>data.csv</a>');
+            const props = handler.extractProperties(dict);
+            const attachments = props.attachments as Array<Record<string, unknown>>;
+            expect(attachments[0].title).toBe('');
+            expect(attachments[0].filename).toBe('data.csv');
         });
 
-        it('should find files from direct FileField list', () => {
+        it('should extract multiple attachments preserving order', () => {
             const dict = createDomElement(`
                 <dictionary>
+                    <string role="key" value="fileAttachmentFields"/>
                     <list>
                         <instance class="FileField">
                             <dictionary>
-                                <string role="key" value="_storageName"/>
-                                <string value="direct.zip"/>
+                                <string role="key" value="fileResource"/>
+                                <instance class="Resource">
+                                    <dictionary>
+                                        <string role="key" value="_storageName"/>
+                                        <string value="a.pdf"/>
+                                    </dictionary>
+                                </instance>
+                            </dictionary>
+                        </instance>
+                        <instance class="FileField">
+                            <dictionary>
+                                <string role="key" value="fileResource"/>
+                                <instance class="Resource">
+                                    <dictionary>
+                                        <string role="key" value="_storageName"/>
+                                        <string value="b.txt"/>
+                                    </dictionary>
+                                </instance>
                             </dictionary>
                         </instance>
                     </list>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('resources/direct.zip');
+            const props = handler.extractProperties(dict);
+            const attachments = props.attachments as Array<Record<string, unknown>>;
+            expect(attachments.map(a => a.filename)).toEqual(['a.pdf', 'b.txt']);
         });
 
-        it('should extract single file resource', () => {
+        it('should honour an explicit showDesc=0 flag', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="showDesc"/>
+                    <bool value="0"/>
+                </dictionary>
+            `);
+            expect(handler.extractProperties(dict).showDescriptions).toBe(false);
+        });
+
+        it('should extract a single file resource (no field list)', () => {
             const dict = createDomElement(`
                 <dictionary>
                     <string role="key" value="fileResource"/>
@@ -2915,40 +2947,9 @@ describe('FileAttachHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('resources/single.doc');
-        });
-    });
-
-    describe('extractFeedback', () => {
-        it('should return empty feedback', () => {
-            const dict = createDomElement(`<dictionary/>`);
-            const result = handler.extractFeedback(dict);
-            expect(result.content).toBe('');
-            expect(result.buttonCaption).toBe('');
-        });
-    });
-
-    describe('extractProperties', () => {
-        it('should return empty when no content', () => {
-            const dict = createDomElement(`<dictionary/>`);
-            expect(handler.extractProperties(dict)).toEqual({});
-        });
-
-        it('should set textTextarea property', () => {
-            const dict = createDomElement(`
-                <dictionary>
-                    <string role="key" value="introHTML"/>
-                    <instance class="TextAreaField">
-                        <dictionary>
-                            <string role="key" value="content"/>
-                            <unicode value="Content"/>
-                        </dictionary>
-                    </instance>
-                </dictionary>
-            `);
             const props = handler.extractProperties(dict);
-            expect(props.textTextarea).toBe('Content');
+            const attachments = props.attachments as Array<Record<string, unknown>>;
+            expect(attachments[0].url).toBe('resources/single.doc');
         });
     });
 });

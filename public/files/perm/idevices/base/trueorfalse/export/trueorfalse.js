@@ -143,7 +143,7 @@ var $trueorfalse = {
     },
 
     updateConfig: function (odata, ideviceId) {
-        const data = JSON.parse(JSON.stringify(odata));
+        const data = JSON.parse(JSON.stringify(odata || {}));
 
         data.isInExe = eXe.app.isInExe() ?? false;
         data.idevicePath = data.isInExe
@@ -191,7 +191,10 @@ var $trueorfalse = {
             data.eXeGameInstructions = data.eXeFormInstructions ?? '';
             data.eXeIdeviceTextAfter = '';
             data.msgs = $trueorfalse.msgsdefault;
-            data.questionsGame = data.questionsData.map((q) => ({
+            const questionsData = Array.isArray(data.questionsData)
+                ? data.questionsData
+                : [];
+            data.questionsGame = questionsData.map((q) => ({
                 question: q.baseText || '',
                 answer: q.answer || '',
                 feedback: q.feedback || '',
@@ -201,9 +204,11 @@ var $trueorfalse = {
             data.gameStarted = true;
             data.showSlider = false;
         }
+        // getQuestions() returns non-array input unchanged, so an activity saved
+        // without questions would otherwise reach the .length read below as undefined.
         data.questionsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
-                data.questionsGame,
+                Array.isArray(data.questionsGame) ? data.questionsGame : [],
                 data.percentageQuestions,
                 data.questionsRandom
             );

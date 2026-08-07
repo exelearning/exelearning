@@ -46,6 +46,16 @@ import {
     defaultLogger,
 } from './interfaces';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
+import { addUnresolvedAssetRefs, type UnresolvedAssetRef } from './unresolvedAssetRefs';
+import {
+    DEFAULT_ZIP_LIMITS,
+    ZipLimitError,
+    validateZipLimits,
+    entrySizeError,
+    totalSizeError,
+    entryCountError,
+} from './importPolicy';
+import type { ZipDecompressionLimits, ArchiveInspection, ArchiveEntryInfo } from './importPolicy';
 
 import { LegacyXmlParser } from './LegacyXmlParser';
 import { generateId } from '../ids';
@@ -65,36 +75,52 @@ import { generateOdeId } from '../export/utils/odeId';
  * *before* the entry is decompressed. We use it to enforce three independent
  * caps and abort by throwing — guaranteeing we never inflate beyond the cap.
  *
- * Defaults are conservative but comfortably above real .elp files: the largest
- * shipped fixtures (`todos-los-idevices.elp`, `Manual de eXeLearning 3.0.elpx`)
- * decompress to ~42 MB across ~1440 entries, with a largest single entry of
- * ~3.4 MB. The limits below leave ample headroom for legitimate packages.
+ * The limits, their default (conservative) values, the structured
+ * {@link ZipLimitError}, and the runtime-specific policies live in
+ * `./importPolicy` — the single source of truth shared with the browser import
+ * adapter and the ELPX export warning. They are re-exported here for backwards
+ * compatibility with existing importers of `./ElpxImporter`.
  */
-export interface ZipDecompressionLimits {
-    /** Maximum total uncompressed bytes across all entries. */
-    maxTotalBytes: number;
-    /** Maximum uncompressed bytes for any single entry. */
-    maxEntryBytes: number;
-    /** Maximum number of entries in the archive. */
-    maxEntries: number;
-}
-
-/** Default ZIP decompression limits applied to every inflate path. */
-export const DEFAULT_ZIP_LIMITS: ZipDecompressionLimits = {
-    maxTotalBytes: 500 * 1024 * 1024, // 500 MB cumulative
-    maxEntryBytes: 200 * 1024 * 1024, // 200 MB per entry
-    maxEntries: 10000, // entry-count cap
-};
+export {
+    DEFAULT_ZIP_LIMITS,
+    ZipLimitError,
+} from './importPolicy';
+export type { ZipDecompressionLimits, ArchiveInspection, ArchiveEntryInfo } from './importPolicy';
 
 /**
- * Thrown when a ZIP archive would exceed the configured decompression limits.
- * The inflate is aborted before the offending data is materialised in memory.
+ * Inspect a ZIP archive's central directory WITHOUT inflating any entry.
+ *
+ * fflate's `filter` callback receives each entry's declared `originalSize` and
+ * runs before decompression; returning `false` for every entry visits all the
+ * central-directory metadata while inflating nothing. This is the preflight
+ * used to decide whether an import is within the applicable limits (and whether
+ * a desktop confirmation is required) before any bytes are materialised or any
+ * project state is mutated.
+ *
+ * @param buffer - Raw ZIP bytes
+ * @param _label - Human-readable archive label (accepted for symmetry)
+ * @returns Declared entry metadata, cumulative size, count and largest entry
  */
-export class ZipLimitError extends Error {
-    constructor(message: string) {
-        super(message);
-        this.name = 'ZipLimitError';
-    }
+export function inspectZipArchive(buffer: Uint8Array, _label = 'ELP/ELPX archive'): ArchiveInspection {
+    const entries: ArchiveEntryInfo[] = [];
+    let totalBytes = 0;
+    let largestEntry: ArchiveEntryInfo | null = null;
+
+    fflate.unzipSync(buffer, {
+        filter: (file: { name: string; originalSize: number }) => {
+            const size = file.originalSize;
+            const entry: ArchiveEntryInfo = { name: file.name, size };
+            entries.push(entry);
+            totalBytes += size;
+            if (largestEntry === null || size > largestEntry.size) {
+                largestEntry = entry;
+            }
+            // Never inflate — metadata only.
+            return false;
+        },
+    });
+
+    return { entries, totalBytes, entryCount: entries.length, largestEntry };
 }
 
 /**
@@ -108,6 +134,8 @@ export class ElpxImporter {
     private onProgress: ((progress: ImportProgress) => void) | null = null;
     private logger: Logger;
     private zipLimits: ZipDecompressionLimits;
+    /** Activities whose asset references the package could not satisfy (#2223). */
+    private unresolvedAssets: UnresolvedAssetRef[] = [];
 
     /**
      * Create a new ElpxImporter
@@ -125,7 +153,9 @@ export class ElpxImporter {
         this.ydoc = ydoc;
         this.assetHandler = assetHandler;
         this.logger = logger;
-        this.zipLimits = { ...DEFAULT_ZIP_LIMITS, ...zipLimits };
+        // Validate the merged limits at this single boundary so an invalid
+        // runtime override can never silently disable the ZIP-bomb protection.
+        this.zipLimits = validateZipLimits({ ...DEFAULT_ZIP_LIMITS, ...zipLimits });
     }
 
     /**
@@ -165,7 +195,7 @@ export class ElpxImporter {
             filter: (file: { name: string; originalSize: number }) => {
                 entryCount++;
                 if (entryCount > maxEntries) {
-                    throw new ZipLimitError(`${label} exceeds the maximum allowed number of entries (${maxEntries}).`);
+                    throw entryCountError(label, entryCount, maxEntries);
                 }
 
                 // NOTE: `originalSize` is the attacker-declared uncompressed
@@ -174,18 +204,12 @@ export class ElpxImporter {
                 // before inflation as a cheap zip-bomb guard.
                 const entrySize = file.originalSize;
                 if (entrySize > maxEntryBytes) {
-                    throw new ZipLimitError(
-                        `Entry '${file.name}' in ${label} is too large when decompressed ` +
-                            `(${entrySize} bytes > ${maxEntryBytes} byte limit).`,
-                    );
+                    throw entrySizeError(label, file.name, entrySize, maxEntryBytes);
                 }
 
                 cumulativeBytes += entrySize;
                 if (cumulativeBytes > maxTotalBytes) {
-                    throw new ZipLimitError(
-                        `${label} exceeds the maximum total decompressed size ` +
-                            `(${cumulativeBytes} bytes > ${maxTotalBytes} byte limit).`,
-                    );
+                    throw totalSizeError(label, cumulativeBytes, maxTotalBytes);
                 }
 
                 return true;
@@ -209,24 +233,18 @@ export class ElpxImporter {
         const entries = Object.entries(zipContents);
 
         if (entries.length > maxEntries) {
-            throw new ZipLimitError(`${label} exceeds the maximum allowed number of entries (${maxEntries}).`);
+            throw entryCountError(label, entries.length, maxEntries);
         }
 
         let cumulativeBytes = 0;
         for (const [name, data] of entries) {
             const entrySize = data.length;
             if (entrySize > maxEntryBytes) {
-                throw new ZipLimitError(
-                    `Entry '${name}' in ${label} is too large when decompressed ` +
-                        `(${entrySize} bytes > ${maxEntryBytes} byte limit).`,
-                );
+                throw entrySizeError(label, name, entrySize, maxEntryBytes);
             }
             cumulativeBytes += entrySize;
             if (cumulativeBytes > maxTotalBytes) {
-                throw new ZipLimitError(
-                    `${label} exceeds the maximum total decompressed size ` +
-                        `(${cumulativeBytes} bytes > ${maxTotalBytes} byte limit).`,
-                );
+                throw totalSizeError(label, cumulativeBytes, maxTotalBytes);
             }
         }
     }
@@ -522,6 +540,19 @@ export class ElpxImporter {
     }
 
     /**
+     * Note that an activity still carries asset references the package could
+     * not satisfy, so the caller can tell the author which files are missing
+     * instead of leaving them to read a raw placeholder in a form field (#2223).
+     *
+     * @param componentId - id of the activity the text belongs to
+     * @param ideviceType - iDevice type, so the notice can name the activity
+     * @param text - HTML or serialized properties, after asset conversion ran
+     */
+    private recordUnresolvedAssets(componentId: string, ideviceType: string, text: string): void {
+        addUnresolvedAssetRefs(this.unresolvedAssets, componentId, ideviceType, text);
+    }
+
+    /**
      * Import document structure from parsed XML
      */
     async importStructure(
@@ -531,6 +562,7 @@ export class ElpxImporter {
     ): Promise<ElpxImportResult> {
         const { clearExisting = true, parentId = null } = options;
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+        this.unresolvedAssets = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -711,6 +743,7 @@ export class ElpxImporter {
 
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
+        stats.missingAssets = this.unresolvedAssets;
 
         const { zipContents: _zip, ...statsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Import complete:', statsWithoutZip);
@@ -727,6 +760,7 @@ export class ElpxImporter {
     ): Promise<ElpxImportResult> {
         const { clearExisting = true, parentId = null } = options;
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+        this.unresolvedAssets = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -820,6 +854,7 @@ export class ElpxImporter {
 
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
+        stats.missingAssets = this.unresolvedAssets;
 
         const { zipContents: _zipLegacy, ...legacyStatsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Legacy import complete:', legacyStatsWithoutZip);
@@ -931,6 +966,7 @@ export class ElpxImporter {
                 this.logger.warn(`[ElpxImporter] Error converting asset paths for ${legacyIdevice.id}:`, convErr);
             }
         }
+        this.recordUnresolvedAssets(legacyIdevice.id, legacyIdevice.type || 'unknown', htmlView);
 
         // For text iDevices, the editor expects the content in jsonProperties.textTextarea
         // So we need to populate it from htmlView
@@ -1491,6 +1527,7 @@ export class ElpxImporter {
             }
 
             compData.htmlView = typeof htmlContent === 'string' ? htmlContent : '';
+            this.recordUnresolvedAssets(componentId, ideviceType, compData.htmlView);
         }
 
         // Extract JSON properties
@@ -1556,6 +1593,7 @@ export class ElpxImporter {
                 }
 
                 compData.properties = props;
+                this.recordUnresolvedAssets(componentId, ideviceType, JSON.stringify(props));
             } catch (e) {
                 this.logger.warn(`[ElpxImporter] Failed to process JSON properties for ${componentId}:`, e);
             }
