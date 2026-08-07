@@ -2,6 +2,7 @@ import ProjectProperties from './properties/projectProperties.js';
 import IdevicesEngine from './idevices/idevicesEngine.js';
 import StructureEngine from './structure/structureEngine.js';
 import ImportProgress from '../interface/importProgress.js';
+import { buildMissingAssetsNotice } from './missingAssetsNotice.js';
 import { isImportCancelled } from '../interface/importResult.js';
 
 // Use global AppLogger for debug-controlled logging
@@ -310,6 +311,25 @@ export default class projectManager {
         }
 
         this._cleanPendingImportUrl();
+    }
+
+    /**
+     * Tell the author which activities reference files the imported package did
+     * not carry (#2223). Called from every browser import path through
+     * `importFromElpxViaYjs`, so the notice does not depend on which entry point
+     * started the import.
+     *
+     * @param {Object} stats - Import result, `missingAssets` is the report
+     */
+    showMissingAssetsNotice(stats) {
+        const notice = buildMissingAssetsNotice(stats?.missingAssets);
+        if (!notice) return;
+
+        this.app?.modals?.alert?.show({
+            title: notice.title,
+            body: notice.body,
+            contentId: 'missing-assets',
+        });
     }
 
     /**

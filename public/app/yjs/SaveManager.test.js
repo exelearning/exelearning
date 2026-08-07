@@ -635,6 +635,19 @@ describe('SaveManager', () => {
       expect(passedAssets[0].blob).toBeUndefined();
     });
 
+    it('keeps the document dirty when an asset upload is incomplete', async () => {
+      const manager = new SaveManager(mockBridge);
+      mockBridge.assetManager.getPendingAssetsMetadata.mockReturnValue([
+        { id: 'asset-1', filename: 'test.txt', size: 4, uploaded: false },
+      ]);
+      vi.spyOn(manager, 'uploadAssets').mockResolvedValue({ uploaded: 0, failed: 1 });
+
+      const result = await manager.save();
+
+      expect(result.success).toBe(false);
+      expect(mockBridge.documentManager.markClean).not.toHaveBeenCalled();
+    });
+
     it('handles save errors gracefully', async () => {
       const manager = new SaveManager(mockBridge);
       vi.spyOn(manager, 'saveYjsState').mockRejectedValue(new Error('Network error'));
@@ -1353,8 +1366,8 @@ describe('SaveManager', () => {
 
       const result = await manager.save();
 
-      // Should still succeed overall (asset errors are caught in the try-catch)
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(mockBridge.documentManager.markClean).not.toHaveBeenCalled();
     });
 
     it('does not create toast when showProgress is false', async () => {
@@ -1627,6 +1640,24 @@ describe('SaveManager', () => {
       // Verify listeners were unregistered
       expect(mockWsHandler.off).toHaveBeenCalledWith('uploadFileProgress', expect.any(Function));
       expect(mockWsHandler.off).toHaveBeenCalledWith('uploadBatchComplete', expect.any(Function));
+    });
+
+    it('marks successful session uploads before resolving', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token' });
+      manager.setWebSocketHandler(mockWsHandler);
+      const assets = [{ id: 'a', blob: new Blob(['test']), filename: 'a.txt', mime: 'text/plain' }];
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          uploaded: 1,
+          failed: 0,
+          results: [{ clientId: 'a', success: true }],
+        }),
+      });
+
+      await manager.uploadWithSession('project-123', mockBridge.assetManager, assets, null);
+
+      expect(mockBridge.assetManager.markAssetUploaded).toHaveBeenCalledWith('a');
     });
 
     it('includes session token in HTTP headers', async () => {

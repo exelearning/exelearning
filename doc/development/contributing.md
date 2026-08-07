@@ -35,26 +35,55 @@ Access http://localhost:8080 and log in with the default credentials shown in `.
 
 Details: [development/version-control.md](version-control.md)
 
-## Architecture Decisions & Design Documents
+## Architecture Decisions & Change Documents
 
-Significant technical work is documented before or alongside the code:
+Significant technical work is documented before or alongside the code.
 
-- Write a **Software Design Document (SDD)** for large feature proposals, major
-  refactors, design gates and multi-step implementations. SDDs live under
-  [`doc/architecture/sdd/`](../architecture/sdd/README.md).
+**Start from the change's GitHub number.** That is its tracking issue if it has
+one, and otherwise its pull request — GitHub numbers issues and pull requests from
+a single sequence, so the two never collide. That number identifies the change and
+every document it produces; there is no global ADR counter to look up or
+increment, and you should never open an issue just to obtain a number.
+
+- Write a **change document set** for large feature proposals, major refactors,
+  design gates and multi-step implementations. Each change gets a directory,
+  `doc/architecture/changes/<number>-<change-slug>/`, holding any of `proposal.md`,
+  `spec.md`, `design.md`, `research.md` and `tasks.md`. Create only the files that
+  carry real content. See [the change guide](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md).
 - Write an **Architecture Decision Record (ADR)** for durable decisions likely to
   affect future work. ADRs live under
-  [`doc/architecture/adr/`](../architecture/adr/README.md).
+  [`doc/architecture/adr/`](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md) and are named
+  `ADR-<number>-<NN>-<decision-slug>.md`, where `<NN>` is a two-digit sequence
+  scoped to that tracking number and starting at `01`.
 - An ADR is expected for changes affecting architecture, storage model, file
   formats, database migrations, import/export behavior, the collaboration model,
   security/sandboxing, accessibility strategy, public API contracts, or
   AI-assisted generation policy.
-- When an SDD contains a durable decision, link it to an existing ADR or propose
+- When a design contains a durable decision, link it to an existing ADR or propose
   a new one — don't bury the decision in the design.
-- Mention any ADRs or SDDs your PR creates or updates in the PR description.
+- **There is no committed index.** `make architecture-records` prints one on
+  demand. Run `make architecture-check` before pushing; CI runs the same check.
+- Mention any ADRs or change documents your PR creates or updates in the PR
+  description.
 
-See the [ADR](../architecture/adr/README.md) and
-[SDD](../architecture/sdd/README.md) guides for templates, IDs and statuses.
+### If your branch predates this convention
+
+Branches opened before the migration may still contain `ADR-NNNN` or `SDD-NNNN`
+files. To bring one up to date:
+
+1. Find the change's tracking number: its issue, or this pull request's number if
+   there is no issue.
+2. `git mv` each ADR to `ADR-<number>-<NN>-<decision-slug>.md`, numbering `01`,
+   `02`, … in the order the decisions were written.
+3. Update each file's `id` and `tracking_issue`, and make the H1 `# <id>: <title>`.
+4. Move design documents into `doc/architecture/changes/<number>-<slug>/`.
+5. Delete any `records.md` your branch adds — the index is no longer committed.
+6. Run `make architecture-check`.
+
+See the [ADR](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/README.md) and
+[change](https://github.com/exelearning/exelearning/blob/main/doc/architecture/changes/README.md) guides for templates, identifiers and
+statuses, and [`migration-map.md`](https://github.com/exelearning/exelearning/blob/main/doc/architecture/migration-map.md) to resolve a
+retired identifier.
 
 ## Coding Standards
 
