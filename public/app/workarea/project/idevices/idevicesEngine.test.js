@@ -3295,6 +3295,31 @@ describe('IdevicesEngine', () => {
             });
 
             expect(mockIdevice.jsonProperties).toEqual({});
+            expect(mockIdevice.malformedJsonPropertiesRaw).toBe('{invalid json');
+        });
+
+        it('clears malformed state when a valid remote payload arrives', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                jsonProperties: {},
+                jsonPropertiesParseError: new SyntaxError('Invalid JSON'),
+                malformedJsonPropertiesRaw: '{invalid json',
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({
+                id: 'comp-1',
+                jsonProperties: '{"recovered":true}',
+            });
+
+            expect(mockIdevice.jsonProperties).toEqual({ recovered: true });
+            expect(mockIdevice.jsonPropertiesParseError).toBeNull();
+            expect(mockIdevice.malformedJsonPropertiesRaw).toBeNull();
         });
     });
 

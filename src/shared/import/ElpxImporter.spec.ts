@@ -8,7 +8,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 
-import { ElpxImporter, ZipLimitError, DEFAULT_ZIP_LIMITS } from './ElpxImporter';
+import { ElpxImporter, ZipLimitError, DEFAULT_ZIP_LIMITS, inspectZipArchive } from './ElpxImporter';
 import { FileSystemAssetHandler } from './FileSystemAssetHandler';
 import type { Logger } from './interfaces';
 
@@ -337,6 +337,53 @@ describe('ElpxImporter', () => {
             expect(typeof result.zipContents).toBe('object');
             // Should contain content.xml (the main content file)
             expect(result.zipContents!['content.xml']).toBeDefined();
+
+            ydoc.destroy();
+        });
+
+        /**
+         * #2223. `missing-asset-refs.elpx` is a Classify activity whose package
+         * carries no `content/resources/` at all, so its eight references have
+         * nothing to resolve against and reach the editor as raw placeholders.
+         */
+        it('should report the activities whose asset references the package cannot satisfy', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/missing-asset-refs.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.assets).toBe(0);
+            expect(result.missingAssets).toHaveLength(1);
+            expect(result.missingAssets![0].ideviceType).toBe('classify');
+            expect(result.missingAssets![0].paths.sort()).toEqual([
+                'ardilla.svg',
+                'chipmunk_name.mp3',
+                'leon.svg',
+                'lion_name.mp3',
+                'rabbit.svg',
+                'rabbit_name.mp3',
+                'tiger_name.mp3',
+                'tigre.svg',
+            ]);
+
+            ydoc.destroy();
+        });
+
+        it('should leave the report empty when every asset reference resolves', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.missingAssets).toEqual([]);
 
             ydoc.destroy();
         });
@@ -685,6 +732,94 @@ describe('ElpxImporter', () => {
             expect(result.pages).toBeGreaterThan(0);
 
             ydoc.destroy();
+        });
+    });
+
+    describe('preflight inspection and runtime policy', () => {
+        const minimalContentXml = '<?xml version="1.0" encoding="UTF-8"?><odeProperties></odeProperties>';
+
+        it('inspectZipArchive reports entry metadata without enforcing limits or inflating', async () => {
+            const fflate = await import('fflate');
+            // A 3 MB run of zeros compresses tiny; inspection reads the declared
+            // originalSize from the central directory, so it never inflates.
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'big.bin': new Uint8Array(3 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+            expect(zip.length).toBeLessThan(64 * 1024);
+
+            const inspection = inspectZipArchive(zip, 'archive');
+
+            expect(inspection.entryCount).toBe(2);
+            expect(inspection.totalBytes).toBe(3 * 1024 * 1024 + minimalContentXml.length);
+            expect(inspection.largestEntry?.name).toBe('big.bin');
+            expect(inspection.largestEntry?.size).toBe(3 * 1024 * 1024);
+        });
+
+        it('rejects an invalid limits override at construction time', () => {
+            const ydoc = new Y.Doc();
+            expect(() => new ElpxImporter(ydoc, null, silentLogger, { maxEntryBytes: -1 })).toThrow();
+            expect(() => new ElpxImporter(ydoc, null, silentLogger, { maxEntryBytes: Number.NaN })).toThrow();
+            expect(() => new ElpxImporter(ydoc, null, silentLogger, { maxEntries: 2.5 })).toThrow();
+            ydoc.destroy();
+        });
+
+        it('throws a structured ZipLimitError identifying the offending entry', async () => {
+            const fflate = await import('fflate');
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'video.mp4': new Uint8Array(2 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, { maxEntryBytes: 1 * 1024 * 1024 });
+
+            let caught: ZipLimitError | null = null;
+            try {
+                await importer.importFromBuffer(zip);
+            } catch (err) {
+                caught = err as ZipLimitError;
+            }
+            expect(caught).toBeInstanceOf(ZipLimitError);
+            expect(caught?.details.kind).toBe('entry-size');
+            expect(caught?.details.entryName).toBe('video.mp4');
+            expect(caught?.details.actualValue).toBe(2 * 1024 * 1024);
+            expect(caught?.details.limitValue).toBe(1 * 1024 * 1024);
+            ydoc.destroy();
+        });
+
+        it('accepts, under a larger runtime override, an entry the conservative cap rejects', async () => {
+            const fflate = await import('fflate');
+            // 2 MB entry: rejected by a 1 MB conservative cap, accepted by a 4 MB
+            // desktop-style cap. This is the core of the #2193 fix: the same
+            // archive succeeds only because an explicit larger policy is injected.
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'video.mp4': new Uint8Array(2 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+
+            const rejectDoc = new Y.Doc();
+            const conservative = new ElpxImporter(rejectDoc, null, silentLogger, { maxEntryBytes: 1 * 1024 * 1024 });
+            await expect(conservative.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
+            rejectDoc.destroy();
+
+            const acceptDoc = new Y.Doc();
+            const desktop = new ElpxImporter(acceptDoc, null, silentLogger, {
+                maxEntryBytes: 4 * 1024 * 1024,
+                maxTotalBytes: 8 * 1024 * 1024,
+            });
+            const result = await desktop.importFromBuffer(zip);
+            expect(result.assets).toBeGreaterThanOrEqual(0);
+            acceptDoc.destroy();
         });
     });
 

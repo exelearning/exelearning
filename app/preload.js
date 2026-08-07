@@ -44,6 +44,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
   openElp: () => ipcRenderer.invoke('app:openElp'),
+  // Check an external link from the main process (no CORS) so the link
+  // validation report can show real HTTP statuses, like online mode does.
+  checkLink: (url) => ipcRenderer.invoke('app:checkLink', { url }),
   // Close the current window (File > Close). The existing close guard in the
   // main process still prompts for unsaved changes.
   closeCurrentWindow: () => ipcRenderer.invoke('app:closeCurrentWindow'),
