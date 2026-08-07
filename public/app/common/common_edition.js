@@ -568,7 +568,7 @@ var $exeDevicesEdition = {
                                     </li>`
                         : '';
                     const iaDiv = managed
-                        ? `<div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
+                        ? `<div  class="form-control font-monospace fs-6 h-auto" id="eXeEIADiv"  style="display:none">
                                         ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
                                         <textarea class="form-control font-monospace fs-6" style="display:none" id="eXeEQuestionsIA"> </textarea>
                                     </div>`
@@ -620,10 +620,11 @@ var $exeDevicesEdition = {
                 },
 
                 createIAButtonsHtml: function () {
-                    return `<div id="eXeFormIAContainer">
-                        <div class="dd-flex gap-2 mt-3 mb-3">
-                            <label for="eXeSpecialtyIA">${_('Specialty')}:
-                                <input list="specialtyList" id="eXeSpecialtyIA" name="specialty" value="${_('Biology')}" style="width: 150px;">
+                    return `<div id="eXeFormIAContainer" class="py-2">
+                        <div class="row g-3 mb-3">
+                            <div class="col-12 col-md-5">
+                                <label class="form-label d-block mb-1" for="eXeSpecialtyIA">${_('Specialty')}:</label>
+                                <input list="specialtyList" id="eXeSpecialtyIA" name="specialty" class="form-control form-control-sm w-100" value="${_('Biology')}">
                                 <datalist id="specialtyList">
                                     <option value="${_('Biology')}">
                                     <option value="${_('Law')}">
@@ -637,9 +638,10 @@ var $exeDevicesEdition = {
                                     <option value="${_('Psychology')}">
                                     <option value="${_('Chemistry')}">
                                 </datalist>
-                            </label>
-                            <label for="eXeCourseIA">${_('Course')}:
-                                <input list="courseList" id="eXeCourseIA" name="course" value="${_('3rd ESO')}" style="width: 130px;">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label d-block mb-1" for="eXeCourseIA">${_('Course')}:</label>
+                                <input list="courseList" id="eXeCourseIA" name="course" class="form-control form-control-sm w-100" value="${_('3rd ESO')}">
                                 <datalist id="courseList">
                                     <option value="${_('1st Primary')}">
                                     <option value="${_('2nd Primary')}">
@@ -656,16 +658,22 @@ var $exeDevicesEdition = {
                                     <option value="${_('Intermediate Vocational Training')}">
                                     <option value="${_('Higher Vocational Training')}">
                                 </datalist>
-                            </label>
-                            <label for="eXeNumberOfQuestionsIA">${_('Number of Questions')}:
-                                <input id="eXeNumberOfQuestionsIA" type="number" min="1" max="30" value="10" class="form-control form-control-sm" style="width:6ch;">
-                            </label>
-                            <label for="eXeThemeIA">${_('Topic')}:
-                                <input id="eXeThemeIA" type="text" style="width: 300px;">
-                            </label>
-                             <button id="eXeIAButton" class="btn btn-success ms-2">${_('Create')}</button>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label d-block mb-1" for="eXeNumberOfQuestionsIA">${_('Number of Questions')}:</label>
+                                <input id="eXeNumberOfQuestionsIA" type="number" min="1" max="30" value="10" class="form-control form-control-sm w-100">
+                            </div>
                         </div>
-                        <p id="eXeIAMessage" class="dp-none"></p>
+                        <div class="row g-3 align-items-end mb-3">
+                            <div class="col">
+                                <label class="form-label d-block mb-1" for="eXeThemeIA">${_('Topic')}:</label>
+                                <input id="eXeThemeIA" type="text" class="form-control form-control-sm w-100">
+                            </div>
+                            <div class="col-auto">
+                                <button id="eXeIAButton" class="btn btn-primary">${_('Create')}</button>
+                            </div>
+                        </div>
+                        <p id="eXeIAMessage" class="mb-0" style="display:none"></p>
                     </div>`;
                 },
 

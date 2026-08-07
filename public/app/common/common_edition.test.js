@@ -1028,6 +1028,71 @@ describe('common_edition.js', () => {
       expect(result).toContain('eXeSpecialtyIA');
     });
 
+    describe('createIAButtonsHtml layout', () => {
+      const html = () =>
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml();
+
+      function fieldOf(markup, id) {
+        // The <input> tag for `id`, so per-field classes can be asserted.
+        return markup.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`))?.[0] ?? '';
+      }
+
+      it('lays the fields out with the Bootstrap grid, not the misspelled "dd-flex"', () => {
+        const markup = html();
+        expect(markup).not.toContain('dd-flex');
+        expect(markup).toContain('class="row g-3 mb-3"');
+      });
+
+      it('stacks every input under its own label so they line up vertically', () => {
+        const markup = html();
+        for (const id of ['eXeSpecialtyIA', 'eXeCourseIA', 'eXeNumberOfQuestionsIA', 'eXeThemeIA']) {
+          // label ... for="id" ... </label> immediately followed by the input.
+          expect(markup).toMatch(
+            new RegExp(`<label[^>]*for="${id}"[^>]*>[^<]*</label>\\s*<input[^>]*id="${id}"`)
+          );
+        }
+      });
+
+      it('makes every input full-width via form-control, with no inline widths', () => {
+        const markup = html();
+        expect(markup).not.toMatch(/style="[^"]*width/);
+        for (const id of ['eXeSpecialtyIA', 'eXeCourseIA', 'eXeNumberOfQuestionsIA', 'eXeThemeIA']) {
+          expect(fieldOf(markup, id)).toContain('form-control form-control-sm w-100');
+        }
+      });
+
+      it('forces the labels to be block-level so no inherited rule inlines them', () => {
+        // .modal label / .form-properties label style labels globally; d-block keeps
+        // each field stacked under its own label regardless of that context.
+        const markup = html();
+        for (const id of ['eXeSpecialtyIA', 'eXeCourseIA', 'eXeNumberOfQuestionsIA', 'eXeThemeIA']) {
+          expect(markup).toMatch(
+            new RegExp(`<label class="form-label d-block mb-1" for="${id}"`)
+          );
+        }
+      });
+
+      it('gives Course a narrower column than Specialty', () => {
+        const markup = html();
+        const colOf = (id) =>
+          markup.match(new RegExp(`<div class="(col[^"]*)">\\s*<label[^>]*for="${id}"`))?.[1];
+        expect(colOf('eXeSpecialtyIA')).toBe('col-12 col-md-5');
+        expect(colOf('eXeCourseIA')).toBe('col-12 col-md-4');
+        expect(colOf('eXeNumberOfQuestionsIA')).toBe('col-12 col-md-3');
+      });
+
+      it('puts Topic in a fluid column with a primary Create button to its right', () => {
+        const markup = html();
+        expect(markup).toMatch(
+          /<div class="col">[\s\S]*id="eXeThemeIA"[\s\S]*<div class="col-auto">\s*<button id="eXeIAButton" class="btn btn-primary"/
+        );
+      });
+
+      it('keeps the message paragraph hidden inline so jQuery show\/hide works', () => {
+        expect(html()).toMatch(/<p id="eXeIAMessage"[^>]*style="display:none"/);
+      });
+    });
+
     describe('AI behaviour matrix (aiSettings / getTabIA)', () => {
       const share = () => globalThis.$exeDevicesEdition.iDevice.gamification.share;
       function setAi(ai) {
@@ -1083,6 +1148,14 @@ describe('common_edition.js', () => {
         expect(html).toContain('eXeFormIAContainer');
         expect(html).not.toContain('eXeEIASelect');
         expect(html).not.toContain('eXeEOpenChatGPTButton');
+      });
+
+      it('gives eXeEIADiv an automatic height so its content is not clipped', () => {
+        // .form-control:not(textarea) is pinned to 36px in _reset.scss; h-auto
+        // releases it so the Create form is not cut off (see #1998).
+        setAi({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        const html = share().getTabIA(0);
+        expect(html).toMatch(/<div[^>]*class="[^"]*h-auto[^"]*"[^>]*id="eXeEIADiv"/);
       });
     });
 
