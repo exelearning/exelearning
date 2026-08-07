@@ -25,6 +25,8 @@ import {
     getLicenseUrl,
     LICENSE_REGISTRY,
     shouldShowLicenseFooter,
+    hasSiteFooterContent,
+    hasUserFooterContent,
     formatShortLicenseText,
     PRERENDERED_LATEX_CSS,
 } from './constants';
@@ -924,6 +926,58 @@ describe('Constants', () => {
 
             it('should return true for unknown licenses', () => {
                 expect(shouldShowLicenseFooter('some random license')).toBe(true);
+            });
+        });
+
+        describe('hasUserFooterContent', () => {
+            it('should return false for missing or empty content', () => {
+                expect(hasUserFooterContent()).toBe(false);
+                expect(hasUserFooterContent('')).toBe(false);
+                expect(hasUserFooterContent(undefined)).toBe(false);
+            });
+
+            it('should return false for whitespace-only content', () => {
+                expect(hasUserFooterContent('   ')).toBe(false);
+                expect(hasUserFooterContent('\n\t\r\n')).toBe(false);
+            });
+
+            it('should return true for real content', () => {
+                expect(hasUserFooterContent('<p>Hello</p>')).toBe(true);
+                expect(hasUserFooterContent('  text  ')).toBe(true);
+            });
+        });
+
+        describe('hasSiteFooterContent', () => {
+            it('should return false when there is neither license nor user content', () => {
+                expect(hasSiteFooterContent('')).toBe(false);
+                expect(hasSiteFooterContent('', '')).toBe(false);
+                expect(hasSiteFooterContent('', undefined)).toBe(false);
+                expect(hasSiteFooterContent(null as unknown as string)).toBe(false);
+            });
+
+            it('should return false for hidden licenses without user content', () => {
+                expect(hasSiteFooterContent('propietary license')).toBe(false);
+                expect(hasSiteFooterContent('not appropriate')).toBe(false);
+                expect(hasSiteFooterContent('Not Appropriate', '')).toBe(false);
+            });
+
+            it('should treat whitespace-only user content as empty', () => {
+                expect(hasSiteFooterContent('', '   ')).toBe(false);
+                expect(hasSiteFooterContent('', '\n\n')).toBe(false);
+                expect(hasSiteFooterContent('', ' \t \r\n ')).toBe(false);
+                expect(hasSiteFooterContent('not appropriate', '\n  \n')).toBe(false);
+            });
+
+            it('should return true when a visible license is present', () => {
+                expect(hasSiteFooterContent('creative commons: attribution 4.0')).toBe(true);
+                expect(hasSiteFooterContent('public domain', '')).toBe(true);
+                expect(hasSiteFooterContent('some random license', '   ')).toBe(true);
+            });
+
+            it('should return true when user content is present without a license', () => {
+                expect(hasSiteFooterContent('', '<p>Hello</p>')).toBe(true);
+                expect(hasSiteFooterContent('propietary license', '<p>Hello</p>')).toBe(true);
+                expect(hasSiteFooterContent('not appropriate', '  text  ')).toBe(true);
             });
         });
     });
