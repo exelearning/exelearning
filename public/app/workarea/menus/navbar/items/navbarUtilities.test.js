@@ -174,6 +174,35 @@ describe('NavbarUtilities', () => {
         });
     });
 
+    describe('setOdeBrokenLinksEvent browser-limited tooltip', () => {
+        beforeEach(() => {
+            navbarUtilities = new NavbarFile(mockMenu);
+        });
+
+        // The tooltip is evaluated lazily when the Utilities dropdown opens,
+        // because the static-mode adapters register after the menu is built.
+        const openUtilitiesDropdown = () => {
+            const call = mockButtons.dropdownUtilities.addEventListener.mock.calls.find(
+                ([event]) => event === 'click'
+            );
+            expect(call).toBeDefined();
+            call[1]();
+        };
+
+        it('should warn on the menu entry when links cannot be checked in this flavor', () => {
+            navbarUtilities.setOdeBrokenLinksEvent();
+            openUtilitiesDropdown();
+            expect(mockButtons.brokenLinksButton.title).toContain('cannot be checked automatically');
+        });
+
+        it('should not add the warning when a validation backend is available', () => {
+            eXeLearning.app.api.getLinkValidationStreamUrl = vi.fn(() => '/api/validate-stream');
+            navbarUtilities.setOdeBrokenLinksEvent();
+            openUtilitiesDropdown();
+            expect(mockButtons.brokenLinksButton.title).toBe('');
+        });
+    });
+
     describe('setEvents', () => {
         beforeEach(() => {
             navbarUtilities = new NavbarFile(mockMenu);

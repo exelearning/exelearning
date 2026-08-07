@@ -1,17 +1,17 @@
 ---
-id: ADR-0042
+id: ADR-2184-01
 title: "Do not implement a generic open-response assessment iDevice"
 status: Proposed
 date: 2026-07-16
+tracking_issue: 2184
+legacy_id: ADR-0042
 deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
 related:
-  issues:
-    - "#2184"
   prs: []
-  sdds: []
+  changes: []
   adrs: []
 supersedes: []
 superseded_by: []
@@ -20,11 +20,7 @@ ai_assistance:
   model: "GPT-5.6 Thinking"
 ---
 
-# ADR-0042: Do not implement a generic open-response assessment iDevice
-
-## Status
-
-Proposed
+# ADR-2184-01: Do not implement a generic open-response assessment iDevice
 
 ## Context
 
