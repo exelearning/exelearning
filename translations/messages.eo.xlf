@@ -12593,18 +12593,6 @@
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target>~ Skribu la ĝustan vorton aŭ frazon kaj alklaku la butonon "Respondi".</target>
       </trans-unit>
-      <trans-unit id="84avriw" resname="Timeout">
-        <source>Timeout</source>
-        <target>~Tempa limdato elĉerpita</target>
-      </trans-unit>
-      <trans-unit id="iml7r85" resname="Network error">
-        <source>Network error</source>
-        <target>~Retera eraro</target>
-      </trans-unit>
-      <trans-unit id="u6ftl4b" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target>~Nevalida URL</target>
-      </trans-unit>
       <trans-unit id="x4yfmx9" resname="Session Expired">
         <source>Session Expired</source>
         <target>~Sesio eksvalidiĝis</target>
@@ -12980,10 +12968,6 @@
       <trans-unit id="tbkygy8" resname="Error validating links">
         <source>Error validating links</source>
         <target>~Eraro dum validiĝo de la ligoj</target>
-      </trans-unit>
-      <trans-unit id="3e5lsew" resname="No broken links to export">
-        <source>No broken links to export</source>
-        <target>~Sen rompitaj ne-eksporteblaj ligiloj</target>
       </trans-unit>
       <trans-unit id="v69fwx3" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
@@ -14081,10 +14065,6 @@
         <source>Close without saving</source>
         <target>~Ĉu fermi sen konservi</target>
       </trans-unit>
-      <trans-unit id="pmcify3" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
-        <target>~Ne povis esti kontrolita: HTTP-enhavo estas blokita en HTTPS-paĝoj.</target>
-      </trans-unit>
       <trans-unit id="3oxnt5a" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
         <target>~Vi povas aldoni nur unu Rubrik-iDevice por paĝo.</target>
@@ -14284,10 +14264,6 @@
       <trans-unit id="ieiu5ij" resname="The battery drains">
         <source>The battery drains</source>
         <target>~La baterio malpleniĝas</target>
-      </trans-unit>
-      <trans-unit id="3hl9ljt" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.">
-        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
-        <target>~Generu 5 plurelektajn demandojn pri elektraj cirkvitoj. Unu demando por linio. Ĉiu linio devas enhavi ĉiujn kampojn apartigitajn per #: mallonga priskribo, TikZ-kodo (uzante circuitikz) por la cirkvita diagramo, la ĝusta respondo en literoj (ekz. A, AB), la demando kaj 2 ĝis 4 respondaj opcioj. Ne uzu la #-signon ene de iu ajn kampo. Ne aldonu linirompaĵojn ene de demando. GRAVE: La TikZ-kodo devas esti kongrua kun circuitikz-versio 0.9.6. Uzu nur komponantojn disponeblajn en ĉi tiu versio: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (kun t=A por amperometro, t=V por voltometro), and gate, or gate, not gate, nand gate, nor gate. NE uzu komponantojn el circuitikz 1.0 aŭ pli nova kiel dipchip, qfpchip, muxdemux, flipflop, latch aŭ 7-segmentaj ekranoj.</target>
       </trans-unit>
       <trans-unit id="z57mgwp" resname="Drop an .elpx file here to open it">
         <source>Drop an .elpx file here to open it</source>
@@ -15465,22 +15441,6 @@
         <source>Save or discard the open iDevice before saving the project.</source>
         <target>~Konservu aŭ forĵetu la malfermitan iDevice antaŭ ol konservi la projekton.</target>
       </trans-unit>
-      <trans-unit id="7e2rsr4" resname="All collaborative changes are saved.">
-        <source>All collaborative changes are saved.</source>
-        <target>~Ĉiuj kunlaboraj ŝanĝoj estas konservitaj.</target>
-      </trans-unit>
-      <trans-unit id="sz46fwa" resname="Collaborative changes are shared live and will be saved automatically.">
-        <source>Collaborative changes are shared live and will be saved automatically.</source>
-        <target>~Kunlaboraj ŝanĝoj estas dividataj ĝisdatale kaj konserviĝos aŭtomate.</target>
-      </trans-unit>
-      <trans-unit id="nez1q1f" resname="Saving collaborative changes...">
-        <source>Saving collaborative changes...</source>
-        <target>~Konservado de kunlaboraj ŝanĝoj...</target>
-      </trans-unit>
-      <trans-unit id="e37lfa7" resname="Autosave failed. Please click Save before leaving.">
-        <source>Autosave failed. Please click Save before leaving.</source>
-        <target>~Aŭtomata konservado malsukcesis. Bonvolu alklaki Konservi antaŭ ol eliri.</target>
-      </trans-unit>
       <trans-unit id="v9t53on" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
         <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
         <target>~Lingvaj ŝanĝoj eble postulos reŝargi aŭ remalfermi eXeLearning por ĝisdatigi la tutan interfacon.</target>
@@ -15500,6 +15460,238 @@
       <trans-unit id="g2efejz" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
         <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
         <target>~Kelkaj kunlaboraj ŝanĝoj ankoraŭ ne estis konservitaj. Alklaku Konservi antaŭ ol eliri por eviti perdi ilin.</target>
+      </trans-unit>
+      <trans-unit id="irszm81" resname="Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.">
+        <source>Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.</source>
+        <target>~Enhavo markita kiel nur por instruistoj estas kaŝita defaŭlte en eksportoj kaj antaŭrigardoj. Malfermu ĝin per ?exe-teacher=1 por montri ĝin.</target>
+      </trans-unit>
+      <trans-unit id="9m1poar" resname="The file &quot;%1&quot; contains a large asset (%2).">
+        <source>The file "%1" contains a large asset (%2).</source>
+        <target>~La dosiero "%1" enhavas grandan rimedon (%2).</target>
+      </trans-unit>
+      <trans-unit id="v28feys" resname="Importing it may use a large amount of memory.">
+        <source>Importing it may use a large amount of memory.</source>
+        <target>~Importi ĝin povas uzi grandan kvanton da memoro.</target>
+      </trans-unit>
+      <trans-unit id="txh26ok" resname="The desktop application can open assets up to %1.">
+        <source>The desktop application can open assets up to %1.</source>
+        <target>~La labortabla aplikaĵo povas malfermi rimedojn ĝis %1.</target>
+      </trans-unit>
+      <trans-unit id="a3busd9" resname="Protection against malformed or malicious archives remains active.">
+        <source>Protection against malformed or malicious archives remains active.</source>
+        <target>~La protekto kontraŭ misformitaj aŭ malicaj arkivoj restas aktiva.</target>
+      </trans-unit>
+      <trans-unit id="e2tqfob" resname="Import large file?">
+        <source>Import large file?</source>
+        <target>~Ĉu importi grandan dosieron?</target>
+      </trans-unit>
+      <trans-unit id="m4lnfvr" resname="The file &quot;%1&quot; (%2) is larger than the maximum this application can open (%3).">
+        <source>The file "%1" (%2) is larger than the maximum this application can open (%3).</source>
+        <target>~La dosiero "%1" (%2) estas pli granda ol la maksimumo kiun ĉi tiu aplikaĵo povas malfermi (%3).</target>
+      </trans-unit>
+      <trans-unit id="bkdc8m2" resname="This project (%1) is larger than the maximum this application can open (%2).">
+        <source>This project (%1) is larger than the maximum this application can open (%2).</source>
+        <target>~Ĉi tiu projekto (%1) estas pli granda ol la maksimumo kiun ĉi tiu aplikaĵo povas malfermi (%2).</target>
+      </trans-unit>
+      <trans-unit id="kq81qcv" resname="This project has too many files to open (%1 of a maximum %2).">
+        <source>This project has too many files to open (%1 of a maximum %2).</source>
+        <target>~Ĉi tiu projekto havas tro multajn dosierojn por esti malfermita (%1 el maksimume %2).</target>
+      </trans-unit>
+      <trans-unit id="3pawwdy" resname="The project was not imported.">
+        <source>The project was not imported.</source>
+        <target>~La projekto ne estis importita.</target>
+      </trans-unit>
+      <trans-unit id="i6bcbd7" resname="To reduce its size, open the File Manager and:">
+        <source>To reduce its size, open the File Manager and:</source>
+        <target>~Por redukti ĝian grandecon, malfermu la Dosieran administrilon kaj:</target>
+      </trans-unit>
+      <trans-unit id="5s79mc8" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
+        <source>Sort by "Largest first" and review each asset\'s references.</source>
+        <target>~Ordigu laŭ "Plej grandaj unue" kaj kontrolu la referencojn de ĉiu rimedo.</target>
+      </trans-unit>
+      <trans-unit id="yuj76zg" resname="Remove an unused older version of a large asset.">
+        <source>Remove an unused older version of a large asset.</source>
+        <target>~Forigu neuzatan pli malnovan version de granda rimedo.</target>
+      </trans-unit>
+      <trans-unit id="i0nj2nq" resname="Optimise, replace, or remove the large file.">
+        <source>Optimise, replace, or remove the large file.</source>
+        <target>~Optimumigu, anstataŭigu aŭ forigu la grandan dosieron.</target>
+      </trans-unit>
+      <trans-unit id="i0bdnaz" resname="File too large to open">
+        <source>File too large to open</source>
+        <target>~Dosiero tro granda por malfermi</target>
+      </trans-unit>
+      <trans-unit id="ey65dwx" resname="The asset &quot;%1&quot; (%2) exceeds the maximum size the desktop application can open (%3).">
+        <source>The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).</source>
+        <target>~La rimedo "%1" (%2) superas la maksimuman grandecon kiun la labortabla aplikaĵo povas malfermi (%3).</target>
+      </trans-unit>
+      <trans-unit id="yzgmosn" resname="This project (%1) exceeds the maximum size the desktop application can open (%2).">
+        <source>This project (%1) exceeds the maximum size the desktop application can open (%2).</source>
+        <target>~Ĉi tiu projekto (%1) superas la maksimuman grandecon kiun la labortabla aplikaĵo povas malfermi (%2).</target>
+      </trans-unit>
+      <trans-unit id="q34s2on" resname="The resulting ELPX may not open in the desktop application.">
+        <source>The resulting ELPX may not open in the desktop application.</source>
+        <target>~La rezulta ELPX eble ne malfermiĝos en la labortabla aplikaĵo.</target>
+      </trans-unit>
+      <trans-unit id="8qbmff9" resname="Do you want to continue exporting anyway?">
+        <source>Do you want to continue exporting anyway?</source>
+        <target>~Ĉu vi volas tamen daŭrigi la eksporton?</target>
+      </trans-unit>
+      <trans-unit id="xf8ren3" resname="Large ELPX export">
+        <source>Large ELPX export</source>
+        <target>~Granda ELPX-eksporto</target>
+      </trans-unit>
+      <trans-unit id="tqnxbbt" resname="Export anyway">
+        <source>Export anyway</source>
+        <target>~Eksporti tamen</target>
+      </trans-unit>
+      <trans-unit id="s86l1ib" resname="Page title">
+        <source>Page title</source>
+        <target>~Titolo de la paĝo</target>
+      </trans-unit>
+      <trans-unit id="f1mk83f" resname="This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.">
+        <source>This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.</source>
+        <target>~Ĉi tiu iDevice ne povas esti redaktita ĉar ĝiaj konservitaj datumoj estas difektitaj. Ĝia ekzistanta enhavo estis konservita.</target>
+      </trans-unit>
+      <trans-unit id="dhbckz7" resname="Invalid iDevice data. The save was discarded.">
+        <source>Invalid iDevice data. The save was discarded.</source>
+        <target>~Nevalidaj datumoj de iDevice. La konservo estis forĵetita.</target>
+      </trans-unit>
+      <trans-unit id="dimzf9g" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).</source>
+        <target>~Generu 5 plurelektajn demandojn pri elektraj cirkvitoj. Unu demando por ĉiu linio. Ĉiu linio devas enhavi ĉiujn kampojn apartigitajn per #: mallongan priskribon, la TikZ-kodon (uzante circuitikz) por la cirkvita skemo, la ĝustan respondon per literoj (ekzemple, A, AB), la demandon, kaj 2 ĝis 4 respondelektojn. Ne uzu la signon # ene de iu kampo. Ne aldonu liniorompojn ene de demando. GRAVE: La TikZ-kodo devas esti kongrua kun circuitikz versio 0.9.6. Uzu nur komponantojn disponeblajn en ĉi tiu versio: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diodo), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (kun t=A por ampermetro, t=V por voltmetro), and gate, or gate, not gate, nand gate, nor gate. NE uzu komponantojn el circuitikz 1.0 aŭ pli nova, kiel dipchip, qfpchip, muxdemux, flipflop, latch aŭ 7-segmentaj ekranoj. La skemon bildigas TikZJax, kiu ŝargas nur la LaTeX-pakaĵojn circuitikz, amsmath kaj amssymb; NE uzu komandojn el iu alia pakaĵo. Skribu unuojn kiel platan tekston aŭ Unikodon (ekzemple Ω, µ, V, A, W, F, H, Hz, kΩ, µF), neniam kiel makroojn de siunitx aŭ gensymb kiel \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} aŭ \\qty{...}{...}, kaj neniam ĉirkaŭu unuon per angulaj krampoj (skribu 100 Ω, ne 100&lt;\\ohm&gt;).</target>
+      </trans-unit>
+      <trans-unit id="tn28c9r" resname="Attachment">
+        <source>Attachment</source>
+        <target>~Aldonaĵo</target>
+      </trans-unit>
+      <trans-unit id="wob954w" resname="No files attached.">
+        <source>No files attached.</source>
+        <target>~Neniu dosiero aldonita.</target>
+      </trans-unit>
+      <trans-unit id="w1racla" resname="File unavailable">
+        <source>File unavailable</source>
+        <target>~Dosiero ne disponebla</target>
+      </trans-unit>
+      <trans-unit id="iezxsq3" resname="File attachments">
+        <source>File attachments</source>
+        <target>~Dosieraj aldonaĵoj</target>
+      </trans-unit>
+      <trans-unit id="abtbpol" resname="Show file descriptions">
+        <source>Show file descriptions</source>
+        <target>~Montri la priskribojn de la dosieroj</target>
+      </trans-unit>
+      <trans-unit id="e8wyn4c" resname="No files attached yet.">
+        <source>No files attached yet.</source>
+        <target>~Ankoraŭ neniu dosiero aldonita.</target>
+      </trans-unit>
+      <trans-unit id="cglpj44" resname="Unknown file">
+        <source>Unknown file</source>
+        <target>~Nekonata dosiero</target>
+      </trans-unit>
+      <trans-unit id="gbk61gb" resname="The attached file is missing. Re-add it from the Media Library.">
+        <source>The attached file is missing. Re-add it from the Media Library.</source>
+        <target>~La aldonita dosiero mankas. Realdonu ĝin el la Medialibro.</target>
+      </trans-unit>
+      <trans-unit id="350ysjm" resname="The Media Library is not available.">
+        <source>The Media Library is not available.</source>
+        <target>~La Medialibro ne estas disponebla.</target>
+      </trans-unit>
+      <trans-unit id="p9kh8rn" resname="The file could not be uploaded.">
+        <source>The file could not be uploaded.</source>
+        <target>~La dosiero ne povis esti alŝutita.</target>
+      </trans-unit>
+      <trans-unit id="94s8wi3" resname="File properties">
+        <source>File properties</source>
+        <target>~Dosieraj ecoj</target>
+      </trans-unit>
+      <trans-unit id="1g8w64n" resname="Please wait">
+        <source>Please wait</source>
+        <target>~Bonvolu atendi</target>
+      </trans-unit>
+      <trans-unit id="7rhcvly" resname="Generating the circuit images, this may take a few minutes, please wait…">
+        <source>Generating the circuit images, this may take a few minutes, please wait…</source>
+        <target>~Generado de la cirkvitaj bildoj; tio povas daŭri kelkajn minutojn, bonvolu atendi…</target>
+      </trans-unit>
+      <trans-unit id="62tq38i" resname="Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.">
+        <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
+        <target>~Kelkaj demandoj ne povis esti aldonitaj ĉar ilia cirkvito ne povis esti generita. Ili restis en la teksta kampo por ke vi korektu ilin kaj reprovu.</target>
+      </trans-unit>
+      <trans-unit id="kyqjue8" resname="Requires manual review">
+        <source>Requires manual review</source>
+        <target>~Postulas manan kontrolon</target>
+      </trans-unit>
+      <trans-unit id="4pke2g5" resname="Broken">
+        <source>Broken</source>
+        <target>~Difektita</target>
+      </trans-unit>
+      <trans-unit id="p33la67" resname="Listing links...">
+        <source>Listing links...</source>
+        <target>~Listigado de ligiloj...</target>
+      </trans-unit>
+      <trans-unit id="j1sgvqp" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
+        <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
+        <target>~Pro sekurecaj limigoj de la retumilo, ĉi tiu versio de eXeLearning ne povas kontroli eksterajn ligilojn aŭtomate. Malfermu ĉiun ligilon por kontroli ĝin mane.</target>
+      </trans-unit>
+      <trans-unit id="29aar5m" resname="the status of these links could not be checked automatically; open them to confirm.">
+        <source>the status of these links could not be checked automatically; open them to confirm.</source>
+        <target>~Ĉi tiuj ligiloj ne povis esti kontrolitaj aŭtomate.</target>
+      </trans-unit>
+      <trans-unit id="gccrr2u" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
+        <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
+        <target>~Marko signifas ke la servilo respondis, sed iuj retejoj respondas 200 eĉ por paĝoj kiuj ne ekzistas.</target>
+      </trans-unit>
+      <trans-unit id="2k76fhc" resname="Links listed">
+        <source>Links listed</source>
+        <target>~Listigitaj ligiloj</target>
+      </trans-unit>
+      <trans-unit id="1y2lgyr" resname="to review manually">
+        <source>to review manually</source>
+        <target>~por mane kontroli</target>
+      </trans-unit>
+      <trans-unit id="srtbrzq" resname="to review">
+        <source>to review</source>
+        <target>~por kontroli</target>
+      </trans-unit>
+      <trans-unit id="0ejbf9i" resname="No links to export">
+        <source>No links to export</source>
+        <target>~Neniu ligilo por eksporti</target>
+      </trans-unit>
+      <trans-unit id="pjhoys5" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
+        <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
+        <target>~Eksteraj ligiloj ne povas esti kontrolitaj aŭtomate en ĉi tiu versio de eXeLearning: vi ricevos liston de ligiloj por mane kontroli.</target>
+      </trans-unit>
+      <trans-unit id="bz6yh80" resname="Not checked automatically: open the link to review it">
+        <source>Not checked automatically: open the link to review it</source>
+        <target>~Ne kontrolita aŭtomate; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="87ozze8" resname="Local or private address: open the link to review it manually">
+        <source>Local or private address: open the link to review it manually</source>
+        <target>~Loka aŭ privata adreso; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="x1u7s0c" resname="Redirects to another site — open the link to verify it">
+        <source>Redirects to another site — open the link to verify it</source>
+        <target>~Alidirektas al alia retejo; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="jftz7f6" resname="Could not be fully verified: open the link to confirm it">
+        <source>Could not be fully verified: open the link to confirm it</source>
+        <target>~Nekompleta kontrolo; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="rusuym5" resname="Redirects could not be followed: open the link to review it">
+        <source>Redirects could not be followed: open the link to review it</source>
+        <target>~Ne eblis sekvi la alidirektojn; malfermu por kontroli</target>
+      </trans-unit>
+      <trans-unit id="hpobut5" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~kaj %1 pli</target>
+      </trans-unit>
+      <trans-unit id="41ib2vk" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Mankantaj dosieroj</target>
+      </trans-unit>
+      <trans-unit id="ued0rzd" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Ĉi tiuj agadoj referencas dosierojn, kiuj ne estas inkluzivitaj en la importita pakaĵo. La referencoj estas konservitaj, do realdono de la dosieroj restarigos ilin.</target>
       </trans-unit>
     </body>
   </file>

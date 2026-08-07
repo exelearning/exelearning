@@ -1221,8 +1221,8 @@ export class LegacyXmlParser {
             'WikipediaIdevice',
             'RssIdevice',
             'AppletIdevice',
-            'FileAttachIdevice',
-            'AttachmentIdevice',
+            // Note: FileAttachIdevice / AttachmentIdevice are handled by FileAttachHandler,
+            // which maps them to the dedicated 'file-attachment' iDevice (see HandlerRegistry).
         ];
 
         for (const textType of textBasedIdevices) {

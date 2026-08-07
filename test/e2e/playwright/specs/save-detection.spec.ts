@@ -159,6 +159,88 @@ test.describe('Save Detection', () => {
         expect(isDirty).toBe(false);
     });
 
+    test('successful save with an asset should not trigger beforeunload warning', async ({
+        authenticatedPage,
+        createProject,
+    }, testInfo) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Save Then Close Test');
+
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await page.dispatchEvent('body', 'pointerdown');
+        await page.waitForFunction(
+            () => {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                return (
+                    bridge?.documentManager?._initialized === true &&
+                    (window as any).UnsavedChangesHelper?._beforeUnloadHandler != null
+                );
+            },
+            undefined,
+            { timeout: 10000 },
+        );
+
+        await page.evaluate(async () => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const file = new File(['issue-2200'], 'issue-2200.png', { type: 'image/png' });
+            const assetUrl = await bridge.assetManager.insertImage(file);
+            bridge.documentManager.getMetadata().set('description', assetUrl);
+        });
+
+        await page.waitForFunction(() => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            return bridge?.documentManager?.isDirty === true && bridge?.assetManager?.hasUnsavedAssets() === true;
+        });
+
+        const beforeSave = await page.evaluate(() => {
+            const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+            window.dispatchEvent(event);
+            return {
+                defaultPrevented: event.defaultPrevented,
+                hasUnsavedChanges: (window as any).UnsavedChangesHelper.hasUnsavedChanges(),
+            };
+        });
+        expect(beforeSave).toEqual({ defaultPrevented: true, hasUnsavedChanges: true });
+
+        if (testInfo.project.name === 'static') {
+            await page.evaluate(async () => {
+                await (window as any).eXeLearning.app.menus.navbar.file.downloadProjectViaYjs();
+            });
+        } else {
+            await page.locator('#head-top-save-button').click();
+            await page.waitForFunction(
+                () => {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    return bridge?.saveManager?.isSaving === false;
+                },
+                undefined,
+                { timeout: 30000 },
+            );
+        }
+
+        const afterSave = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+            window.dispatchEvent(event);
+            return {
+                isDirty: bridge.documentManager.isDirty,
+                hasUnsavedAssets: bridge.assetManager.hasUnsavedAssets(),
+                hasUnsavedChanges: (window as any).UnsavedChangesHelper.hasUnsavedChanges(),
+                defaultPrevented: event.defaultPrevented,
+                returnValue: event.returnValue,
+            };
+        });
+
+        expect(afterSave).toEqual({
+            isDirty: false,
+            hasUnsavedAssets: false,
+            hasUnsavedChanges: false,
+            defaultPrevented: false,
+            returnValue: true,
+        });
+    });
+
     test('metadata changes should trigger unsaved status', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
