@@ -693,7 +693,8 @@ var $exeDevicesEdition = {
                             explanation: `${c_('Neither the word nor the definition must contain #')}`,
                             examples: [`${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`],
                             allowRegex: /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/,
-                            prompt: c_(`Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.`)
+                            defaultQuestions: 10,
+                            prompt: c_(`Generate %questions% words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.`)
                         },
                         1: { // A-Z Quiz
                             format: [
@@ -706,7 +707,8 @@ var $exeDevicesEdition = {
                                 `${c_('Biology')}#${c_('The study of living organisms')}#0#${c_('B')}`
                             ],
                             allowRegex: /^([^#]+)#([^#]+)(#(0|1)(#[^#]+)?)?$/,
-                            prompt: c_(`Generate 30 words and their definitions separated by #.`)
+                            defaultQuestions: 30,
+                            prompt: c_(`Generate %questions% words and their definitions separated by #.`)
                         },
                         2: { // Test
                             format: [
@@ -720,7 +722,8 @@ var $exeDevicesEdition = {
                                 `0#${c_('What process do plants use to produce energy?')}#${c_('Photosynthesis')}#${c_('Respiration')}#${c_('Digestion')}`
                             ],
                             allowRegex: /^(0|1|2|3)#([^#]+)#([^#]+)#([^#]+)(#[^#]+){0,2}$/,
-                            prompt: c_(`Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.`)
+                            defaultQuestions: 10,
+                            prompt: c_(`Create %questions% multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.`)
                         },
                         3: { // Select
                             format: [
@@ -735,10 +738,12 @@ var $exeDevicesEdition = {
                                 `${c_('AB')}#${c_('Which gases are involved in photosynthesis?')}#${c_('Oxygen')}#${c_('Carbon dioxide')}#${c_('Nitrogen')}`
                             ],
                             allowRegex: /^(([0-3]|[A-D]{1,4})#[^#]+#[^#]+(?:#[^#]*){0,3}|[^#]+#[^#]+)$/,
-                            prompt: c_(`Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.`)
+                            defaultQuestions: 10,
+                            prompt: c_(`Generate %questions% multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.`)
                         },
                         4: { // Identify
-                            prompt: c_(`Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.`),
+                            defaultQuestions: 5,
+                            prompt: c_(`Create %questions% solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.`),
                             format: [`${c_('Solution')}#${c_('Clue1')}#${c_('Clue2')}#${c_('Clue3')}#${c_('Clue4')}#${c_('Clue5')}...`],
                             explanation: `${c_('You must provide between 3 and 9 clues')}`,
                             examples: [
@@ -755,10 +760,12 @@ var $exeDevicesEdition = {
                                 `0#${c_('Tiger')}`
                             ],
                             allowRegex: /^(0|1|2|3)#[^#]+$/,
-                            prompt: c_(`Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.`),
+                            defaultQuestions: 4,
+                            prompt: c_(`Provide %questions% elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.`),
                         },
                         6: { // True or false
-                            prompt: c_(`Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect`),
+                            defaultQuestions: 10,
+                            prompt: c_(`Generate %questions% true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect`),
                             format: [`${c_('question')}#${c_('solution')}#${c_('suggestion')}#${c_('feedback')}`],
                             explanation: `${c_('The format requires a question (non-empty string), a solution (0 or 1), a suggestion (mandatory, can be empty), and feedback (mandatory, can be empty).')}`,
                             examples: [
@@ -768,7 +775,8 @@ var $exeDevicesEdition = {
                             allowRegex: /^vof#[^\s#].*?#(0|1)#.*?#.*?|[^\s#].*?#(0|1)#.*?#.*?|[01]#[^#]+$/,
                         },
                         7: { // form
-                            prompt: c_(`Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.`),
+                            defaultQuestions: 10,
+                            prompt: c_(`Generate %questions% questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.`),
                             format: [
                                 `${c_('Solution')}#${c_('Question')}`,
                                 `${c_('Solution')}#${c_('Question')}#${c_('OptionA')}#${c_('OptionB')}#${c_('OptionC')}#${c_('OptionD')}`,
@@ -798,7 +806,8 @@ var $exeDevicesEdition = {
 
                         },
                         9: { // crosswords
-                            prompt: c_(`Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition`),
+                            defaultQuestions: 10,
+                            prompt: c_(`Generate %questions% words followed by their definitions, separated by #. Do not include the # character in either the word or the definition`),
                             format: [`${c_('Word')}#${c_('Definition')}`],
                             explanation: `${c_('Neither the word nor the definition must contain #. The word must have a maximum of 14 letters and must not contain spaces.')}`,
                             examples: [`${c_('Heart')}#${c_('A muscular organ that pumps blood through the body')}`],
@@ -867,8 +876,15 @@ var $exeDevicesEdition = {
                                 : numLevels === 4
                                     ? c_('balanced across the 4 levels (0=low, 1=medium, 2=high, 3=expert)')
                                     : c_('balanced across the 3 levels (0=low, 1=medium, 2=high)');
-                            const perLevelCount = numLevels === 5 ? 12 : numLevels === 4 ? 15 : 20;
-                            const totalQuestions = perLevelCount * numLevels;
+                            // This game derives its total from the level count. A value
+                            // typed in the Generate form overrides that total, and the
+                            // per-level figure is recomputed from it so both stay coherent.
+                            const basePerLevel = numLevels === 5 ? 12 : numLevels === 4 ? 15 : 20;
+                            const requestedTotal = Number.parseInt(options.numQuestions, 10);
+                            const totalQuestions = Number.isFinite(requestedTotal) && requestedTotal > 0
+                                ? requestedTotal
+                                : basePerLevel * numLevels;
+                            const perLevelCount = Math.max(1, Math.round(totalQuestions / numLevels));
                             const difficultyLadder = numLevels === 5
                                 ? c_('Level 0 must contain the easiest questions (basic facts and simple recall); each subsequent level must be strictly more challenging than the previous one (more reasoning, longer or trickier options, more abstract vocabulary), and level 4 (master) must contain the hardest questions.')
                                 : numLevels === 4
@@ -900,7 +916,8 @@ var $exeDevicesEdition = {
                                 `${c_('Battery and lamp circuit')}#\\begin{circuitikz}\\draw (0,0) to[battery1] (2,0) to[lamp] (2,2) -- (0,2) to[switch] (0,0);\\end{circuitikz}#${c_('B')}#${c_('What happens when the switch is closed?')}#${c_('Nothing')}#${c_('The lamp turns on')}#${c_('The battery drains')}`
                             ],
                             allowRegex: /^([^#]+#[^#]+#([0-3]|[A-D]{1,4})#[^#]+#[^#]+(?:#[^#]*){1,3}|[^#]+#[^#]+)$/,
-                            prompt: c_(`Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100<\\ohm>).`)
+                            defaultQuestions: 5,
+                            prompt: c_(`Generate %questions% multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100<\\ohm>).`)
                         },
                     };
 
@@ -910,19 +927,78 @@ var $exeDevicesEdition = {
                         return { format: [], explanation: "", examples: [], allowRegex: '', prompt: '' };
                     }
 
+                    // The per-game instruction is the only place a question count appears,
+                    // so there is never a second, contradictory figure. Rendered on its
+                    // own (editable Prompt tab) it shows the game's default; called with
+                    // options.numQuestions (Generate form) it shows the requested value.
+                    // Translate first, substitute after: a template literal inside c_()
+                    // would be skipped by the key extractor. See game 10 for precedent.
+                    const requested = Number.parseInt(options.numQuestions, 10);
+                    const questionCount = Number.isFinite(requested) && requested > 0
+                        ? requested
+                        : game.defaultQuestions;
+
                     return {
                         format: game.format,
                         explanation: game.explanation || "",
                         examples: game.examples || [],
                         allowRegex: game.allowRegex || '',
-                        prompt: game.prompt || ''
+                        prompt: String(game.prompt || '').replace('%questions%', questionCount),
+                        defaultQuestions: game.defaultQuestions
                     };
                 },
 
-                buildIAPromptText: function (gameId, options = {}) {
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options);
+                /**
+                 * Read the teacher context from the Generate form.
+                 *
+                 * Fields that are not rendered yield '', which buildIAPromptText simply
+                 * omits -- that is what keeps the Prompt tab (no form) and the Generate
+                 * tab (full form) on the same builder.
+                 *
+                 * @returns {{specialty: string, course: string, topic: string, numQuestions: string|number}}
+                 */
+                readIAContext: function () {
+                    const read = (id) => {
+                        const $el = $(`#${id}`);
+                        return $el.length ? String($el.val() ?? '').trim() : '';
+                    };
+                    return {
+                        specialty: read('eXeSpecialtyIA'),
+                        course: read('eXeCourseIA'),
+                        topic: read('eXeThemeIA'),
+                        // '' means "do not request a specific count". When the field is
+                        // rendered but empty, .val() gives '' (never null), so `||` is
+                        // what actually reaches the fallback.
+                        numQuestions: $('#eXeNumberOfQuestionsIA').length
+                            ? read('eXeNumberOfQuestionsIA') || 10
+                            : '',
+                    };
+                },
+
+                /**
+                 * Build the AI prompt for a game. Single source of truth: the Prompt tab
+                 * renders it with no context, and managed generation sends the very same
+                 * text with the Generate form's context folded in.
+                 *
+                 * @param {number} gameId
+                 * @param {object} options Game options (e.g. { numLevels }).
+                 * @param {object} context Teacher context from {@link readIAContext}.
+                 * @returns {string}
+                 */
+                buildIAPromptText: function (gameId, options = {}, context = {}) {
+                    // The count travels into getAllowedFormats so it lands inside the
+                    // per-game instruction, which is the single place that states it.
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, {
+                        ...options,
+                        numQuestions: context.numQuestions,
+                    });
+                    // The teacher's context rides on the opening line.
+                    const header = [c_('Act as a highly experienced teacher.')];
+                    if (context.specialty) header.push(`${c_('Specialty')}: ${context.specialty}.`);
+                    if (context.course) header.push(`${c_('For students of')} ${context.course}.`);
+                    if (context.topic) header.push(`${c_('on the following topic')}: ${context.topic}.`);
                     const lines = [
-                        c_('Act as a highly experienced teacher.'),
+                        header.join(' '),
                         fprompt.prompt,
                         `${c_('Formats')}:`,
                         fprompt.format.join('\n'),
@@ -1155,57 +1231,13 @@ var $exeDevicesEdition = {
                 },
                 genarateIAQuestons: async function (type, saveQuestions, options = {}) {
                     $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', true);
-                    const $specialty = $('#eXeSpecialtyIA');
-                    const $course = $('#eXeCourseIA');
-                    const $numQuestions = $('#eXeNumberOfQuestionsIA');
-                    const $theme = $('#eXeThemeIA');
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type, options);
-                    let promptText = `${_("Act as a highly experienced teacher.")}`;
-
-                    if ($specialty.length) {
-                        const sp = $specialty.val().trim();
-                        if (sp.length) {
-                            promptText += ` ${_('Specialty')}: ${sp}.`;
-                        }
-                    }
-                    if ($course.length) {
-                        const cp = $course.val().trim();
-                        if (cp.length) {
-                            promptText += ` ${_('For students of')} ${cp}.`;
-                        }
-                    }
-                    if ($theme.length) {
-                        const tm = $theme.val().trim();
-                        if (tm) {
-                            promptText += ` ${_('on the following topic')}: ${tm}.`;
-                        }
-                    }
-                    // The per-game instruction carries rules the format list alone does not
-                    // convey (allowed circuitikz components, adaptative-quiz level structure...).
-                    // It states its own question count, so the teacher's count goes after it
-                    // and is the one that wins.
-                    if (fprompt.prompt) {
-                        promptText += ` ${fprompt.prompt}`;
-                    }
-                    if ($numQuestions.length) {
-                        // .val() yields '' for an empty or invalid number input, never
-                        // null/undefined, so `||` is what actually reaches the fallback.
-                        const np = $numQuestions.val().trim() || 10;
-                        promptText += ` ${_('Generate')} ${np} ${_('questions')}.`;
-                    }
-                    promptText += ` ${_('With the following formats:')}`;
-
-                    let prompt = `
-                        ${promptText}
-                        ${fprompt.format.join('\n')}
-                        ${fprompt.explanation}
-                        ${_('Examples')}:
-                        ${fprompt.examples.join('\n')}
-                        ${_('You must return only the questions without numbering and without classification or bullet points')},
-                    `;
+                    const share = $exeDevicesEdition.iDevice.gamification.share;
+                    // Same builder that fills the Prompt tab, with the Generate form's
+                    // context folded in: one prompt, no divergence between the text the
+                    // teacher can read and the one the provider receives.
+                    const prompt = share.buildIAPromptText(type, options, share.readIAContext());
 
                     let sdata = '';
-                    prompt = prompt.replace(/[ \t]+/g, ' ').trim();
 
                     try {
                         const data = await eXeLearning.app.api.getGenerateQuestions(prompt);

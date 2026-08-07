@@ -1256,30 +1256,46 @@ describe('common_edition.js', () => {
           const prompt = await capturePrompt();
           // Used to read "...topic: X.Generate 3 questionsWith the following formats:".
           expect(prompt).not.toMatch(/\w\.\w/);
-          expect(prompt).toContain(' Generate 3 questions. ');
-          expect(prompt).toContain(' With the following formats:');
         });
 
-        it('includes the per-game instruction, with the teacher count after it', async () => {
+        it('states the requested count once, inside the per-game instruction', async () => {
           const prompt = await capturePrompt(0);
-          const gameInstruction = 'Generate 10 words followed by their definitions, separated by #';
-          expect(prompt).toContain(gameInstruction);
-          // The teacher's count must come last so it overrides the count baked
-          // into the per-game instruction.
-          expect(prompt.indexOf(gameInstruction)).toBeLessThan(prompt.indexOf('Generate 3 questions.'));
+          expect(prompt).toContain('Generate 3 words followed by their definitions');
+          // No second, contradictory figure anywhere.
+          expect(prompt).not.toContain('Generate 10 words');
+          expect(prompt).not.toMatch(/Generate \d+ questions\./);
         });
 
         it('introduces the format block even when the count field is absent', async () => {
           document.getElementById('eXeNumberOfQuestionsIA').remove();
           const prompt = await capturePrompt();
-          expect(prompt).toContain('With the following formats:');
-          expect(prompt).not.toContain('questions.');
+          expect(prompt).toContain('Formats:');
+          // Falls back to the game's own default.
+          expect(prompt).toContain('Generate 10 words');
         });
 
         it('falls back to 10 questions when the count field is empty', async () => {
           document.getElementById('eXeNumberOfQuestionsIA').value = '';
           const prompt = await capturePrompt();
-          expect(prompt).toContain('Generate 10 questions.');
+          expect(prompt).toContain('Generate 10 words');
+        });
+
+        it('sends exactly what buildIAPromptText produces for the same context', async () => {
+          // The single-source-of-truth guarantee: no second prompt assembled
+          // anywhere. Break the builder and this fails with the sent prompt.
+          document.getElementById('eXeFormIAContainer').insertAdjacentHTML(
+            'beforeend',
+            `<input id="eXeSpecialtyIA" value="Biology">
+             <input id="eXeCourseIA" value="3rd ESO">
+             <input id="eXeThemeIA" value="Photosynthesis">`
+          );
+          const share = globalThis.$exeDevicesEdition.iDevice.gamification.share;
+          const expected = share.buildIAPromptText(0, {}, share.readIAContext());
+
+          expect(await capturePrompt(0)).toBe(expected);
+          expect(expected).toContain('Specialty: Biology.');
+          expect(expected).toContain('For students of 3rd ESO.');
+          expect(expected).toContain('on the following topic: Photosynthesis.');
         });
       });
 
@@ -1557,6 +1573,58 @@ describe('common_edition.js', () => {
         expect(text).toContain('4 (master)');
         expect(text).toContain('Difficulty must increase with the level');
         expect(text).toContain('level 4 (master) must contain the hardest');
+      });
+
+      it('buildIAPromptText omits every context sentence when no context is given', () => {
+        // The editable Prompt tab calls it with no context: the game's default
+        // count is what the teacher reads, and no context sentence appears.
+        const text = share().buildIAPromptText(0);
+        expect(text.split('\n')[0]).toBe('Act as a highly experienced teacher.');
+        expect(text).not.toContain('Specialty:');
+        expect(text).not.toContain('For students of');
+        expect(text).not.toContain('on the following topic');
+        expect(text).toContain('Generate 10 words followed by their definitions');
+      });
+
+      it('buildIAPromptText folds the teacher context into the opening line', () => {
+        const text = share().buildIAPromptText(0, {}, {
+          specialty: 'Biology',
+          course: '3rd ESO',
+          topic: 'Photosynthesis',
+          numQuestions: 5,
+        });
+        expect(text.split('\n')[0]).toBe(
+          'Act as a highly experienced teacher. Specialty: Biology. For students of 3rd ESO. on the following topic: Photosynthesis.'
+        );
+      });
+
+      it('states the count exactly once, defaulting per game and overridable', () => {
+        // Each game carries its own default; the Generate form's value replaces it.
+        const defaults = { 0: 10, 1: 30, 2: 10, 3: 10, 4: 5, 5: 4, 6: 10, 7: 10, 9: 10, 11: 5 };
+        for (const [gameId, fallback] of Object.entries(defaults)) {
+          const id = Number(gameId);
+          expect(share().getAllowedFormats(id).prompt).toContain(String(fallback));
+          expect(share().getAllowedFormats(id).prompt).not.toContain('%questions%');
+          expect(share().getAllowedFormats(id, { numQuestions: 7 }).prompt).toContain('7');
+        }
+        // Game 8 has no count at all; nothing to substitute.
+        expect(share().getAllowedFormats(8).prompt).not.toContain('%questions%');
+      });
+
+      it('recomputes the adaptative-quiz per-level figure from an overridden total', () => {
+        // 30 questions across 3 levels => 10 per level, both figures coherent.
+        const text = share().buildIAPromptText(10, { numLevels: 3 }, { numQuestions: 30 });
+        expect(text).toContain('Create 30 mixed adaptative-quiz questions');
+        expect(text).toContain('around 10 questions per level');
+      });
+
+      it('readIAContext returns empty fields when the Generate form is absent', () => {
+        expect(share().readIAContext()).toEqual({
+          specialty: '',
+          course: '',
+          topic: '',
+          numQuestions: '',
+        });
       });
 
       it('refreshIAPrompt writes the current prompt into #eXeEPromptArea and updates on re-call', () => {
