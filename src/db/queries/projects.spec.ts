@@ -39,8 +39,10 @@ import {
     updateProjectVisibilityByUuid,
     findUnsavedProjectsOlderThan,
     findGuestProjectsOlderThan,
+    deleteProjectWithRelatedData,
 } from './projects';
 import { createUser } from './users';
+import { createFolder, assignProjectToFolder, findFolderAssignmentsForUser } from './project-folders';
 
 describe('Project Queries', () => {
     let db: Kysely<Database>;
@@ -625,6 +627,32 @@ describe('Project Queries', () => {
             const found = await findProjectById(db, project.id);
             expect(found).toBeUndefined();
         });
+
+        it('should remove the project folder assignment (no orphaned row on SQLite)', async () => {
+            const project = await createProject(db, { title: 'Filed Project', owner_id: testUser.id });
+            const folder = await createFolder(db, testUser.id, 'My Folder');
+            await assignProjectToFolder(db, project.id, testUser.id, folder.id);
+
+            await hardDeleteProject(db, project.id);
+
+            const assignments = await findFolderAssignmentsForUser(db, testUser.id);
+            expect(assignments.has(project.id)).toBe(false);
+        });
+    });
+
+    describe('deleteProjectWithRelatedData', () => {
+        it('should remove the project and its folder assignment', async () => {
+            const project = await createProject(db, { title: 'Filed Project 2', owner_id: testUser.id });
+            const folder = await createFolder(db, testUser.id, 'Another Folder');
+            await assignProjectToFolder(db, project.id, testUser.id, folder.id);
+
+            await deleteProjectWithRelatedData(db, project.id);
+
+            const found = await findProjectById(db, project.id);
+            expect(found).toBeUndefined();
+            const assignments = await findFolderAssignmentsForUser(db, testUser.id);
+            expect(assignments.has(project.id)).toBe(false);
+        });
     });
 
     // ============================================================================
@@ -761,6 +789,17 @@ describe('Project Queries', () => {
 
             it('should not fail when removing non-collaborator', async () => {
                 await removeCollaborator(db, project.id, collaborator.id);
+            });
+
+            it('should also remove the collaborator personal folder assignment for that project', async () => {
+                await addCollaborator(db, project.id, collaborator.id);
+                const folder = await createFolder(db, collaborator.id, 'Collaborator Folder');
+                await assignProjectToFolder(db, project.id, collaborator.id, folder.id);
+
+                await removeCollaborator(db, project.id, collaborator.id);
+
+                const assignments = await findFolderAssignmentsForUser(db, collaborator.id);
+                expect(assignments.has(project.id)).toBe(false);
             });
         });
 

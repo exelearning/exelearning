@@ -31,6 +31,10 @@ export class OpenProjectModalPage {
     readonly openButton: Locator;
     readonly deleteButton: Locator;
 
+    // Folder navigation tree (read-only in this modal: no create/rename/
+    // delete-folder — that's exclusive to "Gestionar proyectos")
+    readonly folderTree: Locator;
+
     constructor(page: Page) {
         this.page = page;
 
@@ -57,6 +61,9 @@ export class OpenProjectModalPage {
         // Footer buttons
         this.openButton = this.modal.locator('.modal-footer .btn-primary');
         this.deleteButton = this.modal.locator('.modal-footer .btn-danger');
+
+        // Folder navigation tree
+        this.folderTree = page.locator('.project-folder-tree');
     }
 
     /**
@@ -272,6 +279,16 @@ export class OpenProjectModalPage {
     }
 
     /**
+     * Cancel whatever #modalConfirm dialog is currently open (e.g. the
+     * rename-project prompt) and wait for it to close.
+     */
+    async cancelConfirmDialog(): Promise<void> {
+        const confirmModal = this.page.locator('#modalConfirm');
+        await confirmModal.locator('[data-testid="cancel-action"]').click();
+        await confirmModal.waitFor({ state: 'hidden', timeout: 5000 });
+    }
+
+    /**
      * Expand versions for a project group
      */
     async expandVersions(odeId: string): Promise<void> {
@@ -391,5 +408,138 @@ export class OpenProjectModalPage {
      */
     async hasFooterDeleteButton(): Promise<boolean> {
         return (await this.deleteButton.count()) > 0 && (await this.deleteButton.isVisible().catch(() => false));
+    }
+
+    /**
+     * Get the raw text label of every item in the folder navigation tree, in
+     * document order (depth-first). Labels are "Name (count)" for real
+     * folders, or plain "All projects"/"Unfiled" for the two pseudo-items.
+     */
+    async getFolderTreeLabels(): Promise<string[]> {
+        return await this.folderTree.locator('.project-folder-tree-label').allTextContents();
+    }
+
+    /**
+     * Get the folder uuid ('' for "All projects", the unfiled sentinel, or a
+     * real folder uuid) whose label starts with the given name.
+     */
+    async getFolderTreeValueByName(name: string): Promise<string | null> {
+        const items = this.folderTree.locator('.project-folder-tree-item');
+        const count = await items.count();
+        for (let i = 0; i < count; i++) {
+            const item = items.nth(i);
+            // Scoped to the item's own row, not its nested children's rows
+            // (a folder's .project-folder-tree-item wraps its whole subtree).
+            const label =
+                (await item.locator(':scope > .project-folder-tree-row .project-folder-tree-label').textContent()) ||
+                '';
+            if (label.startsWith(name)) {
+                return await item.getAttribute('data-folder-value');
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the nesting depth of a folder tree item, from its data-depth attribute.
+     */
+    async getFolderTreeDepth(value: string): Promise<number> {
+        const item = this.folderTree.locator(`[data-folder-value="${value}"]`);
+        const depth = await item.getAttribute('data-depth');
+        return depth ? parseInt(depth, 10) : 0;
+    }
+
+    /**
+     * Get the currently selected folder tree item's value, or null if none.
+     */
+    async getSelectedFolderTreeValue(): Promise<string | null> {
+        const selected = this.folderTree.locator('.project-folder-tree-item.selected');
+        if ((await selected.count()) === 0) return null;
+        return await selected.first().getAttribute('data-folder-value');
+    }
+
+    /**
+     * Click a folder tree item's row to select it (filters the project list).
+     */
+    async selectFolderInTree(value: string): Promise<void> {
+        await this.folderTree.locator(`[data-folder-value="${value}"] .project-folder-tree-row`).click();
+        await this.page.waitForTimeout(300);
+    }
+
+    /**
+     * Click a folder tree item's expand/collapse chevron.
+     */
+    async toggleFolderInTree(value: string): Promise<void> {
+        await this.folderTree
+            .locator(`[data-folder-value="${value}"] > .project-folder-tree-row .project-folder-tree-toggle`)
+            .click();
+        await this.page.waitForTimeout(150);
+    }
+
+    /**
+     * Click a project row's rename button, opening the rename dialog.
+     */
+    async clickRenameForProject(odeId: string): Promise<void> {
+        const renameBtn = this.projectList
+            .locator(`.ode-row[ode-id="${odeId}"] .open-user-ode-file-action-rename`)
+            .first();
+        await renameBtn.click();
+    }
+
+    /**
+     * Rename a project via its row's rename button and the confirm dialog.
+     */
+    async renameProject(odeId: string, newTitle: string): Promise<void> {
+        await this.clickRenameForProject(odeId);
+        const input = this.page.locator('#modalConfirm #input-rename-ode-project');
+        await input.waitFor({ state: 'visible', timeout: 5000 });
+        await input.fill(newTitle);
+        await this.page.locator('#modalConfirm [data-testid="confirm-action"]').click();
+        await this.page.waitForTimeout(300);
+    }
+
+    /**
+     * Open the per-row "move to folder" picker and click the given option
+     * (folder name, or "Unfiled")
+     */
+    async moveProjectToFolder(odeId: string, folderNameOrUnfiled: string): Promise<void> {
+        const moveBtn = this.projectList.locator(`.ode-row[ode-id="${odeId}"] .open-user-ode-file-action-move`).first();
+        await moveBtn.click();
+        const option = this.page.locator('.ode-folder-picker .ode-folder-picker-option', {
+            hasText: folderNameOrUnfiled,
+        });
+        await option.first().click();
+        await this.page.waitForTimeout(300);
+    }
+
+    /**
+     * Open the "move to folder" picker for a project without clicking an
+     * option, so its rendered contents (e.g. indentation) can be inspected
+     */
+    async openFolderPicker(odeId: string): Promise<void> {
+        const moveBtn = this.projectList.locator(`.ode-row[ode-id="${odeId}"] .open-user-ode-file-action-move`).first();
+        await moveBtn.click();
+        await this.page.locator('.ode-folder-picker').waitFor({ state: 'visible', timeout: 5000 });
+    }
+
+    /**
+     * Get the raw text content (indentation included) of every option in
+     * the currently open "move to folder" picker
+     */
+    async getFolderPickerOptionTexts(): Promise<string[]> {
+        return await this.page.locator('.ode-folder-picker .ode-folder-picker-option').allTextContents();
+    }
+
+    /**
+     * Dismiss the error alert modal shown when a folder mutation is
+     * rejected by the API, and return its body text first
+     */
+    async getAndDismissErrorAlert(): Promise<string> {
+        const alertModal = this.page.locator('#modalAlert');
+        await alertModal.waitFor({ state: 'visible', timeout: 5000 });
+        const text = (await alertModal.textContent()) || '';
+        await alertModal.locator('.btn-close, [data-bs-dismiss="modal"], .modal-footer button').first().click();
+        await alertModal.waitFor({ state: 'hidden', timeout: 5000 });
+        return text;
     }
 }

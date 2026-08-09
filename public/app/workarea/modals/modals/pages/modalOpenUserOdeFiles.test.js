@@ -45,12 +45,34 @@ describe('modalOpenUserOdeFiles', () => {
           postSelectedOdeFile: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
           postObtainOdeBlockSync: vi.fn().mockResolvedValue({ blockId: 'block-1' }),
           postOdeImportTheme: vi.fn().mockResolvedValue({ responseMessage: 'OK', themes: { themes: {} } }),
+          getProjectFolders: vi.fn().mockResolvedValue({ success: true, folders: [] }),
+          createProjectFolder: vi.fn().mockResolvedValue({ success: true, folder: { uuid: 'folder-new', name: 'New Folder', projectCount: 0 } }),
+          renameProjectFolder: vi.fn().mockResolvedValue({ success: true, folder: { uuid: 'folder-1', name: 'Renamed', projectCount: 0 } }),
+          deleteProjectFolder: vi.fn().mockResolvedValue({ success: true }),
+          assignProjectFolder: vi.fn().mockResolvedValue({ success: true }),
+          renameProject: vi.fn().mockResolvedValue({ success: true, project: { uuid: 'proj-1', title: 'Renamed' } }),
+          duplicateProject: vi.fn().mockResolvedValue({
+            success: true,
+            message: 'Project duplicated',
+            newProjectId: 'new-uuid',
+            project: { id: 1, uuid: 'new-uuid', title: 'Test (copy)' },
+          }),
+          deleteProject: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
           apiUrlBase: 'http://localhost',
           apiUrlBasePath: '/exelearning'
         },
         modals: {
           alert: { show: vi.fn() },
-          confirm: { show: vi.fn() },
+          confirm: {
+            modalElement: document.createElement('div'),
+            show: vi.fn(function (data) {
+              // Simulate ModalConfirm.setBody(): render the body HTML so
+              // confirmExec can query the input(s) it created.
+              if (data && data.body) {
+                this.modalElement.innerHTML = data.body;
+              }
+            }),
+          },
           sessionlogout: { show: vi.fn() },
           uploadprogress: {
             show: vi.fn(),
@@ -455,6 +477,240 @@ describe('modalOpenUserOdeFiles', () => {
     });
   });
 
+  describe('Dashboard folders', () => {
+    describe('matchesFolderFilter', () => {
+      it('matches everything when no folder filter is set', () => {
+        modal.currentFolderUuid = null;
+        expect(modal.matchesFolderFilter({ folderId: 'f1' })).toBe(true);
+        expect(modal.matchesFolderFilter({ folderId: null })).toBe(true);
+      });
+
+      it('matches only unfiled projects for the unfiled sentinel', () => {
+        modal.currentFolderUuid = modal.UNFILED_FOLDER_VALUE;
+        expect(modal.matchesFolderFilter({ folderId: null })).toBe(true);
+        expect(modal.matchesFolderFilter({ folderId: 'f1' })).toBe(false);
+      });
+
+      it('matches only projects filed in the selected folder', () => {
+        modal.currentFolderUuid = 'f1';
+        expect(modal.matchesFolderFilter({ folderId: 'f1' })).toBe(true);
+        expect(modal.matchesFolderFilter({ folderId: 'f2' })).toBe(false);
+        expect(modal.matchesFolderFilter({ folderId: null })).toBe(false);
+      });
+    });
+
+    describe('getEmptyStateMessage', () => {
+      it('returns the unfiled message for the unfiled filter', () => {
+        modal.currentFolderUuid = modal.UNFILED_FOLDER_VALUE;
+        expect(modal.getEmptyStateMessage()).toBe('No unfiled projects.');
+      });
+
+      it('returns the folder message for a real folder filter', () => {
+        modal.currentFolderUuid = 'f1';
+        expect(modal.getEmptyStateMessage()).toBe('No projects in this folder.');
+      });
+
+      it('falls back to the tab message when there is no folder filter', () => {
+        modal.currentFolderUuid = null;
+        modal.currentTab = 'my-projects';
+        expect(modal.getEmptyStateMessage()).toBe('No recent projects found.');
+        modal.currentTab = 'shared-with-me';
+        expect(modal.getEmptyStateMessage()).toBe('No projects have been shared with you yet.');
+      });
+    });
+
+    describe('makeElementListOdeFiles with folder filter', () => {
+      const data = {
+        odeFilesSync: {
+          a1: { odeId: 'a', role: 'owner', versionName: '1', title: 'In Folder', fileName: 'a.elp', sizeFormatted: '1 MB', updatedAt: new Date().toISOString(), visibility: 'private', isManualSave: true, folderId: 'f1' },
+          a2: { odeId: 'b', role: 'owner', versionName: '1', title: 'Unfiled', fileName: 'b.elp', sizeFormatted: '1 MB', updatedAt: new Date().toISOString(), visibility: 'private', isManualSave: true, folderId: null },
+        },
+      };
+
+      it('shows only the project filed in the selected folder', () => {
+        modal.currentTab = 'my-projects';
+        modal.currentFolderUuid = 'f1';
+        const list = modal.makeElementListOdeFiles(data);
+        expect(list.querySelectorAll('.ode-group').length).toBe(1);
+        expect(list.querySelector('.ode-group').getAttribute('ode-id')).toBe('a');
+      });
+
+      it('shows only unfiled projects for the unfiled filter', () => {
+        modal.currentTab = 'my-projects';
+        modal.currentFolderUuid = modal.UNFILED_FOLDER_VALUE;
+        const list = modal.makeElementListOdeFiles(data);
+        expect(list.querySelectorAll('.ode-group').length).toBe(1);
+        expect(list.querySelector('.ode-group').getAttribute('ode-id')).toBe('b');
+      });
+    });
+
+    describe('applyFolderFilter', () => {
+      it('sets currentFolderUuid and re-renders the tree and list', () => {
+        modal.allOdeFilesData = { odeFilesSync: {} };
+        modal.folders = [{ uuid: 'f1', name: 'Math', parentUuid: null, depth: 0, projectCount: 0 }];
+        modal.makeFolderTree();
+        const rerenderSpy = vi.spyOn(modal, '_rerenderList');
+        const treeSpy = vi.spyOn(modal, '_renderFolderTree');
+
+        modal.applyFolderFilter('f1');
+
+        expect(modal.currentFolderUuid).toBe('f1');
+        expect(treeSpy).toHaveBeenCalled();
+        expect(rerenderSpy).toHaveBeenCalled();
+      });
+
+      it('treats an empty value as "All projects"', () => {
+        modal.allOdeFilesData = { odeFilesSync: {} };
+        modal.makeFolderTree();
+        modal.applyFolderFilter('');
+        expect(modal.currentFolderUuid).toBeNull();
+      });
+    });
+
+    describe('makeFolderTree / _renderFolderTree', () => {
+      it('renders the tree with All projects, Unfiled, and one item per folder', () => {
+        modal.folders = [{ uuid: 'f1', name: 'Math', parentUuid: null, depth: 0, projectCount: 2 }];
+        const wrap = modal.makeFolderTree();
+        const items = wrap.querySelectorAll('.project-folder-tree-item');
+        expect(items.length).toBe(3);
+        expect(items[0].getAttribute('data-folder-value')).toBe('');
+        expect(items[1].getAttribute('data-folder-value')).toBe(modal.UNFILED_FOLDER_VALUE);
+        expect(items[2].getAttribute('data-folder-value')).toBe('f1');
+        expect(items[2].querySelector('.project-folder-tree-label').textContent).toBe('Math (2)');
+      });
+
+      it('does nothing when called before the tree container exists', () => {
+        modal.folderTreeContainer = null;
+        expect(() => modal._renderFolderTree()).not.toThrow();
+      });
+
+      it('selecting a folder node applies the folder filter', () => {
+        modal.allOdeFilesData = { odeFilesSync: {} };
+        modal.folders = [{ uuid: 'f1', name: 'Math', parentUuid: null, depth: 0, projectCount: 0 }];
+        const wrap = modal.makeFolderTree();
+        const applySpy = vi.spyOn(modal, 'applyFolderFilter');
+
+        wrap.querySelector('[data-folder-value="f1"] .project-folder-tree-row').dispatchEvent(
+          new MouseEvent('click', { bubbles: true }),
+        );
+
+        expect(applySpy).toHaveBeenCalledWith('f1');
+      });
+
+      it('toggling a folder node updates expandedFolderUuids and re-renders', () => {
+        modal.folders = [
+          { uuid: 'root', name: 'Root', parentUuid: null, depth: 0, projectCount: 0 },
+          { uuid: 'child', name: 'Child', parentUuid: 'root', depth: 1, projectCount: 0 },
+        ];
+        const wrap = modal.makeFolderTree();
+
+        wrap.querySelector('[data-folder-value="root"] .project-folder-tree-toggle').dispatchEvent(
+          new MouseEvent('click', { bubbles: true }),
+        );
+
+        expect(modal.expandedFolderUuids.has('root')).toBe(true);
+        expect(
+          modal.folderTreeContainer.querySelector('[data-folder-value="root"]').classList.contains('toggle-on'),
+        ).toBe(true);
+      });
+    });
+
+    describe('showFolderPicker / moveProjectToFolder', () => {
+      it('renders unfiled plus each folder, marking the current one selected', () => {
+        modal.folders = [{ uuid: 'f1', name: 'Math', projectCount: 1 }, { uuid: 'f2', name: 'Science', projectCount: 0 }];
+        const anchor = document.createElement('button');
+        const wrap = document.createElement('div');
+        wrap.append(anchor);
+        document.body.append(wrap);
+
+        modal.showFolderPicker(anchor, { odeId: 'a', folderId: 'f1' });
+
+        // Portalled to document.body (see showFolderPicker's doc comment),
+        // not appended next to the anchor button.
+        const options = document.querySelectorAll('.ode-folder-picker-option');
+        expect(options.length).toBe(3); // Unfiled + 2 folders
+        expect(options[1].classList.contains('selected')).toBe(true); // Math is current
+        modal.closeFolderPicker();
+      });
+
+      it('indents nested folders in the picker', () => {
+        modal.folders = [
+          { uuid: 'root', name: 'Root', depth: 0, projectCount: 0 },
+          { uuid: 'child', name: 'Child', depth: 1, projectCount: 0 },
+        ];
+        const anchor = document.createElement('button');
+        const wrap = document.createElement('div');
+        wrap.append(anchor);
+        document.body.append(wrap);
+
+        modal.showFolderPicker(anchor, { odeId: 'a', folderId: null });
+
+        const options = document.querySelectorAll('.ode-folder-picker-option');
+        expect(options[1].textContent).toBe('Root');
+        expect(options[2].textContent).toBe('  Child');
+        modal.closeFolderPicker();
+      });
+
+      it('moves the project and refreshes on option click', async () => {
+        const moveSpy = vi.spyOn(modal, 'moveProjectToFolder').mockResolvedValue();
+        modal.folders = [{ uuid: 'f1', name: 'Math', projectCount: 0 }];
+        const anchor = document.createElement('button');
+        const wrap = document.createElement('div');
+        wrap.append(anchor);
+        document.body.append(wrap);
+
+        modal.showFolderPicker(anchor, { odeId: 'a', folderId: null });
+        document.querySelectorAll('.ode-folder-picker-option')[1].click(); // "Math"
+
+        expect(moveSpy).toHaveBeenCalledWith('a', 'f1');
+      });
+
+      it('closes any previously open picker before opening a new one', () => {
+        modal.folders = [];
+        const anchor = document.createElement('button');
+        const wrap = document.createElement('div');
+        wrap.append(anchor);
+        document.body.append(wrap);
+
+        modal.showFolderPicker(anchor, { odeId: 'a', folderId: null });
+        const firstPicker = modal._openFolderPicker;
+        modal.showFolderPicker(anchor, { odeId: 'a', folderId: null });
+
+        expect(firstPicker.isConnected).toBe(false);
+        expect(modal._openFolderPicker).not.toBe(firstPicker);
+      });
+
+      it('actually files and unfiles a project via the API', async () => {
+        const refreshSpy = vi.spyOn(modal, 'refreshList').mockResolvedValue();
+
+        await modal.moveProjectToFolder('a', 'f1');
+        expect(window.eXeLearning.app.api.assignProjectFolder).toHaveBeenCalledWith('a', 'f1');
+        expect(refreshSpy).toHaveBeenCalled();
+      });
+
+      it('shows an alert when the move fails', async () => {
+        window.eXeLearning.app.api.assignProjectFolder.mockResolvedValueOnce({ success: false, message: 'Nope' });
+        await modal.moveProjectToFolder('a', 'f1');
+        expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+      });
+    });
+
+    describe('refreshList folder sync', () => {
+      it('updates this.folders and re-populates the folder tree', async () => {
+        modal.allOdeFilesData = { odeFilesSync: {} };
+        modal.makeFolderTree();
+        window.eXeLearning.app.api.getUserOdeFiles.mockResolvedValueOnce({
+          odeFiles: { odeFilesSync: {}, folders: [{ uuid: 'f1', name: 'Math', parentUuid: null, depth: 0, projectCount: 0 }] },
+        });
+
+        await modal.refreshList();
+
+        expect(modal.folders).toEqual([{ uuid: 'f1', name: 'Math', parentUuid: null, depth: 0, projectCount: 0 }]);
+        expect(modal.folderTreeContainer.querySelectorAll('.project-folder-tree-item').length).toBe(3);
+      });
+    });
+  });
+
   describe('renderOdeRow', () => {
     it('should enable open button and store selection on click', () => {
       const ode = {
@@ -614,33 +870,6 @@ describe('modalOpenUserOdeFiles', () => {
     });
   });
 
-  describe('getAuthToken', () => {
-    it('should prefer yjs auth token', () => {
-      window.eXeLearning.app.project = {
-        _yjsBridge: { authToken: 'yjs-token' },
-      };
-      expect(modal.getAuthToken()).toBe('yjs-token');
-    });
-
-    it('should fallback to app auth token', () => {
-      window.eXeLearning.app.project = { _yjsBridge: null };
-      window.eXeLearning.app.auth = { getToken: vi.fn(() => 'app-token') };
-      expect(modal.getAuthToken()).toBe('app-token');
-    });
-
-    it('should fallback to symfony token then localStorage', () => {
-      window.eXeLearning.app.auth = null;
-      window.eXeLearning.app.project._yjsBridge = null;
-      window.eXeLearning.config = { token: 'sym-token' };
-      expect(modal.getAuthToken()).toBe('sym-token');
-
-      window.eXeLearning.config = null;
-      localStorage.setItem('authToken', 'local-token');
-      expect(modal.getAuthToken()).toBe('local-token');
-      localStorage.clear();
-    });
-  });
-
   describe('refreshList', () => {
     it('should reset selection and update list state', async () => {
       modal.allOdeFilesData = {
@@ -700,16 +929,6 @@ describe('modalOpenUserOdeFiles', () => {
 
   describe('duplicateOdeFileEvent', () => {
     it('should refresh, switch tab, and select new project on success', async () => {
-      window.eXeLearning.app.project = { _yjsBridge: { authToken: 'token-1' } };
-      global.fetch = vi.fn().mockResolvedValue({
-        json: vi.fn().mockResolvedValue({
-          success: true,
-          message: 'Project duplicated',
-          newProjectId: 'new-uuid',
-          project: { id: 1, uuid: 'new-uuid', title: 'Test (copy)' },
-        }),
-      });
-
       const refreshSpy = vi.spyOn(modal, 'refreshList').mockResolvedValue();
       const switchSpy = vi.spyOn(modal, 'switchTab');
       const selectSpy = vi.spyOn(modal, 'selectProjectByUuid');
@@ -717,26 +936,16 @@ describe('modalOpenUserOdeFiles', () => {
 
       await modal.duplicateOdeFileEvent('proj-1');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://localhost/exelearning/api/projects/uuid/proj-1/duplicate',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            Authorization: 'Bearer token-1',
-          }),
-        })
-      );
+      expect(window.eXeLearning.app.api.duplicateProject).toHaveBeenCalledWith('proj-1');
       expect(refreshSpy).toHaveBeenCalled();
       expect(switchSpy).toHaveBeenCalledWith('my-projects');
       expect(selectSpy).toHaveBeenCalledWith('new-uuid');
     });
 
     it('should show alert on error response', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        json: vi.fn().mockResolvedValue({
-          responseMessage: 'ERROR',
-          message: 'nope',
-        }),
+      window.eXeLearning.app.api.duplicateProject.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+        message: 'nope',
       });
 
       await modal.duplicateOdeFileEvent('proj-1');
@@ -747,7 +956,7 @@ describe('modalOpenUserOdeFiles', () => {
     });
 
     it('should handle fetch error with alert', async () => {
-      global.fetch = vi.fn().mockRejectedValue(new Error('network'));
+      window.eXeLearning.app.api.duplicateProject.mockRejectedValueOnce(new Error('network'));
       await modal.duplicateOdeFileEvent('proj-1');
       expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Error' })
@@ -757,35 +966,94 @@ describe('modalOpenUserOdeFiles', () => {
 
   describe('deleteOdeFileEvent', () => {
     it('should refresh list after delete', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        json: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
-      });
       const refreshSpy = vi.spyOn(modal, 'refreshList').mockResolvedValue();
 
       await modal.deleteOdeFileEvent('proj-1');
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://localhost/exelearning/api/projects/uuid/proj-1',
-        expect.objectContaining({ method: 'DELETE' })
-      );
+      expect(window.eXeLearning.app.api.deleteProject).toHaveBeenCalledWith('proj-1');
       expect(refreshSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('renameOdeFileEvent', () => {
+    it('renames the project with the trimmed input value on confirm', async () => {
+      const refreshSpy = vi.spyOn(modal, 'refreshList').mockResolvedValue();
+      const ode = { odeId: 'proj-1', title: 'Old Title', fileName: 'old.elp' };
+
+      modal.renameOdeFileEvent(ode);
+      const config = window.eXeLearning.app.modals.confirm.show.mock.calls.at(-1)[0];
+      window.eXeLearning.app.modals.confirm.modalElement.querySelector('#input-rename-ode-project').value = '  New Title  ';
+      await config.confirmExec();
+
+      expect(window.eXeLearning.app.api.renameProject).toHaveBeenCalledWith('proj-1', 'New Title');
+      expect(refreshSpy).toHaveBeenCalled();
+    });
+
+    it('does not rename for a blank title', async () => {
+      const ode = { odeId: 'proj-1', title: 'Old Title', fileName: 'old.elp' };
+      modal.renameOdeFileEvent(ode);
+      const config = window.eXeLearning.app.modals.confirm.show.mock.calls.at(-1)[0];
+      window.eXeLearning.app.modals.confirm.modalElement.querySelector('#input-rename-ode-project').value = '   ';
+      await config.confirmExec();
+
+      expect(window.eXeLearning.app.api.renameProject).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the file name when the project has no title', () => {
+      const ode = { odeId: 'proj-1', title: '', fileName: 'untitled.elp' };
+      modal.renameOdeFileEvent(ode);
+      const input = window.eXeLearning.app.modals.confirm.modalElement.querySelector('#input-rename-ode-project');
+      expect(input.value).toBe('untitled.elp');
+    });
+
+    it('shows an alert on failure', async () => {
+      window.eXeLearning.app.api.renameProject.mockResolvedValueOnce({ success: false, message: 'Nope' });
+      const ode = { odeId: 'proj-1', title: 'Old Title', fileName: 'old.elp' };
+
+      modal.renameOdeFileEvent(ode);
+      const config = window.eXeLearning.app.modals.confirm.show.mock.calls.at(-1)[0];
+      window.eXeLearning.app.modals.confirm.modalElement.querySelector('#input-rename-ode-project').value = 'New Title';
+      await config.confirmExec();
+
+      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Error' })
+      );
+    });
+
+    it('re-shows the dashboard modal when the rename dialog is cancelled or closed, not just on confirm', () => {
+      // Regression test: modalConfirm.show() closes every other open modal
+      // (Modal.show() always calls manager.closeModals()); before this, only
+      // a successful confirmExec re-showed the dashboard modal, so
+      // Cancel/Escape/backdrop-click left it closed with no way back.
+      const ode = { odeId: 'proj-1', title: 'Old Title', fileName: 'old.elp' };
+      modal.renameOdeFileEvent(ode);
+      const config = window.eXeLearning.app.modals.confirm.show.mock.calls.at(-1)[0];
+
+      mockBootstrapModal.show.mockClear();
+      config.cancelExec();
+      expect(mockBootstrapModal.show).toHaveBeenCalled();
+
+      mockBootstrapModal.show.mockClear();
+      config.closeExec();
+      expect(mockBootstrapModal.show).toHaveBeenCalled();
     });
   });
 
   describe('massiveDeleteOdeFileEvent', () => {
     it('should delete all projects and refresh list', async () => {
-      global.fetch = vi.fn().mockResolvedValue({ json: vi.fn() });
       const refreshSpy = vi.spyOn(modal, 'refreshList').mockResolvedValue();
 
       await modal.massiveDeleteOdeFileEvent(['a', 'b']);
 
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(window.eXeLearning.app.api.deleteProject).toHaveBeenCalledTimes(2);
+      expect(window.eXeLearning.app.api.deleteProject).toHaveBeenCalledWith('a');
+      expect(window.eXeLearning.app.api.deleteProject).toHaveBeenCalledWith('b');
       expect(refreshSpy).toHaveBeenCalled();
     });
 
     it('should log error on failure', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      global.fetch = vi.fn().mockRejectedValue(new Error('network'));
+      window.eXeLearning.app.api.deleteProject.mockRejectedValueOnce(new Error('network'));
       await modal.massiveDeleteOdeFileEvent(['a']);
       expect(errorSpy).toHaveBeenCalled();
     });
@@ -860,6 +1128,28 @@ describe('modalOpenUserOdeFiles', () => {
       await confirmCallback();
 
       expect(deleteSpy).toHaveBeenCalledWith(['proj-1']);
+    });
+
+    it('re-shows the dashboard modal on confirm, cancel, and close', async () => {
+      // Regression test: modalConfirm.show() closes every other open modal;
+      // confirmExec used to skip re-showing it here entirely (unlike every
+      // other dashboard dialog), and cancelExec/closeExec didn't exist, so
+      // the dashboard modal stayed closed in all three cases.
+      vi.spyOn(modal, 'massiveDeleteOdeFileEvent').mockResolvedValue();
+      modal.showMassDeleteConfirmation(['proj-1']);
+      const config = window.eXeLearning.app.modals.confirm.show.mock.calls.at(-1)[0];
+
+      mockBootstrapModal.show.mockClear();
+      await config.confirmExec();
+      expect(mockBootstrapModal.show).toHaveBeenCalled();
+
+      mockBootstrapModal.show.mockClear();
+      config.cancelExec();
+      expect(mockBootstrapModal.show).toHaveBeenCalled();
+
+      mockBootstrapModal.show.mockClear();
+      config.closeExec();
+      expect(mockBootstrapModal.show).toHaveBeenCalled();
     });
   });
 

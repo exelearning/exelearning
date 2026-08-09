@@ -59,6 +59,29 @@ export {
     deleteProjectWithRelatedData,
 } from './projects';
 
+// Project folder queries
+export * as projectFolderQueries from './project-folders';
+export {
+    findFoldersForUser,
+    findChildFolders,
+    findFoldersWithCountsForUser,
+    findFolderById,
+    findFolderByUuid,
+    findFolderDepth,
+    findDescendantFolderIds,
+    findSubtreeHeight,
+    countProjectsInFolder,
+    findFolderAssignmentsForUser,
+    createFolder,
+    renameFolder,
+    updateFolderParent,
+    deleteFolder,
+    assignProjectToFolder,
+    removeFolderAssignmentsForProject,
+    removeFolderAssignmentForUserAndProject,
+} from './project-folders';
+export type { ProjectFolderWithCount } from './project-folders';
+
 // Asset queries
 export * as assetQueries from './assets';
 export {

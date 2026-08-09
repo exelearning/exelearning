@@ -191,8 +191,20 @@ export async function addCollaborator(db: Kysely<Database>, projectId: number, u
 }
 
 export async function removeCollaborator(db: Kysely<Database>, projectId: number, userId: number): Promise<void> {
+    // No db.transaction() wrapper here: this is also called with an existing
+    // `trx` from transferOwnership(), and Kysely does not support nested
+    // transactions (calling .transaction() on a Transaction throws).
     await db
         .deleteFrom('project_collaborators')
+        .where('project_id', '=', projectId)
+        .where('user_id', '=', userId)
+        .execute();
+
+    // A removed collaborator's personal folder placement for this project
+    // must go too, or a later re-added collaborator would see the project
+    // "reappear" in a folder they never explicitly chose again.
+    await db
+        .deleteFrom('project_folder_assignments')
         .where('project_id', '=', projectId)
         .where('user_id', '=', userId)
         .execute();
@@ -401,8 +413,14 @@ export async function softDeleteProject(db: Kysely<Database>, id: number): Promi
 }
 
 export async function hardDeleteProject(db: Kysely<Database>, id: number): Promise<void> {
-    // Collaborators are deleted via cascade
-    await db.deleteFrom('projects').where('id', '=', id).execute();
+    // Collaborators are deleted via cascade.
+    // Folder assignments are deleted explicitly: SQLite (the default dialect)
+    // does not enforce foreign keys at the engine level, so schema-level
+    // `onDelete('cascade')` alone would leave orphaned rows there.
+    await db.transaction().execute(async trx => {
+        await trx.deleteFrom('project_folder_assignments').where('project_id', '=', id).execute();
+        await trx.deleteFrom('projects').where('id', '=', id).execute();
+    });
 }
 
 // ============================================================================
@@ -734,6 +752,7 @@ export async function deleteProjectWithRelatedData(db: Kysely<Database>, project
         await trx.deleteFrom('yjs_documents').where('project_id', '=', projectId).execute();
         await trx.deleteFrom('assets').where('project_id', '=', projectId).execute();
         await trx.deleteFrom('project_collaborators').where('project_id', '=', projectId).execute();
+        await trx.deleteFrom('project_folder_assignments').where('project_id', '=', projectId).execute();
         await trx.deleteFrom('projects').where('id', '=', projectId).execute();
     });
 }

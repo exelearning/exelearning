@@ -383,6 +383,29 @@ describe('menu and modal HTML generation', () => {
         expect(modals.length).toBeGreaterThan(0);
         expect(modals).toContain('modal');
     });
+
+    it('includes every modal that the online workarea template registers', () => {
+        // generateModalsHtml() assembles the static build's modals from its own
+        // hardcoded file list, separate from workarea.njk's `{% include %}` block
+        // used by the online/server-rendered build. Nothing keeps the two in sync
+        // automatically, so a modal added to one and forgotten in the other silently
+        // ships a static build whose modal manager throws on the missing element at
+        // startup (see ADR-2246-01) — this test catches that class of gap directly,
+        // for any modal, not just one specific id.
+        const workareaNjk = fs.readFileSync(path.join(projectRoot, 'views/workarea/workarea.njk'), 'utf-8');
+        const includedModals = [
+            ...workareaNjk.matchAll(/\{% include 'workarea\/modals\/(generic\/[^']+\.njk|pages\/[^']+\.njk)' %\}/g),
+        ].map(([, relPath]) => relPath);
+
+        expect(includedModals.length).toBeGreaterThan(0);
+
+        const modals = generateModalsHtml();
+        for (const modalPath of includedModals) {
+            const rendered = processNjkTemplate(path.join(projectRoot, 'views/workarea/modals', modalPath));
+            expect(rendered.length).toBeGreaterThan(0);
+            expect(modals, `static build is missing the "${modalPath}" modal template`).toContain(rendered);
+        }
+    });
 });
 
 describe('generateStaticHtml', () => {

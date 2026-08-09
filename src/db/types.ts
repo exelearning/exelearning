@@ -22,6 +22,8 @@ export interface Database {
     templates: TemplatesTable;
     impersonation_audit_logs: ImpersonationAuditLogsTable;
     activity_log: ActivityLogTable;
+    project_folders: ProjectFoldersTable;
+    project_folder_assignments: ProjectFolderAssignmentsTable;
     // Kysely internal migration tables
     kysely_migration: KyselyMigrationTable;
     kysely_migration_lock: KyselyMigrationLockTable;
@@ -197,6 +199,32 @@ interface ActivityLogTable {
     created_at: number; // Unix timestamp in milliseconds
 }
 
+/**
+ * A user's personal folder for organizing projects in the "My Projects"
+ * dashboard. Scoped per user_id — folders are never shared between users.
+ */
+interface ProjectFoldersTable {
+    id: Generated<number>;
+    uuid: string;
+    user_id: number;
+    parent_folder_id: number | null; // Self-reference; NULL = top-level folder
+    name: string;
+    created_at: number | null; // Unix timestamp in milliseconds
+    updated_at: number | null; // Unix timestamp in milliseconds
+}
+
+/**
+ * Which folder a user has filed a project into. A project can be in at
+ * most one folder per user; "unfiled" is the absence of a row (no sentinel).
+ */
+interface ProjectFolderAssignmentsTable {
+    project_id: number;
+    user_id: number;
+    folder_id: number;
+    created_at: number | null; // Unix timestamp in milliseconds
+    updated_at: number | null; // Unix timestamp in milliseconds
+}
+
 // Kysely internal migration tables
 interface KyselyMigrationTable {
     name: string;
@@ -267,6 +295,15 @@ export type ImpersonationAuditLogUpdate = Updateable<ImpersonationAuditLogsTable
 // Audit events
 export type ActivityEvent = Selectable<ActivityLogTable>;
 export type NewActivityEvent = Insertable<ActivityLogTable>;
+
+// Project Folders
+export type ProjectFolder = Selectable<ProjectFoldersTable>;
+export type NewProjectFolder = Insertable<ProjectFoldersTable>;
+export type ProjectFolderUpdate = Updateable<ProjectFoldersTable>;
+
+// Project Folder Assignments
+export type ProjectFolderAssignment = Selectable<ProjectFolderAssignmentsTable>;
+export type NewProjectFolderAssignment = Insertable<ProjectFolderAssignmentsTable>;
 
 // ============================================================================
 // HELPER TYPES

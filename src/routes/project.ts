@@ -106,6 +106,7 @@ import {
 } from '../websocket/access-notifier';
 import { createBlankYjsDocument } from '../services/yjs-initializer';
 import { logActivity } from '../services/activity-logger';
+import { sortIntoTreeOrder } from '../services/project-folder-manager';
 import type { Kysely } from 'kysely';
 import type { Database, Project, User, Theme } from '../db/types';
 
@@ -190,6 +191,7 @@ export interface QueriesDeps {
     findProjectsAsCollaborator: typeof queriesDefault.findProjectsAsCollaborator;
     updateProjectVisibility: typeof queriesDefault.updateProjectVisibility;
     updateProjectVisibilityByUuid: typeof queriesDefault.updateProjectVisibilityByUuid;
+    updateProjectTitle: typeof queriesDefault.updateProjectTitle;
     getProjectCollaborators: typeof queriesDefault.getProjectCollaborators;
     addCollaborator: typeof queriesDefault.addCollaborator;
     removeCollaborator: typeof queriesDefault.removeCollaborator;
@@ -203,10 +205,13 @@ export interface QueriesDeps {
     findFirstUser: typeof queriesDefault.findFirstUser;
     createUser: typeof queriesDefault.createUser;
     checkProjectAccess: typeof queriesDefault.checkProjectAccess;
+    hasAccess: typeof queriesDefault.hasAccess;
     findSnapshotByProjectId?: typeof queriesDefault.findSnapshotByProjectId;
     upsertSnapshot?: typeof queriesDefault.upsertSnapshot;
     findAllAssetsForProject: typeof queriesDefault.findAllAssetsForProject;
     createAsset: typeof queriesDefault.createAsset;
+    findFoldersWithCountsForUser: typeof queriesDefault.findFoldersWithCountsForUser;
+    findFolderAssignmentsForUser: typeof queriesDefault.findFolderAssignmentsForUser;
 }
 
 /**
@@ -282,6 +287,7 @@ const defaultQueries: QueriesDeps = {
     findProjectsAsCollaborator: queriesDefault.findProjectsAsCollaborator,
     updateProjectVisibility: queriesDefault.updateProjectVisibility,
     updateProjectVisibilityByUuid: queriesDefault.updateProjectVisibilityByUuid,
+    updateProjectTitle: queriesDefault.updateProjectTitle,
     getProjectCollaborators: queriesDefault.getProjectCollaborators,
     addCollaborator: queriesDefault.addCollaborator,
     removeCollaborator: queriesDefault.removeCollaborator,
@@ -295,10 +301,13 @@ const defaultQueries: QueriesDeps = {
     findFirstUser: queriesDefault.findFirstUser,
     createUser: queriesDefault.createUser,
     checkProjectAccess: queriesDefault.checkProjectAccess,
+    hasAccess: queriesDefault.hasAccess,
     findSnapshotByProjectId: queriesDefault.findSnapshotByProjectId,
     upsertSnapshot: queriesDefault.upsertSnapshot,
     findAllAssetsForProject: queriesDefault.findAllAssetsForProject,
     createAsset: queriesDefault.createAsset,
+    findFoldersWithCountsForUser: queriesDefault.findFoldersWithCountsForUser,
+    findFolderAssignmentsForUser: queriesDefault.findFolderAssignmentsForUser,
 };
 
 const defaultUtils: UtilsDeps = {
@@ -383,6 +392,25 @@ function serializeProjectSharing(
         createdAt: project.created_at,
         updatedAt: project.updated_at,
     };
+}
+
+const MAX_PROJECT_TITLE_LENGTH = 255;
+
+/**
+ * Validates a project title for the dashboard rename endpoint. A title is a
+ * display label, not a filesystem path — only trim/length checks apply,
+ * mirroring validateFolderName in project-folder-manager.ts.
+ * Returns an error message when the title is invalid, or null when it's OK.
+ */
+function validateProjectTitle(title: string): string | null {
+    const trimmed = title.trim();
+    if (trimmed === '') {
+        return 'Project title cannot be empty';
+    }
+    if (trimmed.length > MAX_PROJECT_TITLE_LENGTH) {
+        return `Project title cannot exceed ${MAX_PROJECT_TITLE_LENGTH} characters`;
+    }
+    return null;
 }
 
 // ============================================================================
@@ -793,6 +821,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
         findProjectsAsCollaborator,
         updateProjectVisibility,
         updateProjectVisibilityByUuid,
+        updateProjectTitle,
         getProjectCollaborators,
         addCollaborator,
         removeCollaborator,
@@ -804,10 +833,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
         findUserById,
         findUserByEmail,
         checkProjectAccess,
+        hasAccess,
         findSnapshotByProjectId,
         upsertSnapshot,
         findAllAssetsForProject,
         createAsset,
+        findFoldersWithCountsForUser,
+        findFolderAssignmentsForUser,
     } = deps.queries ?? defaultQueries;
 
     // Access notifier functions (WebSocket notifications for access revocation)
@@ -1572,6 +1604,48 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 };
             })
 
+            // PATCH /api/projects/uuid/:uuid/title - Rename a project from the dashboard
+            // (distinct from PATCH .../metadata above, which only updates the in-memory
+            // session for a currently-open editor and never persists to the DB).
+            .patch('/api/projects/uuid/:uuid/title', async ({ params, body, set, currentUser }) => {
+                const uuid = params.uuid;
+                const { title } = (body as { title?: string } | null) ?? {};
+
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, error: 'Unauthorized', message: 'Authentication required' };
+                }
+
+                const project = await findProjectByUuid(db, uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { success: false, error: 'Not Found', message: 'Project not found' };
+                }
+
+                // Deliberately stricter than duplicate/visibility above: those use
+                // checkProjectAccess(), which also grants access to a public project's
+                // *readers* — fine for viewing or duplicating (duplicating never
+                // mutates the original), wrong for renaming it in place. Unlike the
+                // in-editor Yjs title-sync path (src/routes/yjs.ts), this is a bare API
+                // route reachable without ever opening the project, so it requires
+                // owner-or-collaborator via hasAccess() instead.
+                if (!(await hasAccess(db, project.id, currentUser.id))) {
+                    set.status = 403;
+                    return { success: false, error: 'Forbidden', message: 'Access denied' };
+                }
+
+                const validationError = validateProjectTitle(title ?? '');
+                if (validationError) {
+                    set.status = 400;
+                    return { success: false, error: 'INVALID_TITLE', message: validationError };
+                }
+
+                const trimmedTitle = (title as string).trim();
+                await updateProjectTitle(db, project.id, trimmedTitle);
+
+                return { success: true, project: { uuid: project.uuid, title: trimmedTitle } };
+            })
+
             // DELETE /api/projects/uuid/:uuid - Delete project by UUID
             .delete('/api/projects/uuid/:uuid', async ({ params, set, currentUser }) => {
                 if (!currentUser) {
@@ -1650,7 +1724,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             .get('/api/projects/user/list', async ({ currentUser }) => {
                 // If not authenticated, return empty list
                 if (!currentUser) {
-                    return { success: true, odeFiles: { odeFilesSync: [] } };
+                    return { success: true, odeFiles: { odeFilesSync: [], folders: [] } };
                 }
 
                 const userId = currentUser.id;
@@ -1673,6 +1747,18 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     }
                 }
 
+                // The caller's personal dashboard folders and which folder (if any)
+                // each project is filed into — folders are per-user, so this applies
+                // the same for owned and shared projects. Folders can nest, so the
+                // flat query result is sorted into tree order (with depth) using the
+                // same pure function the project-folder-manager service uses for
+                // GET /api/projects/folders, instead of duplicating that logic here.
+                const [flatFolders, folderAssignments] = await Promise.all([
+                    findFoldersWithCountsForUser(db, userId),
+                    findFolderAssignmentsForUser(db, userId),
+                ]);
+                const folders = sortIntoTreeOrder(flatFolders);
+
                 // Format owned projects
                 const ownedFormatted = ownedProjects.map(p => ({
                     id: p.id,
@@ -1688,6 +1774,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     ownerEmail: null,
                     ownerId: p.owner_id,
                     visibility: p.visibility || 'private',
+                    folderId: folderAssignments.get(p.id) ?? null,
                 }));
 
                 // Format shared projects
@@ -1705,6 +1792,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     ownerEmail: ownerEmails.get(p.owner_id) || null,
                     ownerId: p.owner_id,
                     visibility: p.visibility || 'private',
+                    folderId: folderAssignments.get(p.id) ?? null,
                 }));
 
                 // Combine all projects (frontend filters by role for tabs)
@@ -1715,6 +1803,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     success: true,
                     odeFiles: {
                         odeFilesSync: allProjects,
+                        folders: folders.map(f => ({
+                            uuid: f.uuid,
+                            name: f.name,
+                            parentUuid: f.parentUuid,
+                            depth: f.depth,
+                            projectCount: f.projectCount,
+                        })),
                         maxDiskSpace: 0,
                         maxDiskSpaceFormatted: '--',
                         usedSpace: 0,

@@ -37,6 +37,7 @@ describe('NavbarFile', () => {
             shareButton: createButton('navbar-button-share'),
             uploadPlatformButton: createButton('navbar-button-uploadtoplatform'),
             openUserOdeFilesButton: createButton('navbar-button-openuserodefiles'),
+            manageProjectsButton: createButton('navbar-button-manageprojects'),
             openOfflineButton: createButton('navbar-button-open-offline'),
             saveOfflineButton: createButton('navbar-button-save-offline'),
             closeFileButton: createButton('navbar-button-close-file'),
@@ -125,6 +126,7 @@ describe('NavbarFile', () => {
                         show: vi.fn(),
                         largeFilesUpload: vi.fn(),
                     },
+                    manageprojects: { show: vi.fn() },
                     uploadprogress: {
                         show: vi.fn(),
                         setProcessingPhase: vi.fn(),
@@ -1027,6 +1029,16 @@ describe('NavbarFile', () => {
 
             expect(navbarFile.openShareModalEvent).toHaveBeenCalled();
         });
+
+        it('setManageProjectsEvent should call openManageProjectsModalEvent', () => {
+            vi.spyOn(navbarFile, 'openManageProjectsModalEvent');
+            navbarFile.setManageProjectsEvent();
+
+            const clickHandler = mockButtons.manageProjectsButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.openManageProjectsModalEvent).toHaveBeenCalled();
+        });
     });
 
     describe('action methods', () => {
@@ -1071,6 +1083,18 @@ describe('NavbarFile', () => {
             it('should show share modal when available', () => {
                 navbarFile.openShareModalEvent();
                 expect(eXeLearning.app.modals.share.show).toHaveBeenCalled();
+            });
+        });
+
+        describe('openManageProjectsModalEvent', () => {
+            it('should show the manage-projects modal when available', () => {
+                navbarFile.openManageProjectsModalEvent();
+                expect(eXeLearning.app.modals.manageprojects.show).toHaveBeenCalled();
+            });
+
+            it('should not throw when the modal is not available', () => {
+                eXeLearning.app.modals.manageprojects = undefined;
+                expect(() => navbarFile.openManageProjectsModalEvent()).not.toThrow();
             });
         });
 
@@ -2933,6 +2957,11 @@ describe('NavbarFile', () => {
         it('setShareEvent should return early when button is null', () => {
             navbarFile.shareButton = null;
             expect(() => navbarFile.setShareEvent()).not.toThrow();
+        });
+
+        it('setManageProjectsEvent should return early when button is null', () => {
+            navbarFile.manageProjectsButton = null;
+            expect(() => navbarFile.setManageProjectsEvent()).not.toThrow();
         });
 
         it('setOpenOfflineEvent should return early when button is null', () => {

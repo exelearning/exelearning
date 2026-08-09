@@ -1363,6 +1363,193 @@ describe('ApiCallManager', () => {
     });
   });
 
+  describe('getProjectFolders', () => {
+    it('should fetch the caller folders', async () => {
+      const mockFolders = { success: true, folders: [{ uuid: 'f1', name: 'Folder', projectCount: 2 }] };
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockFolders),
+      });
+
+      const result = await apiManager.getProjectFolders();
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/folders',
+        expect.objectContaining({ method: 'GET' })
+      );
+      expect(result).toEqual(mockFolders);
+    });
+
+    it('should return an empty list on fetch error', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+      const result = await apiManager.getProjectFolders();
+      expect(result).toEqual({ success: false, folders: [] });
+    });
+
+    it('should return an empty list when fetch throws', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      const result = await apiManager.getProjectFolders();
+      expect(result).toEqual({ success: false, folders: [] });
+    });
+  });
+
+  describe('createProjectFolder', () => {
+    it('should post the folder name', async () => {
+      const mockFolder = { success: true, folder: { uuid: 'f1', name: 'Math', projectCount: 0 } };
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockFolder),
+      });
+
+      const result = await apiManager.createProjectFolder('Math');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/folders',
+        expect.objectContaining({ method: 'POST', body: JSON.stringify({ name: 'Math', parentFolderUuid: null }) })
+      );
+      expect(result).toEqual(mockFolder);
+    });
+
+    it('should include the parent folder uuid when creating a nested folder', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ success: true, folder: { uuid: 'f2', name: 'Child', projectCount: 0 } }),
+      });
+
+      await apiManager.createProjectFolder('Child', 'parent-uuid');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/folders',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ name: 'Child', parentFolderUuid: 'parent-uuid' }),
+        })
+      );
+    });
+
+    it('should surface a friendly error on failure', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: vi.fn().mockResolvedValue({ error: 'DUPLICATE_NAME', message: 'A folder with this name already exists' }),
+      });
+
+      const result = await apiManager.createProjectFolder('Math');
+
+      expect(result).toEqual({
+        success: false,
+        error: 'DUPLICATE_NAME',
+        message: 'A folder with this name already exists',
+      });
+    });
+
+    it('should return an error result when fetch throws', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      const result = await apiManager.createProjectFolder('Math');
+      expect(result).toEqual({ success: false, message: 'Network error' });
+    });
+  });
+
+  describe('renameProjectFolder', () => {
+    it('should patch the folder name', async () => {
+      const mockFolder = { success: true, folder: { uuid: 'f1', name: 'New Name', projectCount: 0 } };
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(mockFolder),
+      });
+
+      const result = await apiManager.renameProjectFolder('f1', 'New Name');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/folders/f1',
+        expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ name: 'New Name' }) })
+      );
+      expect(result).toEqual(mockFolder);
+    });
+
+    it('should include parentFolderUuid when explicitly moving to a new parent', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ success: true, folder: {} }),
+      });
+
+      await apiManager.renameProjectFolder('f1', 'New Name', 'new-parent-uuid');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/folders/f1',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ name: 'New Name', parentFolderUuid: 'new-parent-uuid' }),
+        })
+      );
+    });
+
+    it('should include parentFolderUuid: null when explicitly moving to top-level', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ success: true, folder: {} }),
+      });
+
+      await apiManager.renameProjectFolder('f1', 'New Name', null);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/folders/f1',
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ name: 'New Name', parentFolderUuid: null }),
+        })
+      );
+    });
+  });
+
+  describe('deleteProjectFolder', () => {
+    it('should delete the folder by uuid', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ success: true }),
+      });
+
+      const result = await apiManager.deleteProjectFolder('f1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/folders/f1',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+      expect(result).toEqual({ success: true });
+    });
+  });
+
+  describe('assignProjectFolder', () => {
+    it('should PUT the target folder for a UUID project', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ success: true }),
+      });
+
+      const result = await apiManager.assignProjectFolder('uuid-123', 'f1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/uuid/uuid-123/folder',
+        expect.objectContaining({ method: 'PUT', body: JSON.stringify({ folderUuid: 'f1' }) })
+      );
+      expect(result).toEqual({ success: true });
+    });
+
+    it('should send null to unfile a project', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ success: true }),
+      });
+
+      await apiManager.assignProjectFolder('uuid-123', null);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/projects/uuid/uuid-123/folder',
+        expect.objectContaining({ body: JSON.stringify({ folderUuid: null }) })
+      );
+    });
+  });
+
   describe('getOdeExportDownload', () => {
     it('should post structure for Yjs sessions', async () => {
       apiManager.endpoints.api_ode_export_download = {
@@ -1571,6 +1758,102 @@ describe('ApiCallManager', () => {
 
       expect(removeResult).toEqual({ ok: true });
       expect(transferResult).toEqual({ ok: true });
+    });
+
+    it('should rename a project', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ success: true, project: { uuid: 'p1-uuid', title: 'New Title' } }),
+      });
+
+      const result = await apiManager.renameProject('p1-uuid', 'New Title');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/projects/uuid/p1-uuid/title'),
+        expect.objectContaining({
+          method: 'PATCH',
+          body: JSON.stringify({ title: 'New Title' }),
+        }),
+      );
+      expect(result).toEqual({ success: true, project: { uuid: 'p1-uuid', title: 'New Title' } });
+    });
+
+    it('should return an error result when renaming fails', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: vi.fn().mockResolvedValue({ error: 'INVALID_TITLE', message: 'Project title cannot be empty' }),
+      });
+
+      const result = await apiManager.renameProject('p1-uuid', '   ');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Project title cannot be empty');
+    });
+
+    it('should duplicate a project', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ success: true, newProjectId: 'p2' }),
+      });
+
+      const result = await apiManager.duplicateProject('p1-uuid');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/projects/uuid/p1-uuid/duplicate'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+      expect(result).toEqual({ success: true, newProjectId: 'p2' });
+    });
+
+    it('should return an error result when duplication fails', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: vi.fn().mockResolvedValue({ message: 'Access denied' }),
+      });
+
+      const result = await apiManager.duplicateProject('p1-uuid');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Access denied');
+    });
+
+    it('should delete a project', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      });
+
+      const result = await apiManager.deleteProject('p1-uuid');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/projects/uuid/p1-uuid'),
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+      expect(result).toEqual({ responseMessage: 'OK' });
+    });
+
+    it('should return an error result when deletion fails', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: vi.fn().mockResolvedValue({ message: 'Project not found' }),
+      });
+
+      const result = await apiManager.deleteProject('p1-uuid');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Project not found');
+    });
+
+    it('should handle a network error while renaming', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('network down'));
+
+      const result = await apiManager.renameProject('p1-uuid', 'New Title');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('network down');
     });
   });
 
