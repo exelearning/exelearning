@@ -109,6 +109,173 @@ export function isValidProvider(providerId: string): boolean {
 }
 
 /**
+ * A single parsed PROVIDER_URLS entry.
+ *
+ * Entries are matched structurally (scheme / host / port / path) rather than as
+ * raw string prefixes — see {@link isAllowedProviderUrl}.
+ */
+interface ProviderUrlEntry {
+    /** 'http' or 'https', or null when the entry omits the scheme (matches both). */
+    scheme: string | null;
+    /** Lower-cased, punycode-normalized host. May start with '*.' (one label). */
+    host: string;
+    /** Explicit port, or null when the entry omits it (matches any port). */
+    port: string | null;
+    /** Path prefix to require, or '' when the entry has none (matches any path). */
+    path: string;
+}
+
+/**
+ * Normalize the host part of an allow-list entry, preserving a leading '*.'
+ * wildcard label. Uses the URL parser so internationalized domains are folded to
+ * punycode exactly like `URL.hostname` yields at match time.
+ *
+ * @param host - Raw host from the entry (may start with '*.')
+ * @returns Normalized host, or null when the host is empty or malformed
+ */
+function normalizeEntryHost(host: string): string | null {
+    const isWildcard = host.startsWith('*.');
+    const bare = isWildcard ? host.slice(2) : host;
+
+    // A '*' is only meaningful as the leftmost label; reject it anywhere else
+    // (and reject a bare '*', which would allow every host and defeat the
+    // fail-closed guarantee). Reject userinfo too, so an entry cannot smuggle a
+    // different effective host past the operator reading the .env file.
+    if (!bare || bare.includes('*') || bare.includes('@')) {
+        return null;
+    }
+
+    // `http:` is a special scheme, so the parser either throws or yields a
+    // non-empty host — no empty-host case to guard here.
+    let normalized: string;
+    try {
+        normalized = new URL(`http://${bare}`).hostname.toLowerCase();
+    } catch {
+        return null;
+    }
+
+    return isWildcard ? `*.${normalized}` : normalized;
+}
+
+/**
+ * Parse one PROVIDER_URLS entry into its structural parts.
+ *
+ * Accepted shapes (scheme, port and path are all optional):
+ *   https://moodle.example.com
+ *   https://*.example.com
+ *   *.example.com
+ *   https://example.com:8443/moodle
+ *
+ * @param entry - A single (already trimmed) allow-list entry
+ * @returns The parsed entry, or null when it is malformed and must be ignored
+ */
+function parseProviderEntry(entry: string): ProviderUrlEntry | null {
+    let rest = entry.trim();
+    if (!rest) {
+        return null;
+    }
+
+    let scheme: string | null = null;
+    const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\//.exec(rest);
+    if (schemeMatch) {
+        scheme = schemeMatch[1].toLowerCase();
+        // Only http(s) providers are reachable; anything else can never match.
+        if (scheme !== 'http' && scheme !== 'https') {
+            return null;
+        }
+        rest = rest.slice(schemeMatch[0].length);
+    }
+
+    let path = '';
+    const slashIndex = rest.indexOf('/');
+    if (slashIndex !== -1) {
+        // Drop any query or fragment: the path is compared against
+        // `URL.pathname`, which carries neither, so keeping them would make the
+        // entry impossible to satisfy. They constrain nothing an SSRF
+        // allow-list cares about.
+        path = rest.slice(slashIndex).split(/[?#]/)[0];
+        rest = rest.slice(0, slashIndex);
+    }
+
+    let port: string | null = null;
+    const portMatch = /:(\d+)$/.exec(rest);
+    if (portMatch) {
+        port = portMatch[1];
+        rest = rest.slice(0, portMatch.index);
+    }
+
+    const host = normalizeEntryHost(rest.toLowerCase());
+    if (!host) {
+        return null;
+    }
+
+    return { scheme, host, port, path: path === '/' ? '' : path };
+}
+
+/**
+ * Match a URL host against an entry host, honouring a leading '*.' wildcard.
+ *
+ * The wildcard stands for exactly ONE DNS label, matching TLS wildcard
+ * certificate semantics: `*.example.com` matches `moodle.example.com` but
+ * neither `a.b.example.com` nor the bare `example.com`.
+ *
+ * @param entryHost - Normalized host from the allow-list entry
+ * @param host - Normalized host from the URL under test
+ * @returns true when the host is covered by the entry
+ */
+function hostMatchesEntry(entryHost: string, host: string): boolean {
+    if (!entryHost.startsWith('*.')) {
+        return host === entryHost;
+    }
+
+    const suffix = entryHost.slice(2);
+    if (!host.endsWith(`.${suffix}`)) {
+        return false;
+    }
+
+    const label = host.slice(0, host.length - suffix.length - 1);
+    return label.length > 0 && !label.includes('.');
+}
+
+/**
+ * Resolve the effective port of a URL, filling in the scheme default when the
+ * URL omits it, so `https://host` and `https://host:443` compare equal.
+ */
+function effectivePort(protocol: string, port: string): string {
+    if (port) {
+        return port;
+    }
+    return protocol === 'https:' ? '443' : '80';
+}
+
+/**
+ * Check whether a parsed URL satisfies a single allow-list entry.
+ *
+ * Every part the entry specifies must match; parts the entry omits are
+ * unconstrained. The path is compared as a prefix so an entry may narrow a
+ * provider to a subdirectory (e.g. a Moodle installed under /moodle).
+ */
+function matchesProviderEntry(parsed: URL, entry: ProviderUrlEntry): boolean {
+    if (entry.scheme !== null && `${entry.scheme}:` !== parsed.protocol) {
+        return false;
+    }
+
+    if (entry.port !== null && effectivePort(parsed.protocol, parsed.port) !== entry.port) {
+        return false;
+    }
+
+    if (!hostMatchesEntry(entry.host, parsed.hostname.toLowerCase())) {
+        return false;
+    }
+
+    if (entry.path && !parsed.pathname.startsWith(entry.path)) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Check if a URL belongs to a configured provider.
  *
  * This is an allow-list, so it FAILS CLOSED: when no providers are configured
@@ -118,6 +285,17 @@ export function isValidProvider(providerId: string): boolean {
  * `returnurl` — let a holder of a valid platform JWT drive the server to fetch
  * arbitrary internal hosts (SSRF). Deploying platform integration now requires
  * an explicit PROVIDER_URLS allow-list.
+ *
+ * Entries are matched on the PARSED host, not as raw string prefixes. Prefix
+ * matching did not validate the host component, so an entry could be satisfied
+ * by a URL whose effective host was a different domain (via a longer domain that
+ * merely started with the entry, or via userinfo before an '@'). Since the
+ * matched URL then becomes a server-side request target, matching must be
+ * host-accurate.
+ *
+ * An entry may use a single leftmost '*' label to cover subdomains — see
+ * {@link hostMatchesEntry} — which is what makes multi-tenant deployments
+ * configurable without enumerating every tenant host (issue #2248).
  *
  * @param url - The URL to validate
  * @returns true if URL is from an allowed provider, false otherwise
@@ -134,7 +312,23 @@ export function isAllowedProviderUrl(url: string): boolean {
         return false;
     }
 
-    return config.urls.some(allowedUrl => url.startsWith(allowedUrl));
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return false;
+    }
+
+    // Both http(s) schemes are special, so a parsed URL always carries a
+    // non-empty host — the entry matcher can rely on that.
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return false;
+    }
+
+    return config.urls.some(allowedUrl => {
+        const entry = parseProviderEntry(allowedUrl);
+        return entry !== null && matchesProviderEntry(parsed, entry);
+    });
 }
 
 /**
