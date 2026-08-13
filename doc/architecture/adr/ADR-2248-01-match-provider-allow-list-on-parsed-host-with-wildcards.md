@@ -144,6 +144,24 @@ malformed, so neither can be used to allow every host. Malformed entries are
 discarded individually without disabling the rest of the list, and an empty list
 still denies everything.
 
+Entries are decomposed with the URL parser itself, so an entry is split into
+scheme / host / port / path exactly the way the URL under test is; the wildcard
+host is the only part special-cased, because `*` is not a valid hostname. Two
+constraints must survive that parse and are therefore read explicitly:
+
+- The **port** is read from the raw authority, isolated before any query or
+  fragment. Deriving it from the whole entry string would lose it whenever a
+  query or fragment follows the port directly (`example.com:8443?foo=bar`), and
+  reading `URL.port` would lose an explicit default (`:80` on an http entry).
+  Either loss silently widens the entry to *any* port.
+- A **path** constrains matching only when the entry writes one, since
+  `URL.pathname` is `/` both for an entry with no path and for a lone trailing
+  slash.
+
+The general rule is that a constraint an operator writes is never silently
+relaxed: any entry the parser cannot decompose is discarded whole rather than
+matched on the parts that happened to survive.
+
 ## Consequences
 
 ### Positive
@@ -167,9 +185,12 @@ still denies everything.
 
 - Entries with a path are now compared as `hostname` + path prefix rather than
   as one opaque string; for realistic values the authorized set is unchanged. A
-  query or fragment in an entry is ignored, since it is compared against
-  `URL.pathname`, which carries neither, and constrains nothing an SSRF
-  allow-list cares about.
+  query or fragment in an entry is ignored — it constrains nothing an SSRF
+  allow-list cares about — but ignoring it never costs the entry its port or
+  path, which are extracted before it.
+- The path of an entry is normalized by the URL parser, so `/lms/../moodle`
+  authorizes `/moodle`. Prefix matching compared the literal text, which no
+  realistic entry relied on.
 - Host comparison is case-insensitive, so an entry now also matches callbacks
   whose host differs only in case — which string prefixing rejected even though
   DNS treats them as the same host.
@@ -194,6 +215,10 @@ still denies everything.
   and userinfo cases), case-insensitivity, scheme/port/path constraints,
   malformed-entry handling, the rejected bare `*`, and the rejected scheme-only
   entry.
+- Regression tests pin the "never silently relax a constraint" rule: an entry
+  whose port is followed directly by a query or a fragment (plain and wildcard
+  forms) still rejects other ports, and an explicit `:80` on an http entry is
+  still enforced.
 - `src/routes/platform-integration.spec.ts` continues to pass unchanged,
   confirming the integration path is unaffected for existing configurations.
 
@@ -204,6 +229,14 @@ still denies everything.
 - Consider widening the startup warning: it currently fires only when
   `PROVIDER_TOKENS` or `PROVIDER_IDS` are set, so deployments that sign with
   `APP_SECRET` and leave both empty get no signal that the allow-list is empty.
+- Consider binding each `PROVIDER_URLS` entry to a provider. `PROVIDER_IDS[n]`
+  and `PROVIDER_TOKENS[n]` are positional, but the allow-list is global: a token
+  signed by one configured provider may return to another configured provider's
+  host. The residual exposure is a confused deputy between hosts the operator
+  already authorized, not the SSRF this ADR addresses, and binding would need a
+  decision for tokens signed with `APP_SECRET` (no `provider_id`, so no index) —
+  hence a separate ADR rather than a change here. Documented as-is in
+  `doc/deployment.md` and `.env.dist` meanwhile.
 - Runtime or API-based provider registration, if enumeration remains painful for
   deployments that cannot use a shared parent domain, is a separate change.
 

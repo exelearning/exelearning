@@ -185,9 +185,20 @@ PROVIDER_URLS=https://*.example.net
 neither is a supported way to allow every host. A malformed entry is discarded on its
 own and does not disable the rest of the list.
 
-**If you also use `PROVIDER_TOKENS` / `PROVIDER_IDS`**, the three variables map by
-position, so keep them in the same order. They are optional: platforms signing with
-`APP_SECRET` only need `PROVIDER_URLS`.
+**If you also use `PROVIDER_TOKENS` / `PROVIDER_IDS`**, keep the three variables in
+the same order and of the same length — the server reports a configuration mismatch
+otherwise. Only `PROVIDER_IDS` and `PROVIDER_TOKENS` are bound to each other by
+position: the JWT's `provider_id` is looked up in `PROVIDER_IDS`, and the token at
+the same index is used to verify the signature.
+
+`PROVIDER_URLS` is **not** bound to a provider. It is one global allow-list: a
+callback is allowed when its URL matches **any** entry, whichever provider signed
+the token. So a token signed by one configured provider may carry a `returnurl`
+pointing at another configured provider's host. Every entry you add is authorized for
+every provider — list only hosts you are willing to let the server contact.
+
+`PROVIDER_TOKENS` / `PROVIDER_IDS` are optional: platforms signing with `APP_SECRET`
+only need `PROVIDER_URLS`.
 
 Troubleshooting:
 

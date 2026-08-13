@@ -302,6 +302,52 @@ describe('Platform JWT Utilities', () => {
                 expect(isAllowedProviderUrl('https://moodle.example.com/')).toBe(true);
             });
 
+            it('should enforce an explicit http default port', () => {
+                process.env.PROVIDER_URLS = 'http://moodle.example.com:80';
+
+                expect(isAllowedProviderUrl('http://moodle.example.com/')).toBe(true);
+                expect(isAllowedProviderUrl('http://moodle.example.com:8080/')).toBe(false);
+            });
+
+            // A query or fragment attached straight to the port must not cost the
+            // entry its port constraint: silently widening it to any port would
+            // relax the SSRF boundary the operator configured.
+            it('should keep the port when a query follows it without a path', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com:8443?foo=bar';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com:8443/')).toBe(true);
+                expect(isAllowedProviderUrl('https://moodle.example.com:9000/')).toBe(false);
+                expect(isAllowedProviderUrl('https://moodle.example.com/')).toBe(false);
+            });
+
+            it('should keep the port when a fragment follows it without a path', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com:8443#frag';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com:8443/')).toBe(true);
+                expect(isAllowedProviderUrl('https://moodle.example.com:9000/')).toBe(false);
+            });
+
+            it('should keep the port of a wildcard entry when a query follows it', () => {
+                process.env.PROVIDER_URLS = 'https://*.example.net:8443?foo=bar';
+
+                expect(isAllowedProviderUrl('https://tenant.example.net:8443/')).toBe(true);
+                expect(isAllowedProviderUrl('https://tenant.example.net:9000/')).toBe(false);
+                expect(isAllowedProviderUrl('https://tenant.example.net/')).toBe(false);
+            });
+
+            it('should not constrain the path when the entry has only a query', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com?foo=bar';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com/anything')).toBe(true);
+            });
+
+            it('should normalize dot segments in the entry path', () => {
+                process.env.PROVIDER_URLS = 'https://host.example.com/lms/../moodle';
+
+                expect(isAllowedProviderUrl('https://host.example.com/moodle/view.php')).toBe(true);
+                expect(isAllowedProviderUrl('https://host.example.com/lms/other')).toBe(false);
+            });
+
             it('should narrow to a path prefix when the entry has a path', () => {
                 process.env.PROVIDER_URLS = 'https://host.example.com/moodle';
 

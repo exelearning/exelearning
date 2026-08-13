@@ -126,38 +126,6 @@ interface ProviderUrlEntry {
 }
 
 /**
- * Normalize the host part of an allow-list entry, preserving a leading '*.'
- * wildcard label. Uses the URL parser so internationalized domains are folded to
- * punycode exactly like `URL.hostname` yields at match time.
- *
- * @param host - Raw host from the entry (may start with '*.')
- * @returns Normalized host, or null when the host is empty or malformed
- */
-function normalizeEntryHost(host: string): string | null {
-    const isWildcard = host.startsWith('*.');
-    const bare = isWildcard ? host.slice(2) : host;
-
-    // A '*' is only meaningful as the leftmost label; reject it anywhere else
-    // (and reject a bare '*', which would allow every host and defeat the
-    // fail-closed guarantee). Reject userinfo too, so an entry cannot smuggle a
-    // different effective host past the operator reading the .env file.
-    if (!bare || bare.includes('*') || bare.includes('@')) {
-        return null;
-    }
-
-    // `http:` is a special scheme, so the parser either throws or yields a
-    // non-empty host — no empty-host case to guard here.
-    let normalized: string;
-    try {
-        normalized = new URL(`http://${bare}`).hostname.toLowerCase();
-    } catch {
-        return null;
-    }
-
-    return isWildcard ? `*.${normalized}` : normalized;
-}
-
-/**
  * Parse one PROVIDER_URLS entry into its structural parts.
  *
  * Accepted shapes (scheme, port and path are all optional):
@@ -165,6 +133,11 @@ function normalizeEntryHost(host: string): string | null {
  *   https://*.example.com
  *   *.example.com
  *   https://example.com:8443/moodle
+ *
+ * The URL parser does the structural work (splitting the authority from the
+ * path, folding internationalized hosts to punycode, normalizing the path), so
+ * an entry is decomposed exactly the way the URL under test will be. Only the
+ * wildcard host is special-cased, since '*' is not a valid hostname.
  *
  * @param entry - A single (already trimmed) allow-list entry
  * @returns The parsed entry, or null when it is malformed and must be ignored
@@ -186,30 +159,52 @@ function parseProviderEntry(entry: string): ProviderUrlEntry | null {
         rest = rest.slice(schemeMatch[0].length);
     }
 
-    let path = '';
-    const slashIndex = rest.indexOf('/');
-    if (slashIndex !== -1) {
-        // Drop any query or fragment: the path is compared against
-        // `URL.pathname`, which carries neither, so keeping them would make the
-        // entry impossible to satisfy. They constrain nothing an SSRF
-        // allow-list cares about.
-        path = rest.slice(slashIndex).split(/[?#]/)[0];
-        rest = rest.slice(0, slashIndex);
+    // A '*' is only meaningful as the leftmost label, so strip that one label
+    // before parsing and reject '*' anywhere else — including a bare '*', which
+    // would allow every host and defeat the fail-closed guarantee. Reject
+    // userinfo too, so an entry cannot smuggle a different effective host past
+    // the operator reading the .env file.
+    const isWildcard = rest.startsWith('*.');
+    if (isWildcard) {
+        rest = rest.slice(2);
     }
-
-    let port: string | null = null;
-    const portMatch = /:(\d+)$/.exec(rest);
-    if (portMatch) {
-        port = portMatch[1];
-        rest = rest.slice(0, portMatch.index);
-    }
-
-    const host = normalizeEntryHost(rest.toLowerCase());
-    if (!host) {
+    if (!rest || rest.includes('*') || rest.includes('@')) {
         return null;
     }
 
-    return { scheme, host, port, path: path === '/' ? '' : path };
+    // Isolate the authority before reading the port. An entry may attach a query
+    // or fragment straight to the port ('example.com:8443?foo=bar'); reading the
+    // port off the whole string would miss it and silently widen the entry to
+    // ANY port. A configured constraint must never be relaxed silently.
+    const authorityEnd = rest.search(/[/?#]/);
+    const authority = authorityEnd === -1 ? rest : rest.slice(0, authorityEnd);
+
+    // The port is taken from the raw authority rather than from `URL.port`,
+    // which drops a port equal to the parsed scheme's default and would turn an
+    // explicit ':80' into "any port".
+    const portMatch = /:(\d+)$/.exec(authority);
+    const port = portMatch ? portMatch[1] : null;
+
+    // `http:` is a special scheme, so the parser either throws or yields a
+    // non-empty host — no empty-host case to guard here.
+    let parsed: URL;
+    try {
+        parsed = new URL(`http://${rest}`);
+    } catch {
+        return null;
+    }
+
+    // A path constrains matching only when the entry actually wrote one:
+    // `pathname` is '/' both for an entry with no path and for a lone trailing
+    // slash, and neither narrows anything. A query or fragment is ignored — it
+    // is not part of `URL.pathname` and constrains nothing an SSRF allow-list
+    // cares about.
+    const wrotePath = authorityEnd !== -1 && rest[authorityEnd] === '/';
+    const path = wrotePath && parsed.pathname !== '/' ? parsed.pathname : '';
+
+    const host = parsed.hostname.toLowerCase();
+
+    return { scheme, host: isWildcard ? `*.${host}` : host, port, path };
 }
 
 /**
