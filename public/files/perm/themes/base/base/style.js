@@ -6,14 +6,14 @@ var myTheme = {
         // Add menu and search bar togglers
         var togglers =
             '\
-            <button type="button" id="siteNavToggler" class="toggler" title="' +
+            <button type="button" id="siteNavToggler" class="toggler" aria-expanded="true" aria-controls="siteNav" title="' +
             $exe_i18n.menu +
             '">\
                 <span class="sr-av">' +
             $exe_i18n.menu +
             '</span>\
             </button>\
-            <button type="button" id="searchBarTogger" class="toggler" title="' +
+            <button type="button" id="searchBarTogger" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
             $exe_i18n.search +
             '">\
                 <span class="sr-av">' +
@@ -28,6 +28,7 @@ var myTheme = {
         if (url.length > 1) {
             if (url[1].indexOf('nav=false') != -1) {
                 $('body').addClass('siteNav-off');
+                $('#siteNavToggler').attr('aria-expanded', 'false');
                 myTheme.params('add');
             }
         }
@@ -35,6 +36,7 @@ var myTheme = {
         $('#siteNavToggler').on('click', function () {
             if (myTheme.isLowRes()) {
                 $('#exe-client-search').hide();
+                $('#searchBarTogger').attr('aria-expanded', 'false');
                 if ($('body').hasClass('siteNav-off')) {
                     $('body').removeClass('siteNav-off');
                 } else {
@@ -50,6 +52,7 @@ var myTheme = {
                     $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
+            $(this).attr('aria-expanded', !$('body').hasClass('siteNav-off'));
         });
         // Search bar toggler
         $('#searchBarTogger').on('click', function () {
@@ -59,11 +62,13 @@ var myTheme = {
             } else {
                 if (myTheme.isLowRes()) {
                     $('body').addClass('siteNav-off');
+                    $('#siteNavToggler').attr('aria-expanded', 'false');
                 }
                 bar.show();
                 $('#exe-client-search-text').focus();
                 window.scroll(0, 0);
             }
+            $(this).attr('aria-expanded', bar.is(':visible'));
         });
         if (!this.inIframe()) {
             // Fixed navigation
@@ -99,18 +104,37 @@ var myTheme = {
     param: function (e, act) {
         if (act == 'add') {
             var ref = e.href;
-            var con = '?';
-            if (ref.indexOf('.html?') != -1) con = '&';
+            var hash = '';
+            // Split the fragment off first, or the param lands inside the anchor
+            var h = ref.indexOf('#');
+            if (h != -1) {
+                hash = ref.slice(h);
+                ref = ref.slice(0, h);
+            }
             var param = 'nav=false';
             if (ref.indexOf(param) == -1) {
-                ref += con + param;
-                e.href = ref;
+                e.href =
+                    ref + (ref.indexOf('?') != -1 ? '&' : '?') + param + hash;
             }
         } else {
-            // This will remove all params
             var ref = e.href;
-            ref = ref.split('?');
-            e.href = ref[0];
+            var q = ref.indexOf('?');
+            if (q == -1) return;
+            var tail = ref.slice(q + 1);
+            var hash = '';
+            var h = tail.indexOf('#');
+            if (h != -1) {
+                hash = tail.slice(h);
+                tail = tail.slice(0, h);
+            }
+            // Keep every other param: the application writes exe-teacher=1 on these links
+            var kept = tail.split('&').filter(function (p) {
+                return p !== '' && p != 'nav=false';
+            });
+            e.href =
+                ref.slice(0, q) +
+                (kept.length ? '?' + kept.join('&') : '') +
+                hash;
         }
     },
     params: function (act) {
