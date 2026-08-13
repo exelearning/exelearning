@@ -94,11 +94,20 @@ describe('generateManifestItems', () => {
             expect(xml).toContain('<title>My Course</title>');
         });
 
-        it('falls back to eXeLearning when no project title is given', () => {
+        it('falls back to eXeLearning when the project title is empty', () => {
             const xml = generateManifestItems({
                 pages: [page('p1', 'Only page')],
                 projectId: 'proj-1',
                 rootTitle: '',
+            });
+
+            expect(xml).toContain('<title>eXeLearning</title>');
+        });
+
+        it('falls back to eXeLearning when no project title is given at all', () => {
+            const xml = generateManifestItems({
+                pages: [page('p1', 'Only page')],
+                projectId: 'proj-1',
             });
 
             expect(xml).toContain('<title>eXeLearning</title>');
@@ -237,10 +246,27 @@ describe('generateManifestItems', () => {
 
             expect(xml).not.toContain('<sequencing/>');
         });
+
+        it('does not render extras on an item whose children were all skipped', () => {
+            // "b" is listed twice: once as a child of "a", once as its own child.
+            // The inner copy is skipped, so the "b" item ends up with no children
+            // and must not be treated as a cluster.
+            const xml = generateManifestItems({
+                pages: [page('a', 'A'), page('b', 'B', 'a'), page('b', 'B again', 'b')],
+                projectId: 'proj-1',
+                rootTitle: 'Course',
+                renderClusterExtras: indentStr => `${indentStr}<sequencing/>\n`,
+            });
+
+            // Only the root and "a" rendered children.
+            expect(xml.match(/<sequencing\/>/g)?.length).toBe(2);
+            const bItem = /<item identifier="ITEM-b"[\s\S]*?<\/item>/.exec(xml)?.[0] ?? '';
+            expect(bItem).not.toContain('<sequencing/>');
+        });
     });
 
     describe('indentation', () => {
-        it('indents the root item three levels by default', () => {
+        it('indents the root item three levels', () => {
             const xml = generateManifestItems({
                 pages: [page('p1', 'Only page')],
                 projectId: 'proj-1',
@@ -248,17 +274,6 @@ describe('generateManifestItems', () => {
             });
 
             expect(xml.startsWith('      <item identifier="ITEM-ROOT-proj-1"')).toBe(true);
-        });
-
-        it('honours a custom base indent', () => {
-            const xml = generateManifestItems({
-                pages: [page('p1', 'Only page')],
-                projectId: 'proj-1',
-                rootTitle: 'Course',
-                baseIndent: 1,
-            });
-
-            expect(xml.startsWith('  <item identifier="ITEM-ROOT-proj-1"')).toBe(true);
         });
     });
 
@@ -298,6 +313,75 @@ describe('generateManifestItems', () => {
 
             expect(xml.match(/identifier="ITEM-a"/g)?.length).toBe(1);
             expect(xml).toContain('</item>');
+        });
+    });
+
+    describe('author warnings', () => {
+        const captureWarnings = (run: () => void): string[] => {
+            const messages: string[] = [];
+            const original = console.warn;
+            console.warn = (...args: unknown[]) => {
+                messages.push(args.join(' '));
+            };
+            try {
+                run();
+            } finally {
+                console.warn = original;
+            }
+            return messages;
+        };
+
+        it('reports a page left out because its parent is missing', () => {
+            const messages = captureWarnings(() =>
+                generateManifestItems({
+                    pages: [page('root', 'Root'), page('lost', 'Lost page', 'gone')],
+                    projectId: 'proj-1',
+                    rootTitle: 'Course',
+                }),
+            );
+
+            expect(messages).toHaveLength(1);
+            expect(messages[0]).toContain('1 page(s) are missing from the manifest organization');
+            expect(messages[0]).toContain('"Lost page" (lost)');
+        });
+
+        it('reports every page when none of them can be reached', () => {
+            const messages = captureWarnings(() =>
+                generateManifestItems({
+                    pages: [page('a', 'A', 'gone'), page('b', 'B', 'gone')],
+                    projectId: 'proj-1',
+                    rootTitle: 'Course',
+                }),
+            );
+
+            expect(messages).toHaveLength(1);
+            expect(messages[0]).toContain('2 page(s) are missing from the manifest organization');
+        });
+
+        it('reports a page that reuses the id of an earlier one', () => {
+            const messages = captureWarnings(() =>
+                generateManifestItems({
+                    pages: [page('a', 'A'), page('a', 'A again')],
+                    projectId: 'proj-1',
+                    rootTitle: 'Course',
+                }),
+            );
+
+            expect(messages).toHaveLength(1);
+            expect(messages[0]).toContain('reuse the id of an earlier page');
+            expect(messages[0]).toContain('"A again" (a)');
+        });
+
+        it('stays quiet for a well-formed hierarchy', () => {
+            const messages = captureWarnings(() =>
+                generateManifestItems({
+                    pages: nestedPages(),
+                    projectId: 'proj-1',
+                    rootTitle: 'Course',
+                }),
+            );
+
+            expect(messages).toEqual([]);
         });
     });
 });

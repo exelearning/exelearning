@@ -61,8 +61,8 @@ Emit a single `<item>` with no `identifierref`, titled with the project title,
 containing all pages. Root pages become children of that cluster and therefore
 siblings of one another in the LMS's model.
 
-- Pro: restores `#nav_skipnext` / `#nav_skipprev` / `#nav_up` at every level in
-  stock `mod_scorm`.
+- Pro: restores `#nav_skipnext` / `#nav_skipprev` at every level in stock
+  `mod_scorm`.
 - Pro: the authored hierarchy is preserved — `Home` stays a sibling of `Topic 1`.
 - Pro: a cluster item without `identifierref` is the canonical SCORM 2004 shape
   for an aggregation node.
@@ -125,6 +125,14 @@ broken in 2.9 too.
 SCOs under a sentinel key in its own `exescorm_update_siblings()`, which is why
 the reporter sees correct behaviour there.
 
+`#nav_up` is a separate button and is *not* affected by any of this. A cluster
+item is rendered as a `<span>` without `data-scoid` (`locallib.php`, `TOCJSLINK`
+branch), `scorm_parse_toc_tree()` therefore leaves `node.scoid` undefined
+(`module.js:126-138`), and `scorm_fixnav()` disables the up button whenever the
+target has no `scoid` (`module.js:260-263`). Top-level pages consequently keep
+the up button disabled both before and after this decision, while sub-pages keep
+it enabled in both cases because their parent is a launchable page.
+
 ## Decision
 
 We will emit a single non-launchable root cluster `<item>` in the SCORM 1.2,
@@ -138,8 +146,8 @@ generators, replacing three identical copies of `generateItems()`.
 
 ### Positive
 
-- `#nav_skipnext`, `#nav_skipprev` and `#nav_up` work at every level in stock
-  `mod_scorm`, including between pages that have sub-pages.
+- `#nav_skipnext` and `#nav_skipprev` work at every level in stock `mod_scorm`,
+  including between pages that have sub-pages.
 - The authored hierarchy is preserved in every consumer.
 - SCORM 2004 aggregation nodes now include a proper cluster at the root, and
   every cluster keeps its `<imsss:sequencing>` block.
@@ -151,6 +159,11 @@ generators, replacing three identical copies of `generateItems()`.
   duplicating the TOC panel header.
 - Manifests differ from those of previous 4.x releases; an LMS that tracked the
   old top-level items will see them one level deeper.
+- `#nav_up` on a top-level page stays disabled, and the gap against eXeLearning
+  2.9 is not closed. In 2.9 the parent of "Topic 1" was the launchable "Home"
+  page, so "up" led there; the cluster is not launchable, so it cannot be an up
+  target. Closing that gap would require making the root item launchable, which
+  would reintroduce the missing `parentscoid` this decision exists to fix.
 
 ### Neutral
 
@@ -174,8 +187,19 @@ generators, replacing three identical copies of `generateItems()`.
 - `test/e2e/playwright/specs/scorm-manifest-navigation.spec.ts` exports a
   project with nested pages to all three formats and validates the manifest
   tree.
-- Manual: upload the exported package to a Moodle course using the **standard**
-  SCORM activity and confirm `#nav_skipnext` moves from "Topic 1" to "Topic 2".
+- The evidence above is a replay of `mod_scorm`'s own algorithms over the two
+  manifests rather than a live session. It has since been confirmed by hand:
+  a package exported with the root cluster was uploaded to a Moodle 5.x course
+  using the **standard** SCORM activity, and `#nav_skipnext` / `#nav_skipprev`
+  move between top-level pages as predicted. The player logic this decision
+  relies on is byte-identical in `MOODLE_405_STABLE` and `MOODLE_500_STABLE`
+  (`scorm_update_siblings()` at `module.js:55-69`, nav-button gating at
+  `module.js:260-263`), so the confirmation carries over to 4.5.
+- Still outstanding: re-uploading the reshaped package over an activity that
+  already has attempts, to confirm progress and attempt history survive.
+  `scormlib.php:598-601` matches SCO rows by `identifier` and keeps their row
+  id, and this decision changes no page identifier, so tracking is expected to
+  survive — but that has not been observed.
 
 ## Follow-up work
 

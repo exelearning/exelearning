@@ -234,7 +234,7 @@ export class ImsManifestGenerator {
         return generateManifestItems({
             pages: this.pages,
             projectId: this.projectId,
-            rootTitle: this.metadata.title || 'eXeLearning',
+            rootTitle: this.metadata.title,
         });
     }
 

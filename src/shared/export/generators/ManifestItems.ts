@@ -23,17 +23,31 @@
  * 3. `scorm_update_siblings()` in `module.js` repairs (2) by grouping SCOs that
  *    share a `parentscoid` — which the roots from (1) do not have.
  *
- * The net effect is that `#nav_skipnext`, `#nav_skipprev` and `#nav_up` are
- * disabled for every top-level page. eXeLearning 2.9 never hit this because its
- * outline had a single root node, so every other page had a parent.
+ * The net effect is that `#nav_skipnext` and `#nav_skipprev` are disabled for
+ * every top-level page. eXeLearning 2.9 never hit this because its outline had a
+ * single root node, so every other page had a parent.
  *
  * Wrapping the whole outline in one non-launchable cluster `<item>` restores
  * sibling navigation in stock `mod_scorm` while keeping the authored hierarchy
- * intact (`Home` stays a sibling of `Topic 1`, not its parent). See
- * ADR-2222-01.
+ * intact (`Home` stays a sibling of `Topic 1`, not its parent).
+ *
+ * `#nav_up` is deliberately *not* addressed. A cluster is rendered as a `<span>`
+ * without `data-scoid` (`locallib.php`, `TOCJSLINK` branch), and `scorm_fixnav()`
+ * disables the up button whenever the target node has no `scoid`
+ * (`module.js:260-263`). Top-level pages therefore keep the up button disabled,
+ * exactly as before this module existed. See ADR-2222-01.
  */
 
 import type { ExportPage } from '../interfaces';
+
+/**
+ * Indentation depth of the root cluster item, in two-space units. All three
+ * manifests nest the organization at the same depth.
+ */
+const ROOT_INDENT = 3;
+
+/** Title used when the project has none. */
+const DEFAULT_ROOT_TITLE = 'eXeLearning';
 
 /**
  * Options for {@link generateManifestItems}.
@@ -43,14 +57,12 @@ export interface ManifestItemsOptions {
     pages: ExportPage[];
     /** Bare project identifier, used to build a stable root item identifier. */
     projectId: string;
-    /** Title of the root cluster item (the project title). */
-    rootTitle: string;
-    /** Indentation depth of the root item, in two-space units. Defaults to 3. */
-    baseIndent?: number;
+    /** Title of the root cluster item. Defaults to `eXeLearning` when empty. */
+    rootTitle?: string;
     /**
      * Per-format hook rendering extra children for cluster items (items that
-     * have child items, including the root). SCORM 2004 uses it to inject
-     * `<imsss:sequencing>`; SCORM 1.2 and IMS CP leave it undefined.
+     * actually rendered child items, including the root). SCORM 2004 uses it to
+     * inject `<imsss:sequencing>`; SCORM 1.2 and IMS CP leave it undefined.
      */
     renderClusterExtras?: (indentStr: string) => string;
 }
@@ -107,6 +119,30 @@ function buildChildrenMap(pages: ExportPage[]): Map<string | null, ExportPage[]>
 }
 
 /**
+ * Render the children of an item, skipping the ones already rendered.
+ *
+ * @param children - Candidate child pages
+ * @param childrenMap - Parent id to children index
+ * @param indent - Indentation depth of the children, in two-space units
+ * @param visited - Ids already rendered, guarding against cyclic hierarchies
+ * @param renderClusterExtras - Optional per-format cluster hook
+ * @returns Children XML, empty when every candidate was already rendered
+ */
+function renderChildren(
+    children: ExportPage[],
+    childrenMap: Map<string | null, ExportPage[]>,
+    indent: number,
+    visited: Set<string>,
+    renderClusterExtras?: (indentStr: string) => string,
+): string {
+    let xml = '';
+    for (const child of children) {
+        xml += renderItem(child, childrenMap, indent, visited, renderClusterExtras);
+    }
+    return xml;
+}
+
+/**
  * Render a single page `<item>` and, recursively, its descendants.
  *
  * @param page - Page to render
@@ -124,27 +160,74 @@ function renderItem(
     renderClusterExtras?: (indentStr: string) => string,
 ): string {
     if (visited.has(page.id)) {
-        // Cyclic parent/child reference: render the page once and stop.
+        // Cyclic parent/child reference, or a duplicated page id: render once.
         return '';
     }
     visited.add(page.id);
 
     const indentStr = '  '.repeat(indent);
-    const children = childrenMap.get(page.id) || [];
+    const childrenXml = renderChildren(
+        childrenMap.get(page.id) || [],
+        childrenMap,
+        indent + 1,
+        visited,
+        renderClusterExtras,
+    );
 
     let xml = `${indentStr}<item identifier="ITEM-${escapeXml(page.id)}" identifierref="RES-${escapeXml(page.id)}" isvisible="true">\n`;
     xml += `${indentStr}  <title>${escapeXml(page.title || 'Page')}</title>\n`;
+    xml += childrenXml;
 
-    for (const child of children) {
-        xml += renderItem(child, childrenMap, indent + 1, visited, renderClusterExtras);
-    }
-
-    if (children.length > 0 && renderClusterExtras) {
+    // Only a cluster — an item that actually rendered children — gets the extras.
+    if (childrenXml !== '' && renderClusterExtras) {
         xml += renderClusterExtras(`${indentStr}  `);
     }
 
     xml += `${indentStr}</item>\n`;
     return xml;
+}
+
+/**
+ * Warn the author about pages that never made it into the organization.
+ *
+ * Their resources still ship in the package, so the omission is invisible in the
+ * ZIP but leaves the pages unreachable from the LMS table of contents. Silence
+ * here has bitten us before, so it is reported rather than swallowed.
+ *
+ * @param pages - Every page handed to the generator
+ * @param rendered - Ids that produced an `<item>`
+ */
+function reportDroppedPages(pages: ExportPage[], rendered: Set<string>): void {
+    const seenIds = new Set<string>();
+    const unreachable: string[] = [];
+    const duplicated: string[] = [];
+
+    for (const page of pages) {
+        const label = `"${page.title || 'untitled'}" (${page.id})`;
+        if (seenIds.has(page.id)) {
+            duplicated.push(label);
+            continue;
+        }
+        seenIds.add(page.id);
+        if (!rendered.has(page.id)) {
+            unreachable.push(label);
+        }
+    }
+
+    if (unreachable.length > 0) {
+        console.warn(
+            `[ManifestItems] ${unreachable.length} page(s) are missing from the manifest organization because ` +
+                'their parent page is unknown or the hierarchy is cyclic. Their files still ship in the package, ' +
+                `but the LMS will not list them: ${unreachable.join(', ')}`,
+        );
+    }
+
+    if (duplicated.length > 0) {
+        console.warn(
+            `[ManifestItems] ${duplicated.length} page(s) reuse the id of an earlier page and were written to the ` +
+                `manifest only once: ${duplicated.join(', ')}`,
+        );
+    }
 }
 
 /**
@@ -158,7 +241,7 @@ function renderItem(
  * @returns Items XML
  */
 export function generateManifestItems(options: ManifestItemsOptions): string {
-    const { pages, projectId, rootTitle, baseIndent = 3, renderClusterExtras } = options;
+    const { pages, projectId, rootTitle, renderClusterExtras } = options;
 
     if (!pages || pages.length === 0) {
         return '';
@@ -166,27 +249,29 @@ export function generateManifestItems(options: ManifestItemsOptions): string {
 
     const childrenMap = buildChildrenMap(pages);
     const rootPages = childrenMap.get(null) || [];
+    const visited = new Set<string>();
 
     if (rootPages.length === 0) {
         // Every page claims a parent that is not in the list (all ancestors
         // filtered out); nothing can be rendered without inventing a hierarchy.
+        reportDroppedPages(pages, visited);
         return '';
     }
 
-    const indentStr = '  '.repeat(baseIndent);
-    const visited = new Set<string>();
+    const indentStr = '  '.repeat(ROOT_INDENT);
+    const childrenXml = renderChildren(rootPages, childrenMap, ROOT_INDENT + 1, visited, renderClusterExtras);
 
     let xml = `${indentStr}<item identifier="${escapeXml(buildRootItemIdentifier(projectId))}" isvisible="true">\n`;
-    xml += `${indentStr}  <title>${escapeXml(rootTitle || 'eXeLearning')}</title>\n`;
+    xml += `${indentStr}  <title>${escapeXml(rootTitle || DEFAULT_ROOT_TITLE)}</title>\n`;
+    xml += childrenXml;
 
-    for (const page of rootPages) {
-        xml += renderItem(page, childrenMap, baseIndent + 1, visited, renderClusterExtras);
-    }
-
-    if (renderClusterExtras) {
+    if (childrenXml !== '' && renderClusterExtras) {
         xml += renderClusterExtras(`${indentStr}  `);
     }
 
     xml += `${indentStr}</item>\n`;
+
+    reportDroppedPages(pages, visited);
+
     return xml;
 }

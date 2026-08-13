@@ -221,7 +221,7 @@ export class Scorm2004ManifestGenerator {
         return generateManifestItems({
             pages: this.pages,
             projectId: this.projectId,
-            rootTitle: this.metadata.title || 'eXeLearning',
+            rootTitle: this.metadata.title,
             renderClusterExtras: indentStr => this.generateItemSequencing(indentStr),
         });
     }
