@@ -105,7 +105,6 @@ var myTheme = {
         if (act == 'add') {
             var ref = e.href;
             var hash = '';
-            // Split the fragment off first, or the param lands inside the anchor
             var h = ref.indexOf('#');
             if (h != -1) {
                 hash = ref.slice(h);
@@ -127,7 +126,7 @@ var myTheme = {
                 hash = tail.slice(h);
                 tail = tail.slice(0, h);
             }
-            // Keep every other param: the application writes exe-teacher=1 on these links
+            // Keep every other param
             var kept = tail.split('&').filter(function (p) {
                 return p !== '' && p != 'nav=false';
             });
