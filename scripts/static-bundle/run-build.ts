@@ -18,6 +18,8 @@
 import fs from 'fs';
 import path from 'path';
 
+import { STATIC_ONLY_PRUNE_PATHS, computeBundledAppSources, pruneDistPaths, removeEmptyDirs } from './prune-dist';
+
 import {
     COMPRESS_JSON_DIRS,
     buildApiParameters,
@@ -199,6 +201,24 @@ export async function buildStaticBundle() {
     if (fs.existsSync(previewSwJs)) {
         fs.copyFileSync(previewSwJs, path.join(outputDir, 'preview-sw.js'));
         console.log('  Copied preview-sw.js');
+    }
+
+    // 5. Prune static-only dead weight (see prune-dist.ts for justifications)
+    console.log('\n5. Pruning static-only dead weight...');
+    const staticPrune = pruneDistPaths(outputDir, STATIC_ONLY_PRUNE_PATHS);
+    console.log(
+        `  Removed ${staticPrune.files} server-only/development file(s) ` +
+        `(${(staticPrune.bytes / 1024).toFixed(0)} KB)`,
+    );
+    const bundledSources = await computeBundledAppSources(projectRoot);
+    const bundledPrune = pruneDistPaths(outputDir, bundledSources);
+    console.log(
+        `  Removed ${bundledPrune.files} app source(s) already compiled into app.bundle.js ` +
+        `(${(bundledPrune.bytes / 1024).toFixed(0)} KB)`,
+    );
+    const emptyDirs = removeEmptyDirs(outputDir);
+    if (emptyDirs > 0) {
+        console.log(`  Removed ${emptyDirs} empty director${emptyDirs === 1 ? 'y' : 'ies'}`);
     }
 
     console.log('\n' + '='.repeat(60));
