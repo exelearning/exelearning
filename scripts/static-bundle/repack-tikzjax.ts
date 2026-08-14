@@ -71,7 +71,12 @@ export const OE_REPLACEMENT =
  * wrapped module 147 prepends to the TeX worker's source. In the worker,
  * fzstd is pulled in synchronously via importScripts on first use.
  */
-export const TIKZ_PRELUDE = `/* eXeLearning static build: the embedded base64 gzip assets were moved to
+export const TIKZ_PRELUDE = `/* tikzjax - LaTeX/TikZ rendering via WebAssembly
+ * Copyright (c) Jim Fowler (kisonecat)
+ * License: LPPL-1.3c (LaTeX Project Public License)
+ * https://github.com/kisonecat/tikzjax
+ *
+ * eXeLearning static build: the embedded base64 gzip assets were moved to
  * ${TIKZ_PAYLOAD_NAME} (zstd). Asset modules now export an index; the hook
  * below fetches and decompresses the sidecar once, on first use — in the
  * page and inside the TeX worker (whose source string gets the same hook
@@ -79,8 +84,12 @@ export const TIKZ_PRELUDE = `/* eXeLearning static build: the embedded base64 gz
  * tikzjax.js on every build (repack-tikzjax.ts). */
 (() => {
     const script = document.currentScript;
-    const base = script && script.src ? script.src.replace(/[^/]*(?:\\?.*)?$/, '') : '';
-    const packUrl = new URL('${TIKZ_PAYLOAD_NAME}', base || location.href).href;
+    const src = script && script.src ? script.src : '';
+    const base = src ? src.replace(/[^/]*(?:\\?.*)?$/, '') : '';
+    // Reuse the shell's own cache-busting query for the sidecar so a new
+    // release can never pair a fresh shell with a stale cached payload.
+    const query = src.indexOf('?') !== -1 ? src.slice(src.indexOf('?')) : '';
+    const packUrl = new URL('${TIKZ_PAYLOAD_NAME}', base || location.href).href + query;
     const fzstdScript = document.querySelector('script[src*="fzstd"]');
     const fzstdUrl = fzstdScript && fzstdScript.src ? fzstdScript.src : '';
     const installHook = (assetPackUrl, fzstdImportUrl) => {
@@ -102,6 +111,11 @@ export const TIKZ_PRELUDE = `/* eXeLearning static build: the embedded base64 gz
                     const header = JSON.parse(new TextDecoder().decode(bytes.subarray(4, 4 + headerLength)));
                     return { header, payload: bytes.subarray(4 + headerLength) };
                 })();
+                // A transient failure (offline blip, 5xx) must not poison the
+                // session: allow the next asset request to retry the fetch.
+                packPromise.catch(() => {
+                    packPromise = null;
+                });
             }
             const { header, payload } = await packPromise;
             const entry = header[index];

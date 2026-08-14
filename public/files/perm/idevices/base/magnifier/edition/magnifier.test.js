@@ -94,5 +94,9 @@ describe('default image edition/export dedup', () => {
     const routed = source.split("replace(/\\/edition\\/?$/, '/export/')").length - 1;
     expect(refs).toBeGreaterThan(0);
     expect(routed).toBeGreaterThan(0);
+    // No unrouted direct reference may sneak back in.
+    expect(source).not.toContain("path + 'hood.jpg'");
+    expect(source).not.toContain('${path}hood.jpg');
+    expect(source).not.toContain('${$exeDevice.idevicePath}hood.jpg');
   });
 });

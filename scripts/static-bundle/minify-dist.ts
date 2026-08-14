@@ -25,8 +25,14 @@ import fs from 'fs';
 import path from 'path';
 import * as esbuild from 'esbuild';
 
-/** Directories (dist-relative) whose own-code .js files are minified. */
-export const MINIFY_DIRS = ['app/core', 'app/editor', 'app/workarea', 'app/yjs', 'app/common/i18n'];
+/**
+ * Directories (dist-relative) whose own-code .js files are minified.
+ * app/common/i18n is deliberately absent: exporters embed
+ * common_i18n.<lang>.js into every package as libs/common_i18n.js
+ * (ResourceFetcher.fetchI18nFile), so minifying it would break the
+ * server/static export byte-identity this module promises.
+ */
+export const MINIFY_DIRS = ['app/core', 'app/editor', 'app/workarea', 'app/yjs'];
 
 /** Individual editor-only files in app/common that are safe to minify. */
 export const MINIFY_FILES = [

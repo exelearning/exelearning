@@ -11,7 +11,7 @@ describe('isMinifiableJs', () => {
     it('accepts own-code files in the allowlisted dirs and file list', () => {
         expect(isMinifiableJs('app/yjs/AssetManager.js')).toBe(true);
         expect(isMinifiableJs('app/core/RuntimeConfig.js')).toBe(true);
-        expect(isMinifiableJs('app/common/i18n/common_i18n.es.js')).toBe(true);
+
         expect(isMinifiableJs('app/common/common_edition.js')).toBe(true);
     });
 
@@ -27,6 +27,7 @@ describe('isMinifiableJs', () => {
         expect(isMinifiableJs('app/common/scorm/SCORM_API_wrapper.js')).toBe(false);
         // export-copied libraries must stay byte-identical between modes
         expect(isMinifiableJs('app/common/common.js')).toBe(false);
+        expect(isMinifiableJs('app/common/i18n/common_i18n.es.js')).toBe(false);
         expect(isMinifiableJs('app/common/common_i18n.js')).toBe(false);
         expect(isMinifiableJs('app/common/exe_export.js')).toBe(false);
         expect(isMinifiableJs('app/common/xapi/exe_xapi.js')).toBe(false);

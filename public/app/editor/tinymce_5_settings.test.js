@@ -2710,7 +2710,13 @@ describe('vendored TinyMCE tree matches the configured plugin/skin surface', () 
     }
     expect(fs.existsSync(path.join(tinymceRoot, 'themes/mobile'))).toBe(false);
     expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide-dark'))).toBe(false);
-    expect(fs.existsSync(path.join(tinymceRoot, 'skins/content'))).toBe(false);
+    // TinyMCE 5 defaults content_css to ['default'] for iframe editors with
+    // no explicit content_css (five iDevice mini-editors rely on that), so the
+    // default content skin must ship; the unused variants stay pruned.
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/content/default/content.min.css'))).toBe(true);
+    for (const variant of ['dark', 'document', 'writer']) {
+      expect(fs.existsSync(path.join(tinymceRoot, `skins/content/${variant}`)), `skins/content/${variant} should stay pruned`).toBe(false);
+    }
     expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide/skin.mobile.min.css'))).toBe(false);
   });
 

@@ -36,10 +36,11 @@ export const STATIC_ONLY_PRUNE_PATHS: string[] = [
     // build has no admin route.
     'app/admin',
     'libs/chartjs',
-    // Server login/error page styling (views/security/*, views/base.njk).
-    // The static index never renders body.login-page, so the background
-    // image referenced from main.css is never fetched either.
-    'style/workarea/login.css',
+    // Server page styling (views/base.njk) and the login background image:
+    // the static index never renders body.login-page, so the image referenced
+    // from main.css/login.css is never fetched. login.css itself is KEPT —
+    // the resource-bundle manifest enumerates public/style/workarea/*.css,
+    // and pruning it would leave a dangling contentCss manifest entry.
     'style/server.css',
     'style/workarea/images/exe-login-image.jpg',
     // Test utilities: the copy step excludes dirs named test/spec but not
@@ -94,6 +95,9 @@ export async function computeBundledAppSources(rootDir: string): Promise<string[
         format: 'iife',
         platform: 'browser',
         logLevel: 'silent',
+        // Metafile input keys are cwd-relative; pin them to the repo root so
+        // the derivation works no matter where the build was launched from.
+        absWorkingDir: rootDir,
     });
     const publicDir = path.join(rootDir, 'public');
     const inputs = Object.keys(result.metafile.inputs)

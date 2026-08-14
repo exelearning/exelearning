@@ -1060,6 +1060,8 @@ var $exeDevice = {
                 if (!window.fzstd) return null;
                 const url = ($exeDevice.idevicePath || '') + 'fonts.pack.zst';
                 const response = await fetch(url);
+                // A missing pack (server mode serves the loose TTFs instead)
+                // is a stable answer worth caching for the session.
                 if (!response.ok) return null;
                 const packed = new Uint8Array(await response.arrayBuffer());
                 const bytes = window.fzstd.decompress(packed);
@@ -1072,7 +1074,12 @@ var $exeDevice = {
                     new TextDecoder().decode(bytes.subarray(4, 4 + headerLength))
                 );
                 return { header, payload: bytes.subarray(4 + headerLength) };
-            })().catch(() => null);
+            })().catch(() => {
+                // Transient failure (network blip): let a later call retry
+                // instead of degrading fonts for the whole session.
+                $exeDevice.tikzFontPackPromise = null;
+                return null;
+            });
         }
         return $exeDevice.tikzFontPackPromise;
     },
