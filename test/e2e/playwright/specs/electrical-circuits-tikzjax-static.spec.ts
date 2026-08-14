@@ -1,11 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import {
-    addIdevice,
-    editIdevice,
-    gotoWorkarea,
-    selectFirstPage,
-    waitForAppReady,
-} from '../helpers/workarea-helpers';
+import { addIdevice, editIdevice, gotoWorkarea, selectFirstPage, waitForAppReady } from '../helpers/workarea-helpers';
 
 /**
  * Static-dist regression for the TikZJax repack (scripts/static-bundle/repack-tikzjax.ts).
@@ -38,9 +32,7 @@ test.describe('electrical-circuits TikZJax repack (static dist)', () => {
         });
 
         // The served shell carries no embedded payloads anymore.
-        const tikzResponse = await page.request.get(
-            '/files/perm/idevices/base/electrical-circuits/edition/tikzjax.js',
-        );
+        const tikzResponse = await page.request.get('/files/perm/idevices/base/electrical-circuits/edition/tikzjax.js');
         expect(tikzResponse.ok()).toBeTruthy();
         expect(await tikzResponse.text()).not.toContain('data:application/gzip;base64');
 
