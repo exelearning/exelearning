@@ -44,6 +44,18 @@ export const TIKZ_FONT_PACK_NAME = 'fonts.pack.zst';
 
 const DATA_URI_MODULE = /(\d+):A=>\{"use strict";A\.exports="data:application\/gzip;base64,([A-Za-z0-9+/=]+)"\}/g;
 
+/**
+ * The TeX engine runs in a Web Worker whose source ships as one giant string
+ * (webpack module 147) — the asset modules and their consumer live INSIDE
+ * that string, so the hook must exist in the worker too. The module's export
+ * is wrapped so that, when the vendored code turns the string into a Blob
+ * worker (whichever of its three construction paths it takes), the
+ * runtime-computed worker prelude (absolute pack/fzstd URLs baked in by the
+ * main-thread prelude) is prepended and evaluates first inside the worker.
+ */
+export const WORKER_MODULE_HEADER = `147:A=>{"use strict";A.exports='`;
+export const WORKER_MODULE_HEADER_REPLACEMENT = `147:A=>{"use strict";A.exports=(globalThis.__exeTikzWorkerPrelude||"")+'`;
+
 /** The exact consumer in the vendored build; replaced by the async hook. */
 export const OE_SOURCE =
     'async function Oe(A){const f=se[A],q=Hq.Buffer.from(f.substring("data:application/gzip;base64,".length),"base64");' +
@@ -53,32 +65,53 @@ export const OE_REPLACEMENT =
     'async function Oe(A){const f=se[A];try{return await globalThis.__exeTikzAsset(f)}' +
     'catch(q){throw`Unable to load ${A}.  File not available.`}}';
 
-/** Prepended loader: lazy fetch + fzstd decompress of the payload sidecar. */
+/**
+ * Prepended loader. Installs the asset hook in the main thread AND publishes
+ * a worker prelude string (same hook with absolute URLs baked in) that the
+ * wrapped module 147 prepends to the TeX worker's source. In the worker,
+ * fzstd is pulled in synchronously via importScripts on first use.
+ */
 export const TIKZ_PRELUDE = `/* eXeLearning static build: the embedded base64 gzip assets were moved to
  * ${TIKZ_PAYLOAD_NAME} (zstd). Asset modules now export an index; the hook
- * below fetches and decompresses the sidecar once, on first use. Regenerated
- * from the pristine vendored tikzjax.js on every build (repack-tikzjax.ts). */
+ * below fetches and decompresses the sidecar once, on first use — in the
+ * page and inside the TeX worker (whose source string gets the same hook
+ * prepended with absolute URLs). Regenerated from the pristine vendored
+ * tikzjax.js on every build (repack-tikzjax.ts). */
 (() => {
     const script = document.currentScript;
     const base = script && script.src ? script.src.replace(/[^/]*(?:\\?.*)?$/, '') : '';
-    let packPromise = null;
-    globalThis.__exeTikzAsset = async (index) => {
-        if (!packPromise) {
-            packPromise = (async () => {
-                if (!globalThis.fzstd) throw new Error('fzstd is required to load TikZJax assets');
-                const response = await fetch(base + '${TIKZ_PAYLOAD_NAME}');
-                if (!response.ok) throw new Error('TikZJax payload missing: ' + response.status);
-                const bytes = globalThis.fzstd.decompress(new Uint8Array(await response.arrayBuffer()));
-                const headerLength = new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0, true);
-                const header = JSON.parse(new TextDecoder().decode(bytes.subarray(4, 4 + headerLength)));
-                return { header, payload: bytes.subarray(4 + headerLength) };
-            })();
-        }
-        const { header, payload } = await packPromise;
-        const entry = header[index];
-        if (!entry) throw new Error('Unknown TikZJax asset index: ' + index);
-        return payload.subarray(entry[0], entry[0] + entry[1]);
+    const packUrl = new URL('${TIKZ_PAYLOAD_NAME}', base || location.href).href;
+    const fzstdScript = document.querySelector('script[src*="fzstd"]');
+    const fzstdUrl = fzstdScript && fzstdScript.src ? fzstdScript.src : '';
+    const installHook = (assetPackUrl, fzstdImportUrl) => {
+        let packPromise = null;
+        globalThis.__exeTikzAsset = async (index) => {
+            if (!packPromise) {
+                packPromise = (async () => {
+                    if (!globalThis.fzstd) {
+                        if (typeof importScripts === 'function' && fzstdImportUrl) {
+                            importScripts(fzstdImportUrl);
+                        } else {
+                            throw new Error('fzstd is required to load TikZJax assets');
+                        }
+                    }
+                    const response = await fetch(assetPackUrl);
+                    if (!response.ok) throw new Error('TikZJax payload missing: ' + response.status);
+                    const bytes = globalThis.fzstd.decompress(new Uint8Array(await response.arrayBuffer()));
+                    const headerLength = new DataView(bytes.buffer, bytes.byteOffset, 4).getUint32(0, true);
+                    const header = JSON.parse(new TextDecoder().decode(bytes.subarray(4, 4 + headerLength)));
+                    return { header, payload: bytes.subarray(4 + headerLength) };
+                })();
+            }
+            const { header, payload } = await packPromise;
+            const entry = header[index];
+            if (!entry) throw new Error('Unknown TikZJax asset index: ' + index);
+            return payload.subarray(entry[0], entry[0] + entry[1]);
+        };
     };
+    installHook(packUrl, fzstdUrl);
+    globalThis.__exeTikzWorkerPrelude =
+        '(' + installHook.toString() + ')(' + JSON.stringify(packUrl) + ',' + JSON.stringify(fzstdUrl) + ');';
 })();
 `;
 
@@ -133,7 +166,12 @@ export function repackTikzJaxSource(source: string): {
     if (!shellBody.includes(OE_SOURCE)) {
         throw new Error('repackTikzJax: asset-consumer function not found — upstream layout changed');
     }
-    const shell = TIKZ_PRELUDE + shellBody.replace(OE_SOURCE, OE_REPLACEMENT);
+    if (!shellBody.includes(WORKER_MODULE_HEADER)) {
+        throw new Error('repackTikzJax: worker source module not found — upstream layout changed');
+    }
+    const shell =
+        TIKZ_PRELUDE +
+        shellBody.replace(OE_SOURCE, OE_REPLACEMENT).replace(WORKER_MODULE_HEADER, WORKER_MODULE_HEADER_REPLACEMENT);
     if (shell.includes('data:application/gzip;base64')) {
         throw new Error('repackTikzJax: embedded data URIs remain after transform');
     }

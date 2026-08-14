@@ -10,6 +10,8 @@ import {
     TIKZ_EDITION_DIR,
     TIKZ_FONT_PACK_NAME,
     TIKZ_PAYLOAD_NAME,
+    WORKER_MODULE_HEADER,
+    WORKER_MODULE_HEADER_REPLACEMENT,
     buildPack,
     repackTikzJaxInDist,
     repackTikzJaxSource,
@@ -43,7 +45,11 @@ function syntheticTikzSource(assetCount: number, corruptOne = false): { source: 
             `9999:A=>{"use strict";A.exports="data:application/gzip;base64,${broken.toString('base64')}"}`,
         );
     }
-    const source = `(()=>{var A={${modules.join(',')}};var se={"core.dump.gz":A};${OE_SOURCE}})();`;
+    // Mirror the vendored layout: the asset modules, the se map and the Oe
+    // consumer all live INSIDE the single-quoted worker source string that
+    // webpack module 147 exports (none of them contain single quotes).
+    const workerBody = `(()=>{var A={${modules.join(',')}};var se={"core.dump.gz":A};${OE_SOURCE}})();`;
+    const source = `(()=>{var A={${WORKER_MODULE_HEADER}${workerBody}'}};runOuter();})();`;
     return { source, contents };
 }
 
@@ -87,6 +93,16 @@ describe('repackTikzJaxSource', () => {
         expect(shell).toContain(OE_REPLACEMENT);
         expect(shell).toContain('__exeTikzAsset');
         expect(shell).toContain(TIKZ_PAYLOAD_NAME);
+        // The worker-source module must be wrapped so the runtime worker
+        // prelude (hook + absolute URLs) is prepended inside the TeX worker.
+        expect(shell).toContain(WORKER_MODULE_HEADER_REPLACEMENT);
+        expect(shell).toContain('__exeTikzWorkerPrelude');
+    });
+
+    it('fails loudly when the worker-source module disappears', () => {
+        const { source } = syntheticTikzSource(205);
+        const withoutWorker = source.replace(WORKER_MODULE_HEADER, `147:A=>{"use strict";A.exports=Q(`);
+        expect(() => repackTikzJaxSource(withoutWorker)).toThrow(/worker source module not found/);
     });
 
     it('tolerates the known upstream-corrupt asset by omitting its payload', () => {
@@ -113,6 +129,7 @@ describe('repackTikzJaxSource', () => {
             'utf-8',
         );
         expect(vendored).toContain(OE_SOURCE);
+        expect(vendored).toContain(WORKER_MODULE_HEADER);
         expect(vendored.split('data:application/gzip;base64').length - 1).toBeGreaterThanOrEqual(200);
     });
 });
