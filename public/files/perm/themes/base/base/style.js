@@ -1,3 +1,17 @@
+/*!
+ * eXeLearning v4+ Style Script File
+ * -----------------------
+ * Author: Ignacio Gros for eXeLearning
+ * Project: exelearning.net
+ *
+ * This JavaScript file is part of a style for eXeLearning.
+ * Licensed under Creative Commons Attribution-ShareAlike (CC BY-SA).
+ *
+ * Note: The style's config.xml contains additional information
+ *       about materials (images) created by third parties
+ *       and included in this style.
+ */
+
 var myTheme = {
     init: function () {
         // Common functions

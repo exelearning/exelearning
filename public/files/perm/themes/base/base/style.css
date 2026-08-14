@@ -1,4 +1,16 @@
-/* Default style (to review) */
+/*!
+ * eXeLearning v4+ Default Style
+ * ----------------------
+ * Author: Ignacio Gros for eXeLearning
+ * Project: exelearning.net
+ *
+ * This CSS file is part of a style for eXeLearning.
+ * Licensed under Creative Commons Attribution-ShareAlike (CC BY-SA).
+ *
+ * Note: The style's config.xml contains additional information
+ *       about materials (images) created by third parties
+ *       and included in this style.
+ */
 
 body.exe-export {
     padding: 1em 0;
@@ -9,21 +21,21 @@ body.exe-web-site {
 }
 
 .exe-content a {
-    color: #b85434;
+    color: #c74e00;
 }
 
 .exe-content a:hover,
 .exe-content a:focus {
-    color: #993d28;
+    color: #973f00;
 }
 
 .exe-content .fx-tabs a {
-    color: #a94f2d;
+    color: #b14900;
 }
 
 .exe-content .fx-tabs a:hover,
 .exe-content .fx-tabs a:focus {
-    color: #993d28;
+    color: #973f00;
 }
 
 #node-content-container.exe-content #node-content {
@@ -243,11 +255,11 @@ body.siteNav-off #siteFooter {
 
 #siteNav a.active {
     background: #fff;
-    color: #b85434;
+    color: #c74e00;
 }
 
 #siteNav a.highlighted-link {
-    color: #a94f2d;
+    color: #b14900;
     background: #ededed;
 }
 
@@ -525,7 +537,7 @@ button.toggler:focus {
 #packageLicense a:hover,
 #packageLicense a:focus {
     text-decoration: none;
-    color: #b85434;
+    color: #c74e00;
 }
 
 #packageLicense.propietary {
@@ -641,8 +653,8 @@ label[for="teacher-mode-toggler"] {
 
 .exe-content .btn-primary:hover,
 .exe-content .btn-primary:focus {
-    background-color: #078e8e;
-    border-color: #078e8e;
+    background-color: #078383;
+    border-color: #078383;
 }
 
 /* Focus */
