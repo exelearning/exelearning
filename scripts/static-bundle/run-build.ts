@@ -19,6 +19,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { minifyDistJs } from './minify-dist';
+import { repackTikzJaxInDist } from './repack-tikzjax';
 import { zstdCompress } from './zstd';
 import { STATIC_ONLY_PRUNE_PATHS, computeBundledAppSources, pruneDistPaths, removeEmptyDirs } from './prune-dist';
 
@@ -234,6 +235,18 @@ export async function buildStaticBundle() {
     console.log(
         `  Minified ${minifyStats.files} file(s): ` +
         `${(minifyStats.before / 1024).toFixed(0)} KB → ${(minifyStats.after / 1024).toFixed(0)} KB`,
+    );
+
+    // 7. Repack the TikZJax payloads and fonts (see repack-tikzjax.ts)
+    console.log('\n7. Repacking TikZJax assets...');
+    const tikzStats = repackTikzJaxInDist(outputDir);
+    console.log(
+        `  tikzjax.js ${(tikzStats.jsBefore / 1024 / 1024).toFixed(2)} MB → shell ` +
+        `${(tikzStats.jsAfter / 1024 / 1024).toFixed(2)} MB + payload ${(tikzStats.payloadBytes / 1024 / 1024).toFixed(2)} MB`,
+    );
+    console.log(
+        `  fonts ${(tikzStats.fontsBefore / 1024 / 1024).toFixed(2)} MB → pack ` +
+        `${(tikzStats.fontPackBytes / 1024 / 1024).toFixed(2)} MB`,
     );
 
     console.log('\n' + '='.repeat(60));
