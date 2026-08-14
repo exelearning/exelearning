@@ -383,9 +383,21 @@
 
     <!-- Static Mode Initialization -->
     <script>
-        // Load static data bundle
+        // Load static data bundle. The build ships it zstd-compressed
+        // (data/bundle.json.zst, decoded with the fzstd script loaded above);
+        // plain bundle.json remains a fallback for dev setups/older mirrors.
         async function loadStaticData() {
             try {
+                if (window.fzstd) {
+                    const zstResponse = await fetch('./data/bundle.json.zst');
+                    if (zstResponse.ok) {
+                        const compressed = new Uint8Array(await zstResponse.arrayBuffer());
+                        const json = new TextDecoder().decode(window.fzstd.decompress(compressed));
+                        window.__EXE_STATIC_DATA__ = JSON.parse(json);
+                        console.log('[Static] Loaded bundle.json.zst');
+                        return;
+                    }
+                }
                 const response = await fetch('./data/bundle.json');
                 window.__EXE_STATIC_DATA__ = await response.json();
                 console.log('[Static] Loaded bundle.json');
