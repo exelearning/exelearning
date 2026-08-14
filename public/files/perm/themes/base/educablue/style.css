@@ -1,5 +1,5 @@
 /*!
- * eXeLearning v4.0.0 EducaBlue Style
+ * eXeLearning v4+ EducaBlue Style
  * ----------------------
  * Author: Eduardo Gros for EducaMadrid
  * Project: www.educa.madrid.org
@@ -91,7 +91,7 @@ body.exe-web-site {
 body#tinymce {
     font-family: 'Inclusive Sans', Arial, Verdana, Helvetica, sans-serif;
     line-height: 1.5em;
-    font-size: 0.95em;
+    font-size: 1em;
 }
 
 .exe-content a {
@@ -259,6 +259,7 @@ body:has(#teacher-mode-toggler-wrapper) .package-title {
     background: #ddebf8;
     border-top: 1px solid #b8d5f1;
     color: #000;
+    font-size: 0.95em;
     padding: 20px;
     margin-top: auto;
     transition: margin-left 0.25s ease-in-out;
@@ -778,6 +779,11 @@ html.exe-dark-mode .nav-buttons {
     filter: invert(100%) hue-rotate(180deg);
 }
 
+html.exe-dark-mode #made-with-eXe a {
+    filter: invert(100%) hue-rotate(180deg);
+    opacity: 1;
+}
+
 html.exe-dark-mode .siteNav-off #darkModeToggler {
     position: fixed;
     top: 0;
@@ -805,8 +811,8 @@ html.exe-dark-mode #darkModeToggler {
     transition: 0.25s ease-in-out;
 }
 
-/* Dark mode footer */
-html.exe-dark-mode .exe-content #siteFooter a {
+/* Dark mode footer: #packageLicense is re-inverted. */
+html.exe-dark-mode .exe-content #siteFooter #packageLicense a {
     color: #fff;
 }
 

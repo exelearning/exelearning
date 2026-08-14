@@ -1,5 +1,5 @@
 /*!
- * eXeLearning v4.0.0 Style Script File
+ * eXeLearning v4+ Style Script File
  * -----------------------
  * Author: Eduardo Gros and Ignacio Gros for EducaMadrid
  * Project: www.educa.madrid.org
