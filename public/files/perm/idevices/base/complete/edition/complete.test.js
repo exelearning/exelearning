@@ -111,13 +111,13 @@ describe('default image edition/export dedup', () => {
   const exportDir = path.join(editionDir, '..', 'export');
 
   it('ships the default image only in export/ (edition previews the export copy)', () => {
-    expect(fs.existsSync(path.join(exportDir, 'cmptbackground.png'))).toBe(true);
-    expect(fs.existsSync(path.join(editionDir, 'cmptbackground.png'))).toBe(false);
+    expect(fs.existsSync(path.join(exportDir, 'cmptbackground.webp'))).toBe(true);
+    expect(fs.existsSync(path.join(editionDir, 'cmptbackground.webp'))).toBe(false);
   });
 
   it('routes every edition reference to the export copy', () => {
     const source = fs.readFileSync(path.join(editionDir, 'complete.js'), 'utf-8');
-    const refs = source.split('cmptbackground.png').length - 1;
+    const refs = source.split('cmptbackground.webp').length - 1;
     const routed = source.split("replace(/\\/edition\\/?$/, '/export/')").length - 1;
     expect(refs).toBeGreaterThan(0);
     expect(routed).toBeGreaterThan(0);

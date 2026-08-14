@@ -69,7 +69,7 @@ var $eXeCompleta = {
             }
             mOption.urlBack =
                 mOption.urlBack.length < 4
-                    ? `${mOption.idevicePath}cmptbackground.png`
+                    ? `${mOption.idevicePath}cmptbackground.webp`
                     : mOption.urlBack;
 
             $eXeCompleta.options.push(mOption);
@@ -500,7 +500,7 @@ var $eXeCompleta = {
         if (mOptions.hasBack) {
             const backgroundUrl =
                 mOptions.urlBack.length < 4
-                    ? `${mOptions.idevicePath}cmptbackground.png`
+                    ? `${mOptions.idevicePath}cmptbackground.webp`
                     : mOptions.urlBack;
 
             const $container = $(`#cmptGameContainer-${instance}`);
