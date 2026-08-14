@@ -19,6 +19,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { minifyDistJs } from './minify-dist';
+import { zstdCompress } from './zstd';
 import { STATIC_ONLY_PRUNE_PATHS, computeBundledAppSources, pruneDistPaths, removeEmptyDirs } from './prune-dist';
 
 import {
@@ -78,13 +79,9 @@ export async function buildStaticBundle() {
     const idevices = buildIdevicesList();
     const themes = buildThemesList();
 
-    // Read existing bundle manifest
-    const bundleManifestPath = path.join(projectRoot, 'public/bundles/manifest.json');
-    let bundleManifest = null;
-    if (fs.existsSync(bundleManifestPath)) {
-        bundleManifest = JSON.parse(fs.readFileSync(bundleManifestPath, 'utf-8'));
-    }
-
+    // Note: the resource-bundle manifest is NOT embedded here. ResourceFetcher
+    // reads bundles/manifest.json directly; an embedded copy had zero
+    // consumers and duplicated ~150 KB.
     const bundleData = {
         version: buildVersion,
         builtAt: new Date().toISOString(),
@@ -92,14 +89,22 @@ export async function buildStaticBundle() {
         translations,
         idevices,
         themes,
-        bundleManifest,
     };
 
-    // Write bundle.json
+    // Write bundle.json.zst (zstd, decompressed in the browser via fzstd —
+    // same pattern as the LOMLOE/DigCompEdu datasets). ~3.2 MB of JSON that
+    // the service worker precaches on install becomes ~0.4 MB on disk and on
+    // the wire. apiCallManager falls back to plain bundle.json when the .zst
+    // tier is unavailable (dev setups, older mirrors).
     const dataDir = path.join(outputDir, 'data');
     fs.mkdirSync(dataDir, { recursive: true });
-    fs.writeFileSync(path.join(dataDir, 'bundle.json'), JSON.stringify(bundleData, null, 2));
-    console.log('  Created data/bundle.json');
+    const bundleJson = Buffer.from(JSON.stringify(bundleData));
+    const bundleJsonZst = zstdCompress(bundleJson);
+    fs.writeFileSync(path.join(dataDir, 'bundle.json.zst'), bundleJsonZst);
+    console.log(
+        `  Created data/bundle.json.zst ` +
+        `(${(bundleJson.length / 1024 / 1024).toFixed(2)} MB → ${(bundleJsonZst.length / 1024 / 1024).toFixed(2)} MB)`,
+    );
 
     // 2. Generate static HTML
     console.log('\n2. Generating static HTML...');
