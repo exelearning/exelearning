@@ -1,24 +1,21 @@
 @charset "UTF-8";
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-Italic.woff2) format("woff2"),
-        url(fonts/Nunito-Italic.woff) format("woff");
+    src: url(fonts/Nunito-Italic.woff2) format("woff2");
     font-style: italic;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-Regular.woff2) format("woff2"),
-        url(fonts/Nunito-Regular.woff) format("woff");
+    src: url(fonts/Nunito-Regular.woff2) format("woff2");
     font-style: normal;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-BoldItalic.woff2) format("woff2"),
-        url(fonts/Nunito-BoldItalic.woff) format("woff");
+    src: url(fonts/Nunito-BoldItalic.woff2) format("woff2");
     font-weight: bold;
     font-style: italic;
     font-display: swap;
@@ -26,8 +23,7 @@
 
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-Bold.woff2) format("woff2"),
-        url(fonts/Nunito-Bold.woff) format("woff");
+    src: url(fonts/Nunito-Bold.woff2) format("woff2");
     font-weight: bold;
     font-style: normal;
     font-display: swap;
