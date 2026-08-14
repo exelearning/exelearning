@@ -18,6 +18,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { minifyDistJs } from './minify-dist';
 import { STATIC_ONLY_PRUNE_PATHS, computeBundledAppSources, pruneDistPaths, removeEmptyDirs } from './prune-dist';
 
 import {
@@ -220,6 +221,15 @@ export async function buildStaticBundle() {
     if (emptyDirs > 0) {
         console.log(`  Removed ${emptyDirs} empty director${emptyDirs === 1 ? 'y' : 'ies'}`);
     }
+
+    // 6. Minify first-party editor JS (dist copy only; sources stay in git,
+    // export-copied libraries stay byte-identical — see minify-dist.ts)
+    console.log('\n6. Minifying first-party editor JS...');
+    const minifyStats = await minifyDistJs(outputDir);
+    console.log(
+        `  Minified ${minifyStats.files} file(s): ` +
+        `${(minifyStats.before / 1024).toFixed(0)} KB → ${(minifyStats.after / 1024).toFixed(0)} KB`,
+    );
 
     console.log('\n' + '='.repeat(60));
     console.log('Static distribution built successfully!');
