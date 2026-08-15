@@ -133,7 +133,15 @@ async function cleanupProjectAssets(
 ): Promise<{ cleaned: boolean; error?: string }> {
     // Remove both the sharded directory and the legacy unsharded directory,
     // so projects created before the sharding migration are fully cleaned up.
-    const candidates = getProjectAssetsDirCandidates(fileHelper.getFilesDir(), projectUuid);
+    // Candidate computation can reject an unsafe project uuid; report that as
+    // a cleanup error instead of letting it abort the caller's loop.
+    let candidates: string[];
+    try {
+        candidates = getProjectAssetsDirCandidates(fileHelper.getFilesDir(), projectUuid);
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { cleaned: false, error: `${projectUuid}: ${message}` };
+    }
     let cleaned = false;
     const errors: string[] = [];
 
@@ -203,7 +211,10 @@ export async function runCleanup(
                 const assetResult = await cleanupProjectAssets(project.uuid, deps.fileHelper);
                 if (assetResult.cleaned) {
                     result.diskCleaned++;
-                } else if (assetResult.error) {
+                }
+                // A partial failure (e.g. sharded dir removed, legacy dir
+                // locked) reports both cleaned=true AND an error.
+                if (assetResult.error) {
                     result.errors.push(assetResult.error);
                 }
             } catch (err) {
@@ -221,7 +232,10 @@ export async function runCleanup(
                 const assetResult = await cleanupProjectAssets(project.uuid, deps.fileHelper);
                 if (assetResult.cleaned) {
                     result.diskCleaned++;
-                } else if (assetResult.error) {
+                }
+                // A partial failure (e.g. sharded dir removed, legacy dir
+                // locked) reports both cleaned=true AND an error.
+                if (assetResult.error) {
                     result.errors.push(assetResult.error);
                 }
             } catch (err) {

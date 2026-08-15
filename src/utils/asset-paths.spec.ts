@@ -161,6 +161,21 @@ describe('asset-paths', () => {
             expect(extractAssetsRelativeSegments(`/mnt/data/assets/../etc/passwd`)).toBeNull();
             expect(extractAssetsRelativeSegments(`/mnt/data/assets/${uuid}/..`)).toBeNull();
         });
+
+        it('returns null for a single-segment suffix (would resolve to a directory)', () => {
+            // 'assets/ab' style values point at a whole bucket/project dir, not
+            // a file; deletes must never recursively remove those.
+            expect(extractAssetsRelativeSegments('/mnt/data/assets/ab')).toBeNull();
+            expect(extractAssetsRelativeSegments(`/mnt/data/assets/${uuid}`)).toBeNull();
+        });
+
+        it('handles a file literally named assets by backtracking to an earlier component', () => {
+            expect(extractAssetsRelativeSegments(`/mnt/data/assets/${uuid}/client-1/assets`)).toEqual([
+                uuid,
+                'client-1',
+                'assets',
+            ]);
+        });
     });
 
     describe('resolveAssetStoragePath', () => {
@@ -238,6 +253,17 @@ describe('asset-paths', () => {
             const candidates = getProjectAssetsDirCandidates(filesDir, 'ab');
             for (const candidate of candidates) {
                 expect(candidate).not.toBe(nodePath.join(filesDir, ASSETS_ROOT_DIR_NAME, 'ab'));
+            }
+        });
+
+        it('applies the shard-bucket collision guard case-insensitively', () => {
+            // On case-insensitive filesystems (macOS/Windows desktop builds)
+            // 'AB' aliases the 'ab' bucket; the legacy candidate must be
+            // suppressed for uppercase two-hex identifiers too.
+            const candidates = getProjectAssetsDirCandidates(filesDir, 'AB');
+            expect(candidates.length).toBe(1);
+            for (const candidate of candidates) {
+                expect(candidate.toLowerCase()).not.toBe(nodePath.join(filesDir, ASSETS_ROOT_DIR_NAME, 'ab'));
             }
         });
 

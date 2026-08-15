@@ -25,7 +25,7 @@ export const ASSETS_ROOT_DIR_NAME = 'assets';
 /** Canonical UUID shape (8-4-4-4-12 hex groups, any version, any case). */
 const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const SHARD_HEX = /^[0-9a-f]{2}$/;
+const SHARD_HEX_ANY_CASE = /^[0-9a-fA-F]{2}$/;
 
 /**
  * Validates one stored-path segment. Deliberately more permissive than
@@ -33,7 +33,7 @@ const SHARD_HEX = /^[0-9a-f]{2}$/;
  * spaces, parentheses and non-ASCII characters. Only structural hazards are
  * rejected: separators, traversal tokens, control characters and emptiness.
  */
-function isSafeStoredSegment(segment: unknown): segment is string {
+export function isSafeAssetPathSegment(segment: unknown): segment is string {
     if (typeof segment !== 'string' || segment.length === 0 || segment.length > 255) {
         return false;
     }
@@ -88,14 +88,14 @@ export function getAssetShard(projectId: string): string {
  * FILES_DIR. At least one segment below the project directory is required.
  */
 export function buildAssetStoragePath(projectUuid: string, ...segments: string[]): string {
-    if (!isSafeStoredSegment(projectUuid)) {
+    if (!isSafeAssetPathSegment(projectUuid)) {
         throw new UnsafePathError('Invalid project identifier in asset storage path');
     }
     if (segments.length === 0) {
         throw new UnsafePathError('Asset storage path requires at least one segment');
     }
     for (const segment of segments) {
-        if (!isSafeStoredSegment(segment)) {
+        if (!isSafeAssetPathSegment(segment)) {
             throw new UnsafePathError('Invalid segment in asset storage path');
         }
     }
@@ -118,16 +118,19 @@ export function isCanonicalAssetStoragePath(value: unknown): value is string {
     if (segments.length < 3 || segments[0] !== ASSETS_ROOT_DIR_NAME) {
         return false;
     }
-    return segments.slice(1).every(isSafeStoredSegment);
+    return segments.slice(1).every(isSafeAssetPathSegment);
 }
 
 /**
  * Extracts the assets-relative segments from a legacy stored value (an
  * absolute host path written by versions before the relative-path migration,
- * with either POSIX or Windows separators). Returns the segments after the
- * LAST `assets` path component, or null when the value contains no `assets`
- * component or the suffix is unsafe. The absolute prefix is deliberately
- * ignored: it refers to whatever FILES_DIR was when the row was written.
+ * with either POSIX or Windows separators). Uses the LAST `assets` path
+ * component that yields a valid suffix — backtracking to earlier components
+ * covers files literally named `assets` — and requires at least two suffix
+ * segments (a project directory plus a filename), so a value can never
+ * resolve to a whole bucket or project directory. Returns null when no safe
+ * interpretation exists. The absolute prefix is deliberately ignored: it
+ * refers to whatever FILES_DIR was when the row was written.
  */
 export function extractAssetsRelativeSegments(storedPath: string): string[] | null {
     if (typeof storedPath !== 'string' || storedPath.length === 0) {
@@ -138,15 +141,18 @@ export function extractAssetsRelativeSegments(storedPath: string): string[] | nu
     if (segments.length > 0 && segments[segments.length - 1] === '') {
         segments.pop();
     }
-    const assetsIndex = segments.lastIndexOf(ASSETS_ROOT_DIR_NAME);
-    if (assetsIndex === -1) {
-        return null;
+    let assetsIndex = segments.lastIndexOf(ASSETS_ROOT_DIR_NAME);
+    while (assetsIndex !== -1) {
+        const suffix = segments.slice(assetsIndex + 1);
+        if (suffix.length >= 2 && suffix.every(isSafeAssetPathSegment)) {
+            return suffix;
+        }
+        if (assetsIndex === 0) {
+            break;
+        }
+        assetsIndex = segments.lastIndexOf(ASSETS_ROOT_DIR_NAME, assetsIndex - 1);
     }
-    const suffix = segments.slice(assetsIndex + 1);
-    if (suffix.length === 0 || !suffix.every(isSafeStoredSegment)) {
-        return null;
-    }
-    return suffix;
+    return null;
 }
 
 /**
@@ -196,14 +202,16 @@ export function tryResolveAssetStoragePath(filesDir: string, storedPath: string)
  * created before the sharding migration are fully cleaned up.
  */
 export function getProjectAssetsDirCandidates(filesDir: string, projectUuid: string): string[] {
-    if (!isSafeStoredSegment(projectUuid)) {
+    if (!isSafeAssetPathSegment(projectUuid)) {
         throw new UnsafePathError('Invalid project identifier for asset directory');
     }
     const shard = getAssetShard(projectUuid);
     const candidates = [nodePath.join(filesDir, ASSETS_ROOT_DIR_NAME, shard, projectUuid)];
-    if (!SHARD_HEX.test(projectUuid)) {
+    if (!SHARD_HEX_ANY_CASE.test(projectUuid)) {
         // Defensive: a two-hex "uuid" would make the legacy candidate collide
-        // with a shard bucket directory; never offer that for deletion.
+        // with a shard bucket directory; never offer that for deletion. The
+        // check is case-insensitive because case-insensitive filesystems
+        // (macOS/Windows desktop builds) alias 'AB' to the 'ab' bucket.
         candidates.push(nodePath.join(filesDir, ASSETS_ROOT_DIR_NAME, projectUuid));
     }
     return candidates;

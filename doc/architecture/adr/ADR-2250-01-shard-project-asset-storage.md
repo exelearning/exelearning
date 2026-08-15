@@ -42,7 +42,7 @@ Two separate concerns were raised in issue #2250:
 
 1. **Portability (a concrete defect):** `assets.storage_path` persisted **absolute host
    filesystem paths** such as `/mnt/data/assets/<uuid>/<clientId>.png`
-   (`src/routes/assets.ts` @ `3c7c9e821`, write sites at lines 427/443/690/704/1159/1173/1314).
+   (`src/routes/assets.ts` @ `3c7c7e821`, write sites at lines 427/443/690/704/1159/1173/1314).
    This couples every database row to one specific `FILES_DIR` mount point. Moving,
    remounting or restoring the data directory to a different path silently invalidates
    every asset row. Notably, the `themes` and `templates` tables already store
@@ -186,7 +186,7 @@ size-verify + remove, so a destination never holds a partial file (`EXDEV`, bind
   (<https://github.com/exelearning/exelearning/issues/1842>).
 - Absolute write sites / read sites: `src/routes/assets.ts`, `src/routes/api/v1/assets.ts`,
   `src/routes/upload-session.ts`, `src/services/folder-manager.ts`,
-  `src/routes/project.ts` @ `3c7c9e821`.
+  `src/routes/project.ts` @ `3c7c7e821`.
 - **ext4 known-name lookup is indexed, not linear:** with `EXT4_INDEX_FL` set, "this
   directory uses a hashed btree (htree) to organize and find directory entries"; htree
   depth "cannot be larger than 3 if the INCOMPAT_LARGEDIR feature is set; cannot be

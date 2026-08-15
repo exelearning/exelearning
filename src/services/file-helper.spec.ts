@@ -181,6 +181,13 @@ describe('File Helper Service', () => {
             const result2 = fileHelper.getProjectAssetsDir('another-project-uuid');
             expect(result1).not.toBe(result2);
         });
+
+        it('should reject unsafe project identifiers instead of building a traversal path', () => {
+            expect(() => fileHelper.getProjectAssetsDir('../..')).toThrow();
+            expect(() => fileHelper.getProjectAssetsDir('a/b')).toThrow();
+            expect(() => fileHelper.getProjectAssetsDir('a\\b')).toThrow();
+            expect(() => fileHelper.getProjectAssetsDir('')).toThrow();
+        });
     });
 
     describe('getProjectAssetsDirCandidates', () => {

@@ -24,9 +24,11 @@ import {
     ASSETS_ROOT_DIR_NAME,
     getAssetShard,
     getProjectAssetsDirCandidates as getProjectAssetsDirCandidatesPure,
+    isSafeAssetPathSegment,
     resolveAssetStoragePath as resolveAssetStoragePathPure,
     tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
 } from '../utils/asset-paths';
+import { UnsafePathError } from '../utils/safe-path';
 
 // ============================================================================
 // Types and Interfaces
@@ -150,8 +152,14 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
     };
 
     // Sharded project asset directory: assets/<2-hex-shard>/<projectUuid>/.
-    // One 8-bit shard level, 256 lazy buckets — see ADR-2250-01.
+    // One 8-bit shard level, 256 lazy buckets — see ADR-2250-01. The
+    // identifier is validated as a single path segment because projects.uuid
+    // is not format-validated at every creation site; a crafted value must
+    // never traverse out of the assets root.
     const getProjectAssetsDir = (projectUuid: string): string => {
+        if (!isSafeAssetPathSegment(projectUuid)) {
+            throw new UnsafePathError('Invalid project identifier for asset directory');
+        }
         return path.join(getFilesDir(), ASSETS_ROOT_DIR_NAME, getAssetShard(projectUuid), projectUuid);
     };
 

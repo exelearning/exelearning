@@ -1239,6 +1239,44 @@ describe('Admin Routes', () => {
             expect(deleteUserCalled).toBe(true);
         });
 
+        it('should still attempt the legacy directory when removing the sharded directory fails', async () => {
+            const userProjects = [mockProject({ id: 1, uuid: 'project-uuid-1' })];
+            const shardedDir = `/mock/data/assets/${getAssetShard('project-uuid-1')}/project-uuid-1`;
+            const legacyDir = '/mock/data/assets/project-uuid-1';
+            const removedPaths: string[] = [];
+
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps(
+                        {
+                            findProjectsByOwnerId: async () => userProjects,
+                        },
+                        {
+                            fileExists: async () => true,
+                            remove: async (target: string) => {
+                                if (target === shardedDir) {
+                                    throw new Error('EBUSY: locked');
+                                }
+                                removedPaths.push(target);
+                            },
+                        },
+                    ),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/users/2', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            // The failure on the sharded candidate must not skip the legacy one.
+            expect(removedPaths).toContain(legacyDir);
+        });
+
         it('should skip asset cleanup for non-existent directories', async () => {
             const userProjects = [mockProject({ id: 1, uuid: 'project-uuid-1' })];
             let removeCalled = false;

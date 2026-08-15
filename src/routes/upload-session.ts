@@ -19,7 +19,7 @@ import { db } from '../db/client';
 import type { Database } from '../db/types';
 import { createAssets, findAssetsByClientIds, bulkUpdateAssets, findProjectByUuid } from '../db/queries';
 
-import { resolveAssetStoragePath } from '../services/file-helper';
+import { resolveAssetStoragePath, tryResolveAssetStoragePath, remove } from '../services/file-helper';
 import { isSafePathSegment, sanitizeFileExtension } from '../utils/safe-path';
 import { buildAssetStoragePath } from '../utils/asset-paths';
 import {
@@ -378,6 +378,15 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                         const existing = existingMap.get(data.clientId);
 
                         if (existing) {
+                            // A relocating update (row still pointing at a legacy
+                            // or conflict-parked location) must not leave the
+                            // superseded file behind as an untracked orphan.
+                            if (existing.storage_path && existing.storage_path !== data.storagePath) {
+                                const oldPath = tryResolveAssetStoragePath(existing.storage_path);
+                                if (oldPath && oldPath !== data.filePath) {
+                                    await remove(oldPath).catch(() => {});
+                                }
+                            }
                             toUpdate.push({
                                 id: existing.id,
                                 data: {

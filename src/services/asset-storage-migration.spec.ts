@@ -366,6 +366,7 @@ describe('asset-storage-migration', () => {
 
     it('skips rows whose stored path cannot be interpreted, without touching the filesystem', async () => {
         const projectId = await seedProject();
+        await fs.ensureDir(path.join(filesDir, 'assets')); // storage is mounted
         await assetQueries.createAsset(db, {
             project_id: projectId,
             filename: 'weird.bin',
@@ -388,6 +389,7 @@ describe('asset-storage-migration', () => {
 
     it('rejects traversal attempts embedded in stored paths', async () => {
         const projectId = await seedProject();
+        await fs.ensureDir(path.join(filesDir, 'assets')); // storage is mounted
         await assetQueries.createAsset(db, {
             project_id: projectId,
             filename: 'evil.png',
@@ -489,6 +491,63 @@ describe('asset-storage-migration', () => {
         expect(second.orphanedFilesMoved).toBe(0);
         expect(second.skippedEntries).toBe(0);
         expect(await fs.pathExists(shardedPath(PROJECT_UUID, 'once.png'))).toBe(true);
+    });
+
+    it('sweeps a two-digit legacy numeric directory (project ids 10-99) that is not a real bucket', async () => {
+        // Force a two-digit project id so the legacy directory name collides
+        // with the two-hex shard bucket namespace.
+        const projectId = await seedProject();
+        await db.updateTable('projects').set({ id: 42 }).where('id', '=', projectId).execute();
+
+        const orphan = path.join(filesDir, 'assets', '42', 'orphan.png');
+        await fs.ensureDir(path.dirname(orphan));
+        await fs.writeFile(orphan, 'numeric orphan');
+
+        const summary = await runMigration();
+
+        expect(summary.orphanedFilesMoved).toBe(1);
+        expect(await fs.pathExists(shardedPath(PROJECT_UUID, 'orphan.png'))).toBe(true);
+        expect(await fs.pathExists(path.join(filesDir, 'assets', '42'))).toBe(false);
+    });
+
+    it('does not mistake a genuine two-digit shard bucket for a legacy numeric directory', async () => {
+        const projectId = await seedProject();
+        await db.updateTable('projects').set({ id: 42 }).where('id', '=', projectId).execute();
+
+        // A real bucket '42' containing a project directory that shards to '42'.
+        const bucketUuid = '42aabbcc-1234-4abc-8def-1234567890ab';
+        const inBucket = path.join(filesDir, 'assets', '42', bucketUuid, 'f.png');
+        await fs.ensureDir(path.dirname(inBucket));
+        await fs.writeFile(inBucket, 'sharded bytes');
+
+        const summary = await runMigration();
+
+        expect(summary.orphanedFilesMoved).toBe(0);
+        expect(await fs.pathExists(inBucket)).toBe(true);
+    });
+
+    it('skips migration entirely when legacy rows exist but the assets root is missing (unmounted volume)', async () => {
+        const projectId = await seedProject();
+        const row = await assetQueries.createAsset(db, {
+            project_id: projectId,
+            filename: 'unmounted.png',
+            storage_path: `/mnt/data/assets/${PROJECT_UUID}/unmounted.png`,
+            mime_type: 'image/png',
+            file_size: '4',
+            client_id: 'unmounted',
+            folder_path: '',
+        });
+        // No file is written: filesDir/assets does not exist at all.
+
+        const summary = await runMigration();
+
+        expect(summary.scannedRows).toBe(0);
+        expect(summary.rewrittenRows).toBe(0);
+        expect(summary.missingFiles).toBe(0);
+        expect(warnMessages.join('\n')).toContain('assets root');
+        // The row keeps its original pointer for the next (mounted) startup.
+        const after = await assetQueries.findAssetById(db, row.id);
+        expect(after!.storage_path).toBe(`/mnt/data/assets/${PROJECT_UUID}/unmounted.png`);
     });
 
     // =========================================================================

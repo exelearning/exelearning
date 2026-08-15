@@ -410,16 +410,23 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
         // absolute values from before the relative-path migration.
         const originalFilePath = original.storage_path ? tryResolveAssetStoragePath(original.storage_path) : null;
 
+        let newStoragePath: string;
+        let newFilePath: string;
         try {
             if (!originalFilePath) {
                 throw new Error('source storage path is not resolvable');
             }
-            const newStoragePath = buildAssetStoragePath(projectUuid, newClientId, newFilename);
-            const newFilePath = resolveAssetStoragePath(newStoragePath);
+            newStoragePath = buildAssetStoragePath(projectUuid, newClientId, newFilename);
+            newFilePath = resolveAssetStoragePath(newStoragePath);
             await fs.ensureDir(path.dirname(newFilePath));
             await fs.copy(originalFilePath, newFilePath);
+        } catch (err) {
+            return { success: false, error: `Failed to copy file: ${(err as Error).message}` };
+        }
 
-            // Create new asset record
+        // Create new asset record. A database failure is reported as such, and
+        // the already-copied file is removed so no untracked orphan remains.
+        try {
             const newAssetData: NewAsset = {
                 project_id: projectId,
                 filename: newFilename,
@@ -436,7 +443,8 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
 
             return { success: true, newAsset };
         } catch (err) {
-            return { success: false, error: `Failed to copy file: ${(err as Error).message}` };
+            await fs.remove(path.dirname(newFilePath)).catch(() => {});
+            return { success: false, error: `Failed to create asset record: ${(err as Error).message}` };
         }
     };
 

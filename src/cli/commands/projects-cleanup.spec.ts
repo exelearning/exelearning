@@ -239,6 +239,49 @@ describe('Projects Cleanup Command', () => {
             expect(result.stats.diskCleaned).toBe(1);
         });
 
+        it('should report a legacy-directory failure even when the sharded directory was removed', async () => {
+            const shard = getAssetShard('uuid-1');
+            const unsavedProjects = [createMockProject({ id: 1, uuid: 'uuid-1' })];
+            const existingPaths = new Set([`/data/assets/${shard}/uuid-1`, '/data/assets/uuid-1']);
+            const removeErrors = new Map([['/data/assets/uuid-1', new Error('EBUSY: locked')]]);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths, removeErrors });
+
+            const deps: ProjectsCleanupDependencies = {
+                db: {} as Kysely<Database>,
+                queries: createMockQueries({ unsavedProjects }),
+                fileHelper,
+            };
+
+            const result = await execute([], { yes: true }, deps);
+
+            expect(result.stats.diskCleaned).toBe(1);
+            expect(result.stats.diskFailures.length).toBe(1);
+            expect(result.stats.diskFailures[0]).toContain('EBUSY');
+            expect(result.success).toBe(false);
+        });
+
+        it('should not abort the run when a project uuid cannot form a safe directory path', async () => {
+            const shard2 = getAssetShard('uuid-2');
+            const unsavedProjects = [
+                createMockProject({ id: 1, uuid: '../evil' }),
+                createMockProject({ id: 2, uuid: 'uuid-2' }),
+            ];
+            const existingPaths = new Set([`/data/assets/${shard2}/uuid-2`]);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths });
+
+            const deps: ProjectsCleanupDependencies = {
+                db: {} as Kysely<Database>,
+                queries: createMockQueries({ unsavedProjects }),
+                fileHelper,
+            };
+
+            const result = await execute([], { yes: true }, deps);
+
+            // The second project is still processed and cleaned.
+            expect(result.stats.diskCleaned).toBe(1);
+            expect(result.stats.diskFailures.length).toBe(1);
+        });
+
         it('should count missing asset directories correctly', async () => {
             const unsavedProjects = [createMockProject({ id: 1, uuid: 'uuid-1' })];
             const fileHelper = createMockFileHelper({

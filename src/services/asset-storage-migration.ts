@@ -92,6 +92,13 @@ const DEFAULT_BATCH_SIZE = 500;
 const SHARD_BUCKET = /^[0-9a-f]{2}$/;
 
 /**
+ * Two-DIGIT names are ambiguous: they are valid shard buckets AND possible
+ * legacy numeric project-id directories (ids 10-99, from routes that used the
+ * raw numeric URL parameter as the directory name).
+ */
+const DECIMAL_BUCKET = /^\d{2}$/;
+
+/**
  * Move a file, preferring an atomic rename. On EXDEV (cross-device link, e.g.
  * bind mounts inside FILES_DIR) falls back to copy-to-temp + rename + verify +
  * remove, so the destination never holds a partially written file.
@@ -232,6 +239,26 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
         skippedEntries: 0,
         errors: 0,
     };
+
+    // Safety latch: if legacy rows exist but the assets root itself does not,
+    // the storage volume is almost certainly unmounted or FILES_DIR is
+    // mis-pointed. Rewriting rows in that state would discard their original
+    // pointers and 404 every asset — skip the whole run and retry next boot.
+    if (!(await fs.pathExists(assetsRoot))) {
+        const legacyRow = await db
+            .selectFrom('assets')
+            .select('assets.id')
+            .where('assets.storage_path', 'not like', `${ASSETS_ROOT_DIR_NAME}/%`)
+            .limit(1)
+            .executeTakeFirst();
+        if (legacyRow) {
+            warn(
+                `[AssetStorage] Legacy asset rows exist but the assets root '${assetsRoot}' does not exist; ` +
+                    `skipping migration this startup. Check that the storage volume is mounted and FILES_DIR is correct.`,
+            );
+            return summary;
+        }
+    }
 
     // =========================================================================
     // Phase 1: row-driven migration.
@@ -384,10 +411,31 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
             warn(`[AssetStorage] Could not read assets root ${assetsRoot}: ${err}`);
         }
 
+        // A directory is only skipped as a shard bucket when its contents look
+        // like sharded project directories: every entry is a directory whose
+        // name shards to this bucket. Legacy numeric project-id directories
+        // (flat asset files, or client-id subdirectories that shard elsewhere)
+        // fail this test and fall through to the sweep.
+        const looksLikeShardBucket = async (dir: string, bucketName: string): Promise<boolean> => {
+            try {
+                const entries = await fs.readdir(dir, { withFileTypes: true });
+                return entries.every(entry => entry.isDirectory() && getAssetShard(entry.name) === bucketName);
+            } catch {
+                return true; // unreadable: leave it alone
+            }
+        };
+
         for (const entry of rootEntries) {
             const entryName = entry.name;
             if (entry.isDirectory() && SHARD_BUCKET.test(entryName)) {
-                continue; // canonical shard bucket
+                if (
+                    !DECIMAL_BUCKET.test(entryName) ||
+                    (await looksLikeShardBucket(path.join(assetsRoot, entryName), entryName))
+                ) {
+                    continue; // canonical shard bucket
+                }
+                // Two-digit directory with non-bucket contents: treat it as a
+                // legacy numeric project-id directory below.
             }
             if (!entry.isDirectory()) {
                 summary.skippedEntries++;

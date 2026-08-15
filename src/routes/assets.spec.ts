@@ -612,6 +612,37 @@ describe('Assets Routes', () => {
             expect(await fs.pathExists(physical)).toBe(false);
         });
 
+        it('should remove the file at the previous location when a re-upload relocates the asset', async () => {
+            // A conflict-parked row points at the legacy unsharded location.
+            const legacyFile = path.join(legacyProjectDir, 'parked-client.png');
+            await fs.writeFile(legacyFile, 'old parked bytes');
+            mockAssets.set(60, {
+                id: 60,
+                project_id: 1,
+                filename: 'parked.png',
+                storage_path: `assets/${testProjectId}/parked-client.png`,
+                mime_type: 'image/png',
+                client_id: 'parked-client',
+            });
+
+            const formData = new FormData();
+            formData.append('file', new Blob(['new bytes'], { type: 'image/png' }), 'parked.png');
+            formData.append('clientId', 'parked-client');
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets`, { method: 'POST', body: formData }),
+            );
+            expect(res.status).toBe(200);
+
+            // Row repointed to the sharded location; the superseded legacy
+            // file is removed so it cannot linger as an untracked orphan.
+            const row = mockAssets.get(60);
+            expect(row.storage_path).toBe(`assets/${expectedShard}/${testProjectId}/parked-client.png`);
+            expect(await fs.pathExists(legacyFile)).toBe(false);
+            const physical = path.join(testDir, 'assets', expectedShard, testProjectId, 'parked-client.png');
+            expect(await fs.readFile(physical, 'utf-8')).toBe('new bytes');
+        });
+
         it('should still serve an asset whose row holds a legacy absolute storage_path', async () => {
             // Simulates a not-yet-migrated row: absolute path from an old
             // FILES_DIR mount that no longer exists. The resolver re-roots the

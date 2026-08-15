@@ -335,6 +335,26 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
         return asset.storage_path ? tryResolveAssetStoragePath(asset.storage_path) : null;
     }
 
+    /**
+     * When an update relocates an asset's storage path (e.g. a re-upload of a
+     * row still pointing at a legacy or conflict-parked location), remove the
+     * file at the previous location so superseded copies never linger as
+     * untracked orphans. No-op when the location is unchanged.
+     */
+    async function removeSupersededAssetFile(
+        existing: Pick<Asset, 'storage_path'>,
+        newStoragePath: string,
+    ): Promise<void> {
+        if (!existing.storage_path || existing.storage_path === newStoragePath) {
+            return;
+        }
+        const oldPath = tryResolveAssetStoragePath(existing.storage_path);
+        const newPath = tryResolveAssetStoragePath(newStoragePath);
+        if (oldPath && oldPath !== newPath) {
+            await remove(oldPath).catch(() => {});
+        }
+    }
+
     return (
         new Elysia({ prefix: '/api/projects/:projectId/assets' })
             // Auth: every asset endpoint requires an authenticated user with
@@ -433,6 +453,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
                     if (existingAsset) {
                         // Asset already exists - update it (idempotent)
+                        await removeSupersededAssetFile(existingAsset, storagePath);
                         const updatedAsset = await queries.updateAsset(database, existingAsset.id, {
                             filename: filename,
                             storage_path: storagePath,
@@ -694,6 +715,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     let asset: Asset | undefined;
                     if (existingAsset) {
                         // Update existing asset
+                        await removeSupersededAssetFile(existingAsset, storagePath);
                         asset = await queries.updateAsset(database, existingAsset.id, {
                             filename: upload.filename,
                             storage_path: storagePath,
@@ -1182,6 +1204,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
                         const existing = existingMap.get(data.clientId);
                         if (existing) {
+                            await removeSupersededAssetFile(existing, data.storagePath);
                             toUpdate.push({
                                 id: existing.id,
                                 data: {

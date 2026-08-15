@@ -79,7 +79,15 @@ async function cleanupProjectAssets(
     projectUuid: string,
     fileHelper: ProjectsCleanupDependencies['fileHelper'],
 ): Promise<{ removed: boolean; error?: string }> {
-    const candidates = getProjectAssetsDirCandidates(fileHelper.getFilesDir(), projectUuid);
+    // Candidate computation can reject an unsafe project uuid; report that as
+    // a cleanup failure instead of letting it abort the whole run.
+    let candidates: string[];
+    try {
+        candidates = getProjectAssetsDirCandidates(fileHelper.getFilesDir(), projectUuid);
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { removed: false, error: `${projectUuid}: ${message}` };
+    }
     let removed = false;
     const errors: string[] = [];
 
@@ -163,9 +171,12 @@ export async function execute(
         const assetResult = await cleanupProjectAssets(project.uuid, fileHelper);
         if (assetResult.removed) {
             diskStats.cleaned++;
-        } else if (assetResult.error) {
+        }
+        // A partial failure (e.g. sharded dir removed, legacy dir locked)
+        // reports both removed=true AND an error.
+        if (assetResult.error) {
             diskStats.failures.push(assetResult.error);
-        } else {
+        } else if (!assetResult.removed) {
             diskStats.missing++;
         }
     }
@@ -176,9 +187,12 @@ export async function execute(
         const assetResult = await cleanupProjectAssets(project.uuid, fileHelper);
         if (assetResult.removed) {
             diskStats.cleaned++;
-        } else if (assetResult.error) {
+        }
+        // A partial failure (e.g. sharded dir removed, legacy dir locked)
+        // reports both removed=true AND an error.
+        if (assetResult.error) {
             diskStats.failures.push(assetResult.error);
-        } else {
+        } else if (!assetResult.removed) {
             diskStats.missing++;
         }
     }

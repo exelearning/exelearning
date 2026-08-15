@@ -235,6 +235,15 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
 
             let asset: Asset;
             if (existingAsset) {
+                // A relocating update (row still pointing at a legacy or
+                // conflict-parked location) must not leave the superseded file
+                // behind as an untracked orphan.
+                if (existingAsset.storage_path && existingAsset.storage_path !== storagePath) {
+                    const oldPath = tryResolveAssetStoragePath(existingAsset.storage_path);
+                    if (oldPath && oldPath !== filePath) {
+                        await remove(oldPath).catch(() => {});
+                    }
+                }
                 // Update existing in DB
                 const updatedAsset = await updateAsset(db, existingAsset.id, {
                     filename: filename,

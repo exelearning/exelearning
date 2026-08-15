@@ -681,6 +681,47 @@ describe('Folder Manager Service', () => {
             expect(result.success).toBe(false);
             expect(result.error).toContain('not found');
         });
+
+        it('should distinguish a database failure from a copy failure and not leave an orphaned copy', async () => {
+            const sourceDir = path.join(tempDir, 'assets', testProjectUuid, 'db-fail');
+            await fs.ensureDir(sourceDir);
+            await fs.writeFile(path.join(sourceDir, 'doc.txt'), 'content');
+
+            const original = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'doc.txt',
+                storage_path: path.join(sourceDir, 'doc.txt'),
+                folder_path: 'docs',
+                client_id: 'db-fail-orig',
+            });
+
+            const failingService = createFolderManagerService({
+                db,
+                queries: {
+                    ...assetQueries,
+                    createAsset: async () => {
+                        throw new Error('SQLITE_BUSY: database is locked');
+                    },
+                },
+                fs,
+                path,
+                fflate,
+                resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(tempDir, storagePath),
+                tryResolveAssetStoragePath: (storagePath: string) =>
+                    tryResolveAssetStoragePathPure(tempDir, storagePath),
+            });
+
+            const result = await failingService.duplicateAsset(testProjectId, testProjectUuid, original.id);
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('asset record');
+            expect(result.error).not.toContain('Failed to copy file');
+
+            // The physical copy must not linger as an untracked orphan.
+            const projectShardDir = path.join(tempDir, 'assets', getAssetShard(testProjectUuid), testProjectUuid);
+            const leftovers = (await fs.pathExists(projectShardDir)) ? await fs.readdir(projectShardDir) : [];
+            expect(leftovers.length).toBe(0);
+        });
     });
 
     // ============================================================================
