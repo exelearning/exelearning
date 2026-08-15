@@ -20,6 +20,13 @@ export {
 } from '../utils/url.util';
 
 import { getSessionDateComponents, getOdeSessionPath } from '../utils/url.util';
+import {
+    ASSETS_ROOT_DIR_NAME,
+    getAssetShard,
+    getProjectAssetsDirCandidates as getProjectAssetsDirCandidatesPure,
+    resolveAssetStoragePath as resolveAssetStoragePathPure,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
+} from '../utils/asset-paths';
 
 // ============================================================================
 // Types and Interfaces
@@ -45,6 +52,9 @@ export interface FileHelper {
     getOdeSessionDistDir: (odeSessionId: string) => string;
     getOdeSessionTempDir: (odeSessionId: string) => string;
     getProjectAssetsDir: (projectUuid: string) => string;
+    getProjectAssetsDirCandidates: (projectUuid: string) => string[];
+    resolveAssetStoragePath: (storagePath: string) => string;
+    tryResolveAssetStoragePath: (storagePath: string) => string | null;
     getPublicDirectory: () => string;
     getLibsDir: () => string;
     getThemesDir: () => string;
@@ -139,8 +149,28 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
         return path.join(filesDir, 'dist', year, month, day, odeSessionId);
     };
 
+    // Sharded project asset directory: assets/<2-hex-shard>/<projectUuid>/.
+    // One 8-bit shard level, 256 lazy buckets — see ADR-2250-01.
     const getProjectAssetsDir = (projectUuid: string): string => {
-        return path.join(getFilesDir(), 'assets', projectUuid);
+        return path.join(getFilesDir(), ASSETS_ROOT_DIR_NAME, getAssetShard(projectUuid), projectUuid);
+    };
+
+    // Sharded + legacy unsharded directories, for deletion/cleanup paths that
+    // must also remove pre-sharding leftovers.
+    const getProjectAssetsDirCandidates = (projectUuid: string): string[] => {
+        return getProjectAssetsDirCandidatesPure(getFilesDir(), projectUuid);
+    };
+
+    // Resolve a stored assets.storage_path value (FILES_DIR-relative, or a
+    // legacy absolute value from before the relative-path migration) to an
+    // absolute path under the current FILES_DIR. Throws UnsafePathError.
+    const resolveAssetStoragePath = (storagePath: string): string => {
+        return resolveAssetStoragePathPure(getFilesDir(), storagePath);
+    };
+
+    // Non-throwing variant: unresolvable stored values behave like a missing file.
+    const tryResolveAssetStoragePath = (storagePath: string): string | null => {
+        return tryResolveAssetStoragePathPure(getFilesDir(), storagePath);
     };
 
     const getPublicDirectory = (): string => {
@@ -265,6 +295,9 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
         getOdeSessionDistDir,
         getOdeSessionTempDir,
         getProjectAssetsDir,
+        getProjectAssetsDirCandidates,
+        resolveAssetStoragePath,
+        tryResolveAssetStoragePath,
         getPublicDirectory,
         getLibsDir,
         getThemesDir,
@@ -300,6 +333,9 @@ export const getPreviewExportPath = defaultFileHelper.getPreviewExportPath;
 export const getOdeSessionDistDir = defaultFileHelper.getOdeSessionDistDir;
 export const getOdeSessionTempDir = defaultFileHelper.getOdeSessionTempDir;
 export const getProjectAssetsDir = defaultFileHelper.getProjectAssetsDir;
+export const getProjectAssetsDirCandidates = defaultFileHelper.getProjectAssetsDirCandidates;
+export const resolveAssetStoragePath = defaultFileHelper.resolveAssetStoragePath;
+export const tryResolveAssetStoragePath = defaultFileHelper.tryResolveAssetStoragePath;
 export const getPublicDirectory = defaultFileHelper.getPublicDirectory;
 export const getLibsDir = defaultFileHelper.getLibsDir;
 export const getThemesDir = defaultFileHelper.getThemesDir;
