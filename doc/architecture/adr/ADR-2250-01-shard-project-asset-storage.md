@@ -9,7 +9,7 @@ deciders:
 reviewers:
   - "@ignaciogros"
 related:
-  prs: []
+  prs: [2266]
   changes:
     - "2250-asset-storage-sharding"
   adrs: []
