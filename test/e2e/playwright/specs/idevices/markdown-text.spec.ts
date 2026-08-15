@@ -105,6 +105,45 @@ test.describe('Markdown Text iDevice', () => {
         await expect(previewPane).toContainText('subtitle');
     });
 
+    test('renders single-dollar LaTeX via MathJax and keeps currency literal (#1990)', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Markdown Dollar Math');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        const ideviceId = await addMarkdownIdevice(page);
+        await editIdevice(page, ideviceId);
+
+        await setEditorValue(
+            page,
+            ideviceId,
+            '#markdownTextarea',
+            'The formula $a^2 + b^2 = c^2$ is famous. It costs $5 and $10 total.',
+        );
+
+        await saveIdevice(page, ideviceId);
+
+        // The workarea rendered view typesets the normalized \(...\) formula.
+        const article = page.locator(`.idevice_node[id="${ideviceId}"]`);
+        await expect(article.locator('mjx-container, .exe-math-rendered').first()).toBeVisible({ timeout: 15000 });
+        // Plain dollar amounts must stay literal text (no math false positive).
+        await expect(article).toContainText('costs $5 and $10 total');
+
+        await saveProject(page);
+        await openPreviewPanel(page);
+        await waitForPreviewContent(page);
+
+        const iframe = getPreviewFrame(page);
+        const previewNode = iframe.locator('.idevice_node.markdown-text').first();
+        await expect(previewNode.locator('mjx-container, svg[data-mml-node], .exe-math-rendered').first()).toBeVisible({
+            timeout: 15000,
+        });
+        await expect(previewNode).toContainText('costs $5 and $10 total');
+    });
+
     test('feedback section renders in preview and escapes attribute values', async ({
         authenticatedPage,
         createProject,

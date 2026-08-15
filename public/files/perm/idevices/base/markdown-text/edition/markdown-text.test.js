@@ -566,6 +566,73 @@ describe('markdown-text iDevice', () => {
     });
   });
 
+  describe('single-dollar inline math fallback (#1990)', () => {
+    beforeEach(() => {
+      delete eXe.app.common;
+      global.showdown = {
+        Converter: class {
+          setOption() {}
+          makeHtml(text) {
+            // Pretend Showdown mangles underscores into <em>
+            return `<p>${text.replace(/_([^_]+)_/g, '<em>$1</em>')}</p>`;
+          }
+        },
+      };
+    });
+
+    afterEach(() => {
+      delete global.showdown;
+    });
+
+    it('converts $...$ into \\(...\\) and protects it from Showdown', () => {
+      const result = $exeDevice.computeMarkdownHtml('Indexed: $a_1 + b_2$ end');
+
+      expect(result).toContain('\\(a_1 + b_2\\)');
+      expect(result).not.toContain('<em>');
+    });
+
+    it('leaves currency amounts untouched', () => {
+      const result = $exeDevice.computeMarkdownHtml('It costs $10 and $20 in total');
+
+      expect(result).toContain('$10 and $20');
+      expect(result).not.toContain('\\(');
+    });
+
+    it('does not touch dollars inside inline code spans', () => {
+      const result = $exeDevice.computeMarkdownHtml('Use `$HOME$` here');
+
+      expect(result).toContain('`$HOME$`');
+      expect(result).not.toContain('\\(');
+    });
+
+    it('does not touch dollars inside fenced code blocks', () => {
+      const result = $exeDevice.computeMarkdownHtml('```\necho $a$ $b$\n```\nAfter $x$ end');
+
+      expect(result).toContain('echo $a$ $b$');
+      expect(result).toContain('\\(x\\)');
+    });
+
+    it('stashLatex stores the normalized formula', () => {
+      const stash = $exeDevice.stashLatex('Formula $a_1$ end');
+
+      expect(stash.store).toContain('\\(a_1\\)');
+      expect(stash.text).not.toContain('$a_1$');
+    });
+
+    it('rejects a pair whose closing dollar is escaped', () => {
+      const result = $exeDevice.computeMarkdownHtml('Mixed $a\\$b$ tail');
+
+      expect(result).toContain('$a\\$b$');
+      expect(result).not.toContain('\\(');
+    });
+
+    it('still converts formulas that start with a backslash', () => {
+      const result = $exeDevice.computeMarkdownHtml('Greek $\\alpha$ letter');
+
+      expect(result).toContain('\\(\\alpha\\)');
+    });
+  });
+
   describe('createMarkdownEditorHTML', () => {
     it('creates container with correct id', () => {
       const html = $exeDevice.createMarkdownEditorHTML('myId', 'My Title');

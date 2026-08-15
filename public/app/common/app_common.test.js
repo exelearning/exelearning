@@ -286,6 +286,91 @@ describe('Common', () => {
       );
       expect(result).toContain('\\begin{align}a_1 &= b_1 \\\\ c &= d\\end{align}');
     });
+
+    describe('single-dollar inline math (#1990)', () => {
+      it('converts $...$ into \\(...\\) so MathJax can render it', () => {
+        const result = common.markdownToHTML('The formula $a^2 + b^2 = c^2$ is famous');
+        expect(result).toContain('\\(a^2 + b^2 = c^2\\)');
+        expect(result).not.toContain('$a^2');
+      });
+
+      it('protects formula underscores from markdown emphasis', () => {
+        window.showdown.Converter = vi.fn().mockImplementation(function () {
+          this.makeHtml = vi.fn(
+            (content) => `<p>${content.replace(/_([^_]+)_/g, '<em>$1</em>')}</p>`
+          );
+        });
+        const result = common.markdownToHTML('Indexed: $a_1 + b_2$ end');
+        expect(result).toContain('\\(a_1 + b_2\\)');
+        expect(result).not.toContain('<em>');
+      });
+
+      it('converts several formulas on the same line', () => {
+        const result = common.markdownToHTML('$x_1$ and $y_2$');
+        expect(result).toContain('\\(x_1\\)');
+        expect(result).toContain('\\(y_2\\)');
+      });
+
+      it('leaves currency amounts untouched', () => {
+        const result = common.markdownToHTML('It costs $10 and $20 in total');
+        expect(result).toContain('$10 and $20');
+        expect(result).not.toContain('\\(');
+      });
+
+      it('leaves price ranges untouched', () => {
+        const result = common.markdownToHTML('Discounts from $5-$10 apply');
+        expect(result).toContain('$5-$10');
+        expect(result).not.toContain('\\(');
+      });
+
+      it('ignores escaped dollar signs', () => {
+        const result = common.markdownToHTML('Escaped \\$x\\$ stays');
+        expect(result).toContain('\\$x\\$');
+        expect(result).not.toContain('\\(');
+      });
+
+      it('rejects a pair whose closing dollar is escaped', () => {
+        const result = common.markdownToHTML('Mixed $a\\$b$ tail');
+        expect(result).toContain('$a\\$b$');
+        expect(result).not.toContain('\\(');
+      });
+
+      it('keeps TeX \\$ escapes inside a candidate formula literal', () => {
+        const result = common.markdownToHTML('Price $\\text{a \\$ b}$ here');
+        expect(result).toContain('$\\text{a \\$ b}$');
+        expect(result).not.toContain('\\(');
+      });
+
+      it('still converts formulas that start with a backslash', () => {
+        const result = common.markdownToHTML('Greek $\\alpha$ letter');
+        expect(result).toContain('\\(\\alpha\\)');
+      });
+
+      it('does not touch dollars inside inline code spans', () => {
+        const result = common.markdownToHTML('Use `$HOME$` here');
+        expect(result).toContain('`$HOME$`');
+        expect(result).not.toContain('\\(');
+      });
+
+      it('does not touch dollars inside fenced code blocks', () => {
+        const result = common.markdownToHTML('```\necho $a$ $b$\n```\nAfter $x$ end');
+        expect(result).toContain('echo $a$ $b$');
+        expect(result).toContain('\\(x\\)');
+      });
+
+      it('does not pair dollars across lines', () => {
+        const result = common.markdownToHTML('Costs $5.\nWorth $10 more');
+        expect(result).toContain('$5.');
+        expect(result).toContain('$10');
+        expect(result).not.toContain('\\(');
+      });
+
+      it('keeps $$...$$ display math as-is', () => {
+        const result = common.markdownToHTML('Display $$a_1 + b_2$$ and inline $c_3$');
+        expect(result).toContain('$$a_1 + b_2$$');
+        expect(result).toContain('\\(c_3\\)');
+      });
+    });
   });
 
   describe('initTooltips', () => {

@@ -67,21 +67,26 @@ export default class Common {
    * stashed before Showdown runs so that markdown processing does not eat
    * underscores, asterisks or backslashes inside formulas. They are restored
    * verbatim afterwards so MathJax can pick them up at render time.
+   * Single-dollar inline math ($...$) is normalized to \(...\) because the
+   * MathJax configuration shipped with eXeLearning does not enable the $
+   * inline delimiter (#1990).
    */
   markdownToHTML(content) {
     var src = String(content == null ? '' : content);
     var store = [];
+    var stash = function (match) {
+      store.push(match);
+      return 'EXELATEXBEGIN' + (store.length - 1) + 'EXELATEXEND';
+    };
     [
       /\\\[[\s\S]*?\\\]/g,
       /\$\$[\s\S]*?\$\$/g,
       /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g,
       /\\\([\s\S]*?\\\)/g,
     ].forEach(function (re) {
-      src = src.replace(re, function (match) {
-        store.push(match);
-        return 'EXELATEXBEGIN' + (store.length - 1) + 'EXELATEXEND';
-      });
+      src = src.replace(re, stash);
     });
+    src = this.normalizeDollarMath(src, stash);
 
     var converter = new showdown.Converter({
       noHeaderId: true,
@@ -95,6 +100,60 @@ export default class Common {
     return html.replace(/EXELATEXBEGIN(\d+)EXELATEXEND/g, function (_, i) {
       return store[Number(i)] !== undefined ? store[Number(i)] : _;
     });
+  }
+
+  /**
+   * Convert single-dollar inline math ($...$) into \(...\) and stash it.
+   *
+   * Chatbot-generated Markdown commonly delimits inline formulas with single
+   * dollars, but the MathJax configuration used by eXeLearning only enables
+   * \(...\) for inline math, and Showdown would mangle underscores inside the
+   * formula before MathJax could see it (#1990). Pandoc-style rules keep
+   * plain dollar amounts out of math mode: the opening $ must be followed by
+   * a non-space character, the closing $ must be preceded by a non-space
+   * character and must not be followed by a digit, neither may be escaped,
+   * and the pair must sit on a single line. Fenced code blocks and inline
+   * code spans are left untouched.
+   *
+   * @param {string} src markdown source (LaTeX already stashed)
+   * @param {function(string): string} stashFn stores a formula, returns its placeholder
+   * @returns {string}
+   */
+  normalizeDollarMath(src, stashFn) {
+    var fenceRe = /^\s{0,3}(?:`{3,}|~{3,})/;
+    var codeSpanRe = /(`+)[\s\S]*?\1/g;
+    // A formula is either a single character or first/last characters with a
+    // lazy body; the last character may not be a backslash, so an escaped \$
+    // before the closing delimiter rejects the pair instead of producing a
+    // formula that ends in a stray backslash (a MathJax TeX error).
+    var dollarRe = /(^|[^\\$])\$([^\s$\\]|[^\s$][^$\n]*?[^\s$\\])\$(?!\d|\$)/g;
+    var convert = function (text) {
+      return text.replace(dollarRe, function (match, prefix, formula) {
+        return prefix + stashFn('\\(' + formula + '\\)');
+      });
+    };
+    var inFence = false;
+    return String(src)
+      .split('\n')
+      .map(function (line) {
+        if (fenceRe.test(line)) {
+          inFence = !inFence;
+          return line;
+        }
+        if (inFence || line.indexOf('$') === -1) {
+          return line;
+        }
+        var out = '';
+        var last = 0;
+        var m;
+        codeSpanRe.lastIndex = 0;
+        while ((m = codeSpanRe.exec(line)) !== null) {
+          out += convert(line.slice(last, m.index)) + m[0];
+          last = m.index + m[0].length;
+        }
+        return out + convert(line.slice(last));
+      })
+      .join('\n');
   }
 
   /**

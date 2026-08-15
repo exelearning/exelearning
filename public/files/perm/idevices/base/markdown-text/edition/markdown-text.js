@@ -322,6 +322,10 @@ var $exeDevice = {
 
     stashLatex: function (text) {
         const store = [];
+        const stash = function (match) {
+            store.push(match);
+            return 'EXELATEXBEGIN' + (store.length - 1) + 'EXELATEXEND';
+        };
         let src = String(text == null ? '' : text);
         [
             /\\\[[\s\S]*?\\\]/g,
@@ -329,12 +333,65 @@ var $exeDevice = {
             /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g,
             /\\\([\s\S]*?\\\)/g,
         ].forEach(function (re) {
-            src = src.replace(re, function (match) {
-                store.push(match);
-                return 'EXELATEXBEGIN' + (store.length - 1) + 'EXELATEXEND';
-            });
+            src = src.replace(re, stash);
         });
+        src = this.normalizeDollarMath(src, stash);
         return { text: src, store: store };
+    },
+
+    /**
+     * Convert single-dollar inline math ($...$) into \(...\) and stash it.
+     *
+     * Mirror of eXe.app.common.markdownToHTML (app_common.js) for the
+     * standalone Showdown fallback: the MathJax configuration used by
+     * eXeLearning only enables \(...\) for inline math, and Showdown would
+     * mangle underscores inside the formula before MathJax could see it
+     * (#1990). Pandoc-style rules keep plain dollar amounts out of math
+     * mode: the opening $ must be followed by a non-space character, the
+     * closing $ must be preceded by a non-space character and must not be
+     * followed by a digit, neither may be escaped, and the pair must sit on
+     * a single line. Fenced code blocks and inline code spans are left
+     * untouched.
+     *
+     * @param {string} src markdown source (LaTeX already stashed)
+     * @param {function(string): string} stashFn stores a formula, returns its placeholder
+     * @returns {string}
+     */
+    normalizeDollarMath: function (src, stashFn) {
+        const fenceRe = /^\s{0,3}(?:`{3,}|~{3,})/;
+        const codeSpanRe = /(`+)[\s\S]*?\1/g;
+        // A formula is either a single character or first/last characters with
+        // a lazy body; the last character may not be a backslash, so an escaped
+        // \$ before the closing delimiter rejects the pair instead of producing
+        // a formula that ends in a stray backslash (a MathJax TeX error).
+        const dollarRe = /(^|[^\\$])\$([^\s$\\]|[^\s$][^$\n]*?[^\s$\\])\$(?!\d|\$)/g;
+        const convert = function (text) {
+            return text.replace(dollarRe, function (match, prefix, formula) {
+                return prefix + stashFn('\\(' + formula + '\\)');
+            });
+        };
+        let inFence = false;
+        return String(src)
+            .split('\n')
+            .map(function (line) {
+                if (fenceRe.test(line)) {
+                    inFence = !inFence;
+                    return line;
+                }
+                if (inFence || line.indexOf('$') === -1) {
+                    return line;
+                }
+                let out = '';
+                let last = 0;
+                let m;
+                codeSpanRe.lastIndex = 0;
+                while ((m = codeSpanRe.exec(line)) !== null) {
+                    out += convert(line.slice(last, m.index)) + m[0];
+                    last = m.index + m[0].length;
+                }
+                return out + convert(line.slice(last));
+            })
+            .join('\n');
     },
 
     restoreLatex: function (html, store) {
