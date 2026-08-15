@@ -305,9 +305,10 @@ describe('TinyMCE 5 Settings', () => {
       }
     });
 
-    it('init instance callback triggers toggler and editor hook', () => {
+    it('init instance callback triggers toggler without the removed Yjs editor hook (#2169)', () => {
       globalThis.$exeTinyMCEToggler.documentWidth = 1000;
       const initSpy = vi.spyOn(globalThis.$exeTinyMCEToggler, 'init').mockImplementation(() => {});
+      // A stray onEditorInit must be ignored: the TinyMCE-Yjs auto-binding hook was removed
       const hookSpy = vi.fn();
       globalThis.$exeTinyMCE.onEditorInit = hookSpy;
 
@@ -332,7 +333,7 @@ describe('TinyMCE 5 Settings', () => {
       config.init_instance_callback(mockEditor);
 
       expect(initSpy).toHaveBeenCalledWith('editor', true);
-      expect(hookSpy).toHaveBeenCalled();
+      expect(hookSpy).not.toHaveBeenCalled();
       initSpy.mockRestore();
       delete globalThis.$exeTinyMCE.onEditorInit;
     });
