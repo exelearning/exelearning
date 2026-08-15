@@ -289,8 +289,9 @@ function writeSettings(obj) {
     try {
         fs.mkdirSync(path.dirname(SETTINGS_FILE()), { recursive: true });
         fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(obj, null, 2), 'utf8');
+        return true;
     } catch (_e) {
-        // Best-effort; ignore
+        return false;
     }
 }
 
@@ -1380,6 +1381,7 @@ app.whenReady().then(() => {
         systemLocale: app.getSystemLocale(),
         readSettings,
         writeSettings,
+        onError: error => console.warn('[SpellChecker] Settings operation failed:', error),
     });
     registerSpellCheckerIpc(ipcMain, spellCheckerController);
     spellCheckerController.applyPersisted();

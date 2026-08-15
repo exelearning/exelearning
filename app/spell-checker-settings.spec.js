@@ -178,6 +178,75 @@ describe('spell checker settings', () => {
         expect(electronSession.setSpellCheckerLanguages).not.toHaveBeenCalled();
     });
 
+    test('does not report persisted System default when startup restoration cannot apply', () => {
+        const controller = createSpellCheckerController({
+            electronSession: {
+                availableSpellCheckerLanguages: ['es'],
+                getSpellCheckerLanguages: () => ['es'],
+                setSpellCheckerLanguages: mock(() => {}),
+            },
+            platform: 'linux',
+            systemLocale: 'xx',
+            readSettings: () => ({
+                spellChecker: { mode: 'system', languages: [] },
+            }),
+            writeSettings: mock(() => true),
+        });
+
+        expect(controller.applyPersisted()).toEqual(expect.objectContaining({
+            systemDefault: false,
+            applied: false,
+        }));
+        expect(controller.getSettings().systemDefault).toBe(false);
+    });
+
+    test('contains startup restoration errors and reports an unapplied state', () => {
+        const error = new Error('Electron session unavailable');
+        const onError = mock(() => {});
+        const controller = createSpellCheckerController({
+            electronSession: {
+                get availableSpellCheckerLanguages() {
+                    throw error;
+                },
+            },
+            platform: 'win32',
+            readSettings: () => ({
+                spellChecker: { mode: 'system', languages: [] },
+            }),
+            writeSettings: mock(() => true),
+            onError,
+        });
+
+        expect(controller.applyPersisted()).toEqual({
+            supported: true,
+            availableLanguages: [],
+            selectedLanguages: [],
+            systemDefault: false,
+            applied: false,
+        });
+        expect(onError).toHaveBeenCalledWith(error);
+    });
+
+    test('defers reading persisted state until the guarded startup restoration', () => {
+        const error = new Error('Settings file is unreadable');
+        const onError = mock(() => {});
+        const readSettings = mock(() => {
+            throw error;
+        });
+
+        const controller = createSpellCheckerController({
+            electronSession: {},
+            platform: 'linux',
+            readSettings,
+            writeSettings: mock(() => true),
+            onError,
+        });
+
+        expect(readSettings).not.toHaveBeenCalled();
+        expect(controller.applyPersisted()).toEqual(expect.objectContaining({ applied: false }));
+        expect(onError).toHaveBeenCalledWith(error);
+    });
+
     test('persists an applied selection and removes the legacy setting', () => {
         let selected = ['en-US'];
         const settings = { spellCheckerUseSystemDefault: true };
@@ -195,10 +264,57 @@ describe('spell checker settings', () => {
             writeSettings,
         });
 
-        controller.setLanguages(['es']);
+        const result = controller.setLanguages(['es']);
 
         expect(writeSettings).toHaveBeenCalledWith({
             spellChecker: { mode: SPELL_CHECKER_MODE_LANGUAGES, languages: ['es'] },
         });
+        expect(result.persisted).toBe(true);
+    });
+
+    test('reports when an applied session change could not be persisted', () => {
+        let selected = ['en-US'];
+        const controller = createSpellCheckerController({
+            electronSession: {
+                availableSpellCheckerLanguages: ['en-US', 'es'],
+                getSpellCheckerLanguages: () => selected,
+                setSpellCheckerLanguages: languages => {
+                    selected = languages;
+                },
+            },
+            platform: 'linux',
+            readSettings: () => ({}),
+            writeSettings: () => false,
+        });
+
+        expect(controller.setLanguages(['es'])).toEqual(expect.objectContaining({
+            applied: true,
+            persisted: false,
+            selectedLanguages: ['es'],
+        }));
+    });
+
+    test('contains a persistence exception after applying the session change', () => {
+        const error = new Error('Settings disk is full');
+        const onError = mock(() => {});
+        const controller = createSpellCheckerController({
+            electronSession: {
+                availableSpellCheckerLanguages: ['es'],
+                getSpellCheckerLanguages: () => ['es'],
+                setSpellCheckerLanguages: mock(() => {}),
+            },
+            platform: 'linux',
+            readSettings: () => ({}),
+            writeSettings: () => {
+                throw error;
+            },
+            onError,
+        });
+
+        expect(controller.setLanguages(['es'])).toEqual(expect.objectContaining({
+            applied: true,
+            persisted: false,
+        }));
+        expect(onError).toHaveBeenCalledWith(error);
     });
 });

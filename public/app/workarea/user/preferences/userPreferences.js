@@ -1,5 +1,6 @@
 import {
     SYSTEM_DEFAULT,
+    getSpellCheckerPreferenceCategory,
     spellCheckerSettingsToValue,
 } from './spellCheckerPreferences.js';
 
@@ -70,14 +71,13 @@ export default class UserPreferences {
             const settings = await getSettings();
             if (!settings?.supported) return;
 
+            const category = getSpellCheckerPreferenceCategory(this.preferences);
             this.preferences.spellCheckerLanguages = {
                 title: _('Spell checker languages'),
                 help: _(
                     'Choose System default, or select no languages, to use the operating system language.'
                 ),
-                ...(this.preferences.locale?.category !== undefined
-                    ? { category: this.preferences.locale.category }
-                    : {}),
+                ...(category !== undefined ? { category } : {}),
                 value: spellCheckerSettingsToValue(settings),
                 type: 'multiselect',
                 options: {
@@ -237,12 +237,19 @@ export default class UserPreferences {
      *
      */
     async apiSaveProperties(preferences) {
+        // The modal owns the submitted object; keep it intact for callers and tests.
+        preferences = { ...preferences };
         const spellCheckerLanguages = preferences.spellCheckerLanguages;
         if (spellCheckerLanguages !== undefined) {
             try {
                 const settings = await window.electronAPI?.setSpellCheckerLanguages?.(spellCheckerLanguages);
                 if (settings && this.preferences.spellCheckerLanguages) {
                     this.preferences.spellCheckerLanguages.value = spellCheckerSettingsToValue(settings);
+                }
+                if (settings?.applied && settings.persisted === false) {
+                    console.warn(
+                        '[UserPreferences] Spell checker languages were applied for this session but could not be persisted.'
+                    );
                 }
             } catch (error) {
                 console.warn('[UserPreferences] Error saving spell checker preferences:', error);

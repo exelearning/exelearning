@@ -92,19 +92,18 @@ function createSpellCheckerController({
     systemLocale = '',
     readSettings,
     writeSettings,
+    onError = () => {},
 }) {
+    // Persisted state is loaded by applyPersisted(), where read/apply failures are
+    // contained so they cannot prevent the application from starting.
+    let effectiveSystemDefault = false;
+
     const getSettings = () => {
-        const settings = readSettings();
-        return getSpellCheckerSettings(
-            electronSession,
-            platform,
-            getPersistedSpellCheckerMode(settings)
-        );
+        return getSpellCheckerSettings(electronSession, platform, effectiveSystemDefault);
     };
 
     const setLanguages = (languages = []) => {
         const settings = readSettings();
-        const previousSystemDefault = getPersistedSpellCheckerMode(settings);
         const selection = normalizeSpellCheckerSelection(languages);
         const result = setSpellCheckerLanguages(
             electronSession,
@@ -115,26 +114,52 @@ function createSpellCheckerController({
 
         if (!result.applied) {
             return {
-                ...getSpellCheckerSettings(electronSession, platform, previousSystemDefault),
+                ...getSpellCheckerSettings(electronSession, platform, effectiveSystemDefault),
                 applied: false,
+                persisted: false,
             };
         }
 
+        effectiveSystemDefault = result.systemDefault;
         settings.spellChecker = {
             mode: selection.mode,
             languages: result.selectedLanguages,
         };
         delete settings.spellCheckerUseSystemDefault;
-        writeSettings(settings);
-        return result;
+        let persisted = false;
+        try {
+            persisted = writeSettings(settings) !== false;
+        } catch (error) {
+            onError(error);
+        }
+        return { ...result, persisted };
     };
 
     const applyPersisted = () => {
         if (platform === 'darwin') return getSpellCheckerSettings(electronSession, platform);
 
-        const selection = getPersistedSpellCheckerSelection(readSettings());
-        if (!selection) return null;
-        return setSpellCheckerLanguages(electronSession, selection, platform, systemLocale);
+        try {
+            const settings = readSettings();
+            const selection = getPersistedSpellCheckerSelection(settings);
+            if (!selection) {
+                effectiveSystemDefault = getPersistedSpellCheckerMode(settings);
+                return null;
+            }
+
+            const result = setSpellCheckerLanguages(electronSession, selection, platform, systemLocale);
+            effectiveSystemDefault = result.systemDefault;
+            return result;
+        } catch (error) {
+            effectiveSystemDefault = false;
+            onError(error);
+            return {
+                supported: true,
+                availableLanguages: [],
+                selectedLanguages: [],
+                systemDefault: false,
+                applied: false,
+            };
+        }
     };
 
     return { getSettings, setLanguages, applyPersisted };
