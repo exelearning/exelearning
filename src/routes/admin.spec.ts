@@ -16,6 +16,12 @@ import {
 import type { Kysely } from 'kysely';
 import type { Database, User, Project } from '../db/types';
 import type { FileHelper } from '../services/file-helper';
+import {
+    getAssetShard,
+    getProjectAssetsDirCandidates as getProjectAssetsDirCandidatesPure,
+    resolveAssetStoragePath as resolveAssetStoragePathPure,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
+} from '../utils/asset-paths';
 
 // ============================================================================
 // TEST HELPERS
@@ -71,7 +77,10 @@ const createMockFileHelper = (overrides: Partial<FileHelper> = {}): FileHelper =
     getPreviewExportPath: () => '/mock/preview',
     getOdeSessionDistDir: () => '/mock/dist',
     getOdeSessionTempDir: () => '/mock/tmp',
-    getProjectAssetsDir: (uuid: string) => `/mock/data/assets/${uuid}`,
+    getProjectAssetsDir: (uuid: string) => `/mock/data/assets/${getAssetShard(uuid)}/${uuid}`,
+    getProjectAssetsDirCandidates: (uuid: string) => getProjectAssetsDirCandidatesPure('/mock/data', uuid),
+    resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure('/mock/data', storagePath),
+    tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure('/mock/data', storagePath),
     getPublicDirectory: () => '/mock/public',
     getLibsDir: () => '/mock/public/libs',
     getThemesDir: () => '/mock/public/style/themes',
@@ -1183,9 +1192,12 @@ describe('Admin Routes', () => {
                 }),
             );
 
-            // Verify both project asset directories were cleaned up
-            expect(removedPaths.length).toBe(2);
+            // Verify both projects' asset directories were cleaned up, in the
+            // sharded location and the legacy unsharded location.
+            expect(removedPaths.length).toBe(4);
+            expect(removedPaths).toContain(`/mock/data/assets/${getAssetShard('project-uuid-1')}/project-uuid-1`);
             expect(removedPaths).toContain('/mock/data/assets/project-uuid-1');
+            expect(removedPaths).toContain(`/mock/data/assets/${getAssetShard('project-uuid-2')}/project-uuid-2`);
             expect(removedPaths).toContain('/mock/data/assets/project-uuid-2');
         });
 

@@ -20,7 +20,7 @@ import {
     deleteProjectWithRelatedData as deleteProjectWithRelatedDataDefault,
 } from '../../db/queries/projects';
 import { getFilesDir, remove, fileExists } from '../../services/file-helper';
-import * as path from 'path';
+import { getProjectAssetsDirCandidates } from '../../utils/asset-paths';
 
 export interface ProjectsCleanupResult {
     success: boolean;
@@ -71,25 +71,33 @@ const defaultDependencies: ProjectsCleanupDependencies = {
 };
 
 /**
- * Remove project assets from disk
+ * Remove project assets from disk. Removes both the sharded directory and the
+ * legacy unsharded directory, so projects created before the sharding
+ * migration are fully cleaned up.
  */
 async function cleanupProjectAssets(
     projectUuid: string,
     fileHelper: ProjectsCleanupDependencies['fileHelper'],
 ): Promise<{ removed: boolean; error?: string }> {
-    const assetsDir = path.join(fileHelper.getFilesDir(), 'assets', projectUuid);
+    const candidates = getProjectAssetsDirCandidates(fileHelper.getFilesDir(), projectUuid);
+    let removed = false;
+    const errors: string[] = [];
 
-    try {
-        const exists = await fileHelper.fileExists(assetsDir);
-        if (!exists) {
-            return { removed: false };
+    for (const assetsDir of candidates) {
+        try {
+            const exists = await fileHelper.fileExists(assetsDir);
+            if (!exists) {
+                continue;
+            }
+            await fileHelper.remove(assetsDir);
+            removed = true;
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            errors.push(`${assetsDir}: ${message}`);
         }
-        await fileHelper.remove(assetsDir);
-        return { removed: true };
-    } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return { removed: false, error: `${assetsDir}: ${message}` };
     }
+
+    return { removed, error: errors.length > 0 ? errors.join('; ') : undefined };
 }
 
 export async function execute(

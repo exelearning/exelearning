@@ -1391,14 +1391,17 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 const userProjects = await queries.findProjectsByOwnerId(db, userId);
                 const deletedProjectsCount = userProjects.length;
 
-                // Clean up asset directories for each project
+                // Clean up asset directories for each project (both the sharded
+                // and the legacy unsharded location, so pre-sharding projects
+                // are fully cleaned up).
                 // Continue even if some cleanups fail - the DB cascade will still remove records
                 for (const project of userProjects) {
                     try {
-                        const assetsDir = fileHelper.getProjectAssetsDir(project.uuid);
-                        const exists = await fileHelper.fileExists(assetsDir);
-                        if (exists) {
-                            await fileHelper.remove(assetsDir);
+                        for (const assetsDir of fileHelper.getProjectAssetsDirCandidates(project.uuid)) {
+                            const exists = await fileHelper.fileExists(assetsDir);
+                            if (exists) {
+                                await fileHelper.remove(assetsDir);
+                            }
                         }
                     } catch (err) {
                         console.error(`Failed to clean up assets for project ${project.uuid}:`, err);

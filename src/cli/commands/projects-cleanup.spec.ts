@@ -11,6 +11,7 @@ import {
 } from './projects-cleanup';
 import type { Kysely } from 'kysely';
 import type { Database, Project } from '../../db/types';
+import { getAssetShard } from '../../utils/asset-paths';
 
 describe('Projects Cleanup Command', () => {
     // Mock file helper
@@ -214,6 +215,26 @@ describe('Projects Cleanup Command', () => {
             const result = await execute([], { yes: true }, deps);
 
             expect(result.success).toBe(true);
+            expect(fileHelper._removedPaths).toContain('/data/assets/uuid-1');
+            expect(result.stats.diskCleaned).toBe(1);
+        });
+
+        it('should remove sharded and legacy asset directories when both exist', async () => {
+            const shard = getAssetShard('uuid-1');
+            const unsavedProjects = [createMockProject({ id: 1, uuid: 'uuid-1' })];
+            const existingPaths = new Set([`/data/assets/${shard}/uuid-1`, '/data/assets/uuid-1']);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths });
+
+            const deps: ProjectsCleanupDependencies = {
+                db: {} as Kysely<Database>,
+                queries: createMockQueries({ unsavedProjects }),
+                fileHelper,
+            };
+
+            const result = await execute([], { yes: true }, deps);
+
+            expect(result.success).toBe(true);
+            expect(fileHelper._removedPaths).toContain(`/data/assets/${shard}/uuid-1`);
             expect(fileHelper._removedPaths).toContain('/data/assets/uuid-1');
             expect(result.stats.diskCleaned).toBe(1);
         });

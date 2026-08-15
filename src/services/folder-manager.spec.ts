@@ -8,6 +8,11 @@ import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import * as assetQueries from '../db/queries/assets';
 import { createFolderManagerService, type FolderManagerService } from './folder-manager';
+import {
+    getAssetShard,
+    resolveAssetStoragePath as resolveAssetStoragePathPure,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
+} from '../utils/asset-paths';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as fflate from 'fflate';
@@ -40,14 +45,16 @@ describe('Folder Manager Service', () => {
             title: 'Test Project',
         });
 
-        // Create service with injected dependencies
+        // Create service with injected dependencies. The storage resolvers are
+        // bound to tempDir so stored FILES_DIR-relative paths resolve there.
         service = createFolderManagerService({
             db,
             queries: assetQueries,
             fs,
             path,
             fflate,
-            getProjectAssetsDir: (uuid: string) => path.join(tempDir, 'assets', uuid),
+            resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(tempDir, storagePath),
+            tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(tempDir, storagePath),
         });
 
         // Clean temp project directory
@@ -629,6 +636,16 @@ describe('Folder Manager Service', () => {
             expect(result.newAsset!.filename).toBe('test (copy).txt');
             expect(result.newAsset!.folder_path).toBe('docs');
             expect(result.newAsset!.client_id).not.toBe('original-id');
+
+            // The stored path is FILES_DIR-relative and sharded, and the copy
+            // physically exists at the resolved location.
+            const storedPath = result.newAsset!.storage_path;
+            expect(path.isAbsolute(storedPath)).toBe(false);
+            expect(storedPath.startsWith(`assets/${getAssetShard(testProjectUuid)}/${testProjectUuid}/`)).toBe(true);
+            expect(storedPath.endsWith('/test (copy).txt')).toBe(true);
+            const resolved = resolveAssetStoragePathPure(tempDir, storedPath);
+            expect(await fs.pathExists(resolved)).toBe(true);
+            expect(await fs.readFile(resolved, 'utf-8')).toBe('test content');
         });
 
         it('should increment copy number if copy exists', async () => {
@@ -705,6 +722,16 @@ describe('Folder Manager Service', () => {
             const indexAsset = await assetQueries.findAssetByPath(db, testProjectId, 'mywebsite', 'index.html');
             expect(indexAsset).toBeDefined();
             expect(indexAsset!.mime_type).toBe('text/html');
+
+            // Extracted assets are stored with FILES_DIR-relative sharded paths
+            // in the nested <clientId>/<filename> layout.
+            expect(path.isAbsolute(indexAsset!.storage_path)).toBe(false);
+            expect(
+                indexAsset!.storage_path.startsWith(`assets/${getAssetShard(testProjectUuid)}/${testProjectUuid}/`),
+            ).toBe(true);
+            expect(indexAsset!.storage_path.endsWith('/index.html')).toBe(true);
+            const resolvedIndex = resolveAssetStoragePathPure(tempDir, indexAsset!.storage_path);
+            expect(await fs.readFile(resolvedIndex, 'utf-8')).toBe('<html></html>');
 
             const cssAsset = await assetQueries.findAssetByPath(db, testProjectId, 'mywebsite/css', 'style.css');
             expect(cssAsset).toBeDefined();

@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { db } from '../../../db/client';
 import { findProjectByUuid } from '../../../db/queries';
-import { getFilesDir } from '../../../services/file-helper';
+import { getProjectAssetsDir } from '../../../services/file-helper';
 import { buildContentDisposition } from '../../../shared/http/headers';
 import {
     Html5Exporter,
@@ -181,9 +181,8 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                     const wrapper = new ServerYjsDocumentWrapper(ydoc, params.uuid);
                     const documentAdapter = new YjsDocumentAdapter(wrapper);
 
-                    // Create asset providers
-                    const filesDir = getFilesDir();
-                    const assetsPath = path.join(filesDir, 'assets', params.uuid);
+                    // Create asset providers (sharded project assets directory)
+                    const assetsPath = getProjectAssetsDir(project!.uuid);
 
                     const fsAssetProvider = new FileSystemAssetProvider(assetsPath);
                     const dbAssetProvider = new DatabaseAssetProvider(db, project!.id);

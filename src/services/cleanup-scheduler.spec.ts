@@ -15,6 +15,7 @@ import {
 } from './cleanup-scheduler';
 import type { Kysely } from 'kysely';
 import type { Database, Project } from '../db/types';
+import { getAssetShard } from '../utils/asset-paths';
 
 describe('Cleanup Scheduler', () => {
     // Helper to create mock projects
@@ -185,6 +186,47 @@ describe('Cleanup Scheduler', () => {
 
             expect(result.success).toBe(true);
             expect(result.diskCleaned).toBe(1);
+            expect(fileHelper._removedPaths).toContain('/data/assets/uuid-1');
+        });
+
+        it('should clean up sharded asset directories', async () => {
+            const shard = getAssetShard('uuid-1');
+            const unsavedProjects = [createMockProject({ id: 1, uuid: 'uuid-1' })];
+            const existingPaths = new Set([`/data/assets/${shard}/uuid-1`]);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths });
+            const queries = createMockQueries({ unsavedProjects });
+
+            const deps: CleanupSchedulerDeps = {
+                db: {} as Kysely<Database>,
+                queries,
+                fileHelper,
+            };
+
+            const result = await runCleanup(deps, DEFAULT_CONFIG);
+
+            expect(result.success).toBe(true);
+            expect(result.diskCleaned).toBe(1);
+            expect(fileHelper._removedPaths).toContain(`/data/assets/${shard}/uuid-1`);
+        });
+
+        it('should clean up both sharded and legacy asset directories when both exist', async () => {
+            const shard = getAssetShard('uuid-1');
+            const unsavedProjects = [createMockProject({ id: 1, uuid: 'uuid-1' })];
+            const existingPaths = new Set([`/data/assets/${shard}/uuid-1`, '/data/assets/uuid-1']);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths });
+            const queries = createMockQueries({ unsavedProjects });
+
+            const deps: CleanupSchedulerDeps = {
+                db: {} as Kysely<Database>,
+                queries,
+                fileHelper,
+            };
+
+            const result = await runCleanup(deps, DEFAULT_CONFIG);
+
+            expect(result.success).toBe(true);
+            expect(result.diskCleaned).toBe(1);
+            expect(fileHelper._removedPaths).toContain(`/data/assets/${shard}/uuid-1`);
             expect(fileHelper._removedPaths).toContain('/data/assets/uuid-1');
         });
 
