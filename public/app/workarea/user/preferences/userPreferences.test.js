@@ -128,6 +128,11 @@ describe('UserPreferences', () => {
 
   describe('desktop spell checker preferences', () => {
     it('adds the available languages on Windows and Linux desktop builds', async () => {
+      for (const preference of Object.values(
+        globalThis.eXeLearning.app.api.parameters.userPreferencesConfig
+      )) {
+        preference.category = 'General settings';
+      }
       window.electronAPI = {
         getSpellCheckerSettings: vi.fn().mockResolvedValue({
           supported: true,
@@ -146,6 +151,24 @@ describe('UserPreferences', () => {
         options: { __system_default__: 'System default', 'en-US': 'en-US', es: 'es' },
       }));
       delete window.electronAPI;
+    });
+
+    it('keeps the spell checker uncategorized when fallback preferences have no categories', async () => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({});
+      window.electronAPI = {
+        getSpellCheckerSettings: vi.fn().mockResolvedValue({
+          supported: true,
+          availableLanguages: ['en-US'],
+          selectedLanguages: ['en-US'],
+          systemDefault: false,
+        }),
+      };
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences.locale.category).toBeUndefined();
+      expect(userPreferences.preferences.spellCheckerLanguages.category).toBeUndefined();
     });
 
     it('continues saving other preferences when the desktop IPC save fails', async () => {

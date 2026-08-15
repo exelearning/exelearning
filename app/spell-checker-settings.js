@@ -67,6 +67,86 @@ function setSpellCheckerLanguages(
     return { ...getSpellCheckerSettings(electronSession, platform, useSystemDefault && applied), applied };
 }
 
+function getPersistedSpellCheckerMode(settings = {}) {
+    if (settings.spellChecker) {
+        return settings.spellChecker.mode === SPELL_CHECKER_MODE_SYSTEM;
+    }
+    return settings.spellCheckerUseSystemDefault !== false;
+}
+
+function getPersistedSpellCheckerSelection(settings = {}) {
+    if (settings.spellChecker?.mode === SPELL_CHECKER_MODE_LANGUAGES) {
+        return Array.isArray(settings.spellChecker.languages) && settings.spellChecker.languages.length > 0
+            ? settings.spellChecker.languages
+            : null;
+    }
+    if (settings.spellChecker?.mode === SPELL_CHECKER_MODE_SYSTEM || settings.spellCheckerUseSystemDefault === true) {
+        return [SYSTEM_DEFAULT];
+    }
+    return null;
+}
+
+function createSpellCheckerController({
+    electronSession,
+    platform = process.platform,
+    systemLocale = '',
+    readSettings,
+    writeSettings,
+}) {
+    const getSettings = () => {
+        const settings = readSettings();
+        return getSpellCheckerSettings(
+            electronSession,
+            platform,
+            getPersistedSpellCheckerMode(settings)
+        );
+    };
+
+    const setLanguages = (languages = []) => {
+        const settings = readSettings();
+        const previousSystemDefault = getPersistedSpellCheckerMode(settings);
+        const selection = normalizeSpellCheckerSelection(languages);
+        const result = setSpellCheckerLanguages(
+            electronSession,
+            selection.mode === SPELL_CHECKER_MODE_SYSTEM ? [SYSTEM_DEFAULT] : selection.languages,
+            platform,
+            systemLocale
+        );
+
+        if (!result.applied) {
+            return {
+                ...getSpellCheckerSettings(electronSession, platform, previousSystemDefault),
+                applied: false,
+            };
+        }
+
+        settings.spellChecker = {
+            mode: selection.mode,
+            languages: result.selectedLanguages,
+        };
+        delete settings.spellCheckerUseSystemDefault;
+        writeSettings(settings);
+        return result;
+    };
+
+    const applyPersisted = () => {
+        if (platform === 'darwin') return getSpellCheckerSettings(electronSession, platform);
+
+        const selection = getPersistedSpellCheckerSelection(readSettings());
+        if (!selection) return null;
+        return setSpellCheckerLanguages(electronSession, selection, platform, systemLocale);
+    };
+
+    return { getSettings, setLanguages, applyPersisted };
+}
+
+function registerSpellCheckerIpc(ipcMain, controller) {
+    ipcMain.handle('app:getSpellCheckerSettings', async () => controller.getSettings());
+    ipcMain.handle('app:setSpellCheckerLanguages', async (_event, languages = []) =>
+        controller.setLanguages(languages)
+    );
+}
+
 module.exports = {
     SYSTEM_DEFAULT,
     SPELL_CHECKER_MODE_SYSTEM,
@@ -76,4 +156,8 @@ module.exports = {
     resolveSystemSpellCheckerLanguages,
     getSpellCheckerSettings,
     setSpellCheckerLanguages,
+    getPersistedSpellCheckerMode,
+    getPersistedSpellCheckerSelection,
+    createSpellCheckerController,
+    registerSpellCheckerIpc,
 };

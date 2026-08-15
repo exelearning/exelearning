@@ -75,7 +75,9 @@ export default class UserPreferences {
                 help: _(
                     'Choose System default, or select no languages, to use the operating system language.'
                 ),
-                category: this.preferences.locale?.category || _('General settings'),
+                ...(this.preferences.locale?.category !== undefined
+                    ? { category: this.preferences.locale.category }
+                    : {}),
                 value: spellCheckerSettingsToValue(settings),
                 type: 'multiselect',
                 options: {

@@ -7,6 +7,9 @@ const {
     resolveSystemSpellCheckerLanguages,
     getSpellCheckerSettings,
     setSpellCheckerLanguages,
+    getPersistedSpellCheckerSelection,
+    createSpellCheckerController,
+    registerSpellCheckerIpc,
 } = require('./spell-checker-settings');
 
 describe('spell checker settings', () => {
@@ -99,5 +102,103 @@ describe('spell checker settings', () => {
         expect(electronSession.setSpellCheckerLanguages).not.toHaveBeenCalled();
         expect(result.systemDefault).toBe(false);
         expect(result.applied).toBe(false);
+    });
+
+    test('ignores an invalid persisted explicit-language selection at startup', () => {
+        expect(getPersistedSpellCheckerSelection({
+            spellChecker: { mode: SPELL_CHECKER_MODE_LANGUAGES, languages: [] },
+        })).toBeNull();
+    });
+
+    test('registers pure-read and write IPC handlers', async () => {
+        const handlers = new Map();
+        const ipcMain = { handle: mock((channel, handler) => handlers.set(channel, handler)) };
+        const controller = {
+            getSettings: mock(() => ({ supported: true })),
+            setLanguages: mock(languages => ({ selectedLanguages: languages })),
+        };
+
+        registerSpellCheckerIpc(ipcMain, controller);
+
+        expect(await handlers.get('app:getSpellCheckerSettings')()).toEqual({ supported: true });
+        expect(await handlers.get('app:setSpellCheckerLanguages')(null, ['es'])).toEqual({
+            selectedLanguages: ['es'],
+        });
+        expect(controller.setLanguages).toHaveBeenCalledWith(['es']);
+    });
+
+    test('restores persisted languages once and keeps the getter free of session writes', () => {
+        let selected = ['en-US'];
+        const electronSession = {
+            availableSpellCheckerLanguages: ['en-US', 'es'],
+            getSpellCheckerLanguages: () => selected,
+            setSpellCheckerLanguages: mock(languages => {
+                selected = languages;
+            }),
+        };
+        const controller = createSpellCheckerController({
+            electronSession,
+            platform: 'linux',
+            systemLocale: 'en-US',
+            readSettings: () => ({
+                spellChecker: { mode: SPELL_CHECKER_MODE_LANGUAGES, languages: ['es'] },
+            }),
+            writeSettings: mock(() => {}),
+        });
+
+        controller.applyPersisted();
+        expect(electronSession.setSpellCheckerLanguages).toHaveBeenCalledTimes(1);
+        expect(electronSession.setSpellCheckerLanguages).toHaveBeenLastCalledWith(['es']);
+
+        expect(controller.getSettings().selectedLanguages).toEqual(['es']);
+        expect(electronSession.setSpellCheckerLanguages).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not persist or report an unavailable requested mode', () => {
+        const writeSettings = mock(() => {});
+        const electronSession = {
+            availableSpellCheckerLanguages: [],
+            getSpellCheckerLanguages: () => [],
+            setSpellCheckerLanguages: mock(() => {}),
+        };
+        const controller = createSpellCheckerController({
+            electronSession,
+            platform: 'linux',
+            systemLocale: 'xx',
+            readSettings: () => ({
+                spellChecker: { mode: SPELL_CHECKER_MODE_LANGUAGES, languages: ['es'] },
+            }),
+            writeSettings,
+        });
+
+        const result = controller.setLanguages([SYSTEM_DEFAULT]);
+
+        expect(result).toEqual(expect.objectContaining({ systemDefault: false, applied: false }));
+        expect(writeSettings).not.toHaveBeenCalled();
+        expect(electronSession.setSpellCheckerLanguages).not.toHaveBeenCalled();
+    });
+
+    test('persists an applied selection and removes the legacy setting', () => {
+        let selected = ['en-US'];
+        const settings = { spellCheckerUseSystemDefault: true };
+        const writeSettings = mock(() => {});
+        const controller = createSpellCheckerController({
+            electronSession: {
+                availableSpellCheckerLanguages: ['en-US', 'es'],
+                getSpellCheckerLanguages: () => selected,
+                setSpellCheckerLanguages: languages => {
+                    selected = languages;
+                },
+            },
+            platform: 'win32',
+            readSettings: () => settings,
+            writeSettings,
+        });
+
+        controller.setLanguages(['es']);
+
+        expect(writeSettings).toHaveBeenCalledWith({
+            spellChecker: { mode: SPELL_CHECKER_MODE_LANGUAGES, languages: ['es'] },
+        });
     });
 });
