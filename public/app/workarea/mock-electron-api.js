@@ -67,11 +67,13 @@ window.electronAPI = {
         supported: true,
         availableLanguages: ['en-US', 'es'],
         selectedLanguages: [],
+        systemDefault: true,
     }),
     setSpellCheckerLanguages: (languages) => Promise.resolve({
         supported: true,
         availableLanguages: ['en-US', 'es'],
-        selectedLanguages: languages,
+        selectedLanguages: languages.filter(language => language !== '__system_default__'),
+        systemDefault: languages.length === 0 || languages.includes('__system_default__'),
     }),
     notifyRendererReadyForOpenFile: () => {
         Logger.log('MOCK [notifyRendererReadyForOpenFile] called.');

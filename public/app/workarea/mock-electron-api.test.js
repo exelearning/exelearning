@@ -43,6 +43,7 @@ describe('mock-electron-api.js', () => {
             supported: true,
             availableLanguages: ['en-US', 'es'],
             selectedLanguages: [],
+            systemDefault: true,
         });
         await expect(window.electronAPI.setSpellCheckerLanguages(['es'])).resolves.toEqual(
             expect.objectContaining({ selectedLanguages: ['es'] })

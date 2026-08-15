@@ -16,6 +16,9 @@ const {
 const { checkLink } = require('./link-check');
 const {
     SYSTEM_DEFAULT,
+    SPELL_CHECKER_MODE_SYSTEM,
+    SPELL_CHECKER_MODE_LANGUAGES,
+    normalizeSpellCheckerSelection,
     getSpellCheckerSettings,
     setSpellCheckerLanguages,
 } = require('./spell-checker-settings');
@@ -1375,6 +1378,20 @@ app.on('new-window-for-tab', () => {
 });
 
 app.whenReady().then(() => {
+    const startupSettings = readSettings();
+    const persistedSpellChecker = startupSettings.spellChecker;
+    const legacySystemDefault = startupSettings.spellCheckerUseSystemDefault;
+    if (process.platform !== 'darwin' && (persistedSpellChecker || legacySystemDefault === true)) {
+        const startupSelection = persistedSpellChecker?.mode === SPELL_CHECKER_MODE_LANGUAGES
+            ? persistedSpellChecker.languages
+            : [SYSTEM_DEFAULT];
+        setSpellCheckerLanguages(
+            session.defaultSession,
+            startupSelection,
+            process.platform,
+            app.getSystemLocale()
+        );
+    }
     // A fresh process has no file "currently associated" with the window
     // yet — clear the on-disk slot so a leftover filename from a previous
     // run does not shadow the title-derived suggestedName on first Save.
@@ -1536,31 +1553,28 @@ ipcMain.handle('app:getMemoryUsage', async (e) => {
 
 ipcMain.handle('app:getSpellCheckerSettings', async () => {
     const settings = readSettings();
-    const useSystemDefault = settings.spellCheckerUseSystemDefault !== false;
-    if (useSystemDefault && process.platform !== 'darwin') {
-        return setSpellCheckerLanguages(
-            session.defaultSession,
-            [SYSTEM_DEFAULT],
-            process.platform,
-            app.getSystemLocale()
-        );
-    }
+    const useSystemDefault = settings.spellChecker
+        ? settings.spellChecker.mode !== SPELL_CHECKER_MODE_LANGUAGES
+        : settings.spellCheckerUseSystemDefault !== false;
     return getSpellCheckerSettings(session.defaultSession, process.platform, useSystemDefault);
 });
 
 ipcMain.handle('app:setSpellCheckerLanguages', async (_e, languages = []) => {
-    const useSystemDefault = !Array.isArray(languages)
-        || languages.length === 0
-        || languages.includes(SYSTEM_DEFAULT);
-    const settings = readSettings();
-    settings.spellCheckerUseSystemDefault = useSystemDefault;
-    writeSettings(settings);
-    return setSpellCheckerLanguages(
+    const selection = normalizeSpellCheckerSelection(languages);
+    const result = setSpellCheckerLanguages(
         session.defaultSession,
-        languages,
+        selection.mode === SPELL_CHECKER_MODE_SYSTEM ? [SYSTEM_DEFAULT] : selection.languages,
         process.platform,
         app.getSystemLocale()
     );
+    const settings = readSettings();
+    settings.spellChecker = {
+        mode: result.systemDefault ? SPELL_CHECKER_MODE_SYSTEM : SPELL_CHECKER_MODE_LANGUAGES,
+        languages: result.selectedLanguages,
+    };
+    delete settings.spellCheckerUseSystemDefault;
+    writeSettings(settings);
+    return result;
 });
 
 // Close the window that initiated the request (File > Close). The unsaved

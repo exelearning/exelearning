@@ -6,6 +6,19 @@ function filterSpellCheckerLanguages(selectedLanguages, availableLanguages) {
 }
 
 const SYSTEM_DEFAULT = '__system_default__';
+const SPELL_CHECKER_MODE_SYSTEM = 'system';
+const SPELL_CHECKER_MODE_LANGUAGES = 'languages';
+
+function normalizeSpellCheckerSelection(selectedLanguages) {
+    if (!Array.isArray(selectedLanguages) || selectedLanguages.length === 0) {
+        return { mode: SPELL_CHECKER_MODE_SYSTEM, languages: [] };
+    }
+
+    const languages = selectedLanguages.filter(language => language !== SYSTEM_DEFAULT);
+    return languages.length > 0
+        ? { mode: SPELL_CHECKER_MODE_LANGUAGES, languages }
+        : { mode: SPELL_CHECKER_MODE_SYSTEM, languages: [] };
+}
 
 function resolveSystemSpellCheckerLanguages(systemLocale, availableLanguages) {
     if (!Array.isArray(availableLanguages) || availableLanguages.length === 0) return [];
@@ -22,7 +35,9 @@ function resolveSystemSpellCheckerLanguages(systemLocale, availableLanguages) {
 }
 
 function getSpellCheckerSettings(electronSession, platform = process.platform, systemDefault = true) {
-    if (platform === 'darwin') return { supported: false, availableLanguages: [], selectedLanguages: [] };
+    if (platform === 'darwin') {
+        return { supported: false, availableLanguages: [], selectedLanguages: [], systemDefault: true };
+    }
 
     const availableLanguages = electronSession.availableSpellCheckerLanguages || [];
     const selectedLanguages = filterSpellCheckerLanguages(
@@ -42,18 +57,21 @@ function setSpellCheckerLanguages(
     if (platform === 'darwin') return getSpellCheckerSettings(electronSession, platform);
 
     const availableLanguages = electronSession.availableSpellCheckerLanguages || [];
-    const useSystemDefault = !Array.isArray(selectedLanguages)
-        || selectedLanguages.length === 0
-        || selectedLanguages.includes(SYSTEM_DEFAULT);
+    const selection = normalizeSpellCheckerSelection(selectedLanguages);
+    const useSystemDefault = selection.mode === SPELL_CHECKER_MODE_SYSTEM;
     const filtered = useSystemDefault
         ? resolveSystemSpellCheckerLanguages(systemLocale, availableLanguages)
-        : filterSpellCheckerLanguages(selectedLanguages, availableLanguages);
-    if (filtered.length > 0) electronSession.setSpellCheckerLanguages(filtered);
-    return getSpellCheckerSettings(electronSession, platform, useSystemDefault);
+        : filterSpellCheckerLanguages(selection.languages, availableLanguages);
+    const applied = filtered.length > 0;
+    if (applied) electronSession.setSpellCheckerLanguages(filtered);
+    return { ...getSpellCheckerSettings(electronSession, platform, useSystemDefault && applied), applied };
 }
 
 module.exports = {
     SYSTEM_DEFAULT,
+    SPELL_CHECKER_MODE_SYSTEM,
+    SPELL_CHECKER_MODE_LANGUAGES,
+    normalizeSpellCheckerSelection,
     filterSpellCheckerLanguages,
     resolveSystemSpellCheckerLanguages,
     getSpellCheckerSettings,

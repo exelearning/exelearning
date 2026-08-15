@@ -1,3 +1,8 @@
+import {
+    SYSTEM_DEFAULT,
+    spellCheckerSettingsToValue,
+} from './spellCheckerPreferences.js';
+
 export default class UserPreferences {
     constructor(manager) {
         this.manager = manager;
@@ -68,14 +73,13 @@ export default class UserPreferences {
             this.preferences.spellCheckerLanguages = {
                 title: _('Spell checker languages'),
                 help: _(
-                    'Choose System default to use the operating system language.'
+                    'Choose System default, or select no languages, to use the operating system language.'
                 ),
-                value: settings.systemDefault
-                    ? ['__system_default__']
-                    : settings.selectedLanguages,
+                category: this.preferences.locale?.category || _('General settings'),
+                value: spellCheckerSettingsToValue(settings),
                 type: 'multiselect',
                 options: {
-                    __system_default__: _('System default'),
+                    [SYSTEM_DEFAULT]: _('System default'),
                     ...Object.fromEntries(
                         settings.availableLanguages.map(language => [language, language])
                     ),
@@ -233,10 +237,14 @@ export default class UserPreferences {
     async apiSaveProperties(preferences) {
         const spellCheckerLanguages = preferences.spellCheckerLanguages;
         if (spellCheckerLanguages !== undefined) {
-            const settings = await window.electronAPI?.setSpellCheckerLanguages?.(spellCheckerLanguages);
-            this.preferences.spellCheckerLanguages.value = settings?.systemDefault
-                ? ['__system_default__']
-                : settings?.selectedLanguages || spellCheckerLanguages;
+            try {
+                const settings = await window.electronAPI?.setSpellCheckerLanguages?.(spellCheckerLanguages);
+                if (settings && this.preferences.spellCheckerLanguages) {
+                    this.preferences.spellCheckerLanguages.value = spellCheckerSettingsToValue(settings);
+                }
+            } catch (error) {
+                console.warn('[UserPreferences] Error saving spell checker preferences:', error);
+            }
             delete preferences.spellCheckerLanguages;
         }
 

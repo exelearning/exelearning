@@ -141,10 +141,24 @@ describe('UserPreferences', () => {
 
       expect(userPreferences.preferences.spellCheckerLanguages).toEqual(expect.objectContaining({
         type: 'multiselect',
+        category: 'General settings',
         value: ['es'],
         options: { __system_default__: 'System default', 'en-US': 'en-US', es: 'es' },
       }));
       delete window.electronAPI;
+    });
+
+    it('continues saving other preferences when the desktop IPC save fails', async () => {
+      window.electronAPI = {
+        setSpellCheckerLanguages: vi.fn().mockRejectedValue(new Error('IPC unavailable')),
+      };
+      userPreferences.preferences = {
+        spellCheckerLanguages: { value: ['es'] },
+        advancedMode: { value: 'false' },
+      };
+      await userPreferences.apiSaveProperties({ spellCheckerLanguages: ['es'], advancedMode: 'true' });
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith({ advancedMode: 'true' });
+      expect(mockManager.reloadMode).toHaveBeenCalledWith('true');
     });
 
     it('does not add a selector when language selection is OS-controlled', async () => {

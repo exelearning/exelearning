@@ -1,6 +1,8 @@
 const { describe, expect, test, mock } = require('bun:test');
 const {
     SYSTEM_DEFAULT,
+    SPELL_CHECKER_MODE_LANGUAGES,
+    normalizeSpellCheckerSelection,
     filterSpellCheckerLanguages,
     resolveSystemSpellCheckerLanguages,
     getSpellCheckerSettings,
@@ -14,6 +16,13 @@ describe('spell checker settings', () => {
             'en-US',
         ]);
         expect(filterSpellCheckerLanguages(null, ['es'])).toEqual([]);
+    });
+
+    test('prefers concrete languages when the system sentinel is also submitted', () => {
+        expect(normalizeSpellCheckerSelection([SYSTEM_DEFAULT, 'es'])).toEqual({
+            mode: SPELL_CHECKER_MODE_LANGUAGES,
+            languages: ['es'],
+        });
     });
 
     test('returns available and valid selected languages on Windows and Linux', () => {
@@ -42,6 +51,7 @@ describe('spell checker settings', () => {
             supported: false,
             availableLanguages: [],
             selectedLanguages: [],
+            systemDefault: true,
         });
     });
 
@@ -85,7 +95,9 @@ describe('spell checker settings', () => {
             setSpellCheckerLanguages: mock(() => {}),
         };
 
-        setSpellCheckerLanguages(electronSession, [SYSTEM_DEFAULT], 'linux', 'es-ES');
+        const result = setSpellCheckerLanguages(electronSession, [SYSTEM_DEFAULT], 'linux', 'es-ES');
         expect(electronSession.setSpellCheckerLanguages).not.toHaveBeenCalled();
+        expect(result.systemDefault).toBe(false);
+        expect(result.applied).toBe(false);
     });
 });
