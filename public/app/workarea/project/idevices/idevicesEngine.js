@@ -1156,10 +1156,14 @@ export default class IdevicesEngine {
             // Set block data to idevice
             this.setBlockDataToIdeviceNode(ideviceNode, ideviceBlockNode);
             // Insert block into node content
-            container.insertBefore(
-                ideviceBlockNodeContent,
-                this.draggedElement
-            );
+            // A drop race or Yjs re-render can detach the dragged element from
+            // the container; insertBefore with a stale reference would throw
+            // NotFoundError, so fall back to appending at the end (null ref)
+            const dragRef =
+                this.draggedElement?.parentNode === container
+                    ? this.draggedElement
+                    : null;
+            container.insertBefore(ideviceBlockNodeContent, dragRef);
         } else {
             // Add only the idevice
             let ideviceBlockNode = this.getBlockById(container.id);
@@ -1170,7 +1174,13 @@ export default class IdevicesEngine {
                 // Set block ids
                 this.setBlockDataToIdeviceNode(ideviceNode, ideviceBlockNode);
                 // Insert idevice into block's box-content wrapper
-                ideviceBlockNode.boxContent.insertBefore(ideviceNodeContent, this.draggedElement);
+                // Same stale-reference guard as above: append when the dragged
+                // element is no longer inside the block's box-content
+                const dragRef =
+                    this.draggedElement?.parentNode === ideviceBlockNode.boxContent
+                        ? this.draggedElement
+                        : null;
+                ideviceBlockNode.boxContent.insertBefore(ideviceNodeContent, dragRef);
             }
         }
         // Move window to idevice element
