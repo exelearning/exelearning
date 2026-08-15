@@ -7,7 +7,7 @@ function filterSpellCheckerLanguages(selectedLanguages, availableLanguages) {
 
 const SYSTEM_DEFAULT = '__system_default__';
 
-function resolveSystemSpellCheckerLanguages(systemLocale, availableLanguages, currentLanguages = []) {
+function resolveSystemSpellCheckerLanguages(systemLocale, availableLanguages) {
     if (!Array.isArray(availableLanguages) || availableLanguages.length === 0) return [];
 
     const normalizedLocale = String(systemLocale || '').replace('_', '-').toLowerCase();
@@ -15,9 +15,10 @@ function resolveSystemSpellCheckerLanguages(systemLocale, availableLanguages, cu
     const exactMatch = availableLanguages.find(language => language.toLowerCase() === normalizedLocale);
     const baseMatch = availableLanguages.find(language => language.toLowerCase() === baseLocale);
     const regionalMatch = availableLanguages.find(language => language.toLowerCase().startsWith(`${baseLocale}-`));
-    const current = filterSpellCheckerLanguages(currentLanguages, availableLanguages);
+    const electronFallback = availableLanguages.find(language => language.toLowerCase() === 'en-us');
 
-    return [exactMatch || baseMatch || regionalMatch || current[0] || availableLanguages[0]];
+    const resolvedLanguage = exactMatch || baseMatch || regionalMatch || electronFallback;
+    return resolvedLanguage ? [resolvedLanguage] : [];
 }
 
 function getSpellCheckerSettings(electronSession, platform = process.platform, systemDefault = true) {
@@ -45,11 +46,7 @@ function setSpellCheckerLanguages(
         || selectedLanguages.length === 0
         || selectedLanguages.includes(SYSTEM_DEFAULT);
     const filtered = useSystemDefault
-        ? resolveSystemSpellCheckerLanguages(
-            systemLocale,
-            availableLanguages,
-            electronSession.getSpellCheckerLanguages()
-        )
+        ? resolveSystemSpellCheckerLanguages(systemLocale, availableLanguages)
         : filterSpellCheckerLanguages(selectedLanguages, availableLanguages);
     if (filtered.length > 0) electronSession.setSpellCheckerLanguages(filtered);
     return getSpellCheckerSettings(electronSession, platform, useSystemDefault);

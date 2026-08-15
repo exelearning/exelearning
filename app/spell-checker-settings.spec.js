@@ -33,7 +33,8 @@ describe('spell checker settings', () => {
     test('resolves the system locale to an available dictionary', () => {
         expect(resolveSystemSpellCheckerLanguages('es-ES', ['en-US', 'es'])).toEqual(['es']);
         expect(resolveSystemSpellCheckerLanguages('pt-BR', ['en-US', 'pt-PT'])).toEqual(['pt-PT']);
-        expect(resolveSystemSpellCheckerLanguages('xx', ['en-US', 'es'], ['es'])).toEqual(['es']);
+        expect(resolveSystemSpellCheckerLanguages('xx', ['es', 'en-US'])).toEqual(['en-US']);
+        expect(resolveSystemSpellCheckerLanguages('xx', ['es'])).toEqual([]);
     });
 
     test('leaves spell checker language selection to macOS', () => {
