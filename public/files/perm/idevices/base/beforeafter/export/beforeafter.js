@@ -369,12 +369,16 @@ var $eXeBeforeAfter = {
 
     initComparison: function (number, instance) {
         const mOptions = $eXeBeforeAfter.options[instance],
-            container = document.querySelector('#bfafpContainerBA-' + instance),
-            overlay = container.querySelector('.BFAFP-Overlay'),
+            container = document.querySelector('#bfafpContainerBA-' + instance);
+
+        // Called from a delayed setTimeout: the activity may already be gone
+        if (!mOptions || !container) return;
+
+        const overlay = container.querySelector('.BFAFP-Overlay'),
             slider = container.querySelector('.BFAFP-Slider'),
             card = mOptions.cardsGame[number];
 
-        if (!overlay || !slider) return;
+        if (!overlay || !slider || !card) return;
 
         const isVertical = card.vertical;
 
