@@ -172,9 +172,32 @@ describe('ModalProperties', () => {
         expect(el.querySelectorAll('option').length).toBe(2);
         expect(el.value).toBe('v2');
     });
+
+    it('should create a multi-select with selected options', () => {
+      const prop = {
+        type: 'multiselect',
+        value: ['es', 'fr'],
+        options: { 'en-US': 'en-US', es: 'es', fr: 'fr' },
+      };
+      const el = modal.makeRowValueElement('id', 'name', prop);
+
+      expect(el.multiple).toBe(true);
+      expect(Array.from(el.selectedOptions, option => option.value)).toEqual(['es', 'fr']);
+    });
   });
 
   describe('getModalPropertiesData', () => {
+    it('should collect all selected multi-select values', () => {
+      modal.modalElementBody.innerHTML = `
+        <select class="property-value" property="languages" data-type="multiselect" multiple>
+          <option value="en-US" selected>en-US</option>
+          <option value="es">es</option>
+          <option value="fr" selected>fr</option>
+        </select>`;
+
+      expect(modal.getModalPropertiesData()).toEqual({ languages: ['en-US', 'fr'] });
+    });
+
     it('should collect data from inputs', () => {
       const properties = {
         p1: { title: 'P1', type: 'text', value: 'v1', category: 'C1' },

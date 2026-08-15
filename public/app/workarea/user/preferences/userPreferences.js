@@ -53,6 +53,32 @@ export default class UserPreferences {
             // Static mode: load from localStorage via adapter
             await this.loadStaticPreferences();
         }
+
+        await this.loadSpellCheckerPreferences();
+    }
+
+    async loadSpellCheckerPreferences() {
+        const getSettings = window.electronAPI?.getSpellCheckerSettings;
+        if (!getSettings) return;
+
+        try {
+            const settings = await getSettings();
+            if (!settings?.supported) return;
+
+            this.preferences.spellCheckerLanguages = {
+                title: _('Spell checker languages'),
+                help: _(
+                    'Select no languages to use the operating system default.'
+                ),
+                value: settings.selectedLanguages,
+                type: 'multiselect',
+                options: Object.fromEntries(
+                    settings.availableLanguages.map(language => [language, language])
+                ),
+            };
+        } catch (error) {
+            console.warn('[UserPreferences] Error loading spell checker preferences:', error);
+        }
     }
 
     /**
@@ -200,6 +226,13 @@ export default class UserPreferences {
      *
      */
     async apiSaveProperties(preferences) {
+        const spellCheckerLanguages = preferences.spellCheckerLanguages;
+        if (spellCheckerLanguages !== undefined) {
+            await window.electronAPI?.setSpellCheckerLanguages?.(spellCheckerLanguages);
+            this.preferences.spellCheckerLanguages.value = spellCheckerLanguages;
+            delete preferences.spellCheckerLanguages;
+        }
+
         // Update array of preferences
         for (let [key, value] of Object.entries(preferences)) {
             this.preferences[key].value = value;

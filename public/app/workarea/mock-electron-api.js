@@ -63,6 +63,16 @@ window.electronAPI = {
             },
         });
     },
+    getSpellCheckerSettings: () => Promise.resolve({
+        supported: true,
+        availableLanguages: ['en-US', 'es'],
+        selectedLanguages: [],
+    }),
+    setSpellCheckerLanguages: (languages) => Promise.resolve({
+        supported: true,
+        availableLanguages: ['en-US', 'es'],
+        selectedLanguages: languages,
+    }),
     notifyRendererReadyForOpenFile: () => {
         Logger.log('MOCK [notifyRendererReadyForOpenFile] called.');
     },

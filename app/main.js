@@ -14,6 +14,10 @@ const {
     windowHasUnsavedChanges,
 } = require('./editor-window-close-guard');
 const { checkLink } = require('./link-check');
+const {
+    getSpellCheckerSettings,
+    setSpellCheckerLanguages,
+} = require('./spell-checker-settings');
 const contextMenu = require('electron-context-menu').default;
 
 // Register custom protocol BEFORE app.whenReady()
@@ -1527,6 +1531,14 @@ ipcMain.handle('app:getMemoryUsage', async (e) => {
         process: process.memoryUsage(),
         renderer,
     };
+});
+
+ipcMain.handle('app:getSpellCheckerSettings', async () => {
+    return getSpellCheckerSettings(session.defaultSession);
+});
+
+ipcMain.handle('app:setSpellCheckerLanguages', async (_e, languages = []) => {
+    return setSpellCheckerLanguages(session.defaultSession, languages);
 });
 
 // Close the window that initiated the request (File > Close). The unsaved

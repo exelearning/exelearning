@@ -677,6 +677,19 @@ export default class ModalProperties extends Modal {
                     valueElement.append(optionElement);
                 }
                 break;
+            case 'multiselect':
+                valueElement = document.createElement('select');
+                valueElement.multiple = true;
+                for (const [value, text] of Object.entries(property.options)) {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = value;
+                    optionElement.textContent = text;
+                    optionElement.selected =
+                        Array.isArray(property.value) &&
+                        property.value.includes(value);
+                    valueElement.append(optionElement);
+                }
+                break;
             default:
                 valueElement = document.createElement('div');
                 break;
@@ -767,6 +780,11 @@ export default class ModalProperties extends Modal {
                     break;
                 case 'select':
                     value = property.selectedOptions[0].value.trim();
+                    break;
+                case 'multiselect':
+                    value = Array.from(property.selectedOptions, (option) =>
+                        option.value.trim()
+                    );
                     break;
                 case 'text':
                 case 'date':
