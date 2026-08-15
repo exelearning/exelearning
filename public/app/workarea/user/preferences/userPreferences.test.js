@@ -133,6 +133,7 @@ describe('UserPreferences', () => {
           supported: true,
           availableLanguages: ['en-US', 'es'],
           selectedLanguages: ['es'],
+          systemDefault: false,
         }),
       };
 
@@ -141,7 +142,7 @@ describe('UserPreferences', () => {
       expect(userPreferences.preferences.spellCheckerLanguages).toEqual(expect.objectContaining({
         type: 'multiselect',
         value: ['es'],
-        options: { 'en-US': 'en-US', es: 'es' },
+        options: { __system_default__: 'System default', 'en-US': 'en-US', es: 'es' },
       }));
       delete window.electronAPI;
     });
@@ -417,7 +418,10 @@ describe('UserPreferences', () => {
     });
 
     it('saves spell checker languages through Electron instead of localStorage', async () => {
-      window.electronAPI = { setSpellCheckerLanguages: vi.fn().mockResolvedValue({}) };
+      window.electronAPI = { setSpellCheckerLanguages: vi.fn().mockResolvedValue({
+        systemDefault: false,
+        selectedLanguages: ['es', 'en-US'],
+      }) };
       userPreferences.preferences = {
         spellCheckerLanguages: { value: [] },
         advancedMode: { value: 'false' },

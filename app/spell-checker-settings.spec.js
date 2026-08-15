@@ -1,6 +1,8 @@
 const { describe, expect, test, mock } = require('bun:test');
 const {
+    SYSTEM_DEFAULT,
     filterSpellCheckerLanguages,
+    resolveSystemSpellCheckerLanguages,
     getSpellCheckerSettings,
     setSpellCheckerLanguages,
 } = require('./spell-checker-settings');
@@ -24,7 +26,14 @@ describe('spell checker settings', () => {
             supported: true,
             availableLanguages: ['en-US', 'es'],
             selectedLanguages: ['es'],
+            systemDefault: true,
         });
+    });
+
+    test('resolves the system locale to an available dictionary', () => {
+        expect(resolveSystemSpellCheckerLanguages('es-ES', ['en-US', 'es'])).toEqual(['es']);
+        expect(resolveSystemSpellCheckerLanguages('pt-BR', ['en-US', 'pt-PT'])).toEqual(['pt-PT']);
+        expect(resolveSystemSpellCheckerLanguages('xx', ['en-US', 'es'], ['es'])).toEqual(['es']);
     });
 
     test('leaves spell checker language selection to macOS', () => {
@@ -35,7 +44,7 @@ describe('spell checker settings', () => {
         });
     });
 
-    test('applies only available languages and supports the automatic empty selection', () => {
+    test('applies only available languages and resolves System default without passing an empty list', () => {
         let selected = ['en-US'];
         const setSpellCheckerLanguagesMock = mock(languages => {
             selected = languages;
@@ -51,13 +60,31 @@ describe('spell checker settings', () => {
         ]);
         expect(setSpellCheckerLanguagesMock).toHaveBeenLastCalledWith(['es']);
 
-        expect(setSpellCheckerLanguages(electronSession, [], 'linux').selectedLanguages).toEqual([]);
-        expect(setSpellCheckerLanguagesMock).toHaveBeenLastCalledWith([]);
+        const automatic = setSpellCheckerLanguages(
+            electronSession,
+            [SYSTEM_DEFAULT],
+            'linux',
+            'es-ES'
+        );
+        expect(automatic.selectedLanguages).toEqual(['es']);
+        expect(automatic.systemDefault).toBe(true);
+        expect(setSpellCheckerLanguagesMock).toHaveBeenLastCalledWith(['es']);
     });
 
     test('does not configure languages on macOS', () => {
         const electronSession = { setSpellCheckerLanguages: mock(() => {}) };
         setSpellCheckerLanguages(electronSession, ['es'], 'darwin');
+        expect(electronSession.setSpellCheckerLanguages).not.toHaveBeenCalled();
+    });
+
+    test('does not pass an empty language list when no dictionaries are available', () => {
+        const electronSession = {
+            availableSpellCheckerLanguages: [],
+            getSpellCheckerLanguages: () => [],
+            setSpellCheckerLanguages: mock(() => {}),
+        };
+
+        setSpellCheckerLanguages(electronSession, [SYSTEM_DEFAULT], 'linux', 'es-ES');
         expect(electronSession.setSpellCheckerLanguages).not.toHaveBeenCalled();
     });
 });

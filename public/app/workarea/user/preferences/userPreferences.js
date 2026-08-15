@@ -68,13 +68,18 @@ export default class UserPreferences {
             this.preferences.spellCheckerLanguages = {
                 title: _('Spell checker languages'),
                 help: _(
-                    'Select no languages to use the operating system default.'
+                    'Choose System default to use the operating system language.'
                 ),
-                value: settings.selectedLanguages,
+                value: settings.systemDefault
+                    ? ['__system_default__']
+                    : settings.selectedLanguages,
                 type: 'multiselect',
-                options: Object.fromEntries(
-                    settings.availableLanguages.map(language => [language, language])
-                ),
+                options: {
+                    __system_default__: _('System default'),
+                    ...Object.fromEntries(
+                        settings.availableLanguages.map(language => [language, language])
+                    ),
+                },
             };
         } catch (error) {
             console.warn('[UserPreferences] Error loading spell checker preferences:', error);
@@ -228,8 +233,10 @@ export default class UserPreferences {
     async apiSaveProperties(preferences) {
         const spellCheckerLanguages = preferences.spellCheckerLanguages;
         if (spellCheckerLanguages !== undefined) {
-            await window.electronAPI?.setSpellCheckerLanguages?.(spellCheckerLanguages);
-            this.preferences.spellCheckerLanguages.value = spellCheckerLanguages;
+            const settings = await window.electronAPI?.setSpellCheckerLanguages?.(spellCheckerLanguages);
+            this.preferences.spellCheckerLanguages.value = settings?.systemDefault
+                ? ['__system_default__']
+                : settings?.selectedLanguages || spellCheckerLanguages;
             delete preferences.spellCheckerLanguages;
         }
 

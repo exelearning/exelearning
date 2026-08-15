@@ -5,7 +5,22 @@ function filterSpellCheckerLanguages(selectedLanguages, availableLanguages) {
     return [...new Set(selectedLanguages)].filter(language => available.has(language));
 }
 
-function getSpellCheckerSettings(electronSession, platform = process.platform) {
+const SYSTEM_DEFAULT = '__system_default__';
+
+function resolveSystemSpellCheckerLanguages(systemLocale, availableLanguages, currentLanguages = []) {
+    if (!Array.isArray(availableLanguages) || availableLanguages.length === 0) return [];
+
+    const normalizedLocale = String(systemLocale || '').replace('_', '-').toLowerCase();
+    const baseLocale = normalizedLocale.split('-')[0];
+    const exactMatch = availableLanguages.find(language => language.toLowerCase() === normalizedLocale);
+    const baseMatch = availableLanguages.find(language => language.toLowerCase() === baseLocale);
+    const regionalMatch = availableLanguages.find(language => language.toLowerCase().startsWith(`${baseLocale}-`));
+    const current = filterSpellCheckerLanguages(currentLanguages, availableLanguages);
+
+    return [exactMatch || baseMatch || regionalMatch || current[0] || availableLanguages[0]];
+}
+
+function getSpellCheckerSettings(electronSession, platform = process.platform, systemDefault = true) {
     if (platform === 'darwin') return { supported: false, availableLanguages: [], selectedLanguages: [] };
 
     const availableLanguages = electronSession.availableSpellCheckerLanguages || [];
@@ -14,22 +29,36 @@ function getSpellCheckerSettings(electronSession, platform = process.platform) {
         availableLanguages
     );
 
-    return { supported: true, availableLanguages, selectedLanguages };
+    return { supported: true, availableLanguages, selectedLanguages, systemDefault };
 }
 
-function setSpellCheckerLanguages(electronSession, selectedLanguages, platform = process.platform) {
+function setSpellCheckerLanguages(
+    electronSession,
+    selectedLanguages,
+    platform = process.platform,
+    systemLocale = ''
+) {
     if (platform === 'darwin') return getSpellCheckerSettings(electronSession, platform);
 
-    const filtered = filterSpellCheckerLanguages(
-        selectedLanguages,
-        electronSession.availableSpellCheckerLanguages || []
-    );
-    electronSession.setSpellCheckerLanguages(filtered);
-    return getSpellCheckerSettings(electronSession, platform);
+    const availableLanguages = electronSession.availableSpellCheckerLanguages || [];
+    const useSystemDefault = !Array.isArray(selectedLanguages)
+        || selectedLanguages.length === 0
+        || selectedLanguages.includes(SYSTEM_DEFAULT);
+    const filtered = useSystemDefault
+        ? resolveSystemSpellCheckerLanguages(
+            systemLocale,
+            availableLanguages,
+            electronSession.getSpellCheckerLanguages()
+        )
+        : filterSpellCheckerLanguages(selectedLanguages, availableLanguages);
+    if (filtered.length > 0) electronSession.setSpellCheckerLanguages(filtered);
+    return getSpellCheckerSettings(electronSession, platform, useSystemDefault);
 }
 
 module.exports = {
+    SYSTEM_DEFAULT,
     filterSpellCheckerLanguages,
+    resolveSystemSpellCheckerLanguages,
     getSpellCheckerSettings,
     setSpellCheckerLanguages,
 };

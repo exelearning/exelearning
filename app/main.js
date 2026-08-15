@@ -15,6 +15,7 @@ const {
 } = require('./editor-window-close-guard');
 const { checkLink } = require('./link-check');
 const {
+    SYSTEM_DEFAULT,
     getSpellCheckerSettings,
     setSpellCheckerLanguages,
 } = require('./spell-checker-settings');
@@ -1534,11 +1535,32 @@ ipcMain.handle('app:getMemoryUsage', async (e) => {
 });
 
 ipcMain.handle('app:getSpellCheckerSettings', async () => {
-    return getSpellCheckerSettings(session.defaultSession);
+    const settings = readSettings();
+    const useSystemDefault = settings.spellCheckerUseSystemDefault !== false;
+    if (useSystemDefault && process.platform !== 'darwin') {
+        return setSpellCheckerLanguages(
+            session.defaultSession,
+            [SYSTEM_DEFAULT],
+            process.platform,
+            app.getSystemLocale()
+        );
+    }
+    return getSpellCheckerSettings(session.defaultSession, process.platform, useSystemDefault);
 });
 
 ipcMain.handle('app:setSpellCheckerLanguages', async (_e, languages = []) => {
-    return setSpellCheckerLanguages(session.defaultSession, languages);
+    const useSystemDefault = !Array.isArray(languages)
+        || languages.length === 0
+        || languages.includes(SYSTEM_DEFAULT);
+    const settings = readSettings();
+    settings.spellCheckerUseSystemDefault = useSystemDefault;
+    writeSettings(settings);
+    return setSpellCheckerLanguages(
+        session.defaultSession,
+        languages,
+        process.platform,
+        app.getSystemLocale()
+    );
 });
 
 // Close the window that initiated the request (File > Close). The unsaved
