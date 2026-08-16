@@ -35,8 +35,13 @@ test.describe('Admin Impersonation', () => {
         const targetRow = page.locator('#usersTableBody tr').filter({ hasText: targetEmail }).first();
         await expect(targetRow).toBeVisible();
 
+        // Row actions moved behind a three-dot menu (issue #2261).
+        await targetRow.locator('button[data-action="user-actions"]').click();
+        const impersonateItem = targetRow.locator('button[data-action="impersonate"]');
+        await expect(impersonateItem).toBeVisible();
+
         page.once('dialog', dialog => dialog.accept());
-        await targetRow.locator('button[data-action="impersonate"]').click();
+        await impersonateItem.click();
 
         await page.waitForURL(/\/workarea/);
         const banner = page.locator('#impersonation-banner');
