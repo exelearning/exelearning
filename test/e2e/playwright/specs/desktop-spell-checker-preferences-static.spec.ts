@@ -40,7 +40,5 @@ test('desktop spell-checker preference is visible, exclusive, and saved through 
     await expect(selector.locator('option[value="es"]')).toHaveJSProperty('selected', true);
 
     await modal.locator('button.btn.btn-primary').click();
-    await expect.poll(() => staticPage.evaluate(
-        () => (window as any).__spellCheckerSelections
-    )).toEqual([['es']]);
+    await expect.poll(() => staticPage.evaluate(() => (window as any).__spellCheckerSelections)).toEqual([['es']]);
 });
