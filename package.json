@@ -101,7 +101,7 @@
     "@biomejs/biome": "^2.5.8",
     "@codecov/bundle-analyzer": "^2.0.1",
     "@electron/notarize": "^3.1.1",
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "~1.58.2",
     "@types/bcryptjs": "^3.0.0",
     "@types/fs-extra": "^11.0.4",
     "@types/mime-types": "^3.0.1",
