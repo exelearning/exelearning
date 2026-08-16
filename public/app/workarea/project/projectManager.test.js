@@ -358,6 +358,27 @@ describe('ProjectManager', () => {
         });
     });
 
+    // #2223
+    it('shows a modal naming the activities whose files are missing', () => {
+        projectManager.showMissingAssetsNotice({
+            missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('missing-assets');
+        expect(call.body).toContain('classify');
+        expect(call.body).toContain('rabbit.svg');
+    });
+
+    it('stays silent when the import reported no missing files', () => {
+        projectManager.showMissingAssetsNotice({ missingAssets: [] });
+        projectManager.showMissingAssetsNotice({});
+        projectManager.showMissingAssetsNotice(undefined);
+
+        expect(mockApp.modals.alert.show).not.toHaveBeenCalled();
+    });
+
     it('shows the save error modal with the response', () => {
         projectManager.showModalSaveError({ responseMessage: 'boom' });
 

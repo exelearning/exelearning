@@ -6,6 +6,7 @@ const mockLinkManager = {
     startValidation: vi.fn(),
     cancel: vi.fn(),
     isInProgress: vi.fn().mockReturnValue(false),
+    isBrowserLimited: vi.fn().mockReturnValue(false),
     toExportFormat: vi.fn().mockReturnValue([]),
     onLinksExtracted: null,
     onLinkUpdate: null,
@@ -35,6 +36,7 @@ describe('ModalOdeBrokenLinks', () => {
         mockLinkManager.startValidation = vi.fn();
         mockLinkManager.cancel = vi.fn();
         mockLinkManager.isInProgress = vi.fn().mockReturnValue(false);
+        mockLinkManager.isBrowserLimited = vi.fn().mockReturnValue(false);
         mockLinkManager.toExportFormat = vi.fn().mockReturnValue([]);
         mockLinkManager.onLinksExtracted = null;
         mockLinkManager.onLinkUpdate = null;
@@ -179,8 +181,25 @@ describe('ModalOdeBrokenLinks', () => {
                 count: 1,
             };
             const row = modal.createLinkRow(link);
+            expect(row.dataset.status).toBe('broken');
             expect(row.querySelector('.link-status .text-danger')).not.toBeNull();
             expect(row.querySelector('.link-error').textContent).toBe('404');
+        });
+
+        it('should render the URL as a clickable link', () => {
+            const link = {
+                id: 'test-id',
+                url: 'https://www.youtube.com/@example',
+                status: 'unknown',
+                error: 'Not checked automatically: open the link to review it',
+                count: 1,
+            };
+            const row = modal.createLinkRow(link);
+            const anchor = row.querySelector('.link-url a');
+            expect(anchor).not.toBeNull();
+            expect(anchor.getAttribute('href')).toBe('https://www.youtube.com/@example');
+            expect(anchor.getAttribute('target')).toBe('_blank');
+            expect(row.querySelector('.link-url').textContent).toBe('https://www.youtube.com/@example');
         });
     });
 
@@ -207,9 +226,53 @@ describe('ModalOdeBrokenLinks', () => {
             expect(html).toContain('&#10007;');
         });
 
-        it('should return empty string for unknown status', () => {
+        it('should return a warning sign for links needing manual review', () => {
+            const html = modal.getStatusHtml('unknown', 'Not checked automatically: open the link to review it');
+            expect(html).toContain('text-warning-emphasis');
+            expect(html).toContain('&#9888;');
+            expect(html).toContain('Not checked automatically: open the link to review it');
+        });
+
+        it('should fall back to a generic title when no reason is given', () => {
             const html = modal.getStatusHtml('unknown', null);
+            expect(html).toContain('Requires manual review');
+        });
+
+        it('should return empty string for an unrecognised status', () => {
+            const html = modal.getStatusHtml('not-a-status', null);
             expect(html).toBe('');
+        });
+    });
+
+    describe('getStatusLabel', () => {
+        it('should return readable labels for exported statuses', () => {
+            expect(modal.getStatusLabel('valid')).toBe('Valid');
+            expect(modal.getStatusLabel('broken')).toBe('Broken');
+            expect(modal.getStatusLabel('unknown')).toBe('Requires manual review');
+            expect(modal.getStatusLabel('pending')).toBe('');
+        });
+    });
+
+    describe('createUrlContent', () => {
+        it('should render http(s) URLs as links opening in a new tab', () => {
+            const anchor = modal.createUrlContent('https://example.com/page');
+            expect(anchor.tagName).toBe('A');
+            expect(anchor.getAttribute('href')).toBe('https://example.com/page');
+            expect(anchor.getAttribute('target')).toBe('_blank');
+            expect(anchor.getAttribute('rel')).toBe('noopener noreferrer');
+            expect(anchor.textContent).toBe('https://example.com/page');
+        });
+
+        it('should resolve protocol-relative URLs to https', () => {
+            const anchor = modal.createUrlContent('//cdn.example.com/file.js');
+            expect(anchor.getAttribute('href')).toBe('https://cdn.example.com/file.js');
+            expect(anchor.textContent).toBe('//cdn.example.com/file.js');
+        });
+
+        it('should not build an anchor for non-http schemes', () => {
+            const node = modal.createUrlContent('javascript:alert(1)');
+            expect(node.nodeType).toBe(Node.TEXT_NODE);
+            expect(node.textContent).toBe('javascript:alert(1)');
         });
     });
 
@@ -219,6 +282,40 @@ describe('ModalOdeBrokenLinks', () => {
             expect(html).toContain('progress-bar');
             expect(html).toContain('progress-text');
             expect(html).toContain('progress-stats');
+        });
+    });
+
+    describe('createLegendHtml', () => {
+        it('should explain that a check mark only means the server responded (soft-404s)', () => {
+            const html = modal.createLegendHtml();
+            expect(html).toContain('some sites answer 200');
+        });
+    });
+
+    describe('browser-limited relabelling', () => {
+        beforeEach(() => {
+            modal.linkManager = { isBrowserLimited: () => true };
+            modal.progressContainer = document.createElement('div');
+            modal.progressContainer.innerHTML = modal.createProgressHtml();
+        });
+
+        it('should promise a listing instead of a validation while running', () => {
+            expect(modal.createProgressHtml()).toContain('Listing links...');
+        });
+
+        it('should close with a listing summary, without validation language', () => {
+            modal.updateProgress({ total: 5, validated: 5, broken: 0, unknown: 3 });
+            const text = modal.progressContainer.querySelector('.progress-text');
+            expect(text.textContent).toBe('Links listed: 3 to review manually');
+            expect(text.textContent).not.toContain('Complete');
+            expect(text.classList.contains('text-warning-emphasis')).toBe(true);
+        });
+
+        it('should report a plain listing when nothing needs review', () => {
+            modal.updateProgress({ total: 2, validated: 2, broken: 0, unknown: 0 });
+            const text = modal.progressContainer.querySelector('.progress-text');
+            expect(text.textContent).toBe('Links listed');
+            expect(text.classList.contains('text-success')).toBe(true);
         });
     });
 
@@ -238,6 +335,34 @@ describe('ModalOdeBrokenLinks', () => {
             const cell = body.querySelector('tbody td');
             expect(cell.textContent).toBe('No links found in content');
             expect(cell.colSpan).toBe(8);
+        });
+
+        it('should explain the browser limitation in flavors that cannot check links', () => {
+            modal.linkManager = { isBrowserLimited: () => true };
+            const links = [{ id: '1', url: 'https://example.com', status: 'pending', count: 1 }];
+
+            const body = modal.buildBody(links);
+
+            const notice = body.querySelector('.validation-static-notice');
+            expect(notice).not.toBeNull();
+            expect(notice.textContent).toContain('browser security restrictions');
+        });
+
+        it('should not show the browser-limitation notice when links can be checked', () => {
+            modal.linkManager = { isBrowserLimited: () => false };
+            const links = [{ id: '1', url: 'https://example.com', status: 'pending', count: 1 }];
+
+            const body = modal.buildBody(links);
+
+            expect(body.querySelector('.validation-static-notice')).toBeNull();
+        });
+
+        it('should not show the browser-limitation notice when there are no links', () => {
+            modal.linkManager = { isBrowserLimited: () => true };
+
+            const body = modal.buildBody([]);
+
+            expect(body.querySelector('.validation-static-notice')).toBeNull();
         });
     });
 
@@ -273,6 +398,23 @@ describe('ModalOdeBrokenLinks', () => {
             expect(text.textContent).toContain('No broken links');
             expect(text.classList.contains('text-success')).toBe(true);
         });
+
+        it('should report how many links need a manual review', () => {
+            modal.updateProgress({ total: 10, validated: 10, broken: 0, unknown: 4 });
+            const text = modal.progressContainer.querySelector('.progress-text');
+            expect(text.textContent).toContain('No broken links');
+            expect(text.textContent).toContain('4 to review');
+            expect(text.classList.contains('text-warning-emphasis')).toBe(true);
+            expect(text.classList.contains('text-success')).toBe(false);
+        });
+
+        it('should keep the danger colour when there are broken and reviewable links', () => {
+            modal.updateProgress({ total: 10, validated: 10, broken: 2, unknown: 3 });
+            const text = modal.progressContainer.querySelector('.progress-text');
+            expect(text.textContent).toContain('2 broken');
+            expect(text.textContent).toContain('3 to review');
+            expect(text.classList.contains('text-danger')).toBe(true);
+        });
     });
 
     describe('updateLinkRow', () => {
@@ -298,6 +440,40 @@ describe('ModalOdeBrokenLinks', () => {
             expect(row.querySelector('.text-danger')).not.toBeNull();
             expect(row.querySelector('.link-error').textContent).toBe('404');
             expect(row.classList.contains('table-danger')).toBe(true);
+            expect(row.dataset.status).toBe('broken');
+        });
+
+        it('should highlight links needing a manual review in amber', () => {
+            modal.updateLinkRow('test-id', 'unknown', 'Not checked automatically: open the link to review it');
+            const row = modal.rowElements.get('test-id');
+            expect(row.querySelector('.text-warning-emphasis')).not.toBeNull();
+            expect(row.classList.contains('table-warning')).toBe(true);
+            expect(row.classList.contains('table-danger')).toBe(false);
+            expect(row.dataset.status).toBe('unknown');
+            expect(row.querySelector('.link-error').textContent).toBe(
+                'Not checked automatically: open the link to review it',
+            );
+        });
+
+        it('should not paint rows amber in browser-limited flavors', () => {
+            // Every external link is unknown there, so the amber background adds
+            // nothing over the notice and floods the table with yellow.
+            modal.linkManager = { isBrowserLimited: () => true };
+
+            modal.updateLinkRow('test-id', 'unknown', 'Not checked automatically');
+
+            const row = modal.rowElements.get('test-id');
+            expect(row.classList.contains('table-warning')).toBe(false);
+            expect(row.querySelector('.text-warning-emphasis')).not.toBeNull();
+            expect(row.dataset.status).toBe('unknown');
+        });
+
+        it('should still paint broken rows red in browser-limited flavors', () => {
+            modal.linkManager = { isBrowserLimited: () => true };
+
+            modal.updateLinkRow('test-id', 'broken', '404');
+
+            expect(modal.rowElements.get('test-id').classList.contains('table-danger')).toBe(true);
         });
 
         it('should handle non-existent row', () => {
@@ -375,20 +551,20 @@ describe('ModalOdeBrokenLinks', () => {
             );
         });
 
-        it('should show toast when no broken links in table', () => {
-            // Create table with no broken links (no table-danger rows)
+        it('should show toast when nothing needs exporting', () => {
+            // Create table with only valid links
             modal.modalElement.querySelector('.modal-body').innerHTML = `
                 <table>
                     <thead><tr><th>Status</th><th>Link</th></tr></thead>
                     <tbody>
-                        <tr><td>OK</td><td>https://valid.com</td></tr>
+                        <tr data-status="valid"><td>OK</td><td>https://valid.com</td></tr>
                     </tbody>
                 </table>
             `;
             modal.downloadCsv();
             expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith({
                 title: 'Link Validation',
-                body: 'No broken links to export',
+                body: 'No links to export',
                 icon: 'info',
                 modal: true,
                 remove: 5000,
@@ -402,7 +578,7 @@ describe('ModalOdeBrokenLinks', () => {
                 <table>
                     <thead><tr><th>Status</th><th>Link</th></tr></thead>
                     <tbody>
-                        <tr><td>OK</td><td>https://valid.com</td></tr>
+                        <tr data-status="valid"><td>OK</td><td>https://valid.com</td></tr>
                     </tbody>
                 </table>
             `;
@@ -411,7 +587,7 @@ describe('ModalOdeBrokenLinks', () => {
         });
 
         it('should create and trigger download for broken links', () => {
-            // Create table with broken links (table-danger rows)
+            // Create table with broken links
             modal.modalElement.querySelector('.modal-body').innerHTML = `
                 <table>
                     <thead>
@@ -423,8 +599,8 @@ describe('ModalOdeBrokenLinks', () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="table-danger">
-                            <td>X</td>
+                        <tr class="table-danger" data-status="broken">
+                            <td class="link-status">X</td>
                             <td>http://broken.link</td>
                             <td>404</td>
                             <td>1</td>
@@ -454,8 +630,7 @@ describe('ModalOdeBrokenLinks', () => {
             document.createElement = originalCreateElement;
         });
 
-        it('should skip the status column in CSV export', () => {
-            // Create table with broken links
+        it('should spell out the status instead of exporting the icon', () => {
             modal.modalElement.querySelector('.modal-body').innerHTML = `
                 <table>
                     <thead>
@@ -466,10 +641,15 @@ describe('ModalOdeBrokenLinks', () => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr class="table-danger">
-                            <td>X</td>
+                        <tr class="table-danger" data-status="broken">
+                            <td class="link-status"><span class="text-danger">&#10007;</span></td>
                             <td>http://broken.link</td>
                             <td>404</td>
+                        </tr>
+                        <tr class="table-warning" data-status="unknown">
+                            <td class="link-status"><span class="text-warning">&#9888;</span></td>
+                            <td>https://www.youtube.com/@example</td>
+                            <td>Not checked automatically: open the link to review it</td>
                         </tr>
                     </tbody>
                 </table>
@@ -479,21 +659,41 @@ describe('ModalOdeBrokenLinks', () => {
             modal.downloadCsv();
 
             expect(tableToCSVSpy).toHaveBeenCalled();
-            const options = tableToCSVSpy.mock.calls[0][1];
-            expect(options.skipColumns).toEqual([0]);
+            const filteredTable = tableToCSVSpy.mock.calls[0][0];
+            const statusCells = filteredTable.querySelectorAll('tbody .link-status');
+            expect(statusCells[0].textContent).toBe('Broken');
+            expect(statusCells[1].textContent).toBe('Requires manual review');
+            // The status column is no longer dropped from the CSV
+            expect(tableToCSVSpy.mock.calls[0][1]).toBeUndefined();
         });
 
-        it('should only include broken link rows in CSV', () => {
-            // Create table with mixed valid and broken links
+        it('should name the export after its content (broken + review rows)', () => {
+            modal.modalElement.querySelector('.modal-body').innerHTML = `
+                <table>
+                    <thead><tr><th>Status</th><th>Link</th></tr></thead>
+                    <tbody>
+                        <tr data-status="broken"><td class="link-status">X</td><td>http://broken.com</td></tr>
+                    </tbody>
+                </table>
+            `;
+            const downloadSpy = vi.spyOn(modal, 'downloadCSVFile').mockImplementation(() => {});
+
+            modal.downloadCsv();
+
+            expect(downloadSpy).toHaveBeenCalledWith(expect.any(String), 'link-report.csv');
+        });
+
+        it('should include broken and manual-review rows but not valid ones', () => {
             modal.modalElement.querySelector('.modal-body').innerHTML = `
                 <table>
                     <thead>
                         <tr><th>Status</th><th>Link</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td>OK</td><td>https://valid.com</td></tr>
-                        <tr class="table-danger"><td>X</td><td>http://broken.com</td></tr>
-                        <tr><td>OK</td><td>https://also-valid.com</td></tr>
+                        <tr data-status="valid"><td class="link-status">OK</td><td>https://valid.com</td></tr>
+                        <tr class="table-danger" data-status="broken"><td class="link-status">X</td><td>http://broken.com</td></tr>
+                        <tr class="table-warning" data-status="unknown"><td class="link-status">!</td><td>https://review.com</td></tr>
+                        <tr data-status="pending"><td class="link-status"></td><td>https://pending.com</td></tr>
                     </tbody>
                 </table>
             `;
@@ -502,11 +702,11 @@ describe('ModalOdeBrokenLinks', () => {
             modal.downloadCsv();
 
             expect(tableToCSVSpy).toHaveBeenCalled();
-            // Check that the filtered table was passed
             const filteredTable = tableToCSVSpy.mock.calls[0][0];
             const rows = filteredTable.querySelectorAll('tbody tr');
-            expect(rows.length).toBe(1);
-            expect(rows[0].classList.contains('table-danger')).toBe(true);
+            expect(rows.length).toBe(2);
+            expect(rows[0].dataset.status).toBe('broken');
+            expect(rows[1].dataset.status).toBe('unknown');
         });
     });
 
