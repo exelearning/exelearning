@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
  * Self-service password change (issue #2261).
@@ -63,8 +64,15 @@ test.describe('Change password', () => {
         });
         expect(userLogin.ok()).toBeTruthy();
 
-        await page.goto('/workarea');
-        await page.waitForURL(/\/workarea/);
+        // Online mode sends bare /workarea to /projects; open a real project so
+        // the workarea chrome (user menu) is on the page.
+        const projectResponse = await page.request.post('/api/project/create-quick', {
+            data: { title: 'Change password workarea' },
+            headers: { 'Content-Type': 'application/json' },
+        });
+        expect(projectResponse.ok()).toBeTruthy();
+        const { uuid } = await projectResponse.json();
+        await gotoWorkarea(page, uuid);
         await page.waitForFunction(() => (window as any).eXeLearning?.app?.modals !== undefined, undefined, {
             timeout: 30000,
         });
@@ -129,8 +137,13 @@ test.describe('Change password', () => {
         const guestLogin = await page.request.post('/login/guest', { form: { guest_login_nonce: '' } });
         expect(guestLogin.ok()).toBeTruthy();
 
-        await page.goto('/workarea');
-        await page.waitForURL(/\/workarea/);
+        const projectResponse = await page.request.post('/api/project/create-quick', {
+            data: { title: 'Guest change-password workarea' },
+            headers: { 'Content-Type': 'application/json' },
+        });
+        expect(projectResponse.ok()).toBeTruthy();
+        const { uuid } = await projectResponse.json();
+        await gotoWorkarea(page, uuid);
         await page.waitForFunction(() => (window as any).eXeLearning?.app?.modals !== undefined, undefined, {
             timeout: 30000,
         });
