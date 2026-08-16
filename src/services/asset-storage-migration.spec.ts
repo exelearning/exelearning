@@ -358,7 +358,35 @@ describe('asset-storage-migration', () => {
         const row = await assetQueries.findAssetById(db, asset.id);
         expect(row!.storage_path).toBe(`assets/${PROJECT_UUID}/conflict.png`);
         expect(tryResolveAssetStoragePath(filesDir, row!.storage_path)).toBe(legacyFile);
-        expect(warnMessages.join('\n')).toContain('conflict.png');
+        // The warning must carry both absolute paths and both sizes so the
+        // operator can decide without hunting for the files (issue #2287).
+        const conflictWarn = warnMessages.find(message => message.includes('Conflict for asset'));
+        expect(conflictWarn).toContain(legacyFile);
+        expect(conflictWarn).toContain(dest);
+        expect(conflictWarn).toContain(`(${'legacy content'.length} bytes)`);
+        expect(conflictWarn).toContain(`(${'different content'.length} bytes)`);
+        expect(conflictWarn).toContain('assets:conflicts');
+    });
+
+    it('reports sweep conflicts with both absolute paths and sizes, keeping both files', async () => {
+        await seedProject();
+        // Orphan file (no database row) in the legacy directory, with a
+        // DIFFERENT file already at the sharded destination.
+        const orphanSrc = await writeLegacyFile(PROJECT_UUID, ['sweep-conflict.png'], 'orphan bytes');
+        const dest = shardedPath(PROJECT_UUID, 'sweep-conflict.png');
+        await fs.ensureDir(path.dirname(dest));
+        await fs.writeFile(dest, 'existing different bytes');
+
+        const summary = await runMigration();
+
+        expect(summary.conflicts).toBe(1);
+        expect((await fs.readFile(orphanSrc)).toString()).toBe('orphan bytes');
+        expect((await fs.readFile(dest)).toString()).toBe('existing different bytes');
+        const sweepWarn = warnMessages.find(message => message.includes('Conflict sweeping'));
+        expect(sweepWarn).toContain(orphanSrc);
+        expect(sweepWarn).toContain(dest);
+        expect(sweepWarn).toContain(`(${'orphan bytes'.length} bytes)`);
+        expect(sweepWarn).toContain(`(${'existing different bytes'.length} bytes)`);
     });
 
     // =========================================================================

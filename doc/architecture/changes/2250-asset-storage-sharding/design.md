@@ -133,8 +133,8 @@ each boot). Unrecognized entries are reported and left alone.
 - **Verifying success**: after the upgrade boot, the log shows the summary; on the next
   boot it shows `Asset storage layout is up to date.` and
   `SELECT COUNT(*) FROM assets WHERE storage_path NOT LIKE 'assets/%'` returns 0.
-  Remaining warnings identify conflict files to resolve manually (a reconciliation
-  CLI is tracked in issue #2287).
+  Remaining warnings identify conflict files; list and resolve them with
+  `bun cli assets:conflicts` (issue #2287).
 - **Rollback**: restore the pre-upgrade backup (database + `FILES_DIR`) and redeploy the
   previous release. Rolling back only the binary after migration is not supported —
   old releases cannot read relative paths.

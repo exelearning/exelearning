@@ -105,8 +105,11 @@ const DECIMAL_BUCKET = /^\d{2}$/;
  * Move a file, preferring an atomic rename. On EXDEV (cross-device link, e.g.
  * bind mounts inside FILES_DIR) falls back to copy-to-temp + rename + verify +
  * remove, so the destination never holds a partially written file.
+ *
+ * Exported for reuse by the conflict-resolution service (issue #2287) — the
+ * migration and the CLI must move files with identical semantics.
  */
-async function moveFile(fs: typeof fsExtra, src: string, dest: string): Promise<void> {
+export async function moveFile(fs: typeof fsExtra, src: string, dest: string): Promise<void> {
     try {
         await fs.rename(src, dest);
         return;
@@ -132,8 +135,11 @@ async function moveFile(fs: typeof fsExtra, src: string, dest: string): Promise<
 
 /**
  * Compare two files by size and SHA-256 content hash (streamed).
+ *
+ * Exported for reuse by the conflict-resolution service (issue #2287) so
+ * "conflict" means the same thing at startup and in the CLI.
  */
-async function filesAreIdentical(fs: typeof fsExtra, a: string, b: string): Promise<boolean> {
+export async function filesAreIdentical(fs: typeof fsExtra, a: string, b: string): Promise<boolean> {
     const [statA, statB] = await Promise.all([fs.stat(a), fs.stat(b)]);
     if (statA.size !== statB.size) {
         return false;
@@ -153,8 +159,12 @@ async function filesAreIdentical(fs: typeof fsExtra, a: string, b: string): Prom
 /**
  * Rewrite one row's storage_path with an optimistic concurrency guard.
  * Returns true when this call performed the update.
+ *
+ * Exported for reuse by the conflict-resolution service (issue #2287); the
+ * guard is what makes CLI resolution safe against a concurrently starting
+ * instance re-running the migration.
  */
-async function rewriteRow(db: Kysely<Database>, id: number, oldPath: string, newPath: string): Promise<boolean> {
+export async function rewriteRow(db: Kysely<Database>, id: number, oldPath: string, newPath: string): Promise<boolean> {
     const result = await db
         .updateTable('assets')
         .set({ storage_path: newPath, updated_at: now() })
@@ -395,13 +405,17 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
                 return;
             }
             // Different content: never overwrite. Keep BOTH files, report the
-            // conflict, and rewrite the row to the portable relative form of
-            // its current (legacy) location so it stays valid and portable.
+            // conflict with both absolute paths and sizes so the operator can
+            // decide without hunting for the files, and rewrite the row to the
+            // portable relative form of its current (legacy) location so it
+            // stays valid and portable.
             summary.conflicts++;
             const legacyStored = [ASSETS_ROOT_DIR_NAME, ...segments].join('/');
+            const [srcStat, destStat] = await Promise.all([fs.stat(src), fs.stat(dest)]);
             warn(
-                `[AssetStorage] Conflict for asset ${row.id}: '${legacyStored}' and '${targetStored}' differ. ` +
-                    `Keeping both; the database keeps pointing at the legacy location. Resolve manually.`,
+                `[AssetStorage] Conflict for asset ${row.id}: legacy '${src}' (${srcStat.size} bytes) and ` +
+                    `sharded '${dest}' (${destStat.size} bytes) differ. Keeping both; the database keeps ` +
+                    `pointing at the legacy location. Resolve with 'bun cli assets:conflicts'.`,
             );
             if (isCanonicalAssetStoragePath(legacyStored)) {
                 if (await rewriteRow(db, row.id, row.storage_path, legacyStored)) {
@@ -544,9 +558,10 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
                             await fs.remove(src);
                         } else {
                             summary.conflicts++;
+                            const [srcStat, destStat] = await Promise.all([fs.stat(src), fs.stat(dest)]);
                             warn(
-                                `[AssetStorage] Conflict sweeping '${src}': destination '${dest}' differs. ` +
-                                    `Keeping both. Resolve manually.`,
+                                `[AssetStorage] Conflict sweeping '${src}' (${srcStat.size} bytes): destination ` +
+                                    `'${dest}' (${destStat.size} bytes) differs. Keeping both. Resolve manually.`,
                             );
                         }
                     } catch (err) {

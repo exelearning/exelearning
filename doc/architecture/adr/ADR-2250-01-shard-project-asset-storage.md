@@ -340,7 +340,8 @@ We will:
   the migration's per-boot summary tells operators when their installation is clean).
 - Provide a CLI subcommand that lists parked migration conflicts and resolves them
   with an explicit keep-old / keep-new choice
-  (<https://github.com/exelearning/exelearning/issues/2287>).
+  (<https://github.com/exelearning/exelearning/issues/2287>, implemented as
+  `assets:conflicts` — see the change document for #2287).
 - Consider validating client-supplied project identifiers at creation time so the
   FNV-1a fallback becomes purely defensive.
 
