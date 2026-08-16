@@ -92,6 +92,7 @@ Common knobs (all supported by the example files):
 * **Files:** `FILES_DIR` (default: `/mnt/data/`)
 * **Auth:** `APP_AUTH_METHODS`, `AUTH_CREATE_USERS`
 * **Admin user:** `ADMIN_EMAIL`, `ADMIN_PASSWORD` (see [Admin User Setup](#admin-user-setup))
+* **Platform integration (Moodle, etc.):** `PROVIDER_URLS`, `PROVIDER_TOKENS`, `PROVIDER_IDS` (see [Platform integration](#platform-integration-moodle-and-other-lms))
 * **Real-time (Yjs WebSocket):** Uses the main server port, no additional configuration needed
 * **Post-configure hooks:** `POST_CONFIGURE_COMMANDS` (e.g., run custom scripts)
 
@@ -132,6 +133,84 @@ Verification:
 
 - Visit `https://your-host/%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
 - If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `/%BASE_PATH%/healthcheck`.
+
+---
+
+### Platform integration (Moodle and other LMS)
+
+When an LMS opens a project in eXeLearning (Moodle's `mod_exescorm` / `mod_exeweb`,
+for example), it sends a signed JWT whose `returnurl` points back at the platform.
+The server later contacts that URL to fetch or upload the package, so `PROVIDER_URLS`
+acts as an **allow-list of platforms the server is permitted to call**.
+
+`PROVIDER_URLS` **fails closed**: while it is empty, every platform callback is
+rejected, and the platform shows `Invalid token or unauthorized provider`. This is
+required — an open allow-list would let anyone holding a valid platform token point
+the server at arbitrary internal hosts.
+
+Entry syntax is `[scheme://]host[:port][/path]`, matched against the parsed host.
+Whatever a part you leave out is unconstrained:
+
+```env
+# Exact host, any port, any path
+PROVIDER_URLS=https://moodle.example.com
+
+# Several platforms, comma-separated
+PROVIDER_URLS=https://moodle.example.com,https://workplace.example.com
+
+# Either http or https (scheme omitted)
+PROVIDER_URLS=moodle.example.com
+
+# Only this port / only URLs under this path
+PROVIDER_URLS=https://moodle.example.com:8443
+PROVIDER_URLS=https://example.com/moodle
+```
+
+**Multi-tenant deployments.** An entry may start with `*.` to cover subdomains. The
+wildcard stands for **exactly one** label, like a TLS wildcard certificate:
+
+```env
+PROVIDER_URLS=https://*.example.net
+```
+
+| URL | Allowed |
+|---|---|
+| `https://tenant.example.net/` | Yes |
+| `https://tenant.example.net/course/view.php?id=1` | Yes |
+| `https://a.b.example.net/` | No — two labels |
+| `https://example.net/` | No — the bare domain is not covered |
+| `https://evilexample.net/` | No |
+
+`*` on its own and a scheme-only entry such as `https://` are rejected as malformed:
+neither is a supported way to allow every host. A malformed entry is discarded on its
+own and does not disable the rest of the list.
+
+**If you also use `PROVIDER_TOKENS` / `PROVIDER_IDS`**, keep the three variables in
+the same order and of the same length — the server reports a configuration mismatch
+otherwise. Only `PROVIDER_IDS` and `PROVIDER_TOKENS` are bound to each other by
+position: the JWT's `provider_id` is looked up in `PROVIDER_IDS`, and the token at
+the same index is used to verify the signature.
+
+`PROVIDER_URLS` is **not** bound to a provider. It is one global allow-list: a
+callback is allowed when its URL matches **any** entry, whichever provider signed
+the token. So a token signed by one configured provider may carry a `returnurl`
+pointing at another configured provider's host. Every entry you add is authorized for
+every provider — list only hosts you are willing to let the server contact.
+
+`PROVIDER_TOKENS` / `PROVIDER_IDS` are optional: platforms signing with `APP_SECRET`
+only need `PROVIDER_URLS`.
+
+Troubleshooting:
+
+- `Invalid token or unauthorized provider` with the server log line
+  `[PlatformJWT] Return URL not in allowed providers: <url>` means the JWT verified
+  correctly but `<url>` is not covered. Add its host to `PROVIDER_URLS` and restart.
+- `[PlatformJWT] Unsafe return URL rejected: <url>` is different: the URL uses a
+  non-http(s) scheme, or its host is an IP literal in a private, loopback or
+  link-local range. Give the platform a public hostname instead.
+- Upgrading from **v4.0.1 or earlier**: an empty `PROVIDER_URLS` used to mean
+  *allow everything*. Since v4.0.2 it means *allow nothing*, so a previously working
+  deployment that left it empty must now list its platforms.
 
 ---
 

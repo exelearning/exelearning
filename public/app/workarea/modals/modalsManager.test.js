@@ -14,6 +14,7 @@ import ModalLegalNotes from './modals/pages/modalLegalNotes.js';
 import ModalAbout from './modals/pages/modalAbout.js';
 import ModalEasterEgg from './modals/pages/modalEasterEgg.js';
 import ModalProperties from './modals/pages/modalProperties.js';
+import ModalChangePassword from './modals/pages/modalChangePassword.js';
 import ModalOpenUserOdeFiles from './modals/pages/modalOpenUserOdeFiles.js';
 import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
@@ -39,6 +40,7 @@ vi.mock('./modals/pages/modalLegalNotes.js');
 vi.mock('./modals/pages/modalAbout.js');
 vi.mock('./modals/pages/modalEasterEgg.js');
 vi.mock('./modals/pages/modalProperties.js');
+vi.mock('./modals/pages/modalChangePassword.js');
 vi.mock('./modals/pages/modalOpenUserOdeFiles.js');
 vi.mock('./modals/pages/modalTemplateSelection.js');
 vi.mock('./modals/pages/modalSessionLogout.js');
@@ -127,7 +129,7 @@ describe('ModalsManagement', () => {
     it('should return an array of all modals', () => {
       modalsManager.init();
       const list = modalsManager.list();
-      expect(list).toHaveLength(22); // GlobalSearch is 22nd
+      expect(list).toHaveLength(23); // GlobalSearch is last
       expect(list).toContain(modalsManager.alert);
       expect(list).toContain(modalsManager.share);
       expect(list).toContain(modalsManager.printpreview);

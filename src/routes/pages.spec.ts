@@ -7,7 +7,6 @@ import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
-import { zipSync, strToU8 } from 'fflate';
 import {
     createPagesRoutes,
     type PagesDependencies,
@@ -18,6 +17,7 @@ import {
     type PagesUtilsDeps,
     type PagesSettingsDeps,
 } from './pages';
+import { zipSync, strToU8 } from 'fflate';
 import { configurePublicViewContent, resetPublicViewContent, type ExportResult } from '../services/public-view-content';
 import { PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
 
@@ -2677,6 +2677,131 @@ describe('Pages Routes', () => {
             }
         });
     });
+    describe('canChangePassword capability (workarea user model)', () => {
+        /**
+         * Render /workarea with the given JWT payload and return the `user`
+         * object handed to the template.
+         */
+        async function renderWorkareaUser(
+            payload: Record<string, unknown>,
+            options: { user?: Record<string, unknown>; env?: Record<string, string> } = {},
+        ): Promise<Record<string, any>> {
+            mockUsers.set(1, {
+                id: 1,
+                email: 'test@test.com',
+                roles: '["ROLE_USER"]',
+                user_id: null,
+                external_identifier: null,
+                ...options.user,
+            });
+
+            for (const [key, value] of Object.entries(options.env ?? {})) {
+                process.env[key] = value;
+            }
+
+            let captured: Record<string, any> = {};
+            const deps = createMockDependencies();
+            deps.template = {
+                renderTemplate: (_template: string, data: any) => {
+                    captured = data.user;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => undefined,
+            };
+            const testApp = new Elysia().use(createPagesRoutes(deps));
+
+            const jwtModule = await import('@elysiajs/jwt');
+            const tempApp = new Elysia().use(jwtModule.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+                ...payload,
+            });
+
+            mockSessions.set('capability-project', {
+                sessionId: 'capability-project',
+                fileName: 'Test.elp',
+            });
+
+            const res = await testApp.handle(
+                new Request('http://localhost/workarea?project=capability-project', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            return captured;
+        }
+
+        it('is true for a local password session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'local' });
+
+            expect(user.canChangePassword).toBe(true);
+        });
+
+        it('is false for a CAS session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'cas' }, { user: { user_id: 'cas:jdoe' } });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false for an OpenID Connect session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'openid' }, { user: { user_id: 'oidc:abc' } });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false for a SAML session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'saml' });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false for a guest session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'guest', isGuest: true });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false in offline mode', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'local' }, { env: { APP_ONLINE_MODE: '0' } });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false when authentication is disabled', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'local' }, { env: { APP_AUTH_METHODS: 'none' } });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false for an impersonated session that inherited local auth', async () => {
+            const user = await renderWorkareaUser({
+                authMethod: 'local',
+                isImpersonated: true,
+                impersonatedBy: 99,
+            });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false when the session carries no auth method', async () => {
+            const user = await renderWorkareaUser({});
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false when the persisted account is externally managed', async () => {
+            const user = await renderWorkareaUser(
+                { authMethod: 'local' },
+                { user: { external_identifier: 'saml:abc' } },
+            );
+
+            expect(user.canChangePassword).toBe(false);
+        });
+    });
 
     describe('GET /view/:publicViewId', () => {
         it('should return 404 for unknown public view id', async () => {
@@ -2846,6 +2971,7 @@ describe('Pages Routes', () => {
         });
     });
 
+
     describe('workarea access control edge cases', () => {
         it('should deny access when session exists and project DB access check fails', async () => {
             const jwt = await import('@elysiajs/jwt');
@@ -2928,6 +3054,7 @@ describe('Pages Routes', () => {
         });
     });
 
+
     describe('offline mode workarea', () => {
         it('should create ephemeral session in offline mode', async () => {
             process.env.APP_ONLINE_MODE = '0';
@@ -2960,6 +3087,7 @@ describe('Pages Routes', () => {
             expect(location).toContain('project=');
         });
     });
+
 
     describe('error handling edge cases', () => {
         it('should handle findPreference error gracefully in getUserLocalePreference', async () => {
@@ -3134,6 +3262,7 @@ describe('Pages Routes', () => {
         });
     });
 
+
     describe('impersonation cookie cleanup', () => {
         it('should clean up impersonation cookies when no auth token', async () => {
             const res = await app.handle(
@@ -3182,6 +3311,7 @@ describe('Pages Routes', () => {
             expect(res.status).toBe(200);
         });
     });
+
 
     describe('platform JWT in workarea', () => {
         it('should handle jwt_token parameter for platform integration', async () => {
@@ -3232,6 +3362,7 @@ describe('Pages Routes', () => {
             expect(templateData.config).toBeDefined();
         });
     });
+
 
     describe('admin settings from database', () => {
         it('should parse stored settings with boolean, number, and string types', async () => {
@@ -3292,6 +3423,7 @@ describe('Pages Routes', () => {
         });
     });
 
+
     describe('JWT verification catch block', () => {
         it('should handle JWT verify throwing an error', async () => {
             // Use a token signed with a different secret to trigger verification failure
@@ -3323,6 +3455,7 @@ describe('Pages Routes', () => {
             expect(location).toContain('/login');
         });
     });
+
 
     describe('GET /view/:publicViewId/_/* (isolated public content)', () => {
         beforeEach(() => {
@@ -3411,4 +3544,5 @@ describe('Pages Routes', () => {
             expect(res.status).toBe(500);
         });
     });
+
 });

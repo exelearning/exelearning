@@ -18,6 +18,8 @@ export {
     findOrCreateExternalUser,
     updateApiToken,
     findFirstUser,
+    updateUserRoles,
+    updateUserPassword,
 } from './users';
 
 // Project queries
