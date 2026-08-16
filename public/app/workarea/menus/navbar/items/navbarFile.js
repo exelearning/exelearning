@@ -32,6 +32,9 @@ export default class NavbarFile {
         this.openUserOdeFilesButton = this.menu.navbar.querySelector(
             '#navbar-button-openuserodefiles'
         );
+        this.manageProjectsButton = this.menu.navbar.querySelector(
+            '#navbar-button-manageprojects'
+        );
         // Offline-only Open and Save entries (in the offline actions block)
         this.openOfflineButton = this.menu.navbar.querySelector(
             '#navbar-button-open-offline'
@@ -133,6 +136,7 @@ export default class NavbarFile {
         this.setShareEvent();
         this.setUploadPlatformEvent();
         this.setOpenUserOdeFilesEvent();
+        this.setManageProjectsEvent();
         this.setOpenOfflineEvent();
         this.setRecentProjectsEvent();
         this.setDownloadProjectEvent();
@@ -685,6 +689,28 @@ export default class NavbarFile {
         this.openUserOdeFilesButton.addEventListener('click', () => {
             this.openUserOdeFilesEvent();
         });
+    }
+
+    /**
+     * Open the "Gestionar proyectos" (Manage projects) modal
+     * File -> Manage projects
+     */
+    setManageProjectsEvent() {
+        if (!this.manageProjectsButton) return;
+        this.manageProjectsButton.addEventListener('click', () => {
+            this.openManageProjectsModalEvent();
+        });
+    }
+
+    /**
+     * Open the manage-projects modal
+     */
+    openManageProjectsModalEvent() {
+        if (eXeLearning.app.modals?.manageprojects) {
+            eXeLearning.app.modals.manageprojects.show();
+        } else {
+            Logger.warn('Manage projects menu: modal not available');
+        }
     }
 
     /**

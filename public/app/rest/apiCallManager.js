@@ -2460,6 +2460,138 @@ export default class ApiCallManager {
     }
 
     /**
+     * Rename a project (dashboard-level rename, distinct from the in-editor
+     * live title). The backend route only exists at
+     * PATCH /api/projects/uuid/:uuid/title (no numeric-ID counterpart), so
+     * this must always be called with the project's UUID.
+     *
+     * @param {string} projectId - The project UUID
+     * @param {string} title - The new title
+     * @returns {Promise<Object>} Response with the updated project
+     */
+    async renameProject(projectId, title) {
+        const url = this._buildProjectUrl(projectId, '/title');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ title }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    success: false,
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                    message: errorData.message,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] renameProject error:', error);
+            return { success: false, responseMessage: 'ERROR', detail: error.message, message: error.message };
+        }
+    }
+
+    /**
+     * Duplicate a project. The backend route only exists at
+     * POST /api/projects/uuid/:uuid/duplicate (no numeric-ID counterpart),
+     * so this must always be called with the project's UUID.
+     *
+     * @param {string} projectId - The project UUID
+     * @returns {Promise<Object>} Response with the new project's uuid
+     */
+    async duplicateProject(projectId) {
+        const url = this._buildProjectUrl(projectId, '/duplicate');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    success: false,
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                    message: errorData.message,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] duplicateProject error:', error);
+            return { success: false, responseMessage: 'ERROR', detail: error.message, message: error.message };
+        }
+    }
+
+    /**
+     * Delete a project. The backend route only exists at
+     * DELETE /api/projects/uuid/:uuid (no numeric-ID counterpart), so this
+     * must always be called with the project's UUID.
+     *
+     * @param {string} projectId - The project UUID
+     * @returns {Promise<Object>} Response
+     */
+    async deleteProject(projectId) {
+        const url = this._buildProjectUrl(projectId);
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    success: false,
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                    message: errorData.message,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] deleteProject error:', error);
+            return { success: false, responseMessage: 'ERROR', detail: error.message, message: error.message };
+        }
+    }
+
+    /**
      * Add a collaborator to a project
      * Accepts both numeric ID and UUID
      *
@@ -2589,6 +2721,202 @@ export default class ApiCallManager {
         } catch (error) {
             console.error('[API] transferProjectOwnership error:', error);
             return { responseMessage: 'ERROR', detail: error.message };
+        }
+    }
+
+    /**
+     * Get the caller's personal "My Projects" dashboard folders
+     *
+     * @returns {Promise<Object>} Response with a `folders` array (each with uuid, name, projectCount)
+     */
+    async getProjectFolders() {
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/folders`;
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                console.error('[API] getProjectFolders failed:', response.status);
+                return { success: false, folders: [] };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] getProjectFolders error:', error);
+            return { success: false, folders: [] };
+        }
+    }
+
+    /**
+     * Create a new dashboard folder, optionally nested under an existing one
+     *
+     * @param {string} name - The folder name
+     * @param {string|null} [parentFolderUuid] - The parent folder UUID, or null/omitted for top-level
+     * @returns {Promise<Object>} Response with the created folder
+     */
+    async createProjectFolder(name, parentFolderUuid = null) {
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/folders`;
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ name, parentFolderUuid }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                return { success: false, error: data.error, message: data.message || `HTTP ${response.status}` };
+            }
+
+            return data;
+        } catch (error) {
+            console.error('[API] createProjectFolder error:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
+    /**
+     * Rename and/or reparent a dashboard folder.
+     * `parentFolderUuid` is only included in the request when explicitly
+     * passed (string uuid or null) — omitting the argument entirely leaves
+     * the folder's current parent untouched, matching the PATCH endpoint's
+     * "present vs. absent" semantics.
+     *
+     * @param {string} folderUuid - The folder UUID
+     * @param {string} name - The new name
+     * @param {string|null} [parentFolderUuid] - New parent UUID, null to move to top-level, or omit to leave unchanged
+     * @returns {Promise<Object>} Response with the updated folder
+     */
+    async renameProjectFolder(folderUuid, name, parentFolderUuid) {
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/folders/${folderUuid}`;
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        const payload = { name };
+        if (parentFolderUuid !== undefined) {
+            payload.parentFolderUuid = parentFolderUuid;
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                return { success: false, error: data.error, message: data.message || `HTTP ${response.status}` };
+            }
+
+            return data;
+        } catch (error) {
+            console.error('[API] renameProjectFolder error:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
+    /**
+     * Delete a dashboard folder. Projects filed in it become unfiled — they are never deleted.
+     *
+     * @param {string} folderUuid - The folder UUID
+     * @returns {Promise<Object>} Response
+     */
+    async deleteProjectFolder(folderUuid) {
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/folders/${folderUuid}`;
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                return { success: false, error: data.error, message: data.message || `HTTP ${response.status}` };
+            }
+
+            return data;
+        } catch (error) {
+            console.error('[API] deleteProjectFolder error:', error);
+            return { success: false, message: error.message };
+        }
+    }
+
+    /**
+     * File (or unfile, when folderUuid is null) a project into a dashboard folder.
+     * Accepts both numeric ID and UUID for the project.
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @param {string|null} folderUuid - The target folder UUID, or null to unfile
+     * @returns {Promise<Object>} Response
+     */
+    async assignProjectFolder(projectId, folderUuid) {
+        const url = this._buildProjectUrl(projectId, '/folder');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ folderUuid }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                return { success: false, error: data.error, message: data.message || `HTTP ${response.status}` };
+            }
+
+            return data;
+        } catch (error) {
+            console.error('[API] assignProjectFolder error:', error);
+            return { success: false, message: error.message };
         }
     }
 

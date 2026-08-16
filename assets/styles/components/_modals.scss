@@ -1978,13 +1978,200 @@
     }
 }
 
-#modalOpenUserOdeFiles {
+/* Per-project "move to folder" popover (showFolderPicker in
+   projectListRender.js), shared by "Abrir" and "Gestionar proyectos".
+   Portalled to document.body and positioned by _positionFolderPicker()
+   (top/left set inline) rather than living next to its anchor button in the
+   project list: the list scrolls (.ode-files-list has overflow: auto),
+   which clips position: absolute/fixed descendants to that ancestor's
+   bounds regardless of z-index — an in-place popover got cut off instead of
+   overlaying on top. Unscoped (not nested under either modal's ID) because
+   the portalled element is no longer a descendant of the modal that opened
+   it. z-index must clear the modal's own (.modal { z-index: 20009 }). */
+.ode-folder-picker {
+    position: fixed;
+    z-index: 20010;
+    min-width: 160px;
+    padding: 4px;
+    background: var(--white, #fff);
+    border: 1px solid var(--gray-200, #e5e7eb);
+    border-radius: .375rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+
+    .ode-folder-picker-option {
+        text-align: left;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        padding: 6px 8px;
+        border-radius: .25rem;
+        font-size: 13px;
+        color: var(--gray-700, #374151);
+
+        &:hover {
+            background: var(--brand-primary-100);
+        }
+
+        &.selected {
+            font-weight: 600;
+            color: var(--brand-primary, #0BA1A1);
+        }
+    }
+}
+
+:is(#modalOpenUserOdeFiles, #modalManageProjects) {
     .modal-dialog-centered {
-        max-width: 60%;
+        max-width: 70%;
         .modal-content {
             width: 100%;
             .modal-body {
+                .modal-body-content {
+                    display: grid;
+                    grid-template-columns: 280px 1fr;
+                    grid-template-rows: auto 1fr;
+                    column-gap: 20px;
+                    /* Bounds the row/column tracks so the sidebar (grid-row:
+                       1 / 3, stretched to fill by default) scrolls
+                       internally instead of growing the whole dialog past
+                       the viewport when there are many folders. */
+                    max-height: 65vh;
+                }
+
+                /* Folder navigation sidebar, full height of the dialog on
+                   both "Abrir"/"Open" and "Gestionar proyectos"/"Manage
+                   Projects" (spans both grid rows so it stretches to match
+                   the combined height of the tabs/search header and the
+                   project list next to it). */
+                .modal-dashboard-sidebar {
+                    grid-column: 1;
+                    grid-row: 1 / 3;
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 0;
+                    padding-right: 16px;
+                    border-right: 1px solid var(--gray-200, #e5e7eb);
+
+                    .ode-new-folder-button {
+                        margin-top: 8px;
+                        align-self: flex-start;
+                        white-space: nowrap;
+                    }
+
+                    /* Folder navigation tree */
+                    .project-folder-tree-wrap {
+                        flex: 1 1 auto;
+                        min-height: 0;
+                        overflow-y: auto;
+                        border: 1px solid var(--gray-200, #e5e7eb);
+                        border-radius: .5rem;
+                        padding: 4px;
+                    }
+
+                    .project-folder-tree {
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    .project-folder-tree-item {
+                        display: flex;
+                        flex-direction: column;
+                    }
+
+                    .project-folder-tree-row {
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                        padding: 4px 6px;
+                        padding-left: calc(6px + var(--project-folder-tree-depth, 0) * 18px);
+                        border-radius: .375rem;
+                        cursor: pointer;
+
+                        &:hover {
+                            background: var(--brand-primary-100);
+                        }
+                    }
+
+                    .project-folder-tree-item.selected > .project-folder-tree-row {
+                        background: var(--brand-primary-100);
+                        font-weight: 600;
+                    }
+
+                    .project-folder-tree-toggle,
+                    .project-folder-tree-toggle-spacer {
+                        width: 18px;
+                        flex-shrink: 0;
+                    }
+
+                    .project-folder-tree-toggle {
+                        border: 0;
+                        background: transparent;
+                        cursor: pointer;
+                        padding: 0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-family: var(--icons-ff);
+                        font-size: var(--h4-fs);
+                        line-height: 1;
+                        color: var(--icon-primary);
+                    }
+
+                    .project-folder-tree-label {
+                        flex: 1 1 auto;
+                        min-width: 0;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+
+                    .project-folder-tree-children[hidden] {
+                        display: none;
+                    }
+
+                    /* Folder drag-and-drop reparenting, "Gestionar proyectos" only */
+                    .project-folder-tree-row.dragging {
+                        opacity: 0.5;
+                    }
+
+                    .project-folder-tree-row.drag-over {
+                        outline: 2px dashed var(--brand-primary, #0BA1A1);
+                        outline-offset: -2px;
+                    }
+
+                    .project-folder-tree-move-button,
+                    .project-folder-tree-rename-button,
+                    .project-folder-tree-delete-button {
+                        border: 0;
+                        background: transparent;
+                        cursor: pointer;
+                        padding: .15rem .3rem;
+                        border-radius: .375rem;
+                        visibility: hidden;
+
+                        &:hover {
+                            background: var(--brand-primary-100);
+                        }
+                    }
+
+                    .project-folder-tree-move-button {
+                        margin-left: auto;
+                    }
+
+                    .project-folder-tree-row:hover .project-folder-tree-move-button,
+                    .project-folder-tree-row:hover .project-folder-tree-rename-button,
+                    .project-folder-tree-row:hover .project-folder-tree-delete-button,
+                    .project-folder-tree-row:focus-within .project-folder-tree-move-button,
+                    .project-folder-tree-row:focus-within .project-folder-tree-rename-button,
+                    .project-folder-tree-row:focus-within .project-folder-tree-delete-button {
+                        visibility: visible;
+                    }
+                }
+
                 .modal-actions {
+                    grid-column: 2;
+                    grid-row: 1;
                     display: flex;
                     flex-flow: row wrap;
                     justify-content: space-between;
@@ -2035,8 +2222,10 @@
                             }
                         }
                     }
+
                     .ode-filter-wrap {
-                        width: 45%;
+                        flex: 1 1 320px;
+                        max-width: 420px;
                         display: flex;
                         align-items: center;
                         gap: 12px;
@@ -2101,12 +2290,27 @@
                         }
                     }
                 }
+                /* Empty-state alert (makeElementListOdeFiles returns this
+                   instead of .ode-files-list-container when there are no
+                   matching projects) takes the same grid cell as the list. */
+                .modal-body-content > .alert.alert-info {
+                    grid-column: 2;
+                    grid-row: 2;
+                }
+
                 .ode-files-list-container {
+                    grid-column: 2;
+                    grid-row: 2;
+                    min-height: 0;
+                    display: flex;
+                    flex-direction: column;
+
                     .ode-files-list {
                         display: flex;
                         flex-direction: column;
                         gap: 10px;
-                        max-height: 54vh;
+                        flex: 1 1 auto;
+                        min-height: 0;
                         overflow: auto;
                         padding-right: 5px;
                         .ode-group {
@@ -2230,6 +2434,7 @@
                                     display: inline-flex;
                                     align-items: center;
                                     gap: 5px;
+                                    position: relative;
                                     .ode-toggle {
                                         border: 0;
                                         background: transparent;
@@ -2253,7 +2458,9 @@
                                         }
                                     }
                                     .open-user-ode-file-action-delete,
-                                    .open-user-ode-file-action-copy {
+                                    .open-user-ode-file-action-rename,
+                                    .open-user-ode-file-action-copy,
+                                    .open-user-ode-file-action-move {
                                         border: 0;
                                         background: transparent;
                                         cursor: pointer;
@@ -2265,7 +2472,9 @@
                                             border: 1px solid var(--brand-primary-300);
                                         }
                                     }
-                                    .open-user-ode-file-action-copy {
+                                    .open-user-ode-file-action-rename,
+                                    .open-user-ode-file-action-copy,
+                                    .open-user-ode-file-action-move {
                                         svg path {
                                             stroke: var(--gray-600, #4b5563);
                                         }
@@ -3238,6 +3447,7 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
     /* Override all modal min-width values on mobile */
     #modalOpenUserOdeFiles,
+    #modalManageProjects,
     #modalInfo,
     #modalProperties,
     #modalAssistant,
@@ -3255,10 +3465,46 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
         }
     }
 
+    /* Folder sidebar becomes a bounded-height panel above the tabs/search/
+       list on narrow screens instead of a left column — a fixed-width
+       sidebar next to a project list that's already tight on space would
+       make both unusable. The list keeps scrolling via .modal-body's own
+       overflow-y (set above); the sidebar gets its own short scroll region
+       so a long folder tree doesn't push the rest of the dialog down. */
+    :is(#modalOpenUserOdeFiles, #modalManageProjects) .modal-body-content {
+        display: block !important;
+        max-height: none !important;
+
+        .modal-dashboard-sidebar {
+            border-right: 0 !important;
+            border-bottom: 1px solid var(--gray-200, #e5e7eb);
+            padding-right: 0 !important;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+
+            .project-folder-tree-wrap {
+                max-height: 35vh !important;
+            }
+
+            /* The move/rename/delete buttons are hover-revealed on desktop
+               (visibility: hidden by default, shown on :hover/:focus-within)
+               to keep the tree uncluttered — but touch devices have no
+               reliable hover state, so tapping a folder to select it never
+               revealed them. Reveal them for the selected folder only below
+               the breakpoint, so the rest of the tree stays uncluttered. */
+            .project-folder-tree-item.selected > .project-folder-tree-row .project-folder-tree-move-button,
+            .project-folder-tree-item.selected > .project-folder-tree-row .project-folder-tree-rename-button,
+            .project-folder-tree-item.selected > .project-folder-tree-row .project-folder-tree-delete-button {
+                visibility: visible !important;
+            }
+        }
+    }
+
     /* True fullscreen for modals opted in with `modal-fullscreen-md-down`.
        Scoped to each modal ID so specificity beats the generic #modal... overrides above. */
     #modalFileManager,
     #modalOpenUserOdeFiles,
+    #modalManageProjects,
     #modalProperties,
     #modalAbout,
     #modalEasterEgg {

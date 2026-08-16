@@ -50,6 +50,8 @@ let mockSessions: Map<string, any>;
 let mockCollaborators: Map<number, Set<number>>;
 let mockSnapshots: Map<number, any>;
 let mockAssets: Map<number, any[]>; // projectId -> assets[]
+let mockFolders: Map<number, any[]>; // userId -> folders[]
+let mockFolderAssignments: Map<number, Map<number, string>>; // userId -> (projectId -> folderUuid)
 let userIdCounter = 1;
 let projectIdCounter = 1;
 let assetIdCounter = 1;
@@ -193,6 +195,12 @@ function createMockQueries(): QueriesDeps {
                 project.visibility = visibility;
             }
         },
+        updateProjectTitle: async (_db: any, id: number, title: string) => {
+            const project = mockProjects.get(id);
+            if (project) {
+                project.title = title;
+            }
+        },
         getProjectCollaborators: async (_db: any, projectId: number) => {
             const collabIds = mockCollaborators.get(projectId) || new Set();
             return Array.from(collabIds)
@@ -291,6 +299,13 @@ function createMockQueries(): QueriesDeps {
             }
             return { hasAccess: false, reason: 'Access denied' };
         },
+        hasAccess: async (_db: any, projectId: number, userId: number) => {
+            const project = mockProjects.get(projectId);
+            if (!project) return false;
+            if (project.owner_id === userId) return true;
+            const collabs = mockCollaborators.get(projectId) || new Set();
+            return collabs.has(userId);
+        },
         findSnapshotByProjectId: async (_db: any, projectId: number) => mockSnapshots.get(projectId),
         upsertSnapshot: async (_db: any, projectId: number, data: Buffer, version: string) => {
             mockSnapshots.set(projectId, { project_id: projectId, snapshot_data: data, version });
@@ -310,6 +325,12 @@ function createMockQueries(): QueriesDeps {
             projectAssets.push(asset);
             mockAssets.set(data.project_id, projectAssets);
             return asset;
+        },
+        findFoldersWithCountsForUser: async (_db: any, userId: number) => {
+            return mockFolders.get(userId) || [];
+        },
+        findFolderAssignmentsForUser: async (_db: any, userId: number) => {
+            return mockFolderAssignments.get(userId) || new Map();
         },
     };
 }
@@ -353,6 +374,8 @@ describe('Project Routes', () => {
         mockCollaborators = new Map();
         mockSnapshots = new Map();
         mockAssets = new Map();
+        mockFolders = new Map();
+        mockFolderAssignments = new Map();
         userIdCounter = 1;
         projectIdCounter = 1;
         assetIdCounter = 1;
@@ -1382,6 +1405,138 @@ describe('Project Routes', () => {
 
                 // Verify: Project A is still private (not affected by the change)
                 expect(mockProjectsByUuid.get('uuid-project-a')?.visibility).toBe('private');
+            });
+        });
+
+        describe('PATCH /api/projects/uuid/:uuid/title', () => {
+            it('requires authentication', async () => {
+                createTestProject(700, 'uuid-700', 1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-700/title', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: 'New Title' }),
+                    }),
+                );
+
+                expect(res.status).toBe(401);
+            });
+
+            it('returns 404 for a project that does not exist', async () => {
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/does-not-exist/title', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ title: 'New Title' }),
+                    }),
+                );
+
+                expect(res.status).toBe(404);
+            });
+
+            it('allows a collaborator (not just the owner) to rename, matching in-editor behavior', async () => {
+                createTestProject(701, 'uuid-701', 1);
+                mockCollaborators.set(701, new Set([2]));
+                const token = await createAuthToken(2);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-701/title', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ title: 'Renamed By Collaborator' }),
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                expect(mockProjectsByUuid.get('uuid-701')?.title).toBe('Renamed By Collaborator');
+            });
+
+            it('rejects a user with no access to a private project', async () => {
+                createTestProject(702, 'uuid-702', 1);
+                const token = await createAuthToken(2);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-702/title', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ title: 'Should Not Apply' }),
+                    }),
+                );
+
+                expect(res.status).toBe(403);
+                expect(mockProjectsByUuid.get('uuid-702')?.title).toBe('Test Project 702');
+            });
+
+            it('rejects a user with no access to a PUBLIC project (regression test: renaming must not follow the same public-read bypass as viewing/duplicating)', async () => {
+                const project = createTestProject(7020, 'uuid-7020', 1);
+                project.visibility = 'public';
+                const token = await createAuthToken(2);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-7020/title', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ title: 'Vandalized' }),
+                    }),
+                );
+
+                expect(res.status).toBe(403);
+                expect(mockProjectsByUuid.get('uuid-7020')?.title).toBe('Test Project 7020');
+            });
+
+            it('rejects an empty title', async () => {
+                createTestProject(703, 'uuid-703', 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-703/title', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ title: '   ' }),
+                    }),
+                );
+
+                expect(res.status).toBe(400);
+                expect(mockProjectsByUuid.get('uuid-703')?.title).toBe('Test Project 703');
+            });
+
+            it('trims the title before persisting it', async () => {
+                createTestProject(704, 'uuid-704', 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-704/title', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ title: '  Trimmed Title  ' }),
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                const responseBody = await res.json();
+                expect(responseBody.project.title).toBe('Trimmed Title');
+                expect(mockProjectsByUuid.get('uuid-704')?.title).toBe('Trimmed Title');
+            });
+
+            it('only updates the specified project (regression test for stale UUID bug)', async () => {
+                createTestProject(705, 'uuid-project-x', 1);
+                createTestProject(706, 'uuid-project-y', 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/uuid/uuid-project-y/title', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ title: 'Renamed Y' }),
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                expect(mockProjectsByUuid.get('uuid-project-y')?.title).toBe('Renamed Y');
+                expect(mockProjectsByUuid.get('uuid-project-x')?.title).toBe('Test Project 705');
             });
         });
 
@@ -2586,12 +2741,48 @@ describe('Project Routes', () => {
             expect(body.odeFiles.odeFilesSync.length).toBeGreaterThan(0);
         });
 
+        it('should include the caller folders and each project folderId in the list response', async () => {
+            const token = await createAuthToken(1);
+
+            const project = {
+                id: 1001,
+                uuid: 'user-project-folder-1',
+                owner_id: 1,
+                title: 'Filed Project',
+                saved_once: 1,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1001, project);
+            mockProjectsByUuid.set('user-project-folder-1', project);
+
+            mockFolders.set(1, [{ id: 1, uuid: 'folder-uuid-1', parentId: null, name: 'Math', projectCount: 1 }]);
+            mockFolderAssignments.set(1, new Map([[1001, 'folder-uuid-1']]));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/user/list', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.odeFiles.folders).toEqual([
+                { uuid: 'folder-uuid-1', name: 'Math', parentUuid: null, depth: 0, projectCount: 1 },
+            ]);
+            const filedEntry = body.odeFiles.odeFilesSync.find(
+                (p: { odeId: string }) => p.odeId === 'user-project-folder-1',
+            );
+            expect(filedEntry?.folderId).toBe('folder-uuid-1');
+        });
+
         it('should return empty list when not authenticated', async () => {
             const res = await app.handle(new Request('http://localhost/api/projects/user/list'));
 
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.odeFiles.odeFilesSync).toEqual([]);
+            expect(body.odeFiles.folders).toEqual([]);
         });
 
         it('should clean autosave', async () => {

@@ -78,6 +78,7 @@ export default class MenuEngine {
         const buttonMappings = {
             'mobile-navbar-button-new': ['navbar-button-new'],
             'mobile-navbar-button-openuserodefiles': ['navbar-button-openuserodefiles'],
+            'mobile-navbar-button-manageprojects': ['navbar-button-manageprojects'],
             'mobile-navbar-button-open-offline': ['navbar-button-open-offline'],
             'mobile-navbar-button-download-project': ['navbar-button-download-project'],
             'mobile-navbar-button-export-web': ['navbar-button-exportas-html5', 'navbar-button-export-html5'],

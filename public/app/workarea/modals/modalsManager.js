@@ -14,6 +14,7 @@ import ModalAbout from './modals/pages/modalAbout.js';
 import ModalEasterEgg from './modals/pages/modalEasterEgg.js';
 import ModalProperties from './modals/pages/modalProperties.js';
 import ModalOpenUserOdeFiles from './modals/pages/modalOpenUserOdeFiles.js';
+import ModalManageProjects from './modals/pages/modalManageProjects.js';
 import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
 import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
@@ -41,6 +42,7 @@ export default class ModalsManagement {
         this.easteregg = null;
         this.properties = null;
         this.openuserodefiles = null;
+        this.manageprojects = null;
         this.templateselection = null;
         this.sessionlogout = null;
         this.uploadprogress = null;
@@ -70,6 +72,7 @@ export default class ModalsManagement {
         this.easteregg = new ModalEasterEgg(this);
         this.properties = new ModalProperties(this);
         this.openuserodefiles = new ModalOpenUserOdeFiles(this);
+        this.manageprojects = new ModalManageProjects(this);
         this.templateselection = new ModalTemplateSelection(this);
         this.sessionlogout = new ModalSessionLogout(this);
         this.uploadprogress = new ModalUploadProgress(document.body);
@@ -99,6 +102,7 @@ export default class ModalsManagement {
         this.easteregg.behaviour();
         this.properties.behaviour();
         this.openuserodefiles.behaviour();
+        this.manageprojects.behaviour();
         this.templateselection.behaviour();
         this.sessionlogout.behaviour();
         this.share.behaviour();
@@ -130,6 +134,7 @@ export default class ModalsManagement {
             this.easteregg,
             this.properties,
             this.openuserodefiles,
+            this.manageprojects,
             this.templateselection,
             this.sessionlogout,
             this.share,

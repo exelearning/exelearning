@@ -8,6 +8,7 @@ import { staticPlugin } from '@elysiajs/static';
 import { healthRoutes, healthCheckAlias } from './routes/health';
 import { authRoutes } from './routes/auth';
 import { projectRoutes, symfonyCompatProjectRoutes } from './routes/project';
+import { projectFoldersRoutes } from './routes/project-folders';
 import { assetsRoutes, startChunkUploadSweeper, stopChunkUploadSweeper } from './routes/assets';
 import {
     startCleanupScheduler as startUploadSessionCleanup,
@@ -567,6 +568,7 @@ if (registerRootRoutes) {
         .use(pagesRoutes)
         .use(projectRoutes)
         .use(symfonyCompatProjectRoutes)
+        .use(projectFoldersRoutes)
         .use(assetsRoutes)
         .use(fileManagerRoutes)
         .use(exportRoutes)
@@ -603,6 +605,7 @@ if (routePrefix) {
             .use(pagesRoutes)
             .use(projectRoutes)
             .use(symfonyCompatProjectRoutes)
+            .use(projectFoldersRoutes)
             .use(assetsRoutes)
             .use(fileManagerRoutes)
             .use(exportRoutes)

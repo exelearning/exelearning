@@ -8,7 +8,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test'
 import { Elysia } from 'elysia';
 import * as bcrypt from 'bcryptjs';
 import { db, resetClientCacheForTesting } from '../../../db/client';
-import { up } from '../../../db/migrations/001_initial';
+import { migrateToLatest } from '../../../db/migrations';
 import { now } from '../../../db/types';
 import { projectsRoutes } from './projects';
 import { createAuthRoutes } from '../../auth';
@@ -82,8 +82,10 @@ describe('Projects API v1', () => {
         // Reset the global db client cache so it uses the test DB_PATH
         await resetClientCacheForTesting();
 
-        // Run migrations on the global db
-        await up(db);
+        // Run all migrations on the global db (DELETE /projects/:uuid exercises
+        // hardDeleteProject, which touches project_folder_assignments — a table
+        // added after 001_initial, so a full migration run is required here).
+        await migrateToLatest(db);
 
         // Mock Y.Doc for ensureDocument
         mockYDoc = new Y.Doc();
@@ -225,6 +227,7 @@ describe('Projects API v1', () => {
 
     beforeEach(async () => {
         // Clean up projects before each test
+        await db.deleteFrom('project_folder_assignments').execute();
         await db.deleteFrom('project_collaborators').execute();
         await db.deleteFrom('projects').execute();
         capturedEnsureDocUuids.length = 0;

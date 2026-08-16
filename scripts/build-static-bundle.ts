@@ -828,6 +828,7 @@ export function generateModalsHtml(): string {
         'pages/easteregg.njk',
         'pages/properties.njk',
         'pages/openuserodefiles.njk',
+        'pages/manageprojects.njk',
         'pages/templateselection.njk',
         'pages/modalShare.njk',
         'pages/printpreview.njk',
