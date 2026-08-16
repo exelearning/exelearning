@@ -7,7 +7,7 @@ authors:
   - "@erseco"
 reviewers:
   - "@ignaciogros"
-implementation_prs: []
+implementation_prs: [2290]
 related_adrs:
   - "ADR-2250-01"
 supersedes: []
