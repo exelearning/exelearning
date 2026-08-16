@@ -16,6 +16,7 @@ import * as path from 'path';
 import * as os from 'os';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
+import { now } from '../db/types';
 import { createTestDb, cleanTestDb, destroyTestDb, seedTestUser, seedTestProject } from '../../test/helpers/test-db';
 import * as assetQueries from '../db/queries/assets';
 import { getAssetShard, tryResolveAssetStoragePath } from '../utils/asset-paths';
@@ -548,6 +549,129 @@ describe('asset-storage-migration', () => {
         // The row keeps its original pointer for the next (mounted) startup.
         const after = await assetQueries.findAssetById(db, row.id);
         expect(after!.storage_path).toBe(`/mnt/data/assets/${PROJECT_UUID}/unmounted.png`);
+    });
+
+    // =========================================================================
+    // Progress logging
+    // =========================================================================
+
+    /**
+     * Bulk-insert legacy asset rows WITHOUT files on disk. The missing-file
+     * path is the cheapest way to drive row volume through phase 1: every row
+     * is scanned, counted as missing and rewritten, with no filesystem moves.
+     * Mirrors the column set used by assetQueries.createAsset (timestamps
+     * included) so the rows are valid for every dialect.
+     */
+    async function bulkInsertLegacyAssets(projectId: number, count: number): Promise<void> {
+        const timestamp = now();
+        const rows = Array.from({ length: count }, (_, i) => ({
+            project_id: projectId,
+            filename: `bulk-${i}.png`,
+            storage_path: path.join(filesDir, 'assets', PROJECT_UUID, `bulk-${i}.png`),
+            mime_type: 'image/png',
+            file_size: '0',
+            client_id: `bulk-client-${i}`,
+            folder_path: '',
+            created_at: timestamp,
+            updated_at: timestamp,
+        }));
+        const chunkSize = 500;
+        for (let offset = 0; offset < rows.length; offset += chunkSize) {
+            await db
+                .insertInto('assets')
+                .values(rows.slice(offset, offset + chunkSize))
+                .execute();
+        }
+    }
+
+    it('emits a progress line every 1,000 processed rows during a large migration', async () => {
+        const projectId = await seedProject();
+        // The assets root must exist or the missing-assets-root safety latch
+        // skips the whole run.
+        await fs.ensureDir(path.join(filesDir, 'assets'));
+        await bulkInsertLegacyAssets(projectId, 1500);
+
+        const summary = await runMigration();
+
+        const progressLines = logMessages.filter(message => message.includes('Migration progress'));
+        expect(progressLines).toEqual([
+            '[AssetStorage] Migration progress: 1,000/1,500 legacy row(s) processed, 500 pending.',
+        ]);
+        expect(summary.scannedRows).toBe(1500);
+        expect(summary.missingFiles).toBe(1500);
+        expect(logMessages.join('\n')).toContain('Migration summary');
+    });
+
+    it('emits a progress line with zero pending at an exact interval boundary', async () => {
+        const projectId = await seedProject();
+        await fs.ensureDir(path.join(filesDir, 'assets'));
+        await bulkInsertLegacyAssets(projectId, 1000);
+
+        await runMigration();
+
+        const progressLines = logMessages.filter(message => message.includes('Migration progress'));
+        expect(progressLines).toEqual([
+            '[AssetStorage] Migration progress: 1,000/1,000 legacy row(s) processed, 0 pending.',
+        ]);
+    });
+
+    it('runs a single legacy-row query on a converged startup (the total count is lazy)', async () => {
+        await seedProject();
+        await fs.ensureDir(path.join(filesDir, 'assets'));
+
+        let selectQueries = 0;
+        const countingDb = new Proxy(db, {
+            get(target, prop) {
+                if (prop === 'selectFrom') {
+                    return (...args: unknown[]) => {
+                        selectQueries++;
+                        return (target.selectFrom as (...a: unknown[]) => unknown).apply(target, args);
+                    };
+                }
+                const value = Reflect.get(target, prop, target);
+                return typeof value === 'function' ? (value as (...a: unknown[]) => unknown).bind(target) : value;
+            },
+        }) as Kysely<Database>;
+
+        const summary = await runMigration({ db: countingDb });
+
+        expect(summary.scannedRows).toBe(0);
+        // Only the (empty) phase 1 batch query; the progress total COUNT must
+        // not run when there is no legacy work.
+        expect(selectQueries).toBe(1);
+    });
+
+    it('does not emit progress below the interval', async () => {
+        const projectId = await seedProject();
+        await seedLegacyAsset(projectId, PROJECT_UUID, ['small-1.png'], 'one', { client_id: 'small-1' });
+        await seedLegacyAsset(projectId, PROJECT_UUID, ['small-2.png'], 'two', { client_id: 'small-2' });
+
+        const summary = await runMigration();
+
+        expect(summary.movedFiles).toBe(2);
+        expect(logMessages.filter(message => message.includes('Migration progress'))).toHaveLength(0);
+        expect(logMessages.join('\n')).toContain('Migration summary');
+    });
+
+    it('does not emit progress on a converged installation', async () => {
+        const projectId = await seedProject();
+        await seedLegacyAsset(projectId, PROJECT_UUID, ['conv-1.png'], 'one', { client_id: 'conv-1' });
+        await seedLegacyAsset(projectId, PROJECT_UUID, ['conv-2.png'], 'two', { client_id: 'conv-2' });
+        await runMigration();
+
+        // Second run over the converged installation.
+        logMessages.length = 0;
+        await runMigration();
+        expect(logMessages.filter(message => message.includes('Migration progress'))).toHaveLength(0);
+        expect(logMessages.join('\n')).toContain('up to date');
+
+        // A completely fresh installation (no rows, no assets root) is silent too.
+        await cleanTestDb(db);
+        const freshDir = await fs.mkdtemp(path.join(os.tmpdir(), 'asset-migration-fresh-'));
+        logMessages.length = 0;
+        await runMigration({ getFilesDir: () => freshDir });
+        expect(logMessages.filter(message => message.includes('Migration progress'))).toHaveLength(0);
+        expect(logMessages.join('\n')).toContain('up to date');
     });
 
     // =========================================================================

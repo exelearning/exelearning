@@ -89,6 +89,9 @@ export interface AssetStorageMigrationDeps {
 
 const DEFAULT_BATCH_SIZE = 500;
 
+/** Rows processed between progress log lines during phase 1. */
+const PROGRESS_LOG_INTERVAL = 1000;
+
 const SHARD_BUCKET = /^[0-9a-f]{2}$/;
 
 /**
@@ -267,6 +270,7 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
     // that are skipped without being rewritten.
     // =========================================================================
     let lastId = 0;
+    let totalLegacyRows: number | null = null;
     for (;;) {
         const rows: LegacyRow[] = await db
             .selectFrom('assets')
@@ -282,6 +286,20 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
             break;
         }
 
+        // Count legacy rows once, only when there is actual work, so a
+        // converged startup issues zero extra queries. The count is a one-shot
+        // snapshot used only for progress logging; concurrent instances
+        // migrating rows in parallel make the pending figure approximate.
+        if (totalLegacyRows === null) {
+            const countRow = await db
+                .selectFrom('assets')
+                .innerJoin('projects', 'assets.project_id', 'projects.id')
+                .select(eb => eb.fn.countAll<number>().as('count'))
+                .where('assets.storage_path', 'not like', `${ASSETS_ROOT_DIR_NAME}/%`)
+                .executeTakeFirst();
+            totalLegacyRows = Number(countRow?.count ?? 0);
+        }
+
         for (const row of rows) {
             lastId = row.id;
             summary.scannedRows++;
@@ -290,6 +308,14 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
             } catch (err) {
                 summary.errors++;
                 warn(`[AssetStorage] Failed to migrate asset ${row.id} (${row.storage_path}): ${err}`);
+            }
+            if (summary.scannedRows % PROGRESS_LOG_INTERVAL === 0) {
+                const pending = Math.max(0, totalLegacyRows - summary.scannedRows);
+                log(
+                    `[AssetStorage] Migration progress: ${summary.scannedRows.toLocaleString('en-US')}/` +
+                        `${totalLegacyRows.toLocaleString('en-US')} legacy row(s) processed, ` +
+                        `${pending.toLocaleString('en-US')} pending.`,
+                );
             }
         }
     }

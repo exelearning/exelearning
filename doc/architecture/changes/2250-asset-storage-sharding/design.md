@@ -77,8 +77,12 @@ readable through the resolver's legacy fallback until migrated.
 
 The migration runs automatically inside `bootstrap()` (`src/index.ts`) on **every
 startup**, after database schema migrations and **before** the server starts listening.
-It is idempotent and resumable; on a converged installation it costs one cheap query
-plus one `readdir` and logs `[AssetStorage] Asset storage layout is up to date.`
+It is idempotent and resumable; on a converged installation it performs one legacy-row
+query and one `readdir` of the assets root, plus bounded content checks for existing
+two-decimal shard buckets (`00`-`99`) to tell them apart from legacy numeric project-id
+directories, then logs `[AssetStorage] Asset storage layout is up to date.` Re-checking
+the filesystem on every startup is deliberate: it is what lets restored legacy data
+converge automatically.
 
 Phase 1 walks all rows whose `storage_path` is not yet relative (cursor-paged batches,
 default 500). Per row it derives the target `assets/<shard>/<uuid>/…` path, then:
@@ -96,7 +100,9 @@ Row rewrites use an optimistic `WHERE storage_path = <old>` guard, so concurrent
 startups of several instances (Redis HA) are safe.
 
 Phase 2 lists the assets root: entries that are not two-hex shard buckets are legacy
-leftovers. Directories identified as projects (by UUID, or by numeric id for the legacy
+leftovers (two-decimal bucket names, `00`-`99`, are ambiguous with legacy numeric
+project-id directories, so each existing one gets a bounded content check every boot).
+Directories identified as projects (by UUID, or by numeric id for the legacy
 numeric-directory quirk) have their remaining files — orphans with no database row —
 moved into the sharded layout with the same never-overwrite rules; emptied directories
 are removed. Files still referenced by conflict rows are left in place (and re-reported
@@ -115,16 +121,20 @@ each boot). Unrecognized entries are reported and left alone.
 - **Downtime**: the migration runs before the server accepts connections; startup is
   delayed once by roughly the time needed to rename the existing asset files (renames on
   one filesystem are metadata operations; expect seconds up to a few minutes for very
-  large stores, longer on network storage). Subsequent startups are unaffected.
+  large stores, longer on network storage). Subsequent startups repeat only the cheap,
+  bounded convergence checks described above.
 - **Failure reporting**: every anomaly is logged with the `[AssetStorage]` prefix, and a
   one-line summary (files moved, rows rewritten, missing, conflicts, errors) is printed
-  at the end of the run.
+  at the end of the run. During a large migration a progress line is printed every 1,000
+  processed rows, e.g.
+  `[AssetStorage] Migration progress: 1,000/3,250 legacy row(s) processed, 2,250 pending.`
 - **Retries**: yes — the migration re-runs on every startup and finishes whatever a
   previous interrupted run left over. Individual file errors never abort the run.
 - **Verifying success**: after the upgrade boot, the log shows the summary; on the next
   boot it shows `Asset storage layout is up to date.` and
   `SELECT COUNT(*) FROM assets WHERE storage_path NOT LIKE 'assets/%'` returns 0.
-  Remaining warnings identify conflict files to resolve manually.
+  Remaining warnings identify conflict files to resolve manually (a reconciliation
+  CLI is tracked in issue #2287).
 - **Rollback**: restore the pre-upgrade backup (database + `FILES_DIR`) and redeploy the
   previous release. Rolling back only the binary after migration is not supported —
   old releases cannot read relative paths.
@@ -135,7 +145,8 @@ each boot). Unrecognized entries are reported and left alone.
 
 - All new writes emit only the new format; there is no dual-write.
 - The resolver's legacy-absolute fallback exists only so unmigrated/conflict rows keep
-  working; its removal is tracked as follow-up in ADR-2250-01.
+  working; its removal is tracked as follow-up in ADR-2250-01 (issue #2288, a future
+  major release).
 - Deletion paths (cleanup scheduler, admin user deletion, `projects-cleanup` CLI) remove
   both the sharded and the legacy directory during the transition.
 
@@ -158,8 +169,9 @@ Not applicable; filenames with non-ASCII characters are covered by tests.
 ## Performance
 
 Runtime request paths gain one string operation per asset access (path build/parse) —
-negligible against the accompanying file I/O. Startup adds one cheap no-op check per
-boot after convergence. Benchmarking of layout depths is provided by
+negligible against the accompanying file I/O. Startup adds a cheap, bounded no-op check
+per boot after convergence (see "Migration and compatibility"). Benchmarking of layout
+depths is provided by
 `scripts/benchmark-asset-storage.ts`; see ADR-2250-01 ("Validation") for how and where
 to run it. On the author's machine (macOS/APFS, Apple M5, Bun 1.3.14 — *not* the
 production ext4 target) with 20,000 projects × 2 assets, one level was fastest overall

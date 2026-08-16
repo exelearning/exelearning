@@ -274,8 +274,10 @@ We will:
 - One extra directory level in every asset path.
 - A transitional legacy-read fallback exists in the resolver until installations
   converge; it must eventually be removed (see "Follow-up work").
-- Startup performs one cheap check per boot (one indexed-free `NOT LIKE 'assets/%'`
-  query + one readdir of the assets root) even on converged installations.
+- Startup performs a cheap, bounded check per boot even on converged installations: one
+  indexed-free `NOT LIKE 'assets/%'` query, one readdir of the assets root, and a
+  content check (`readdir`) of each existing two-decimal shard bucket (`00`-`99`) to
+  distinguish it from a legacy numeric project-id directory.
 
 ### Neutral
 
@@ -333,8 +335,12 @@ We will:
 ## Follow-up work
 
 - Remove the legacy absolute-path read fallback from the resolver once field
-  installations have converged (tracked for a future major release; the migration's
-  per-boot summary tells operators when their installation is clean).
+  installations have converged (tracked in
+  <https://github.com/exelearning/exelearning/issues/2288> for a future major release;
+  the migration's per-boot summary tells operators when their installation is clean).
+- Provide a CLI subcommand that lists parked migration conflicts and resolves them
+  with an explicit keep-old / keep-new choice
+  (<https://github.com/exelearning/exelearning/issues/2287>).
 - Consider validating client-supplied project identifiers at creation time so the
   FNV-1a fallback becomes purely defensive.
 
