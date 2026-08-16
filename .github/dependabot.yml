@@ -1,8 +1,14 @@
 version: 2
 updates:
 
-  # JavaScript/Node dependencies
-  - package-ecosystem: "npm"
+  # JavaScript dependencies (Bun). The root package manager is Bun and the
+  # real lockfile is bun.lock: the previous "npm" entry only ever rewrote
+  # package.json, leaving bun.lock stale (#2225, #2229) and CVEs pinned in the
+  # lockfile invisible to Dependabot (#2241, #2286). Dependabot only supports
+  # *version* updates for Bun — security updates and the Dependency Graph do
+  # not read bun.lock — so CVE coverage for the lockfile still needs an
+  # external scanner on top of this entry.
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
