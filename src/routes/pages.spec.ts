@@ -2971,7 +2971,6 @@ describe('Pages Routes', () => {
         });
     });
 
-
     describe('workarea access control edge cases', () => {
         it('should deny access when session exists and project DB access check fails', async () => {
             const jwt = await import('@elysiajs/jwt');
@@ -3054,7 +3053,6 @@ describe('Pages Routes', () => {
         });
     });
 
-
     describe('offline mode workarea', () => {
         it('should create ephemeral session in offline mode', async () => {
             process.env.APP_ONLINE_MODE = '0';
@@ -3087,7 +3085,6 @@ describe('Pages Routes', () => {
             expect(location).toContain('project=');
         });
     });
-
 
     describe('error handling edge cases', () => {
         it('should handle findPreference error gracefully in getUserLocalePreference', async () => {
@@ -3262,7 +3259,6 @@ describe('Pages Routes', () => {
         });
     });
 
-
     describe('impersonation cookie cleanup', () => {
         it('should clean up impersonation cookies when no auth token', async () => {
             const res = await app.handle(
@@ -3311,7 +3307,6 @@ describe('Pages Routes', () => {
             expect(res.status).toBe(200);
         });
     });
-
 
     describe('platform JWT in workarea', () => {
         it('should handle jwt_token parameter for platform integration', async () => {
@@ -3362,7 +3357,6 @@ describe('Pages Routes', () => {
             expect(templateData.config).toBeDefined();
         });
     });
-
 
     describe('admin settings from database', () => {
         it('should parse stored settings with boolean, number, and string types', async () => {
@@ -3423,7 +3417,6 @@ describe('Pages Routes', () => {
         });
     });
 
-
     describe('JWT verification catch block', () => {
         it('should handle JWT verify throwing an error', async () => {
             // Use a token signed with a different secret to trigger verification failure
@@ -3455,7 +3448,6 @@ describe('Pages Routes', () => {
             expect(location).toContain('/login');
         });
     });
-
 
     describe('GET /view/:publicViewId/_/* (isolated public content)', () => {
         beforeEach(() => {
@@ -3544,5 +3536,4 @@ describe('Pages Routes', () => {
             expect(res.status).toBe(500);
         });
     });
-
 });
