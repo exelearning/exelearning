@@ -79,9 +79,10 @@ function run() {
 }
 
 const COPIES = [
-    // pdfjs-dist: two ESM module files (worker must live alongside the main file)
-    { src: nm('pdfjs-dist/build/pdf.min.mjs'), dest: pub('libs/pdfjs/pdf.min.mjs') },
-    { src: nm('pdfjs-dist/build/pdf.worker.min.mjs'), dest: pub('libs/pdfjs/pdf.worker.min.mjs') },
+    // pdfjs-dist ships ESM as .mjs; copy to .js so nginx/static hosts serve
+    // text/javascript instead of application/octet-stream (see #2254).
+    { src: nm('pdfjs-dist/build/pdf.min.mjs'), dest: pub('libs/pdfjs/pdf.min.js') },
+    { src: nm('pdfjs-dist/build/pdf.worker.min.mjs'), dest: pub('libs/pdfjs/pdf.worker.min.js') },
 
     // mermaid: single minified bundle
     { src: nm('mermaid/dist/mermaid.min.js'), dest: pub('app/common/mermaid/mermaid.min.js') },

@@ -628,6 +628,22 @@
             color: var(--admin-primary);
         }
 
+        /* Per-row actions menu (three dots) in the users table */
+        .user-actions-menu {
+            font-size: 0.85rem;
+        }
+
+        .user-actions-menu .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .user-actions-menu .dropdown-item:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .btn-admin-danger {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
             color: white;
@@ -2172,6 +2188,55 @@ window.$eXeLearningCustom = {
         </div>
     </div>
 
+    <!-- Reset Password Modal (local password accounts only) -->
+    <div class="modal fade" id="resetPasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <span class="mi">key</span>
+                        {{ t.reset_password or 'Reset password' }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="resetPasswordForm" autocomplete="off">
+                    <input type="hidden" name="userId">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>{{ t.email or 'Email' }}</label>
+                            <input type="email" class="admin-input" id="resetPasswordEmail" readonly style="background: var(--gray-100);">
+                        </div>
+                        <div class="form-group">
+                            <label for="resetPasswordNew">{{ t.new_password or 'New password' }}</label>
+                            <input type="password" class="admin-input" id="resetPasswordNew" autocomplete="new-password" minlength="4" required aria-describedby="resetPasswordHint">
+                            <small id="resetPasswordHint" style="display: block; margin-top: 0.25rem; color: var(--admin-text-muted); font-size: 0.75rem;">{{ t.password_hint or 'At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.' }}</small>
+                            {# Advisory strength indicator: it never blocks the reset. #}
+                            <div id="resetPasswordStrength" style="display: none; margin-top: 0.5rem;">
+                                <div style="height: 6px; border-radius: 3px; background: var(--gray-200); overflow: hidden;">
+                                    <div id="resetPasswordStrengthBar" style="height: 100%; width: 0; transition: width .2s ease-in-out;"></div>
+                                </div>
+                                <small id="resetPasswordStrengthLabel" role="status" aria-live="polite" style="display: block; margin-top: 0.25rem; color: var(--admin-text-muted); font-size: 0.75rem;"></small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="resetPasswordConfirm">{{ t.confirm_new_password or 'Confirm new password' }}</label>
+                            <input type="password" class="admin-input" id="resetPasswordConfirm" autocomplete="new-password" minlength="4" required>
+                        </div>
+                        <div id="resetPasswordFeedback" role="alert" aria-live="polite" style="display: none; font-size: 0.8rem;"></div>
+                        <small style="display: block; color: var(--admin-text-muted); font-size: 0.75rem;">{{ t.reset_password_help or 'Only for accounts that authenticate with an eXeLearning password. The user is not asked for their current password.' }}</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-admin-outline" data-bs-dismiss="modal">{{ t.cancel or 'Cancel' }}</button>
+                        <button type="submit" class="btn-admin-primary" id="resetPasswordSubmit">
+                            <span class="mi mi-sm">key</span>
+                            {{ t.reset_password or 'Reset password' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ basePath }}/libs/chartjs/chart.umd.min.js"></script>
     <script src="{{ basePath }}/libs/bootstrap/bootstrap.bundle.min.js"></script>
     <script>
@@ -2208,6 +2273,16 @@ window.$eXeLearningCustom = {
             cannot_impersonate_self: '{{ t.cannot_impersonate_self or "Cannot impersonate your own account" }}',
             confirm_impersonate: '{{ t.confirm_impersonate or "Start impersonation as {email}?" }}',
             impersonation_failed: '{{ t.impersonation_failed or "Failed to start impersonation" }}',
+            reset_password: '{{ t.reset_password or "Reset password" }}',
+            passwords_do_not_match: '{{ t.passwords_do_not_match or "Passwords do not match" }}',
+            password_empty: '{{ t.password_empty or "The new password cannot be empty." }}',
+            password_reset_success: '{{ t.password_reset_success or "Password reset successfully" }}',
+            password_reset_failed: '{{ t.password_reset_failed or "Failed to reset the password" }}',
+            password_strength_too_short: '{{ t.password_strength_too_short or "Password strength: too short" }}',
+            password_strength_weak: '{{ t.password_strength_weak or "Password strength: weak" }}',
+            password_strength_fair: '{{ t.password_strength_fair or "Password strength: fair" }}',
+            password_strength_good: '{{ t.password_strength_good or "Password strength: good" }}',
+            password_strength_strong: '{{ t.password_strength_strong or "Password strength: strong" }}',
             presentation: '{{ t.customization or "Customization" }}',
             maintenance: '{{ t.maintenance or "Maintenance" }}',
             logins: '{{ t.logins or "Logins" }}',
@@ -2862,13 +2937,21 @@ window.$eXeLearningCustom = {
                         ? T.cannot_impersonate_admin
                         : (isSelfUser ? T.cannot_impersonate_self : T.log_in_as);
                     const safeImpersonateTitle = String(impersonateButtonTitle || '').replace(/"/g, '&quot;');
-                    const impersonateButton = canImpersonate
-                        ? `<button class="btn-admin-outline" data-action="impersonate" onclick='impersonateUser(${user.id}, ${JSON.stringify(user.email || '')})' title="${safeImpersonateTitle}">
-                                <span class="mi mi-sm">login</span>
-                           </button>`
-                        : `<button class="btn-admin-outline" data-action="impersonate" disabled title="${safeImpersonateTitle}">
-                                <span class="mi mi-sm">login</span>
-                           </button>`;
+                    const impersonateItem = canImpersonate
+                        ? `<li><button type="button" class="dropdown-item" data-action="impersonate" onclick='impersonateUser(${user.id}, ${JSON.stringify(user.email || '')})'>
+                                <span class="mi mi-sm">login</span> ${T.log_in_as}
+                           </button></li>`
+                        : `<li><button type="button" class="dropdown-item" data-action="impersonate" disabled title="${safeImpersonateTitle}">
+                                <span class="mi mi-sm">login</span> ${T.log_in_as}
+                           </button></li>`;
+
+                    // Reset password only exists for eXeLearning password accounts:
+                    // CAS/OIDC/SAML/guest users have no password we manage.
+                    const resetPasswordItem = user.can_reset_password
+                        ? `<li><button type="button" class="dropdown-item" data-action="reset-password" onclick='openResetPasswordModal(${user.id}, ${JSON.stringify(user.email || '')})'>
+                                <span class="mi mi-sm">key</span> ${T.reset_password}
+                           </button></li>`
+                        : '';
 
                     // Build quota display with progress bar
                     let quotaHTML = '';
@@ -2921,7 +3004,15 @@ window.$eXeLearningCustom = {
                                 <button class="btn-admin-outline" onclick="editUser(${user.id})" title="{{ t.edit or 'Edit' }}">
                                     <span class="mi mi-sm">edit</span>
                                 </button>
-                                ${impersonateButton}
+                                <div class="dropdown">
+                                    <button class="btn-admin-outline" type="button" data-bs-toggle="dropdown" data-bs-boundary="viewport" aria-expanded="false" title="{{ t.actions or 'Actions' }}" aria-label="{{ t.actions or 'Actions' }}" data-action="user-actions">
+                                        <span class="mi mi-sm">more_vert</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end user-actions-menu">
+                                        ${impersonateItem}
+                                        ${resetPasswordItem}
+                                    </ul>
+                                </div>
                             </div>
                         </td>
                     `;
@@ -3579,6 +3670,112 @@ window.$eXeLearningCustom = {
         // Update status label
         document.getElementById('editUserActive').addEventListener('change', (e) => {
             document.getElementById('editUserStatusLabel').textContent = e.target.checked ? T.active : T.inactive;
+        });
+
+        // ---------------------------------------------------------------
+        // Reset password (local password accounts only)
+        //
+        // Reached from the row's actions menu, not from Edit User: it is a
+        // distinct, irreversible action and does not belong with the
+        // roles/quota/status form. The API re-checks the account type, so a
+        // hand-crafted request cannot give an SSO or guest account a password.
+        // ---------------------------------------------------------------
+
+        function openResetPasswordModal(userId, email) {
+            const form = document.getElementById('resetPasswordForm');
+            form.querySelector('[name="userId"]').value = userId;
+            document.getElementById('resetPasswordEmail').value = email || '';
+            clearResetPasswordFields();
+            new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+        }
+
+        // Never leave a typed password sitting in the DOM after the dialog closes.
+        document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal', clearResetPasswordFields);
+
+        function clearResetPasswordFields() {
+            document.getElementById('resetPasswordNew').value = '';
+            document.getElementById('resetPasswordConfirm').value = '';
+            document.getElementById('resetPasswordStrength').style.display = 'none';
+            const feedback = document.getElementById('resetPasswordFeedback');
+            feedback.textContent = '';
+            feedback.style.display = 'none';
+        }
+
+        function showResetPasswordFeedback(message, isError) {
+            const feedback = document.getElementById('resetPasswordFeedback');
+            feedback.textContent = message;
+            feedback.style.color = isError ? 'var(--system-red, #dc3545)' : 'var(--brand-primary-700, #198754)';
+            feedback.style.display = '';
+        }
+
+        // Advisory strength indicator. Shares its scoring with the workarea
+        // dialog (public/app/utils/passwordStrength.js) so both agree.
+        const RESET_PASSWORD_STRENGTH_COLORS = {
+            'too-short': 'var(--system-red, #dc3545)',
+            weak: 'var(--system-red, #dc3545)',
+            fair: '#e0a800',
+            good: 'var(--brand-primary-500, #15B7AF)',
+            strong: 'var(--brand-primary-700, #107275)',
+        };
+
+        import(`${BASE_PATH}/app/utils/passwordStrength.js`).then(({ scorePasswordStrength }) => {
+            const input = document.getElementById('resetPasswordNew');
+            const container = document.getElementById('resetPasswordStrength');
+            const bar = document.getElementById('resetPasswordStrengthBar');
+            const label = document.getElementById('resetPasswordStrengthLabel');
+
+            input.addEventListener('input', () => {
+                const { level, percent } = scorePasswordStrength(input.value);
+                if (level === 'empty') {
+                    container.style.display = 'none';
+                    return;
+                }
+                container.style.display = '';
+                bar.style.width = `${percent}%`;
+                bar.style.background = RESET_PASSWORD_STRENGTH_COLORS[level] || 'transparent';
+                label.textContent = T[`password_strength_${level.replace('-', '_')}`] || '';
+            });
+        }).catch(() => {
+            // The meter is optional; the dialog stays fully usable without it.
+        });
+
+        document.getElementById('resetPasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const button = document.getElementById('resetPasswordSubmit');
+            const userId = e.target.querySelector('[name="userId"]').value;
+            const newPassword = document.getElementById('resetPasswordNew').value;
+            const confirmPassword = document.getElementById('resetPasswordConfirm').value;
+
+            if (!newPassword) {
+                showResetPasswordFeedback(T.password_empty, true);
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                showResetPasswordFeedback(T.passwords_do_not_match, true);
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const res = await fetch(`${API_BASE}/users/${userId}/password`, {
+                    method: 'PATCH',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newPassword })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(data.message || T.password_reset_failed);
+                }
+
+                clearResetPasswordFields();
+                showResetPasswordFeedback(T.password_reset_success, false);
+            } catch (err) {
+                showResetPasswordFeedback(err.message || T.password_reset_failed, true);
+            } finally {
+                button.disabled = false;
+            }
         });
 
         // Save user
