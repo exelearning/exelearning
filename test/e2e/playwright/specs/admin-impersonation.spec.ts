@@ -99,7 +99,12 @@ test.describe('Admin Impersonation', () => {
         await page.waitForLoadState('networkidle');
         await page.locator('.admin-nav-link[data-section="users"]').click();
 
-        const impersonate = page.locator('#usersTableBody button[data-action="impersonate"]').first();
+        const targetRow = page.locator('#usersTableBody tr').filter({ hasText: evilEmail }).first();
+        await expect(targetRow).toBeVisible();
+
+        // Impersonate lives in the three-dot actions menu (issue #2261).
+        await targetRow.locator('button[data-action="user-actions"]').click();
+        const impersonate = targetRow.locator('button[data-action="impersonate"]');
         await expect(impersonate).toBeVisible();
 
         // A successful break-out would attach an onmouseover handler to the button.
