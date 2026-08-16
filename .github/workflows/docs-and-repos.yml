@@ -1,18 +1,30 @@
-name: Docs & Repos to GitHub Pages (latest release)
+name: Publish Release (Pages docs, APT/RPM repos, Chocolatey, winget)
+run-name: Publish ${{ github.event.release.tag_name || 'latest release (manual run)' }}
 
 on:
   release: # Always run on release
     types: [released]
   workflow_dispatch: # Allows manually triggering
 
+# Least privilege by default; the Pages job elevates what it needs.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # Serialize Pages deployments (per the official starter workflow) so runs
+    # queue instead of racing; never cancel a production deployment in flight.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     env:
       APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
       APT_GPG_KEY_ID: ${{ secrets.APT_GPG_KEY_ID }}
@@ -402,13 +414,15 @@ jobs:
           choco push "exelearning.${{ steps.envs.outputs.VERSION }}.nupkg" --source https://push.chocolatey.org/ --force
 
   publish-winget:
+    # No `needs`: winget-releaser only reads the release assets (the same ones
+    # publish-chocolatey consumes in parallel); it does not depend on the
+    # Pages/APT/RPM build, so all three publishing jobs run concurrently.
     if: github.event_name == 'release' && github.event.action == 'released' && github.repository == 'exelearning/exelearning'
     runs-on: ubuntu-latest
-    needs: build-and-deploy
     env:
       WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
     steps:
-      - uses: vedantmgoyal9/winget-releaser@main
+      - uses: vedantmgoyal9/winget-releaser@v2
         if: env.WINGET_TOKEN != ''
         with:
           identifier: Exelearning.Exelearning

@@ -406,6 +406,127 @@ function buildArrowControls(): Record<string, fabric.Control> {
 // Type alias matches Fabric's exported event payload for pointer events.
 type TPointerEvent = MouseEvent | TouchEvent | PointerEvent;
 
+// ── Text metrics configuration ──────────────────────────────────────────────
+
+/** Detached measuring context shared by all size-true measurements. */
+let measuringContext: CanvasRenderingContext2D | null = null;
+
+function getMeasuringContext(): CanvasRenderingContext2D {
+    if (!measuringContext) {
+        measuringContext = document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D;
+    }
+    return measuringContext;
+}
+
+interface CharStyleLike {
+    fontFamily: string;
+    fontStyle: string;
+    fontWeight: string | number;
+    fontSize: number;
+}
+
+interface MeasurableText {
+    _getFontDeclaration: (style?: Partial<CharStyleLike>, forMeasuring?: boolean) => string;
+    _setTextStyles: (ctx: CanvasRenderingContext2D, style: CharStyleLike, forMeasuring?: boolean) => void;
+    initDimensions: () => void;
+    setCoords: () => void;
+    dirty: boolean;
+}
+
+/**
+ * Measure a character with the same font declaration it is painted with.
+ *
+ * Browsers apply automatic optical sizing in canvas 2D: with a variable font
+ * carrying an `opsz` axis (the app ships Inter with opsz 14–32), glyph
+ * advances are non-linear in font size. Stock Fabric measures once at
+ * `CACHE_FONT_SIZE` (400px — where auto optical sizing clamps `opsz` to the
+ * axis maximum) and scales linearly down, while glyphs are painted at each
+ * character's real font size — below the axis maximum the painted advances
+ * are up to ~10% wider than the measured ones that drive the caret,
+ * selection, wrapping and hit-testing, so the caret drifts left of the
+ * glyphs proportionally to text length (#2214). Element CSS cannot fix this
+ * cross-browser (Firefox resolves no canvas-element font styles for 2D
+ * text, and Fabric's measuring and cache canvases are detached anyway), so
+ * measurement itself must use the render declaration.
+ *
+ * Replaces `FabricText#_measureChar` (adapted from Fabric 7.4.0) with two
+ * changes: the measuring context uses the render font declaration
+ * (`charStyle.fontSize`, no `CACHE_FONT_SIZE` scaling), and cached widths
+ * are size-specific, so the cache bucket carries the size in its
+ * style/weight segment. The top-level family key stays untouched, keeping
+ * the documented `fabric.cache.clearFontCache(fontFamily)` invalidation
+ * working, and stock consumers of the shared `window.fabric` never see
+ * these buckets (their keys carry no size suffix).
+ */
+function sizeTrueMeasureChar(
+    this: MeasurableText,
+    _char: string,
+    charStyle: CharStyleLike,
+    previousChar: string | undefined,
+    prevCharStyle: CharStyleLike | undefined,
+): { width: number; kernedWidth: number } {
+    const fontCache = (
+        fabric.cache as unknown as { getFontCache: (style: object) => Map<string, number> }
+    ).getFontCache({
+        fontFamily: charStyle.fontFamily,
+        fontStyle: charStyle.fontStyle,
+        fontWeight: `${charStyle.fontWeight}#${charStyle.fontSize}px`,
+    });
+    const fontDeclaration = this._getFontDeclaration(charStyle);
+    const couple = previousChar ? previousChar + _char : _char;
+    const stylesAreEqual = Boolean(previousChar) && fontDeclaration === this._getFontDeclaration(prevCharStyle);
+    let width: number | undefined;
+    let coupleWidth: number | undefined;
+    let previousWidth: number | undefined;
+    let kernedWidth: number | undefined;
+
+    if (previousChar && fontCache.has(previousChar)) previousWidth = fontCache.get(previousChar);
+    if (fontCache.has(_char)) kernedWidth = width = fontCache.get(_char);
+    if (stylesAreEqual && fontCache.has(couple)) {
+        coupleWidth = fontCache.get(couple) as number;
+        kernedWidth = coupleWidth - (previousWidth as number);
+    }
+    if (width === undefined || previousWidth === undefined || coupleWidth === undefined) {
+        const ctx = getMeasuringContext();
+        // forMeasuring=false: the exact declaration `fillText` paints with.
+        this._setTextStyles(ctx, charStyle, false);
+        if (width === undefined) {
+            kernedWidth = width = ctx.measureText(_char).width;
+            fontCache.set(_char, width);
+        }
+        if (previousWidth === undefined && stylesAreEqual && previousChar) {
+            previousWidth = ctx.measureText(previousChar).width;
+            fontCache.set(previousChar, previousWidth);
+        }
+        if (stylesAreEqual && coupleWidth === undefined) {
+            coupleWidth = ctx.measureText(couple).width;
+            fontCache.set(couple, coupleWidth);
+            kernedWidth = coupleWidth - (previousWidth as number);
+        }
+    }
+    return { width: width as number, kernedWidth: kernedWidth as number };
+}
+
+/**
+ * Apply size-true text metrics to one text object. Per-instance so the
+ * shared `window.fabric` (the editor bundle maps `import 'fabric'` to the
+ * app-global instance) is never mutated — objects outside the Slide canvas
+ * keep stock behavior. The object was measured with stock metrics during
+ * construction, so it is re-measured here.
+ */
+function applySizeTrueTextMetrics(obj: fabric.Object): void {
+    const target = obj as unknown as MeasurableText & {
+        _measureChar?: typeof sizeTrueMeasureChar;
+        __slideSizeTrueMetrics?: boolean;
+    };
+    if (target.__slideSizeTrueMetrics) return;
+    target.__slideSizeTrueMetrics = true;
+    target._measureChar = sizeTrueMeasureChar;
+    target.initDimensions();
+    target.setCoords();
+    target.dirty = true;
+}
+
 // ── Adapter ─────────────────────────────────────────────────────────────────
 
 export class SlideCanvasAdapter {
@@ -489,7 +610,14 @@ export class SlideCanvasAdapter {
         const fireChange = (immediate: boolean) => this.opts.onChange?.(immediate);
         const fireSelection = () => this.opts.onSelection?.(this.getSelectionInfo());
 
-        canvas.on('object:added', () => fireChange(true));
+        canvas.on('object:added', evt => {
+            // Every path that adds text (toolbar, JSON load, code mode,
+            // duplicate) converges here, so this is the single place where
+            // text objects get their size-true metrics.
+            const target = evt?.target as fabric.Object | undefined;
+            if (target && this.isTextLike(target)) applySizeTrueTextMetrics(target);
+            fireChange(true);
+        });
         canvas.on('object:removed', () => fireChange(true));
         canvas.on('object:modified', evt => {
             // Bake any user-applied scale on text objects into fontSize so

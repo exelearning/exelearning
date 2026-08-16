@@ -6,7 +6,30 @@ on:
   push:
     branches:
       - main
+  # Until now this workflow only ran after a merge, so nothing that breaks the
+  # desktop build could be caught while it was still reviewable — which is how
+  # the crash fixed in #2204 reached a reviewer, and the same structural gap
+  # #2225 hit on the database matrix. Dependency bumps are the main risk: the
+  # deps that ship inside the asar (electron, electron-builder, and app/'s own
+  # electron-updater / electron-log / electron-context-menu / fflate) are only
+  # exercised by this workflow. Restricted to the paths that actually affect
+  # packaging so ordinary PRs do not pay for a 3-OS build.
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'package.json'
+      - 'bun.lock'
+      - 'packaging/**'
+      - 'scripts/assert-app-booted.ts'
+      - '.github/workflows/build-electron-installers.yml'
   workflow_dispatch: # Allows manually triggering
+
+# One installer build per pull request: a rebase or a follow-up push supersedes
+# the run already in flight instead of queueing another 3-OS build. Release and
+# main builds are never cancelled — those publish artifacts.
+concurrency:
+  group: installers-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   package:
@@ -68,8 +91,10 @@ jobs:
         run: choco install make --yes
         shell: pwsh
 
+      # Skipped on pull requests: those build unsigned, so writing the
+      # certificate to disk would serve no purpose.
       - name: Decode Windows certificate
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && github.event_name != 'pull_request'
         run: |
           if [ -n "${{ secrets.CERT_P12 }}" ]; then
             echo "${{ secrets.CERT_P12 }}" | base64 --decode > windows-cert.pfx
@@ -90,7 +115,14 @@ jobs:
           # GitHub Releases API token for electron-builder
           export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
 
-          if [ "${{ github.repository_owner }}" = "exelearning" ]; then
+          # Pull requests take the unsigned path on purpose. electron-builder
+          # refuses to code sign a PR build ("Current build is a part of pull
+          # request, code signing will be skipped"), so the app comes out
+          # ad-hoc signed; running the notarization hook on top of that fails
+          # with "code object is not signed at all". A PR only needs to prove
+          # that packaging and startup work, and keeping signing material out
+          # of PR builds is the safer default anyway.
+          if [ "${{ github.repository_owner }}" = "exelearning" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "Official repo detected. Enabling signing/notarization only when secrets are available."
 
             if [ -n "${{ secrets.MAC_CERT_P12 }}" ]; then
@@ -115,7 +147,7 @@ jobs:
               export WIN_CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
             fi
           else
-            echo "Fork detected. Building unsigned installers (no macOS signing/notarization)."
+            echo "Fork or pull request. Building unsigned installers (no macOS signing/notarization)."
             export CSC_IDENTITY_AUTO_DISCOVERY=false
             export SKIP_NOTARIZE=1
             unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
@@ -154,6 +186,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
+      # Needed by the boot assertion below, which lives in scripts/.
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Download installers
         uses: actions/download-artifact@v8
         with:
@@ -511,7 +552,30 @@ jobs:
           } catch {}
 
 
+      # A visible window is NOT proof of a healthy boot. When the main process
+      # throws before app.whenReady() Electron shows a native error dialog: the
+      # process stays alive and owns a window, so `xdotool search`, `pgrep` and
+      # `MainWindowHandle -ne 0` all report success. That is exactly how the
+      # asar packaging crash fixed in #2204 shipped green on all three
+      # platforms while its own screenshots showed the error dialog.
+      # The app serves its UI over app:// rather than HTTP, so the main-process
+      # log is the only signal that tells a real boot from a crash.
+      - name: Assert the app booted cleanly
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${{ matrix.os }}" in
+            ubuntu-latest)  log=ubuntu-app.log ;;
+            macos-latest)   log=mac-app.log ;;
+            windows-latest) log=windows-app.log ;;
+            *) echo "::error::Unknown runner '${{ matrix.os }}'"; exit 1 ;;
+          esac
+          bun run scripts/assert-app-booted.ts "$log"
+
+      # Runs even when the assertion above fails, so the screenshots and logs
+      # needed to diagnose the failure are still published.
       - name: Upload screenshots and logs (per OS)
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: screenshots-and-logs-${{ matrix.os }}
