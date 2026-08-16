@@ -19,6 +19,7 @@ import {
     findUsersByIds as findUsersByIdsDefault,
     findUserByEmail as findUserByEmailDefault,
     updateUserRoles as updateUserRolesDefault,
+    updateUserPassword as updateUserPasswordDefault,
     deleteUser as deleteUserDefault,
 } from '../db/queries/users';
 import {
@@ -41,6 +42,7 @@ import {
 } from '../db/queries/projects';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
+import { hashPassword, isPasswordAccount, validateNewPassword, EXTERNAL_ACCOUNT_MESSAGE } from '../services/password';
 import { trans } from '../services/translation';
 import { getBasePath } from '../utils/basepath.util';
 import { logActivity } from '../services/activity-logger';
@@ -89,6 +91,7 @@ export interface AdminQueries {
     findUsersPaginated: typeof findUsersPaginatedDefault;
     countAdmins: typeof countAdminsDefault;
     updateUserRoles: typeof updateUserRolesDefault;
+    updateUserPassword: typeof updateUserPasswordDefault;
     updateUserStatus: typeof updateUserStatusDefault;
     createUserAsAdmin: typeof createUserAsAdminDefault;
     updateUserQuota: typeof updateUserQuotaDefault;
@@ -131,6 +134,7 @@ const defaultDependencies: AdminDependencies = {
         findUsersPaginated: findUsersPaginatedDefault,
         countAdmins: countAdminsDefault,
         updateUserRoles: updateUserRolesDefault,
+        updateUserPassword: updateUserPasswordDefault,
         updateUserStatus: updateUserStatusDefault,
         createUserAsAdmin: createUserAsAdminDefault,
         updateUserQuota: updateUserQuotaDefault,
@@ -273,6 +277,29 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         impersonation_failed: trans('Failed to start impersonation', {}, locale),
         confirm_delete: trans('Are you sure you want to delete this user?', {}, locale),
         confirm_delete_bulk: trans('Are you sure you want to delete {count} users?', {}, locale),
+        // Password reset (local accounts only)
+        reset_password: trans('Reset password', {}, locale),
+        new_password: trans('New password', {}, locale),
+        confirm_new_password: trans('Confirm new password', {}, locale),
+        passwords_do_not_match: trans('Passwords do not match', {}, locale),
+        password_empty: trans('The new password cannot be empty.', {}, locale),
+        password_reset_success: trans('Password reset successfully', {}, locale),
+        password_reset_failed: trans('Failed to reset the password', {}, locale),
+        password_hint: trans(
+            'At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.',
+            {},
+            locale,
+        ),
+        password_strength_too_short: trans('Password strength: too short', {}, locale),
+        password_strength_weak: trans('Password strength: weak', {}, locale),
+        password_strength_fair: trans('Password strength: fair', {}, locale),
+        password_strength_good: trans('Password strength: good', {}, locale),
+        password_strength_strong: trans('Password strength: strong', {}, locale),
+        reset_password_help: trans(
+            'Only for accounts that authenticate with an eXeLearning password. The user is not asked for their current password.',
+            {},
+            locale,
+        ),
         // Project management
         project_management: trans('Project Management', {}, locale),
         owner: trans('Owner', {}, locale),
@@ -525,12 +552,17 @@ export const ALLOWED_ASSET_MIME_TYPES = new Set([
 
 /**
  * Sanitize user for API response (remove password)
+ *
+ * Adds `can_reset_password`, a derived capability the admin UI uses to decide
+ * whether to offer "Reset password". The password hash itself is never exposed,
+ * and the reset endpoint re-checks eligibility regardless of this field.
  */
-function sanitizeUser(user: User): Omit<User, 'password'> & { roles: string[] } {
+function sanitizeUser(user: User): Omit<User, 'password'> & { roles: string[]; can_reset_password: boolean } {
     const { password: _password, ...rest } = user;
     return {
         ...rest,
         roles: parseRoles(user.roles),
+        can_reset_password: isPasswordAccount(user),
     };
 }
 
@@ -555,6 +587,12 @@ const updateStatusSchema = t.Object({
 
 const updateQuotaSchema = t.Object({
     quota_mb: t.Union([t.Number(), t.Null()]),
+});
+
+// Administrative reset: the administrator does not know (and does not need) the
+// target's current password, so only the new one is accepted.
+const resetPasswordSchema = t.Object({
+    newPassword: t.String({ minLength: 1 }),
 });
 
 const startImpersonationSchema = t.Object({
@@ -1142,6 +1180,47 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     return { user: sanitizeUser(updatedUser) };
                 },
                 { body: updateQuotaSchema },
+            )
+
+            // PATCH /api/admin/users/:id/password - Reset a local user's password
+            //
+            // Administrative reset: no current password is required, but the
+            // target must be an eXeLearning password account. SSO and guest
+            // accounts must never be converted into local-password accounts.
+            .patch(
+                '/api/admin/users/:id/password',
+                async ({ params, body, set }) => {
+                    const parsed = parseAndValidateId(params.id, set);
+                    if ('error' in parsed) return parsed;
+
+                    const targetUser = await queries.findUserById(db, parsed.id);
+                    if (!targetUser) {
+                        set.status = 404;
+                        return { error: 'NOT_FOUND', message: 'User not found' };
+                    }
+
+                    if (!isPasswordAccount(targetUser)) {
+                        set.status = 403;
+                        return { error: 'FORBIDDEN', message: EXTERNAL_ACCOUNT_MESSAGE };
+                    }
+
+                    const validation = validateNewPassword(body.newPassword);
+                    if (!validation.valid) {
+                        set.status = 422;
+                        return { error: 'INVALID_PASSWORD', message: validation.message! };
+                    }
+
+                    const hashedPassword = await hashPassword(body.newPassword);
+                    const updatedUser = await queries.updateUserPassword(db, parsed.id, hashedPassword);
+
+                    if (!updatedUser) {
+                        set.status = 500;
+                        return { error: 'UPDATE_FAILED', message: 'Failed to reset the password' };
+                    }
+
+                    return { success: true, message: 'Password reset successfully' };
+                },
+                { body: resetPasswordSchema },
             )
 
             // =====================================================

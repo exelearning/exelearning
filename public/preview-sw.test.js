@@ -133,8 +133,8 @@ describe('Preview Service Worker', () => {
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain('iframe[src$=".pdf"]');
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain('[data-exe-pdf-src]');
             // Should load PDF.js
-            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.min.mjs');
-            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.worker.min.mjs');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.min.js');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.worker.min.js');
             // Should render to canvas
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain("createElement('canvas')");
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain("getContext('2d')");
@@ -573,8 +573,8 @@ describe('Preview Service Worker', () => {
         it('should contain PDF.js import with basePath', async () => {
             const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
             const text = await response.text();
-            expect(text).toContain('import("/libs/pdfjs/pdf.min.mjs")');
-            expect(text).toContain('workerSrc="/libs/pdfjs/pdf.worker.min.mjs"');
+            expect(text).toContain('import("/libs/pdfjs/pdf.min.js")');
+            expect(text).toContain('workerSrc="/libs/pdfjs/pdf.worker.min.js"');
         });
 
         it('should use window.location.href as PDF source', async () => {
@@ -651,8 +651,8 @@ describe('Preview Service Worker', () => {
         it('should use basePath for PDF.js library paths', async () => {
             const response = createPdfViewerResponse('doc.pdf', '/app/viewer/doc.pdf', '/app/');
             const text = await response.text();
-            expect(text).toContain('import("/app/libs/pdfjs/pdf.min.mjs")');
-            expect(text).toContain('workerSrc="/app/libs/pdfjs/pdf.worker.min.mjs"');
+            expect(text).toContain('import("/app/libs/pdfjs/pdf.min.js")');
+            expect(text).toContain('workerSrc="/app/libs/pdfjs/pdf.worker.min.js"');
         });
 
         it('should set Cache-Control and X-Served-By headers', async () => {
@@ -670,7 +670,7 @@ describe('Preview Service Worker', () => {
         it('should default basePath to "/" when not provided', async () => {
             const response = createPdfViewerResponse('doc.pdf', '/viewer/doc.pdf');
             const text = await response.text();
-            expect(text).toContain('import("/libs/pdfjs/pdf.min.mjs")');
+            expect(text).toContain('import("/libs/pdfjs/pdf.min.js")');
         });
     });
 
