@@ -11,6 +11,7 @@ import { colors, error, success, EXIT_CODES } from './utils/output';
 // Import commands
 import * as createUser from './commands/create-user';
 import * as userRole from './commands/user-role';
+import * as userPassword from './commands/user-password';
 import * as generateJwt from './commands/generate-jwt';
 import * as tmpCleanup from './commands/tmp-cleanup';
 import * as translations from './commands/translations';
@@ -37,6 +38,7 @@ interface CommandModule {
 const COMMANDS: Record<string, CommandModule> = {
     'create-user': createUser,
     'user:role': userRole,
+    'user:password': userPassword,
     'jwt:generate': generateJwt,
     'tmp:cleanup': tmpCleanup,
     translations: translations,
@@ -177,6 +179,7 @@ ${colors.cyan('Usage:')} bun cli <command> [arguments] [options]
 ${colors.cyan('User Management:')}
   create-user <email> <password> <user_id>   Create a new user
   user:role <email> [--add|--remove|--list]  Manage user roles
+  user:password <email>                       Change a local account password
   check-quota <email>                         Check storage usage and quota
   promote-admin <email>                       Grant ROLE_ADMIN to user
   demote-admin <email>                        Remove ROLE_ADMIN from user
@@ -216,6 +219,7 @@ ${colors.cyan('Global Options:')}
 ${colors.cyan('Examples:')}
   bun cli create-user admin@example.com secret123 admin
   bun cli user:role admin@example.com --add=ROLE_ADMIN --add=ROLE_EDITOR
+  bun cli user:password user@example.com
   bun cli check-quota admin@example.com
   bun cli promote-admin admin@example.com
   bun cli jwt:generate admin@example.com --ttl=86400

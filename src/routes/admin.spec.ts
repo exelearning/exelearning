@@ -5,6 +5,7 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
+import * as bcrypt from 'bcryptjs';
 import {
     createAdminRoutes,
     sanitizeCustomHeadHtml,
@@ -100,6 +101,7 @@ const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries 
     findUsersPaginated: async () => ({ users: [mockUser()], total: 1 }),
     countAdmins: async () => 2,
     updateUserRoles: async (_db, _id, roles) => mockUser({ roles: JSON.stringify(roles) }),
+    updateUserPassword: async (_db, id, password) => mockUser({ id, password }),
     updateUserStatus: async (_db, _id, status) => mockUser({ is_active: status ? 1 : 0 }),
     createUserAsAdmin: async (_db, data) =>
         mockUser({
@@ -1913,6 +1915,322 @@ describe('Admin Routes', () => {
             expect(response.status).toBe(200);
             const body = await response.json();
             expect(body.success).toBe(true);
+        });
+    });
+
+    // ============================================================================
+    // RESET USER PASSWORD
+    // ============================================================================
+
+    describe('PATCH /api/admin/users/:id/password', () => {
+        const localUser = mockUser({ id: 2, email: 'local@example.com', user_id: null });
+        const guestUser = mockUser({ id: 3, email: 'guest@example.com', user_id: null, roles: '["ROLE_GUEST"]' });
+        const casUser = mockUser({ id: 4, email: 'cas@example.com', user_id: 'cas:jdoe' });
+        const oidcUser = mockUser({ id: 5, email: 'oidc@example.com', user_id: 'oidc:abc-123' });
+        const samlUser = mockUser({ id: 6, email: 'saml@example.com', user_id: null, external_identifier: 'saml:x' });
+
+        /**
+         * Build an app whose findUserById returns `target`, recording every
+         * password write so tests can assert nothing was stored on refusal.
+         */
+        function appFor(
+            target: User | undefined,
+            writes: Array<{ id: number; password: string }>,
+            options: { updateReturnsNothing?: boolean } = {},
+        ) {
+            const queries = createMockQueries({
+                findUserById: async () => target as User,
+                updateUserPassword: async (_db, id, password) => {
+                    writes.push({ id, password });
+                    if (options.updateReturnsNothing) return undefined;
+                    return mockUser({ id, password });
+                },
+            });
+            return new Elysia().use(createAdminRoutes({ db: {} as any, queries }));
+        }
+
+        async function resetPassword(
+            app: Elysia,
+            token: string | null,
+            userId: string | number,
+            body: unknown,
+        ): Promise<{ status: number; body: Record<string, unknown> }> {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (token) headers.Authorization = `Bearer ${token}`;
+
+            const response = await app.handle(
+                new Request(`http://localhost/api/admin/users/${userId}/password`, {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify(body),
+                }),
+            );
+
+            let parsed: Record<string, unknown> = {};
+            try {
+                parsed = await response.json();
+            } catch {
+                parsed = {};
+            }
+            return { status: response.status, body: parsed };
+        }
+
+        it('should reset the password of a local user', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status, body } = await resetPassword(appFor(localUser, writes), await generateAdminToken(), 2, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(200);
+            expect(body.success).toBe(true);
+            expect(writes).toHaveLength(1);
+            expect(writes[0].id).toBe(2);
+        });
+
+        it('should store a bcrypt hash, never the plaintext', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            await resetPassword(appFor(localUser, writes), await generateAdminToken(), 2, {
+                newPassword: 'admin-set-secret',
+            });
+
+            const stored = writes[0].password;
+            expect(stored).not.toBe('admin-set-secret');
+            expect(stored).toMatch(/^\$2[aby]\$10\$/);
+        });
+
+        it('should make the new password authenticate afterwards', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            await resetPassword(appFor(localUser, writes), await generateAdminToken(), 2, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(await bcrypt.compare('admin-set-secret', writes[0].password)).toBe(true);
+        });
+
+        it('should never return the password or its hash', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { body } = await resetPassword(appFor(localUser, writes), await generateAdminToken(), 2, {
+                newPassword: 'admin-set-secret',
+            });
+
+            const serialized = JSON.stringify(body);
+            expect(serialized).not.toContain('admin-set-secret');
+            expect(serialized).not.toContain('$2');
+        });
+
+        it('should not require the target current password', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(localUser, writes), await generateAdminToken(), 2, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(200);
+        });
+
+        it('should return 401 without a token', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(localUser, writes), null, 2, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(401);
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should return 403 for a non-admin caller', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(localUser, writes), await generateUserToken(), 2, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(403);
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should return 404 for an unknown user', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status, body } = await resetPassword(appFor(undefined, writes), await generateAdminToken(), 99999, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(404);
+            expect(body.error).toBe('NOT_FOUND');
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should return 400 for an invalid user ID', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(localUser, writes), await generateAdminToken(), 'invalid', {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(400);
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should reject a guest account', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status, body } = await resetPassword(appFor(guestUser, writes), await generateAdminToken(), 3, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(403);
+            expect(body.message).toContain('external authentication provider');
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should reject a CAS account', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(casUser, writes), await generateAdminToken(), 4, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(403);
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should reject an OIDC account', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(oidcUser, writes), await generateAdminToken(), 5, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(403);
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should reject an account with an external identifier', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(samlUser, writes), await generateAdminToken(), 6, {
+                newPassword: 'admin-set-secret',
+            });
+
+            expect(status).toBe(403);
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should reject an empty new password', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(localUser, writes), await generateAdminToken(), 2, {
+                newPassword: '',
+            });
+
+            expect(status).toBe(422);
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should reject a whitespace-only new password', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status, body } = await resetPassword(appFor(localUser, writes), await generateAdminToken(), 2, {
+                newPassword: '     ',
+            });
+
+            expect(status).toBe(422);
+            expect(body.error).toBe('INVALID_PASSWORD');
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should reject a too-short new password', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(localUser, writes), await generateAdminToken(), 2, {
+                newPassword: 'ab',
+            });
+
+            expect(status).toBe(422);
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should reject a body without newPassword', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(localUser, writes), await generateAdminToken(), 2, {});
+
+            expect(status).toBe(422);
+            expect(writes).toHaveLength(0);
+        });
+
+        it('should check eligibility before validating the password', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(appFor(casUser, writes), await generateAdminToken(), 4, {
+                newPassword: 'ab',
+            });
+
+            expect(status).toBe(403);
+        });
+
+        it('should return 500 when the update reports nothing', async () => {
+            const writes: Array<{ id: number; password: string }> = [];
+            const { status } = await resetPassword(
+                appFor(localUser, writes, { updateReturnsNothing: true }),
+                await generateAdminToken(),
+                2,
+                { newPassword: 'admin-set-secret' },
+            );
+
+            expect(status).toBe(500);
+        });
+    });
+
+    // ============================================================================
+    // ACCOUNT TYPE CAPABILITY IN USER RESPONSES
+    // ============================================================================
+
+    describe('can_reset_password capability', () => {
+        async function getUser(user: User): Promise<Record<string, any>> {
+            const queries = createMockQueries({ findUserById: async () => user });
+            const app = new Elysia().use(createAdminRoutes({ db: {} as any, queries }));
+            const response = await app.handle(
+                new Request(`http://localhost/api/admin/users/${user.id}`, {
+                    headers: { Authorization: `Bearer ${await generateAdminToken()}` },
+                }),
+            );
+            const body = await response.json();
+            return body.user;
+        }
+
+        it('is true for a local account', async () => {
+            const user = await getUser(mockUser({ id: 2, user_id: null }));
+            expect(user.can_reset_password).toBe(true);
+        });
+
+        it('is false for a guest account', async () => {
+            const user = await getUser(mockUser({ id: 3, user_id: null, roles: '["ROLE_GUEST"]' }));
+            expect(user.can_reset_password).toBe(false);
+        });
+
+        it('is false for a CAS account', async () => {
+            const user = await getUser(mockUser({ id: 4, user_id: 'cas:jdoe' }));
+            expect(user.can_reset_password).toBe(false);
+        });
+
+        it('is false for an OIDC account', async () => {
+            const user = await getUser(mockUser({ id: 5, user_id: 'oidc:abc-123' }));
+            expect(user.can_reset_password).toBe(false);
+        });
+
+        it('is false for an account with an external identifier', async () => {
+            const user = await getUser(mockUser({ id: 6, user_id: null, external_identifier: 'saml:x' }));
+            expect(user.can_reset_password).toBe(false);
+        });
+
+        it('never exposes the password hash alongside the capability', async () => {
+            const user = await getUser(mockUser({ id: 2, user_id: null }));
+            expect(user.password).toBeUndefined();
+        });
+
+        it('is present in the user list too', async () => {
+            const queries = createMockQueries({
+                findUsersPaginated: async () => ({ users: [mockUser({ id: 2, user_id: null })], total: 1 }),
+            });
+            const app = new Elysia().use(createAdminRoutes({ db: {} as any, queries }));
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/users', {
+                    headers: { Authorization: `Bearer ${await generateAdminToken()}` },
+                }),
+            );
+
+            const body = await response.json();
+            expect(body.users[0].can_reset_password).toBe(true);
+            expect(body.users[0].password).toBeUndefined();
         });
     });
 

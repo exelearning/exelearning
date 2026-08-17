@@ -116,6 +116,7 @@ The project provides a Makefile for common tasks:
 | Command | Description |
 |---------|-------------|
 | `make create-user EMAIL=x PASSWORD=y USER_ID=z` | Create a new user |
+| `make change-password EMAIL=x` | Change a local account password (asks for it interactively) |
 | `make promote-admin EMAIL=x` | Grant ROLE_ADMIN to user |
 | `make demote-admin EMAIL=x` | Remove ROLE_ADMIN from user |
 | `make grant-role EMAIL=x ROLE=y` | Add role to user |
