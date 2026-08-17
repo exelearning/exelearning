@@ -360,7 +360,7 @@ describe('ProjectManager', () => {
 
     // #2223
     it('shows a modal naming the activities whose files are missing', () => {
-        projectManager.showMissingAssetsNotice({
+        projectManager.showImportNotices({
             missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
         });
 
@@ -371,10 +371,36 @@ describe('ProjectManager', () => {
         expect(call.body).toContain('rabbit.svg');
     });
 
-    it('stays silent when the import reported no missing files', () => {
-        projectManager.showMissingAssetsNotice({ missingAssets: [] });
-        projectManager.showMissingAssetsNotice({});
-        projectManager.showMissingAssetsNotice(undefined);
+    // #2190
+    it('shows a modal naming the activities whose saved data is damaged', () => {
+        projectManager.showImportNotices({
+            malformedProperties: [{ componentId: 'c1', ideviceType: 'trueorfalse' }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('damaged-activities');
+        expect(call.body).toContain('trueorfalse');
+    });
+
+    // The alert modal is a singleton, so simultaneous reports share one dialog.
+    it('merges both reports into a single modal when both have content', () => {
+        projectManager.showImportNotices({
+            missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+            malformedProperties: [{ componentId: 'c2', ideviceType: 'trueorfalse' }],
+        });
+
+        expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
+        const call = mockApp.modals.alert.show.mock.calls[0][0];
+        expect(call.contentId).toBe('import-warnings');
+        expect(call.body).toContain('trueorfalse');
+        expect(call.body).toContain('rabbit.svg');
+    });
+
+    it('stays silent when the import reported no problems', () => {
+        projectManager.showImportNotices({ missingAssets: [], malformedProperties: [] });
+        projectManager.showImportNotices({});
+        projectManager.showImportNotices(undefined);
 
         expect(mockApp.modals.alert.show).not.toHaveBeenCalled();
     });
