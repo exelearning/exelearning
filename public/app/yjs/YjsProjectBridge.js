@@ -3797,8 +3797,9 @@ class YjsProjectBridge {
     // Every import funnels through here — the online menu goes via
     // projectManager.importFromElpxViaYjs, but the static build and the
     // embedding bridge call this method directly — so this is the only place
-    // that reports references the package could not satisfy (#2223).
-    window.eXeLearning?.app?.project?.showMissingAssetsNotice?.(stats);
+    // that reports what the import could not fully restore: unsatisfied asset
+    // references (#2223) and activities with damaged saved data (#2190).
+    window.eXeLearning?.app?.project?.showImportNotices?.(stats);
 
     return stats;
   }
