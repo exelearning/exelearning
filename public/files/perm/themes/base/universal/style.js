@@ -102,11 +102,11 @@ var eXeUniversalStyle = {
             }
         });
         // Allways close the menu in low resolution
-        $("#siteNav a").on('click', function(event){
+        $('#siteNav a').on('click', function(event){
             if (event.target.nodeName == 'A') {
                 if (eXeUniversalStyle.isLowRes()) {
                     event.preventDefault();
-                    window.location = this.href + '?nav=false';
+                    window.location = eXeUniversalStyle.navParam(this.href, true);
                 }
             }
         });
@@ -280,22 +280,33 @@ var eXeUniversalStyle = {
             });
         })
     },
-    param: function (e, act) {
-        if (act == 'add') {
-            var ref = e.href;
-            var con = '?';
-            if (ref.indexOf('.html?') != -1) con = '&';
-            var param = 'nav=false';
-            if (ref.indexOf(param) == -1) {
-                ref += con + param;
-                e.href = ref;
-            }
-        } else {
-            // This will remove all params
-            var ref = e.href;
-            ref = ref.split('?');
-            e.href = ref[0];
+    navParam: function (href, on) {
+        if (!href) return href;
+        var hash = '';
+        var i = href.indexOf('#');
+        if (i != -1) {
+            hash = href.substring(i);
+            href = href.substring(0, i);
         }
+        var query = '';
+        i = href.indexOf('?');
+        if (i != -1) {
+            query = href.substring(i + 1);
+            href = href.substring(0, i);
+        }
+        var parts = query ? query.split('&') : [];
+        var kept = [];
+        for (i = 0; i < parts.length; i++) {
+            if (parts[i] && parts[i].split('=')[0] != 'nav') kept.push(parts[i]);
+        }
+        if (on) kept.push('nav=false');
+        return href + (kept.length ? '?' + kept.join('&') : '') + hash;
+    },
+    param: function (e, act) {
+        e.setAttribute(
+            'href',
+            this.navParam(e.getAttribute('href'), act == 'add')
+        );
     },
     params: function (act) {
         $('.nav-buttons a').each(function () {
