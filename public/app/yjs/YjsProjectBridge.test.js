@@ -4777,25 +4777,26 @@ describe('YjsProjectBridge', () => {
     });
 
     /**
-     * #2223. This is the only funnel every import goes through: the online menu
-     * reaches it via projectManager.importFromElpxViaYjs, but the static build
-     * and the embedding bridge call it directly.
+     * #2223 / #2190. This is the only funnel every import goes through: the
+     * online menu reaches it via projectManager.importFromElpxViaYjs, but the
+     * static build and the embedding bridge call it directly.
      */
-    it('reports the missing-asset result to the project manager', async () => {
+    it('reports the import result to the project manager for the notices', async () => {
       const stats = {
         assets: 0,
         missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+        malformedProperties: [{ componentId: 'c2', ideviceType: 'trueorfalse' }],
       };
       global.window.ElpxImporter = mock(function() {
         return { importFromFile: mock(() => Promise.resolve(stats)) };
       });
       bridge._checkAndImportTheme = mock(() => Promise.resolve());
-      const showMissingAssetsNotice = mock(() => undefined);
-      global.window.eXeLearning.app.project = { showMissingAssetsNotice };
+      const showImportNotices = mock(() => undefined);
+      global.window.eXeLearning.app.project = { showImportNotices };
 
       await bridge.importFromElpx(new Blob(['test'], { type: 'application/zip' }));
 
-      expect(showMissingAssetsNotice).toHaveBeenCalledWith(stats);
+      expect(showImportNotices).toHaveBeenCalledWith(stats);
     });
 
     it('imports fine when no project manager is listening for the report', async () => {
