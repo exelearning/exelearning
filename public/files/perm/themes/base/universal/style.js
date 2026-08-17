@@ -129,15 +129,33 @@ var eXeUniversalStyle = {
     },
     darkMode : {
         init : function(){
-            $("#darkModeToggler").on("click",function(){
+            $('#darkModeToggler').attr('aria-pressed', $('html').hasClass('exe-dark-mode') ? 'true' : 'false');
+            $('#darkModeToggler').on('click', function(){
                 var active = 'off';
-                if (!$("html").hasClass("exe-dark-mode")) active = 'on';
+                if (!$('html').hasClass('exe-dark-mode')) active = 'on';
                 eXeUniversalStyle.darkMode.setMode(active);
+                $(this).attr('aria-pressed', active == 'on' ? 'true' : 'false');
             });
+        },
+        stored : function(){
+            try {
+                return localStorage.getItem('exeDarkMode');
+            } catch(e) {
+                return null;
+            }
+        },
+        store : function(value){
+            try {
+                if (value) {
+                    localStorage.setItem('exeDarkMode', value);
+                } else {
+                    localStorage.removeItem('exeDarkMode');
+                }
+            } catch(e) {}
         },
         setMode : function(active){
             var dark = false;
-            var darkMode = localStorage.getItem('exeDarkMode');
+            var darkMode = this.stored();
             if (darkMode && darkMode == 'on') {
                 dark = true;
             }
@@ -149,11 +167,11 @@ var eXeUniversalStyle = {
                 }
             }
             if (dark) {
-                localStorage.setItem('exeDarkMode', 'on');
-                $("html").addClass("exe-dark-mode");
+                this.store('on');
+                $('html').addClass('exe-dark-mode');
             } else {
-                localStorage.removeItem('exeDarkMode');
-                $("html").removeClass("exe-dark-mode");
+                this.store('');
+                $('html').removeClass('exe-dark-mode');
             }
         }
     },
@@ -168,7 +186,7 @@ var eXeUniversalStyle = {
         $('#exe-client-search-text').attr('class', 'form-control');
     },
     isLowRes: function () {
-        return $(window).width() <= 576;
+        return $('#siteNav').css('position') == 'static';
     },
     truncate : function(str) {
         var max = 25;
@@ -223,36 +241,39 @@ var eXeUniversalStyle = {
         $(".package-header").prepend(breadcrumb).addClass("width-breadcrumbs");
     },
     dropdownMenus: function(){
-        if (!this.dropdownNavigation) return;
+        if (!this.dropdownNavigation) {
+            $('#siteNav .other-section').show();
+            return;
+        }
         this.dropdownMenusWorking = false;
-        $("#siteNav ul ul").each(function(i){
+        $('#siteNav ul ul').each(function(i){
             var elem = $(this);
-            this.id = "child-section-"+i;
-            var lnk = elem.prev("a");
-            var css = 'closed-ul';
-            if (elem.is(":visible")) css = 'open-ul';
-            lnk.append('<button id="child-section-'+i+'-toggler" title="'+$exe_i18n.more+'" class="'+css+'"><span>'+$exe_i18n.more+'</span></button>');
-            $("#child-section-"+i+"-toggler").on("click", function(event){
+            this.id = 'child-section-'+i;
+            var lnk = elem.prev('a');
+            var open = elem.is(':visible');
+            var css = open ? 'open-ul' : 'closed-ul';
+            lnk.append('<button id="child-section-'+i+'-toggler" title="'+$exe_i18n.more+'" class="'+css+'" aria-expanded="'+open+'" aria-controls="child-section-'+i+'"><span>'+$exe_i18n.more+'</span></button>');
+            $('#child-section-'+i+'-toggler').on('click', function(event){
                 event.preventDefault();
                 if (eXeUniversalStyle.dropdownMenusWorking == true) return;
                 eXeUniversalStyle.dropdownMenusWorking = true;
                 var id = this.id;
-                    id = id.replace("-toggler", "");
-                var ul = $("#"+id);
-                if (ul.is(":visible")) {
-                    ul.slideUp("fast", function(){
-                        var lnk = $("#"+this.id+"-toggler");
-                            lnk.removeClass("open-ul");
-                            lnk.addClass("closed-ul");
-                        // $(this).removeClass("other-section-visible");
+                    id = id.replace('-toggler', '');
+                var ul = $('#'+id);
+                if (ul.is(':visible')) {
+                    ul.slideUp('fast', function(){
+                        var lnk = $('#'+this.id+'-toggler');
+                            lnk.removeClass('open-ul');
+                            lnk.addClass('closed-ul');
+                            lnk.attr('aria-expanded', 'false');
                         eXeUniversalStyle.dropdownMenusWorking = false;
                     });
                 } else {
-                    ul.slideDown("fast", function(){
-                        var lnk = $("#"+this.id+"-toggler");
-                            lnk.removeClass("closed-ul");
-                            lnk.addClass("open-ul");
-                        // $(this).addClass("other-section-visible");
+                    ul.slideDown('fast', function(){
+                        var lnk = $('#'+this.id+'-toggler');
+                            lnk.removeClass('closed-ul');
+                            lnk.addClass('open-ul');
+                            lnk.attr('aria-expanded', 'true');
                         eXeUniversalStyle.dropdownMenusWorking = false;
                     });
                 }

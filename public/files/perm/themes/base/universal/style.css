@@ -17,7 +17,7 @@
     font-family: "Atkinson Hyperlegible";
     font-style: normal;
     font-weight: 300;
-    src: local("Atkinson Hyperlegible"), local("EncodeSans-Light"),
+    src: local("Atkinson Hyperlegible"),
         url(fonts/Atkinson-Hyperlegible-Regular-102a.woff2) format("woff2");
     unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
 }
@@ -26,7 +26,7 @@
     font-family: "Atkinson Hyperlegible";
     font-style: normal;
     font-weight: 300;
-    src: local("Atkinson Hyperlegible"), local("EncodeSans-Light"),
+    src: local("Atkinson Hyperlegible"),
         url(fonts/Atkinson-Hyperlegible-Regular-102a.woff2) format("woff2");
     unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB,
         U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
@@ -36,7 +36,7 @@
     font-family: "Atkinson Hyperlegible";
     font-style: normal;
     font-weight: 300;
-    src: local("Atkinson Hyperlegible"), local("EncodeSans-Light"),
+    src: local("Atkinson Hyperlegible"),
         url(fonts/Atkinson-Hyperlegible-Regular-102a.woff2) format("woff2");
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
         U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
@@ -65,6 +65,12 @@ body.exe-export .highlighted-code {
     font-size: 0.9em;
     border-radius: 0;
 }
+body.exe-export .pre-code {
+    tab-size: 4;
+}
+body.exe-export .pre-code pre {
+    font-size: 1em;
+}
 body#tinymce {
     font-family: "Atkinson Hyperlegible", Arial, Verdana, Helvetica, sans-serif;
     line-height: 1.5em;
@@ -92,7 +98,20 @@ body#tinymce {
     text-decoration: underline;
 }
 .box-content a:focus-visible {
-  --bs-focus-ring-color: #0d77d1;
+    --bs-focus-ring-color: #0d77d1;
+}
+
+/* Effects: the effects stylesheet removes the outline on these controls */
+.exe-content .fx-tabs a,
+.exe-content .fx-pagination a,
+.exe-content .fx-carousel-pagination a {
+    color: #145cb1;
+}
+.exe-content .fx-tabs a:focus-visible,
+.exe-content .fx-pagination a:focus-visible,
+.exe-content .fx-carousel-pagination a:focus-visible {
+    outline: 2px solid #0d77d1;
+    outline-offset: 2px;
 }
 
 /* Fix some issues... */
@@ -107,8 +126,7 @@ body#tinymce {
 }
 .exe-content .fx-accordion-title {
     background: #fff;
-    background-size: auto 40px;
-    border-color: #e3e3e3 !important;
+    border-color: #e3e3e3;
     position: relative;
 }
 .exe-content .fx-accordion-title:after {
@@ -121,8 +139,7 @@ body#tinymce {
     right: 5px;
     background: #fff url(img/icons.png) no-repeat -240px 50%;
     background-size: auto 40px;
-    border-color: #e3e3e3 !important;
-    opacity: 0.4;
+    opacity: 0.6;
     transition: all 0.5s ease;
     transform: rotate(180deg);
 }
@@ -130,7 +147,7 @@ body#tinymce {
     opacity: 1;
 }
 .exe-content .fx-accordion-title h2 {
-    color: #777;
+    color: #767676;
     padding-right: 60px;
 }
 .exe-content .fx-accordion-title.active h2 {
@@ -277,6 +294,9 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     position: absolute;
     clip: rect(1px 1px 1px 1px);
     clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
 }
 .exe-export .box-content {
     padding: 20px;
@@ -303,7 +323,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 .exe-content .iDevice_buttons input[type="button"]:hover,
 .exe-content .iDevice_buttons input[type="button"]:focus,
 .exe-content .iDevice_buttons input[type="submit"]:hover,
-.exe-content .iDevice_buttons input[type="submit"]:focus
+.exe-content .iDevice_buttons input[type="submit"]:focus,
 .exe-content .iDevice_buttons button:hover,
 .exe-content .iDevice_buttons button:focus {
     background: #145cb1;
@@ -338,6 +358,9 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     position: absolute;
     clip: rect(1px 1px 1px 1px);
     clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
 }
 #packageLicense a {
     color: #666;
@@ -352,7 +375,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 #packageLicense a:hover,
 #packageLicense a:focus {
     text-decoration: none;
-    color: #d76b4a;
+    color: #c14e2b;
 }
 #packageLicense.propietary {
     position: absolute;
@@ -367,7 +390,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 #packageLicense.cc-by-sa {
     background-position: 0 -100px;
 }
-#packageLicensea.cc-by-nd {
+#packageLicense.cc-by-nd {
     background-position: 0 -200px;
 }
 #packageLicense.cc-by-nc {
@@ -446,6 +469,9 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     position: absolute;
     clip: rect(1px 1px 1px 1px);
     clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
 }
 
 /* Navigation menu */
@@ -467,7 +493,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
         padding-bottom: 43px;
     }
 }
-#siteNav .other-section {
+html.js #siteNav .other-section {
     display: none; /* Optional (hide subpages) */
 }
 #siteNav ul {
@@ -537,14 +563,13 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     padding-right: 35px;
 }
 #siteNav a button {
-    width: 20px;
-    height: 20px;
-    background: red;
+    width: 24px;
+    height: 24px;
     position: absolute;
     right: 10px;
-    bottom: 10px;
+    bottom: 8px;
     border: none;
-    background: url(img/icons.png) no-repeat -185px 50%;
+    background: url(img/icons.png) no-repeat -183px 50%;
     background-size: auto 30px;
     transform: rotate(180deg);
     transition: all 0.5s ease;
@@ -556,46 +581,9 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     position: absolute;
     clip: rect(1px 1px 1px 1px);
     clip: rect(1px, 1px, 1px, 1px);
-}
-
-@media (min-width: 992px) {
-    .nav-buttons a span,
-    .nav-buttons span span {
-        position: relative;
-        clip: auto;
-    }
-
-    .nav-buttons .nav-button-left,
-    .nav-buttons .nav-button-right {
-        position: absolute;
-        top: 0;
-        right: 10px;
-        display: block;
-        background: #0d77d1;
-        width: 50px;
-        height: 30px;
-        background: url(img/icons.png) no-repeat -150px 0;
-        background-size: auto 50px;
-
-        width: auto;
-        height: 30px;
-        top: 10px;
-        min-width: 120px;
-        line-height: 30px;
-        background: green;
-        color: #fff;
-        padding: 0;
-        text-align: center;
-    }
-    .nav-buttons .nav-button-left {
-        right: 140px;
-    }
-    .exe-web-site #darkModeToggler {
-        right: 270px;
-    }
-    .exe-web-site .page-counter {
-        right: 330px;
-    }
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
 }
 
 /* Web content layout */
@@ -626,7 +614,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 
 /* Hidden navigation */
 html body.exe-web-site.siteNav-off .exe-content {
-    box-shadow: none !important; /* No false left column */
+    box-shadow: none; /* No false left column */
 }
 body.siteNav-off #siteNav {
     display: none;
@@ -645,20 +633,17 @@ button#searchBarTogger {
 }
 #exe-client-search {
     display: none;
-}
-#exe-client-search {
     max-width: 1280px;
-    margin: -10px auto 0 auto;
+    margin: -10px auto 30px auto;
     text-align: center;
 }
 #exe-client-search-reset span {
     position: absolute;
     clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
     clip: rect(1px, 1px, 1px, 1px);
-}
-#exe-client-search {
-    display: none;
-    margin-bottom: 30px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
 }
 #exe-client-search-text {
     display: inline;
@@ -719,6 +704,9 @@ button#searchBarTogger {
     position: absolute;
     clip: rect(1px 1px 1px 1px);
     clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
 }
 .nav-buttons span.nav-button {
     /* Disabled Next/Prev buttons */
@@ -762,6 +750,9 @@ button#searchBarTogger {
     height: 50px;
     z-index: 100;
     scale: 0.8;
+}
+body:not(.exe-web-site) #darkModeToggler {
+    filter: invert(1);
 }
 .exe-web-site #darkModeToggler {
     position: fixed;
@@ -819,6 +810,9 @@ body.exe-web-site {
     .nav-buttons span span {
         position: relative;
         clip: auto;
+        width: auto;
+        height: auto;
+        overflow: visible;
     }
     .nav-buttons .nav-button-left,
     .nav-buttons .nav-button-right {
@@ -830,8 +824,7 @@ body.exe-web-site {
         line-height: 30px;
         background: none;
         box-shadow: inset 0 0 2px #fff;
-        background: none;
-        color: #fff !important;
+        color: #fff;
         padding: 0;
         text-align: center;
         border-radius: 4px;
@@ -873,7 +866,7 @@ body.exe-web-site {
 }
 .box:has(.box-icon img[src*="eng_"]) a,
 .box:has(.box-icon img[src*="eng_"]) .box-title {
-    color: #499113;
+    color: #418211;
 }
 .box:has(.box-icon img[src*="eng_"]) a:hover,
 .box:has(.box-icon img[src*="eng_"]) a:focus {
@@ -997,7 +990,7 @@ body.exe-web-site {
 }
 .box:has(.box-icon img[src*="rep_"]) a,
 .box:has(.box-icon img[src*="rep_"]) .box-title {
-    color: #a25ac4;
+    color: #9c4fc0;
 }
 .box:has(.box-icon img[src*="rep_"]) a:hover,
 .box:has(.box-icon img[src*="rep_"]) a:focus {
@@ -1074,7 +1067,7 @@ body.exe-web-site {
         padding-left: 20px;
     }
     .exe-web-site .exe-content {
-        box-shadow: none !important; /* No false left column */
+        box-shadow: none; /* No false left column */
     }
 }
 
@@ -1096,8 +1089,15 @@ body.exe-web-site {
     }
     .exe-web-site #siteNav,
     .exe-web-site .nav-buttons,
-    .exe-web-site button.toggler {
+    .exe-export button.toggler,
+    .exe-export #siteNavToggler,
+    .exe-export #searchBarTogger,
+    .exe-export #darkModeToggler {
         display: none;
+    }
+    .exe-export .pre-code {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
     }
     .exe-export #siteFooter,
     .exe-export #siteFooterContent,
@@ -1118,13 +1118,18 @@ body.exe-web-site {
     html.exe-dark-mode {
         filter: invert(98%) hue-rotate(180deg);
     }
-    html.exe-dark-mode .body,
+    html.exe-dark-mode body,
     html.exe-dark-mode .exe-content {
-        background: #f9f9f9 !important;
+        background: #f9f9f9;
         color: #2f2f2f;
     }
     html.exe-dark-mode .exe-web-site .exe-content {
-        box-shadow: inset 320px 0 0 0 #f9f9f9, inset 321px 0 0 0 #f0f0f3 !important;
+        box-shadow: inset 320px 0 0 0 #f9f9f9, inset 321px 0 0 0 #f0f0f3;
+    }
+    @media (max-width: 575.98px) {
+        html.exe-dark-mode .exe-web-site .exe-content {
+            box-shadow: none; /* No false left column */
+        }
     }
     /* No filter */
     html.exe-dark-mode
@@ -1166,7 +1171,7 @@ body.exe-web-site {
     }
     /* Navigation */
     html.exe-dark-mode #siteNav a {
-        color: #C4C4C4;
+        color: #c4c4c4;
         background: #121212;
     }
     html.exe-dark-mode #siteNav a.active {
@@ -1193,10 +1198,6 @@ body.exe-web-site {
         background: #131313;
         box-shadow: inset 0 0 2px #96bee9;
         color: #ffffff;
-    }
-    /* False column */
-    html.exe-dark-mode .exe-web-site .exe-content {
-        box-shadow: inset 320px 0 0 0 #ffffff, inset 321px 0 0 0 #f0f0f3;
     }
     /* iDevices */
     html.exe-dark-mode .exe-content .box {
