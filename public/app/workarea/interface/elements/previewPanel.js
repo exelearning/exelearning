@@ -455,8 +455,8 @@ export default class PreviewPanelManager {
                             '<div id="error"></div>' +
                             '<script type="module">' +
                             'try{' +
-                            'var m=await import("' + bp + 'libs/pdfjs/pdf.min.mjs");' +
-                            'm.GlobalWorkerOptions.workerSrc="' + bp + 'libs/pdfjs/pdf.worker.min.mjs";' +
+                            'var m=await import("' + bp + 'libs/pdfjs/pdf.min.js");' +
+                            'm.GlobalWorkerOptions.workerSrc="' + bp + 'libs/pdfjs/pdf.worker.min.js";' +
                             'var pdf=await m.getDocument("' + pdfBlobUrl + '").promise;' +
                             'document.getElementById("loading").style.display="none";' +
                             'var tb=document.getElementById("tb");tb.style.display="flex";' +
@@ -919,8 +919,8 @@ export default class PreviewPanelManager {
     function initPdfEmbeds() {
         var embeds = document.querySelectorAll('[data-exe-pdf-src]');
         if (embeds.length === 0) return;
-        import(${JSON.stringify(bp)}+'libs/pdfjs/pdf.min.mjs').then(function(m) {
-            m.GlobalWorkerOptions.workerSrc = ${JSON.stringify(bp)}+'libs/pdfjs/pdf.worker.min.mjs';
+        import(${JSON.stringify(bp)}+'libs/pdfjs/pdf.min.js').then(function(m) {
+            m.GlobalWorkerOptions.workerSrc = ${JSON.stringify(bp)}+'libs/pdfjs/pdf.worker.min.js';
             for (var i = 0; i < embeds.length; i++) renderPdfEmbed(m, embeds[i]);
         }).catch(function(err) {
             console.warn('[Preview] PDF.js load failed:', err);
