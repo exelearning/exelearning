@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## Unreleased
+
+### Added
+
+- Users signed in with an eXeLearning password can now change it from the user menu, entering their current password
+- Administrators can reset the password of a local account from Admin → Users, using the new actions menu on each row
+- New `make change-password EMAIL=user@example.com` command, which asks for the new password without showing it on screen
+- Password changes are unavailable for guest accounts and for users signed in through CAS, OpenID Connect or SAML; those users change their password with their identity provider
+
 ## v4.0.3 – 2026-08-06
 
 ### Added
