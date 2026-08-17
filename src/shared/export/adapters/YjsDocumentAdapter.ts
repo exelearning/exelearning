@@ -349,6 +349,7 @@ export class YjsDocumentAdapter implements ExportDocument {
         // 3. Plain object
         const rawJsonProps = compMap.get('jsonProperties');
         let properties: Record<string, unknown> = {};
+        let malformedProperties: string | undefined;
 
         if (rawJsonProps) {
             if (typeof rawJsonProps === 'string') {
@@ -356,7 +357,10 @@ export class YjsDocumentAdapter implements ExportDocument {
                 try {
                     properties = JSON.parse(rawJsonProps) as Record<string, unknown>;
                 } catch {
-                    // Invalid JSON, leave as empty object
+                    // Unparseable payload from a damaged document (#2190): keep
+                    // the raw string so content.xml preserves it verbatim.
+                    // Exporting {} instead would permanently destroy the data.
+                    malformedProperties = rawJsonProps;
                 }
             } else if (typeof rawJsonProps === 'object' && 'toJSON' in rawJsonProps) {
                 // Y.Map - convert to plain object
@@ -384,6 +388,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             order: (compMap.get('order') as number) || index,
             content,
             properties,
+            ...(malformedProperties !== undefined ? { malformedProperties } : {}),
             structureProperties,
         };
     }

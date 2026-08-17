@@ -2,7 +2,7 @@
  * User Routes for Elysia
  * Handles user preferences and settings
  */
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { getJwtSecret } from './auth';
 import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
@@ -13,7 +13,17 @@ import {
     setPreference,
     findUserById,
     getUserStorageUsage,
+    updateUserPassword,
 } from '../db/queries';
+import { getAuthMethods } from '../services/app-settings';
+import {
+    canChangePassword,
+    hashPassword,
+    verifyPassword,
+    validateNewPassword,
+    PASSWORD_CHANGE_UNAVAILABLE_MESSAGE,
+} from '../services/password';
+import { isOfflineMode } from '../utils/offline.util';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import type { JwtPayload, UserPreferencesRequest } from './types/request-payloads';
@@ -47,6 +57,14 @@ export interface UserQueries {
     setPreference: typeof setPreference;
     findUserById: typeof findUserById;
     getUserStorageUsage: typeof getUserStorageUsage;
+    updateUserPassword: typeof updateUserPassword;
+}
+
+/**
+ * Settings dependencies for user routes
+ */
+export interface UserSettings {
+    getAuthMethods: typeof getAuthMethods;
 }
 
 /**
@@ -55,6 +73,7 @@ export interface UserQueries {
 export interface UserDependencies {
     db: Kysely<Database>;
     queries: UserQueries;
+    settings?: UserSettings;
 }
 
 /**
@@ -68,6 +87,10 @@ const defaultDependencies: UserDependencies = {
         setPreference,
         findUserById,
         getUserStorageUsage,
+        updateUserPassword,
+    },
+    settings: {
+        getAuthMethods,
     },
 };
 
@@ -76,6 +99,18 @@ const defaultDependencies: UserDependencies = {
  */
 export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
     const { db: database, queries } = deps;
+    const settings = deps.settings ?? { getAuthMethods };
+
+    /**
+     * Whether this installation authenticates users at all. Offline/desktop
+     * installations (and `APP_AUTH_METHODS=none`) log the default user in
+     * automatically, so there is no password to change.
+     */
+    async function isPasswordAuthMeaningless(): Promise<boolean> {
+        if (isOfflineMode()) return true;
+        const authMethods = await settings.getAuthMethods(database, process.env.APP_AUTH_METHODS || 'password,guest');
+        return authMethods.includes('none');
+    }
 
     /**
      * Get user preferences from database
@@ -181,6 +216,10 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                             id: payload.sub,
                             email: payload.email,
                             isGuest: payload.isGuest || false,
+                            authMethod: payload.authMethod,
+                            // An impersonated token inherits the administrator's
+                            // authMethod, so this flag must travel with it.
+                            isImpersonated: payload.isImpersonated || false,
                         },
                     };
                 } catch {
@@ -263,6 +302,90 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                     return { error: 'Internal Error', message: 'Failed to save LOPD acceptance' };
                 }
             })
+
+            // PATCH /api/user/password - Change your own password
+            //
+            // Self-service only: the authenticated session decides whose password
+            // may change, so no user id is accepted. Every eligibility rule is
+            // re-checked here — the hidden menu item is not an authorization
+            // boundary.
+            .patch(
+                '/api/user/password',
+                async ({ body, set, currentUser }) => {
+                    if (!currentUser) {
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'Authentication required' };
+                    }
+
+                    if (await isPasswordAuthMeaningless()) {
+                        set.status = 403;
+                        return { error: 'Forbidden', message: PASSWORD_CHANGE_UNAVAILABLE_MESSAGE };
+                    }
+
+                    const userId = parseInt(String(currentUser.id), 10);
+                    if (Number.isNaN(userId)) {
+                        set.status = 400;
+                        return { error: 'Bad Request', message: 'Invalid user ID' };
+                    }
+
+                    const user = await queries.findUserById(database, userId);
+                    if (!user) {
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'Authentication required' };
+                    }
+
+                    // Session AND persisted account must both qualify: an
+                    // externally authenticated account must never gain a local
+                    // password this way.
+                    const allowed = canChangePassword({
+                        authMethod: currentUser.authMethod,
+                        isGuest: currentUser.isGuest,
+                        isImpersonated: currentUser.isImpersonated,
+                        offlineMode: false,
+                        user,
+                    });
+
+                    if (!allowed) {
+                        set.status = 403;
+                        return { error: 'Forbidden', message: PASSWORD_CHANGE_UNAVAILABLE_MESSAGE };
+                    }
+
+                    const currentPasswordMatches = await verifyPassword(body.currentPassword, user.password);
+                    if (!currentPasswordMatches) {
+                        set.status = 401;
+                        return { error: 'INVALID_CURRENT_PASSWORD', message: 'Current password is incorrect' };
+                    }
+
+                    const validation = validateNewPassword(body.newPassword);
+                    if (!validation.valid) {
+                        set.status = 422;
+                        return { error: 'INVALID_PASSWORD', message: validation.message! };
+                    }
+
+                    try {
+                        const hashedPassword = await hashPassword(body.newPassword);
+                        const updated = await queries.updateUserPassword(database, userId, hashedPassword);
+
+                        if (!updated) {
+                            set.status = 500;
+                            return { error: 'Internal Error', message: 'Failed to change the password' };
+                        }
+
+                        return { success: true, message: 'Password changed successfully' };
+                    } catch (error) {
+                        // Log the failure, never the credentials.
+                        console.error('[User] Failed to change password:', error);
+                        set.status = 500;
+                        return { error: 'Internal Error', message: 'Failed to change the password' };
+                    }
+                },
+                {
+                    body: t.Object({
+                        currentPassword: t.String({ minLength: 1 }),
+                        newPassword: t.String({ minLength: 1 }),
+                    }),
+                },
+            )
     );
 }
 
