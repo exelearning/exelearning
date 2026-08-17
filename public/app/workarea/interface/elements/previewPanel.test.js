@@ -850,6 +850,26 @@ describe('PreviewPanelManager', () => {
       expect(mockOpen).not.toHaveBeenCalled();
     });
 
+    it('should fall back to a fullscreen panel when SW is not available', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(false);
+
+      await manager.extractToNewTab();
+
+      // Fallback: widen the panel to full width since the extraction can't happen
+      expect(manager.panel.classList.contains('previewFullscreen')).toBe(true);
+    });
+
+    it('should flip the fullscreen fallback on repeated failed attempts', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(false);
+
+      // toggle(): a second failed attempt turns the fallback back off
+      await manager.extractToNewTab();
+      expect(manager.panel.classList.contains('previewFullscreen')).toBe(true);
+
+      await manager.extractToNewTab();
+      expect(manager.panel.classList.contains('previewFullscreen')).toBe(false);
+    });
+
     it('should derive basePath from pathname for subdirectory deployments', async () => {
       // Mock SW availability
       manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
@@ -2024,6 +2044,15 @@ describe('PreviewPanelManager', () => {
       manager.close();
 
       expect(manager.isOpen).toBe(true); // Still open because pinned
+    });
+
+    it('should reset the fullscreen fallback state on close', () => {
+      // Reset the fallback fullscreen state so it doesn't persist into the next open
+      manager.panel.classList.add('previewFullscreen');
+
+      manager.close();
+
+      expect(manager.panel.classList.contains('previewFullscreen')).toBe(false);
     });
   });
 

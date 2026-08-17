@@ -654,6 +654,8 @@ export default class PreviewPanelManager {
 
         this.isOpen = false;
         this.panel?.classList.remove('active');
+        // Reset the fallback fullscreen state so it doesn't persist into the next open
+        this.panel?.classList.remove('previewFullscreen');
         this.overlay?.classList.remove('active');
 
         Logger.log('[PreviewPanel] Panel closed');
@@ -1348,6 +1350,8 @@ export default class PreviewPanelManager {
 
             // Ensure SW has the latest content
             if (!this.isServiceWorkerPreviewAvailable()) {
+                // Fallback: widen the panel to full width since the extraction can't happen
+                this.panel?.classList.toggle('previewFullscreen');
                 Logger.error('[PreviewPanel] Service Worker not available for preview');
                 return;
             }
