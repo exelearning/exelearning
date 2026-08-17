@@ -1156,6 +1156,77 @@ describe('IdevicesEngine', () => {
 
             expect(document.head.contains(script)).toBe(true);
         });
+
+        describe('execution order (issue #2270)', () => {
+            let createElementSpy;
+
+            beforeEach(() => {
+                // Browsers force-async dynamically inserted scripts (execution
+                // follows network completion, not insertion order). happy-dom
+                // defaults async to false, so emulate the browser default here.
+                const originalCreateElement =
+                    document.createElement.bind(document);
+                createElementSpy = vi
+                    .spyOn(document, 'createElement')
+                    .mockImplementation((tagName, options) => {
+                        const element = originalCreateElement(tagName, options);
+                        if (String(tagName).toLowerCase() === 'script') {
+                            element.async = true;
+                        }
+                        return element;
+                    });
+            });
+
+            afterEach(() => {
+                createElementSpy.mockRestore();
+            });
+
+            it('disables async so scripts execute in insertion order', () => {
+                const dependency = engine.loadScriptDynamically(
+                    '/idevices/three-sixty-viewer/export/three.min.js',
+                    false
+                );
+                const dependent = engine.loadScriptDynamically(
+                    '/idevices/three-sixty-viewer/export/OrbitControls.js',
+                    false
+                );
+
+                expect(dependency.async).toBe(false);
+                expect(dependent.async).toBe(false);
+                // Insertion order in head matches call order
+                expect(
+                    dependency.compareDocumentPosition(dependent) &
+                        Node.DOCUMENT_POSITION_FOLLOWING
+                ).toBeTruthy();
+            });
+
+            it('keeps id, type and src attributes intact', () => {
+                const script = engine.loadScriptDynamically(
+                    '/idevices/select-media-files/export/mansory-jq.js',
+                    false
+                );
+
+                expect(script.async).toBe(false);
+                expect(script.id).not.toBe('');
+                expect(script.getAttribute('type')).toBe('text/javascript');
+                expect(script.src).toContain(
+                    '/idevices/select-media-files/export/mansory-jq.js'
+                );
+                expect(document.head.contains(script)).toBe(true);
+            });
+
+            it('disables async on the cache-busting newVersion path', () => {
+                const script = engine.loadScriptDynamically(
+                    '/idevices/select-media-files/export/select-media-files.js',
+                    true
+                );
+
+                expect(script.async).toBe(false);
+                expect(script.id).not.toBe('');
+                expect(script.getAttribute('type')).toBe('text/javascript');
+                expect(script.src).toMatch(/\?t=\d+/);
+            });
+        });
     });
 
     describe('loadStyleDynamically', () => {
@@ -1201,6 +1272,42 @@ describe('IdevicesEngine', () => {
             engine.loadScript('/path/to/file.txt');
 
             expect(engine.ideviceScriptsElements.length).toBe(0);
+        });
+
+        describe('execution order (issue #2270)', () => {
+            let createElementSpy;
+
+            beforeEach(() => {
+                // Emulate the browser force-async default for dynamic scripts
+                const originalCreateElement =
+                    document.createElement.bind(document);
+                createElementSpy = vi
+                    .spyOn(document, 'createElement')
+                    .mockImplementation((tagName, options) => {
+                        const element = originalCreateElement(tagName, options);
+                        if (String(tagName).toLowerCase() === 'script') {
+                            element.async = true;
+                        }
+                        return element;
+                    });
+            });
+
+            afterEach(() => {
+                createElementSpy.mockRestore();
+            });
+
+            it('disables async on injected JS scripts', () => {
+                engine.loadScript('/idevices/some-idevice/export/library.js');
+
+                const script = document.head.querySelector(
+                    'script[src*="library.js"]'
+                );
+                expect(script.async).toBe(false);
+                expect(script.id).not.toBe('');
+                expect(script.getAttribute('type')).toBe('text/javascript');
+                expect(script.src).toMatch(/\?t=\d+/);
+                expect(engine.ideviceScriptsElements).toContain(script);
+            });
         });
     });
 

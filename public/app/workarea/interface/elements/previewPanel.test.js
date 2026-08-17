@@ -1714,8 +1714,8 @@ describe('PreviewPanelManager', () => {
 
       expect(result).toContain('initPdfEmbeds');
       expect(result).toContain('data-exe-pdf-src');
-      expect(result).toContain('libs/pdfjs/pdf.min.mjs');
-      expect(result).toContain('libs/pdfjs/pdf.worker.min.mjs');
+      expect(result).toContain('libs/pdfjs/pdf.min.js');
+      expect(result).toContain('libs/pdfjs/pdf.worker.min.js');
       expect(result).toContain("createElement('canvas')");
     });
 
@@ -2152,8 +2152,8 @@ describe('PreviewPanelManager', () => {
       expect(secondCallArg.type).toBe('text/html');
       // Verify viewer HTML contains PDF.js import (not iframe)
       const viewerHtml = await secondCallArg.text();
-      expect(viewerHtml).toContain('libs/pdfjs/pdf.min.mjs');
-      expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.mjs');
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.min.js');
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.js');
       expect(viewerHtml).toContain('getDocument(');
       expect(viewerHtml).toContain('createElement("canvas")');
       expect(viewerHtml).not.toContain('<iframe');
