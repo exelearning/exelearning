@@ -2843,6 +2843,10 @@ export default class IdevicesEngine {
         }
 
         let script = document.createElement('script');
+        // Dynamically inserted scripts are async by default: execution follows
+        // network completion, so dependency lists (e.g. three.min.js before
+        // OrbitControls.js) can run out of order. Force insertion order.
+        script.async = false;
         script.id = this.generateId();
         script.setAttribute('type', 'text/javascript');
         if (newVersion) {
@@ -2933,6 +2937,8 @@ export default class IdevicesEngine {
                 break;
             case 'js':
                 tag = document.createElement('script');
+                // Keep insertion order for multi-file loads (see issue #2270)
+                tag.async = false;
                 tag.id = this.generateId();
                 tag.setAttribute('type', 'text/javascript');
                 tag.src = `${url}?t=${Date.now()}`;
