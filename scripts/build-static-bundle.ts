@@ -827,6 +827,10 @@ export function generateModalsHtml(): string {
         'pages/about.njk',
         'pages/easteregg.njk',
         'pages/properties.njk',
+        // Inert in static builds (no accounts, so the menu entry never renders),
+        // but ModalsManagement instantiates every modal unconditionally and the
+        // base Modal constructor requires its root element to exist.
+        'pages/changepassword.njk',
         'pages/openuserodefiles.njk',
         'pages/templateselection.njk',
         'pages/modalShare.njk',

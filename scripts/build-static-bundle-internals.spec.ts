@@ -383,6 +383,35 @@ describe('menu and modal HTML generation', () => {
         expect(modals.length).toBeGreaterThan(0);
         expect(modals).toContain('modal');
     });
+
+    it('emits a root element for every modal ModalsManagement instantiates', () => {
+        // The static list of templates in build-static-bundle.ts is maintained by
+        // hand, while ModalsManagement constructs every modal unconditionally and
+        // the base Modal constructor dereferences its root element. A template
+        // missing from the list therefore breaks the whole static app at startup,
+        // which no other test would notice. Derive the expectation from the
+        // manager itself so the two cannot drift.
+        const modalsRoot = path.join(projectRoot, 'public/app/workarea/modals');
+        const managerSource = fs.readFileSync(path.join(modalsRoot, 'modalsManager.js'), 'utf8');
+        const importedFiles = [...managerSource.matchAll(/^import\s+\w+\s+from\s+'(\.\/modals\/[^']+)'/gm)].map(
+            match => match[1],
+        );
+        expect(importedFiles.length).toBeGreaterThan(10);
+
+        const html = generateModalsHtml();
+        const missing: string[] = [];
+
+        for (const relativePath of importedFiles) {
+            const source = fs.readFileSync(path.join(modalsRoot, relativePath), 'utf8');
+            const id = source.match(/(?:let|const) id = '([^']+)'/)?.[1] ?? source.match(/super\(\s*manager,\s*'([^']+)'/)?.[1];
+            // Modals that resolve their element some other way (e.g. by passing a
+            // node in) have no literal id to check.
+            if (!id) continue;
+            if (!html.includes(`id="${id}"`)) missing.push(`${relativePath} -> #${id}`);
+        }
+
+        expect(missing).toEqual([]);
+    });
 });
 
 describe('generateStaticHtml', () => {
