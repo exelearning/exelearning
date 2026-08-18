@@ -143,7 +143,25 @@ See [backend-service](.agents/skills/backend-service/SKILL.md) and [backend-rout
 
 Config: `biome.json` — 120 char line width, 4-space indent, single quotes, trailing commas, semicolons always.
 
-Note: Biome formatter is disabled for `public/app/**` (legacy code). Linting still applies.
+**Know what `make fix` actually covers** — it is deliberately narrow:
+
+| Path | What runs | Formatting |
+|------|-----------|------------|
+| `src/`, `test/` | `biome check --write` | yes |
+| `public/app/` | `biome lint --write` | **no** — lint only (legacy code) |
+| `public/app/common/` | nothing | excluded in `biome.json` |
+| `public/files/perm/idevices/**` | nothing | no lint script targets it |
+
+**Never run Biome outside those scripts.** `biome.json` does not *exclude* the iDevice
+directories, so a repo-wide `biome check --write` happily reformats all ~55 edition scripts —
+and its lint fixes change behaviour, not just layout: it rewrites `name: function () {}` object
+methods as arrows (silently breaking `this`, which the iDevice edition lifecycle depends on) and
+has been observed dropping parameters from a converted method. Use `make fix`; if you need to
+check a single file, use `bun x biome check <file>` without `--write`.
+
+To spot this damage: a file that was reformatted is one where `biome format` changes the
+committed content but not your working copy — and since a normal change only *adds* lines, any
+file whose line count shrank is suspect. _Example: #2293._
 
 ## 7. Architecture Rules
 
