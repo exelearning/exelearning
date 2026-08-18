@@ -1264,6 +1264,8 @@ var $exeDevice = {
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
+        // Closing the editor must silence the preview and drop its stream.
+        this.$lifecycle.ownMedia($exeDevice.playerAudio);
         $exeDevice.playerAudio
             .play()
             .catch((error) => console.error('Error playing audio:', error));
@@ -1289,6 +1291,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Captured lexically so the deferred file-reader callback below stays
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
         $exeDevice.hideFlex($('#slcmEPasteC'));
 
         $('#slcmEAddC').on('click', function (e) {
@@ -1376,9 +1381,10 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', function () {

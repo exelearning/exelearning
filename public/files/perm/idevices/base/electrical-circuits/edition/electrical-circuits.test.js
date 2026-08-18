@@ -10,6 +10,9 @@ function loadIdevice(code) {
     const modifiedCode = code.replace(/var\s+\$exeDevice\s*=/, 'global.$exeDevice =');
     // eslint-disable-next-line no-eval
     (0, eval)(modifiedCode);
+    // Same lifecycle the workarea publishes before calling init(), so the suite
+    // can close the edition and assert on what is actually released.
+    global.attachEditionLifecycle(global.$exeDevice);
     return global.$exeDevice;
 }
 
@@ -556,7 +559,10 @@ describe('electrical-circuits iDevice edition', () => {
 
         const font = await $exeDevice.loadTikzFont('cmr10');
         expect(font.unitsPerEm).toBeGreaterThan(0);
-        expect(okFetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf');
+        // The download is aborted with the edition.
+        expect(okFetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
 
         // Second call is served from cache (no extra fetch).
         await $exeDevice.loadTikzFont('cmr10');
@@ -881,6 +887,122 @@ describe('electrical-circuits iDevice edition', () => {
         } finally {
             delete window.eXeLearning.app;
         }
+    });
+
+    describe('edition lifecycle', () => {
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        describe('renderTikzCodeToSvg', () => {
+            it('resolves empty when TikZJax does not answer within the timeout', async () => {
+                vi.useFakeTimers();
+                document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+
+                const promise = $exeDevice.renderTikzCodeToSvg('\\draw (0,0);', 500);
+                vi.advanceTimersByTime(500);
+
+                await expect(promise).resolves.toBe('');
+            });
+
+            it('drops its timeout and its listener when the edition closes', async () => {
+                vi.useFakeTimers();
+                document.body.innerHTML = '<div id="elceTikzPreview"></div>';
+                const preview = document.getElementById('elceTikzPreview');
+                let settled = false;
+
+                $exeDevice.renderTikzCodeToSvg('\\draw (0,0);', 500).then(() => {
+                    settled = true;
+                });
+                $exeDevice.$lifecycle.destroy();
+                vi.advanceTimersByTime(5000);
+
+                // Neither the timeout nor a late TikZJax answer resolves it.
+                preview.innerHTML = '<svg viewBox="0 0 10 10"></svg>';
+                preview
+                    .querySelector('svg')
+                    .dispatchEvent(
+                        new Event('tikzjax-load-finished', { bubbles: true })
+                    );
+                await Promise.resolve();
+
+                expect(settled).toBe(false);
+            });
+        });
+
+        describe('renderTikzPreview', () => {
+            it('ignores a TikZJax answer that arrives after the edition closed', () => {
+                document.body.innerHTML = `
+                    <textarea id="elceTikzCode">\\draw (0,0);</textarea>
+                    <div id="elceTikzPreview"></div>
+                    <div id="elceNoCircuit"></div>
+                `;
+                const preview = document.getElementById('elceTikzPreview');
+                const capture = vi
+                    .spyOn($exeDevice, 'captureRenderedTikzPreview')
+                    .mockImplementation(() => {});
+
+                $exeDevice.renderTikzPreview();
+                expect($exeDevice.tikzFinishedHandler).not.toBeNull();
+
+                $exeDevice.$lifecycle.destroy();
+                preview.dispatchEvent(
+                    new Event('tikzjax-load-finished', { bubbles: true })
+                );
+
+                expect(capture).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('loadTikzFont', () => {
+            it('aborts the pending font download when the edition closes', () => {
+                let received = null;
+                global.fetch = vi.fn((url, options) => {
+                    received = options;
+                    return new Promise(() => {});
+                });
+                $exeDevice.tikzFontCache = {};
+
+                $exeDevice.loadTikzFont('cmr10');
+                $exeDevice.$lifecycle.destroy();
+
+                expect(received.signal.aborted).toBe(true);
+            });
+        });
+
+        describe('exportQuestions', () => {
+            it('revokes the download object URL when the edition closes first', () => {
+                vi.useFakeTimers();
+                document.body.innerHTML =
+                    '<div id="electricalCircuitsIdeviceForm"></div>';
+                vi.spyOn($exeDevice, 'validateData').mockReturnValue({
+                    selectsGame: [],
+                });
+                vi.spyOn($exeDevice, 'getLinesQuestions').mockReturnValue(['a']);
+                const createObjectURL = vi
+                    .spyOn(window.URL, 'createObjectURL')
+                    .mockReturnValue('blob:elce-1');
+                const revokeObjectURL = vi
+                    .spyOn(window.URL, 'revokeObjectURL')
+                    .mockImplementation(() => {});
+
+                $exeDevice.exportQuestions();
+                expect(createObjectURL).toHaveBeenCalledTimes(1);
+                expect(revokeObjectURL).not.toHaveBeenCalled();
+
+                $exeDevice.$lifecycle.destroy();
+
+                expect(revokeObjectURL).toHaveBeenCalledWith('blob:elce-1');
+
+                // The cleanup timer is cancelled, so it cannot run against the
+                // form of the iDevice that replaced this one.
+                revokeObjectURL.mockClear();
+                vi.advanceTimersByTime(1000);
+                expect(revokeObjectURL).not.toHaveBeenCalled();
+            });
+        });
     });
 
     it('circuit modal helpers are a no-op when the modal manager is missing', () => {

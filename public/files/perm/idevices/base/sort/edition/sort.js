@@ -28,6 +28,7 @@ var $exeDevice = {
     idevicePath: '',
     checkAltImage: true,
     playerAudio: '',
+    screenLocked: false,
     version: 1.5,
     id: false,
     ci18n: {},
@@ -43,6 +44,11 @@ var $exeDevice = {
 
         this.setMessagesInfo();
         this.createForm();
+        // The upload overlay covers the whole workarea, not just this form, so
+        // closing the editor mid-upload must never leave it on screen.
+        this.$lifecycle.own(() => {
+            if (this.screenLocked) this.hideLoadScreen();
+        });
     },
     refreshTranslations: function () {
         this.ci18n = {
@@ -817,6 +823,20 @@ var $exeDevice = {
             .css({ zIndex: 9999, position: 'fixed', top: 0, left: 0 })
             .removeClass('hide hidden')
             .addClass('loading');
+        this.screenLocked = true;
+    },
+
+    /**
+     * Put the shared upload overlay back the way it was found. Extracted so the
+     * fade-out timer and the edition teardown restore exactly the same state.
+     */
+    hideLoadScreen: function () {
+        this.screenLocked = false;
+        $('#load-screen-node-content')
+            .addClass('hide hidden')
+            .removeClass('loading hidding')
+            .css({ zIndex: 990, position: 'absolute' })
+            .removeAttr('top left');
     },
 
     unlockScreen: function (delay = 1000) {
@@ -824,12 +844,8 @@ var $exeDevice = {
         let $loadScreen = $('#load-screen-node-content');
 
         $loadScreen.removeClass('loading').addClass('hidding');
-        setTimeout(() => {
-            $loadScreen
-                .addClass('hide hidden')
-                .removeClass('hidding')
-                .css({ zIndex: 990, position: 'absolute' })
-                .removeAttr('top left');
+        this.$lifecycle.setTimeout(function () {
+            this.hideLoadScreen();
         }, delay);
     },
 
@@ -1423,6 +1439,8 @@ var $exeDevice = {
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
+        // Closing the editor must silence the preview and drop its stream.
+        this.$lifecycle.ownMedia($exeDevice.playerAudio);
         $exeDevice.playerAudio
             .play()
             .catch((error) => console.error('Error playing audio:', error));

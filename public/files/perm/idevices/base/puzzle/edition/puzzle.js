@@ -847,12 +847,12 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio
-            .play()
-            .catch((error) => console.error('Error playing audio:', error));
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const player = new Audio(selectFile);
+        $exeDevice.playerAudio = player;
+        // Playback and its network activity stop when the editor closes.
+        this.$lifecycle.ownMedia(player);
+        player.play().catch(error => console.error('Error playing audio:', error));
     },
 
     stopSound: function () {
@@ -929,15 +929,19 @@ var $exeDevice = {
             window.Blob
         ) {
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                let file = e.target.files[0];
+
+            $('#eXeGameImportGame').on('change', e => {
+                const file = e.target.files[0];
                 if (!file) {
                     return;
                 }
-                let reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result);
-                };
+                const reader = new FileReader();
+                // The read is aborted and its result discarded if the editor
+                // closes before it completes.
+                this.$lifecycle.ownFileReader(reader);
+                reader.onload = this.$lifecycle.bind(function (event) {
+                    this.importGame(event.target.result);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', function () {

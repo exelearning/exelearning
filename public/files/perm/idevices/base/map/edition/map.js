@@ -1223,7 +1223,18 @@ var $exeDevice = {
     },
     loadYoutubeApi: function () {
         if (typeof YT == 'undefined') {
-            onYouTubeIframeAPIReady = $exeDevice.youTubeReady;
+            // The YouTube API resolves this global whenever it finishes
+            // loading, which can be long after this editor was closed. Binding
+            // it to the edition, and dropping it on teardown, keeps a late API
+            // callback from building a player for a different iDevice.
+            const lifecycle = this.$lifecycle;
+            const onApiReady = lifecycle.bind(this.youTubeReady);
+            window.onYouTubeIframeAPIReady = onApiReady;
+            lifecycle.own(() => {
+                if (window.onYouTubeIframeAPIReady === onApiReady) {
+                    window.onYouTubeIframeAPIReady = null;
+                }
+            });
             let tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
@@ -1235,6 +1246,7 @@ var $exeDevice = {
     },
 
     loadPlayerYoutube: function () {
+        const lifecycle = this.$lifecycle;
         $exeDevice.player = new YT.Player('mapaPVideo', {
             width: '100%',
             height: '100%',
@@ -1245,10 +1257,13 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.clickPlay,
-                onError: $exeDevice.onPlayerError,
+                onReady: lifecycle.bind($exeDevice.clickPlay),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
             },
         });
+        // The player keeps an iframe, timers and network activity alive on its
+        // own, so the edition has to tear it down explicitly.
+        lifecycle.ownInstance($exeDevice.player, 'destroy');
     },
 
     clickPlay: function () {
@@ -1268,6 +1283,7 @@ var $exeDevice = {
 
     youTubeReady: function () {
         if (!$exeDevice) return;
+        const lifecycle = this.$lifecycle;
         $exeDevice.player = new YT.Player('mapaPVideo', {
             width: '100%',
             height: '100%',
@@ -1278,10 +1294,11 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.onPlayerReady,
-                onError: $exeDevice.onPlayerError,
+                onReady: lifecycle.bind($exeDevice.onPlayerReady),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
             },
         });
+        lifecycle.ownInstance($exeDevice.player, 'destroy');
     },
 
     onPlayerReady: function () {
@@ -1310,6 +1327,7 @@ var $exeDevice = {
     },
 
     startVideo: function (id, start, end, type) {
+        const lifecycle = this.$lifecycle;
         const mstart = start < 1 ? 0.1 : start;
         if (type > 0) {
             if ($exeDevice.localPlayer) {
@@ -1318,8 +1336,8 @@ var $exeDevice = {
                 $exeDevice.localPlayer.currentTime = parseFloat(mstart);
                 $exeDevice.localPlayer.play();
             }
-            clearInterval($exeDevice.timeUpdateInterval);
-            $exeDevice.timeUpdateInterval = setInterval(function () {
+            lifecycle.clearInterval($exeDevice.timeUpdateInterval);
+            $exeDevice.timeUpdateInterval = lifecycle.setInterval(function () {
                 $exeDevice?.updateTimerDisplayLocal();
             }, 1000);
             return;
@@ -1333,34 +1351,36 @@ var $exeDevice = {
                     endSeconds: end,
                 });
             }
-            clearInterval($exeDevice.timeUpdateInterval);
-            $exeDevice.timeUpdateInterval = setInterval(function () {
+            lifecycle.clearInterval($exeDevice.timeUpdateInterval);
+            $exeDevice.timeUpdateInterval = lifecycle.setInterval(function () {
                 $exeDevice?.updateTimerDisplay();
             }, 1000);
         }
     },
 
     playVideo: function () {
+        const lifecycle = this.$lifecycle;
         if ($exeDevice.player) {
-            clearInterval($exeDevice.timeUpdateInterval);
+            lifecycle.clearInterval($exeDevice.timeUpdateInterval);
             if (typeof $exeDevice.player.playVideo === 'function') {
                 $exeDevice.player.playVideo();
             }
-            $exeDevice.timeUpdateInterval = setInterval(function () {
+            $exeDevice.timeUpdateInterval = lifecycle.setInterval(function () {
                 $exeDevice?.updateTimerDisplay();
             }, 1000);
         }
     },
 
     stopVideo: function () {
+        const lifecycle = this.$lifecycle;
         if ($exeDevice.localPlayer) {
-            clearInterval($exeDevice.timeUpdateInterval);
+            lifecycle.clearInterval($exeDevice.timeUpdateInterval);
             if (typeof $exeDevice.localPlayer.pause == 'function') {
                 $exeDevice.localPlayer.pause();
             }
         }
         if ($exeDevice.player) {
-            clearInterval($exeDevice.timeUpdateInterval);
+            lifecycle.clearInterval($exeDevice.timeUpdateInterval);
             if (typeof $exeDevice.player.pauseVideo === 'function') {
                 $exeDevice.player.pauseVideo();
             }
@@ -2743,12 +2763,20 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
+        const lifecycle = this.$lifecycle;
         let selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice?.playerAudio.play();
-        });
+        // The element is never inserted in the form, so closing the editor
+        // would otherwise leave it playing and downloading.
+        lifecycle.ownMedia($exeDevice.playerAudio);
+        lifecycle.addEventListener(
+            $exeDevice.playerAudio,
+            'canplaythrough',
+            function () {
+                $exeDevice?.playerAudio.play();
+            }
+        );
     },
 
     stopSound: function () {
@@ -3836,6 +3864,9 @@ var $exeDevice = {
         });
 
         $exeDevice.localPlayer = document.getElementById('mapaEVideoLocal');
+        // Detaching the form does not stop a media element that is already
+        // playing, so the edition stops the local player itself.
+        this.$lifecycle.ownMedia($exeDevice.localPlayer);
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         $('.exe-block-dismissible .exe-block-close').click(function () {

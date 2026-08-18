@@ -1168,11 +1168,13 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const player = new Audio(selectFile);
+        $exeDevice.playerAudio = player;
+        // Playback and its network activity stop when the editor closes.
+        this.$lifecycle.ownMedia(player);
+        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
+            player.play();
         });
     },
     stopSound() {
@@ -1230,8 +1232,10 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on document, so the edition lifecycle owns it: the handler
+        // is removed when the editor closes.
+        this.$lifecycle.on(document, 'change', '.toggle-input', e => {
+            initToggle($(e.currentTarget));
         });
         $('#descubreEPaste').hide();
         $('input.Descubre-GameMode').on('click', function () {
@@ -1303,7 +1307,8 @@ var $exeDevice = {
                 .text(_('Supported formats') + ': json, txt');
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame').attr('accept', '.txt, .json, .xml');
-            $('#eXeGameImportGame').on('change', function (e) {
+
+            $('#eXeGameImportGame').on('change', e => {
                 const file = e.target.files[0];
                 if (!file) {
                     eXe.app.alert(_('Select a file') + ' (txt, json)');
@@ -1322,9 +1327,12 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                // The read is aborted and its result discarded if the editor
+                // closes before it completes.
+                this.$lifecycle.ownFileReader(reader);
+                reader.onload = this.$lifecycle.bind(function (event) {
+                    this.importGame(event.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', function () {

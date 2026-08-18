@@ -82,6 +82,7 @@ describe('interactive-video iDevice edition', () => {
   // the form and overwrote what the author had chosen.
   describe('the SCORM weight reaches the form', () => {
     let setValues;
+    let previousTop;
 
     /** The exported markup the editor parses, carrying just the SCORM block. */
     function previousDataWith(scorm) {
@@ -92,11 +93,12 @@ describe('interactive-video iDevice edition', () => {
     beforeEach(() => {
       setValues = vi.fn();
       $exeDevicesEdition.iDevice.gamification.scorm.setValues = setValues;
+      previousTop = global.top;
       global.top = { interactiveVideoEditor: {} };
     });
 
     afterEach(() => {
-      delete global.top;
+      global.top = previousTop;
     });
 
     it('hands over the weight the author stored', () => {
@@ -191,6 +193,60 @@ describe('interactive-video iDevice edition', () => {
         $exeDevice.hasScorableSlide([null, question], false)
       ).not.toThrow();
       expect($exeDevice.hasScorableSlide([null, question], false)).toBe(true);
+    });
+  });
+
+  describe('edition lifecycle teardown (#2293)', () => {
+    let show;
+    let dispose;
+    let iframeLoading;
+
+    beforeEach(() => {
+      // The editor modal embeds the editor in an iframe. Let happy-dom create
+      // the element without navigating to it: the test is about who owns the
+      // modal, not about what the editor page does.
+      iframeLoading = window.happyDOM.settings.disableIframePageLoading;
+      window.happyDOM.settings.disableIframePageLoading = true;
+      show = vi.fn();
+      dispose = vi.fn();
+      window.__EXE_STATIC_MODE__ = true;
+      global.bootstrap = {
+        Modal: function () {
+          return { show, dispose };
+        },
+      };
+      // createForm reads `top.interactiveVideoEditor`. SCORM tests also set this
+      // and must restore it, so this suite cannot rely on leftover global state.
+      global.top = { interactiveVideoEditor: {} };
+
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      $exeDevice.init(container, '', '/files/perm/idevices/base/interactive-video/edition/');
+      $('#interactiveVideoFile').val('files/tmp/video.mp4');
+    });
+
+    afterEach(() => {
+      window.happyDOM.settings.disableIframePageLoading = iframeLoading;
+      delete window.__EXE_STATIC_MODE__;
+      delete global.bootstrap;
+    });
+
+    it('opens the editor modal with its stylesheet', () => {
+      $exeDevice.editor.start();
+
+      expect(show).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('modalGenericIframeContainer')).not.toBeNull();
+      expect(document.getElementById('modalGenericIframeContainerCSS')).not.toBeNull();
+    });
+
+    it('disposes and removes the editor modal when the edition closes', () => {
+      $exeDevice.editor.start();
+
+      $exeDevice.$lifecycle.destroy();
+
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('modalGenericIframeContainer')).toBeNull();
+      expect(document.getElementById('modalGenericIframeContainerCSS')).toBeNull();
     });
   });
 });
