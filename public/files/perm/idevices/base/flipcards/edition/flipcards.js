@@ -1132,11 +1132,13 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const player = new Audio(selectFile);
+        $exeDevice.playerAudio = player;
+        // Playback and its network activity stop when the editor closes.
+        this.$lifecycle.ownMedia(player);
+        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
+            player.play();
         });
     },
 
@@ -1174,31 +1176,29 @@ var $exeDevice = {
         });
     },
 
-    getCardDefault: function () {
-        return {
-            id: '',
-            type: 2,
-            url: '',
-            audio: '',
-            x: 0,
-            y: 0,
-            author: '',
-            alt: '',
-            eText: '',
-            color: '#000000',
-            backcolor: '#ffffff',
-            correct: 0,
-            urlBk: '',
-            audioBk: '',
-            xBk: 0,
-            yBk: 0,
-            authorBk: '',
-            altBk: '',
-            eTextBk: '',
-            colorBk: '#000000',
-            backcolorBk: '#ffffff',
-        };
-    },
+    getCardDefault: () => ({
+        id: '',
+        type: 2,
+        url: '',
+        audio: '',
+        x: 0,
+        y: 0,
+        author: '',
+        alt: '',
+        eText: '',
+        color: '#000000',
+        backcolor: '#ffffff',
+        correct: 0,
+        urlBk: '',
+        audioBk: '',
+        xBk: 0,
+        yBk: 0,
+        authorBk: '',
+        altBk: '',
+        eTextBk: '',
+        colorBk: '#000000',
+        backcolorBk: '#ffffff',
+    }),
 
     addEvents: function () {
         $('#flipcardsEPasteC').hide();
@@ -1222,8 +1222,10 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on document, so the edition lifecycle owns it: the handler
+        // is removed when the editor closes.
+        this.$lifecycle.on(document, 'change', '.toggle-input', e => {
+            initToggle($(e.currentTarget));
         });
         $('#flipcardsEAddC').on('click', function (e) {
             e.preventDefault();
@@ -1330,9 +1332,12 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                // The read is aborted and its result discarded if the editor
+                // closes before it completes.
+                this.$lifecycle.ownFileReader(reader);
+                reader.onload = this.$lifecycle.bind(function (event) {
+                    this.importGame(event.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', () => {

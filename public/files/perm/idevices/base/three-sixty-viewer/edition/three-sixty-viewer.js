@@ -76,6 +76,11 @@ var $exeDevice = {
         this._activeSceneIndex = this.findStartSceneIndex();
         this.createForm();
         this.addFormBehaviour();
+        // The WebGL preview holds a renderer, geometry, material, texture and
+        // OrbitControls. `save()` releases them, but closing the editor without
+        // saving used to leave the whole GL context alive, so hand the very
+        // same teardown to the lifecycle.
+        this.$lifecycle.own(() => this.destroyPreview());
         this.updatePreviewSoon();
     },
 
@@ -1111,11 +1116,12 @@ var $exeDevice = {
      */
     handleFileFallback: function (file) {
         var reader = new FileReader();
-        reader.onload = () => {
+        this.$lifecycle.ownFileReader(reader);
+        reader.onload = this.$lifecycle.bind(function () {
             this.getActiveScene().src = String(reader.result || '');
             this.refreshImageLabel();
             this.updatePreviewSoon();
-        };
+        });
         reader.readAsDataURL(file);
     },
 
@@ -1162,10 +1168,11 @@ var $exeDevice = {
     updatePreviewSoon: function () {
         if (this._updateQueued) return;
         this._updateQueued = true;
+        var lifecycle = this.$lifecycle;
         var schedule =
             typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'
-                ? window.requestAnimationFrame.bind(window)
-                : cb => setTimeout(cb, 16);
+                ? cb => lifecycle.requestAnimationFrame(cb)
+                : cb => lifecycle.setTimeout(cb, 16);
         schedule(() => {
             this._updateQueued = false;
             this.renderPreview();
@@ -1205,12 +1212,14 @@ var $exeDevice = {
         }
 
         if (typeof THREE === 'undefined') {
+            // three.js is fetched with a <script> tag, so this callback can fire
+            // long after the editor closed; bind it to this edition.
             this.ensureThreeLoaded(
-                function () {
+                this.$lifecycle.bind(function () {
                     if (typeof THREE !== 'undefined') {
                         this.renderPreview();
                     }
-                }.bind(this),
+                }),
             );
             if (message) {
                 message.textContent = _('Loading 3D preview…');
@@ -1386,8 +1395,8 @@ var $exeDevice = {
             self._positionEditorHotspots();
             self._rafId =
                 typeof window !== 'undefined' && window.requestAnimationFrame
-                    ? window.requestAnimationFrame(tick)
-                    : setTimeout(tick, 16);
+                    ? self.$lifecycle.requestAnimationFrame(tick)
+                    : self.$lifecycle.setTimeout(tick, 16);
         }
         tick();
 
@@ -1457,8 +1466,8 @@ var $exeDevice = {
             self._positionEditorHotspots();
             self._rafId =
                 typeof window !== 'undefined' && window.requestAnimationFrame
-                    ? window.requestAnimationFrame(tick)
-                    : setTimeout(tick, 16);
+                    ? self.$lifecycle.requestAnimationFrame(tick)
+                    : self.$lifecycle.setTimeout(tick, 16);
         }
         tick();
 
@@ -1596,6 +1605,10 @@ var $exeDevice = {
         var self = this;
         var dragging = false;
         var pointerId = null;
+        // Removers for the window-level drag listeners, so an unfinished drag
+        // does not leave them behind when the editor closes mid-gesture.
+        var removePointerMove = null;
+        var removePointerUp = null;
         var preview = this._preview;
         var isFlat = preview && preview.mode === 'flat';
         var canvas = preview && preview.renderer ? preview.renderer.domElement : null;
@@ -1628,8 +1641,10 @@ var $exeDevice = {
             if (preview.controls) preview.controls.enabled = true;
             // Reflect the new yaw/pitch in the form list inputs.
             self.renderHotspotList();
-            window.removeEventListener('pointermove', onPointerMove);
-            window.removeEventListener('pointerup', onPointerUp);
+            if (removePointerMove) removePointerMove();
+            if (removePointerUp) removePointerUp();
+            removePointerMove = null;
+            removePointerUp = null;
         }
 
         btn.addEventListener('pointerdown', ev => {
@@ -1641,8 +1656,8 @@ var $exeDevice = {
                 if (typeof btn.setPointerCapture === 'function') btn.setPointerCapture(pointerId);
             } catch (_) { /* ignore */ }
             if (preview.controls) preview.controls.enabled = false;
-            window.addEventListener('pointermove', onPointerMove);
-            window.addEventListener('pointerup', onPointerUp);
+            removePointerMove = self.$lifecycle.addEventListener(window, 'pointermove', onPointerMove);
+            removePointerUp = self.$lifecycle.addEventListener(window, 'pointerup', onPointerUp);
         });
 
         btn.addEventListener('click', ev => {
@@ -1655,7 +1670,7 @@ var $exeDevice = {
             if (row && typeof row.scrollIntoView === 'function') {
                 row.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 row.classList.add('is-highlighted');
-                setTimeout(() => row.classList.remove('is-highlighted'), 1200);
+                self.$lifecycle.setTimeout(() => row.classList.remove('is-highlighted'), 1200);
             }
         });
     },

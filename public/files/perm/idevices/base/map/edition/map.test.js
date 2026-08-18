@@ -206,6 +206,7 @@ function buildForm() {
             <input id="mapaNumberPoint1" type="text" value="2" />
             <img id="mapaPImage" alt="" />
             <div id="mapaPNoImage"></div>
+            <video id="mapaEVideoLocal"></video>
         </div>`;
 }
 
@@ -235,6 +236,9 @@ describe('map edition: $exeDevice guards (#2271)', () => {
     });
 
     afterEach(() => {
+        // Close the edition as the workarea does, so nothing this test owns
+        // (timers, players, media) survives into the next one.
+        $exeDevice.$lifecycle.destroy();
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });
@@ -362,6 +366,141 @@ describe('map edition: $exeDevice guards (#2271)', () => {
             vi.spyOn($exeDevice, 'drawImage').mockImplementation(() => {});
             $(img).trigger('load');
             expect(spy).toHaveBeenCalledWith(img, 100, 50);
+        });
+    });
+
+    describe('edition lifecycle teardown (#2293)', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            delete global.YT;
+            window.onYouTubeIframeAPIReady = undefined;
+        });
+
+        it('stops the local video timer when the edition closes', () => {
+            const player = document.getElementById('mapaEVideoLocal');
+            vi.spyOn(player, 'play').mockImplementation(() => {});
+            const tick = vi.spyOn($exeDevice, 'updateTimerDisplayLocal').mockImplementation(() => {});
+
+            $exeDevice.startVideo('video.mp4', 0, 10, 1);
+            vi.advanceTimersByTime(1000);
+            expect(tick).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            vi.advanceTimersByTime(5000);
+            expect(tick).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops the YouTube timer when the edition closes', () => {
+            $exeDevice.player = { loadVideoById: vi.fn() };
+            const tick = vi.spyOn($exeDevice, 'updateTimerDisplay').mockImplementation(() => {});
+
+            $exeDevice.startVideo('abc123', 0, 10, 0);
+            vi.advanceTimersByTime(2000);
+            expect(tick).toHaveBeenCalledTimes(2);
+
+            $exeDevice.$lifecycle.destroy();
+            vi.advanceTimersByTime(5000);
+            expect(tick).toHaveBeenCalledTimes(2);
+        });
+
+        it('stops the local video element when the edition closes', () => {
+            const player = document.getElementById('mapaEVideoLocal');
+            const pause = vi.spyOn(player, 'pause').mockImplementation(() => {});
+            const load = vi.spyOn(player, 'load').mockImplementation(() => {});
+            player.setAttribute('src', 'video.mp4');
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(pause).toHaveBeenCalledTimes(1);
+            expect(player.hasAttribute('src')).toBe(false);
+            expect(load).toHaveBeenCalledTimes(1);
+        });
+
+        it('destroys the YouTube player when the edition closes', () => {
+            const destroy = vi.fn();
+            global.YT = {
+                Player: vi.fn(function () {
+                    return { destroy };
+                }),
+            };
+
+            $exeDevice.loadPlayerYoutube();
+            expect(destroy).not.toHaveBeenCalled();
+
+            $exeDevice.$lifecycle.destroy();
+            expect(destroy).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not run YouTube player events after the edition closes', () => {
+            let options = null;
+            global.YT = {
+                Player: vi.fn(function (id, opts) {
+                    options = opts;
+                    return { destroy: vi.fn() };
+                }),
+            };
+            const clickPlay = vi.spyOn($exeDevice, 'clickPlay').mockImplementation(() => {});
+
+            $exeDevice.loadPlayerYoutube();
+            options.events.onReady();
+            expect(clickPlay).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            options.events.onReady();
+            expect(clickPlay).toHaveBeenCalledTimes(1);
+        });
+
+        it('drops the YouTube API callback when the edition closes', () => {
+            document.body.insertAdjacentHTML('afterbegin', '<script data-test="yt"></script>');
+            const youTubeReady = vi.spyOn($exeDevice, 'youTubeReady').mockImplementation(() => {});
+
+            $exeDevice.loadYoutubeApi();
+            const onApiReady = window.onYouTubeIframeAPIReady;
+            expect(typeof onApiReady).toBe('function');
+
+            onApiReady();
+            expect(youTubeReady).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            expect(window.onYouTubeIframeAPIReady).toBe(null);
+            onApiReady();
+            expect(youTubeReady).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops the preview audio when the edition closes', () => {
+            const audio = {
+                play: vi.fn(),
+                pause: vi.fn(),
+                load: vi.fn(),
+                removeAttribute: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            };
+            const audioSpy = vi.spyOn(global, 'Audio').mockImplementation(function () {
+                return audio;
+            });
+
+            try {
+                $exeDevice.playSound('sound.mp3');
+                const [type, handler] = audio.addEventListener.mock.calls[0];
+                expect(type).toBe('canplaythrough');
+
+                handler();
+                expect(audio.play).toHaveBeenCalledTimes(1);
+
+                $exeDevice.$lifecycle.destroy();
+                expect(audio.pause).toHaveBeenCalledTimes(1);
+                expect(audio.removeAttribute).toHaveBeenCalledWith('src');
+
+                handler();
+                expect(audio.play).toHaveBeenCalledTimes(1);
+            } finally {
+                audioSpy.mockRestore();
+            }
         });
     });
 });

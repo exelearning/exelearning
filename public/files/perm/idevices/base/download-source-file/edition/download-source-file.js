@@ -319,24 +319,26 @@ var $exeDevice = {
         // Populate values initially
         this.updateProperties();
 
-        // Listen to focus changes
-        $(window).off('focus.dlSourceFile').on('focus.dlSourceFile', function () {
+        // Listen to focus changes. The lifecycle owns the handler so it is
+        // removed from `window` when this edition closes.
+        var lifecycle = this.$lifecycle;
+        var removeFocusHandler = lifecycle.on(window, 'focus', function () {
             if ($('#eXeDownloadPackageForm').length > 0) {
-                $exeDevice.updateProperties();
+                this.updateProperties();
             } else {
-                $(window).off('focus.dlSourceFile');
+                removeFocusHandler();
             }
         });
 
         // Update when TinyMCE is ready
-        var updateInterval = setInterval(function() {
+        var updateInterval = lifecycle.setInterval(function () {
             if (tinymce.editors.length > 0 && tinymce.editors[0] && tinymce.editors[0].getDoc()) {
-                $exeDevice.updateProperties();
-                clearInterval(updateInterval);
+                this.updateProperties();
+                lifecycle.clearInterval(updateInterval);
             }
         }, 500);
-        setTimeout(function() {
-            clearInterval(updateInterval);
+        lifecycle.setTimeout(() => {
+            lifecycle.clearInterval(updateInterval);
         }, 5000);
     },
 

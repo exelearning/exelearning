@@ -186,8 +186,16 @@ var $exeDevice = {
 
     loadYoutubeApi: function () {
         if (typeof YT == 'undefined') {
-            onYouTubeIframeAPIReady = $exeDevice.youTubeReady;
-            let tag = document.createElement('script');
+            // The YouTube API calls this global whenever it finishes loading,
+            // which can be long after this edition closed. Bind it to this
+            // edition and restore the previous value on teardown.
+            const ready = $exeDevice.youTubeReady;
+            const previousReady = window.onYouTubeIframeAPIReady;
+            window.onYouTubeIframeAPIReady = typeof ready === 'function' ? $exeDevice.$lifecycle.bind(ready) : ready;
+            $exeDevice.$lifecycle.own(() => {
+                window.onYouTubeIframeAPIReady = previousReady;
+            });
+            const tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
             let firstScriptTag = document.getElementsByTagName('script')[0];
@@ -198,6 +206,7 @@ var $exeDevice = {
     },
 
     loadPlayerYoutube: function () {
+        const lifecycle = $exeDevice.$lifecycle;
         $exeDevice.player = new YT.Player('quextEVideo', {
             width: '100%',
             height: '100%',
@@ -208,10 +217,11 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.clickPlay,
-                onError: $exeDevice.onPlayerError,
+                onReady: lifecycle.bind($exeDevice.clickPlay),
+                onError: lifecycle.bind($exeDevice.onPlayerError),
             },
         });
+        lifecycle.ownInstance($exeDevice.player, 'destroy');
         $exeDevice.playerIntro = new YT.Player('quextEVI', {
             width: '100%',
             height: '100%',
@@ -222,31 +232,36 @@ var $exeDevice = {
                 controls: 1,
             },
         });
+        lifecycle.ownInstance($exeDevice.playerIntro, 'destroy');
     },
 
     clockVideo: {
         start: function (type) {
             this.type = type;
-            this.intervalID = setInterval(this.update.bind(this), 1000);
+            // Capture the edition that started the clock: a tick must never
+            // drive a later one through the mutable $exeDevice global.
+            this.device = $exeDevice;
+            this.lifecycle = $exeDevice.$lifecycle;
+            this.intervalID = this.lifecycle.setInterval(this.update.bind(this), 1000);
         },
         update: function () {
-            if (typeof $exeDevice === 'undefined') {
-                clearInterval(this.intervalID);
+            if (!this.device) {
+                this.stop();
             } else {
                 if (this.type === 'local') {
-                    $exeDevice.updateTimerDisplayLocal();
+                    this.device.updateTimerDisplayLocal();
                 } else if (this.type === 'remote') {
-                    $exeDevice.updateTimerDisplay();
+                    this.device.updateTimerDisplay();
                 } else if (this.type === 'localintro') {
-                    $exeDevice.updateTimerDisplayVILocal();
+                    this.device.updateTimerDisplayVILocal();
                 } else if (this.type === 'remoteintro') {
-                    $exeDevice.updateTimerVIDisplay();
+                    this.device.updateTimerVIDisplay();
                 }
             }
         },
         stop: function () {
             if (this.intervalID) {
-                clearInterval(this.intervalID);
+                this.lifecycle.clearInterval(this.intervalID);
                 this.intervalID = null;
             }
         },
@@ -507,8 +522,9 @@ var $exeDevice = {
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
+        $exeDevice.$lifecycle.ownMedia($exeDevice.playerAudio);
+        $exeDevice.$lifecycle.addEventListener($exeDevice.playerAudio, 'canplaythrough', function () {
+            this.playerAudio.play();
         });
     },
 
@@ -1394,6 +1410,8 @@ var $exeDevice = {
         this.active = 0;
         this.localPlayer = document.getElementById('quextEVideoLocal');
         this.localPlayerIntro = document.getElementById('quextEVILocal');
+        this.$lifecycle.ownMedia(this.localPlayer);
+        this.$lifecycle.ownMedia(this.localPlayerIntro);
     },
 
     getCuestionDefault: function () {
@@ -1716,13 +1734,13 @@ var $exeDevice = {
         eXe.app.confirm(
             $exeDevice.msgs.msgTitleAltImageWarning,
             $exeDevice.msgs.msgAltImageWarning,
-            function () {
-                $exeDevice.checkAltImage = false;
-                const saveButton = document.getElementsByClassName(
-                    'button-save-idevice'
-                )[0];
+            // The dialog can be answered after the editor closed; the reply
+            // must not save whatever iDevice is open by then.
+            $exeDevice.$lifecycle.bind(function () {
+                this.checkAltImage = false;
+                const saveButton = document.getElementsByClassName('button-save-idevice')[0];
                 saveButton.click();
-            }
+            }),
         );
         return false;
     },
@@ -2457,9 +2475,10 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
-                };
+                $exeDevice.$lifecycle.ownFileReader(reader);
+                reader.onload = $exeDevice.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
 

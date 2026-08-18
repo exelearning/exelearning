@@ -971,4 +971,109 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect($exeDevice.ci18n.msgWeight).toBe('Weight');
     });
   });
+
+  describe('edition lifecycle', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    describe('readCSVFile', () => {
+      function csvFile() {
+        return new File(['A,B\n1,2'], 'rubric.csv', { type: 'text/csv' });
+      }
+
+      it('imports the CSV while the edition is open', async () => {
+        const importCSV = vi.spyOn($exeDevice, 'importCSV').mockImplementation(() => {});
+
+        $exeDevice.readCSVFile(csvFile());
+        await vi.waitFor(() => expect(importCSV).toHaveBeenCalledTimes(1));
+      });
+
+      it('aborts a read still in flight when the edition closes', () => {
+        const abort = vi.spyOn(window.FileReader.prototype, 'abort');
+
+        $exeDevice.readCSVFile(csvFile());
+        $exeDevice.$lifecycle.destroy();
+
+        expect(abort).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not import a CSV that arrives after the edition closed', async () => {
+        const importCSV = vi.spyOn($exeDevice, 'importCSV').mockImplementation(() => {});
+
+        $exeDevice.readCSVFile(csvFile());
+        $exeDevice.$lifecycle.destroy();
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(importCSV).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("CEDEC's rubrics download", () => {
+      let handlers;
+      let abort;
+
+      function openTemplateControls() {
+        document.body.innerHTML = '<div id="ri_RubricsEditor"></div>';
+        delete $exeDevice.cedecRubrics;
+        $exeDevice.renderRubricTemplateControls();
+        $('#ri_LoadCEDECRubrics').trigger('click');
+      }
+
+      beforeEach(() => {
+        handlers = null;
+        abort = vi.fn();
+        vi.spyOn($, 'ajax').mockImplementation((options) => {
+          handlers = options;
+          return { abort };
+        });
+      });
+
+      it('stores the rubrics when the download answers while the editor is open', () => {
+        const complete = vi
+          .spyOn($exeDevice, 'completeRubricModels')
+          .mockImplementation(() => {});
+
+        openTemplateControls();
+        handlers.success({ rubrics: [{ title: 'x' }] });
+
+        expect($exeDevice.cedecRubrics).toEqual({ rubrics: [{ title: 'x' }] });
+        expect(complete).toHaveBeenCalledTimes(1);
+      });
+
+      it('aborts the pending download when the edition closes', () => {
+        openTemplateControls();
+        expect(abort).not.toHaveBeenCalled();
+
+        $exeDevice.$lifecycle.destroy();
+
+        expect(abort).toHaveBeenCalledTimes(1);
+      });
+
+      it('ignores a download that answers after the edition closed', () => {
+        const complete = vi
+          .spyOn($exeDevice, 'completeRubricModels')
+          .mockImplementation(() => {});
+
+        openTemplateControls();
+        $exeDevice.$lifecycle.destroy();
+        handlers.success({ rubrics: [{ title: 'x' }] });
+
+        expect($exeDevice.cedecRubrics).toBeUndefined();
+        expect(complete).not.toHaveBeenCalled();
+      });
+
+      it('does not alert for an error raised by its own abort', () => {
+        const alert = vi.spyOn($exeDevice, 'alert').mockImplementation(() => {});
+
+        openTemplateControls();
+        // jQuery calls the error handler synchronously when a request is aborted.
+        abort.mockImplementation(() => handlers.error());
+        $exeDevice.$lifecycle.destroy();
+
+        expect(alert).not.toHaveBeenCalled();
+      });
+    });
+  });
 });

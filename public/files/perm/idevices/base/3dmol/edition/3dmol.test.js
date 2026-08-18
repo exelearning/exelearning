@@ -8,7 +8,7 @@
  */
 
 /* eslint-disable no-undef */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -21,6 +21,9 @@ function loadIdevice() {
     const modified = code.replace(/var\s+\$exeDevice\s*=/, 'global.$exeDevice =');
     // eslint-disable-next-line no-eval
     (0, eval)(modified);
+    // Same lifecycle the workarea publishes before calling init(), so the
+    // suite can close the edition and assert on what is actually released.
+    global.attachEditionLifecycle(global.$exeDevice);
     return global.$exeDevice;
 }
 
@@ -297,6 +300,200 @@ describe('3dmol iDevice edition', () => {
             expect(ok).toBe(true);
             expect(dmol.selectsGame[0].author).toBe('');
             expect(dmol.selectsGame[0].alt).toBe('');
+        });
+    });
+
+    describe('edition lifecycle', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+            document.head.querySelectorAll('script').forEach(s => s.remove());
+            delete global.fetch;
+        });
+
+        describe('ensure3Dmol', () => {
+            function injectedScript() {
+                return document.head.querySelector('script[src$="3Dmol-min.js"]');
+            }
+
+            it('runs the pending callbacks when the library loads while the editor is open', () => {
+                // happy-dom fires `load` as soon as the tag is appended, which
+                // is exactly the path a successful injection takes.
+                const seen = [];
+                dmol.ensure3Dmol(ok => seen.push(ok));
+
+                expect(injectedScript()).not.toBeNull();
+                expect(seen).toEqual([true]);
+                expect(dmol.modelLibraryLoading).toBe(false);
+            });
+
+            it('drops the injected script and its callbacks when the edition closes', () => {
+                dmol.ensure3Dmol(() => {});
+                const script = injectedScript();
+                const onload = script.onload;
+
+                // Re-arm the device as if a second load were still in flight.
+                const late = [];
+                dmol.modelLibraryLoading = true;
+                dmol.modelLibraryCallbacks = [ok => late.push(ok)];
+
+                dmol.$lifecycle.destroy();
+
+                expect(injectedScript()).toBeNull();
+                expect(script.onload).toBeNull();
+                expect(script.onerror).toBeNull();
+
+                // A load that completed just before the tag was dropped must
+                // not resume the closed edition.
+                onload();
+                expect(late).toEqual([]);
+                expect(dmol.modelLibraryLoading).toBe(true);
+            });
+        });
+
+        describe('readFileAsText', () => {
+            it('resolves normally while the edition is open', async () => {
+                await expect(dmol.readFileAsText(new Blob(['MOL DATA']))).resolves.toBe('MOL DATA');
+            });
+
+            it('aborts a read still in flight when the edition closes', () => {
+                const abort = vi.spyOn(window.FileReader.prototype, 'abort');
+
+                dmol.readFileAsText(new Blob(['MOL DATA']));
+                dmol.$lifecycle.destroy();
+
+                expect(abort).toHaveBeenCalledTimes(1);
+            });
+
+            it('does not settle a read that completes after the edition closed', async () => {
+                let settled = false;
+                const promise = dmol.readFileAsArrayBuffer(new Blob(['MOL DATA'])).then(() => {
+                    settled = true;
+                });
+
+                dmol.$lifecycle.destroy();
+                await Promise.race([promise, Promise.resolve()]);
+                await new Promise(resolve => setTimeout(resolve, 0));
+
+                expect(settled).toBe(false);
+            });
+        });
+
+        describe('loadModelFromPath', () => {
+            it('passes the edition abort signal to fetch', async () => {
+                let received = null;
+                global.fetch = vi.fn(async (url, options) => {
+                    received = options;
+                    return {
+                        ok: true,
+                        headers: { get: () => 'chemical/x-mdl-sdfile' },
+                        arrayBuffer: async () => new TextEncoder().encode('MOL').buffer,
+                    };
+                });
+
+                await dmol.loadModelFromPath('/files/glucose.sdf');
+
+                expect(global.fetch).toHaveBeenCalledTimes(1);
+                expect(received.signal).toBe(dmol.$lifecycle.signal);
+                expect(received.signal.aborted).toBe(false);
+            });
+
+            it('aborts the pending download when the edition closes', async () => {
+                let received = null;
+                global.fetch = vi.fn(async (url, options) => {
+                    received = options;
+                    return new Promise(() => {});
+                });
+
+                dmol.loadModelFromPath('/files/glucose.sdf');
+                await Promise.resolve();
+                dmol.$lifecycle.destroy();
+
+                expect(received.signal.aborted).toBe(true);
+            });
+        });
+
+        describe('ownModelViewer', () => {
+            function fakeViewer() {
+                return {
+                    removeAllSurfaces: vi.fn(),
+                    removeAllModels: vi.fn(),
+                    removeAllShapes: vi.fn(),
+                    removeAllLabels: vi.fn(),
+                    clear: vi.fn(),
+                };
+            }
+
+            it('releases the WebGL viewer exactly once when the edition closes', () => {
+                const viewer = fakeViewer();
+                dmol.modelViewer = viewer;
+                dmol.ownModelViewer(viewer);
+
+                expect(viewer.clear).not.toHaveBeenCalled();
+
+                dmol.$lifecycle.destroy();
+                dmol.$lifecycle.destroy();
+
+                expect(viewer.removeAllSurfaces).toHaveBeenCalledTimes(1);
+                expect(viewer.removeAllModels).toHaveBeenCalledTimes(1);
+                expect(viewer.removeAllShapes).toHaveBeenCalledTimes(1);
+                expect(viewer.removeAllLabels).toHaveBeenCalledTimes(1);
+                expect(viewer.clear).toHaveBeenCalledTimes(1);
+                expect(dmol.modelViewer).toBeNull();
+            });
+
+            it('is wired from renderModelPreview when the viewer is created', () => {
+                const viewer = fakeViewer();
+                viewer.addModel = vi.fn();
+                viewer.setStyle = vi.fn();
+                viewer.zoomTo = vi.fn();
+                viewer.render = vi.fn();
+                viewer.resize = vi.fn();
+                global.$3Dmol = { createViewer: vi.fn(() => viewer) };
+                dmol.isWebGLAvailable = () => true;
+                document.body.innerHTML = `
+                    <textarea id="dmoleModelData">MOL DATA</textarea>
+                    <input id="dmoleModelFormat" value="sdf" />
+                    <div id="dmoleModelFileName">glucose.sdf</div>
+                    <div id="dmoleModelPreview"></div>
+                    <div id="dmoleNoModel"></div>
+                `;
+
+                dmol.renderModelPreview();
+                expect(dmol.modelViewer).toBe(viewer);
+
+                dmol.$lifecycle.destroy();
+
+                expect(viewer.clear).toHaveBeenCalledTimes(2); // one render + one teardown
+                expect(dmol.modelViewer).toBeNull();
+                delete global.$3Dmol;
+            });
+        });
+
+        describe('ensureModelDataAndRender', () => {
+            it('does not touch the form when the model resolves after the edition closed', async () => {
+                document.body.innerHTML = `
+                    <textarea id="dmoleModelData"></textarea>
+                    <input id="dmoleModelFormat" value="" />
+                    <div id="dmoleModelFileName"></div>
+                    <input id="dmoleModelFile" value="" />
+                `;
+                let release;
+                dmol.loadModelFromPath = () =>
+                    new Promise(resolve => {
+                        release = resolve;
+                    });
+                const render = vi.fn();
+                dmol.renderModelPreview = render;
+
+                dmol.ensureModelDataAndRender({ modelPath: '/files/glucose.sdf' });
+                dmol.$lifecycle.destroy();
+                release({ modelData: 'MOL DATA', modelFormat: 'sdf', modelName: 'g.sdf' });
+                await Promise.resolve();
+                await Promise.resolve();
+
+                expect(render).not.toHaveBeenCalled();
+                expect(document.getElementById('dmoleModelData').value).toBe('');
+            });
         });
     });
 });

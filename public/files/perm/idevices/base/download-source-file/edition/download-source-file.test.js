@@ -35,10 +35,15 @@ describe('download-source-file iDevice (edition)', () => {
 
   });
 
-  afterEach(() => {
-    global.$exeDevice = undefined;
-    vi.clearAllMocks();
-  });
+    afterEach(() => {
+        // Close the edition the way the workarea does, so no test leaves timers or
+        // window handlers behind for the next one.
+        if ($exeDevice && $exeDevice.$lifecycle && !$exeDevice.$lifecycle.isDestroyed()) {
+            $exeDevice.$lifecycle.destroy();
+        }
+        global.$exeDevice = undefined;
+        vi.clearAllMocks();
+    });
 
   describe('i18n', () => {
     it('has translated name', () => {
@@ -295,23 +300,23 @@ describe('download-source-file iDevice (edition)', () => {
         <input type="color" id="dpiButtonBGcolor" value="#107275" />
         <input type="color" id="dpiButtonTextColor" value="#ffffff" />
       `;
-      document.body.appendChild(container);
-      $exeDevice.idevicePreviousData = '';
-    });
+            document.body.appendChild(container);
+            $exeDevice.idevicePreviousData = '';
+        });
 
-    afterEach(() => {
-      document.body.removeChild(container);
-    });
+        afterEach(() => {
+            document.body.removeChild(container);
+        });
 
-    it('does nothing when previousData is empty', () => {
-      $exeDevice.idevicePreviousData = '';
-      $exeDevice.loadPreviousValues();
+        it('does nothing when previousData is empty', () => {
+            $exeDevice.idevicePreviousData = '';
+            $exeDevice.loadPreviousValues();
 
-      expect($('#dpiDescription').val()).toBe('');
-    });
+            expect($('#dpiDescription').val()).toBe('');
+        });
 
-    it('loads description from previous data', () => {
-      $exeDevice.idevicePreviousData = `
+        it('loads description from previous data', () => {
+            $exeDevice.idevicePreviousData = `
         <div class="exe-download-package-instructions">
           <p>Previous instructions</p>
         </div>
@@ -320,44 +325,44 @@ describe('download-source-file iDevice (edition)', () => {
         </p>
       `;
 
-      $exeDevice.loadPreviousValues();
+            $exeDevice.loadPreviousValues();
 
-      expect($('#dpiDescription').val()).toContain('Previous instructions');
-    });
+            expect($('#dpiDescription').val()).toContain('Previous instructions');
+        });
 
-    it('loads button text from previous data', () => {
-      $exeDevice.idevicePreviousData = `
+        it('loads button text from previous data', () => {
+            $exeDevice.idevicePreviousData = `
         <div class="exe-download-package-instructions">Content</div>
         <p class="exe-download-package-link">
           <a href="#">Custom Button Text</a>
         </p>
       `;
 
-      $exeDevice.loadPreviousValues();
+            $exeDevice.loadPreviousValues();
 
-      expect($('#dpiButtonText').val()).toBe('Custom Button Text');
-    });
+            expect($('#dpiButtonText').val()).toBe('Custom Button Text');
+        });
 
-    it('loads font size from previous data', () => {
-      $exeDevice.idevicePreviousData = `
+        it('loads font size from previous data', () => {
+            $exeDevice.idevicePreviousData = `
         <div class="exe-download-package-instructions">Content</div>
         <p class="exe-download-package-link">
           <a href="#" style="font-size:1.2em;">Download</a>
         </p>
       `;
 
-      $exeDevice.loadPreviousValues();
+            $exeDevice.loadPreviousValues();
 
-      expect($('#dpiButtonFontSize').val()).toBe('1.2');
+            expect($('#dpiButtonFontSize').val()).toBe('1.2');
+        });
     });
-  });
 
-  describe('save', () => {
-    let container;
+    describe('save', () => {
+        let container;
 
-    beforeEach(async () => {
-      container = document.createElement('div');
-      container.innerHTML = `
+        beforeEach(async () => {
+            container = document.createElement('div');
+            container.innerHTML = `
         <textarea id="dpiDescription"></textarea>
         <input type="text" id="dpiButtonText" value="Download .elp file" />
         <select id="dpiButtonFontSize">
@@ -481,4 +486,102 @@ describe('download-source-file iDevice (edition)', () => {
       expect(result).not.toContain('background-color:#fff;');
     });
   });
+
+    describe('edition lifecycle teardown', () => {
+        let container;
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            container = document.createElement('div');
+            document.body.appendChild(container);
+            $exeDevice.ideviceBody = container;
+            $exeDevice.idevicePreviousData = '';
+            $exeDevice.loadPreviousValues = vi.fn();
+            $exeDevice.updateProperties = vi.fn();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            container.remove();
+        });
+
+        it('refreshes the properties while the window regains focus', () => {
+            $exeDevice.createForm();
+            $exeDevice.updateProperties.mockClear();
+
+            $(window).trigger('focus');
+
+            expect($exeDevice.updateProperties).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops listening on window focus once the edition is closed', () => {
+            $exeDevice.createForm();
+            $exeDevice.updateProperties.mockClear();
+
+            $exeDevice.$lifecycle.destroy();
+            $(window).trigger('focus');
+
+            expect($exeDevice.updateProperties).not.toHaveBeenCalled();
+        });
+
+        it('leaves unrelated window focus handlers untouched', () => {
+            const unrelated = vi.fn();
+            $(window).on('focus.dlSourceFileUnrelated', unrelated);
+            $exeDevice.createForm();
+
+            $exeDevice.$lifecycle.destroy();
+            $(window).trigger('focus');
+
+            expect(unrelated).toHaveBeenCalledTimes(1);
+            $(window).off('focus.dlSourceFileUnrelated');
+        });
+
+        it('removes the window handler itself once the form is gone', () => {
+            $exeDevice.createForm();
+            $exeDevice.updateProperties.mockClear();
+            container.innerHTML = '';
+
+            // The form is gone, so this run unregisters the handler...
+            $(window).trigger('focus');
+            // ...and this one must not reach the device any more.
+            $(window).trigger('focus');
+
+            expect($exeDevice.updateProperties).not.toHaveBeenCalled();
+        });
+
+        it('polls until TinyMCE is ready and then stops', () => {
+            const originalEditors = global.tinymce.editors;
+            global.tinymce.editors = [{ getDoc: () => ({}) }];
+
+            try {
+                $exeDevice.createForm();
+                $exeDevice.updateProperties.mockClear();
+
+                vi.advanceTimersByTime(500);
+                expect($exeDevice.updateProperties).toHaveBeenCalledTimes(1);
+
+                vi.advanceTimersByTime(2000);
+                expect($exeDevice.updateProperties).toHaveBeenCalledTimes(1);
+            } finally {
+                global.tinymce.editors = originalEditors;
+            }
+        });
+
+        it('does not poll TinyMCE after the edition is closed', () => {
+            const originalEditors = global.tinymce.editors;
+            global.tinymce.editors = [{ getDoc: () => ({}) }];
+
+            try {
+                $exeDevice.createForm();
+                $exeDevice.updateProperties.mockClear();
+
+                $exeDevice.$lifecycle.destroy();
+                vi.advanceTimersByTime(10000);
+
+                expect($exeDevice.updateProperties).not.toHaveBeenCalled();
+            } finally {
+                global.tinymce.editors = originalEditors;
+            }
+        });
+    });
 });

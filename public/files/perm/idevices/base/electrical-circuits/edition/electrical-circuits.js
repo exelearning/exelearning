@@ -1052,7 +1052,11 @@ var $exeDevice = {
     loadTikzFont: function (family) {
         if (!$exeDevice.tikzFontCache[family]) {
             const url = ($exeDevice.idevicePath || '') + 'fonts/' + family + '.ttf';
-            $exeDevice.tikzFontCache[family] = fetch(url)
+            // Aborted with the edition; the chain already degrades to `null`,
+            // which makes the caller leave the <text> untouched.
+            $exeDevice.tikzFontCache[family] = fetch(url, {
+                signal: this.$lifecycle.signal,
+            })
                 .then((response) => (response.ok ? response.arrayBuffer() : null))
                 .then((buffer) =>
                     buffer ? $exeDevice.parseTikzFont(buffer) : null
@@ -1183,7 +1187,11 @@ var $exeDevice = {
         // (both for cached and freshly compiled results). Grabbing any <svg>
         // captured the spinner by mistake and required a second click, so wait
         // for that event and then capture the real circuit.
-        const onFinished = () => {
+        // TikZJax answers long after the render was requested and keeps the
+        // <script> node alive even once the form is detached, so the handler is
+        // bound to this edition and its registration is dropped on teardown.
+        const lifecycle = this.$lifecycle;
+        const onFinished = lifecycle.bind(function () {
             preview.removeEventListener('tikzjax-load-finished', onFinished);
             $exeDevice.tikzFinishedHandler = null;
             // TikZJax renders glyphs as <text> referencing Computer Modern fonts
@@ -1196,9 +1204,12 @@ var $exeDevice = {
             )
                 .catch(() => {})
                 .then(() => $exeDevice.captureRenderedTikzPreview(code, preview));
-        };
+        });
         $exeDevice.tikzFinishedHandler = onFinished;
         preview.addEventListener('tikzjax-load-finished', onFinished);
+        lifecycle.own(() =>
+            preview.removeEventListener('tikzjax-load-finished', onFinished)
+        );
 
         preview.appendChild(tikzScript);
     },
@@ -1236,19 +1247,23 @@ var $exeDevice = {
             $exeDevice.tikzFinishedHandler = null;
         }
 
+        // Same ownership as the manual preview: the timeout and the TikZJax
+        // answer both outlive the render request, so they belong to this
+        // edition and stop with it.
+        const lifecycle = this.$lifecycle;
         return new Promise((resolve) => {
             let settled = false;
             const finish = (svg) => {
                 if (settled) return;
                 settled = true;
-                clearTimeout(timer);
+                lifecycle.clearTimeout(timer);
                 preview.removeEventListener('tikzjax-load-finished', onFinished);
                 resolve(svg || '');
             };
 
-            const timer = setTimeout(() => finish(''), timeoutMs);
+            const timer = lifecycle.setTimeout(() => finish(''), timeoutMs);
 
-            const onFinished = () => {
+            const onFinished = lifecycle.bind(function () {
                 const renderedSvg = preview.querySelector('svg');
                 Promise.resolve(
                     renderedSvg
@@ -1262,10 +1277,13 @@ var $exeDevice = {
                             finalSvg ? $exeDevice.sanitizeTikzSvg(finalSvg) : ''
                         );
                     });
-            };
+            });
 
             preview.innerHTML = '';
             preview.addEventListener('tikzjax-load-finished', onFinished);
+            lifecycle.own(() =>
+                preview.removeEventListener('tikzjax-load-finished', onFinished)
+            );
 
             const tikzScript = document.createElement('script');
             tikzScript.type = 'text/tikz';
@@ -1926,13 +1944,16 @@ var $exeDevice = {
             return;
         }
         const data = window.URL.createObjectURL(newBlob);
+        // Owned by the edition, so the blob is released even when the editor
+        // closes before the cleanup timer runs.
+        this.$lifecycle.ownObjectUrl(data);
         const link = document.createElement('a');
         link.href = data;
         link.download = `${_('test')}.txt`;
 
         document.getElementById('electricalCircuitsIdeviceForm').appendChild(link);
         link.click();
-        setTimeout(() => {
+        this.$lifecycle.setTimeout(() => {
             document
                 .getElementById('electricalCircuitsIdeviceForm')
                 .removeChild(link);
@@ -2135,6 +2156,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         const $elcePaste = $('#elcePaste'),
             $elceTimeShowSolution = $('#elceTimeShowSolution'),
             $elceShowSolution = $('#elceShowSolution'),
@@ -2338,10 +2360,15 @@ var $exeDevice = {
                         );
                         return;
                     }
+                    // A read still in flight is aborted when the editor
+                    // closes, and the callback is bound to this edition, so an
+                    // import that completes late never lands in another
+                    // iDevice.
                     const reader = new FileReader();
-                    reader.onload = function (e) {
-                        $exeDevice.importGame(e.target.result, file.type);
-                    };
+                    lifecycle.ownFileReader(reader);
+                    reader.onload = lifecycle.bind(function (e) {
+                        this.importGame(e.target.result, file.type);
+                    });
                     reader.readAsText(file);
                 });
             $('#eXeGameExportQuestions').on('click', () => {

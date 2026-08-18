@@ -135,10 +135,12 @@ var $exeDevice = {
 
         fileManager.show({
             multiSelect: true,
-            onSelect: (result) => {
+            // The modal outlives the edition form, so a selection confirmed
+            // after the editor closed must not add rows to it.
+            onSelect: this.$lifecycle.bind((result) => {
                 const results = Array.isArray(result) ? result : [result];
                 results.forEach((item) => this.addAttachmentFromAsset(item));
-            },
+            }),
         });
     },
 
@@ -204,6 +206,13 @@ var $exeDevice = {
 
         assetsMap.observe(handler);
         this._assetsObserver = { map: assetsMap, handler };
+        // The map is shared with the whole project, so the observer would
+        // outlive this editor. Release it as soon as the edition closes,
+        // instead of waiting for the lazy self-clean above.
+        this.$lifecycle.own(() => {
+            assetsMap.unobserve(handler);
+            this._assetsObserver = null;
+        });
     },
 
     /**
@@ -315,7 +324,9 @@ var $exeDevice = {
         }
         try {
             const assetUrl = await assetManager.insertImage(file);
-            if (!assetUrl) return;
+            // The upload can finish after the editor closed; the row would
+            // then be added to a form that is no longer on the page.
+            if (!assetUrl || !this.$lifecycle.isActive()) return;
             const assetId = assetManager.extractAssetId ? assetManager.extractAssetId(assetUrl) : null;
             const metadata =
                 assetId && assetManager.getAssetMetadata ? assetManager.getAssetMetadata(assetId) || {} : {};

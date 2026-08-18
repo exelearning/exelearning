@@ -93,15 +93,35 @@ var $exeDevicesEdition = {
 
             // Enable color pickers (provisional solution)
             // To review: 100 ms delay because the color picker won't work when combined with $exeTinyMCE.init
-            setTimeout(function () {
+            var lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+            var initColorPicker = function () {
                 $exeDevicesEdition.iDevice.colorPicker.init();
-            }, 100);
+            };
+            if (lifecycle) lifecycle.setTimeout(initColorPicker, 100);
+            else setTimeout(initColorPicker, 100);
 
             // Enable file uploaders
             $exeDevicesEdition.iDevice.filePicker.init();
 
             // Enable shared voice recorder controls in marked audio fields
             $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
+        },
+        /**
+         * Lifecycle of the edition currently open, if any.
+         *
+         * These helpers are shared by every edition script and run outside the
+         * `$exeDevice` object, so they have no `this.$lifecycle`; `IdeviceNode`
+         * publishes the same object as `window.$exeEditionLifecycle`. It is
+         * null whenever no editor is open — and in tests that exercise the
+         * helpers directly — in which case every helper must keep behaving
+         * exactly as it did before.
+         *
+         * @returns {Object|null} The active lifecycle, or null.
+         */
+        getLifecycle: function () {
+            var lifecycle = typeof window !== 'undefined' ? window.$exeEditionLifecycle : null;
+            if (!lifecycle || typeof lifecycle.isActive !== 'function') return null;
+            return lifecycle.isActive() ? lifecycle : null;
         },
         // Common
         common: {
@@ -245,12 +265,21 @@ var $exeDevicesEdition = {
                         var checked = $(this).is(':checked');
                         $('#eXeProgressReportID').prop('disabled', !checked);
                     });
-                    $(document)
-                        .off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk')
-                        .on('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', function (e) {
-                            e.preventDefault();
-                            $('#eXeProgressReportHelp').toggleClass('d-none');
-                        });
+                    var toggleHelp = function (e) {
+                        e.preventDefault();
+                        $('#eXeProgressReportHelp').toggleClass('d-none');
+                    };
+                    // Delegated on `document`, so it outlives the edition form.
+                    // The legacy namespace still de-duplicates repeated calls;
+                    // the edition owns the registration when one is open, which
+                    // is what removes it on close.
+                    $(document).off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk');
+                    var lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                    if (lifecycle) {
+                        lifecycle.on(document, 'click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', toggleHelp);
+                    } else {
+                        $(document).on('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk', toggleHelp);
+                    }
                 }
             },
             itinerary: {
@@ -928,14 +957,19 @@ var $exeDevicesEdition = {
                     $iaSelect.show()
                     $divEIA.hide();                   
 
-                    // File input custom UI events
-                    $(document).off('click.exeFileTrigger').on('click.exeFileTrigger', '[data-exe-file-trigger]', function () {
-                        const $wrap = $(this).closest('[data-exe-upload]');
+                    // File input custom UI events.
+                    // Delegated on `document`, so they outlive the edition form:
+                    // the edition owns them when one is open, and the legacy
+                    // namespaces keep de-duplicating repeated calls.
+                    const lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                    const onFileTrigger = function (e) {
+                        const $wrap = $(e.currentTarget).closest('[data-exe-upload]');
                         $wrap.find('.exe-file-input').trigger('click');
-                    });
-                    $(document).off('change.exeFileInput').on('change.exeFileInput', '.exe-file-input', function () {
-                        const file = this.files && this.files[0];
-                        const $wrap = $(this).closest('[data-exe-upload]');
+                    };
+                    const onFileInputChange = function (e) {
+                        const input = e.currentTarget;
+                        const file = input.files && input.files[0];
+                        const $wrap = $(input).closest('[data-exe-upload]');
                         const $name = $wrap.find('[data-exe-file-name]');
                         if (file) {
                             $wrap.attr('data-has-file', 'true');
@@ -944,7 +978,16 @@ var $exeDevicesEdition = {
                             $wrap.removeAttr('data-has-file');
                             $name.text(_("No file selected"));
                         }
-                    });
+                    };
+                    $(document).off('click.exeFileTrigger');
+                    $(document).off('change.exeFileInput');
+                    if (lifecycle) {
+                        lifecycle.on(document, 'click.exeFileTrigger', '[data-exe-file-trigger]', onFileTrigger);
+                        lifecycle.on(document, 'change.exeFileInput', '.exe-file-input', onFileInputChange);
+                    } else {
+                        $(document).on('click.exeFileTrigger', '[data-exe-file-trigger]', onFileTrigger);
+                        $(document).on('change.exeFileInput', '.exe-file-input', onFileInputChange);
+                    }
 
                     $tabQuestions.on('click', function (e) {
                         e.preventDefault();
@@ -1093,6 +1136,11 @@ var $exeDevicesEdition = {
 
                 },
                 genarateIAQuestons: async function (type, saveQuestions, options = {}) {
+                    // The request outlives the form, so the edition that asked
+                    // for the questions is captured here: a response arriving
+                    // after the editor closed must not reach the iDevice that
+                    // replaced it.
+                    const lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
                     $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', true);
                     const $specialty = $('#eXeSpecialtyIA');
                     const $course = $('#eXeCourseIA');
@@ -1144,6 +1192,7 @@ var $exeDevicesEdition = {
 
                     try {
                         const data = await eXeLearning.app.api.getGenerateQuestions(prompt);
+                        if (lifecycle && !lifecycle.isActive()) return;
 
                         if (data.questions) {
                             let questions = $exeDevicesEdition.iDevice.gamification.share.checkQuestions(data.questions);
@@ -1322,10 +1371,25 @@ var $exeDevicesEdition = {
                         document.body;
                     container.appendChild(link);
                     link.click();
-                    setTimeout(function () {
+                    const removeLink = function () {
                         if (link.parentNode) link.parentNode.removeChild(link);
-                        window.URL.revokeObjectURL(data);
-                    }, 100);
+                    };
+                    // The anchor is appended outside the edition form and the
+                    // object URL is only released 100 ms later. The edition owns
+                    // both meanwhile, so closing the editor in that window frees
+                    // them instead of leaking them.
+                    const lifecycle =
+                        $exeDevicesEdition.iDevice.getLifecycle();
+                    const releaseLink = lifecycle ? lifecycle.own(removeLink) : null;
+                    const releaseUrl = lifecycle ? lifecycle.ownObjectUrl(data) : null;
+                    const release = function () {
+                        if (releaseUrl) releaseUrl();
+                        else window.URL.revokeObjectURL(data);
+                        if (releaseLink) releaseLink();
+                        else removeLink();
+                    };
+                    if (lifecycle) lifecycle.setTimeout(release, 100);
+                    else setTimeout(release, 100);
                     return true;
                 },
 
@@ -1448,6 +1512,8 @@ var $exeDevicesEdition = {
             helpers: {
                 playerAudio: null,
                 currentAudioUrl: null,
+                /** Disposer that stops the audio when the edition closes. */
+                _releaseAudio: null,
 
                 /**
                  * Play an audio file, supporting both regular URLs and asset:// URLs
@@ -1473,6 +1539,10 @@ var $exeDevicesEdition = {
                     // Stop any currently playing audio before playing new one
                     this.stopSound();
 
+                    const self = this;
+                    // Captured before any await: the audio must belong to the
+                    // edition that asked for it, never to a later one.
+                    const lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
                     let audioUrl = audio;
 
                     // Check if it's an asset:// URL and resolve it
@@ -1501,6 +1571,10 @@ var $exeDevicesEdition = {
                         }
                     }
 
+                    // Resolving an asset:// URL is asynchronous: give up if the
+                    // editor was closed while it was in flight.
+                    if (lifecycle && !lifecycle.isActive()) return;
+
                     // Extract URL from Google Drive if applicable
                     if (
                         typeof $exeDevices !== 'undefined' &&
@@ -1514,6 +1588,13 @@ var $exeDevicesEdition = {
 
                     // Create and play the audio
                     this.playerAudio = new Audio(audioUrl);
+                    // Playback would otherwise carry on after the editor closes:
+                    // let the edition stop it exactly as stopSound() does.
+                    if (lifecycle) {
+                        this._releaseAudio = lifecycle.own(function () {
+                            self.stopSound();
+                        });
+                    }
                     this.playerAudio
                         .play()
                         .catch((error) => console.error('playSound: Error playing audio:', error));
@@ -1528,6 +1609,9 @@ var $exeDevicesEdition = {
                         this.playerAudio = null;
                     }
                     this.currentAudioUrl = null;
+                    var release = this._releaseAudio;
+                    this._releaseAudio = null;
+                    if (typeof release === 'function') release();
                 }
             }
         },
@@ -1559,13 +1643,13 @@ var $exeDevicesEdition = {
                 });
 
                 // EVENT DELEGATION - A single handler for ALL buttons
-                $(document).off('click.filepicker').on('click.filepicker', '.exe-pick-image, .exe-pick-any-file', function(e) {
+                var openFileManager = function (e) {
                     e.preventDefault();
                     e.stopImmediatePropagation();
 
                     if (!filemanager) return;
 
-                    var $button = $(this);
+                    var $button = $(e.currentTarget);
                     var inputId = $button.attr('data-filepicker') || $button.prev('input[type="text"]').attr('id');
                     var $input = inputId ? $('#' + inputId) : $button.prev('input[type="text"]');
 
@@ -1590,7 +1674,18 @@ var $exeDevicesEdition = {
                             $input.trigger('change');
                         }
                     });
-                });
+                };
+
+                // Delegated on `document`, so it outlives the edition form: the
+                // edition owns it when one is open, and the legacy namespace
+                // keeps de-duplicating repeated calls.
+                $(document).off('click.filepicker');
+                var lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                if (lifecycle) {
+                    lifecycle.on(document, 'click.filepicker', '.exe-pick-image, .exe-pick-any-file', openFileManager);
+                } else {
+                    $(document).on('click.filepicker', '.exe-pick-image, .exe-pick-any-file', openFileManager);
+                }
 
                 // Initialize recorder controls for fields marked with data-voice-recorder.
                 $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
@@ -1625,14 +1720,22 @@ var $exeDevicesEdition = {
                 this._cleanupBound = true;
 
                 var self = this;
+                var lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
 
-                window.addEventListener('beforeunload', function () {
+                var releaseOnPageHide = function () {
                     self.cleanupAll();
-                });
+                };
 
-                window.addEventListener('pagehide', function () {
-                    self.cleanupAll();
-                });
+                // `window` and `document.body` both outlive the edition form, so
+                // an edition owns these registrations and binds them again the
+                // next time an editor is opened.
+                if (lifecycle) {
+                    lifecycle.addEventListener(window, 'beforeunload', releaseOnPageHide);
+                    lifecycle.addEventListener(window, 'pagehide', releaseOnPageHide);
+                } else {
+                    window.addEventListener('beforeunload', releaseOnPageHide);
+                    window.addEventListener('pagehide', releaseOnPageHide);
+                }
 
                 if (typeof MutationObserver !== 'undefined' && document.body) {
                     this._detachObserver = new MutationObserver(function () {
@@ -1641,6 +1744,14 @@ var $exeDevicesEdition = {
                     this._detachObserver.observe(document.body, {
                         childList: true,
                         subtree: true,
+                    });
+                    if (lifecycle) lifecycle.ownObserver(this._detachObserver);
+                }
+
+                if (lifecycle) {
+                    lifecycle.own(function () {
+                        self._cleanupBound = false;
+                        self._detachObserver = null;
                     });
                 }
             },
@@ -2300,6 +2411,18 @@ var $exeDevicesEdition = {
                 };
 
                 this.registerInstance(registryEntry);
+
+                // A recorder holds a microphone stream, timers, an object URL and
+                // two modals appended to <body> — none of them inside the edition
+                // form. Closing the editor must release all of it, and above all
+                // must stop the microphone. `cleanup()` is idempotent, so the
+                // detach observer and this disposer can both reach it.
+                var recorderLifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                if (recorderLifecycle) {
+                    recorderLifecycle.own(function () {
+                        registryEntry.cleanup();
+                    });
+                }
 
                 $toggle.on('click', function (event) {
                     event.preventDefault();

@@ -328,6 +328,20 @@ var $exeDevice = (function () {
     var ideviceBody    = null;  // the <article> DOM element
     var instanceId     = null;  // idevice-id attribute value
 
+    /**
+     * Lifecycle of the open edition, captured in `init()`.
+     *
+     * The editor is written as free functions inside this closure, so they
+     * cannot reach `this.$lifecycle`. Each registration captures the value in a
+     * local first, which binds the resource to the edition that created it even
+     * if a later edition overwrites this variable.
+     *
+     * @type {Object|null}
+     */
+    var lifecycle = null;
+    /** Removes the document-level Escape handler of the current registration. */
+    var removeKeyDownListener = null;
+
     var currentDataset = DEFAULT_DATASET;
     var rawData        = null;  // parsed JSON from active dataset
     var dataCache      = {};    // { datasetId: parsedJSON }
@@ -453,10 +467,14 @@ var $exeDevice = (function () {
     // Tries <url>.gz first (decompressed in-browser via DecompressionStream),
     // falls back to raw <url> for dev (uncompressed) and browsers that lack the API.
     function fetchJsonMaybeGzipped(url) {
+        // Aborted with the edition, so a dataset download cannot keep running
+        // against an editor that no longer exists.
+        var lc = lifecycle;
+        var opts = lc ? { signal: lc.signal } : {};
         var canDecompress = typeof DecompressionStream !== 'undefined'
             && typeof fetch === 'function';
         var gzPromise = canDecompress
-            ? fetch(url + '.gz').then(function (r) {
+            ? fetch(url + '.gz', opts).then(function (r) {
                 if (!r.ok) throw new Error('gz HTTP ' + r.status);
                 var stream = r.body.pipeThrough(new DecompressionStream('gzip'));
                 return new Response(stream).json();
@@ -464,7 +482,7 @@ var $exeDevice = (function () {
             : Promise.reject(new Error('DecompressionStream unavailable'));
         return gzPromise.catch(function () {
             if (typeof fetch === 'function') {
-                return fetch(url).then(function (r) {
+                return fetch(url, opts).then(function (r) {
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     return r.json();
                 }).catch(function () { return loadViaXHR(url); });
@@ -474,8 +492,11 @@ var $exeDevice = (function () {
     }
 
     function loadViaXHR(url) {
+        var lc = lifecycle;
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
+            // Aborted with the edition, like the fetch paths above.
+            if (lc) lc.ownInstance(xhr, 'abort');
             xhr.open('GET', url, true);
             xhr.onload = function () {
                 if (xhr.status >= 200 && xhr.status < 300) {
@@ -973,9 +994,16 @@ var $exeDevice = (function () {
             });
         }
 
-        // Global Escape key (remove first to prevent duplicates on re-init)
-        document.removeEventListener('keydown', onKeyDown);
-        document.addEventListener('keydown', onKeyDown);
+        // Global Escape key. `document` outlives the edition form, so the
+        // listener is owned by the lifecycle and removed when the editor
+        // closes; the previous registration is dropped first to prevent
+        // duplicates on re-init.
+        if (removeKeyDownListener) removeKeyDownListener();
+        removeKeyDownListener = lifecycle.addEventListener(
+            document,
+            'keydown',
+            onKeyDown
+        );
     }
 
     function onKeyDown(e) {
@@ -1700,26 +1728,36 @@ var $exeDevice = (function () {
     // ════════════════════════════════════════════════════════════════
 
     function loadAndRender() {
-        loadData(currentDataset).then(function (data) {
-            rawData = data;
-            showBrowserBody();
-            // Pick first etapa and nivel automatically
-            var etapas = getEtapas();
-            if (etapas.length) {
-                selectedEtapa = selectedEtapa || etapas[0];
-                var niveles = getNiveles(selectedEtapa);
-                selectedNivel = selectedNivel || (niveles.length ? niveles[0] : null);
-            }
-            renderEtapaBar();
-            renderNivelBar();
-            renderMateriaList();
-            // Restore materia if it was previously selected and still exists
-            if (selectedMateria) renderContent();
-            renderSelectedPanel();
-        }).catch(function (err) {
-            var loading = q('lomloe-loading-' + instanceId);
-            if (loading) loading.innerHTML = '❌ ' + _('Error loading data: ') + esc(err.message);
-        });
+        // Both continuations render into the edition form, so they are bound to
+        // this edition: a dataset that arrives (or is aborted) after the editor
+        // closed must not repaint it or report an error into it.
+        var lc = lifecycle;
+        loadData(currentDataset)
+            .then(
+                lc.bind(function (data) {
+                    rawData = data;
+                    showBrowserBody();
+                    // Pick first etapa and nivel automatically
+                    var etapas = getEtapas();
+                    if (etapas.length) {
+                        selectedEtapa = selectedEtapa || etapas[0];
+                        var niveles = getNiveles(selectedEtapa);
+                        selectedNivel = selectedNivel || (niveles.length ? niveles[0] : null);
+                    }
+                    renderEtapaBar();
+                    renderNivelBar();
+                    renderMateriaList();
+                    // Restore materia if it was previously selected and still exists
+                    if (selectedMateria) renderContent();
+                    renderSelectedPanel();
+                }),
+            )
+            .catch(
+                lc.bind(function (err) {
+                    var loading = q('lomloe-loading-' + instanceId);
+                    if (loading) loading.innerHTML = '❌ ' + _('Error loading data: ') + esc(err.message);
+                }),
+            );
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -1733,6 +1771,7 @@ var $exeDevice = (function () {
          * @param {Object|null} previousData  Previously saved state (null on first creation).
          */
         init: function (element, previousData) {
+            lifecycle      = this.$lifecycle;
             ideviceBody    = element;
             instanceId     = element.getAttribute('idevice-id') || String(Date.now());
             currentDataset = DEFAULT_DATASET;

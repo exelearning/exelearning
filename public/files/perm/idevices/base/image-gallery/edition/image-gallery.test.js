@@ -24,6 +24,9 @@ function loadIdevice(code) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  // Same lifecycle the workarea publishes before calling init(), so the suite
+  // can close the edition and assert on what is actually released.
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
 }
 
@@ -153,6 +156,133 @@ describe('image-gallery iDevice', () => {
   describe('getDataJson', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.getDataJson).toBe('function');
+    });
+  });
+
+  describe('edition lifecycle', () => {
+    let form;
+
+    function buildForm() {
+      document.body.innerHTML = `
+        <div id="galleryBody">
+          <div class="imageGalleryIdeviceForm"></div>
+          <div id="textMsxHide"></div>
+        </div>
+      `;
+      $exeDevice.ideviceBody = document.getElementById('galleryBody');
+      form = $exeDevice.ideviceBody.querySelector('.imageGalleryIdeviceForm');
+      return form;
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+      document.body.innerHTML = '';
+    });
+
+    describe('readFile', () => {
+      it('resolves normally while the edition is open', async () => {
+        await expect($exeDevice.readFile(new Blob(['data']))).resolves.toContain('data:');
+      });
+
+      it('aborts a read still in flight when the edition closes', () => {
+        const abort = vi.spyOn(window.FileReader.prototype, 'abort');
+
+        $exeDevice.readFile(new Blob(['data']));
+        $exeDevice.$lifecycle.destroy();
+
+        expect(abort).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('drop area resize observer', () => {
+      let observed;
+      let disconnect;
+      let previousResizeObserver;
+
+      beforeEach(() => {
+        observed = [];
+        disconnect = vi.fn();
+        previousResizeObserver = global.ResizeObserver;
+        global.ResizeObserver = class {
+          constructor(callback) {
+            this.callback = callback;
+            observed.push(this);
+          }
+          observe() {}
+          disconnect() {
+            disconnect();
+          }
+        };
+      });
+
+      afterEach(() => {
+        global.ResizeObserver = previousResizeObserver;
+      });
+
+      it('disconnects the observer when the edition closes', () => {
+        buildForm();
+        const getReferences = vi.spyOn($exeDevice, 'getReferences').mockImplementation(() => {});
+
+        $exeDevice.addDragAndDropBehaviour();
+        observed[0].callback([]);
+        expect(getReferences).toHaveBeenCalledTimes(1);
+
+        $exeDevice.$lifecycle.destroy();
+
+        expect(disconnect).toHaveBeenCalledTimes(1);
+        // A resize notified between disconnect and delivery is ignored too.
+        observed[0].callback([]);
+        expect(getReferences).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('dropAreaUnhighlight', () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      it('clears the highlight after the delay while the edition is open', () => {
+        buildForm();
+        form.classList.add('highlight');
+
+        $exeDevice.dropAreaUnhighlight();
+        expect(form.classList.contains('highlight')).toBe(true);
+        vi.advanceTimersByTime(100);
+
+        expect(form.classList.contains('highlight')).toBe(false);
+      });
+
+      it('does not run the pending timer once the edition closed', () => {
+        buildForm();
+        form.classList.add('highlight');
+
+        $exeDevice.dropAreaUnhighlight();
+        $exeDevice.$lifecycle.destroy();
+        vi.advanceTimersByTime(500);
+
+        expect(form.classList.contains('highlight')).toBe(true);
+      });
+    });
+
+    describe('openFileManagerForImages', () => {
+      it('ignores a selection confirmed after the edition closed', () => {
+        buildForm();
+        let onSelect = null;
+        global.eXeLearning = {
+          app: { modals: { filemanager: { show: (opts) => (onSelect = opts.onSelect) } } },
+        };
+        const addImageFromAsset = vi
+          .spyOn($exeDevice, 'addImageFromAsset')
+          .mockImplementation(() => {});
+
+        $exeDevice.openFileManagerForImages(false);
+        $exeDevice.$lifecycle.destroy();
+        onSelect({ assetUrl: 'asset://a.png' });
+
+        expect(addImageFromAsset).not.toHaveBeenCalled();
+        delete global.eXeLearning;
+      });
     });
   });
 });
