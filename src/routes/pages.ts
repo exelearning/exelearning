@@ -28,7 +28,9 @@ import { db as dbDefault } from '../db/client';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
+import { isOfflineMode } from '../utils/offline.util';
 import { getAppVersion } from '../utils/version';
+import { canChangePassword } from '../services/password';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
 import { buildAdminTranslations } from './admin';
 import {
@@ -227,8 +229,6 @@ const defaultDependencies: PagesDependencies = {
     settings: defaultSettings,
 };
 
-const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
-
 // ============================================================================
 // Factory Function
 // ============================================================================
@@ -322,7 +322,13 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         cookie.impersonator_auth.remove();
                         cookie.impersonation_session.remove();
                     }
-                    return { currentUser: null, isGuest: false, impersonation: null as ImpersonationContext | null };
+                    return {
+                        currentUser: null,
+                        isGuest: false,
+                        impersonation: null as ImpersonationContext | null,
+                        authMethod: undefined as JwtPayload['authMethod'],
+                        isImpersonated: false,
+                    };
                 }
 
                 let impersonationBase: {
@@ -352,7 +358,20 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 try {
                     const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload) return { currentUser: null, isGuest: false, impersonation: null };
+                    if (!payload) {
+                        return {
+                            currentUser: null,
+                            isGuest: false,
+                            impersonation: null,
+                            authMethod: undefined,
+                            isImpersonated: false,
+                        };
+                    }
+
+                    // An impersonated token inherits the administrator's
+                    // authMethod, so this flag must be carried separately.
+                    const authMethod = payload.authMethod;
+                    const isImpersonated = payload.isImpersonated || false;
 
                     const isGuest = payload.isGuest || false;
                     if (isGuest) {
@@ -364,6 +383,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             },
                             isGuest: true,
                             impersonation: null,
+                            authMethod,
+                            isImpersonated,
                         };
                     }
 
@@ -380,9 +401,15 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                               }
                             : null;
 
-                    return { currentUser: user || null, isGuest: false, impersonation };
+                    return { currentUser: user || null, isGuest: false, impersonation, authMethod, isImpersonated };
                 } catch {
-                    return { currentUser: null, isGuest: false, impersonation: null };
+                    return {
+                        currentUser: null,
+                        isGuest: false,
+                        impersonation: null,
+                        authMethod: undefined,
+                        isImpersonated: false,
+                    };
                 }
             })
 
@@ -573,7 +600,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Workarea Page
             // =====================================================
-            .get('/workarea', async ({ currentUser, isGuest, query, set, jwt, request, impersonation }) => {
+            .get('/workarea', async ctx => {
+                const { currentUser, isGuest, query, set, jwt, request, impersonation } = ctx;
+                const { authMethod, isImpersonated } = ctx;
                 // Check if user is authenticated
                 if (!currentUser) {
                     // Preserve the original URL for post-login redirect
@@ -845,6 +874,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         ? JSON.parse(currentUser.roles || '[]')
                         : currentUser.roles || [];
 
+                const appAuthMethods = await getAuthMethods(
+                    db,
+                    process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
+                );
+                const isOfflineInstallation = isOfflineMode() || appAuthMethods.includes('none');
+
                 const user = {
                     id: userId,
                     username: email,
@@ -855,13 +890,17 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     gravatarUrl: createGravatarUrl(email, null, email),
                     roles: workareaRoles,
                     isAdmin: workareaRoles.includes('ROLE_ADMIN'),
+                    // Server-computed capability: the "Change password" menu entry
+                    // renders only when this is true. `PATCH /api/user/password`
+                    // re-checks every rule — this only controls rendering.
+                    canChangePassword: canChangePassword({
+                        authMethod,
+                        isGuest,
+                        isImpersonated,
+                        offlineMode: isOfflineInstallation,
+                        user: currentUser,
+                    }),
                 };
-
-                const appAuthMethods = await getAuthMethods(
-                    db,
-                    process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
-                );
-                const isOfflineInstallation = isOfflineMode() || appAuthMethods.includes('none');
 
                 const basePath = getBasePath();
 
@@ -991,6 +1030,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     private: trans('Private', {}, locale),
                     public: trans('Public', {}, locale),
                     preferences: trans('Preferences', {}, locale),
+                    change_password: trans('Change password', {}, locale),
                     admin_panel: 'Admin', // Admin panel is English-only; replace 'en' with `locale` to re-enable translations
                     logout: trans('Logout', {}, locale),
                     toggle_panels: trans('Toggle panels', {}, locale),
@@ -1046,12 +1086,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     const fallbackHtml = `<!doctype html>
 <html>
   <head>
-    <meta charset="utf-8" />
-    <title>eXeLearning Workarea</title>
-    <script>window.eXeLearning = { version: "${getAppVersion()}", user: ${JSON.stringify(user)}, config: ${JSON.stringify(config)} };</script>
+<meta charset="utf-8" />
+<title>eXeLearning Workarea</title>
+<script>window.eXeLearning = { version: "${getAppVersion()}", user: ${JSON.stringify(user)}, config: ${JSON.stringify(config)} };</script>
   </head>
   <body>
-    <div id="root">eXeLearning workarea - Template error: ${errorMessage}</div>
+<div id="root">eXeLearning workarea - Template error: ${errorMessage}</div>
   </body>
 </html>`;
                     return new Response(fallbackHtml, {
