@@ -610,13 +610,23 @@ the console — nothing is forwarded to the LMS.
   `getTotalScore`, `createScoreScormHtml`, `registerActivity`, `reportActivity`,
   `updateActivity`, `showFinalScore`, `endScorm`) and their `pipwerks.SCORM`
   traffic.
-- `public/app/common/xapi/exe_xapi.js` — the always-on xAPI emitter; binds
-  `pagehide` only.
+- `public/app/common/xapi/exe_xapi.js` — the xAPI emitter (web export family;
+  see ADR-2302-02 once #2302 lands); binds `pagehide` only.
 - `public/files/perm/idevices/base/*/export/*.js` — per-iDevice
   `loadSCORM_API_wrapper`/`loadSCOFunctions` lazy-loaders,
   `scorm.init`/`SetScoreMax`/`SetScoreMin` usage, and their `pagehide` handlers.
-- `moodle-mod_exelearning` — `assets/scorm/*` copies (functionally identical to
-  this repo's legacy files) and `classes/local/scorm/scorm_injector.php`.
+- `moodle-mod_exelearning` — three consumers, not one. (a) `assets/scorm/*`,
+  MIRROR copies of this repo's two package files that the plugin injects into
+  extracted content; they are re-synced by hand and can lag this branch (its
+  PR #105 snapshot predates the activities layer), so treat them as a distinct,
+  possibly-older consumer, never as "identical". (b)
+  `classes/local/scorm/scorm_injector.php`, which force-calls
+  `pipwerks.SCORM.init()` on a poller BEFORE the content's own `scorm.init()` —
+  the host-side activation that §4's adoption clause exists for. (c) The
+  suspend_data parsers `js/scorm_tracker.js` (`parseSuspend`) and
+  `classes/local/track.php::parse_suspend_data()`, which as of PR #105 read only
+  the legacy line format of §9.2 — a §9.1 `exe12/` payload parses to nothing
+  there until the plugin follows up.
 - Real exported package fixtures under `test/fixtures/export/*_scorm/`.
 
 Symbols that appear SCORM-related but are **not** part of this contract:

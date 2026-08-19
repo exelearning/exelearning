@@ -410,6 +410,17 @@
             pipwerks.SCORM.version = '1.2';
             pipwerks.SCORM.handleCompletionStatus = false;
             pipwerks.SCORM.handleExitMode = false;
+            // Adopt a connection another party already opened (contract §4). A host
+            // can legitimately initialize before the content does — the Moodle plugin
+            // injector force-calls pipwerks.SCORM.init() on a poller and usually wins
+            // the race — and upstream pipwerks connection.initialize() returns FALSE
+            // on an already-active connection, which would fail the iDevices'
+            // `scorm.init()` gate and silently break manual score saves.
+            if (pipwerks.SCORM.connection && pipwerks.SCORM.connection.isActive === true) {
+                state.status = STATE.ACTIVE;
+                client.startClock();
+                return true;
+            }
             var success = false;
             try {
                 success = pipwerks.SCORM.connection.initialize();

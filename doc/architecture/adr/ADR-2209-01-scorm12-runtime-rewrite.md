@@ -246,8 +246,9 @@ handler; nothing is deferred.
 ### Positive
 
 - Clean provenance: AGPL-3.0 project code + one MIT-vendored file with a
-  recorded, test-asserted upstream hash. No ADL/CTC or CC-attributed code in
-  the 1.2 package.
+  recorded upstream hash (THIRD-PARTY-NOTICES.md); the exporter test asserts
+  the shipped package is byte-identical to the repository copy. No ADL/CTC or
+  CC-attributed code in the 1.2 package.
 - The defects above are fixed, each covered by regression tests against a
   **strict** fake LMS that validates SCORM 1.2 access rules, vocabularies,
   ranges, array indices and error codes, and that can be configured to

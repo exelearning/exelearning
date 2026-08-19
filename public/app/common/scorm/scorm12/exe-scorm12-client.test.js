@@ -123,6 +123,30 @@ describe('exe-scorm12-client', () => {
             expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('LMSInitialize'));
         });
 
+        it('adopts a connection the host already initialized (contract §4)', () => {
+            useWindow('self');
+            // The mod_exelearning injector force-calls pipwerks.SCORM.init() on a
+            // 50 ms poller and usually wins the race against the content's own
+            // scorm.init(). Reproduce that host-side activation with the REAL
+            // vendored wrapper: the connection becomes active outside this state
+            // machine.
+            pipwerks.SCORM.version = '1.2';
+            expect(pipwerks.SCORM.init()).toBe(true);
+            const initcalls = api.callNames().filter(name => name === 'LMSInitialize').length;
+            expect(initcalls).toBe(1);
+
+            // The client adopts the active connection instead of failing: upstream
+            // pipwerks answers FALSE to a second connection.initialize() on an
+            // already-active connection, which would kill the iDevices'
+            // `scorm.init()` gate and silently break manual score saves.
+            expect(client.initialize()).toBe(true);
+            expect(client.isActive()).toBe(true);
+            // Adoption never issues a second LMSInitialize to the LMS.
+            expect(api.callNames().filter(name => name === 'LMSInitialize').length).toBe(initcalls);
+            // And the adopted session is a full citizen: terminate works normally.
+            expect(client.terminate()).toBe(true);
+        });
+
         it('treats a duplicate initialize as a no-op success', () => {
             useWindow('self');
             client.initialize();
