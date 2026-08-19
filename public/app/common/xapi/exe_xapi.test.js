@@ -2,6 +2,76 @@ import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
 const xapi = require('./exe_xapi.js');
 
+const ANSWERED_VERB = 'http://adlnet.gov/expapi/verbs/answered';
+const COMPLETED_VERB = 'http://adlnet.gov/expapi/verbs/completed';
+const PASSED_VERB = 'http://adlnet.gov/expapi/verbs/passed';
+const FAILED_VERB = 'http://adlnet.gov/expapi/verbs/failed';
+const IDEVICE_ID_EXTENSION = 'https://exelearning.net/xapi/extensions/idevice-id';
+const IDEVICE_ORDER_EXTENSION = 'https://exelearning.net/xapi/extensions/idevice-order';
+const WEIGHT_EXTENSION = 'https://exelearning.net/xapi/extensions/weight';
+
+function effectiveWeight(value) {
+    const parsed = parseFloat(value) || 1;
+    return Math.max(1, Math.min(100, parsed));
+}
+
+/**
+ * Consumer-side implementation of the current eXeLearning score normalization.
+ * It deliberately mirrors gamification.scorm.getFinalScore(): configured weights
+ * are normalized to integer percentages using the largest-remainder method.
+ */
+function calculateWeightedScore(items) {
+    if (!items.length) return 0;
+
+    const normalized = items.map(item => ({
+        score: Math.max(0, Math.min(100, parseFloat(item.score) || 0)),
+        weight: effectiveWeight(item.weight),
+    }));
+    const factor = 100 / normalized.reduce((sum, item) => sum + item.weight, 0);
+    const apportioned = normalized.map(item => {
+        const scaledWeight = item.weight * factor;
+        const flooredWeight = Math.floor(scaledWeight);
+        return {
+            score: item.score,
+            weight: flooredWeight,
+            fraction: scaledWeight - flooredWeight,
+        };
+    });
+
+    let remaining = 100 - apportioned.reduce((sum, item) => sum + item.weight, 0);
+    apportioned.sort((a, b) => b.fraction - a.fraction);
+    for (let i = 0; i < apportioned.length && remaining > 0; i++) {
+        apportioned[i].weight += 1;
+        remaining -= 1;
+    }
+
+    const total = apportioned.reduce((sum, item) => sum + item.score * item.weight, 0);
+    return Math.round(total) / 100;
+}
+
+/**
+ * Rebuild the current package state from the statement stream. A later answer
+ * replaces the earlier contribution with the same stable iDevice id.
+ */
+function reconstructLatestWeightedScore(statements) {
+    const latestByIdevice = new Map();
+
+    statements
+        .filter(statement => statement.verb.id === ANSWERED_VERB)
+        .forEach(statement => {
+            const extensions = statement.context?.extensions || {};
+            latestByIdevice.set(extensions[IDEVICE_ID_EXTENSION], {
+                score: statement.result.score.raw * 10,
+                weight: extensions[WEIGHT_EXTENSION],
+                order: extensions[IDEVICE_ORDER_EXTENSION],
+            });
+        });
+
+    return calculateWeightedScore(
+        [...latestByIdevice.values()].sort((a, b) => a.order - b.order),
+    );
+}
+
 /**
  * Helper: install a fake parent window so the postMessage transport fires
  * (happy-dom sets window.parent === window by default, which the lib treats
@@ -39,17 +109,15 @@ describe('exe_xapi emitter', () => {
         xapi._lastSig = {};
         xapi._lifecycle = { initialized: false, terminated: false };
         delete window.exeXapi;
-        // Provide the shared, pure package aggregator (weighted average, 0..100).
+        // Provide a test implementation matching the shared, pure package
+        // aggregator in common.js (weighted average, 0..100).
         window.$exeDevices = window.$exeDevices || {};
         window.$exeDevices.iDevice = window.$exeDevices.iDevice || {};
         window.$exeDevices.iDevice.gamification = {
             scorm: {
-                getFinalScore: (lmsData) => {
-                    const keys = Object.keys(lmsData);
-                    if (!keys.length) return 0;
-                    const sum = keys.reduce((a, k) => a + (parseFloat(lmsData[k].score) || 0), 0);
-                    return Math.round((sum / keys.length) * 100) / 100;
-                },
+                getFinalScore: lmsData => calculateWeightedScore(
+                    Object.values(lmsData).map(item => ({ score: item.score, weight: item.weighted })),
+                ),
             },
         };
     });
@@ -77,17 +145,89 @@ describe('exe_xapi emitter', () => {
         const spy = installFakeParent();
         xapi.init();
 
-        xapi.emit({ type: 'answered', ideviceId: 'idevice-abc', ideviceType: 'trueorfalse', ideviceNumber: 1, title: 'Q1', score: 8, weighted: 1 });
+        xapi.emit({ type: 'answered', ideviceId: 'idevice-abc', ideviceType: 'trueorfalse', ideviceNumber: 1, title: 'Q1', score: 8, weighted: '25' });
 
-        const answered = statementsByVerb(spy, 'http://adlnet.gov/expapi/verbs/answered');
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
         expect(answered).toHaveLength(1);
         const s = answered[0];
         expect(s.object.id).toBe('https://exelearning.net/xapi/PKG1/idevice/idevice-abc');
         expect(s.result.score).toEqual({ scaled: 0.8, raw: 8, min: 0, max: 10 });
         expect(s.result.success).toBe(true);
         expect(s.object.definition.extensions['https://exelearning.net/xapi/extensions/idevice-type']).toBe('trueorfalse');
+        expect(s.context.extensions[IDEVICE_ORDER_EXTENSION]).toBe(1);
+        expect(s.context.extensions[WEIGHT_EXTENSION]).toBe(25);
+        expect(typeof s.context.extensions[WEIGHT_EXTENSION]).toBe('number');
         expect(s.context.contextActivities.parent[0].id).toBe('https://exelearning.net/xapi/PKG1');
         expect(s.id).toMatch(/^[0-9a-f-]{36}$/i);
+    });
+
+    it('reconstructs the latest unequal-weight state by stable iDevice id', () => {
+        window.exeXapi = { odeId: 'PKG1' };
+        const spy = installFakeParent();
+        xapi.init();
+
+        xapi.emit({ type: 'answered', ideviceId: 'device-a', ideviceNumber: 1, score: 4, weighted: 25 });
+        xapi.emit({ type: 'answered', ideviceId: 'device-b', ideviceNumber: 2, score: 4, weighted: 75 });
+        xapi.emit({ type: 'answered', ideviceId: 'device-a', ideviceNumber: 1, score: 10, weighted: 25 });
+
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
+        expect(answered).toHaveLength(3);
+        expect(answered.map(statement => statement.context.extensions[IDEVICE_ID_EXTENSION])).toEqual([
+            'device-a',
+            'device-b',
+            'device-a',
+        ]);
+        expect(answered.map(statement => statement.context.extensions[WEIGHT_EXTENSION])).toEqual([25, 75, 25]);
+        expect(answered.map(statement => statement.context.extensions[IDEVICE_ORDER_EXTENSION])).toEqual([1, 2, 1]);
+        expect(answered[0].object.id).toBe(answered[2].object.id);
+        expect(answered[0].object.id).not.toBe(answered[1].object.id);
+
+        // Latest state is A=100 @ 25% and B=40 @ 75%: 25 + 30 = 55.
+        expect(reconstructLatestWeightedScore(answered)).toBe(55);
+    });
+
+    it('uses package-global iDevice order to reproduce largest-remainder ties', () => {
+        window.exeXapi = { odeId: 'PKG1', ideviceOrderOffset: 0 };
+        const spy = installFakeParent();
+        xapi.init();
+
+        // Arrival order differs from package order. Three equal weights apportion
+        // to 34/33/33, so package-order device A must receive the extra point.
+        xapi.emit({ type: 'answered', ideviceId: 'device-b', ideviceNumber: 2, score: 0, weighted: 1 });
+        xapi.emit({ type: 'answered', ideviceId: 'device-a', ideviceNumber: 1, score: 10, weighted: 1 });
+        xapi.emit({ type: 'answered', ideviceId: 'device-c', ideviceNumber: 3, score: 0, weighted: 1 });
+
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
+        expect(answered.map(statement => statement.context.extensions[IDEVICE_ORDER_EXTENSION])).toEqual([2, 1, 3]);
+        expect(reconstructLatestWeightedScore(answered)).toBe(34);
+        const completed = statementsByVerb(spy, COMPLETED_VERB);
+        expect(completed[completed.length - 1].result.score.raw).toBe(34);
+    });
+
+    it('adds the exported page offset to the page-local iDevice number', () => {
+        window.exeXapi = { odeId: 'PKG1', ideviceOrderOffset: 3 };
+        const spy = installFakeParent();
+        xapi.init();
+
+        xapi.emit({ type: 'answered', ideviceId: 'device-d', ideviceNumber: 1, score: 8, weighted: 25 });
+
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
+        expect(answered[0].context.extensions[IDEVICE_ORDER_EXTENSION]).toBe(4);
+    });
+
+    it.each([
+        ['zero', 0],
+        ['missing', undefined],
+    ])('emits the current effective weight of 1 for %s weight', (_label, weighted) => {
+        window.exeXapi = { odeId: 'PKG1' };
+        const spy = installFakeParent();
+        xapi.init();
+
+        xapi.emit({ type: 'answered', ideviceId: 'device-a', ideviceNumber: 1, score: 8, weighted });
+
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
+        expect(answered).toHaveLength(1);
+        expect(answered[0].context.extensions[WEIGHT_EXTENSION]).toBe(1);
     });
 
     it('emits package "completed" + "passed" when the aggregate is >= 50', () => {
@@ -98,12 +238,15 @@ describe('exe_xapi emitter', () => {
         // score 8 (0..10) -> 80 (0..100) -> avg 80 -> passed
         xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, title: 'Q1', score: 8, weighted: 1 });
 
-        expect(statementsByVerb(spy, 'http://adlnet.gov/expapi/verbs/completed')).toHaveLength(1);
-        const passed = statementsByVerb(spy, 'http://adlnet.gov/expapi/verbs/passed');
+        const completed = statementsByVerb(spy, COMPLETED_VERB);
+        expect(completed).toHaveLength(1);
+        const passed = statementsByVerb(spy, PASSED_VERB);
         expect(passed).toHaveLength(1);
         expect(passed[0].result.score.scaled).toBe(0.8);
         expect(passed[0].result.success).toBe(true);
         expect(passed[0].object.definition.type).toBe('http://adlnet.gov/expapi/activities/assessment');
+        expect(completed[0].context.extensions[WEIGHT_EXTENSION]).toBeUndefined();
+        expect(passed[0].context.extensions[WEIGHT_EXTENSION]).toBeUndefined();
     });
 
     it('emits package "failed" when the aggregate is below 50', () => {
@@ -113,8 +256,10 @@ describe('exe_xapi emitter', () => {
 
         xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, title: 'Q1', score: 2, weighted: 1 });
 
-        expect(statementsByVerb(spy, 'http://adlnet.gov/expapi/verbs/failed')).toHaveLength(1);
-        expect(statementsByVerb(spy, 'http://adlnet.gov/expapi/verbs/passed')).toHaveLength(0);
+        const failed = statementsByVerb(spy, FAILED_VERB);
+        expect(failed).toHaveLength(1);
+        expect(statementsByVerb(spy, PASSED_VERB)).toHaveLength(0);
+        expect(failed[0].context.extensions[WEIGHT_EXTENSION]).toBeUndefined();
     });
 
     it('debounces duplicate statements with the same score', () => {
@@ -128,14 +273,28 @@ describe('exe_xapi emitter', () => {
         expect(spy.mock.calls.length).toBe(after1); // no new statements
     });
 
+    it('emits the same score again when the effective weight changes', () => {
+        window.exeXapi = { odeId: 'PKG1' };
+        const spy = installFakeParent();
+        xapi.init();
+
+        xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score: 8, weighted: 25 });
+        xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score: 8, weighted: 75 });
+
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
+        expect(answered).toHaveLength(2);
+        expect(answered.map(statement => statement.context.extensions[WEIGHT_EXTENSION])).toEqual([25, 75]);
+    });
+
     it('ignores events with a non-numeric score', () => {
         window.exeXapi = { odeId: 'PKG1' };
         const spy = installFakeParent();
         xapi.init();
         // init() may emit a lifecycle statement; measure only emit()'s effect.
         const before = spy.mock.calls.length;
-        xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score: 'n/a' });
+        xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score: 'n/a', weighted: 75 });
         expect(spy.mock.calls.length).toBe(before);
+        expect(statementsByVerb(spy, ANSWERED_VERB)).toHaveLength(0);
     });
 
     it('is a silent no-op when there is no parent and no LRS', () => {

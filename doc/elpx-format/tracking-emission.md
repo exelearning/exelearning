@@ -122,6 +122,8 @@ the SCORM gate) and the running aggregate (reusing the pure `getFinalScore`):
 
 - **Per iDevice** — verb [`answered`](http://adlnet.gov/expapi/verbs/answered),
   object = per-iDevice IRI, `result.score = { scaled, raw, min: 0, max: 10 }`.
+  Its context also carries the iDevice's effective configured weight, allowing a
+  consumer to reconstruct the package result independently.
 - **Package** — verb [`completed`](http://adlnet.gov/expapi/verbs/completed) plus
   [`passed`](http://adlnet.gov/expapi/verbs/passed) /
   [`failed`](http://adlnet.gov/expapi/verbs/failed) at the same ≥ 50 threshold,
@@ -146,11 +148,65 @@ Each statement also includes richer metadata:
   - `https://exelearning.net/xapi/extensions/package-id`
   - `https://exelearning.net/xapi/extensions/idevice-id`
   - `https://exelearning.net/xapi/extensions/idevice-type`
+  - `https://exelearning.net/xapi/extensions/idevice-order` (answered statements only)
+  - `https://exelearning.net/xapi/extensions/weight` (answered statements only)
   - `https://exelearning.net/xapi/extensions/page-id` (when supplied by the event)
   - `https://exelearning.net/xapi/extensions/page-title` (when supplied by the event)
 
 Statement shape follows the xAPI Data spec:
 <https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md>.
+
+#### Reconstructing the weighted package score
+
+The `weight` extension is a JSON number containing the effective configured
+iDevice weight in eXeLearning weight points. Authoring uses a 1–100 percentage
+scale, but the values are relative: package scoring normalizes all current
+iDevice weights to a total of 100. Missing, zero, or non-numeric weights have an
+effective value of 1, and values outside the supported range are clamped to
+1–100. Non-evaluable iDevices do not emit `answered` statements and therefore do
+not carry this extension.
+
+For example, an answered statement can contain:
+
+```json
+{
+  "verb": { "id": "http://adlnet.gov/expapi/verbs/answered" },
+  "object": { "id": "https://exelearning.net/xapi/PKG1/idevice/IDEVICE-A" },
+  "result": {
+    "score": { "scaled": 0.8, "raw": 8, "min": 0, "max": 10 },
+    "success": true,
+    "completion": true
+  },
+  "context": {
+    "extensions": {
+      "https://exelearning.net/xapi/extensions/package-id": "PKG1",
+      "https://exelearning.net/xapi/extensions/idevice-id": "IDEVICE-A",
+      "https://exelearning.net/xapi/extensions/idevice-type": "quiz",
+      "https://exelearning.net/xapi/extensions/idevice-order": 1,
+      "https://exelearning.net/xapi/extensions/weight": 25
+    }
+  }
+}
+```
+
+To reconstruct current package state, consumers should group statements by
+attempt/registration and package, then retain the latest `answered` statement
+for each stable `idevice-id`. A later answer replaces that iDevice's prior score;
+answer history must not be summed. Sort those latest statements by the numeric,
+1-based `idevice-order`, which represents package render order across all pages.
+Then multiply each score on the 0–100 scale by its relative weight, normalize
+the weights to 100, and apply the same integer largest-remainder allocation used
+by `gamification.scorm.getFinalScore()`. Package order is the deterministic tie
+break when fractional remainders are equal. For weights 25 and 75 with scores
+100 and 40, the result is
+`(100 × 25 + 40 × 75) / 100 = 55`.
+
+Because every per-iDevice statement contains its stable identity, score, and
+weight, this reconstruction works across multi-page publications even though
+each page has a separate JavaScript context. Package-level `completed` and
+`passed`/`failed` statements continue to report the runtime aggregate as
+lifecycle/result summaries; consumers do not need to treat that aggregate as
+the sole authority.
 
 ### 2.4 Transport (silent fall-through)
 
@@ -191,8 +247,8 @@ Statement shape follows the xAPI Data spec:
 
 ### 2.5 Notes
 
-- The emitter debounces duplicate statements (same iDevice + same score) and
-  assigns each statement a UUID `id` for LRS idempotency.
+- The emitter debounces duplicate statements (same iDevice + same score, weight,
+  and package order) and assigns each statement a UUID `id` for LRS idempotency.
 - The package-level statement reuses `gamification.scorm.getFinalScore()` (a pure
   function) for the weighted total — single source of truth with SCORM.
 - The `initialized`/`terminated` lifecycle statements are emitted at most once and

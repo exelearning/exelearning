@@ -67,6 +67,8 @@
         ideviceType: 'https://exelearning.net/xapi/extensions/idevice-type',
         pageId: 'https://exelearning.net/xapi/extensions/page-id',
         pageTitle: 'https://exelearning.net/xapi/extensions/page-title',
+        ideviceOrder: 'https://exelearning.net/xapi/extensions/idevice-order',
+        weight: 'https://exelearning.net/xapi/extensions/weight',
     };
 
     // The package is considered passed at >= 50/100, identical to the SCORM
@@ -74,7 +76,7 @@
     var PASS_THRESHOLD = 50;
 
     var xapi = {
-        /** Resolved configuration: { odeId, baseIri, activityId, packageTitle, language, actor, parentOrigin }. */
+        /** Resolved configuration, including package identity, delivery options, and iDevice order offset. */
         config: null,
         /** Parsed xAPI launch parameters from the URL, or null. */
         launch: null,
@@ -152,7 +154,7 @@
          * `window.exeXapi`. Falls back to the document URL so statements are
          * still structurally valid in a plain standalone page.
          *
-         * @returns {{odeId:string, baseIri:string, activityId:string, packageTitle:string, language:string, actor:?object, parentOrigin:?string}}
+         * @returns {{odeId:string, baseIri:string, activityId:string, packageTitle:string, language:string, actor:?object, parentOrigin:?string, ideviceOrderOffset:number}}
          */
         _resolveConfig: function () {
             var cfg = (root && root.exeXapi) ? root.exeXapi : {};
@@ -169,6 +171,7 @@
                 actor: cfg.actor || null,
                 parentOrigin: cfg.parentOrigin || null,
                 registration: cfg.registration || null,
+                ideviceOrderOffset: Math.max(0, parseInt(cfg.ideviceOrderOffset, 10) || 0),
             };
         },
 
@@ -217,18 +220,20 @@
             if (!evt || typeof evt !== 'object') return;
             var score = parseFloat(evt.score);
             if (isNaN(score)) return;
+            var weight = effectiveWeight(evt.weighted);
+            var ideviceOrder = effectiveIdeviceOrder(this.config, evt.ideviceNumber);
 
             // Update the package aggregate from this iDevice's score (0..100 scale).
             if (evt.ideviceNumber != null) {
                 this._state[evt.ideviceNumber] = {
                     title: evt.title || '',
                     score: Math.max(0, Math.min(100, score * 10)),
-                    weighted: evt.weighted != null ? evt.weighted : 1,
+                    weighted: weight,
                 };
             }
 
             // Per-iDevice "answered" statement (the granular payload).
-            var perIdevice = this._buildIdeviceStatement(evt, score);
+            var perIdevice = this._buildIdeviceStatement(evt, score, weight, ideviceOrder);
             if (perIdevice && !this._isDuplicate('idevice:' + evt.ideviceId, perIdevice)) {
                 this._send(perIdevice);
             }
@@ -271,9 +276,11 @@
          *
          * @param {object} evt
          * @param {number} score 0..10
+         * @param {number} weight configured iDevice weight, normalized to 1..100
+         * @param {?number} ideviceOrder 1-based package-global scoring order
          * @returns {?object} xAPI statement
          */
-        _buildIdeviceStatement: function (evt, score) {
+        _buildIdeviceStatement: function (evt, score, weight, ideviceOrder) {
             if (!evt.ideviceId) return null;
             var objectId = this.config.baseIri + '/idevice/' + evt.ideviceId;
             var definition = {
@@ -292,7 +299,7 @@
                 score: { scaled: round4(score / 10), raw: round2(score), min: 0, max: 10 },
                 success: score >= 5,
                 completion: true,
-            }, [{ id: this.config.activityId }], this._contextExtensions(evt));
+            }, [{ id: this.config.activityId }], this._contextExtensions(evt, weight, ideviceOrder));
         },
 
         /**
@@ -301,9 +308,11 @@
          * Page id/title are populated only when the caller supplies them.
          *
          * @param {object} [evt]
+         * @param {number} [weight] normalized iDevice weight
+         * @param {?number} [ideviceOrder] 1-based package-global scoring order
          * @returns {?object}
          */
-        _contextExtensions: function (evt) {
+        _contextExtensions: function (evt, weight, ideviceOrder) {
             var ext = {};
             if (this.config && this.config.odeId) ext[EXT.packageId] = this.config.odeId;
             if (evt) {
@@ -311,6 +320,8 @@
                 if (evt.ideviceType) ext[EXT.ideviceType] = evt.ideviceType;
                 if (evt.pageId) ext[EXT.pageId] = evt.pageId;
                 if (evt.pageTitle) ext[EXT.pageTitle] = evt.pageTitle;
+                if (typeof ideviceOrder === 'number') ext[EXT.ideviceOrder] = ideviceOrder;
+                if (typeof weight === 'number') ext[EXT.weight] = weight;
             }
             return Object.keys(ext).length ? ext : null;
         },
@@ -507,16 +518,20 @@
         },
 
         /**
-         * Debounce duplicate statements: same key + same verb + same score is
-         * skipped so a re-render or repeated save does not double-report.
+         * Debounce duplicate statements: same key + same verb + same score,
+         * effective weight and package order is skipped so a re-render or
+         * repeated save does not double-report.
          *
          * @param {string} key
          * @param {object} statement
          * @returns {boolean} true if this statement is a duplicate of the last one for the key
          */
         _isDuplicate: function (key, statement) {
+            var extensions = statement.context && statement.context.extensions;
+            var weight = extensions ? extensions[EXT.weight] : '';
+            var ideviceOrder = extensions ? extensions[EXT.ideviceOrder] : '';
             var sig = statement.verb.id + '|' +
-                (statement.result && statement.result.score ? statement.result.score.raw : '');
+                (statement.result && statement.result.score ? statement.result.score.raw : '') + '|' + weight + '|' + ideviceOrder;
             if (this._lastSig[key] === sig) return true;
             this._lastSig[key] = sig;
             return false;
@@ -537,6 +552,14 @@
 
     function round2(n) { return Math.round(n * 100) / 100; }
     function round4(n) { return Math.round(n * 10000) / 10000; }
+    function effectiveWeight(value) {
+        return Math.max(1, Math.min(parseFloat(value) || 1, 100));
+    }
+    function effectiveIdeviceOrder(config, ideviceNumber) {
+        var localOrder = parseInt(ideviceNumber, 10);
+        if (!localOrder || localOrder < 1) return null;
+        return (config && config.ideviceOrderOffset ? config.ideviceOrderOffset : 0) + localOrder;
+    }
 
     /**
      * RFC 4122 v4 UUID for statement ids (idempotency at the LRS).

@@ -453,6 +453,19 @@ describe('Html5Exporter', () => {
             // Other pages should have ../ prefix
             expect(html).toContain('href="../theme/');
         });
+
+        it('should inject the package-global iDevice order offset for each page', () => {
+            const firstPageHtml = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+            const secondPageHtml = exporter.generatePageHtml(
+                samplePages[1],
+                samplePages,
+                document.getMetadata(),
+                false,
+            );
+
+            expect(firstPageHtml).toContain('"ideviceOrderOffset":0');
+            expect(secondPageHtml).toContain('"ideviceOrderOffset":1');
+        });
     });
 
     describe('Page Link Generation', () => {

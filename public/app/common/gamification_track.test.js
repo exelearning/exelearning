@@ -33,7 +33,7 @@ describe('gamification.track (xAPI dispatch)', () => {
             ideviceNumber: 2,
             title: 'Q',
             scorerp: '7.5',
-            weighted: 3,
+            weighted: 25,
         });
 
         expect(emit).toHaveBeenCalledTimes(1);
@@ -44,7 +44,7 @@ describe('gamification.track (xAPI dispatch)', () => {
             ideviceNumber: 2,
             title: 'Q',
             score: 7.5,
-            weighted: 3,
+            weighted: 25,
         });
     });
 
@@ -119,7 +119,13 @@ describe('gamification.track (xAPI dispatch)', () => {
     it('sendScoreNew does not dispatch when the activity has not started', () => {
         const emit = vi.fn();
         global.$exeDevices.iDevice.xapi = { emit };
-        scorm.sendScoreNew(true, { gameStarted: false, gameOver: false, ideviceId: 'x', scorerp: 0 });
+        scorm.sendScoreNew(true, {
+            gameStarted: false,
+            gameOver: false,
+            ideviceId: 'x',
+            scorerp: 0,
+            weighted: 75,
+        });
         expect(emit).not.toHaveBeenCalled();
     });
 

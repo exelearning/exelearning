@@ -408,6 +408,14 @@ export class Html5Exporter extends BaseExporter {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
         const currentPageIndex = pageIndex ?? allPages.findIndex(p => p.id === page.id);
+        const ideviceOrderOffset = allPages
+            .slice(0, Math.max(0, currentPageIndex))
+            .reduce(
+                (pageTotal, precedingPage) =>
+                    pageTotal +
+                    precedingPage.blocks.reduce((blockTotal, block) => blockTotal + block.components.length, 0),
+                0,
+            );
 
         // Generate global font CSS if a font is selected
         let customStyles = meta.customStyles || '';
@@ -464,7 +472,12 @@ export class Html5Exporter extends BaseExporter {
             // Application version for generator meta tag
             version: meta.exelearningVersion,
             // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
-            xapi: { odeId: meta.odeIdentifier || '', packageTitle: meta.title || '', language: meta.language || 'en' },
+            xapi: {
+                odeId: meta.odeIdentifier || '',
+                packageTitle: meta.title || '',
+                language: meta.language || 'en',
+                ideviceOrderOffset,
+            },
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
         });

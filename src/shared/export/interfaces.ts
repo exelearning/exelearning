@@ -610,6 +610,8 @@ export interface AssetResolverOptions {
  * - `activityId`   – the root activity IRI; defaults to `baseIri`.
  * - `packageTitle` – human-readable activity name.
  * - `language`     – BCP-47 language tag for language-map values (default `en`).
+ * - `ideviceOrderOffset` – number of iDevices rendered on preceding pages; used
+ *   with the page-local iDevice number to expose package-global scoring order.
  *
  * Delivery keys (OPT-IN, currently NOT populated by the exporters):
  * - `parentOrigin` – when set, statements are postMessage'd only to this exact
@@ -633,6 +635,8 @@ export interface XapiConfig {
     activityId?: string;
     packageTitle?: string;
     language?: string;
+    /** Internal: number of iDevices rendered before the current page. */
+    ideviceOrderOffset?: number;
     /** Opt-in: restrict postMessage delivery to this exact parent origin. */
     parentOrigin?: string;
     /** Opt-in: pre-resolved xAPI actor (object); shape per the xAPI spec. */
