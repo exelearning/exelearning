@@ -355,3 +355,29 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | Architecture | [doc/architecture.md](doc/architecture.md) |
 | Architecture Decision Records | [doc/architecture/adr/README.md](doc/architecture/adr/README.md) |
 | Software Design Documents | [doc/architecture/sdd/README.md](doc/architecture/sdd/README.md) |
+
+## 13. Solo Logic Alpha Addendum
+
+This section applies only to work governed by `SPEC.md` and `PLAN.md`. It supplements, and does not replace, the upstream instructions above.
+
+1. Read all of `SPEC.md` and the relevant task section of `PLAN.md` before editing.
+2. State the approved Task ID and requirement IDs before making a change.
+3. Activate the relevant project skills from the managed list below.
+4. Solo Logic Alpha has exactly one designated AI writer active at a time — never more than one concurrently. Default writer: Codex. **Temporary reassignment (since 2026-08-19): Codex is suspended pending its quota reset; Nemotron 3 Ultra is the active writer, with DeepSeek V4 named as backup if Nemotron 3 Ultra also becomes unavailable.** Other AI tools may review read-only only when the user explicitly assigns them, and no writer's unavailability blocks another already-approved writer from continuing an approved task. Every writer change is logged with date and reason in `repo-map.md`.
+5. Stay within P0 and the active Task Packet. Do not expand scope.
+6. Do not accept a claim of completion without command output, tests, or reproducible evidence.
+7. Edit only the files listed in the active Task Packet.
+8. Stop at the nearest gate and do not begin the next phase while it is `PENDING` or `FAIL`.
+9. Never include `.agents`, `.claude`, `.ai`, or AI-development documentation in HTML or SCORM output.
+
+Solo Logic Alpha manages these five additional skills without taking ownership of upstream skills:
+
+| Skill | Use |
+|-------|-----|
+| [plan-writing](.agents/skills/plan-writing/SKILL.md) | Convert approved SPEC/PLAN work into a Task Packet |
+| [test-driven-development](.agents/skills/test-driven-development/SKILL.md) | Use Red–Green–Refactor for Core, validators, engines, graders, and bug fixes |
+| [systematic-debugging](.agents/skills/systematic-debugging/SKILL.md) | Establish root cause before fixing failures or unexpected behavior |
+| [receiving-code-review](.agents/skills/receiving-code-review/SKILL.md) | Verify review feedback before implementing it |
+| [exelearning-logic-alpha](.agents/skills/exelearning-logic-alpha/SKILL.md) | Enforce Solo Logic Alpha P0 scope, routing, and gates |
+
+`.agents/skills` is canonical for these five skills. Run `tools/ai/sync-project-skills.ps1` to copy only these managed skills to `.claude/skills`, and run it with `-Check` to verify their file lists and SHA-256 hashes. The script must not modify any upstream skill.

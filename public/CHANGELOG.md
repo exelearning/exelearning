@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## [Unreleased] — Solo Logic Alpha (2026-08-19)
 
 ### Added
 
@@ -8,6 +8,52 @@
 - Administrators can reset the password of a local account from Admin → Users, using the new actions menu on each row
 - New `make change-password EMAIL=user@example.com` command, which asks for the new password without showing it on screen
 - Password changes are unavailable for guest accounts and for users signed in through CAS, OpenID Connect or SAML; those users change their password with their identity provider
+- **Electronics Logic iDevice** — new interactive device with four modes:
+  - **Boolean**: expression authoring and equivalence grading (BOOL-01…BOOL-09)
+  - **Truth Table**: 2–4 variables, 2^n rows, per-cell grading with 0/1/X input, expression equivalence (TT-01…TT-06)
+  - **Karnaugh Map**: 2–4 variables Gray-code grid, click-to-group, overlap/wrap/don't-care support, coverage/minimality/SOP grading (KM-01…KM-08)
+  - **Combinational Circuit**: Input/Output/LED, NOT/AND/OR/XOR gates, wire connections, topological validation, deterministic 0/1/X propagation, testbench grading (LOG-01…LOG-09)
+
+- **Boolean Core** — pure CommonJS module (no DOM/Electron/eval/Function) with lexer/parser (NOT>AND>XOR>OR, implicit AND, Vietnamese errors), evaluator, truth vectors, expression↔vector↔minterm↔K-map conversion, stable SOP minimizer (≤4 variables). 143 tests, 100% coverage, 100 property equivalence pairs.
+
+- **Deterministic Grading** — algorithmic scoring from evidence (SPEC.md §9): truth-table 70% cells/30% expression, Karnaugh 30% cells/40% groups/30% SOP, circuit 100% testbench. Engine version `0.1.0` in all results.
+
+- **Schema v1 Lifecycle** — canonical data contract (`schemaVersion: 1`), validation, schema-0/legacy migration, stable save/open normalization (10 cycles), export rendering.
+
+- **Course Demo Fixture** — `test/fixtures/electronics-logic-demo.elpx` with text, image, video, truth-table, Karnaugh, half-adder.
+
+- **HTML5 Offline Export** — browser-side ZIP with relative paths, service-worker preview, Electron save-to-disk. Audit (EXP-03): no `.agents/`, `.claude/`, `.ai/`, absolute paths, tokens, stack traces.
+
+- **Skill Bootstrap** — five managed skills (`exelearning-logic-alpha`, `plan-writing`, `receiving-code-review`, `systematic-debugging`, `test-driven-development`), lock file (`.ai/skills.lock.json`), sync script (`tools/ai/sync-project-skills.ps1`), discovery evidence (AT-S01…AT-S03).
+
+- **E2E Coverage** — demo course round-trip 10×, truth-table/Karnaugh/half-adder grading, offline HTML5 export, ELPX download/reopen.
+
+### Changed
+
+- Electronics Logic registered as 53rd iDevice in palette (Science/Ciencia category).
+
+### Fixed
+
+- Karnaugh group validator: power-of-two, Gray-rectangle, overlap, wrap, don't-care, no-zero-cell enforcement.
+- Circuit topology: accumulates all 6 error codes (danglingInputPin, unknownNodeReference, unknownPin, wireDirectionMismatch, multipleSources, combinationalLoop) in single pass.
+- Half-adder fixture: correct 4/4 score, wire removal → 0, wrong wiring → structural error.
+- Export audit: recursive dot-segment skip, token-shape regexes, binary/third-party/SVG exemptions.
+
+### Security
+
+- No `eval`/`Function` in Boolean Core or any Electronics Logic module.
+- JSON validation before render/grade; HTML via eXeLearning sanitizer.
+- No API keys/tokens in repo, fixtures, logs, or exports.
+- Offline P0 flow makes zero network requests.
+
+### Known Limitations
+
+- G-P0 platform gate remains FAIL for pre-existing Docker Chromium E2E blocker (34 failures, asset/file-manager/theme/media flows) — not reproducible natively on Windows 11. This is a pre-existing, unrelated platform-infrastructure issue, disclosed here per PLAN.md line 91; per PLAN.md §9 it does not affect the `Solo Logic Alpha` label, which is conditioned on all AT passing with no Sev-1/2 (both hold — see `.ai/evidence/test-report-AT.md`).
+- Vitest coverage tooling regression (`@vitest/coverage-v8` reports 0/0/0/0) since 2026-08-14 — blocks NFR-05 patch-coverage verification for future tasks.
+- `make` unavailable on native Windows Git Bash — use direct `bun`/`npx` commands.
+- `public/bundles/idevices.zip` stale (pre-U03); fallback path serves live source for E2E.
+
+---
 
 ## v4.0.3 – 2026-08-06
 

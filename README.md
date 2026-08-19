@@ -165,6 +165,72 @@ The full project documentation is available in the [`doc`](./doc/index.md) direc
   <img src="https://contrib.rocks/image?repo=exelearning/exelearning" alt="Contributors" />
 </a>
 
+## Solo Logic Alpha — Build & Demo
+
+This section documents the Solo Logic Alpha deliverable (commit `3c7c7e82163e812f04cbb033240942f8ac1214a0`, fork `danghoangsqtt-sys/exelearning` branch `feature/solo-logic-alpha`).
+
+### Quick Start (Docker, matches P02 verified environment)
+
+```bash
+git clone https://github.com/danghoangsqtt-sys/exelearning.git
+cd exelearning
+git checkout feature/solo-logic-alpha
+docker run --rm -v ${PWD}:/app -w /app oven/bun:1.3-alpine sh -c "bun run build:all"
+docker run --rm -p 8080:8080 -v ${PWD}:/app -w /app oven/bun:1.3-alpine bun run start
+```
+
+Open `http://localhost:8080`, login `user@exelearning.net` / `1234`.
+
+### Load Demo Course
+
+1. File → Open → select `test/fixtures/electronics-logic-demo.elpx`
+2. Course contains: text + image + video + Truth Table (3 vars) + Karnaugh (4 vars, wrap/overlap/don't-care) + Half-Adder Circuit
+
+### Verify Learner Flows (Preview or HTML Offline)
+
+**Truth Table (AT-05)**: Fill 7/8 correct, click **Kiểm tra** → "7 / 8" with 1 failed cell. Fix → "8 / 8".
+
+**Karnaugh (AT-06)**: Fill 16 cells (minterms 0,2,8,10,12,14=1; don't-care 4=X). Create groups {0,2,8,10} and {8,10,12,14} (overlap at 8,10, wrap both edges). Click **Kiểm tra** → "10 / 10", solution "!B*!D+A*!D".
+
+**Half-Adder (AT-07)**: Place 2×INPUT, 1×XOR, 1×AND, 2×OUTPUT. Wire A→XOR.a, B→XOR.b, A→AND.a, B→AND.b, XOR.out→Sum, AND.out→Carry. Click **Kiểm tra** → "8 / 8". Remove wire → structural error.
+
+### Export HTML5 Offline (AT-09, EXP-03)
+
+File → Export → HTML5 Website. Open `index.html` directly in browser (no server). All three activities grade offline. Export audited for forbidden patterns (`.agents/`, `.claude/`, `.ai/`, absolute paths, tokens, stack traces).
+
+### Run Tests
+
+```bash
+# Backend unit
+bun test ./src ./test/helpers ./scripts ./app --coverage
+# Frontend unit
+bun run test:frontend
+# Integration
+bun run test:integration
+# E2E (Playwright Chromium)
+bun x playwright test --project=chromium
+# Electronics Logic full regression
+npx vitest run public/files/perm/idevices/base/electronics-logic
+bun x playwright test --project=chromium test/e2e/playwright/specs/idevices/electronics-logic.spec.ts
+bun x playwright test --project=chromium test/e2e/playwright/specs/demo/electronics-logic-demo.spec.ts
+# Lint
+bunx @biomejs/biome check src/ test/ public/app/
+```
+
+### Offline Verification
+
+After HTML5 export, disconnect network. Open exported `index.html` directly. All activities work. No network requests.
+
+### Skill Verification (AT-S01, AT-S02, AT-S03)
+
+```bash
+cat .ai/skills.lock.json | head -50
+powershell -File tools/ai/sync-project-skills.ps1 -Check
+cat .ai/evidence/AT-S03-nemotron-dry-run.md
+```
+
+Full evidence: `.ai/evidence/test-report-AT.md`, `.ai/evidence/release-notes.md`, `repo-map.md`.
+
 ## License
 
 Distributed under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0. See `LICENSE` for more information.
