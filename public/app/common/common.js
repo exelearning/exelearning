@@ -1172,6 +1172,11 @@ var $exeDevices = {
                         .find('header .box-title').text() || '').replace(/"/g, ' ');
                     game.ideviceNumber = $('.idevice_node').index($ideviceNode) + 1;
 
+                    // Declare this iDevice to the xAPI emitter before any answer, in
+                    // every export format. The SCORM census below is gated on
+                    // pipwerks, so it does not exist in HTML5/EPUB exports.
+                    $exeDevices.iDevice.gamification.registerEvaluable(game);
+
                     let lmsData = {};
                     if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
                         $exeDevices.iDevice.gamification.scorm.createScoreScormHtml(game);
@@ -1384,6 +1389,35 @@ var $exeDevices = {
              * @param {string} eventType e.g. 'answered'
              * @param {Object} game the iDevice game options (carries score + identity)
              */
+            /**
+             * Declare an evaluable iDevice to the xAPI emitter as the page loads,
+             * whether or not the learner ever answers it.
+             *
+             * Mirrors what registerActivity already does for SCORM's suspend_data
+             * lmsData, but for every export format: without it the emitter only ever
+             * learns about answered iDevices, so the package aggregate normalizes
+             * over the answered subset and a partial attempt reports an inflated
+             * score. It is also the only way a consumer can learn the package
+             * denominator, since an unanswered iDevice emits nothing (#2302).
+             *
+             * @param {object} game
+             */
+            registerEvaluable: function (game) {
+                try {
+                    let xapi = $exeDevices.iDevice.xapi;
+                    if (!xapi || typeof xapi.registerEvaluable !== 'function') return;
+                    if (typeof game !== 'object' || game === null) return;
+                    xapi.registerEvaluable({
+                        ideviceId: game.ideviceId,
+                        ideviceNumber: game.ideviceNumber,
+                        title: game.title,
+                        weighted: game.weighted,
+                    });
+                } catch (e) {
+                    // Never let tracking break the activity.
+                }
+            },
+
             track: function (eventType, game) {
                 try {
                     let xapi = $exeDevices.iDevice.xapi;

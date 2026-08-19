@@ -263,7 +263,7 @@ export class ElpxExporter extends Html5Exporter {
             // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
             try {
                 this.logElpxExportDebugPhase('exporter:base-libs:start');
-                const baseLibs = await this.resources.fetchBaseLibraries();
+                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
                 for (const [libPath, content] of baseLibs) {
                     addFile(`libs/${libPath}`, content);
                 }

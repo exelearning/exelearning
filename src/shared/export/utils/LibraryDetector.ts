@@ -17,7 +17,7 @@
  */
 
 import type { LibraryPattern, LibraryDetectionResult, LibraryDetectionOptions } from '../interfaces';
-import { LIBRARY_PATTERNS, BASE_LIBRARIES, SCORM_LIBRARIES } from '../constants';
+import { LIBRARY_PATTERNS, BASE_LIBRARIES, WEB_EXPORT_LIBRARIES, SCORM_LIBRARIES } from '../constants';
 
 /**
  * LibraryDetector class
@@ -250,8 +250,8 @@ export class LibraryDetector {
      * Get base libraries (always included)
      * @returns Array of base library file paths
      */
-    getBaseLibraries(): string[] {
-        return [...BASE_LIBRARIES];
+    getBaseLibraries(includeXapiEmitter = false): string[] {
+        return includeXapiEmitter ? [...WEB_EXPORT_LIBRARIES] : [...BASE_LIBRARIES];
     }
 
     /**
@@ -316,7 +316,7 @@ export class LibraryDetector {
         detected: LibraryDetectionResult,
         options: LibraryDetectionOptions,
     ): { files: string[]; patterns: LibraryPattern[] } {
-        const files = new Set(this.getBaseLibraries());
+        const files = new Set(this.getBaseLibraries(options.includeXapiEmitter === true));
 
         // Add detected library files
         for (const file of detected.files) {

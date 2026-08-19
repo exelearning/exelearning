@@ -17,13 +17,14 @@ import type {
     ExportOptions,
     ExportResult,
     LibraryDetectionOptions,
+    XapiConfig,
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
-import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
+import { ELPX_DOWNLOAD_ONCLICK, XAPI_EMITTER_LIBRARY, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 import { convertSrtToVtt } from '../../utils/srt-to-vtt';
 
@@ -213,6 +214,119 @@ export abstract class BaseExporter {
      */
     buildPageList(): ExportPage[] {
         return this.getNavigation();
+    }
+
+    /**
+     * Whether this export format ships the xAPI emitter.
+     *
+     * False by default: a format only carries the emitter when it has no scoring
+     * runtime of its own. SCORM and IMS packages do — `cmi.*` is their authoritative
+     * channel, and no standard says which wins when both are present — and EPUB3
+     * defines no tracking at all. See ADR-2302-02.
+     *
+     * @returns True for the web export family only
+     */
+    protected emitsXapi(): boolean {
+        return false;
+    }
+
+    /**
+     * Drop the xAPI emitter from a base-library set unless this format ships it.
+     *
+     * The resource providers return one library map for every format, so this is the
+     * single point where the web-family scope is applied. Filtering here also removes
+     * the file from the SCORM/IMS `<file>` manifests and the EPUB OPF, because those
+     * entries are generated from the same loops that copy the bytes.
+     *
+     * @param libraries Base libraries as returned by the resource provider
+     * @returns The same map, minus the emitter when this format does not ship it
+     */
+    protected selectBaseLibraries<T>(libraries: Map<string, T>): Map<string, T> {
+        if (this.emitsXapi()) return libraries;
+        if (!libraries.has(XAPI_EMITTER_LIBRARY)) return libraries;
+        const selected = new Map(libraries);
+        selected.delete(XAPI_EMITTER_LIBRARY);
+        return selected;
+    }
+
+    /**
+     * Build the runtime xAPI config injected into an exported page.
+     *
+     * Single source of truth shared by every export format: the emitter in
+     * `libs/xapi/exe_xapi.js` is bundled unconditionally into all of them
+     * (see BASE_LIBRARIES), so all of them must describe the same package
+     * identity and the same package-global iDevice order. Formats that
+     * omitted this config used to fall back to a per-page document URL as the
+     * activity IRI, which made cross-page results impossible to aggregate.
+     *
+     * @param meta Export metadata carrying the package identity
+     * @param ideviceOrderOffset Number of iDevices rendered on preceding pages
+     * @param pageCount Number of pages in the package (1 for single-page exports)
+     * @param page Page this document renders, when the format renders one page per document
+     * @returns Config serialized into `window.exeXapi`
+     */
+    buildXapiConfig(meta: ExportMetadata, ideviceOrderOffset = 0, pageCount = 1, page?: ExportPage): XapiConfig {
+        const config: XapiConfig = {
+            odeId: meta.odeIdentifier || '',
+            packageTitle: meta.title || '',
+            language: meta.language || 'en',
+            ideviceOrderOffset,
+            pageCount,
+        };
+        // Page identity is only known here: the runtime tracker never supplies it.
+        if (page?.id) config.pageId = page.id;
+        if (page?.title) config.pageTitle = page.title;
+        return config;
+    }
+
+    /**
+     * Count the iDevice components rendered on a single page.
+     *
+     * Single source of truth for "how many iDevices does this page render",
+     * used both by the export-timing logs and by the xAPI iDevice order
+     * offsets. Pages arriving from a legacy .elp import or a partially built
+     * Y.Doc may carry an undefined `blocks` (or a block with undefined
+     * `components`), so both levels are guarded.
+     *
+     * @param page Page to inspect
+     * @returns Number of components rendered on the page (0 when malformed)
+     */
+    countPageComponents(page: ExportPage): number {
+        return (page.blocks || []).reduce((blockTotal, block) => blockTotal + (block.components?.length || 0), 0);
+    }
+
+    /**
+     * Count the iDevice components rendered across a list of pages.
+     *
+     * @param pages Pages to inspect
+     * @returns Total number of components rendered
+     */
+    countComponents(pages: ExportPage[]): number {
+        return pages.reduce((total, page) => total + this.countPageComponents(page), 0);
+    }
+
+    /**
+     * Build the package-global iDevice order offset for every page, as a
+     * prefix sum over the component counts of the preceding pages.
+     *
+     * The runtime xAPI emitter adds the page-local iDevice number to this
+     * offset so `idevice-order` is unique and monotonic across the whole
+     * package instead of restarting at 1 on every page (#2302).
+     *
+     * Computed once per export: recomputing it inside the per-page render
+     * would re-walk every preceding page and make the export O(P^2).
+     *
+     * @param pages Pages in navigation order
+     * @returns Array parallel to `pages`; entry i is the offset for page i
+     */
+    buildIdeviceOrderOffsets(pages: ExportPage[]): number[] {
+        const offsets: number[] = new Array(pages.length);
+        let running = 0;
+        for (let i = 0; i < pages.length; i++) {
+            offsets[i] = running;
+            running += this.countPageComponents(pages[i]);
+        }
+        return offsets;
     }
 
     /**
@@ -972,10 +1086,7 @@ export abstract class BaseExporter {
      * export → re-import round trip (#1927).
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
-        const componentCount = pages.reduce((total, page) => {
-            const blocks = page.blocks || [];
-            return total + blocks.reduce((blockTotal, block) => blockTotal + (block.components?.length || 0), 0);
-        }, 0);
+        const componentCount = this.countComponents(pages);
         this.logElpxExportDebugPhase('exporter:preprocess-pages:start', {
             pages: pages.length,
             components: componentCount,
@@ -1153,7 +1264,11 @@ export abstract class BaseExporter {
                     excludedLibraries: JSON_PROPERTY_LIBRARY_EXCLUSIONS,
                 },
             ],
-            options,
+            // The emitter is a base library only for the formats that ship it, so the
+            // required-files list has to agree with selectBaseLibraries(). The browser
+            // and preview paths fetch by this list rather than by copying the provider
+            // map, so a disagreement silently drops the emitter from the preview.
+            { includeXapiEmitter: this.emitsXapi(), ...options },
         );
     }
 

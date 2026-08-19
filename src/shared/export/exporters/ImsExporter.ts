@@ -24,6 +24,17 @@ import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class ImsExporter extends Html5Exporter {
+    /**
+     * IMS Content Package does not carry the xAPI emitter: the specification defers runtime communication out of scope, so the host is its authoritative
+     * scoring channel, and no standard defines which wins when both are present
+     * (ADR-2302-02). Overrides the web-family default inherited from Html5Exporter.
+     *
+     * @returns False
+     */
+    protected emitsXapi(): boolean {
+        return false;
+    }
+
     protected manifestGenerator: ImsManifestGenerator | null = null;
 
     /**
@@ -241,7 +252,7 @@ export class ImsExporter extends Html5Exporter {
 
             // 4. Fetch and add base libraries
             try {
-                const baseLibs = await this.resources.fetchBaseLibraries();
+                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
                 for (const [path, content] of baseLibs) {
                     addFile(`libs/${path}`, content);
                     commonFiles.push(`libs/${path}`);

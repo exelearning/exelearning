@@ -145,7 +145,7 @@ export class PageExporter extends Html5Exporter {
 
             // 5. Fetch and add base libraries
             try {
-                const baseLibs = await this.resources.fetchBaseLibraries();
+                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
                 for (const [path, content] of baseLibs) {
                     this.zip.addFile(`libs/${path}`, content);
                 }
@@ -271,8 +271,10 @@ export class PageExporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
-            xapi: { odeId: meta.odeIdentifier || '', packageTitle: meta.title || '', language: meta.language || 'en' },
+            // xAPI runtime config for the emitter (stable IRIs from odeId)
+            // Single-page export: every iDevice lives on one page, so the page-local
+            // iDevice number is already the package-global order (offset 0).
+            xapi: this.buildXapiConfig(meta),
             detectedLibraries,
             linkToElp: meta.exportSource !== false,
             addMathJax,

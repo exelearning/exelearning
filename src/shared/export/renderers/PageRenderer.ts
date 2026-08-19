@@ -141,7 +141,7 @@ export class PageRenderer {
             assetExportPathMap,
             // Application version for generator meta tag
             version,
-            // xAPI runtime config (always-on emitter)
+            // xAPI runtime config; absent in formats that ship no emitter
             xapi,
         } = options;
 
@@ -306,12 +306,15 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         head += `<script src="${basePath}libs/common.js"> </script>`;
         head += `<script src="${basePath}libs/exe_export.js"> </script>`;
 
-        // Always-on xAPI emitter: identity config + emitter library. Present in
-        // every export format so the package is xAPI-compatible out of the box.
+        // xAPI emitter: identity config + emitter library, web export family only.
+        // The config is the single switch for the emitter: a format that ships no xAPI
+        // config ships no loader either. Emitting the tag unconditionally used to leave
+        // the emitter active in every format and made the print preview request a file
+        // its exporter never copies (ADR-2302-02).
         if (xapi) {
             head += `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>`;
+            head += `<script src="${basePath}libs/xapi/exe_xapi.js"> </script>`;
         }
-        head += `<script src="${basePath}libs/xapi/exe_xapi.js"> </script>`;
 
         // Search index script (loads before exe_export.js initializes)
         if (addSearchBox) {
@@ -1345,7 +1348,7 @@ ${sectionContent}
 <script src="libs/common_i18n.js"> </script>
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
-${xapi ? `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>\n` : ''}<script src="libs/xapi/exe_xapi.js"> </script>
+${xapi ? `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>\n<script src="libs/xapi/exe_xapi.js"> </script>` : ''}
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
 <link rel="stylesheet" href="content/css/base.css">

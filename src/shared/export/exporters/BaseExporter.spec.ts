@@ -188,6 +188,20 @@ class MockZipProvider implements ZipProvider {
 
 // Concrete test implementation of BaseExporter
 class TestExporter extends BaseExporter {
+    /** Expose the protected library-detection entry point. */
+    publicRequiredLibraryFiles(pages: ExportPage[]): string[] {
+        return this.getRequiredLibraryFilesForPages(pages).files;
+    }
+
+    /** Expose the protected xAPI-scope hooks for direct assertions. */
+    publicEmitsXapi(): boolean {
+        return this.emitsXapi();
+    }
+
+    publicSelectBaseLibraries<T>(libs: Map<string, T>): Map<string, T> {
+        return this.selectBaseLibraries(libs);
+    }
+
     getFileExtension(): string {
         return '.zip';
     }
@@ -2099,6 +2113,131 @@ describe('BaseExporter', () => {
             // Graceful degradation = a valid, empty WebVTT document instead.
             expect(zip.hasFile('content/resources/broken-subtitle.vtt')).toBe(true);
             expect(zip.files.get('content/resources/broken-subtitle.vtt')).toBe('WEBVTT\n');
+        });
+    });
+    describe('xAPI iDevice order offsets', () => {
+        const page = (id: string, componentCounts: number[]): ExportPage =>
+            ({
+                id,
+                pageId: id,
+                title: id,
+                blocks: componentCounts.map((count, blockIndex) => ({
+                    id: `${id}-b${blockIndex}`,
+                    components: Array.from({ length: count }, (_unused, i) => ({
+                        id: `${id}-b${blockIndex}-c${i}`,
+                        type: 'text',
+                    })),
+                })),
+            }) as unknown as ExportPage;
+
+        it('counts the components of a page across its blocks', () => {
+            expect(exporter.countPageComponents(page('p1', [2, 3]))).toBe(5);
+            expect(exporter.countComponents([page('p1', [2]), page('p2', [3, 1])])).toBe(6);
+        });
+
+        it('treats a page with no blocks and a block with no components as empty', () => {
+            // Pages from a legacy .elp import or a partially built Y.Doc can carry
+            // an undefined blocks/components; a single malformed page must not
+            // abort the whole export (#2302).
+            const malformed = { id: 'legacy', title: 'legacy' } as unknown as ExportPage;
+            const blockWithoutComponents = { id: 'p', blocks: [{ id: 'b' }] } as unknown as ExportPage;
+
+            expect(exporter.countPageComponents(malformed)).toBe(0);
+            expect(exporter.countPageComponents(blockWithoutComponents)).toBe(0);
+            expect(exporter.buildIdeviceOrderOffsets([malformed, page('p2', [2]), blockWithoutComponents])).toEqual([
+                0, 0, 2,
+            ]);
+        });
+
+        it('builds a prefix sum so each page starts after the preceding iDevices', () => {
+            const pages = [page('p1', [2]), page('p2', [1, 1]), page('p3', [3])];
+
+            expect(exporter.buildIdeviceOrderOffsets(pages)).toEqual([0, 2, 4]);
+        });
+
+        it('returns an empty offset list for an empty package', () => {
+            expect(exporter.buildIdeviceOrderOffsets([])).toEqual([]);
+        });
+    });
+
+    describe('xAPI emitter scope (ADR-2302-02)', () => {
+        it('does not ship the emitter by default', () => {
+            // A format only carries the emitter when it has no scoring runtime of its
+            // own, so the safe default is off and each web-family exporter opts in.
+            expect(exporter.publicEmitsXapi()).toBe(false);
+        });
+
+        it('drops the emitter from the base libraries when the format does not ship it', () => {
+            const libs = new Map<string, string>([
+                ['jquery/jquery.min.js', 'jq'],
+                ['xapi/exe_xapi.js', 'emitter'],
+                ['common.js', 'common'],
+            ]);
+
+            const selected = exporter.publicSelectBaseLibraries(libs);
+
+            expect([...selected.keys()]).toEqual(['jquery/jquery.min.js', 'common.js']);
+            // The input map is shared across formats, so it must not be mutated.
+            expect(libs.has('xapi/exe_xapi.js')).toBe(true);
+        });
+
+        it('agrees with the required-files list, which is how the preview fetches', () => {
+            // The browser and preview paths fetch by this list instead of copying the
+            // provider map, so if the two disagree the emitter silently vanishes from
+            // the preview while every exporter unit test still passes.
+            const files = exporter.publicRequiredLibraryFiles([]);
+
+            expect(exporter.publicEmitsXapi()).toBe(false);
+            expect(files).not.toContain('xapi/exe_xapi.js');
+        });
+
+        it('returns the same map untouched when there is nothing to drop', () => {
+            const libs = new Map<string, string>([['common.js', 'common']]);
+
+            expect(exporter.publicSelectBaseLibraries(libs)).toBe(libs);
+        });
+    });
+
+    describe('xAPI runtime config', () => {
+        it('describes the package identity and the page position', () => {
+            const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1', title: 'Course', language: 'es' };
+
+            expect(exporter.buildXapiConfig(meta, 4, 7)).toEqual({
+                odeId: 'PKG1',
+                packageTitle: 'Course',
+                language: 'es',
+                ideviceOrderOffset: 4,
+                pageCount: 7,
+            });
+        });
+
+        it('carries the page identity the runtime tracker never supplies', () => {
+            const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1' };
+            const page = { id: 'page-7', title: 'Chapter 7' } as unknown as ExportPage;
+
+            const config = exporter.buildXapiConfig(meta, 0, 4, page);
+
+            expect(config.pageId).toBe('page-7');
+            expect(config.pageTitle).toBe('Chapter 7');
+        });
+
+        it('omits page identity rather than emitting empty strings', () => {
+            const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1' };
+
+            expect(exporter.buildXapiConfig(meta, 0, 1)).not.toHaveProperty('pageId');
+            expect(exporter.buildXapiConfig(meta, 0, 1, {} as unknown as ExportPage)).not.toHaveProperty('pageTitle');
+        });
+
+        it('defaults to a single page at offset 0 and never emits undefined identity', () => {
+            const meta = { ...document.getMetadata(), odeIdentifier: undefined, title: undefined, language: undefined };
+
+            expect(exporter.buildXapiConfig(meta as ExportMetadata)).toEqual({
+                odeId: '',
+                packageTitle: '',
+                language: 'en',
+                ideviceOrderOffset: 0,
+                pageCount: 1,
+            });
         });
     });
 });

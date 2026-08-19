@@ -116,6 +116,15 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toBeDefined();
         });
 
+        it('should not request the xAPI emitter it never bundles (ADR-2302-02)', async () => {
+            // The preview renders into a blob: iframe from an exporter that copies no
+            // base libraries, so an unconditional loader tag resolved to nothing.
+            const result = await exporter.generatePreview();
+
+            expect(result.html).not.toContain('libs/xapi/exe_xapi.js');
+            expect(result.html).not.toContain('window.exeXapi');
+        });
+
         it('should return error when no pages exist', async () => {
             const emptyDoc = createMockDocument([]);
             const emptyExporter = new PrintPreviewExporter(emptyDoc, mockResourceProvider);

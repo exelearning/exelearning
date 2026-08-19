@@ -59,6 +59,10 @@ class MockResourceProvider implements ResourceProvider {
     async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
+        // The provider hands the same set to every format; the exporter decides
+        // whether the emitter survives (ADR-2302-02). Seeding it here is what makes
+        // the presence and absence assertions mean anything.
+        files.set('xapi/exe_xapi.js', Buffer.from('// xapi emitter'));
         return files;
     }
 
@@ -726,6 +730,41 @@ describe('ImsExporter', () => {
             // The hidden page is excluded from the rendered organization/manifest.
             const manifest = zip.files.get('imsmanifest.xml') as string;
             expect(manifest).not.toContain('Secret Draft');
+        });
+    });
+
+    describe('xAPI emitter scope (ADR-2302-02)', () => {
+        it('ships neither the xAPI config nor the emitter loader', () => {
+            // IMS Content Package carries its own authoritative scoring channel (the host runtime, since IMS CP defers runtime communication out of scope),
+            // and no standard defines which wins when both are present. A second,
+            // non-authoritative channel would only create that ambiguity.
+            const first = exporter.generateImsPageHtml(
+                samplePages[0],
+                samplePages,
+                document.getMetadata(),
+                true,
+                [],
+                0,
+            );
+            const second = exporter.generateImsPageHtml(
+                samplePages[1],
+                samplePages,
+                document.getMetadata(),
+                false,
+                [],
+                1,
+            );
+
+            for (const html of [first, second]) {
+                expect(html).not.toContain('window.exeXapi');
+                expect(html).not.toContain('libs/xapi/exe_xapi.js');
+            }
+        });
+
+        it('does not copy the emitter into the package', async () => {
+            await exporter.export();
+
+            expect([...zip.files.keys()].some(name => name.includes('xapi/exe_xapi.js'))).toBe(false);
         });
     });
 });

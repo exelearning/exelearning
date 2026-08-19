@@ -145,7 +145,7 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
-            // Always-on xAPI emitter (every export is xAPI-compatible)
+            // xAPI emitter; the exporter drops it for formats that do not ship it
             { src: 'app/common/xapi/exe_xapi.js', dest: 'xapi/exe_xapi.js' },
             // Favicon
             { src: 'favicon.ico', dest: 'favicon.ico' },

@@ -15,9 +15,11 @@
 
     Always-on xAPI (Experience API) emitter for published eXeLearning packages.
 
-    This library is bundled into EVERY export format (web, SCORM, IMS, EPUB,
-    single-page) via BASE_LIBRARIES, so any published package is xAPI-compatible
-    out of the box, with no export-time option. It emits one statement per
+    This library is bundled into the WEB export family (HTML5, ELPX, single-page and
+    the editor preview) via WEB_EXPORT_LIBRARIES, with no export-time option. SCORM,
+    IMS and EPUB packages do not carry it: SCORM grades through cmi.*, IMS CP defers
+    runtime communication out of scope, and EPUB defines no tracking mechanism, so a
+    second channel there could only compete with the authoritative one (ADR-2302-02). It emits one statement per
     gradable iDevice ("answered") and one package-level statement
     ("completed" + "passed"/"failed") whenever a score is reported.
 
@@ -68,7 +70,9 @@
         pageId: 'https://exelearning.net/xapi/extensions/page-id',
         pageTitle: 'https://exelearning.net/xapi/extensions/page-title',
         ideviceOrder: 'https://exelearning.net/xapi/extensions/idevice-order',
-        weight: 'https://exelearning.net/xapi/extensions/weight',
+        ideviceWeight: 'https://exelearning.net/xapi/extensions/idevice-weight',
+        ideviceCensus: 'https://exelearning.net/xapi/extensions/idevice-census',
+        pageCount: 'https://exelearning.net/xapi/extensions/page-count',
     };
 
     // The package is considered passed at >= 50/100, identical to the SCORM
@@ -82,6 +86,8 @@
         launch: null,
         /** Per-iDevice running scores keyed by ideviceNumber, on a 0..100 scale (feeds getFinalScore for the package total). */
         _state: {},
+        /** Census of the evaluable iDevices on THIS page, keyed by ideviceId, in registration order. */
+        _census: {},
         /** Debounce cache: last payload signature emitted per iDevice, to avoid duplicate statements. */
         _lastSig: {},
         /** Lifecycle guards so "initialized"/"terminated" are each emitted at most once. */
@@ -104,8 +110,98 @@
             this._initialised = true;
             // Generic xAPI lifecycle: announce the session start and arrange to
             // announce its end. Only when a transport can actually carry them.
-            this._emitInitialized();
+            //
+            // "initialized" carries this page's census of evaluable iDevices, so it
+            // must wait until they have registered. This script is injected in the
+            // <head>, so at this point the <body> does not even exist yet. The flush
+            // is therefore deferred to DOM-ready plus a macrotask, and emit() flushes
+            // it synchronously if a learner answers first, so "initialized" always
+            // precedes any "answered".
+            this._scheduleInitialized();
             this._bindTerminate();
+        },
+
+        /**
+         * Record an evaluable iDevice for this page, whether or not it is ever
+         * answered. Called by gamification.scorm.registerActivity() for every
+         * evaluable iDevice as the page initializes.
+         *
+         * Two purposes, and both need the unanswered ones:
+         *  - The census published on the "initialized" statement, which is the only
+         *    way a consumer can learn the package denominator (an unvisited or
+         *    unanswered iDevice emits nothing at all).
+         *  - Seeding `_state` with a score of 0, mirroring what registerActivity
+         *    already does for SCORM's suspend_data `lmsData`. Without it the package
+         *    aggregate normalizes over the answered subset only and a partial attempt
+         *    reports an inflated score.
+         *
+         * @param {{ideviceId:?string, ideviceNumber:?number, title:?string, weighted:?number}} evt
+         */
+        registerEvaluable: function (evt) {
+            if (!this._initialised) this.init();
+            if (!evt || typeof evt !== 'object' || !evt.ideviceId) return;
+            var ideviceOrder = effectiveIdeviceOrder(this.config, evt.ideviceNumber);
+            // An iDevice the consumer cannot place must not appear in the census with
+            // a false order, exactly as it does not enter the aggregate (#2302).
+            if (ideviceOrder == null) return;
+            if (Object.prototype.hasOwnProperty.call(this._census, evt.ideviceId)) return;
+            var weight = effectiveWeight(evt.weighted);
+            this._census[evt.ideviceId] = { ideviceId: evt.ideviceId, weight: weight, ideviceOrder: ideviceOrder };
+            // Seed the aggregate only if this iDevice has not already been answered.
+            if (!Object.prototype.hasOwnProperty.call(this._state, evt.ideviceNumber)) {
+                this._state[evt.ideviceNumber] = { title: evt.title || '', score: 0, weighted: weight };
+            }
+        },
+
+        /**
+         * This page's evaluable census as a plain array in package order, shaped for
+         * the `idevice-census` extension.
+         *
+         * @returns {object[]}
+         */
+        _censusList: function () {
+            var self = this;
+            return Object.keys(this._census)
+                .map(function (key) { return self._census[key]; })
+                .sort(function (a, b) { return a.ideviceOrder - b.ideviceOrder; })
+                .map(function (entry) {
+                    // Short keys INSIDE the extension value; the extension key itself
+                    // stays a full IRI. xAPI only requires IRIs for the keys of the
+                    // extensions map, and nesting IRIs inside a value is unidiomatic:
+                    // profiles expand short names through a JSON-LD @context instead.
+                    return {
+                        'idevice-id': entry.ideviceId,
+                        'idevice-weight': entry.weight,
+                        'idevice-order': entry.ideviceOrder,
+                    };
+                });
+        },
+
+        /**
+         * Defer the "initialized" statement until this page's evaluable iDevices
+         * have registered. DOM-ready plus a macrotask covers iDevices that register
+         * from a jQuery ready handler, which is how they are written.
+         *
+         * There is no marker in the exported document that identifies an evaluable
+         * iDevice, so the expected count is unknowable and the flush cannot wait for
+         * a complete set. An iDevice registering later than this misses the census
+         * for this page load; consumers that persist the census per package recover
+         * it on the next visit.
+         */
+        _scheduleInitialized: function () {
+            var self = this;
+            var flush = function () { self._emitInitialized(); };
+            try {
+                var doc = root && root.document;
+                if (!doc || typeof root.setTimeout !== 'function') return flush();
+                if (doc.readyState === 'loading') {
+                    doc.addEventListener('DOMContentLoaded', function () { root.setTimeout(flush, 0); });
+                } else {
+                    root.setTimeout(flush, 0);
+                }
+            } catch (e) {
+                flush();
+            }
         },
 
         /**
@@ -117,7 +213,12 @@
                 if (this._lifecycle.initialized) return;
                 if (!this._hasTransport()) return;
                 this._lifecycle.initialized = true;
-                this._send(this._buildLifecycleStatement(VERBS.initialized));
+                // The census rides here: it is the only statement that reports the
+                // evaluable iDevices a learner never answered, which is what a
+                // consumer needs to know the package denominator (#2302).
+                var extra = {};
+                extra[EXT.ideviceCensus] = this._censusList();
+                this._send(this._buildLifecycleStatement(VERBS.initialized, extra));
             } catch (e) { /* no-op */ }
         },
 
@@ -145,7 +246,14 @@
                 if (this._lifecycle.terminated) return;
                 if (!this._hasTransport()) return;
                 this._lifecycle.terminated = true;
-                this._send(this._buildLifecycleStatement(VERBS.terminated));
+                // The census rides here too. "initialized" delivers it as early as
+                // possible, but it is flushed on a macrotask after DOM-ready, so an
+                // iDevice that registers later than that would be missing from it.
+                // Page unload is by definition after every registration, so this copy
+                // is the complete one.
+                var ext = {};
+                ext[EXT.ideviceCensus] = this._censusList();
+                this._send(this._buildLifecycleStatement(VERBS.terminated, ext));
             } catch (e) { /* no-op */ }
         },
 
@@ -172,6 +280,9 @@
                 parentOrigin: cfg.parentOrigin || null,
                 registration: cfg.registration || null,
                 ideviceOrderOffset: Math.max(0, parseInt(cfg.ideviceOrderOffset, 10) || 0),
+                pageCount: Math.max(1, parseInt(cfg.pageCount, 10) || 1),
+                pageId: cfg.pageId || '',
+                pageTitle: cfg.pageTitle || '',
             };
         },
 
@@ -217,6 +328,9 @@
          */
         emit: function (evt) {
             if (!this._initialised) this.init();
+            // Flush the deferred lifecycle statement so "initialized", and with it the
+            // census, always reaches the consumer before the first "answered".
+            this._emitInitialized();
             if (!evt || typeof evt !== 'object') return;
             var score = parseFloat(evt.score);
             if (isNaN(score)) return;
@@ -224,7 +338,13 @@
             var ideviceOrder = effectiveIdeviceOrder(this.config, evt.ideviceNumber);
 
             // Update the package aggregate from this iDevice's score (0..100 scale).
-            if (evt.ideviceNumber != null) {
+            // Gated on the same condition as the emitted order: getFinalScore's
+            // largest-remainder tie-break follows key order, so an iDevice whose
+            // package-global position cannot be resolved (no ideviceNumber, or a
+            // node jQuery could not locate, which yields 0) must not shift the
+            // total either. Both guards agreeing is what guarantees that every
+            // statement feeding the aggregate carries an idevice-order.
+            if (ideviceOrder != null) {
                 this._state[evt.ideviceNumber] = {
                     title: evt.title || '',
                     score: Math.max(0, Math.min(100, score * 10)),
@@ -240,7 +360,16 @@
 
             // Package "completed" + "passed"/"failed", reusing the shared,
             // pure getFinalScore() so the weighting logic stays single-source.
-            var finalScore = this._packageScore();
+            //
+            // Only for single-page packages. Every page holds just its own
+            // scores, so on a multipage package this aggregate is a page-local
+            // verdict wearing the package's Activity IRI: two pages would emit
+            // a "passed" and a "failed" for the same activity in one attempt.
+            // Multipage package results are reconstructed by the consumer from
+            // the per-iDevice "answered" statements, which is exactly what the
+            // idevice-order and idevice-weight extensions exist for
+            // (ADR-2302-01).
+            var finalScore = this._isMultipage() ? null : this._packageScore();
             if (finalScore != null) {
                 var pkg = this._buildPackageStatements(finalScore);
                 for (var i = 0; i < pkg.length; i++) {
@@ -249,6 +378,16 @@
                     }
                 }
             }
+        },
+
+        /**
+         * Whether the package spans more than one page, in which case no single
+         * page can compute the package result.
+         *
+         * @returns {boolean}
+         */
+        _isMultipage: function () {
+            return !!(this.config && this.config.pageCount > 1);
         },
 
         /**
@@ -315,13 +454,18 @@
         _contextExtensions: function (evt, weight, ideviceOrder) {
             var ext = {};
             if (this.config && this.config.odeId) ext[EXT.packageId] = this.config.odeId;
+            // Page identity comes from the injected export config: the runtime
+            // tracker has never supplied it, so before #2302 no statement carried it.
+            if (this.config && this.config.pageId) ext[EXT.pageId] = this.config.pageId;
+            if (this.config && this.config.pageTitle) ext[EXT.pageTitle] = this.config.pageTitle;
+            if (this.config && this.config.pageCount) ext[EXT.pageCount] = this.config.pageCount;
             if (evt) {
                 if (evt.ideviceId) ext[EXT.ideviceId] = evt.ideviceId;
                 if (evt.ideviceType) ext[EXT.ideviceType] = evt.ideviceType;
                 if (evt.pageId) ext[EXT.pageId] = evt.pageId;
                 if (evt.pageTitle) ext[EXT.pageTitle] = evt.pageTitle;
                 if (typeof ideviceOrder === 'number') ext[EXT.ideviceOrder] = ideviceOrder;
-                if (typeof weight === 'number') ext[EXT.weight] = weight;
+                if (typeof weight === 'number') ext[EXT.ideviceWeight] = weight;
             }
             return Object.keys(ext).length ? ext : null;
         },
@@ -372,8 +516,14 @@
          * @param {object} verb
          * @returns {object}
          */
-        _buildLifecycleStatement: function (verb) {
-            return this._statement(verb, this._packageObject(), null, null, this._contextExtensions(null));
+        _buildLifecycleStatement: function (verb, extraExtensions) {
+            var ext = this._contextExtensions(null) || {};
+            if (extraExtensions) {
+                for (var key in extraExtensions) {
+                    if (Object.prototype.hasOwnProperty.call(extraExtensions, key)) ext[key] = extraExtensions[key];
+                }
+            }
+            return this._statement(verb, this._packageObject(), null, null, Object.keys(ext).length ? ext : null);
         },
 
         /**
@@ -528,7 +678,7 @@
          */
         _isDuplicate: function (key, statement) {
             var extensions = statement.context && statement.context.extensions;
-            var weight = extensions ? extensions[EXT.weight] : '';
+            var weight = extensions ? extensions[EXT.ideviceWeight] : '';
             var ideviceOrder = extensions ? extensions[EXT.ideviceOrder] : '';
             var sig = statement.verb.id + '|' +
                 (statement.result && statement.result.score ? statement.result.score.raw : '') + '|' + weight + '|' + ideviceOrder;

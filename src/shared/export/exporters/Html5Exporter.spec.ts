@@ -466,6 +466,25 @@ describe('Html5Exporter', () => {
             expect(firstPageHtml).toContain('"ideviceOrderOffset":0');
             expect(secondPageHtml).toContain('"ideviceOrderOffset":1');
         });
+
+        it('should list the xAPI emitter among the required library files', () => {
+            // The preview and browser export paths fetch by this list, not by copying
+            // the provider map. When the two disagreed the emitter never reached the
+            // preview and window.exeXapi stayed undefined (#2302).
+            const { files } = exporter.getRequiredLibraryFilesForPages(samplePages);
+
+            expect(files).toContain('xapi/exe_xapi.js');
+        });
+
+        it('should inject the package page count and the page identity', () => {
+            // pageCount tells the emitter the package spans pages, so it must not
+            // claim a page-local verdict; pageId is the only source of page identity
+            // because the runtime tracker never supplies one (#2302).
+            const firstPageHtml = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(firstPageHtml).toContain(`"pageCount":${samplePages.length}`);
+            expect(firstPageHtml).toContain('"pageId":"page-1"');
+        });
     });
 
     describe('Page Link Generation', () => {

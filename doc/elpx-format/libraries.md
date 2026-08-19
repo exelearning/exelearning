@@ -49,7 +49,8 @@ export const BASE_LIBRARIES = [
     'jquery/jquery.min.js',
     'common.js',
     'exe_export.js',
-    'xapi/exe_xapi.js', // always-on xAPI emitter; see tracking-emission.md
+    // xAPI emitter: WEB_EXPORT_LIBRARIES only, not BASE_LIBRARIES; see tracking-emission.md
+    'xapi/exe_xapi.js',
     'bootstrap/bootstrap.bundle.min.js',
     'bootstrap/bootstrap.bundle.min.js.map',
     'bootstrap/bootstrap.min.css',

@@ -11,6 +11,8 @@ import {
     getIdeviceConfig,
     LIBRARY_PATTERNS,
     BASE_LIBRARIES,
+    WEB_EXPORT_LIBRARIES,
+    XAPI_EMITTER_LIBRARY,
     SCORM_LIBRARIES,
     MIME_TO_EXTENSION,
     getExtensionFromMime,
@@ -202,6 +204,19 @@ describe('Constants', () => {
             expect(elpxPattern?.pattern).toBe('exe-download-package-link');
             expect(elpxPattern?.files).toContain('fflate/fflate.umd.js');
             expect(elpxPattern?.files).toContain('exe_elpx_download/exe_elpx_download.js');
+        });
+    });
+
+    describe('xAPI emitter library scope (ADR-2302-02)', () => {
+        it('keeps the emitter out of the format-agnostic base set', () => {
+            expect(BASE_LIBRARIES).not.toContain(XAPI_EMITTER_LIBRARY);
+        });
+
+        it('ships the emitter with the web export family, on top of the base set', () => {
+            expect(WEB_EXPORT_LIBRARIES).toContain(XAPI_EMITTER_LIBRARY);
+            for (const lib of BASE_LIBRARIES) {
+                expect(WEB_EXPORT_LIBRARIES).toContain(lib);
+            }
         });
     });
 

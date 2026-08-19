@@ -29,6 +29,17 @@ import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 
 export class Html5Exporter extends BaseExporter {
+    /**
+     * The web export family carries the xAPI emitter: it has no scoring runtime of
+     * its own, so the emitter is the only channel, not a second one (ADR-2302-02).
+     * Inherited by ElpxExporter, PageElpxExporter and PageExporter.
+     *
+     * @returns True
+     */
+    protected emitsXapi(): boolean {
+        return true;
+    }
+
     private getBrowserLatexPreRenderer(): {
         preRender: (
             html: string,
@@ -171,6 +182,9 @@ export class Html5Exporter extends BaseExporter {
             // Manifest script tags are injected inline (they reference the file, not its content)
             let latexWasRendered = false;
             let mermaidWasRendered = false;
+            // Prefix sums over the per-page iDevice counts, computed once so the
+            // page loop stays linear in the number of pages (#2302).
+            const ideviceOrderOffsets = this.buildIdeviceOrderOffsets(pages);
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -185,6 +199,7 @@ export class Html5Exporter extends BaseExporter {
                     pageFilenameMap,
                     assetExportPathMap,
                     navLabels,
+                    ideviceOrderOffsets[i],
                 );
 
                 // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
@@ -281,7 +296,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 7. Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
             try {
-                const baseLibs = await this.resources.fetchBaseLibraries();
+                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
                 for (const [libPath, content] of baseLibs) {
                     addFile(`libs/${libPath}`, content);
                 }
@@ -404,18 +419,16 @@ export class Html5Exporter extends BaseExporter {
         pageFilenameMap?: Map<string, string>,
         assetExportPathMap?: Map<string, string>,
         navLabels?: { previous: string; next: string },
+        ideviceOrderOffset?: number,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
         const currentPageIndex = pageIndex ?? allPages.findIndex(p => p.id === page.id);
-        const ideviceOrderOffset = allPages
-            .slice(0, Math.max(0, currentPageIndex))
-            .reduce(
-                (pageTotal, precedingPage) =>
-                    pageTotal +
-                    precedingPage.blocks.reduce((blockTotal, block) => blockTotal + block.components.length, 0),
-                0,
-            );
+        // Package-global iDevice order offset. Precomputed once per export by the
+        // caller (see BaseExporter.buildIdeviceOrderOffsets); the fallback keeps
+        // direct callers, such as unit tests, correct.
+        const resolvedOrderOffset =
+            ideviceOrderOffset ?? this.buildIdeviceOrderOffsets(allPages)[Math.max(0, currentPageIndex)] ?? 0;
 
         // Generate global font CSS if a font is selected
         let customStyles = meta.customStyles || '';
@@ -471,13 +484,8 @@ export class Html5Exporter extends BaseExporter {
             assetExportPathMap,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
-            xapi: {
-                odeId: meta.odeIdentifier || '',
-                packageTitle: meta.title || '',
-                language: meta.language || 'en',
-                ideviceOrderOffset,
-            },
+            // xAPI runtime config for the emitter (stable IRIs from odeId)
+            xapi: this.buildXapiConfig(meta, resolvedOrderOffset, allPages.length, page),
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
         });
@@ -637,6 +645,9 @@ export class Html5Exporter extends BaseExporter {
             const pageEntries: Array<{ filename: string; html: string; page: ExportPage; index: number }> = [];
             let latexWasRendered = false;
             let mermaidWasRendered = false;
+            // Prefix sums over the per-page iDevice counts, computed once so the
+            // page loop stays linear in the number of pages (#2302).
+            const ideviceOrderOffsets = this.buildIdeviceOrderOffsets(pages);
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -651,6 +662,7 @@ export class Html5Exporter extends BaseExporter {
                     pageFilenameMap,
                     assetExportPathMap,
                     navLabels,
+                    ideviceOrderOffsets[i],
                 );
 
                 // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
@@ -733,7 +745,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 7. Fetch base libraries
             try {
-                const baseLibs = await this.resources.fetchBaseLibraries();
+                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
                 for (const [libPath, content] of baseLibs) {
                     addFile(`libs/${libPath}`, content);
                 }

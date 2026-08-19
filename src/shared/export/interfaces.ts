@@ -598,7 +598,7 @@ export interface AssetResolverOptions {
 
 /**
  * xAPI runtime configuration serialized into `window.exeXapi` and consumed by
- * the always-on emitter (`public/app/common/xapi/exe_xapi.js`).
+ * the emitter (`public/app/common/xapi/exe_xapi.js`), which web exports carry.
  *
  * This type is the single source of truth for the config shape: every key here
  * is read by the emitter, and the emitter reads nothing that is not declared
@@ -612,6 +612,14 @@ export interface AssetResolverOptions {
  * - `language`     – BCP-47 language tag for language-map values (default `en`).
  * - `ideviceOrderOffset` – number of iDevices rendered on preceding pages; used
  *   with the page-local iDevice number to expose package-global scoring order.
+ * - `pageCount` – number of pages in the package. When it is greater than 1 the
+ *   emitter suppresses its package-level verdict, because each page only knows
+ *   its own scores; the package result is reconstructed by the consumer from the
+ *   per-iDevice statements (see ADR-2302-01).
+ * - `pageId` / `pageTitle` – identity of the page this document renders. The
+ *   runtime tracker never supplies them, so without this injection no statement
+ *   ever carried page identity; consumers need it to tell which pages of the
+ *   package they have already seen.
  *
  * Delivery keys (OPT-IN, currently NOT populated by the exporters):
  * - `parentOrigin` – when set, statements are postMessage'd only to this exact
@@ -637,6 +645,12 @@ export interface XapiConfig {
     language?: string;
     /** Internal: number of iDevices rendered before the current page. */
     ideviceOrderOffset?: number;
+    /** Internal: number of pages in the package; >1 suppresses the page-local package verdict. */
+    pageCount?: number;
+    /** Internal: stable id of the page this document renders. */
+    pageId?: string;
+    /** Internal: title of the page this document renders. */
+    pageTitle?: string;
     /** Opt-in: restrict postMessage delivery to this exact parent origin. */
     parentOrigin?: string;
     /** Opt-in: pre-resolved xAPI actor (object); shape per the xAPI spec. */
@@ -668,7 +682,7 @@ export interface PageRenderOptions {
 
     /**
      * xAPI runtime config injected into <head> as `window.exeXapi` so the
-     * always-on emitter (exe_xapi.js) can build stable per-iDevice IRIs.
+     * emitter (exe_xapi.js) can build stable per-iDevice IRIs.
      */
     xapi?: XapiConfig;
 
@@ -818,6 +832,8 @@ export interface LibraryDetectionOptions {
     includeMathJax?: boolean;
     /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
     skipMathJax?: boolean;
+    /** Include the xAPI emitter: web export family only (ADR-2302-02) */
+    includeXapiEmitter?: boolean;
 }
 
 /**

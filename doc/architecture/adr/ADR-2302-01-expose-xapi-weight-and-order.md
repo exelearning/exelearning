@@ -15,8 +15,8 @@ related:
 supersedes: []
 superseded_by: []
 ai_assistance:
-  tool: "Codex"
-  model: "GPT-5"
+  tool: "Codex, Claude Code"
+  model: "GPT-5.6-sol, claude-opus-5"
 ---
 
 # ADR-2302-01: Expose xAPI weight and deterministic iDevice order
@@ -63,7 +63,7 @@ statements as the aggregate authority.
 
 ### Option 2: Add only the configured weight
 
-Add a numeric `weight` context extension to each evaluable `answered` statement.
+Add a numeric `idevice-weight` context extension to each evaluable `answered` statement.
 
 - **Pros:** small, additive, standards-compliant, and sufficient for an order-independent weighted mean.
 - **Cons:** it cannot exactly reproduce the current largest-remainder calculation when fractional remainders tie,
@@ -71,7 +71,7 @@ Add a numeric `weight` context extension to each evaluable `answered` statement.
 
 ### Option 3: Add the effective weight and deterministic package-global order
 
-Add numeric `weight` and `idevice-order` context extensions. Consumers retain the latest answer by stable
+Add numeric `idevice-weight` and `idevice-order` context extensions. Consumers retain the latest answer by stable
 `idevice-id`, sort current records by `idevice-order`, and apply the existing normalization.
 
 - **Pros:** sufficient for exact reconstruction across pages; deterministic when statement delivery order differs from
@@ -103,19 +103,59 @@ Add numeric `weight` and `idevice-order` context extensions. Consumers retain th
 
 Evaluable per-iDevice `answered` statements will add these numeric context extensions:
 
-- `https://exelearning.net/xapi/extensions/weight`: the effective relative scoring weight after applying the existing
-  fallback and 1–100 clamp.
+- `https://exelearning.net/xapi/extensions/idevice-weight`: the effective relative scoring weight after applying the
+  existing fallback and 1–100 clamp.
 - `https://exelearning.net/xapi/extensions/idevice-order`: the 1-based iDevice position in deterministic publication
-  render order.
+  render order, page offset included.
+
+Both keys are namespaced `idevice-*` like their siblings, because both describe the iDevice rather than the package.
+
+Every format that ships the emitter injects the same runtime config, computed in one place by
+`BaseExporter.buildXapiConfig()` and `BaseExporter.buildIdeviceOrderOffsets()`. Before this decision only the HTML5
+exporter passed a config at all; the others left `window.exeXapi` undefined while still loading the emitter, which made
+it fall back to the current document URL as the Activity IRI, so every page looked like a separate package and carried
+no `package-id`.
+
+**Which formats ship the emitter is decided separately, by [ADR-2302-02](ADR-2302-02-ship-xapi-emitter-only-in-web-exports.md):**
+the web export family only. Withholding the config alone was rejected there as a half-measure — the loader tag was
+emitted outside the config guard, so the emitter kept running and merely lost its identity.
 
 Consumers reconstruct current state by scoping statements to the package or registration, retaining the latest
 `answered` statement for each `idevice-id`, sorting those records by `idevice-order`, and applying eXeLearning's
 documented largest-remainder normalization to score and weight. `idevice-id`, not `idevice-order`, remains the stable
 replacement identity.
 
-Package-level `completed`, `passed`, and `failed` statements remain lifecycle and result summaries. The existing
-Activity IDs, result score fields, verbs, transports, and xAPI 1.0.3 version remain unchanged. Non-evaluable iDevices
-do not gain an `answered` emission path.
+Package-level `completed`, `passed`, and `failed` statements are emitted **only for single-page packages**. A page can
+only aggregate what was answered on that page, so on a multipage package that aggregate is a page-local verdict wearing
+the package Activity IRI: two pages emit a `passed` and a `failed` for the same activity inside one attempt, and a
+consumer reading them as authoritative records a self-contradicting result for a learner. The exporters therefore also
+inject `pageCount`, and the emitter suppresses the package verdict when it exceeds 1. The reconstruction above is the
+authority for those packages, which is exactly what these extensions exist for.
+
+Each page also declares its gradable iDevices as they initialize, answered or not, and publishes them on that page's
+`initialized` statement under `https://exelearning.net/xapi/extensions/idevice-census`, as entries of
+`{ "idevice-id", "idevice-weight", "idevice-order" }`. Without it a consumer only ever sees what was answered and
+normalizes over that subset, which inflates a partial attempt. The extension key is a full IRI as xAPI requires; the
+keys inside each entry are short names, because xAPI constrains only the keys of the extensions map and nesting IRIs
+inside a value is unidiomatic — profiles expand short names through a JSON-LD `@context` instead. `initialized` is
+deferred to DOM-ready plus a macrotask so the census is populated, and an answer flushes it synchronously so it always
+precedes the first `answered`. The census is published a second time on `terminated`: the deferred flush can only carry
+what has registered by then, and page unload is by definition after every registration, so that copy is the complete
+one. A consumer takes the union of the two.
+
+**The census weight and the answered weight are the same number, by construction.** Both come from a single
+`effectiveWeight()` in `exe_xapi.js`, applied to the same `game.weighted` on the same live object: iDevices pass one
+options object to both `registerActivity()` and `sendScore()` (for example `identify.js:499` and `:1316` both pass
+`mOptions`), and both paths are gated on the same `isScorm > 0`, so nothing can emit an `answered` without appearing in
+the census. This matters because a consumer scores unanswered iDevices from the census and answered ones from their
+statements: if the two weights could diverge, the same package would grade differently depending on the order in which
+statements arrived, and nothing on either side could detect it. A parameterized regression pins the two values together.
+
+The existing Activity IDs, result score fields, verbs, transports, and xAPI 1.0.3 version remain unchanged.
+Non-evaluable iDevices do not gain an `answered` emission path. An iDevice whose package-global order cannot be
+resolved (no `ideviceNumber`, or a node jQuery could not locate) still emits its `answered` statement but carries no
+`idevice-order` and does not enter the order-sensitive package aggregate, so every statement feeding a verdict can be
+placed by the consumer.
 
 ## Consequences
 
@@ -130,12 +170,17 @@ do not gain an `answered` emission path.
 
 - Consumers seeking exact parity must implement the documented largest-remainder normalization and order tie-break.
 - The public extension contract and its edge-case semantics must remain documented and tested.
+- Multipage packages no longer emit a package-level `passed`/`failed`. A consumer that read that verdict now has to
+  reconstruct it; what it read before was wrong whenever the package spanned more than one page.
+- SCORM, IMS and EPUB packages change their xAPI Activity IRI from the per-page document URL to the package IRI derived
+  from `odeId`. This is what those formats already documented as their behavior, but it is an observable change.
 
 ### Neutral
 
 - Publication order is deterministic within an export but can change after author reordering and re-export.
-- Package-level scores continue to reflect the emitter's current in-memory state; this decision makes them non-exclusive
-  rather than removing them.
+- Single-page package scores continue to reflect the emitter's current in-memory state, where that state is complete.
+- SCORM packages are unaffected in their native grading: `cmi.core.score` is reported by the SCORM runtime, which the
+  LMS persists across pages, independently of this xAPI contract.
 
 ## Risks
 
@@ -143,17 +188,21 @@ do not gain an `answered` emission path.
   Documentation and the equal-remainder regression test make the required algorithm explicit.
 - A consumer may sum answer history. The contract explicitly defines replacement by latest `idevice-id`, and tests
   cover repeated answers.
-- A new export path could omit the page order offset. Exporter and multipage Playwright coverage verify injected offsets
-  for the HTML publication path.
+- A new export path could omit the page order offset. The offset and the config are built by shared `BaseExporter`
+  helpers rather than per-exporter code, and every format has an exporter test asserting the injected offset and
+  `pageCount`.
 
 ## Validation
 
-- Unit tests assert numeric extension values, effective zero/missing-weight behavior, stable identity, re-answering,
-  duplicate suppression, and unchanged package statements.
+- Unit tests assert numeric extension values, weight clamping at both ends, missing/zero/negative iDevice numbers,
+  stable identity, re-answering, duplicate suppression, and the single-page/multipage verdict split. They call the
+  shipped `gamification.scorm.getFinalScore` rather than a copy of it, so a change to the normalization fails them.
 - A three-iDevice test delivers statements out of publication order and verifies exact largest-remainder parity.
-- A two-page Playwright regression verifies separate page contexts, local numbering reset, distinct global order, and
-  independent reconstruction of the 25/75 weighted score of 55.
-- Exporter tests verify per-page offset injection, and existing xAPI suites verify backward-compatible statement fields.
+- A two-page Playwright regression verifies separate page contexts, local numbering reset, distinct global order,
+  reconstruction of the 25/75 weighted score of 55 through the shipped aggregator, and the absence of any page-local
+  package verdict.
+- Exporter tests verify per-page offset and `pageCount` injection for HTML5, SCORM 1.2, SCORM 2004, IMS and EPUB3;
+  `BaseExporter` tests cover the prefix-sum offsets, including pages with undefined `blocks`/`components`.
 
 ## Follow-up work
 

@@ -1,6 +1,10 @@
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 
 const xapi = require('./exe_xapi.js');
+// Load the shipped gamification layer so these tests exercise the REAL package
+// aggregator. Re-implementing getFinalScore here would prove the emitter agrees
+// with a copy of the algorithm rather than with the algorithm.
+require('../common.js');
 
 const ANSWERED_VERB = 'http://adlnet.gov/expapi/verbs/answered';
 const COMPLETED_VERB = 'http://adlnet.gov/expapi/verbs/completed';
@@ -8,45 +12,31 @@ const PASSED_VERB = 'http://adlnet.gov/expapi/verbs/passed';
 const FAILED_VERB = 'http://adlnet.gov/expapi/verbs/failed';
 const IDEVICE_ID_EXTENSION = 'https://exelearning.net/xapi/extensions/idevice-id';
 const IDEVICE_ORDER_EXTENSION = 'https://exelearning.net/xapi/extensions/idevice-order';
-const WEIGHT_EXTENSION = 'https://exelearning.net/xapi/extensions/weight';
+const IDEVICE_WEIGHT_EXTENSION = 'https://exelearning.net/xapi/extensions/idevice-weight';
+const IDEVICE_CENSUS_EXTENSION = 'https://exelearning.net/xapi/extensions/idevice-census';
+const PAGE_COUNT_EXTENSION = 'https://exelearning.net/xapi/extensions/page-count';
+const PAGE_ID_EXTENSION = 'https://exelearning.net/xapi/extensions/page-id';
+const PAGE_TITLE_EXTENSION = 'https://exelearning.net/xapi/extensions/page-title';
+const INITIALIZED_VERB = 'http://adlnet.gov/expapi/verbs/initialized';
 
-function effectiveWeight(value) {
-    const parsed = parseFloat(value) || 1;
-    return Math.max(1, Math.min(100, parsed));
-}
+/** The one shipped implementation of the weighted package total. */
+const getFinalScore = global.$exeDevices.iDevice.gamification.scorm.getFinalScore;
 
 /**
- * Consumer-side implementation of the current eXeLearning score normalization.
- * It deliberately mirrors gamification.scorm.getFinalScore(): configured weights
- * are normalized to integer percentages using the largest-remainder method.
+ * Consumer-side reconstruction: feed ordered per-iDevice records back through
+ * the shipped aggregator. Keys are non-numeric so `Object.keys()` preserves the
+ * insertion order, which is the package order the largest-remainder tie-break
+ * depends on.
+ *
+ * @param {{score:number, weight:number}[]} items ordered by package position
+ * @returns {number} package total on the 0..100 scale
  */
 function calculateWeightedScore(items) {
-    if (!items.length) return 0;
-
-    const normalized = items.map(item => ({
-        score: Math.max(0, Math.min(100, parseFloat(item.score) || 0)),
-        weight: effectiveWeight(item.weight),
-    }));
-    const factor = 100 / normalized.reduce((sum, item) => sum + item.weight, 0);
-    const apportioned = normalized.map(item => {
-        const scaledWeight = item.weight * factor;
-        const flooredWeight = Math.floor(scaledWeight);
-        return {
-            score: item.score,
-            weight: flooredWeight,
-            fraction: scaledWeight - flooredWeight,
-        };
+    const lmsData = {};
+    items.forEach((item, index) => {
+        lmsData['idevice-' + index] = { score: item.score, weighted: item.weight };
     });
-
-    let remaining = 100 - apportioned.reduce((sum, item) => sum + item.weight, 0);
-    apportioned.sort((a, b) => b.fraction - a.fraction);
-    for (let i = 0; i < apportioned.length && remaining > 0; i++) {
-        apportioned[i].weight += 1;
-        remaining -= 1;
-    }
-
-    const total = apportioned.reduce((sum, item) => sum + item.score * item.weight, 0);
-    return Math.round(total) / 100;
+    return getFinalScore(lmsData);
 }
 
 /**
@@ -62,7 +52,7 @@ function reconstructLatestWeightedScore(statements) {
             const extensions = statement.context?.extensions || {};
             latestByIdevice.set(extensions[IDEVICE_ID_EXTENSION], {
                 score: statement.result.score.raw * 10,
-                weight: extensions[WEIGHT_EXTENSION],
+                weight: extensions[IDEVICE_WEIGHT_EXTENSION],
                 order: extensions[IDEVICE_ORDER_EXTENSION],
             });
         });
@@ -87,6 +77,14 @@ function installFakeParent() {
     return postMessage;
 }
 
+/**
+ * The "initialized" statement is deferred to DOM-ready + a macrotask so the
+ * iDevice census has time to populate. Await this to let that flush run.
+ */
+async function flushDeferredInitialized() {
+    await new Promise(resolve => setTimeout(resolve, 0));
+}
+
 function lastStatement(spy) {
     return spy.mock.calls[spy.mock.calls.length - 1][0].statement;
 }
@@ -108,18 +106,12 @@ describe('exe_xapi emitter', () => {
         xapi._state = {};
         xapi._lastSig = {};
         xapi._lifecycle = { initialized: false, terminated: false };
+        xapi._census = {};
         delete window.exeXapi;
-        // Provide a test implementation matching the shared, pure package
-        // aggregator in common.js (weighted average, 0..100).
-        window.$exeDevices = window.$exeDevices || {};
-        window.$exeDevices.iDevice = window.$exeDevices.iDevice || {};
-        window.$exeDevices.iDevice.gamification = {
-            scorm: {
-                getFinalScore: lmsData => calculateWeightedScore(
-                    Object.values(lmsData).map(item => ({ score: item.score, weight: item.weighted })),
-                ),
-            },
-        };
+        // No getFinalScore stub: common.js installs the real one on
+        // $exeDevices.iDevice.gamification.scorm, which is what the emitter reads.
+        // Restore it here because a later test swaps in a throwing aggregator.
+        global.$exeDevices.iDevice.gamification.scorm.getFinalScore = getFinalScore;
     });
 
     afterEach(() => {
@@ -155,8 +147,8 @@ describe('exe_xapi emitter', () => {
         expect(s.result.success).toBe(true);
         expect(s.object.definition.extensions['https://exelearning.net/xapi/extensions/idevice-type']).toBe('trueorfalse');
         expect(s.context.extensions[IDEVICE_ORDER_EXTENSION]).toBe(1);
-        expect(s.context.extensions[WEIGHT_EXTENSION]).toBe(25);
-        expect(typeof s.context.extensions[WEIGHT_EXTENSION]).toBe('number');
+        expect(s.context.extensions[IDEVICE_WEIGHT_EXTENSION]).toBe(25);
+        expect(typeof s.context.extensions[IDEVICE_WEIGHT_EXTENSION]).toBe('number');
         expect(s.context.contextActivities.parent[0].id).toBe('https://exelearning.net/xapi/PKG1');
         expect(s.id).toMatch(/^[0-9a-f-]{36}$/i);
     });
@@ -177,7 +169,7 @@ describe('exe_xapi emitter', () => {
             'device-b',
             'device-a',
         ]);
-        expect(answered.map(statement => statement.context.extensions[WEIGHT_EXTENSION])).toEqual([25, 75, 25]);
+        expect(answered.map(statement => statement.context.extensions[IDEVICE_WEIGHT_EXTENSION])).toEqual([25, 75, 25]);
         expect(answered.map(statement => statement.context.extensions[IDEVICE_ORDER_EXTENSION])).toEqual([1, 2, 1]);
         expect(answered[0].object.id).toBe(answered[2].object.id);
         expect(answered[0].object.id).not.toBe(answered[1].object.id);
@@ -227,7 +219,272 @@ describe('exe_xapi emitter', () => {
 
         const answered = statementsByVerb(spy, ANSWERED_VERB);
         expect(answered).toHaveLength(1);
-        expect(answered[0].context.extensions[WEIGHT_EXTENSION]).toBe(1);
+        expect(answered[0].context.extensions[IDEVICE_WEIGHT_EXTENSION]).toBe(1);
+    });
+
+    it.each([
+        ['above the maximum', 250, 100],
+        ['negative', -5, 1],
+        ['non-numeric', 'heavy', 1],
+    ])('clamps a %s weight into the 1..100 range the aggregator expects', (_label, weighted, expected) => {
+        window.exeXapi = { odeId: 'PKG1' };
+        const spy = installFakeParent();
+        xapi.init();
+
+        xapi.emit({ type: 'answered', ideviceId: 'device-a', ideviceNumber: 1, score: 8, weighted });
+
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
+        expect(answered[0].context.extensions[IDEVICE_WEIGHT_EXTENSION]).toBe(expected);
+    });
+
+    it.each([
+        ['zero (jQuery could not locate the node)', 0],
+        ['negative', -1],
+        ['missing', undefined],
+    ])('omits the order and the package aggregate for a %s iDevice number', (_label, ideviceNumber) => {
+        window.exeXapi = { odeId: 'PKG1', ideviceOrderOffset: 4 };
+        const spy = installFakeParent();
+        xapi.init();
+
+        xapi.emit({ type: 'answered', ideviceId: 'device-a', ideviceNumber, score: 8, weighted: 25 });
+
+        // The granular statement is still reported...
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
+        expect(answered).toHaveLength(1);
+        expect(answered[0].context.extensions[IDEVICE_ORDER_EXTENSION]).toBeUndefined();
+        // ...but an iDevice the consumer cannot place must not silently shift the
+        // order-sensitive package total either. Both guards agree (#2302).
+        expect(xapi._state).toEqual({});
+        expect(statementsByVerb(spy, COMPLETED_VERB)).toHaveLength(0);
+        expect(statementsByVerb(spy, PASSED_VERB)).toHaveLength(0);
+        expect(statementsByVerb(spy, FAILED_VERB)).toHaveLength(0);
+    });
+
+    it('suppresses the package verdict on a multipage package', () => {
+        // Each page only knows its own scores, so a page-local verdict wearing
+        // the package IRI would let two pages emit "passed" and "failed" for the
+        // same activity in one attempt. Consumers rebuild it from the per-iDevice
+        // statements instead (ADR-2302-01).
+        window.exeXapi = { odeId: 'PKG1', pageCount: 2, ideviceOrderOffset: 1 };
+        const spy = installFakeParent();
+        xapi.init();
+
+        xapi.emit({ type: 'answered', ideviceId: 'd2', ideviceNumber: 1, score: 4, weighted: 75 });
+
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
+        expect(answered).toHaveLength(1);
+        expect(answered[0].context.extensions[IDEVICE_ORDER_EXTENSION]).toBe(2);
+        expect(answered[0].context.extensions[IDEVICE_WEIGHT_EXTENSION]).toBe(75);
+        expect(statementsByVerb(spy, COMPLETED_VERB)).toHaveLength(0);
+        expect(statementsByVerb(spy, PASSED_VERB)).toHaveLength(0);
+        expect(statementsByVerb(spy, FAILED_VERB)).toHaveLength(0);
+    });
+
+    it('still emits the package verdict for a single-page package', () => {
+        window.exeXapi = { odeId: 'PKG1', pageCount: 1 };
+        const spy = installFakeParent();
+        xapi.init();
+
+        xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score: 8, weighted: 1 });
+
+        expect(statementsByVerb(spy, COMPLETED_VERB)).toHaveLength(1);
+        expect(statementsByVerb(spy, PASSED_VERB)).toHaveLength(1);
+    });
+
+    it('reconstructs the multipage package total from the per-iDevice stream', () => {
+        // Page 1 (offset 0) and page 2 (offset 1) both emit page-locally; only the
+        // order extension lets a consumer put them back in package order.
+        const spy = installFakeParent();
+        window.exeXapi = { odeId: 'PKG1', pageCount: 2, ideviceOrderOffset: 0 };
+        xapi.init();
+        xapi.emit({ type: 'answered', ideviceId: 'device-a', ideviceNumber: 1, score: 10, weighted: 25 });
+
+        // Second page: a fresh page load resets the emitter's page-local state.
+        xapi._initialised = false;
+        xapi.config = null;
+        xapi._state = {};
+        xapi._lastSig = {};
+        window.exeXapi = { odeId: 'PKG1', pageCount: 2, ideviceOrderOffset: 1 };
+        xapi.init();
+        xapi.emit({ type: 'answered', ideviceId: 'device-b', ideviceNumber: 1, score: 4, weighted: 75 });
+
+        const answered = statementsByVerb(spy, ANSWERED_VERB);
+        expect(answered.map(s => s.context.extensions[IDEVICE_ORDER_EXTENSION])).toEqual([1, 2]);
+        // A=100 @ 25 and B=40 @ 75 -> 25 + 30 = 55, and neither page could say so.
+        expect(reconstructLatestWeightedScore(answered)).toBe(55);
+        expect(statementsByVerb(spy, PASSED_VERB)).toHaveLength(0);
+        expect(statementsByVerb(spy, FAILED_VERB)).toHaveLength(0);
+    });
+
+    describe('evaluable census (#2302)', () => {
+        it('publishes every evaluable iDevice on the page, answered or not', async () => {
+            window.exeXapi = { odeId: 'PKG1', pageCount: 2, ideviceOrderOffset: 3, pageId: 'p2', pageTitle: 'Page two' };
+            const spy = installFakeParent();
+            xapi.init();
+
+            // Registration order deliberately differs from package order.
+            xapi.registerEvaluable({ ideviceId: 'dev-b', ideviceNumber: 2, title: 'B', weighted: 75 });
+            xapi.registerEvaluable({ ideviceId: 'dev-a', ideviceNumber: 1, title: 'A', weighted: 25 });
+            await flushDeferredInitialized();
+
+            const initialized = statementsByVerb(spy, INITIALIZED_VERB);
+            expect(initialized).toHaveLength(1);
+            const extensions = initialized[0].context.extensions;
+            // Sorted by package-global order, with the export offset applied.
+            // Short keys inside the value; the extension key itself stays a full IRI.
+            expect(extensions[IDEVICE_CENSUS_EXTENSION]).toEqual([
+                { 'idevice-id': 'dev-a', 'idevice-weight': 25, 'idevice-order': 4 },
+                { 'idevice-id': 'dev-b', 'idevice-weight': 75, 'idevice-order': 5 },
+            ]);
+            expect(Object.keys(extensions)).toContain(IDEVICE_CENSUS_EXTENSION);
+            expect(extensions[PAGE_COUNT_EXTENSION]).toBe(2);
+            expect(extensions[PAGE_ID_EXTENSION]).toBe('p2');
+            expect(extensions[PAGE_TITLE_EXTENSION]).toBe('Page two');
+            // Lifecycle statements still carry no result.
+            expect(initialized[0].result).toBeUndefined();
+        });
+
+        it('publishes an empty census for a page with no evaluable iDevices', async () => {
+            window.exeXapi = { odeId: 'PKG1', pageCount: 3, pageId: 'p1' };
+            const spy = installFakeParent();
+            xapi.init();
+            await flushDeferredInitialized();
+
+            const initialized = statementsByVerb(spy, INITIALIZED_VERB);
+            expect(initialized).toHaveLength(1);
+            // An empty census still tells a consumer it has seen this page.
+            expect(initialized[0].context.extensions[IDEVICE_CENSUS_EXTENSION]).toEqual([]);
+            expect(initialized[0].context.extensions[PAGE_COUNT_EXTENSION]).toBe(3);
+        });
+
+        it('excludes an iDevice whose package-global order cannot be resolved', async () => {
+            window.exeXapi = { odeId: 'PKG1' };
+            const spy = installFakeParent();
+            xapi.init();
+
+            xapi.registerEvaluable({ ideviceId: 'dev-a', ideviceNumber: 1, weighted: 25 });
+            xapi.registerEvaluable({ ideviceId: 'dev-lost', ideviceNumber: 0, weighted: 75 });
+            xapi.registerEvaluable({ ideviceId: 'dev-none', weighted: 75 });
+            await flushDeferredInitialized();
+
+            // Better absent than present with a false order, and consistent with
+            // the same iDevice being kept out of the aggregate.
+            const census = statementsByVerb(spy, INITIALIZED_VERB)[0].context.extensions[IDEVICE_CENSUS_EXTENSION];
+            expect(census.map(entry => entry['idevice-id'])).toEqual(['dev-a']);
+            expect(Object.keys(xapi._state)).toEqual(['1']);
+        });
+
+        it('ignores a registration with no stable iDevice id, and never registers twice', async () => {
+            window.exeXapi = { odeId: 'PKG1' };
+            const spy = installFakeParent();
+            xapi.init();
+
+            xapi.registerEvaluable({ ideviceNumber: 1, weighted: 25 });
+            xapi.registerEvaluable(null);
+            xapi.registerEvaluable({ ideviceId: 'dev-a', ideviceNumber: 1, weighted: 25 });
+            xapi.registerEvaluable({ ideviceId: 'dev-a', ideviceNumber: 1, weighted: 99 });
+            await flushDeferredInitialized();
+
+            const census = statementsByVerb(spy, INITIALIZED_VERB)[0].context.extensions[IDEVICE_CENSUS_EXTENSION];
+            expect(census).toHaveLength(1);
+            expect(census[0]['idevice-weight']).toBe(25);
+        });
+
+        it('seeds the aggregate at 0 so a partial attempt is not inflated', () => {
+            // Single page, so the package verdict is still emitted. The learner
+            // answers only the 25-point iDevice: 100 x 25 / 100 = 25, not 100.
+            window.exeXapi = { odeId: 'PKG1', pageCount: 1 };
+            const spy = installFakeParent();
+            xapi.init();
+
+            xapi.registerEvaluable({ ideviceId: 'dev-a', ideviceNumber: 1, title: 'A', weighted: 25 });
+            xapi.registerEvaluable({ ideviceId: 'dev-b', ideviceNumber: 2, title: 'B', weighted: 75 });
+            xapi.emit({ type: 'answered', ideviceId: 'dev-a', ideviceNumber: 1, score: 10, weighted: 25 });
+
+            const completed = statementsByVerb(spy, COMPLETED_VERB);
+            expect(completed[completed.length - 1].result.score.raw).toBe(25);
+            expect(statementsByVerb(spy, FAILED_VERB)).toHaveLength(1);
+        });
+
+        it('never lets an answer overwrite its own score with the seeded 0', () => {
+            window.exeXapi = { odeId: 'PKG1', pageCount: 1 };
+            installFakeParent();
+            xapi.init();
+
+            xapi.emit({ type: 'answered', ideviceId: 'dev-a', ideviceNumber: 1, score: 10, weighted: 25 });
+            // A late registration for an already-answered iDevice must not reset it.
+            xapi.registerEvaluable({ ideviceId: 'dev-a', ideviceNumber: 1, weighted: 25 });
+
+            expect(xapi._state[1].score).toBe(100);
+        });
+
+        it.each([
+            ['a normal weight', 25, 25],
+            ['a weight above the maximum', 250, 100],
+            ['a missing weight', undefined, 1],
+            ['a non-numeric weight', 'heavy', 1],
+        ])('reports the same effective weight in the census and in the answer for %s', async (_label, weighted, expected) => {
+            // If these two ever diverged, a consumer would score answered iDevices
+            // with one weight and unanswered ones with another, and the same package
+            // would grade differently depending on arrival order. Same input, same
+            // effectiveWeight(), same number.
+            window.exeXapi = { odeId: 'PKG1', pageCount: 1 };
+            const spy = installFakeParent();
+            xapi.init();
+
+            xapi.registerEvaluable({ ideviceId: 'dev-a', ideviceNumber: 1, weighted });
+            await flushDeferredInitialized();
+            xapi.emit({ type: 'answered', ideviceId: 'dev-a', ideviceNumber: 1, score: 8, weighted });
+
+            const census = statementsByVerb(spy, INITIALIZED_VERB)[0].context.extensions[IDEVICE_CENSUS_EXTENSION];
+            const answered = statementsByVerb(spy, ANSWERED_VERB)[0];
+            expect(census[0]['idevice-weight']).toBe(expected);
+            expect(answered.context.extensions[IDEVICE_WEIGHT_EXTENSION]).toBe(expected);
+            expect(census[0]['idevice-order']).toBe(answered.context.extensions[IDEVICE_ORDER_EXTENSION]);
+        });
+
+        it('republishes the census on "terminated" so a late registration is not lost', async () => {
+            // "initialized" is flushed on a macrotask after DOM-ready, so an iDevice
+            // that registers later than that misses it. Page unload happens after every
+            // registration, so this copy is the complete one.
+            window.exeXapi = { odeId: 'PKG1', pageCount: 2 };
+            const spy = installFakeParent();
+            xapi.init();
+            xapi.registerEvaluable({ ideviceId: 'dev-early', ideviceNumber: 1, weighted: 25 });
+            await flushDeferredInitialized();
+
+            xapi.registerEvaluable({ ideviceId: 'dev-late', ideviceNumber: 2, weighted: 75 });
+            xapi._emitTerminated();
+
+            const initialized = statementsByVerb(spy, INITIALIZED_VERB)[0];
+            const terminated = statementsByVerb(spy, 'http://adlnet.gov/expapi/verbs/terminated')[0];
+            expect(initialized.context.extensions[IDEVICE_CENSUS_EXTENSION]).toEqual([
+                { 'idevice-id': 'dev-early', 'idevice-weight': 25, 'idevice-order': 1 },
+            ]);
+            expect(terminated.context.extensions[IDEVICE_CENSUS_EXTENSION]).toEqual([
+                { 'idevice-id': 'dev-early', 'idevice-weight': 25, 'idevice-order': 1 },
+                { 'idevice-id': 'dev-late', 'idevice-weight': 75, 'idevice-order': 2 },
+            ]);
+            // Still a lifecycle statement: no result, no verdict.
+            expect(terminated.result).toBeUndefined();
+        });
+
+        it('flushes the deferred "initialized" before the first "answered"', () => {
+            window.exeXapi = { odeId: 'PKG1' };
+            const spy = installFakeParent();
+            xapi.init();
+            xapi.registerEvaluable({ ideviceId: 'dev-a', ideviceNumber: 1, weighted: 25 });
+
+            // No macrotask has run yet, so the deferred flush has not fired.
+            expect(statementsByVerb(spy, INITIALIZED_VERB)).toHaveLength(0);
+
+            xapi.emit({ type: 'answered', ideviceId: 'dev-a', ideviceNumber: 1, score: 8, weighted: 25 });
+
+            // A consumer must never see an answer before the census that scopes it.
+            const verbs = spy.mock.calls.map(call => call[0].statement.verb.id);
+            expect(verbs.indexOf(INITIALIZED_VERB)).toBeLessThan(verbs.indexOf(ANSWERED_VERB));
+            expect(statementsByVerb(spy, INITIALIZED_VERB)).toHaveLength(1);
+        });
     });
 
     it('emits package "completed" + "passed" when the aggregate is >= 50', () => {
@@ -245,8 +502,8 @@ describe('exe_xapi emitter', () => {
         expect(passed[0].result.score.scaled).toBe(0.8);
         expect(passed[0].result.success).toBe(true);
         expect(passed[0].object.definition.type).toBe('http://adlnet.gov/expapi/activities/assessment');
-        expect(completed[0].context.extensions[WEIGHT_EXTENSION]).toBeUndefined();
-        expect(passed[0].context.extensions[WEIGHT_EXTENSION]).toBeUndefined();
+        expect(completed[0].context.extensions[IDEVICE_WEIGHT_EXTENSION]).toBeUndefined();
+        expect(passed[0].context.extensions[IDEVICE_WEIGHT_EXTENSION]).toBeUndefined();
     });
 
     it('emits package "failed" when the aggregate is below 50', () => {
@@ -259,7 +516,7 @@ describe('exe_xapi emitter', () => {
         const failed = statementsByVerb(spy, FAILED_VERB);
         expect(failed).toHaveLength(1);
         expect(statementsByVerb(spy, PASSED_VERB)).toHaveLength(0);
-        expect(failed[0].context.extensions[WEIGHT_EXTENSION]).toBeUndefined();
+        expect(failed[0].context.extensions[IDEVICE_WEIGHT_EXTENSION]).toBeUndefined();
     });
 
     it('debounces duplicate statements with the same score', () => {
@@ -283,14 +540,16 @@ describe('exe_xapi emitter', () => {
 
         const answered = statementsByVerb(spy, ANSWERED_VERB);
         expect(answered).toHaveLength(2);
-        expect(answered.map(statement => statement.context.extensions[WEIGHT_EXTENSION])).toEqual([25, 75]);
+        expect(answered.map(statement => statement.context.extensions[IDEVICE_WEIGHT_EXTENSION])).toEqual([25, 75]);
     });
 
-    it('ignores events with a non-numeric score', () => {
+    it('ignores events with a non-numeric score', async () => {
         window.exeXapi = { odeId: 'PKG1' };
         const spy = installFakeParent();
         xapi.init();
-        // init() may emit a lifecycle statement; measure only emit()'s effect.
+        // Let the deferred lifecycle statement out first, so this measures only
+        // emit()'s own effect.
+        await flushDeferredInitialized();
         const before = spy.mock.calls.length;
         xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score: 'n/a', weighted: 75 });
         expect(spy.mock.calls.length).toBe(before);
@@ -527,13 +786,14 @@ describe('exe_xapi emitter', () => {
         expect(answered.context.registration).toBe('reg-cfg');
     });
 
-    it('emits "initialized" exactly once when a transport is available', () => {
+    it('emits "initialized" exactly once when a transport is available', async () => {
         window.exeXapi = { odeId: 'PKG1' };
         const spy = installFakeParent();
         xapi.init();
         // A second init() must not re-emit (idempotent + lifecycle guard).
         xapi._initialised = false;
         xapi.init();
+        await flushDeferredInitialized();
         const initialized = statementsByVerb(spy, 'http://adlnet.gov/expapi/verbs/initialized');
         expect(initialized).toHaveLength(1);
         // Lifecycle statements carry no result/score.

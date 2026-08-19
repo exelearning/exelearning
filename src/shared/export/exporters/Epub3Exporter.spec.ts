@@ -66,6 +66,10 @@ class MockResourceProvider implements ResourceProvider {
     async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
+        // The provider hands the same set to every format; the exporter decides
+        // whether the emitter survives (ADR-2302-02). Seeding it here is what makes
+        // the presence and absence assertions mean anything.
+        files.set('xapi/exe_xapi.js', Buffer.from('// xapi emitter'));
         files.set('common.js', Buffer.from('// common'));
         return files;
     }
@@ -870,6 +874,23 @@ describe('Epub3Exporter', () => {
             // Check sub-page (chapter-1.xhtml) has correct relative path
             const chapter1Xhtml = zip.files.get('EPUB/html/chapter-1.xhtml') as string;
             expect(chapter1Xhtml).toContain('<link rel="icon" type="image/x-icon" href="../theme/img/favicon.ico"');
+        });
+    });
+
+    describe('xAPI emitter scope (ADR-2302-02)', () => {
+        it('ships neither the xAPI config, the loader, nor an OPF entry for it', async () => {
+            // EPUB3 defines no tracking mechanism, and neither of the emitter's
+            // transports is reachable in a reader: there is no parent window to
+            // postMessage and no launch URL to carry LRS credentials.
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+
+            expect(indexXhtml).not.toContain('window.exeXapi');
+            expect(indexXhtml).not.toContain('libs/xapi/exe_xapi.js');
+            expect(packageOpf).not.toContain('exe_xapi');
+            expect([...zip.files.keys()].some(name => name.includes('xapi/exe_xapi.js'))).toBe(false);
         });
     });
 

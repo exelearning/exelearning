@@ -2167,4 +2167,29 @@ describe('PageRenderer', () => {
             expect(JSON.parse(serialized)).toEqual(value);
         });
     });
+    describe('xAPI emitter loader (ADR-2302-02)', () => {
+        const page = { id: 'p1', title: 'Page', blocks: [] } as unknown as ExportPage;
+
+        it('emits the loader only alongside the config, in the multi-page head', () => {
+            const withXapi = renderer.render(page, { allPages: [page], isIndex: true, xapi: { odeId: 'PKG1' } });
+            const withoutXapi = renderer.render(page, { allPages: [page], isIndex: true });
+
+            expect(withXapi).toContain('window.exeXapi');
+            expect(withXapi).toContain('libs/xapi/exe_xapi.js');
+            // The config is the switch: no config, no emitter. Emitting the loader
+            // unconditionally kept the emitter alive in every export format.
+            expect(withoutXapi).not.toContain('window.exeXapi');
+            expect(withoutXapi).not.toContain('libs/xapi/exe_xapi.js');
+        });
+
+        it('emits the loader only alongside the config, in the single-page head', () => {
+            const withXapi = renderer.renderSinglePage([page], { xapi: { odeId: 'PKG1' } });
+            const withoutXapi = renderer.renderSinglePage([page], {});
+
+            expect(withXapi).toContain('libs/xapi/exe_xapi.js');
+            // Print preview passes no config and never copies the file, so an
+            // unconditional tag there requested a resource that does not exist.
+            expect(withoutXapi).not.toContain('libs/xapi/exe_xapi.js');
+        });
+    });
 });

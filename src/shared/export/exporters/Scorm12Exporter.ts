@@ -23,6 +23,17 @@ import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class Scorm12Exporter extends Html5Exporter {
+    /**
+     * SCORM 1.2 does not carry the xAPI emitter: `cmi.core.score.raw` plus `cmi.core.lesson_status` is its authoritative
+     * scoring channel, and no standard defines which wins when both are present
+     * (ADR-2302-02). Overrides the web-family default inherited from Html5Exporter.
+     *
+     * @returns False
+     */
+    protected emitsXapi(): boolean {
+        return false;
+    }
+
     protected manifestGenerator: Scorm12ManifestGenerator | null = null;
     protected lomGenerator: LomMetadataGenerator | null = null;
 
@@ -246,7 +257,7 @@ export class Scorm12Exporter extends Html5Exporter {
 
             // 4. Fetch and add base libraries
             try {
-                const baseLibs = await this.resources.fetchBaseLibraries();
+                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
                 for (const [path, content] of baseLibs) {
                     addFile(`libs/${path}`, content);
                     commonFiles.push(`libs/${path}`);

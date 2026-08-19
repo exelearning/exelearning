@@ -147,4 +147,55 @@ describe('gamification.track (xAPI dispatch)', () => {
         expect(game.title).toBe('Question 1');
         expect(game.ideviceNumber).toBe(1);
     });
+
+    it('registerActivity declares the iDevice to the emitter outside SCORM too', () => {
+        // The link the census depends on. registerActivity's own census only exists
+        // under pipwerks (it lives in cmi.suspend_data), so in an HTML5 export this
+        // forward is the ONLY way the emitter learns about an iDevice nobody answers.
+        const registerEvaluable = vi.fn();
+        global.$exeDevices.iDevice.xapi = { registerEvaluable };
+        document.body.innerHTML = `
+            <article>
+                <header><span class="box-title">Question 1</span></header>
+                <div class="idevice_node" id="idevice-xyz"><div id="gmain"></div></div>
+            </article>`;
+
+        scorm.registerActivity({ main: 'gmain', weighted: 25, msgs: { msgYouScore: 'Score' } });
+
+        expect(registerEvaluable).toHaveBeenCalledTimes(1);
+        expect(registerEvaluable.mock.calls[0][0]).toEqual({
+            ideviceId: 'idevice-xyz',
+            ideviceNumber: 1,
+            title: 'Question 1',
+            weighted: 25,
+        });
+    });
+
+    it('registerActivity survives a package with no emitter at all', () => {
+        // SCORM, IMS and EPUB exports ship no emitter (ADR-2302-02), so the forwarder
+        // must no-op rather than throw and take the activity down with it.
+        global.$exeDevices.iDevice.xapi = undefined;
+        document.body.innerHTML = `
+            <article>
+                <div class="idevice_node" id="idevice-xyz"><div id="gmain"></div></div>
+            </article>`;
+
+        expect(() =>
+            scorm.registerActivity({ main: 'gmain', weighted: 25, msgs: { msgYouScore: 'Score' } })
+        ).not.toThrow();
+    });
+
+    it('gamification.registerEvaluable ignores a non-object and a thrown emitter', () => {
+        const registerEvaluable = vi.fn(() => {
+            throw new Error('boom');
+        });
+        global.$exeDevices.iDevice.xapi = { registerEvaluable };
+
+        // Tracking must never break the activity, whatever the emitter does.
+        expect(() => gamification.registerEvaluable(null)).not.toThrow();
+        expect(() => gamification.registerEvaluable('nope')).not.toThrow();
+        expect(registerEvaluable).not.toHaveBeenCalled();
+        expect(() => gamification.registerEvaluable({ ideviceId: 'a' })).not.toThrow();
+        expect(registerEvaluable).toHaveBeenCalledTimes(1);
+    });
 });

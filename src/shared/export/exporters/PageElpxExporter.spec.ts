@@ -728,4 +728,17 @@ describe('PageElpxExporter Unit Tests', () => {
             expect(resourceFiles.some(f => f.includes('gallery-image.png'))).toBe(true);
         });
     });
+    describe('xAPI emitter scope (ADR-2302-02)', () => {
+        it('ships the emitter, two levels of inheritance down from Html5Exporter', async () => {
+            // PageElpxExporter extends ElpxExporter extends Html5Exporter, so it opts in
+            // without an override of its own. That makes inheritance load-bearing:
+            // without this test, a future exporter could lose the emitter silently.
+            zip.files.clear();
+            await exporter.export({});
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('window.exeXapi');
+            expect(indexHtml).toContain('libs/xapi/exe_xapi.js');
+        });
+    });
 });
