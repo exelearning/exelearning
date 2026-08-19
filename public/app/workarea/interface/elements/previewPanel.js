@@ -37,7 +37,7 @@ export default class PreviewPanelManager {
         this.isMobileViewport = this._readStoredViewport() === 'mobile';
         this.autoRefreshEnabled = true;
         this.refreshDebounceTimer = null;
-        this.refreshDebounceDelay = 500; // 500ms debounce for responsive updates
+        this.refreshDebounceDelay = 500;
 
         // Store unsubscribe function for Yjs observers
         this._unsubscribeStructure = null;
@@ -51,6 +51,11 @@ export default class PreviewPanelManager {
         this._popupWindow = null;
         this._popupMonitorTimer = null;
         this._recoveryChannel = null;
+
+        // Fullscreen fallback state
+        this.isFullscreen = false;
+        this._swAvailable = false;
+        this._wasPinnedBeforeFullscreen = false;
     }
 
     /**
@@ -81,8 +86,91 @@ export default class PreviewPanelManager {
         this._popupWindow = null;
         this._clearPopupMonitor();
 
+        this.isFullscreen = false;
+        this.panel?.classList.remove('preview-fullscreen');
+        this._wasPinnedBeforeFullscreen = false;
+        this._updateExtractButtonAria();
+
         const workarea = document.getElementById('workarea');
         workarea?.setAttribute('data-preview-pinned', 'false');
+        workarea?.setAttribute('data-preview-fullscreen', 'false');
+    }
+
+    /**
+     * Update extract button text and aria based on SW availability.
+     * Caches result in _swAvailable for extractToNewTab().
+     */
+    _updateExtractButton() {
+        this._swAvailable = this.isServiceWorkerPreviewAvailable();
+        this._updateExtractButtonIcon();
+    }
+
+    _updateExtractButtonIcon() {
+        const buttons = [this.extractButton, this.pinnedExtractButton];
+        for (const button of buttons) {
+            if (!button) continue;
+            const iconSpan = button.querySelector('.small-icon');
+            if (!iconSpan) continue;
+
+            iconSpan.className = 'small-icon';
+
+            if (this.isFullscreen) {
+                iconSpan.classList.add('enlarge-icon');
+                button.title = _('Restore preview size');
+                button.setAttribute('aria-label', _('Restore preview size'));
+            } else if (this._swAvailable) {
+                iconSpan.classList.add('external-link-icon');
+                button.title = _('Open in new tab');
+                button.setAttribute('aria-label', _('Open preview in new tab'));
+            } else {
+                iconSpan.classList.add('enlarge-icon');
+                button.title = _('Enlarge preview');
+                button.setAttribute('aria-label', _('Enlarge preview'));
+            }
+        }
+    }
+
+    /**
+     * Toggle fullscreen mode on the preview panel.
+     */
+    toggleFullscreen() {
+        const workarea = document.getElementById('workarea');
+        if (this.isFullscreen) {
+            this.panel?.classList.remove('preview-fullscreen');
+            this.isFullscreen = false;
+            workarea?.setAttribute('data-preview-fullscreen', 'false');
+        } else {
+            this.panel?.classList.add('preview-fullscreen');
+            this.isFullscreen = true;
+            workarea?.setAttribute('data-preview-fullscreen', 'true');
+        }
+        this._updateExtractButtonAria();
+    }
+
+    /**
+     * Update aria-pressed on extract buttons to reflect fullscreen state.
+     */
+    _updateExtractButtonAria() {
+        const pressed = String(this.isFullscreen);
+        this.extractButton?.setAttribute('aria-pressed', pressed);
+        this.pinnedExtractButton?.setAttribute('aria-pressed', pressed);
+        this._updateExtractButtonIcon();
+    }
+
+    /**
+     * Show a toast informing the user that the preview is showing an
+     * enlarged panel instead of opening in a new tab (extraction failed:
+     * SW unavailable, popup blocked, or an unexpected error).
+     */
+    _showFullscreenToast() {
+        const toasts = eXeLearning?.app?.toasts;
+        if (!toasts || typeof toasts.createToast !== 'function') return;
+        toasts.createToast({
+            title: _('Preview'),
+            body: _("Couldn't open in a new tab. Showing an enlarged preview instead."),
+            icon: 'info',
+            remove: 5000,
+        });
     }
 
     /** sessionStorage key used to persist the viewport choice for the session */
@@ -643,6 +731,8 @@ export default class PreviewPanelManager {
         // Generate and load preview
         await this.refresh();
 
+        this._updateExtractButton();
+
         Logger.log('[PreviewPanel] Panel opened');
     }
 
@@ -652,10 +742,17 @@ export default class PreviewPanelManager {
     close() {
         if (this.isPinned) return; // Can't close when pinned
 
+        if (this.isFullscreen) {
+            this.panel?.classList.remove('preview-fullscreen');
+            this.isFullscreen = false;
+            this._wasPinnedBeforeFullscreen = false;
+            const workarea = document.getElementById('workarea');
+            workarea?.setAttribute('data-preview-fullscreen', 'false');
+            this._updateExtractButtonAria();
+        }
+
         this.isOpen = false;
         this.panel?.classList.remove('active');
-        // Reset the fallback fullscreen state so it doesn't persist into the next open
-        this.panel?.classList.remove('previewFullscreen');
         this.overlay?.classList.remove('active');
 
         Logger.log('[PreviewPanel] Panel closed');
@@ -680,6 +777,8 @@ export default class PreviewPanelManager {
 
         // Refresh content in pinned iframe
         await this.refresh();
+
+        this._updateExtractButton();
 
         Logger.log('[PreviewPanel] Preview pinned to layout');
     }
@@ -1341,6 +1440,21 @@ export default class PreviewPanelManager {
     }
 
     /**
+     * Enter the fullscreen fallback (unpinning first if needed) and notify
+     * the user. Used for genuine extraction failures - as opposed to the
+     * toggle behavior in extractToNewTab()'s SW-unavailable branch, which
+     * also has to handle a *second* click re-entering/exiting the same state.
+     */
+    _enterFullscreenFallback() {
+        if (this.isPinned) {
+            this._wasPinnedBeforeFullscreen = true;
+            this.unpin();
+        }
+        if (!this.isFullscreen) this.toggleFullscreen();
+        this._showFullscreenToast();
+    }
+
+    /**
      * Extract preview to a new browser tab
      * Opens the SW-served preview in a new tab
      */
@@ -1348,17 +1462,31 @@ export default class PreviewPanelManager {
         try {
             Logger.log('[PreviewPanel] Extracting preview to new tab...');
 
-            // Ensure SW has the latest content
-            if (!this.isServiceWorkerPreviewAvailable()) {
-                // Fallback: widen the panel to full width since the extraction can't happen
-                this.panel?.classList.toggle('previewFullscreen');
-                Logger.error('[PreviewPanel] Service Worker not available for preview');
+            // Toggle fullscreen when SW is not available
+            if (!this._swAvailable) {
+                if (this.isPinned) {
+                    // Pinned → always enter fullscreen slide-out
+                    this._wasPinnedBeforeFullscreen = true;
+                    this.unpin();
+                    if (!this.isFullscreen) this.toggleFullscreen();
+                    this._showFullscreenToast();
+                } else if (this.isFullscreen) {
+                    // Fullscreen slide-out → always restore pinned if it was pinned before
+                    this.toggleFullscreen();
+                    if (this._wasPinnedBeforeFullscreen) {
+                        this._wasPinnedBeforeFullscreen = false;
+                        await this.pin();
+                    }
+                } else {
+                    // Normal slide-out → toggle fullscreen
+                    this.toggleFullscreen();
+                    this._showFullscreenToast();
+                }
                 return;
             }
 
             // Refresh SW content before opening new tab
             await this.refreshWithServiceWorker();
-
             // Build the viewer URL - derive base path from current URL for subdirectory deployments
             const pathname = window.location.pathname;
             // Remove trailing 'workarea', 'workarea.html', or 'workarea/' to get base directory
@@ -1367,10 +1495,7 @@ export default class PreviewPanelManager {
             // Preview makes the Teacher Mode toggle available (the author is the teacher);
             // see loadPreviewFromServiceWorker(). Exported packages stay hidden by default.
             const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html?exe-teacher=1`;
-
-            // Open in new tab
             const newTab = window.open(viewerUrl, '_blank');
-
             if (newTab) {
                 this._popupWindow = newTab;
                 this._setupPopupMonitor();
@@ -1382,9 +1507,14 @@ export default class PreviewPanelManager {
                 a.href = viewerUrl;
                 a.target = '_blank';
                 a.click();
+                // a.click() is fire-and-forget and gives no success signal (it is
+                // blocked the same way as window.open() in sandboxed/embedded
+                // contexts), so also enter the visual fallback here.
+                this._enterFullscreenFallback();
             }
         } catch (error) {
             Logger.error('[PreviewPanel] Error extracting to new tab:', error);
+            this._enterFullscreenFallback();
         }
     }
 
