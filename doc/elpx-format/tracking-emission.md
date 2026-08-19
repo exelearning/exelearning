@@ -83,14 +83,20 @@ It does **not** depend on SCORM/pipwerks.
 | Emitter library | `public/app/common/xapi/exe_xapi.js` |
 | Inclusion (web exports only) | `WEB_EXPORT_LIBRARIES` (`src/shared/export/constants.ts`) + `BaseExporter.emitsXapi()` / `selectBaseLibraries()` |
 | Identity config in `<head>` | `window.exeXapi` injected by `PageRenderer` (both multi-page and single-page heads) |
-| Config source | `Html5Exporter` / `PageExporter` pass `{ odeId, packageTitle, language }` from `meta` |
+| Config source | `BaseExporter.buildXapiConfig()`, called by every web-family exporter |
 
 The exporter injects, before the emitter script:
 
 ```html
-<script>window.exeXapi={"odeId":"202604272111114JQLDV","packageTitle":"…","language":"en"}</script>
+<script>window.exeXapi={"odeId":"202604272111114JQLDV","packageTitle":"…","language":"en",
+    "ideviceOrderOffset":2,"pageCount":4,"pageId":"page-3","pageTitle":"…"}</script>
 <script src="libs/xapi/exe_xapi.js"> </script>
 ```
+
+Beyond the identity keys, the config carries `ideviceOrderOffset` (iDevices rendered on
+the preceding pages, the base of the package-global `idevice-order`), `pageCount`
+(above 1 the emitter suppresses its page-local package verdict) and `pageId` /
+`pageTitle` (the page identity no runtime event supplies).
 
 The serialized config is **HTML-safe**: `PageRenderer.serializeForScript()` escapes
 `<` (→ `<`) plus U+2028/U+2029 before embedding, so a package title containing

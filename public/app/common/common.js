@@ -1162,8 +1162,8 @@ var $exeDevices = {
                     if (typeof game !== 'object' || game === null) return;
 
                     // Resolve the iDevice identity from the DOM once. This is used by
-                    // both SCORM tracking and the always-on xAPI emitter (exe_xapi.js),
-                    // so it must run in every export format, not only under SCORM.
+                    // both SCORM tracking and the xAPI emitter (exe_xapi.js), so it
+                    // must run in every export format, not only under SCORM.
                     game.mainElement = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
                     let $ideviceNode = game.mainElement.closest('.idevice_node');
                     // The node id equals the stable odeIdeviceId, used as the xAPI object IRI.
@@ -1172,9 +1172,9 @@ var $exeDevices = {
                         .find('header .box-title').text() || '').replace(/"/g, ' ');
                     game.ideviceNumber = $('.idevice_node').index($ideviceNode) + 1;
 
-                    // Declare this iDevice to the xAPI emitter before any answer, in
-                    // every export format. The SCORM census below is gated on
-                    // pipwerks, so it does not exist in HTML5/EPUB exports.
+                    // Declare this iDevice to the xAPI emitter before any answer
+                    // (a no-op where no emitter ships). The SCORM census below is
+                    // gated on pipwerks, so it does not exist in web exports.
                     $exeDevices.iDevice.gamification.registerEvaluable(game);
 
                     let lmsData = {};
@@ -1378,27 +1378,17 @@ var $exeDevices = {
             },
 
             /**
-             * Transport-agnostic dispatch to the always-on xAPI emitter
-             * (exe_xapi.js). Runs in EVERY export format, independent of
-             * SCORM/pipwerks, so a published package is xAPI-compatible out
-             * of the box (it is therefore a sibling of `scorm`, not nested in
-             * it). Score math stays single-source (game.scorerp +
-             * getFinalScore); this only forwards it as an xAPI statement.
-             * See https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
-             *
-             * @param {string} eventType e.g. 'answered'
-             * @param {Object} game the iDevice game options (carries score + identity)
-             */
-            /**
              * Declare an evaluable iDevice to the xAPI emitter as the page loads,
              * whether or not the learner ever answers it.
              *
              * Mirrors what registerActivity already does for SCORM's suspend_data
-             * lmsData, but for every export format: without it the emitter only ever
-             * learns about answered iDevices, so the package aggregate normalizes
-             * over the answered subset and a partial attempt reports an inflated
-             * score. It is also the only way a consumer can learn the package
-             * denominator, since an unanswered iDevice emits nothing (#2302).
+             * lmsData, but for the web export family: without it the emitter only
+             * ever learns about answered iDevices, so the package aggregate
+             * normalizes over the answered subset and a partial attempt reports an
+             * inflated score. It is also the only way a consumer can learn the
+             * package denominator, since an unanswered iDevice emits nothing
+             * (#2302). A no-op in packages that ship no emitter (SCORM/IMS/EPUB,
+             * see ADR-2302-02).
              *
              * @param {object} game
              */
@@ -1418,6 +1408,18 @@ var $exeDevices = {
                 }
             },
 
+            /**
+             * Transport-agnostic dispatch to the xAPI emitter (exe_xapi.js),
+             * independent of SCORM/pipwerks (it is therefore a sibling of `scorm`,
+             * not nested in it). A no-op in packages that ship no emitter — the web
+             * export family carries it, SCORM/IMS/EPUB do not (ADR-2302-02). Score
+             * math stays single-source (game.scorerp + getFinalScore); this only
+             * forwards it as an xAPI statement.
+             * See https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
+             *
+             * @param {string} eventType e.g. 'answered'
+             * @param {Object} game the iDevice game options (carries score + identity)
+             */
             track: function (eventType, game) {
                 try {
                     let xapi = $exeDevices.iDevice.xapi;

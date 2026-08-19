@@ -252,12 +252,12 @@ export abstract class BaseExporter {
     /**
      * Build the runtime xAPI config injected into an exported page.
      *
-     * Single source of truth shared by every export format: the emitter in
-     * `libs/xapi/exe_xapi.js` is bundled unconditionally into all of them
-     * (see BASE_LIBRARIES), so all of them must describe the same package
-     * identity and the same package-global iDevice order. Formats that
-     * omitted this config used to fall back to a per-page document URL as the
-     * activity IRI, which made cross-page results impossible to aggregate.
+     * Single source of truth shared by every format that ships the emitter —
+     * the web export family (see `emitsXapi()` / WEB_EXPORT_LIBRARIES,
+     * ADR-2302-02) — so all of them describe the same package identity and
+     * the same package-global iDevice order. Formats that omitted this config
+     * used to fall back to a per-page document URL as the activity IRI, which
+     * made cross-page results impossible to aggregate.
      *
      * @param meta Export metadata carrying the package identity
      * @param ideviceOrderOffset Number of iDevices rendered on preceding pages

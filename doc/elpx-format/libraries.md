@@ -42,20 +42,28 @@ This sample uses only the `text` iDevice, so no iDevice-specific or conditional 
 
 ## 2. Always-bundled base libraries
 
-The constant `BASE_LIBRARIES` in `src/shared/export/constants.ts:325` defines the set of files fetched unconditionally for every export:
+The constant `BASE_LIBRARIES` in `src/shared/export/constants.ts` defines the set of files fetched unconditionally for every export:
 
 ```typescript
 export const BASE_LIBRARIES = [
     'jquery/jquery.min.js',
+    'common_i18n.js',
     'common.js',
     'exe_export.js',
-    // xAPI emitter: WEB_EXPORT_LIBRARIES only, not BASE_LIBRARIES; see tracking-emission.md
-    'xapi/exe_xapi.js',
     'bootstrap/bootstrap.bundle.min.js',
     'bootstrap/bootstrap.bundle.min.js.map',
     'bootstrap/bootstrap.min.css',
     'bootstrap/bootstrap.min.css.map',
 ];
+```
+
+The xAPI emitter is **not** in this set: only the web export family ships it
+(HTML5, ELPX, single page, editor preview — see ADR-2302-02 and
+tracking-emission.md), on top of the base set:
+
+```typescript
+export const XAPI_EMITTER_LIBRARY = 'xapi/exe_xapi.js';
+export const WEB_EXPORT_LIBRARIES = [...BASE_LIBRARIES, XAPI_EMITTER_LIBRARY];
 ```
 
 `Html5Exporter` fetches this set at step 7 (`Html5Exporter.ts:267–275`):

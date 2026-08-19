@@ -13,15 +13,17 @@
     GNU General Public License for more details.
 ===============================================================================
 
-    Always-on xAPI (Experience API) emitter for published eXeLearning packages.
+    xAPI (Experience API) emitter for web-family eXeLearning exports.
 
     This library is bundled into the WEB export family (HTML5, ELPX, single-page and
     the editor preview) via WEB_EXPORT_LIBRARIES, with no export-time option. SCORM,
     IMS and EPUB packages do not carry it: SCORM grades through cmi.*, IMS CP defers
     runtime communication out of scope, and EPUB defines no tracking mechanism, so a
-    second channel there could only compete with the authoritative one (ADR-2302-02). It emits one statement per
-    gradable iDevice ("answered") and one package-level statement
-    ("completed" + "passed"/"failed") whenever a score is reported.
+    second channel there could only compete with the authoritative one (ADR-2302-02).
+
+    It emits one statement per gradable iDevice ("answered") and, for single-page
+    packages only, one package-level statement ("completed" + "passed"/"failed")
+    whenever a score is reported.
 
     It does NOT depend on SCORM or pipwerks: the gamification layer in common.js
     calls `gamification.track(...)` (which forwards here) regardless of format.
@@ -213,12 +215,9 @@
                 if (this._lifecycle.initialized) return;
                 if (!this._hasTransport()) return;
                 this._lifecycle.initialized = true;
-                // The census rides here: it is the only statement that reports the
-                // evaluable iDevices a learner never answered, which is what a
-                // consumer needs to know the package denominator (#2302).
-                var extra = {};
-                extra[EXT.ideviceCensus] = this._censusList();
-                this._send(this._buildLifecycleStatement(VERBS.initialized, extra));
+                // Carries the early census copy: the only report of evaluable iDevices
+                // a learner never answers, i.e. the package denominator (#2302).
+                this._send(this._buildLifecycleStatement(VERBS.initialized));
             } catch (e) { /* no-op */ }
         },
 
@@ -246,14 +245,10 @@
                 if (this._lifecycle.terminated) return;
                 if (!this._hasTransport()) return;
                 this._lifecycle.terminated = true;
-                // The census rides here too. "initialized" delivers it as early as
-                // possible, but it is flushed on a macrotask after DOM-ready, so an
-                // iDevice that registers later than that would be missing from it.
-                // Page unload is by definition after every registration, so this copy
-                // is the complete one.
-                var ext = {};
-                ext[EXT.ideviceCensus] = this._censusList();
-                this._send(this._buildLifecycleStatement(VERBS.terminated, ext));
+                // Carries the complete census copy: "initialized" flushes on a
+                // macrotask after DOM-ready and can miss a late registration, while
+                // page unload is by definition after every registration.
+                this._send(this._buildLifecycleStatement(VERBS.terminated));
             } catch (e) { /* no-op */ }
         },
 
@@ -516,14 +511,13 @@
          * @param {object} verb
          * @returns {object}
          */
-        _buildLifecycleStatement: function (verb, extraExtensions) {
+        _buildLifecycleStatement: function (verb) {
+            // Both lifecycle statements publish this page's evaluable census — the
+            // early copy on "initialized", the complete one on "terminated" — so the
+            // census is attached here rather than by each caller.
             var ext = this._contextExtensions(null) || {};
-            if (extraExtensions) {
-                for (var key in extraExtensions) {
-                    if (Object.prototype.hasOwnProperty.call(extraExtensions, key)) ext[key] = extraExtensions[key];
-                }
-            }
-            return this._statement(verb, this._packageObject(), null, null, Object.keys(ext).length ? ext : null);
+            ext[EXT.ideviceCensus] = this._censusList();
+            return this._statement(verb, this._packageObject(), null, null, ext);
         },
 
         /**

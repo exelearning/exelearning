@@ -156,6 +156,10 @@ export class ElpxExporter extends Html5Exporter {
                 pages: pages.length,
             });
 
+            // Prefix sums over the per-page iDevice counts, computed once so the
+            // page loop stays linear in the number of pages (#2302).
+            const ideviceOrderOffsets = this.buildIdeviceOrderOffsets(pages);
+
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 let html = this.generatePageHtml(
@@ -169,6 +173,7 @@ export class ElpxExporter extends Html5Exporter {
                     pageFilenameMap,
                     undefined,
                     navLabels,
+                    ideviceOrderOffsets[i],
                 );
 
                 // Pre-render LaTeX to SVG+MathML when MathJax is not bundled, so
