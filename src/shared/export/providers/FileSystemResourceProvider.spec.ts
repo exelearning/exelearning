@@ -653,4 +653,44 @@ describe('FileSystemResourceProvider', () => {
             expect(map.size).toBe(0);
         });
     });
+
+    describe('dot-prefixed entry exclusion (AGENTS.md §9 / EXP-03 / SKILL-11)', () => {
+        let localTestDir: string;
+        let localProvider: FileSystemResourceProvider;
+
+        beforeEach(async () => {
+            localTestDir = path.join(
+                os.tmpdir(),
+                `exe-dotfile-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            );
+            const ideviceExportDir = path.join(localTestDir, 'files', 'perm', 'idevices', 'base', 'text', 'export');
+            await fs.ensureDir(ideviceExportDir);
+            await fs.writeFile(path.join(ideviceExportDir, 'text.js'), 'console.log("real runtime");');
+            await fs.writeFile(path.join(ideviceExportDir, 'text.css'), '.text {}');
+            // Tên file/thư mục giả lập đúng những gì AGENTS.md §9 cấm xuất hiện trong output
+            await fs.writeFile(path.join(ideviceExportDir, '.env'), 'SECRET_KEY=should-not-ship');
+            const aiDir = path.join(ideviceExportDir, '.claude');
+            await fs.ensureDir(aiDir);
+            await fs.writeFile(path.join(aiDir, 'notes.md'), 'internal agent notes');
+
+            localProvider = new FileSystemResourceProvider(localTestDir);
+        });
+
+        afterEach(async () => {
+            await fs.remove(localTestDir);
+        });
+
+        it('excludes dot-prefixed files and directories from fetchIdeviceResources', async () => {
+            const files = await localProvider.fetchIdeviceResources('text');
+            const keys = Array.from(files.keys());
+
+            expect(keys).toContain('text.js');
+            expect(keys).toContain('text.css');
+            expect(keys.some(k => k.startsWith('.'))).toBe(false);
+            expect(keys.some(k => k.includes('/.'))).toBe(false);
+            expect(keys.some(k => k.includes('.env'))).toBe(false);
+            expect(keys.some(k => k.includes('.claude'))).toBe(false);
+            expect(keys.some(k => k.includes('notes.md'))).toBe(false);
+        });
+    });
 });

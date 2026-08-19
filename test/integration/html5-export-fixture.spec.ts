@@ -506,6 +506,96 @@ describe('HTML5 Export Fixture Comparison', () => {
             }
         });
     });
+
+    describe('EXP-03/SKILL-11 whole-export forbidden pattern audit', () => {
+        const binaryEntry = /\.(png|jpe?g|gif|webp|ico|bmp|mp3|wav|ogg|mp4|webm|mov|avi|pdf|zip|woff2?|ttf|eot)$/i;
+        const runtimeIdeviceJs = /^idevices\/.*\.js$/i;
+        const thirdPartyEntry = /^(libs|theme)\//;
+        const svgIconEntry = /\.svg$/i;
+        const dotSegment = /(^|\/)\.[^/]+/;
+        const tokenShapes = [
+            { re: /sk-proj-/, label: 'sk-proj-' },
+            { re: /sk-ant-/, label: 'sk-ant-' },
+            { re: /sk-[A-Za-z0-9_-]{20,}/, label: 'sk- secret-shaped' },
+            { re: /ghp_[A-Za-z0-9]{20,}/, label: 'ghp_ GitHub token' },
+            { re: /AIza[0-9A-Za-z_-]{20,}/, label: 'AIza Google API key' },
+            { re: /Bearer [A-Za-z0-9._~+/=-]{20,}/, label: 'Bearer token' },
+        ];
+        // Không dùng mẫu thô 'sk-' / '.ai/' trong nội dung: author content thật
+        // (class pbl-task-*, link ideogram.ai) sẽ tạo false positive — xem I03 báo cáo.
+        const alwaysForbiddenPatterns = [
+            '.agents/',
+            '.claude/',
+            'file://',
+            'C:\\',
+            '/Users/',
+            '/home/',
+            'stack trace',
+            'at Object.',
+            'at <anonymous>',
+        ];
+        // http-origin chỉ áp dụng runtime iDevice JS (không áp dụng generated pages,
+        // content.xml, libs/theme third-party, SVG icon) — author links trong nội dung
+        // bài học là hợp lệ. Cho phép license/namespace URL chuẩn (CC, W3C).
+        const allowedHttpContexts = [
+            'http://creativecommons.org/',
+            'https://creativecommons.org/',
+            'http://www.w3.org/',
+            'https://www.w3.org/',
+            'http://sodipodi.sourceforge.net/',
+        ];
+
+        it('keeps every packaged entry free of AI folders, secret-shaped tokens, and absolute local paths', () => {
+            if (!exportedZip) return;
+            const violations: string[] = [];
+            let scanned = 0;
+            let skippedBinary = 0;
+            let skippedThirdParty = 0;
+
+            for (const [entryPath, bytes] of Object.entries(exportedZip)) {
+                // Entry-path check áp dụng MỌI entry (kể cả binary): thư mục/file
+                // dot-prefix = dấu hiệu AI tooling / dotfile bị đóng gói nhầm.
+                if (dotSegment.test(entryPath)) {
+                    violations.push(`${entryPath}: dot-prefixed path segment`);
+                }
+
+                if (binaryEntry.test(entryPath)) {
+                    skippedBinary++;
+                    continue;
+                }
+                if (thirdPartyEntry.test(entryPath)) {
+                    skippedThirdParty++;
+                    continue;
+                }
+                if (svgIconEntry.test(entryPath)) {
+                    continue;
+                }
+
+                scanned++;
+                const content = new TextDecoder().decode(bytes);
+                for (const pattern of alwaysForbiddenPatterns) {
+                    if (content.includes(pattern)) violations.push(`${entryPath}: "${pattern}"`);
+                }
+                for (const { re, label } of tokenShapes) {
+                    if (re.test(content)) violations.push(`${entryPath}: ${label}`);
+                }
+                if (runtimeIdeviceJs.test(entryPath)) {
+                    for (const m of content.matchAll(/https?:\/\/([^\s"'<>]+)/g)) {
+                        const url = m[0];
+                        if (!allowedHttpContexts.some(a => url.startsWith(a))) {
+                            violations.push(`${entryPath}: http-origin "${url.slice(0, 80)}"`);
+                        }
+                    }
+                    if (content.includes('/api/')) violations.push(`${entryPath}: /api/`);
+                }
+            }
+
+            console.log(
+                `[I03 EXP-03 audit] scanned ${scanned} text entries, skipped ${skippedBinary} binary, ${skippedThirdParty} third-party, ${Object.keys(exportedZip).length} total`,
+            );
+            expect(violations).toEqual([]);
+        });
+    });
 });
 
 describe('HTML Structure Comparison with Reference', () => {

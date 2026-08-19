@@ -322,6 +322,10 @@ export class FileSystemResourceProvider implements ResourceProvider {
         const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
         for (const entry of entries) {
+            // Skip hidden files and directories
+            if (entry.name.startsWith('.')) {
+                continue;
+            }
             const fullPath = path.join(dirPath, entry.name);
             // Handle empty prefix correctly to avoid leading slashes
             const entryPath = prefix ? `${prefix}/${entry.name}` : entry.name;
