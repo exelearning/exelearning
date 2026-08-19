@@ -6,7 +6,10 @@ test.describe('Preview fullscreen fallback', () => {
         skipInStaticMode(test, testInfo, 'Requires server to create projects and control SW state');
     });
 
-    test('should show enlarge preview text and icon when SW is unavailable', async ({ authenticatedPage, createProject }) => {
+    test('should show enlarge preview text and icon when SW is unavailable', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
         const page = authenticatedPage;
         const uuid = await createProject(page, 'Fullscreen Test');
 
@@ -40,7 +43,10 @@ test.describe('Preview fullscreen fallback', () => {
         await expect(pinnedIcon).not.toHaveClass(/external-link-icon/);
     });
 
-    test('should keep enlarge icon but change text and aria-pressed when fullscreen activated', async ({ authenticatedPage, createProject }) => {
+    test('should keep enlarge icon but change text and aria-pressed when fullscreen activated', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
         const page = authenticatedPage;
         const uuid = await createProject(page, 'Fullscreen Icon Test');
 
@@ -75,7 +81,10 @@ test.describe('Preview fullscreen fallback', () => {
         await expect(slideBtn).toHaveAttribute('aria-label', 'Restore preview size');
     });
 
-    test('should show enlarge icon with aria-pressed false when fullscreen exited', async ({ authenticatedPage, createProject }) => {
+    test('should show enlarge icon with aria-pressed false when fullscreen exited', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
         const page = authenticatedPage;
         const uuid = await createProject(page, 'Fullscreen Icon Exit');
 
