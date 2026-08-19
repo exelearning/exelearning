@@ -22,6 +22,11 @@
  *   next run reconciles. The guard also makes concurrent execution by several
  *   app instances safe: exactly one instance wins each row, the others
  *   re-observe an already-converged state.
+ * - Phase 1 re-examines every non-canonical row, including conflict rows
+ *   parked on `assets/<uuid>/...` by a previous run. That is what makes an
+ *   interrupted `assets:conflicts resolve` (issue #2287) self-heal at the
+ *   next startup: whichever copy the interruption left behind is either
+ *   moved or adopted, and the row converges.
  * - Never overwrite: when source and destination both exist with different
  *   content, both files are kept, the conflict is reported, and the row is
  *   rewritten to the portable relative form of its CURRENT (legacy) location.
@@ -93,6 +98,14 @@ const DEFAULT_BATCH_SIZE = 500;
 const PROGRESS_LOG_INTERVAL = 1000;
 
 const SHARD_BUCKET = /^[0-9a-f]{2}$/;
+
+/**
+ * LIKE pattern matching rows already in the canonical sharded form
+ * (`assets/<two-char shard>/...`). Phase 1 selects everything else: legacy
+ * absolute paths AND parked conflict rows (`assets/<uuid>/...`), so states
+ * left by an interrupted CLI resolution are reconciled at the next startup.
+ */
+const CANONICAL_ROW_LIKE = `${ASSETS_ROOT_DIR_NAME}/__/%`;
 
 /**
  * Two-DIGIT names are ambiguous: they are valid shard buckets AND possible
@@ -261,7 +274,7 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
         const legacyRow = await db
             .selectFrom('assets')
             .select('assets.id')
-            .where('assets.storage_path', 'not like', `${ASSETS_ROOT_DIR_NAME}/%`)
+            .where('assets.storage_path', 'not like', CANONICAL_ROW_LIKE)
             .limit(1)
             .executeTakeFirst();
         if (legacyRow) {
@@ -275,7 +288,8 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
 
     // =========================================================================
     // Phase 1: row-driven migration.
-    // Every row whose storage_path is not FILES_DIR-relative is legacy.
+    // Every row whose storage_path is not in the canonical sharded form is
+    // (re)examined — legacy absolute paths and parked conflict rows alike.
     // Cursor pagination (id > lastId) guarantees termination even for rows
     // that are skipped without being rewritten.
     // =========================================================================
@@ -286,7 +300,7 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
             .selectFrom('assets')
             .innerJoin('projects', 'assets.project_id', 'projects.id')
             .select(['assets.id as id', 'assets.storage_path as storage_path', 'projects.uuid as project_uuid'])
-            .where('assets.storage_path', 'not like', `${ASSETS_ROOT_DIR_NAME}/%`)
+            .where('assets.storage_path', 'not like', CANONICAL_ROW_LIKE)
             .where('assets.id', '>', lastId)
             .orderBy('assets.id', 'asc')
             .limit(batchSize)
@@ -305,7 +319,7 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
                 .selectFrom('assets')
                 .innerJoin('projects', 'assets.project_id', 'projects.id')
                 .select(eb => eb.fn.countAll<number>().as('count'))
-                .where('assets.storage_path', 'not like', `${ASSETS_ROOT_DIR_NAME}/%`)
+                .where('assets.storage_path', 'not like', CANONICAL_ROW_LIKE)
                 .executeTakeFirst();
             totalLegacyRows = Number(countRow?.count ?? 0);
         }
@@ -417,7 +431,10 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
                     `sharded '${dest}' (${destStat.size} bytes) differ. Keeping both; the database keeps ` +
                     `pointing at the legacy location. Resolve with 'bun cli assets:conflicts'.`,
             );
-            if (isCanonicalAssetStoragePath(legacyStored)) {
+            // Already-parked rows re-enter this branch on every startup while
+            // the conflict stays unresolved; only rewrite when the stored
+            // value actually changes, so re-reporting causes no row churn.
+            if (isCanonicalAssetStoragePath(legacyStored) && legacyStored !== row.storage_path) {
                 if (await rewriteRow(db, row.id, row.storage_path, legacyStored)) {
                     summary.rewrittenRows++;
                 }
@@ -561,7 +578,9 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
                             const [srcStat, destStat] = await Promise.all([fs.stat(src), fs.stat(dest)]);
                             warn(
                                 `[AssetStorage] Conflict sweeping '${src}' (${srcStat.size} bytes): destination ` +
-                                    `'${dest}' (${destStat.size} bytes) differs. Keeping both. Resolve manually.`,
+                                    `'${dest}' (${destStat.size} bytes) differs. Keeping both. No database row ` +
+                                    `references this file, so 'bun cli assets:conflicts' cannot resolve it; ` +
+                                    `compare the copies and remove one manually.`,
                             );
                         }
                     } catch (err) {

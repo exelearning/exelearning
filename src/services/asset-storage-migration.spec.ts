@@ -387,6 +387,101 @@ describe('asset-storage-migration', () => {
         expect(sweepWarn).toContain(dest);
         expect(sweepWarn).toContain(`(${'orphan bytes'.length} bytes)`);
         expect(sweepWarn).toContain(`(${'existing different bytes'.length} bytes)`);
+        // Sweep conflicts have no database row, so the assets:conflicts CLI
+        // cannot resolve them; the warning must say WHY it is manual instead
+        // of looking inconsistent with the phase 1 conflict warning.
+        expect(sweepWarn).toContain('No database row references this file');
+    });
+
+    // =========================================================================
+    // Parked conflict rows (assets/<uuid>/... written by the conflict branch)
+    // =========================================================================
+
+    async function seedParkedRow(projectId: number, filename: string) {
+        return assetQueries.createAsset(db, {
+            project_id: projectId,
+            filename,
+            storage_path: `assets/${PROJECT_UUID}/${filename}`,
+            mime_type: 'application/octet-stream',
+            file_size: '0',
+            client_id: filename.replace(/\..*$/, ''),
+            folder_path: '',
+        });
+    }
+
+    it('converges a parked row whose legacy copy is gone (interrupted keep-new resolution)', async () => {
+        const projectId = await seedProject();
+        const asset = await seedParkedRow(projectId, 'parked-new.png');
+        // Crash state after `assets:conflicts resolve --keep-new`: the legacy
+        // copy was removed but the row was not rewritten yet.
+        const dest = shardedPath(PROJECT_UUID, 'parked-new.png');
+        await fs.ensureDir(path.dirname(dest));
+        await fs.writeFile(dest, 'kept canonical bytes');
+
+        const summary = await runMigration();
+
+        expect(summary.alreadyMigrated).toBe(1);
+        expect(summary.rewrittenRows).toBe(1);
+        const row = await assetQueries.findAssetById(db, asset.id);
+        expect(row!.storage_path).toBe(`assets/${SHARD}/${PROJECT_UUID}/parked-new.png`);
+    });
+
+    it('completes an interrupted keep-old resolution: parked row with a free destination', async () => {
+        const projectId = await seedProject();
+        const asset = await seedParkedRow(projectId, 'parked-old.png');
+        // Crash state after `assets:conflicts resolve --keep-old` removed the
+        // canonical copy but before the legacy copy was moved into its place.
+        await writeLegacyFile(PROJECT_UUID, ['parked-old.png'], 'kept legacy bytes');
+
+        const summary = await runMigration();
+
+        expect(summary.movedFiles).toBe(1);
+        expect(summary.rewrittenRows).toBe(1);
+        const dest = shardedPath(PROJECT_UUID, 'parked-old.png');
+        expect((await fs.readFile(dest)).toString()).toBe('kept legacy bytes');
+        const row = await assetQueries.findAssetById(db, asset.id);
+        expect(row!.storage_path).toBe(`assets/${SHARD}/${PROJECT_UUID}/parked-old.png`);
+    });
+
+    it('re-reports an unresolved parked conflict on every run without rewriting the row', async () => {
+        const projectId = await seedProject();
+        const asset = await seedParkedRow(projectId, 'parked-live.png');
+        await writeLegacyFile(PROJECT_UUID, ['parked-live.png'], 'legacy content');
+        const dest = shardedPath(PROJECT_UUID, 'parked-live.png');
+        await fs.ensureDir(path.dirname(dest));
+        await fs.writeFile(dest, 'different content');
+        const before = await assetQueries.findAssetById(db, asset.id);
+
+        const summary = await runMigration();
+
+        expect(summary.conflicts).toBe(1);
+        // No churn: the row already holds the parked value, so it must not be
+        // rewritten (updated_at untouched) just to re-report the conflict.
+        expect(summary.rewrittenRows).toBe(0);
+        const row = await assetQueries.findAssetById(db, asset.id);
+        expect(row!.storage_path).toBe(`assets/${PROJECT_UUID}/parked-live.png`);
+        expect(row!.updated_at).toEqual(before!.updated_at);
+        // Both copies survive and the operator is pointed at the CLI.
+        expect((await fs.readFile(path.join(filesDir, 'assets', PROJECT_UUID, 'parked-live.png'))).toString()).toBe(
+            'legacy content',
+        );
+        expect((await fs.readFile(dest)).toString()).toBe('different content');
+        expect(warnMessages.find(message => message.includes('Conflict for asset'))).toContain('assets:conflicts');
+    });
+
+    it('skips migration when parked rows exist but the assets root is missing (unmounted volume)', async () => {
+        const projectId = await seedProject();
+        const asset = await seedParkedRow(projectId, 'parked-unmounted.png');
+        // No file is written: filesDir/assets does not exist at all. Without
+        // the safety latch the row would be "missing" on both sides and get
+        // rewritten to the sharded target, losing its parked pointer.
+        const summary = await runMigration();
+
+        expect(summary.scannedRows).toBe(0);
+        expect(summary.rewrittenRows).toBe(0);
+        expect(warnMessages.join('\n')).toContain('assets root');
+        const row = await assetQueries.findAssetById(db, asset.id);
+        expect(row!.storage_path).toBe(`assets/${PROJECT_UUID}/parked-unmounted.png`);
     });
 
     // =========================================================================

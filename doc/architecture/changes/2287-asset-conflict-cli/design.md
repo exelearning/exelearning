@@ -87,7 +87,11 @@ at resolution time (the listing may be stale) and then:
 
 Operation order is deliberate: a crash at any intermediate point leaves a
 state (`file only at destination`, `row still legacy`, …) that the next
-startup migration reconciles on its own. Row rewrites reuse the migration's
+startup migration reconciles on its own. For that to hold, the migration's
+phase 1 filter selects every non-canonical row (`NOT LIKE 'assets/__/%'`),
+so parked conflict rows (`assets/<uuid>/...`) are re-examined at every
+startup — an interrupted resolution self-heals, and an unresolved conflict is
+re-reported without rewriting the row. Row rewrites reuse the migration's
 `rewriteRow` with its optimistic `WHERE storage_path = <old>` guard, so a
 concurrently starting instance can never be raced into a lost update; a failed
 guard aborts with a clear message instead of resolving blindly.
