@@ -5,9 +5,9 @@ scores** to a host (LMS / LRS). Two channels coexist:
 
 - **SCORM 1.2/2004** — emitted only by SCORM exports, via the bundled SCORM API
   wrapper. Pre-existing behaviour.
-- **xAPI (Experience API)** — emitted by **every** export format, always on, via
-  `libs/xapi/exe_xapi.js`. Added so any published package is xAPI-compatible out
-  of the box, with **no export-time option**.
+- **xAPI (Experience API)** — emitted by the **web export family** (HTML5, ELPX,
+  single page, editor preview) via `libs/xapi/exe_xapi.js`, with **no export-time
+  option**. SCORM, IMS and EPUB packages do not carry it (ADR-2302-02).
 
 Both channels are fed from the **same single score source** in
 `public/app/common/common.js` (the `gamification` namespace), so the score math
@@ -73,7 +73,8 @@ so SCORM does nothing outside SCORM exports.
 ## 2. How xAPI is emitted
 
 xAPI emission lives in `public/app/common/xapi/exe_xapi.js`
-(`$exeDevices.iDevice.xapi`), included in **every** export via `BASE_LIBRARIES`.
+(`$exeDevices.iDevice.xapi`), included in **web exports** via
+`WEB_EXPORT_LIBRARIES` / `BaseExporter.emitsXapi()` (ADR-2302-02).
 It does **not** depend on SCORM/pipwerks.
 
 ### 2.1 Wiring at export time
@@ -99,7 +100,7 @@ the preceding pages, the base of the package-global `idevice-order`), `pageCount
 `pageTitle` (the page identity no runtime event supplies).
 
 The serialized config is **HTML-safe**: `PageRenderer.serializeForScript()` escapes
-`<` (→ `<`) plus U+2028/U+2029 before embedding, so a package title containing
+`<` (→ `\u003c`) plus U+2028/U+2029 before embedding, so a package title containing
 `</script>` cannot break out of the inline `<script>` (no XSS).
 
 The config shape is a single source of truth: the TypeScript type `XapiConfig`
@@ -275,8 +276,9 @@ inflates a partial attempt. Then apply the same steps as
 1. **Sort** the latest statements by the numeric, 1-based `idevice-order`, which
    is the package render order across all pages. This order is the deterministic
    tie break in step 3, so it must be applied before it.
-2. **Clamp** each record: the score onto 0–100 (`result.score.raw × 10`, which is
-   not clamped at emission time) and the weight onto 1–100.
+2. **Scale** each record: the score onto 0–100 (`result.score.scaled × 100`, which
+   is what the reference consumer reads; `raw × 10` is equivalent since the emitter
+   clamps onto its declared 0–10 scale) and clamp the weight onto 1–100.
 3. **Normalize the weights to 100 integer points, before applying them.** Scale
    each weight by `100 / Σweights`, take the floor, and distribute the remaining
    `100 − Σfloors` points one at a time to the largest fractional remainders,

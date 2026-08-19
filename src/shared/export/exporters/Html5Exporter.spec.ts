@@ -455,14 +455,39 @@ describe('Html5Exporter', () => {
         });
 
         it('should inject the package-global iDevice order offset for each page', () => {
-            const firstPageHtml = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+            // Offsets are precomputed once per export and passed in — the renderer no
+            // longer recomputes them as a fallback (that silent recomputation was the
+            // O(P^2) walk the prefix sums exist to avoid).
+            const offsets = exporter.buildIdeviceOrderOffsets(samplePages);
+            const meta = document.getMetadata();
+            const firstPageHtml = exporter.generatePageHtml(
+                samplePages[0],
+                samplePages,
+                meta,
+                true,
+                0,
+                [],
+                null,
+                undefined,
+                undefined,
+                undefined,
+                offsets[0],
+            );
             const secondPageHtml = exporter.generatePageHtml(
                 samplePages[1],
                 samplePages,
-                document.getMetadata(),
+                meta,
                 false,
+                1,
+                [],
+                null,
+                undefined,
+                undefined,
+                undefined,
+                offsets[1],
             );
 
+            expect(offsets).toEqual([0, 1]);
             expect(firstPageHtml).toContain('"ideviceOrderOffset":0');
             expect(secondPageHtml).toContain('"ideviceOrderOffset":1');
         });

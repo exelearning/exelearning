@@ -543,6 +543,24 @@ describe('exe_xapi emitter', () => {
         expect(answered.map(statement => statement.context.extensions[IDEVICE_WEIGHT_EXTENSION])).toEqual([25, 75]);
     });
 
+    it.each([
+        ['above the scale', 25, 10, 1],
+        ['negative', -3, 0, 0],
+    ])('clamps a score %s onto the declared 0..10 scale', (_label, score, expectedraw, expectedscaled) => {
+        // The statement advertises min 0 / max 10; emitting raw 25 / scaled 2.5 is
+        // the one shape a strict LRS (and the Moodle consumer's score validation)
+        // must reject, so the emitter never produces it.
+        window.exeXapi = { odeId: 'PKG1' };
+        const spy = installFakeParent();
+        xapi.init();
+
+        xapi.emit({ type: 'answered', ideviceId: 'd1', ideviceNumber: 1, score, weighted: 1 });
+
+        const answered = statementsByVerb(spy, ANSWERED_VERB)[0];
+        expect(answered.result.score.raw).toBe(expectedraw);
+        expect(answered.result.score.scaled).toBe(expectedscaled);
+    });
+
     it('ignores events with a non-numeric score', async () => {
         window.exeXapi = { odeId: 'PKG1' };
         const spy = installFakeParent();

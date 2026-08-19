@@ -419,16 +419,16 @@ export class Html5Exporter extends BaseExporter {
         pageFilenameMap?: Map<string, string>,
         assetExportPathMap?: Map<string, string>,
         navLabels?: { previous: string; next: string },
-        ideviceOrderOffset?: number,
+        ideviceOrderOffset = 0,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
         const currentPageIndex = pageIndex ?? allPages.findIndex(p => p.id === page.id);
-        // Package-global iDevice order offset. Precomputed once per export by the
-        // caller (see BaseExporter.buildIdeviceOrderOffsets); the fallback keeps
-        // direct callers, such as unit tests, correct.
-        const resolvedOrderOffset =
-            ideviceOrderOffset ?? this.buildIdeviceOrderOffsets(allPages)[Math.max(0, currentPageIndex)] ?? 0;
+        // Package-global iDevice order offset (BaseExporter.buildIdeviceOrderOffsets).
+        // Deliberately NOT recomputed here as a fallback: every production loop passes
+        // it precomputed, and a silent per-page recomputation would turn the export
+        // back into the O(P^2) walk this parameter exists to avoid. TypeScript cannot
+        // make it required after the optional parameters, so the default is a plain 0.
 
         // Generate global font CSS if a font is selected
         let customStyles = meta.customStyles || '';
@@ -485,7 +485,7 @@ export class Html5Exporter extends BaseExporter {
             // Application version for generator meta tag
             version: meta.exelearningVersion,
             // xAPI runtime config for the emitter (stable IRIs from odeId)
-            xapi: this.buildXapiConfig(meta, resolvedOrderOffset, allPages.length, page),
+            xapi: this.buildXapiConfig(meta, ideviceOrderOffset, allPages.length, page),
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
         });

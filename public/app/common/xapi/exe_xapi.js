@@ -231,8 +231,10 @@
                 if (!root || typeof root.addEventListener !== 'function') return;
                 var self = this;
                 var handler = function () { self._emitTerminated(); };
+                // pagehide only: the _emitTerminated once-guard would make an unload
+                // duplicate a no-op anyway, and registering unload disables Chromium's
+                // back/forward cache (the same pagehide-only rule as #2209).
                 root.addEventListener('pagehide', handler);
-                root.addEventListener('unload', handler);
             } catch (e) { /* no-op */ }
         },
 
@@ -329,6 +331,11 @@
             if (!evt || typeof evt !== 'object') return;
             var score = parseFloat(evt.score);
             if (isNaN(score)) return;
+            // Clamp onto the declared 0..10 scale: the statement advertises
+            // min 0 / max 10, and an out-of-range raw (or a scaled above 1) is
+            // exactly the shape a strict LRS — and the Moodle consumer's score
+            // validation — must reject.
+            score = Math.max(0, Math.min(10, score));
             var weight = effectiveWeight(evt.weighted);
             var ideviceOrder = effectiveIdeviceOrder(this.config, evt.ideviceNumber);
 
@@ -657,6 +664,10 @@
                         'X-Experience-API-Version': '1.0.3',
                     },
                     body: JSON.stringify(statement),
+                    // The "terminated" statement carries the complete census copy and
+                    // fires on pagehide; without keepalive the browser cancels the
+                    // request when the document unloads and that copy never arrives.
+                    keepalive: true,
                 })['catch'](function () { /* swallow network errors */ });
             } catch (e) { /* no-op */ }
         },
