@@ -74,6 +74,7 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         'three-d-viewer',
         'markdown-text',
         'file-attachment',
+        'electronics-logic',
     ];
     const isJson = jsonIdevices.includes(cssClass) || jsonIdevices.includes(normalized);
 
@@ -131,6 +132,7 @@ export function setIdevicesBasePath(): void {
  */
 const IDEVICE_JS_DEPENDENCIES: Record<string, string[]> = {
     checklist: ['html2canvas.js'],
+    'electronics-logic': ['electronics-logic-grader.bundle.js'],
     'progress-report': ['html2canvas.js'],
     'select-media-files': ['mansory-jq.js'],
     'image-gallery': ['simple-lightbox.min.js'],

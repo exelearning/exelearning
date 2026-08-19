@@ -5,7 +5,7 @@
  * file paths that exporters expect.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -142,6 +142,18 @@ describe('build-resource-bundles', () => {
             for (const filePath of filePaths) {
                 expect(filePath.includes('/')).toBe(true);
             }
+        });
+
+        it('should contain the browser-bundled Electronics Logic grader', () => {
+            const bundlePath = path.join(bundlesPath, 'idevices.zip');
+            const zipBuffer = fs.readFileSync(bundlePath);
+            const unzipped = unzipSync(new Uint8Array(zipBuffer));
+            const graderBundle = unzipped['electronics-logic/electronics-logic-grader.bundle.js'];
+
+            expect(graderBundle).toBeDefined();
+            const content = new TextDecoder().decode(graderBundle);
+            expect(content).toContain('$electronicsLogicGrader');
+            expect(content).toContain('electronics-logic-core');
         });
     });
 });

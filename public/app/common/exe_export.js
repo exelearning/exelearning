@@ -308,6 +308,21 @@ window.$exeExport = {
             this.delayLoadingIdevicesJson);
     },
 
+    needsJsonRender: function (componentType, ideviceType) {
+        const jsonOnlyIdevices = [
+            'casestudy',
+            'file-attachment',
+            'form',
+            'image-gallery',
+            'magnifier',
+            'three-sixty-viewer',
+            'trueorfalse',
+            'adaptative-quiz',
+            'electronics-logic',
+        ];
+        return componentType === 'json' && jsonOnlyIdevices.includes(ideviceType);
+    },
+
     /**
      * Init export json idevice
      *
@@ -362,22 +377,8 @@ window.$exeExport = {
             // JSON iDevices that store ALL content in jsonProperties (not in htmlView) need renderView
             // to generate the complete interface. These iDevices have empty htmlView by design.
             // Other JSON iDevices (like text) may have pre-rendered content in htmlView.
-            const isJsonIdevice = ideviceNode.getAttribute('data-idevice-component-type') === 'json';
-            // JSON-only iDevices that store ALL content in jsonProperties (not in htmlView)
-            // and need renderView to generate the complete interface.
-            // 'trueorfalse' added for legacy imports that have empty htmlView.
-            const jsonOnlyIdevices = [
-                'casestudy',
-                'file-attachment',
-                'form',
-                'image-gallery',
-                'magnifier',
-                'three-sixty-viewer',
-                'trueorfalse',
-                'adaptative-quiz',
-            ];
             const ideviceType = ideviceNode.getAttribute('data-idevice-type');
-            const needsJsonRender = isJsonIdevice && jsonOnlyIdevices.includes(ideviceType);
+            const needsJsonRender = this.needsJsonRender(ideviceNode.getAttribute('data-idevice-component-type'), ideviceType);
             if (needsJsonRender || ideviceNode.classList.contains('db-no-data')) {
                 // Load template content if we only have filename
                 this.loadTemplateAndRender(ideviceNode, exportIdevice, jsonData, accesibility, templateFilename, idevicePath);

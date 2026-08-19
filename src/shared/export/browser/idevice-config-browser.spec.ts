@@ -169,6 +169,13 @@ describe('idevice-config-browser', () => {
             expect(config.cssClass).toBe('file-attachment');
             expect(config.componentType).toBe('json');
         });
+
+        it('marks electronics-logic as a json component so preview binds learner controls', () => {
+            const config = getIdeviceConfig('electronics-logic');
+            expect(config.cssClass).toBe('electronics-logic');
+            expect(config.componentType).toBe('json');
+            expect(config.template).toBe('electronics-logic.html');
+        });
     });
 
     describe('isJsonIdevice', () => {
@@ -311,6 +318,13 @@ describe('idevice-config-browser', () => {
             const files = getIdeviceExportFiles('image-gallery', '.js');
             expect(files).toContain('image-gallery.js');
             expect(files).toContain('simple-lightbox.min.js');
+        });
+
+        it('loads the Electronics Logic grader bundle before its learner runtime', () => {
+            expect(getIdeviceExportFiles('electronics-logic', '.js')).toEqual([
+                'electronics-logic-grader.bundle.js',
+                'electronics-logic.js',
+            ]);
         });
 
         it('includes three.min.js and OrbitControls.js for three-sixty-viewer', () => {

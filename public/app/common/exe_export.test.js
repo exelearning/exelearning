@@ -149,6 +149,24 @@ describe('exe_export.js', () => {
     vi.useRealTimers();
   });
 
+  describe('needsJsonRender', () => {
+    it('treats electronics-logic as a JSON-only idevice needing fresh renderView', () => {
+      expect(window.$exeExport.needsJsonRender('json', 'electronics-logic')).toBe(true);
+    });
+
+    it('still treats trueorfalse as a JSON-only idevice (existing precedent)', () => {
+      expect(window.$exeExport.needsJsonRender('json', 'trueorfalse')).toBe(true);
+    });
+
+    it('does not require fresh renderView for a JSON idevice outside the allow-list', () => {
+      expect(window.$exeExport.needsJsonRender('json', 'text')).toBe(false);
+    });
+
+    it('does not require fresh renderView when component type is not json', () => {
+      expect(window.$exeExport.needsJsonRender('html', 'electronics-logic')).toBe(false);
+    });
+  });
+
   it('sets window.eXe.app to $exe', () => {
     window.$exeExport.setExe();
 
