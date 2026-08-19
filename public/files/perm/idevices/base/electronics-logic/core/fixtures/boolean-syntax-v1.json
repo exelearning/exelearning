@@ -1,0 +1,228 @@
+{
+    "schemaVersion": 1,
+    "grammarVersion": "boolean-expression-v1",
+    "valid": [
+        { "id": "variable", "expression": "A", "expectedAst": "A", "variables": ["A"] },
+        { "id": "constant-zero", "expression": "0", "expectedAst": "0", "variables": [] },
+        { "id": "constant-one", "expression": "1", "expectedAst": "1", "variables": [] },
+        { "id": "not-bang", "expression": "!A", "expectedAst": "NOT(A)", "variables": ["A"] },
+        { "id": "not-symbol", "expression": "¬A", "expectedAst": "NOT(A)", "variables": ["A"] },
+        { "id": "not-postfix", "expression": "A'", "expectedAst": "NOT(A)", "variables": ["A"] },
+        { "id": "double-not", "expression": "!!A", "expectedAst": "NOT(NOT(A))", "variables": ["A"] },
+        { "id": "or-plus", "expression": "A+B", "expectedAst": "OR(A,B)", "variables": ["A", "B"] },
+        { "id": "or-keyword", "expression": "A OR B", "expectedAst": "OR(A,B)", "variables": ["A", "B"] },
+        { "id": "and-implicit", "expression": "AB", "expectedAst": "AND(A,B)", "variables": ["A", "B"] },
+        { "id": "and-dot", "expression": "A.B", "expectedAst": "AND(A,B)", "variables": ["A", "B"] },
+        { "id": "and-star", "expression": "A*B", "expectedAst": "AND(A,B)", "variables": ["A", "B"] },
+        { "id": "and-keyword", "expression": "A AND B", "expectedAst": "AND(A,B)", "variables": ["A", "B"] },
+        { "id": "xor-keyword", "expression": "A XOR B", "expectedAst": "XOR(A,B)", "variables": ["A", "B"] },
+        { "id": "xor-symbol", "expression": "A⊕B", "expectedAst": "XOR(A,B)", "variables": ["A", "B"] },
+        {
+            "id": "precedence-and-before-or",
+            "expression": "A+B*C",
+            "expectedAst": "OR(A,AND(B,C))",
+            "variables": ["A", "B", "C"]
+        },
+        {
+            "id": "precedence-xor-before-or-left",
+            "expression": "A XOR B+C",
+            "expectedAst": "OR(XOR(A,B),C)",
+            "variables": ["A", "B", "C"]
+        },
+        {
+            "id": "precedence-xor-before-or-right",
+            "expression": "A+B XOR C",
+            "expectedAst": "OR(A,XOR(B,C))",
+            "variables": ["A", "B", "C"]
+        },
+        {
+            "id": "precedence-not-before-implicit-and",
+            "expression": "!AB",
+            "expectedAst": "AND(NOT(A),B)",
+            "variables": ["A", "B"]
+        },
+        {
+            "id": "prefix-not-parentheses",
+            "expression": "!(A+B)",
+            "expectedAst": "NOT(OR(A,B))",
+            "variables": ["A", "B"]
+        },
+        {
+            "id": "postfix-not-parentheses",
+            "expression": "(A+B)'",
+            "expectedAst": "NOT(OR(A,B))",
+            "variables": ["A", "B"]
+        },
+        {
+            "id": "implicit-and-before-parentheses",
+            "expression": "A(B+C)",
+            "expectedAst": "AND(A,OR(B,C))",
+            "variables": ["A", "B", "C"]
+        },
+        {
+            "id": "implicit-and-between-parentheses",
+            "expression": "(A+B)(C+D)",
+            "expectedAst": "AND(OR(A,B),OR(C,D))",
+            "variables": ["A", "B", "C", "D"]
+        },
+        {
+            "id": "or-left-associative",
+            "expression": "A+B+C",
+            "expectedAst": "OR(OR(A,B),C)",
+            "variables": ["A", "B", "C"]
+        },
+        {
+            "id": "xor-left-associative",
+            "expression": "A XOR B XOR C",
+            "expectedAst": "XOR(XOR(A,B),C)",
+            "variables": ["A", "B", "C"]
+        },
+        {
+            "id": "implicit-and-left-associative",
+            "expression": "ABC",
+            "expectedAst": "AND(AND(A,B),C)",
+            "variables": ["A", "B", "C"]
+        },
+        { "id": "grouped-variable", "expression": "(A)", "expectedAst": "A", "variables": ["A"] },
+        {
+            "id": "explicit-and-group",
+            "expression": "A*(B OR C)",
+            "expectedAst": "AND(A,OR(B,C))",
+            "variables": ["A", "B", "C"]
+        },
+        {
+            "id": "not-keyword",
+            "expression": "NOT A AND B",
+            "expectedAst": "AND(NOT(A),B)",
+            "variables": ["A", "B"]
+        },
+        {
+            "id": "not-keyword-group",
+            "expression": "NOT (A XOR B)",
+            "expectedAst": "NOT(XOR(A,B))",
+            "variables": ["A", "B"]
+        }
+    ],
+    "invalid": [
+        {
+            "id": "empty-expression",
+            "expression": "",
+            "error": {
+                "code": "EMPTY_EXPRESSION",
+                "position": 0,
+                "expected": ["LITERAL", "VARIABLE", "LPAREN", "NOT"],
+                "message": "Biểu thức không được để trống."
+            }
+        },
+        {
+            "id": "unsupported-variable",
+            "expression": "E",
+            "error": {
+                "code": "INVALID_VARIABLE",
+                "position": 0,
+                "expected": ["VARIABLE"],
+                "message": "Biến \"E\" không hợp lệ; chỉ chấp nhận A đến D."
+            }
+        },
+        {
+            "id": "lowercase-variable",
+            "expression": "a",
+            "error": {
+                "code": "INVALID_VARIABLE",
+                "position": 0,
+                "expected": ["VARIABLE"],
+                "message": "Biến \"a\" không hợp lệ; chỉ chấp nhận A đến D."
+            }
+        },
+        {
+            "id": "unsupported-constant",
+            "expression": "2",
+            "error": {
+                "code": "INVALID_CONSTANT",
+                "position": 0,
+                "expected": ["LITERAL"],
+                "message": "Hằng \"2\" không hợp lệ; chỉ chấp nhận 0 hoặc 1."
+            }
+        },
+        {
+            "id": "unsupported-character",
+            "expression": "A@B",
+            "error": {
+                "code": "INVALID_CHARACTER",
+                "position": 1,
+                "expected": ["AND", "XOR", "OR", "RPAREN", "EOF"],
+                "message": "Ký tự \"@\" không được hỗ trợ."
+            }
+        },
+        {
+            "id": "missing-right-operand",
+            "expression": "A+",
+            "error": {
+                "code": "UNEXPECTED_END",
+                "position": 2,
+                "expected": ["LITERAL", "VARIABLE", "LPAREN", "NOT"],
+                "message": "Thiếu toán hạng tại vị trí 2."
+            }
+        },
+        {
+            "id": "leading-binary-operator",
+            "expression": "+A",
+            "error": {
+                "code": "UNEXPECTED_TOKEN",
+                "position": 0,
+                "expected": ["LITERAL", "VARIABLE", "LPAREN", "NOT"],
+                "message": "Không mong đợi token \"+\" tại vị trí 0."
+            }
+        },
+        {
+            "id": "unclosed-parenthesis",
+            "expression": "(A+B",
+            "error": {
+                "code": "UNCLOSED_PARENTHESIS",
+                "position": 4,
+                "expected": ["RPAREN"],
+                "message": "Thiếu dấu \")\" cho dấu \"(\" tại vị trí 0."
+            }
+        },
+        {
+            "id": "unexpected-right-parenthesis",
+            "expression": "A)",
+            "error": {
+                "code": "UNEXPECTED_TOKEN",
+                "position": 1,
+                "expected": ["EOF"],
+                "message": "Không mong đợi token \")\" tại vị trí 1."
+            }
+        },
+        {
+            "id": "repeated-binary-operator",
+            "expression": "A**B",
+            "error": {
+                "code": "UNEXPECTED_TOKEN",
+                "position": 2,
+                "expected": ["LITERAL", "VARIABLE", "LPAREN", "NOT"],
+                "message": "Không mong đợi token \"*\" tại vị trí 2."
+            }
+        },
+        {
+            "id": "repeated-keyword-operator",
+            "expression": "A OR OR B",
+            "error": {
+                "code": "UNEXPECTED_TOKEN",
+                "position": 5,
+                "expected": ["LITERAL", "VARIABLE", "LPAREN", "NOT"],
+                "message": "Không mong đợi token \"OR\" tại vị trí 5."
+            }
+        },
+        {
+            "id": "empty-parentheses",
+            "expression": "()",
+            "error": {
+                "code": "UNEXPECTED_TOKEN",
+                "position": 1,
+                "expected": ["LITERAL", "VARIABLE", "LPAREN", "NOT"],
+                "message": "Không mong đợi token \")\" tại vị trí 1."
+            }
+        }
+    ]
+}

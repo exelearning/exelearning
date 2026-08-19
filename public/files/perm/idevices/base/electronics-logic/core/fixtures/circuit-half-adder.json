@@ -1,0 +1,29 @@
+{
+    "schemaVersion": 1,
+    "id": "half-adder",
+    "netlist": {
+        "schemaVersion": 1,
+        "nodes": [
+            { "id": "in-a", "kind": "INPUT", "x": 40, "y": 40 },
+            { "id": "in-b", "kind": "INPUT", "x": 40, "y": 160 },
+            { "id": "xor-1", "kind": "XOR", "x": 200, "y": 40 },
+            { "id": "and-1", "kind": "AND", "x": 200, "y": 160 },
+            { "id": "sum-out", "kind": "OUTPUT", "x": 360, "y": 40 },
+            { "id": "carry-out", "kind": "OUTPUT", "x": 360, "y": 160 }
+        ],
+        "wires": [
+            { "id": "w1", "from": { "node": "in-a", "pin": "out" }, "to": { "node": "xor-1", "pin": "a" } },
+            { "id": "w2", "from": { "node": "in-b", "pin": "out" }, "to": { "node": "xor-1", "pin": "b" } },
+            { "id": "w3", "from": { "node": "in-a", "pin": "out" }, "to": { "node": "and-1", "pin": "a" } },
+            { "id": "w4", "from": { "node": "in-b", "pin": "out" }, "to": { "node": "and-1", "pin": "b" } },
+            { "id": "w5", "from": { "node": "xor-1", "pin": "out" }, "to": { "node": "sum-out", "pin": "a" } },
+            { "id": "w6", "from": { "node": "and-1", "pin": "out" }, "to": { "node": "carry-out", "pin": "a" } }
+        ]
+    },
+    "testbench": {
+        "variables": ["A", "B"],
+        "inputs": { "A": "in-a", "B": "in-b" },
+        "outputs": { "Sum": "sum-out", "Carry": "carry-out" },
+        "expected": { "Sum": "A XOR B", "Carry": "A AND B" }
+    }
+}

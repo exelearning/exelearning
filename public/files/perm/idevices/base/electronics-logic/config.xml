@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<idevice>
+    <name>electronics-logic</name>
+    <title>Electronics Logic</title>
+    <css-class>electronics-logic</css-class>
+    <category>Science</category>
+    <icon>
+        <name>electronics-logic-icon</name>
+        <url>electronics-logic-icon.svg</url>
+        <type>img</type>
+    </icon>
+    <version>0.1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <edition-js>
+        <filename>electronics-logic-schema.bundle.js</filename>
+        <filename>electronics-logic.js</filename>
+    </edition-js>
+    <edition-css>
+        <filename>electronics-logic.css</filename>
+    </edition-css>
+    <export-js>
+        <filename>electronics-logic-grader.bundle.js</filename>
+        <filename>electronics-logic.js</filename>
+    </export-js>
+    <export-css>
+        <filename>electronics-logic.css</filename>
+    </export-css>
+    <export-template-filename>electronics-logic.html</export-template-filename>
+    <export-object>$electronicslogic</export-object>
+    <author>eXeLearning</author>
+    <author-url>https://exelearning.net</author-url>
+    <license>AGPL-3.0-or-later</license>
+    <license-url>https://www.gnu.org/licenses/agpl-3.0.html</license-url>
+    <description>Offline Boolean logic learning activity</description>
+    <downloadable>0</downloadable>
+</idevice>

@@ -1,0 +1,29 @@
+{
+    "id": "electronics-logic-fixture-v0",
+    "type": "electronics.logic",
+    "schemaVersion": 1,
+    "mode": "truthTable",
+    "prompt": "Hoàn thành bảng chân trị cho phép XOR.",
+    "variables": ["A", "B"],
+    "authoring": {
+        "placeholderText": "Electronics Logic activity placeholder",
+        "instructions": "Điền bốn hàng theo thứ tự nhị phân.",
+        "answerSource": "minterms",
+        "solution": ""
+    },
+    "answer": {
+        "outputs": [0, 1, 1, 0],
+        "expression": "",
+        "minterms": [1, 2],
+        "dontCares": []
+    },
+    "grading": {
+        "maxScore": 10
+    },
+    "learner": {
+        "outputs": [0, 1, 0, 0]
+    },
+    "accessibility": {
+        "label": "Bài tập bảng chân trị XOR"
+    }
+}

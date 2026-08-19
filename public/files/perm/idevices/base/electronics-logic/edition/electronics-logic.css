@@ -1,0 +1,75 @@
+.electronics-logic-editor {
+    border: 1px solid #b7c7d6;
+    border-radius: 0.5rem;
+    background: #f4f8fb;
+    padding: 1rem;
+}
+
+.electronics-logic-editor__title {
+    margin: 0 0 1rem;
+}
+
+.electronics-logic-authoring {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.electronics-logic-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.electronics-logic-field:has([data-field="prompt"]),
+.electronics-logic-field:has([data-field="expression"]),
+.electronics-logic-field:has([data-field="solution"]) {
+    grid-column: 1 / -1;
+}
+
+.electronics-logic-field label {
+    font-weight: 600;
+}
+
+.electronics-logic-field input,
+.electronics-logic-field select,
+.electronics-logic-field textarea {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.electronics-logic-field__help {
+    margin: 0;
+    color: #475467;
+    font-size: 0.875rem;
+}
+
+.electronics-logic-validation-error {
+    border: 1px solid #b42318;
+    border-radius: 0.5rem;
+    background: #fff4f2;
+    color: #7a271a;
+    padding: 1rem;
+}
+
+.electronics-logic-validation-error h3 {
+    margin-top: 0;
+}
+
+.electronics-logic-validation-error ul {
+    margin-bottom: 0;
+}
+
+.electronics-logic-authoring-errors {
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 48rem) {
+    .electronics-logic-authoring {
+        grid-template-columns: 1fr;
+    }
+
+    .electronics-logic-field:has([data-field]) {
+        grid-column: 1;
+    }
+}

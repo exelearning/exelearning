@@ -1,0 +1,326 @@
+.electronics-logic-export {
+    border: 1px solid #b7c7d6;
+    border-radius: 0.5rem;
+    background: #f4f8fb;
+    padding: 1rem;
+}
+
+.electronics-logic-runtime__prompt {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+}
+
+.electronics-logic-expression__label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.electronics-logic-expression__input {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 36rem;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-weight: 400;
+}
+
+.electronics-logic-table-wrap {
+    overflow-x: auto;
+}
+
+.electronics-logic-table {
+    width: 100%;
+    max-width: 36rem;
+    border-collapse: collapse;
+    text-align: center;
+}
+
+.electronics-logic-table caption {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+.electronics-logic-table th,
+.electronics-logic-table td {
+    border: 1px solid #98a2b3;
+    padding: 0.4rem 0.65rem;
+}
+
+.electronics-logic-table th {
+    background: #e4edf5;
+}
+
+.electronics-logic-table select {
+    min-width: 3.5rem;
+}
+
+.electronics-logic-kmap {
+    overflow-x: auto;
+}
+
+.electronics-logic-kmap__table {
+    border-collapse: collapse;
+    text-align: center;
+}
+
+.electronics-logic-kmap__table caption {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+.electronics-logic-kmap__table th,
+.electronics-logic-kmap__table td {
+    border: 1px solid #98a2b3;
+    padding: 0.4rem;
+}
+
+.electronics-logic-kmap__table th {
+    background: #e4edf5;
+}
+
+.electronics-logic-kmap__cell {
+    min-width: 5rem;
+}
+
+.electronics-logic-kmap__cell select {
+    min-width: 3.5rem;
+}
+
+.electronics-logic-kmap__selector {
+    display: block;
+    width: 100%;
+    margin-top: 0.35rem;
+    border: 1px solid #667085;
+    border-radius: 0.25rem;
+    background: #fff;
+}
+
+.electronics-logic-kmap__selector[data-kmap-selected="true"] {
+    border-color: #175cd3;
+    background: #d1e9ff;
+    outline: 0.15rem solid #175cd3;
+}
+
+.electronics-logic-kmap__selector[data-kmap-grouped="true"] {
+    border-color: #067647;
+    background: #d1fadf;
+}
+
+.electronics-logic-kmap__group-actions {
+    margin-top: 0.75rem;
+}
+
+.electronics-logic-kmap__groups {
+    margin-top: 0.75rem;
+}
+
+.electronics-logic-kmap__groups h4 {
+    margin: 0 0 0.35rem;
+}
+
+.electronics-logic-kmap__groups ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.electronics-logic-kmap__groups [data-role="kmap-group"] {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+}
+
+.electronics-logic-circuit {
+    overflow-x: auto;
+}
+
+.electronics-logic-circuit__palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+}
+
+.electronics-logic-circuit__palette-item {
+    min-height: 2.5rem;
+    border: 1px solid #667085;
+    border-radius: 0.25rem;
+    background: #fff;
+    padding: 0.35rem 0.65rem;
+}
+
+.electronics-logic-circuit__palette-item[aria-pressed="true"] {
+    border-color: #175cd3;
+    background: #d1e9ff;
+    outline: 0.15rem solid #175cd3;
+}
+
+.electronics-logic-circuit__canvas {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(12, 40px);
+    grid-template-rows: repeat(8, 40px);
+    width: 480px;
+    height: 320px;
+    border: 1px solid #667085;
+    background: #f4f8fb;
+}
+
+.electronics-logic-circuit__cell {
+    box-sizing: border-box;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #d0d5dd;
+    background: transparent;
+    padding: 0;
+}
+
+.electronics-logic-circuit__cell[data-circuit-rejected="true"] {
+    border-color: #b42318;
+    background: #fee4e2;
+    outline: 0.15rem solid #b42318;
+}
+
+.electronics-logic-circuit__wire-layer {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    width: 480px;
+    height: 320px;
+    pointer-events: none;
+}
+
+.electronics-logic-circuit__wire {
+    stroke: #344054;
+    stroke-width: 3;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.electronics-logic-circuit__node-item {
+    position: absolute;
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+}
+
+.electronics-logic-circuit__node {
+    box-sizing: border-box;
+    width: 40px;
+    height: 40px;
+    overflow: hidden;
+    border: 2px solid #344054;
+    border-radius: 0.35rem;
+    background: #e4edf5;
+    padding: 0.15rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.electronics-logic-circuit__pin {
+    position: absolute;
+    z-index: 3;
+    width: 12px;
+    height: 12px;
+    margin: -6px;
+    border: 2px solid #344054;
+    border-radius: 50%;
+    background: #fff;
+    padding: 0;
+}
+
+.electronics-logic-circuit__pin[data-pin-direction="output"] {
+    background: #d1fadf;
+}
+
+.electronics-logic-circuit__pin[data-circuit-wire-source="true"] {
+    border-color: #175cd3;
+    outline: 0.15rem solid #175cd3;
+}
+
+.electronics-logic-circuit__node[data-node-kind="INPUT"],
+.electronics-logic-circuit__node[data-node-kind="OUTPUT"] {
+    background: #d1fadf;
+}
+
+.electronics-logic-circuit__node[data-node-kind="NOT"] {
+    background: #fef0c7;
+}
+
+.electronics-logic-circuit__node[data-node-kind="AND"],
+.electronics-logic-circuit__node[data-node-kind="OR"],
+.electronics-logic-circuit__node[data-node-kind="XOR"] {
+    background: #d1e9ff;
+}
+
+.electronics-logic-circuit__node[data-circuit-selected="true"] {
+    border-color: #175cd3;
+    outline: 0.15rem solid #175cd3;
+}
+
+.electronics-logic-circuit__delete {
+    position: absolute;
+    top: 0;
+    left: 44px;
+    min-width: 4.5rem;
+    min-height: 2.5rem;
+    border: 1px solid #b42318;
+    border-radius: 0.25rem;
+    background: #fff;
+    color: #7a271a;
+}
+
+.electronics-logic-circuit__feedback {
+    min-height: 1.5rem;
+    margin: 0.5rem 0 0;
+    color: #7a271a;
+    font-weight: 600;
+}
+
+.electronics-logic-runtime__empty {
+    margin: 0.8rem 0 0;
+    color: #7a271a;
+}
+
+.electronics-logic-runtime__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+}
+
+.electronics-logic-runtime__check,
+.electronics-logic-runtime__reset,
+.electronics-logic-kmap button {
+    min-height: 2.5rem;
+}
+
+.electronics-logic-runtime__feedback {
+    margin-top: 0.8rem;
+    font-weight: 600;
+}
+
+.electronics-logic-runtime [data-grade="passed"] {
+    outline: 0.2rem solid #067647;
+    outline-offset: 0.1rem;
+}
+
+.electronics-logic-runtime [data-grade="failed"] {
+    outline: 0.2rem solid #b42318;
+    outline-offset: 0.1rem;
+}
+
+.electronics-logic-runtime__alert {
+    margin: 0;
+    color: #7a271a;
+    font-weight: 600;
+}
+
+.electronics-logic-runtime--invalid {
+    border-left: 0.25rem solid #b42318;
+    padding-left: 0.75rem;
+}
