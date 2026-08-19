@@ -1,5 +1,5 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
-import { waitForAppReady, closePreviewPanel } from '../helpers/workarea-helpers';
+import { waitForAppReady } from '../helpers/workarea-helpers';
 
 test.describe('Preview fullscreen fallback', () => {
     test.beforeEach(({}, testInfo) => {
@@ -20,7 +20,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => false; // stub the method, not the cached field
             mgr._updateExtractButton();
         });
 
@@ -54,7 +54,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => false; // stub the method, not the cached field
             mgr._updateExtractButton();
         });
 
@@ -89,7 +89,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => false; // stub the method, not the cached field
             mgr._updateExtractButton();
         });
 
@@ -125,7 +125,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => false; // stub the method, not the cached field
             mgr._updateExtractButton();
         });
 
@@ -154,7 +154,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => false; // stub the method, not the cached field
             mgr._updateExtractButton();
         });
 
@@ -184,17 +184,22 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => false; // stub the method, not the cached field
             mgr._updateExtractButton();
         });
 
         await page.locator('#preview-extract-button').click();
         await expect(panel).toHaveClass(/preview-fullscreen/);
 
-        await closePreviewPanel(page);
+        // Don't use closePreviewPanel()'s waitFor({state: 'hidden'}) here:
+        // .preview-sidenav is moved off-screen via `transform`, not actually
+        // hidden (display/visibility/opacity), so Playwright still reports
+        // it as visible - wait for the 'active' class instead.
+        await page.locator('#previewsidenavclose').click({ force: true });
+        await expect(panel).not.toHaveClass(/active/);
 
         await page.click('#head-bottom-preview');
-        await panel.waitFor({ state: 'visible', timeout: 15000 });
+        await expect(panel).toHaveClass(/active/, { timeout: 15000 });
 
         const hasFullscreen = await panel.evaluate(el => el.classList.contains('preview-fullscreen'));
         expect(hasFullscreen).toBe(false);
@@ -224,7 +229,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => false; // stub the method, not the cached field
             mgr._updateExtractButton();
         });
 
@@ -269,7 +274,7 @@ test.describe('Preview fullscreen fallback', () => {
         await page.evaluate(() => {
             const mgr = (window as any).eXeLearning?.app?.interface?.previewButton?.getPanel();
             if (!mgr) throw new Error('PreviewPanelManager not found');
-            mgr._swAvailable = false;
+            mgr.isServiceWorkerPreviewAvailable = () => false; // stub the method, not the cached field
             mgr._updateExtractButton();
         });
 
