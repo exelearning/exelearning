@@ -84,7 +84,49 @@
             // registration that knows both the position and the stable id
             // claims them (see register()).
             legacyByIndex: {},
+            // Page position remembered from a registration that arrived
+            // before cmi.suspend_data was loaded, so load() can still claim.
+            legacyIndexById: {},
         };
+    }
+
+    /**
+     * Inherit a migrated score for `id` when the live record has none yet.
+     * A live score (including 0) is never replaced.
+     *
+     * @param {string} id - Activity identifier.
+     * @param {number|string|null} legacyIndex - Page position from the old format.
+     * @param {object|null} previous - Existing record, if any.
+     * @returns {{score: number}|null} Score to merge, or null.
+     */
+    function claimFromPool(id, legacyIndex, previous) {
+        var index = toNumber(legacyIndex, null);
+        if (index === null) {
+            return null;
+        }
+        if (!Object.prototype.hasOwnProperty.call(state.legacyByIndex, index)) {
+            return null;
+        }
+        if (previous && previous.score !== null && previous.score !== undefined) {
+            return null;
+        }
+        var seed = { score: state.legacyByIndex[index].score };
+        delete state.legacyByIndex[index];
+        return seed;
+    }
+
+    /**
+     * Attach pool scores to records that registered before load() ran.
+     */
+    function claimRegisteredFromPool() {
+        for (var index = 0; index < state.order.length; index += 1) {
+            var id = state.order[index];
+            var record = state.byId[id];
+            var seed = claimFromPool(id, state.legacyIndexById[id], record);
+            if (seed) {
+                record.score = seed.score;
+            }
+        }
     }
 
     var state = initialState();
@@ -390,20 +432,15 @@
                 return null;
             }
             var previous = Object.prototype.hasOwnProperty.call(state.byId, id) ? state.byId[id] : null;
-            var legacySeed = null;
+            if (descriptor && descriptor.legacyIndex !== undefined) {
+                state.legacyIndexById[id] = toNumber(descriptor.legacyIndex, null);
+            }
+            var legacySeed = claimFromPool(id, state.legacyIndexById[id], previous);
             if (previous === null) {
-                // Claim a migrated legacy record. The old suspend_data format
-                // identified activities by page position, so the claim happens
-                // here, where the caller knows both the position
-                // (descriptor.legacyIndex) and the stable id. Only the score
-                // is trusted: the legacy format carries no completion flag,
-                // so completion stays with the live iDevice.
-                var legacyIndex = descriptor && descriptor.legacyIndex !== undefined ? descriptor.legacyIndex : null;
-                if (legacyIndex !== null && Object.prototype.hasOwnProperty.call(state.legacyByIndex, legacyIndex)) {
-                    legacySeed = { score: state.legacyByIndex[legacyIndex].score };
-                    delete state.legacyByIndex[legacyIndex];
-                }
                 state.order.push(id);
+            }
+            if (legacySeed && previous) {
+                previous.score = legacySeed.score;
             }
             state.byId[id] = normalize(id, descriptor, previous || legacySeed);
             return state.byId[id];
@@ -431,6 +468,7 @@
                 return false;
             }
             delete state.byId[id];
+            delete state.legacyIndexById[id];
             state.order.splice(state.order.indexOf(id), 1);
             return true;
         },
@@ -678,6 +716,7 @@
                 }
                 result.restored += 1;
             }
+            claimRegisteredFromPool();
             return result;
         },
     };

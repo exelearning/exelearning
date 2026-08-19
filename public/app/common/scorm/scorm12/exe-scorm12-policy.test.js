@@ -75,6 +75,45 @@ describe('exe-scorm12-policy', () => {
             expect(activities.get('quiz')).toMatchObject({ completed: true, answered: 3, total: 5, score: 60 });
         });
 
+        it('restores cmi.core.score.raw from the loaded registry and does not write 0', () => {
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.core.score.raw': '80',
+                'cmi.suspend_data': 'exe12/1|quiz;7;0;0;80;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+
+            expect(api.data['cmi.core.score.raw']).toBe('80');
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.score.raw')).toEqual([
+                ['cmi.core.score.raw', '80'],
+            ]);
+        });
+
+        it('claims a pre-registered activity when suspend_data is loaded', () => {
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.core.score.raw': '40',
+                'cmi.suspend_data': '1. "Quiz"; Score: 40%; Weight: 1%',
+            });
+            activities.register('quiz-a', { evaluable: true, completionRequired: true, legacyIndex: 1 });
+
+            policy.applyEntryPolicy();
+
+            expect(activities.get('quiz-a')).toMatchObject({ score: 40 });
+            expect(api.data['cmi.core.score.raw']).toBe('40');
+        });
+
+        it('marks entry as applied so mid-session writers can talk to the LMS', () => {
+            expect(policy.hasAppliedEntry()).toBe(false);
+            startSession({});
+            expect(policy.hasAppliedEntry()).toBe(false);
+
+            policy.applyEntryPolicy();
+
+            expect(policy.hasAppliedEntry()).toBe(true);
+        });
+
         it('adopts the LMS mastery score as the success threshold', () => {
             startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.student_data.mastery_score': '70' });
 
@@ -355,6 +394,16 @@ describe('exe-scorm12-policy', () => {
             register('slides-2', { evaluable: false, completionRequired: false });
 
             expect(policy.decideStatus()).toMatchObject({ status: 'completed', reason: 'no-required-activities' });
+        });
+
+        it('a presentation on a scored page stays incomplete until a required activity registers', () => {
+            policy.setHasScoredActivities(true);
+            register('slides-1', { evaluable: false, completionRequired: false });
+
+            expect(policy.decideStatus()).toMatchObject({
+                status: 'incomplete',
+                reason: 'required-activities-pending',
+            });
         });
 
         it('10. a suspended page reopened keeps its restored progress', () => {
@@ -757,6 +806,14 @@ describe('exe-scorm12-policy', () => {
 
             expect(policy.persistActivities()).toBe(true);
             expect(api.callsFor('LMSSetValue')).toEqual([]);
+        });
+
+        it('persistActivities writes the unclaimed legacy pool when no live activity has registered', () => {
+            startSession({});
+            activities.load('1. "Quiz"; Score: 40%; Weight: 1%');
+
+            expect(policy.persistActivities()).toBe(true);
+            expect(api.data['cmi.suspend_data']).toContain('1;40;1');
         });
     });
 });

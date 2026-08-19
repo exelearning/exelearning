@@ -285,7 +285,7 @@ export class FileSystemResourceProvider implements ResourceProvider {
 
     /**
      * Fetch SCORM API wrapper files
-     * @param version - SCORM version: '1.2' or '2004' (files are the same for both)
+     * @param version - `'1.2'` returns the vendored wrapper plus runtime layers; `'2004'` returns the legacy pair
      * @returns Map of file paths to content
      */
     async fetchScormFiles(version: '1.2' | '2004' = '1.2'): Promise<Map<string, Buffer>> {

@@ -13,9 +13,9 @@
  * doc/development/scorm12-runtime-contract.md — iDevices and the Moodle
  * plugin hard-code them):
  * - libs/SCORM_API_wrapper.js — the vendored wrapper, verbatim.
- * - libs/SCOFunctions.js — the four layers concatenated in load order, so the
- *   file stays self-contained for consumers that lazy-load exactly these two
- *   scripts.
+ * - libs/SCOFunctions.js — the five layers concatenated in load order
+ *   (client, activities, policy, lifecycle, adapter), so the file stays
+ *   self-contained for consumers that lazy-load exactly these two scripts.
  */
 
 /** Vendored upstream pipwerks wrapper (relative to app/common/scorm/). */

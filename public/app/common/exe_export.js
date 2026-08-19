@@ -271,13 +271,15 @@ window.$exeExport = {
                     }
                 }
             })
-            window.loadPage()
             if (window.exeScorm12 && typeof window.exeScorm12.setPageHasScoredActivities === 'function') {
-                // New SCORM 1.2 runtime: it owns end-of-session handling
-                // (pagehide/visibilitychange); hand over the activity flag
-                // instead of registering an unreliable unload handler.
+                // Scan before loadPage() so applyEntryPolicy() sees whether
+                // scored iDevices exist (a presentation iDevice may already
+                // have registered on jQuery ready). The runtime owns
+                // end-of-session handling; no unload handler is registered.
                 window.exeScorm12.setPageHasScoredActivities(isSCORM);
+                window.loadPage();
             } else {
+                window.loadPage();
                 // Legacy runtime (SCORM 2004 packages and packages exported
                 // before the SCORM 1.2 runtime rewrite). `pagehide` rather
                 // than `unload`: this file also ships inside SCORM 1.2

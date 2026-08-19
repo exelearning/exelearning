@@ -1833,6 +1833,7 @@ describe('common.js $exeDevices', () => {
         recordActivityOutcome: vi.fn(),
         persistActivities: vi.fn(() => true),
         reconcilePendingActivities: vi.fn(() => null),
+        hasAppliedEntry: vi.fn(() => true),
       };
       window.exeScorm12 = { activities: registry, policy };
       $exeDevices.iDevice.gamification.scorm._activityNumbersById = {};
@@ -2094,6 +2095,19 @@ describe('common.js $exeDevices', () => {
       // Nothing is written behind the runtime's back.
       expect(set).not.toHaveBeenCalledWith('cmi.core.score.raw', expect.anything());
       expect(set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
+    });
+
+    it('showFinalScore does not write a zero score before entry policy has run', () => {
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      policy.hasAppliedEntry.mockReturnValue(false);
+      registry.summary.mockReturnValue({ score: 0 });
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+
+      getScorm().showFinalScore({ 1: { title: 'Q', score: 0, weighted: 1 } }, game);
+
+      expect(policy.setScoreDetailed).not.toHaveBeenCalled();
+      expect(policy.recordActivityOutcome).not.toHaveBeenCalled();
     });
 
     it('showFinalScore still records the outcome when the LMS refuses the score', () => {

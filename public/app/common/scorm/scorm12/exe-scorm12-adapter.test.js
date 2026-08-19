@@ -512,6 +512,24 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
             expect(api.data['cmi.core.score.min']).toBe('0');
         });
 
+        it('SetScoreMax/SetScoreMin treat LMS 401 as unsupported, not an error', () => {
+            const errorSpy = vi.fn();
+            client.configure({
+                getPipwerks: () => pipwerks,
+                now: () => fakeNow,
+                error: errorSpy,
+                warn: warnSpy,
+            });
+            useLms({}, { profile: 'minimal' });
+            pageWindow.loadPage();
+            errorSpy.mockClear();
+
+            pageWindow.scorm.SetScoreMax(100);
+            pageWindow.scorm.SetScoreMin(0);
+
+            expect(errorSpy).not.toHaveBeenCalled();
+        });
+
         it('GetLearnerName/GetLearnerId/GetScoreRaw read the learner elements', () => {
             useLms({
                 'cmi.core.student_name': 'Learner, Test',

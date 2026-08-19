@@ -45,6 +45,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { unzipSync } from '../../../../src/shared/export';
+import { buildResumeRaceScorm12Package } from '../../../helpers/scorm12-resume-package';
 import { expect, test } from '../fixtures/auth.fixture';
 import { addTextIdeviceWithContent, gotoWorkarea, waitForAppReady } from '../helpers/workarea-helpers';
 
@@ -639,6 +640,66 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
         } finally {
             await page.unroute(`${ORIGIN}/**`);
+        }
+    });
+
+    test('does not zero a restored score when the quiz registers before loadPage', async ({ browser }) => {
+        test.setTimeout(60000);
+        const page = await browser.newPage();
+        const zip = unzipSync(buildResumeRaceScorm12Package());
+
+        await page.route(`${ORIGIN}/**`, async route => {
+            const url = new URL(route.request().url());
+            const pathname = decodeURIComponent(url.pathname);
+            if (pathname === '/lms.html') {
+                await route.fulfill({
+                    status: 200,
+                    contentType: 'text/html; charset=utf-8',
+                    body: harnessPage({
+                        'cmi.core.lesson_status': 'incomplete',
+                        'cmi.core.score.raw': '80',
+                        'cmi.core.entry': 'resume',
+                        'cmi.suspend_data': 'exe12/1|quiz-1;3;0;0;80;1;0;100',
+                    }),
+                });
+                return;
+            }
+            const key = pathname.replace(/^\/package\//, '');
+            const bytes = zip[key];
+            if (bytes) {
+                await route.fulfill({ status: 200, contentType: exportContentType(key), body: Buffer.from(bytes) });
+            } else {
+                await route.fulfill({ status: 404, contentType: 'text/plain', body: `not in export: ${key}` });
+            }
+        });
+
+        try {
+            await page.goto(`${ORIGIN}/lms.html`);
+            await page.waitForFunction(
+                () => (window as any).__scorm.calls.some((call: any) => call.method === 'LMSInitialize'),
+                null,
+                { timeout: 30000 },
+            );
+
+            await expect
+                .poll(() => page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw']), {
+                    timeout: 15000,
+                })
+                .toBe('80');
+            expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe(
+                'incomplete',
+            );
+
+            const rawWrites = await page.evaluate(() =>
+                (window as any).__scorm
+                    .signatures()
+                    .filter((s: string) => s.startsWith('LMSSetValue(cmi.core.score.raw=')),
+            );
+            expect(rawWrites).not.toContain('LMSSetValue(cmi.core.score.raw=0)');
+            expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
+        } finally {
+            await page.unroute(`${ORIGIN}/**`);
+            await page.close();
         }
     });
 });

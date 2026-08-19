@@ -1586,18 +1586,18 @@ var $exeDevices = {
 
                     const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
                     if (runtime && runtime.policy) {
-                        // SCORM 1.2 packages: the runtime owns score validation
-                        // and the completion/success policy. The status
-                        // decision reads the registry's own aggregate — the
-                        // same number recorded just below — so the two can
-                        // never disagree, and a page whose required activities
-                        // are still pending is never marked passed or failed.
-                        // The outcome is recorded even if the LMS refuses the
-                        // score write: completion is not held hostage by score
-                        // storage (runtime contract §8), and the failure stays
-                        // visible in setScoreDetailed's report.
-                        runtime.policy.setScoreDetailed(newFinalScore, 0, 100);
-                        runtime.policy.recordActivityOutcome();
+                        // Game iDevices call this from jQuery ready, which
+                        // runs before loadPage() restores cmi.suspend_data.
+                        // Writing score.raw=0 then would erase a resumed
+                        // attempt; wait until applyEntryPolicy() has run.
+                        const entryReady =
+                            typeof runtime.policy.hasAppliedEntry !== 'function' || runtime.policy.hasAppliedEntry();
+                        if (entryReady) {
+                            // SCORM 1.2 packages: the runtime owns score
+                            // validation and the completion/success policy.
+                            runtime.policy.setScoreDetailed(newFinalScore, 0, 100);
+                            runtime.policy.recordActivityOutcome();
+                        }
                     } else {
                         // Legacy runtime (SCORM 2004 packages and packages
                         // exported before the SCORM 1.2 runtime rewrite).

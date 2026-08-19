@@ -120,16 +120,12 @@ describe('unload handler scanner', () => {
     });
 
     describe('file selection', () => {
-        it.each([
-            'index.html',
-            'page.htm',
-            'page.xhtml',
-            'libs/SCOFunctions.js',
-            'mod.mjs',
-            'imsmanifest.xml',
-        ])('scans %s', name => {
-            expect(isScannableFile(name)).toBe(true);
-        });
+        it.each(['index.html', 'page.htm', 'page.xhtml', 'libs/SCOFunctions.js', 'mod.mjs', 'imsmanifest.xml'])(
+            'scans %s',
+            name => {
+                expect(isScannableFile(name)).toBe(true);
+            },
+        );
 
         it.each(['theme/base.css', 'content/image.png', 'fonts/inter.woff2', 'README'])('skips %s', name => {
             expect(isScannableFile(name)).toBe(false);

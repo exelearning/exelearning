@@ -342,7 +342,7 @@
          * "optional element not implemented", which is not an error).
          */
         SetScoreMax: function (maxScore) {
-            return client.setValue('cmi.core.score.max', maxScore);
+            return client.setOptionalValueDetailed('cmi.core.score.max', maxScore).success;
         },
         /**
          * LMS call. cmi.core.score.min is optional in SCORM 1.2.
@@ -357,7 +357,7 @@
          * @returns {boolean} True when the LMS accepted it.
          */
         SetScoreMin: function (minScore) {
-            return client.setValue('cmi.core.score.min', minScore);
+            return client.setOptionalValueDetailed('cmi.core.score.min', minScore).success;
         },
         /** LMS call. @returns {string} cmi.core.score.raw. */
         GetScoreRaw: function () {

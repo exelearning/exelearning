@@ -359,6 +359,26 @@ describe('exe-scorm12-activities', () => {
             expect(activities.pendingLegacy()).toBe(1);
         });
 
+        it('claims a pending legacy record when the first registration happened before load', () => {
+            // Game iDevices register on jQuery ready, which is before body
+            // onload runs loadPage() → applyEntryPolicy() → load().
+            activities.register('quiz-a', { evaluable: true, completionRequired: true, legacyIndex: 1 });
+            activities.load('1. "Quiz"; Score: 40%; Weight: 1%');
+
+            expect(activities.get('quiz-a')).toMatchObject({ score: 40, completed: false });
+            expect(activities.pendingLegacy()).toBe(0);
+        });
+
+        it('a re-register with a null score still claims the pool', () => {
+            activities.register('quiz-a', { evaluable: true, legacyIndex: 1 });
+            activities.load('1. "Quiz"; Score: 40%; Weight: 1%');
+            // load() already claimed; a later progress report must keep 40
+            // until the live iDevice supplies a real score.
+            const stored = activities.register('quiz-a', { evaluable: true, legacyIndex: 1 });
+
+            expect(stored).toMatchObject({ score: 40 });
+        });
+
         it('an unknown legacyIndex claims nothing', () => {
             activities.load('1. "Quiz"; Score: 40%; Weight: 1%');
 

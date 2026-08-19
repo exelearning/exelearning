@@ -112,6 +112,9 @@
             // required activity registers late; one restored from a previous
             // attempt or written explicitly by content never is.
             policySessionStatus: null,
+            // True after applyEntryPolicy() has restored suspend_data. Game
+            // iDevices register on jQuery ready, which is before loadPage().
+            entryApplied: false,
         };
     }
 
@@ -173,6 +176,16 @@
         var activities = deps.getActivities();
         var summary = activities ? activities.summary() : null;
         if (summary && summary.total > 0) {
+            // The page scan said there are scored iDevices, but none of them
+            // have registered as required yet (presentation inits first).
+            if (state.pageHasScoredActivities && !summary.hasRequired) {
+                return {
+                    hasRequired: true,
+                    allRequiredComplete: false,
+                    score: summary.score,
+                    source: 'page-flag-pending-registry',
+                };
+            }
             return {
                 hasRequired: summary.hasRequired,
                 allRequiredComplete: summary.allRequiredComplete,
@@ -256,6 +269,18 @@
             if (activities) {
                 activities.load(client.getValue(SUSPEND_DATA));
             }
+            state.entryApplied = true;
+            var summary = activities ? activities.summary() : null;
+            if (summary && summary.score !== null) {
+                policy.setScoreDetailed(summary.score, 0, 100);
+            }
+        },
+
+        /**
+         * @returns {boolean} True after applyEntryPolicy() restored suspend_data.
+         */
+        hasAppliedEntry: function () {
+            return state.entryApplied === true;
         },
 
         /**
@@ -460,7 +485,10 @@
          */
         persistActivities: function () {
             var activities = deps.getActivities();
-            if (!activities || activities.list().length === 0) {
+            if (!activities) {
+                return true;
+            }
+            if (activities.list().length === 0 && activities.pendingLegacy() === 0) {
                 return true;
             }
             return deps.getClient().setValue(SUSPEND_DATA, activities.serialize());
@@ -513,7 +541,8 @@
          */
         setStatusForContinue: function (status) {
             var client = deps.getClient();
-            var mode = client.getValue(LESSON_MODE);
+            var modeRead = client.getOptionalValue(LESSON_MODE);
+            var mode = modeRead.supported && modeRead.value !== '' ? modeRead.value : 'normal';
             if (mode === 'review' || mode === 'browse') {
                 return false;
             }
