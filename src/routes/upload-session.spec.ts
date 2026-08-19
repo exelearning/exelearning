@@ -1315,11 +1315,14 @@ describe('Upload Session Routes - Error Handling', () => {
 
         app = new Elysia().use(routes);
 
-        // Create a path that will cause write to fail
+        // Create a path that will cause write to fail.
+        // A directory sitting where the file must be written makes the write
+        // throw (EISDIR/EPERM) deterministically on every OS. chmod(0o444) is not
+        // reliable: on Windows it trips ensureDir (EEXIST) at the route level.
         const assetDir = path.join(TEST_DIR, 'assets', projectUuid);
         await fs.ensureDir(assetDir);
-        // Make the directory read-only to cause write failure
-        await fs.chmod(assetDir, 0o444);
+        const blockedFile = path.join(assetDir, 'readonly-fail.txt');
+        await fs.ensureDir(blockedFile);
 
         const formData = new FormData();
         formData.append(
@@ -1328,21 +1331,17 @@ describe('Upload Session Routes - Error Handling', () => {
         );
         formData.append('files', new Blob(['Content that cannot be written'], { type: 'text/plain' }));
 
-        try {
-            const response = await app.handle(
-                new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
-                    method: 'POST',
-                    body: formData,
-                }),
-            );
+        const response = await app.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
 
-            expect(response.status).toBe(200);
-            const data = await response.json();
-            // On read-only directory, write should fail
-            expect(data.failed).toBeGreaterThanOrEqual(0); // May succeed on some systems
-        } finally {
-            // Restore permissions for cleanup
-            await fs.chmod(assetDir, 0o755);
-        }
+        expect(response.status).toBe(200);
+        const data = await response.json();
+        // The blocked write must be reported as a per-file failure, not a 500.
+        expect(data.failed).toBeGreaterThanOrEqual(1);
+        expect(data.results.some((r: { success: boolean }) => !r.success)).toBe(true);
     });
 });

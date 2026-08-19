@@ -1,6 +1,10 @@
 import { describe, expect, it, mock } from 'bun:test';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require('path');
+
+// Normalize platform path separators to POSIX so assertions stay stable
+// on Windows (path.join produces backslashes there).
+const toPosix = (p: string) => p.replace(/\\/g, '/');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
     getExt,
@@ -83,15 +87,15 @@ describe('save-utils', () => {
 
     describe('proposeSavePath', () => {
         it('joins a provided directory with an effective name keeping its extension', () => {
-            expect(proposeSavePath('/tmp/dir', 'course.elpx')).toBe('/tmp/dir/course.elpx');
+            expect(toPosix(proposeSavePath('/tmp/dir', 'course.elpx'))).toBe('/tmp/dir/course.elpx');
         });
 
         it('defaults the extension to .elpx when the effective name has none', () => {
-            expect(proposeSavePath('/tmp/dir', 'untitled')).toBe(`/tmp/dir/untitled${DEFAULT_EXTENSION}`);
+            expect(toPosix(proposeSavePath('/tmp/dir', 'untitled'))).toBe(`/tmp/dir/untitled${DEFAULT_EXTENSION}`);
         });
 
         it('falls back to "document" when there is no effective name', () => {
-            expect(proposeSavePath('/tmp/dir', null)).toBe(`/tmp/dir/document${DEFAULT_EXTENSION}`);
+            expect(toPosix(proposeSavePath('/tmp/dir', null))).toBe(`/tmp/dir/document${DEFAULT_EXTENSION}`);
         });
 
         it('falls back to effective name when an unexpected error occurs', () => {
@@ -163,18 +167,16 @@ describe('save-utils', () => {
 
     describe('pickStoredSaveInfo', () => {
         it('prefers the global slot over the per-project cache', () => {
-            expect(
-                pickStoredSaveInfo(
-                    { dir: '/docs', name: 'A.elpx' },
-                    { dir: '/elsewhere', name: 'B.elpx' },
-                ),
-            ).toEqual({ dir: '/elsewhere', name: 'B.elpx' });
+            expect(pickStoredSaveInfo({ dir: '/docs', name: 'A.elpx' }, { dir: '/elsewhere', name: 'B.elpx' })).toEqual(
+                { dir: '/elsewhere', name: 'B.elpx' },
+            );
         });
 
         it('falls back to perKey when the global slot is empty', () => {
-            expect(
-                pickStoredSaveInfo({ dir: '/docs', name: 'A.elpx' }, { dir: null, name: null }),
-            ).toEqual({ dir: '/docs', name: 'A.elpx' });
+            expect(pickStoredSaveInfo({ dir: '/docs', name: 'A.elpx' }, { dir: null, name: null })).toEqual({
+                dir: '/docs',
+                name: 'A.elpx',
+            });
         });
 
         it('returns nulls when both slots are empty', () => {
@@ -187,41 +189,30 @@ describe('save-utils', () => {
         });
 
         it('mixes dir and name across slots when only one side has each', () => {
-            expect(
-                pickStoredSaveInfo({ dir: '/docs', name: 'A.elpx' }, { dir: null, name: 'B.elpx' }),
-            ).toEqual({ dir: '/docs', name: 'B.elpx' });
+            expect(pickStoredSaveInfo({ dir: '/docs', name: 'A.elpx' }, { dir: null, name: 'B.elpx' })).toEqual({
+                dir: '/docs',
+                name: 'B.elpx',
+            });
         });
     });
 
     describe('resolveSaveDir', () => {
         it('prefers the global slot directory over the per-project cache', () => {
             expect(
-                resolveSaveDir(
-                    { dir: '/perKey', name: 'A.elpx' },
-                    { dir: '/global', name: 'B.elpx' },
-                    '/lastUsed',
-                ),
+                resolveSaveDir({ dir: '/perKey', name: 'A.elpx' }, { dir: '/global', name: 'B.elpx' }, '/lastUsed'),
             ).toBe('/global');
         });
 
         it('falls back to the per-project cache when the global slot has no directory', () => {
-            expect(
-                resolveSaveDir(
-                    { dir: '/perKey', name: 'A.elpx' },
-                    { dir: null, name: null },
-                    '/lastUsed',
-                ),
-            ).toBe('/perKey');
+            expect(resolveSaveDir({ dir: '/perKey', name: 'A.elpx' }, { dir: null, name: null }, '/lastUsed')).toBe(
+                '/perKey',
+            );
         });
 
         it('falls back to lastUsedDir when neither perKey nor global has a directory', () => {
-            expect(
-                resolveSaveDir(
-                    { dir: null, name: null },
-                    { dir: null, name: null },
-                    '/Users/me/Desktop',
-                ),
-            ).toBe('/Users/me/Desktop');
+            expect(resolveSaveDir({ dir: null, name: null }, { dir: null, name: null }, '/Users/me/Desktop')).toBe(
+                '/Users/me/Desktop',
+            );
         });
 
         it('returns null when nothing is known', () => {
@@ -235,13 +226,9 @@ describe('save-utils', () => {
         });
 
         it('never shadows an explicit per-project or global directory', () => {
-            expect(
-                resolveSaveDir(
-                    { dir: '/Downloads', name: 'A.elpx' },
-                    { dir: null, name: null },
-                    '/Desktop',
-                ),
-            ).toBe('/Downloads');
+            expect(resolveSaveDir({ dir: '/Downloads', name: 'A.elpx' }, { dir: null, name: null }, '/Desktop')).toBe(
+                '/Downloads',
+            );
         });
     });
 
@@ -280,12 +267,7 @@ describe('save-utils', () => {
     //                  (same clear as File > New, mirrors the call added
     //                   in app.whenReady for issue #1666 follow-up)
     describe('save/open/new flow', () => {
-        const applySave = (
-            settings: Record<string, unknown>,
-            key: string,
-            dir: string,
-            name: string,
-        ) => {
+        const applySave = (settings: Record<string, unknown>, key: string, dir: string, name: string) => {
             clearSavedNameCache(settings);
             (settings as { currentFileSave?: unknown }).currentFileSave = { dir, name };
             const s = settings as {
@@ -477,9 +459,7 @@ describe('save-utils', () => {
         });
 
         it('ignores directory components in the filename (no traversal via the name)', () => {
-            expect(buildStagingPath('/tmp', '../../etc/passwd.pdf', 1)).toBe(
-                path.join('/tmp', 'exe-download-1.pdf'),
-            );
+            expect(buildStagingPath('/tmp', '../../etc/passwd.pdf', 1)).toBe(path.join('/tmp', 'exe-download-1.pdf'));
         });
 
         it('sanitizes the id so it cannot escape tempDir', () => {

@@ -10,6 +10,26 @@ import { up, down } from './001_initial';
 // Test database path
 const TEST_DB_PATH = '/tmp/migration-test.db';
 
+// On Windows the SQLite file handle can outlive db.destroy(), so a plain remove
+// races with the OS lock (EBUSY). Retry with backoff and also drop the
+// -wal/-shm sidecars the engine may have created.
+async function removeTestDb() {
+    for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+            await fs.remove(TEST_DB_PATH);
+            await fs.remove(`${TEST_DB_PATH}-wal`);
+            await fs.remove(`${TEST_DB_PATH}-shm`);
+            return;
+        } catch (err: any) {
+            if (err?.code === 'EBUSY' || err?.code === 'EPERM') {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                continue;
+            }
+            throw err;
+        }
+    }
+}
+
 // Use in-memory database for testing
 let db: Kysely<any>;
 
@@ -37,9 +57,7 @@ async function getIndexes(tableName: string) {
 describe('001_initial Migration', () => {
     beforeEach(async () => {
         // Clean up any existing test database
-        if (await fs.pathExists(TEST_DB_PATH)) {
-            await fs.remove(TEST_DB_PATH);
-        }
+        await removeTestDb();
 
         // Create database using the project's dialect
         db = new Kysely({
@@ -52,9 +70,7 @@ describe('001_initial Migration', () => {
     afterEach(async () => {
         await db.destroy();
         // Clean up test database
-        if (await fs.pathExists(TEST_DB_PATH)) {
-            await fs.remove(TEST_DB_PATH);
-        }
+        await removeTestDb();
     });
 
     describe('up migration', () => {

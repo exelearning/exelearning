@@ -43,16 +43,20 @@ describe('Cleanup Scheduler', () => {
     ) => {
         const { filesDir = '/tmp/test', existingPaths = new Set(), removeErrors = new Map() } = options;
         const removedPaths: string[] = [];
+        // path.join produces backslashes on Windows; normalize so the POSIX
+        // keys/expectations used below stay stable on every platform.
+        const toPosix = (p: string) => p.replace(/\\/g, '/');
 
         return {
             getFilesDir: () => filesDir,
             remove: async (targetPath: string) => {
-                if (removeErrors.has(targetPath)) {
-                    throw removeErrors.get(targetPath);
+                const normalized = toPosix(targetPath);
+                if (removeErrors.has(normalized)) {
+                    throw removeErrors.get(normalized);
                 }
-                removedPaths.push(targetPath);
+                removedPaths.push(normalized);
             },
-            fileExists: async (targetPath: string) => existingPaths.has(targetPath),
+            fileExists: async (targetPath: string) => existingPaths.has(toPosix(targetPath)),
             _removedPaths: removedPaths,
         };
     };

@@ -831,10 +831,15 @@ describe('Convert Routes', () => {
         });
 
         it('should handle internal error in export/:format endpoint', async () => {
-            // Create a mock that will cause temp directory issues
+            // Create a mock that will cause temp directory issues.
+            // A regular file in place of a directory makes ensureDir throw ENOTDIR
+            // on every OS. Drive roots (/nonexistent/...) are only non-writable on
+            // POSIX, so they are not a cross-platform way to force this failure.
+            const blocker = path.join(testDir, `blocker-export-${Date.now()}`);
+            await fs.writeFile(blocker, 'blocker');
             const brokenDeps = {
                 ...mockDeps,
-                tempDir: '/nonexistent/path/that/cannot/exist/export-test-' + Date.now(),
+                tempDir: path.join(blocker, 'nested', 'export-test'),
             };
 
             const brokenApp = new Elysia().use(createConvertRoutes(brokenDeps));
@@ -852,6 +857,7 @@ describe('Convert Routes', () => {
                     body: formData,
                 }),
             );
+            await fs.remove(blocker);
 
             // Should return 500 with INTERNAL_ERROR or EXPORT_FAILED
             expect(res.status).toBe(500);

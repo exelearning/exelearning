@@ -58,7 +58,7 @@ describe('File Helper Service', () => {
                 getCwd: () => '/test/cwd',
             });
             const result = helper.getFilesDir();
-            expect(result).toBe('/test/cwd/data');
+            expect(result.replace(/\\/g, '/')).toBe('/test/cwd/data');
         });
 
         it('should prefer ELYSIA_FILES_DIR over FILES_DIR', () => {

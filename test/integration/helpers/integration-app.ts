@@ -50,9 +50,16 @@ export async function createTestFilesDir(): Promise<string> {
  * Cleanup test files directory
  */
 export async function cleanupTestFilesDir(dir: string): Promise<void> {
-    if (dir.includes('test/temp')) {
-        await fs.remove(dir);
-    }
+    const testTempRoot = path.resolve(process.cwd(), 'test', 'temp');
+    const resolvedDir = path.resolve(dir);
+    const relativePath = path.relative(testTempRoot, resolvedDir);
+    const isInsideTestTemp =
+        relativePath !== '' &&
+        relativePath !== '..' &&
+        !relativePath.startsWith(`..${path.sep}`) &&
+        !path.isAbsolute(relativePath);
+
+    if (isInsideTestTemp) await fs.remove(resolvedDir);
 }
 
 // ============================================================================

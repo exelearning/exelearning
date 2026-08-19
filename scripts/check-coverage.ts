@@ -18,6 +18,10 @@ const MINIMUM_COVERAGE = 90;
  * or are protected by authentication guards that are tested separately.
  */
 const EXCLUDED_FILES = [
+    // Test files (specs) are excluded: their own line coverage is not a meaningful
+    // gate metric - a spec's purpose is to exercise production code, not itself.
+    /\.spec\.ts$/,
+    /\.test\.ts$/,
     'src/db/dialect.ts', // Contains Node.js fallback branch (only runs in Node, not Bun)
     'src/db/dialects/bun-postgres-dialect.ts', // Requires real PostgreSQL for driver/connection testing
     'src/db/helpers.ts', // MySQL/PostgreSQL-specific code paths can't be tested with SQLite
@@ -93,12 +97,7 @@ function parseCoverageOutput(output: string): FileResult[] {
         const line = stripAnsi(rawLine);
 
         // Skip separator lines, headers, and aggregate lines
-        if (
-            line.includes('---') ||
-            line.includes('% Funcs') ||
-            line.includes('All files') ||
-            !line.includes('.ts')
-        ) {
+        if (line.includes('---') || line.includes('% Funcs') || line.includes('All files') || !line.includes('.ts')) {
             continue;
         }
 
@@ -155,9 +154,16 @@ async function main() {
         process.exit(0);
     }
 
-    // Filter files below threshold (excluding runtime-specific files)
+    // Filter files below threshold (excluding runtime-specific files).
+    // Normalize separators so the exclude list (which uses forward slashes)
+    // matches on Windows too.
     const belowThreshold = results.filter(
-        (r) => r.lines < MINIMUM_COVERAGE && !EXCLUDED_FILES.some((excluded) => r.file.includes(excluded)),
+        r =>
+            r.lines < MINIMUM_COVERAGE &&
+            !EXCLUDED_FILES.some(excluded => {
+                const normalized = r.file.replace(/\\/g, '/');
+                return typeof excluded === 'string' ? normalized.includes(excluded) : excluded.test(normalized);
+            }),
     );
 
     console.log('');
@@ -191,7 +197,7 @@ async function main() {
     process.exit(1);
 }
 
-main().catch((err) => {
+main().catch(err => {
     console.error('Error:', err);
     process.exit(1);
 });

@@ -9,6 +9,8 @@ import { Elysia } from 'elysia';
 import { resourcesRoutes, configure, resetDependencies } from './resources';
 import * as fs from 'fs';
 
+const toPosix = (p: string): string => p.replace(/\\/g, '/');
+
 describe('Resources Routes', () => {
     let app: Elysia;
 
@@ -87,6 +89,7 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
+                        filePath = toPosix(filePath);
                         // Base theme doesn't exist
                         if (filePath === 'public/files/perm/themes/base/site-custom-theme') return false;
                         // Site theme exists
@@ -94,7 +97,7 @@ describe('Resources Routes', () => {
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('themes/site/site-custom-theme')) {
+                        if (typeof dirPath === 'string' && toPosix(dirPath).includes('themes/site/site-custom-theme')) {
                             return [
                                 { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                 { name: 'config.xml', isFile: () => true, isDirectory: () => false },
@@ -255,7 +258,7 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        if (filePath.includes('common/scorm')) return false;
+                        if (toPosix(filePath).includes('common/scorm')) return false;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: fs.readdirSync,
@@ -276,11 +279,11 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        if (filePath === 'public/app/common/scorm') return true;
+                        if (toPosix(filePath) === 'public/app/common/scorm') return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('common/scorm')) {
+                        if (typeof dirPath === 'string' && toPosix(dirPath).includes('common/scorm')) {
                             return [
                                 { name: 'SCORM_API.js', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
@@ -432,11 +435,12 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
+                        filePath = toPosix(filePath);
                         if (filePath === 'public/files/perm/themes/base/test-hidden') return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('test-hidden')) {
+                        if (typeof dirPath === 'string' && toPosix(dirPath).includes('test-hidden')) {
                             return [
                                 { name: '.hidden', isFile: () => true, isDirectory: () => false },
                                 { name: '.DS_Store', isFile: () => true, isDirectory: () => false },
@@ -463,6 +467,7 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
+                        filePath = toPosix(filePath);
                         if (filePath === 'public/files/perm/themes/base/test-recursive') return true;
                         // Also need to say the img subdirectory exists for the recursive call
                         if (filePath.includes('test-recursive/img')) return true;
@@ -470,6 +475,7 @@ describe('Resources Routes', () => {
                     },
                     readdirSync: (dirPath: any, options?: any) => {
                         if (typeof dirPath === 'string') {
+                            dirPath = toPosix(dirPath);
                             if (dirPath.endsWith('test-recursive')) {
                                 return [
                                     { name: 'style.css', isFile: () => true, isDirectory: () => false },
@@ -503,11 +509,12 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
+                        filePath = toPosix(filePath);
                         if (filePath === 'public/files/perm/themes/base/error-theme') return true;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('error-theme')) {
+                        if (typeof dirPath === 'string' && toPosix(dirPath).includes('error-theme')) {
                             throw new Error('Permission denied');
                         }
                         return fs.readdirSync(dirPath, options);
@@ -558,6 +565,7 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
+                        filePath = toPosix(filePath);
                         // Only kebab-case version exists
                         if (filePath.includes('idevices/users')) return false;
                         if (filePath === 'public/files/perm/idevices/base/camelcase/export') return false;
@@ -565,7 +573,7 @@ describe('Resources Routes', () => {
                         return fs.existsSync(filePath);
                     },
                     readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('camel-case/export')) {
+                        if (typeof dirPath === 'string' && toPosix(dirPath).includes('camel-case/export')) {
                             return [
                                 { name: 'script.js', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
@@ -755,12 +763,13 @@ describe('Resources Routes', () => {
                 configure({
                     fs: {
                         existsSync: (filePath: string) => {
+                            filePath = toPosix(filePath);
                             if (filePath.includes('bundles')) return false;
                             if (filePath === '/tmp/test-files/themes/site/empty-theme') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
-                            if (typeof dirPath === 'string' && dirPath.includes('site/empty-theme')) {
+                            if (typeof dirPath === 'string' && toPosix(dirPath).includes('site/empty-theme')) {
                                 return [] as unknown as fs.Dirent[];
                             }
                             return fs.readdirSync(dirPath, options);
@@ -786,12 +795,13 @@ describe('Resources Routes', () => {
                 configure({
                     fs: {
                         existsSync: (filePath: string) => {
+                            filePath = toPosix(filePath);
                             if (filePath.includes('bundles')) return false;
                             if (filePath === '/tmp/test-files/themes/site/site-theme-test') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
-                            if (typeof dirPath === 'string' && dirPath.includes('site/site-theme-test')) {
+                            if (typeof dirPath === 'string' && toPosix(dirPath).includes('site/site-theme-test')) {
                                 return [
                                     { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                 ] as unknown as fs.Dirent[];
@@ -800,7 +810,7 @@ describe('Resources Routes', () => {
                         },
                         statSync: fs.statSync,
                         readFileSync: (filePath: string) => {
-                            if (filePath.includes('site-theme-test/style.css')) {
+                            if (toPosix(filePath).includes('site-theme-test/style.css')) {
                                 return Buffer.from('body { color: red; }');
                             }
                             return fs.readFileSync(filePath, 'utf-8');
@@ -826,12 +836,13 @@ describe('Resources Routes', () => {
                 configure({
                     fs: {
                         existsSync: (filePath: string) => {
+                            filePath = toPosix(filePath);
                             if (filePath.includes('bundles')) return false;
                             if (filePath === '/tmp/test-files/themes/site/theme-with-error') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
-                            if (typeof dirPath === 'string' && dirPath.includes('theme-with-error')) {
+                            if (typeof dirPath === 'string' && toPosix(dirPath).includes('theme-with-error')) {
                                 return [
                                     { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                     { name: 'broken.css', isFile: () => true, isDirectory: () => false },
@@ -841,6 +852,7 @@ describe('Resources Routes', () => {
                         },
                         statSync: fs.statSync,
                         readFileSync: (filePath: string) => {
+                            filePath = toPosix(filePath);
                             if (filePath.includes('style.css')) {
                                 return Buffer.from('body {}');
                             }
@@ -870,6 +882,7 @@ describe('Resources Routes', () => {
                 configure({
                     fs: {
                         existsSync: (filePath: string) => {
+                            filePath = toPosix(filePath);
                             // No prebuilt bundle
                             if (filePath.includes('bundles')) return false;
                             // Site theme exists
@@ -877,7 +890,7 @@ describe('Resources Routes', () => {
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
-                            if (typeof dirPath === 'string' && dirPath.includes('themes/site/site-theme')) {
+                            if (typeof dirPath === 'string' && toPosix(dirPath).includes('themes/site/site-theme')) {
                                 return [
                                     { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                     { name: 'config.xml', isFile: () => true, isDirectory: () => false },
@@ -887,6 +900,7 @@ describe('Resources Routes', () => {
                         },
                         statSync: fs.statSync,
                         readFileSync: (filePath: string) => {
+                            filePath = toPosix(filePath);
                             if (filePath.includes('site-theme/style.css')) {
                                 return Buffer.from('body { background: blue; }');
                             }
@@ -914,12 +928,13 @@ describe('Resources Routes', () => {
                 configure({
                     fs: {
                         existsSync: (filePath: string) => {
+                            filePath = toPosix(filePath);
                             if (filePath.includes('bundles')) return false;
                             if (filePath === '/tmp/test-files/themes/site/empty-site-theme') return true;
                             return fs.existsSync(filePath);
                         },
                         readdirSync: (dirPath: any, options?: any) => {
-                            if (typeof dirPath === 'string' && dirPath.includes('empty-site-theme')) {
+                            if (typeof dirPath === 'string' && toPosix(dirPath).includes('empty-site-theme')) {
                                 return [] as unknown as fs.Dirent[];
                             }
                             return fs.readdirSync(dirPath, options);

@@ -11,9 +11,10 @@ root = "."
 # pathIgnorePatterns prunes directories during scanning (more efficient than ignore for large dirs)
 pathIgnorePatterns = ["node_modules/**", "**/public/**", "public/", "nestjs_legacy/**", "symfony_legacy/**", "test/e2e/**"]
 
-# Environment variables for tests
-# Use in-memory SQLite database for fast, isolated tests
-env = { DB_PATH = ":memory:", ELYSIA_FILES_DIR = "/tmp/exelearning-test" }
+# Environment variables for tests.
+# DB_PATH is NOT set here: [test].env only fills in variables .env hasn't already set, so it can't override
+# .env's DB_PATH. The in-memory DB override for bun test lives in .env.test instead.
+env = { ELYSIA_FILES_DIR = "/tmp/exelearning-test" }
 
 # Note: Frontend tests that need DOM should import '../jest.setup.js' directly.
 # This avoids loading happy-dom for backend tests unnecessarily.

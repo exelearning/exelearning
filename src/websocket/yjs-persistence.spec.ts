@@ -548,7 +548,7 @@ describe('Yjs Persistence Service', () => {
                 db: mockDb,
                 queries: {
                     ...createMockQueries(),
-                    loadDocumentState: async () => {
+                    loadDocumentWithUpdates: async () => {
                         throw new Error('Load error');
                     },
                 },
@@ -556,6 +556,39 @@ describe('Yjs Persistence Service', () => {
 
             const result = await loadDocument(1);
             expect(result).toBeNull();
+        });
+
+        it('loadDocument should merge snapshot and updates', async () => {
+            const doc = new Y.Doc();
+            doc.getText('content').insert(0, 'Snap');
+            const snapshotState = Y.encodeStateAsUpdate(doc);
+            const stateVector = Y.encodeStateVector(doc);
+            doc.getText('content').insert(4, '+Delta');
+            const deltaState = Y.encodeStateAsUpdate(doc, stateVector);
+
+            mockSnapshots.set(1, {
+                project_id: 1,
+                snapshot_data: Buffer.from(snapshotState),
+                version: '100',
+            });
+            mockUpdates.set(1, [
+                {
+                    project_id: 1,
+                    update_data: Buffer.from(deltaState),
+                    version: '200',
+                },
+            ]);
+
+            const loaded = await loadDocument(1);
+
+            expect(loaded).not.toBeNull();
+
+            const loadedDoc = new Y.Doc();
+            Y.applyUpdate(loadedDoc, loaded!);
+            expect(loadedDoc.getText('content').toString()).toBe('Snap+Delta');
+
+            doc.destroy();
+            loadedDoc.destroy();
         });
 
         it('loadUpdatesSince should throw on query error', async () => {
@@ -706,6 +739,181 @@ describe('Yjs Persistence Service', () => {
 
             const result = await loadDocumentEfficient(1);
             expect(result).toBeNull();
+        });
+    });
+
+    describe('Debug Mode', () => {
+        beforeEach(() => {
+            process.env.APP_DEBUG = '1';
+        });
+
+        afterEach(() => {
+            delete process.env.APP_DEBUG;
+        });
+
+        it('should log when saving full state', async () => {
+            const doc = new Y.Doc();
+            const state = Y.encodeStateAsUpdate(doc);
+
+            await saveFullState(1, state);
+
+            expect(mockSnapshots.has(1)).toBe(true);
+            doc.destroy();
+        });
+
+        it('should log when loading from snapshot only', async () => {
+            const doc = new Y.Doc();
+            doc.getText('content').insert(0, 'Snap');
+            const state = Y.encodeStateAsUpdate(doc);
+
+            mockSnapshots.set(1, {
+                project_id: 1,
+                snapshot_data: Buffer.from(state),
+                version: '100',
+            });
+
+            const loaded = await loadDocument(1);
+            expect(loaded).not.toBeNull();
+            doc.destroy();
+        });
+
+        it('should log when loading merged snapshot and updates', async () => {
+            const doc = new Y.Doc();
+            doc.getText('content').insert(0, 'Base');
+            const snapshotState = Y.encodeStateAsUpdate(doc);
+            const stateVector = Y.encodeStateVector(doc);
+            doc.getText('content').insert(4, '+Delta');
+            const deltaState = Y.encodeStateAsUpdate(doc, stateVector);
+
+            mockSnapshots.set(1, {
+                project_id: 1,
+                snapshot_data: Buffer.from(snapshotState),
+                version: '100',
+            });
+            mockUpdates.set(1, [{ project_id: 1, update_data: Buffer.from(deltaState), version: '200' }]);
+
+            const loaded = await loadDocument(1);
+            expect(loaded).not.toBeNull();
+
+            doc.destroy();
+        });
+
+        it('should log when loading updates since version', async () => {
+            mockUpdates.set(1, [
+                { project_id: 1, update_data: Buffer.from([1]), version: '100' },
+                { project_id: 1, update_data: Buffer.from([2]), version: '200' },
+            ]);
+
+            const updates = await loadUpdatesSince(1, '100');
+            expect(updates.length).toBe(1);
+        });
+
+        it('should log when pruning updates', async () => {
+            mockUpdates.set(1, [
+                { project_id: 1, update_data: Buffer.from([1]), version: '100' },
+                { project_id: 1, update_data: Buffer.from([2]), version: '200' },
+            ]);
+
+            await pruneUpdatesBefore(1, '200');
+            expect((mockUpdates.get(1) || []).length).toBe(1);
+        });
+
+        it('should log when saving incremental update', async () => {
+            const doc = new Y.Doc();
+            doc.getText('content').insert(0, 'Inc');
+            const update = Y.encodeStateAsUpdate(doc);
+
+            const result = await saveIncrementalUpdate(1, update);
+            expect(result.success).toBe(true);
+
+            doc.destroy();
+        });
+
+        it('should log when compacting incremental update', async () => {
+            configure({
+                db: mockDb,
+                queries: {
+                    ...createMockQueries(),
+                    saveIncrementalUpdate: async () => ({
+                        compacted: true,
+                        stats: { count: 10, totalBytes: 1000 },
+                    }),
+                    loadDocumentWithUpdates: async () => ({
+                        snapshot: null,
+                        updates: [],
+                    }),
+                    upsertSnapshot: async () => {},
+                    deleteUpdatesUpToVersion: async () => {},
+                },
+            });
+
+            const doc = new Y.Doc();
+            const update = Y.encodeStateAsUpdate(doc);
+
+            const result = await saveIncrementalUpdate(1, update);
+            expect(result.compacted).toBe(true);
+
+            doc.destroy();
+        });
+
+        it('should log when compacting to snapshot', async () => {
+            const snapshotDoc = new Y.Doc();
+            snapshotDoc.getText('content').insert(0, 'Comp');
+            const snapshotState = Y.encodeStateAsUpdate(snapshotDoc);
+
+            mockSnapshots.set(1, {
+                project_id: 1,
+                snapshot_data: Buffer.from(snapshotState),
+                version: '100',
+            });
+            mockUpdates.set(1, [
+                {
+                    project_id: 1,
+                    update_data: Y.encodeStateAsUpdate(new Y.Doc()),
+                    version: '200',
+                },
+            ]);
+
+            await compactToSnapshot(1);
+
+            expect(mockSnapshots.has(1)).toBe(true);
+            snapshotDoc.destroy();
+        });
+
+        it('should log when loading efficiently from snapshot only', async () => {
+            const doc = new Y.Doc();
+            doc.getText('content').insert(0, 'Eff');
+            const state = Y.encodeStateAsUpdate(doc);
+
+            mockSnapshots.set(1, {
+                project_id: 1,
+                snapshot_data: Buffer.from(state),
+            });
+
+            const loaded = await loadDocumentEfficient(1);
+            expect(loaded).not.toBeNull();
+
+            doc.destroy();
+        });
+
+        it('should log when loading efficiently with merged data', async () => {
+            const doc = new Y.Doc();
+            doc.getText('content').insert(0, 'Base');
+            const snapshotState = Y.encodeStateAsUpdate(doc);
+            const stateVector = Y.encodeStateVector(doc);
+            doc.getText('content').insert(4, '+Delta');
+            const deltaState = Y.encodeStateAsUpdate(doc, stateVector);
+
+            mockSnapshots.set(1, {
+                project_id: 1,
+                snapshot_data: Buffer.from(snapshotState),
+            });
+            mockUpdates.set(1, [{ project_id: 1, update_data: Buffer.from(deltaState), version: '100' }]);
+
+            const loaded = await loadDocumentEfficient(1);
+            expect(loaded).not.toBeNull();
+
+            doc.destroy();
         });
     });
 

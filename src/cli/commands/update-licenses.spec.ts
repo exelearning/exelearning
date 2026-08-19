@@ -18,6 +18,10 @@ import {
     type PackageInfo,
 } from './update-licenses';
 
+// The command builds paths with path.join (backslashes on Windows); normalize
+// the received path so the POSIX mockFiles keys stay stable on every platform.
+const toPosix = (p: string) => p.replace(/\\/g, '/');
+
 describe('Update Licenses Command', () => {
     afterEach(() => {
         resetDependencies();
@@ -117,8 +121,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
             });
 
             const info = getPackageInfo('test-pkg');
@@ -152,8 +156,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
             });
 
             const info = getPackageInfo('test-pkg');
@@ -172,8 +176,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
             });
 
             const info = getPackageInfo('test-pkg');
@@ -192,8 +196,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
             });
 
             const info = getPackageInfo('test-pkg');
@@ -211,8 +215,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
             });
 
             const info = getPackageInfo('test-pkg');
@@ -230,8 +234,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
             });
 
             const info = getPackageInfo('test-pkg');
@@ -250,8 +254,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
             });
 
             const deps = getDependencies();
@@ -265,8 +269,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
             });
 
             const deps = getDependencies();
@@ -342,8 +346,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
                 writeFile: (p: string, content: string) => {
                     writtenContent = content;
                 },
@@ -369,8 +373,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
                 writeFile: () => {
                     writeCount++;
                 },
@@ -455,8 +459,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
                 writeFile: (p: string, content: string) => {
                     writtenContent = content;
                 },
@@ -491,8 +495,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
                 writeFile: () => {
                     writeCount++;
                 },
@@ -519,8 +523,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
                 writeFile: () => {},
             });
 
@@ -547,8 +551,8 @@ describe('Update Licenses Command', () => {
 
             configure({
                 projectRoot: '/test',
-                existsSync: (p: string) => p in mockFiles,
-                readFile: (p: string) => mockFiles[p] || '',
+                existsSync: (p: string) => toPosix(p) in mockFiles,
+                readFile: (p: string) => mockFiles[toPosix(p)] || '',
                 writeFile: () => {},
             });
 
@@ -609,8 +613,8 @@ describe('Update Licenses Command', () => {
 
         const defaultDeps: Partial<UpdateLicensesDependencies> = {
             projectRoot: '/test',
-            existsSync: (p: string) => p in mockFiles,
-            readFile: (p: string) => mockFiles[p] || '',
+            existsSync: (p: string) => toPosix(p) in mockFiles,
+            readFile: (p: string) => mockFiles[toPosix(p)] || '',
             writeFile: () => {},
         };
 
@@ -666,8 +670,9 @@ describe('Update Licenses Command', () => {
 
             const badDeps: Partial<UpdateLicensesDependencies> = {
                 projectRoot: '/test',
-                existsSync: (p: string) => p === '/test/package.json',
-                readFile: (p: string) => (p === '/test/package.json' ? JSON.stringify({ dependencies: {} }) : ''),
+                existsSync: (p: string) => toPosix(p) === '/test/package.json',
+                readFile: (p: string) =>
+                    toPosix(p) === '/test/package.json' ? JSON.stringify({ dependencies: {} }) : '',
                 writeFile: () => {},
             };
 

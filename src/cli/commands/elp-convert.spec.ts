@@ -72,8 +72,13 @@ describe('elp:convert command', () => {
 
     describe('output directory validation', () => {
         it('should fail if output directory cannot be created', async () => {
-            // Try to write to a system directory that definitely won't be writable
-            const result = await execute([TEST_ELP, '/root/test/output.elpx'], {});
+            // A regular file in place of a directory makes mkdir throw ENOTDIR on
+            // every OS. (Drive roots like /root or /proc are only non-writable on
+            // POSIX, so they are not a cross-platform way to simulate this.)
+            const blocker = path.join(TEMP_DIR, `blocker-${Date.now()}`);
+            await fs.writeFile(blocker, 'blocker');
+            const result = await execute([TEST_ELP, path.join(blocker, 'nested', 'output.elpx')], {});
+            await fs.rm(blocker, { force: true });
             expect(result.success).toBe(false);
             expect(result.message).toMatch(/Cannot create output directory|not writable/);
         });
@@ -198,11 +203,15 @@ describe('elp:convert command', () => {
 
     describe('directory writability', () => {
         it('should fail if output directory is not writable', async () => {
-            // Use /proc on Linux or /System on macOS - directories that exist but aren't writable
-            const readOnlyDir = process.platform === 'darwin' ? '/System' : '/proc';
-            const outputPath = path.join(readOnlyDir, 'test-output.elpx');
+            // A regular file in place of a directory makes the writability probe
+            // (and mkdir) fail deterministically. /proc and /System only exist and
+            // are non-writable on POSIX, so they cannot be used cross-platform.
+            const blocker = path.join(TEMP_DIR, `blocker-not-writable-${Date.now()}`);
+            await fs.writeFile(blocker, 'blocker');
+            const outputPath = path.join(blocker, 'test-output.elpx');
 
             const result = await execute([TEST_ELP, outputPath], {});
+            await fs.rm(blocker, { force: true });
 
             expect(result.success).toBe(false);
             expect(result.message).toMatch(/Cannot create output directory|not writable/);

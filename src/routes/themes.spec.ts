@@ -13,6 +13,8 @@ import * as path from 'path';
 import { getDb, resetClientCacheForTesting } from '../db/client';
 import { migrateToLatest } from '../db/migrations';
 
+const toPosix = (p: string): string => p.replace(/\\/g, '/');
+
 describe('Themes Routes', () => {
     let app: Elysia;
     let originalBasePath: string | undefined;
@@ -698,13 +700,14 @@ describe('Themes Routes', () => {
                         return fs.existsSync(p);
                     },
                     readFileSync: (p: string, encoding?: BufferEncoding) => {
-                        if (typeof p === 'string' && p.includes('multi-format-theme/config.xml')) {
+                        if (typeof p === 'string' && toPosix(p).includes('multi-format-theme/config.xml')) {
                             return '<theme><name>Multi Format Theme</name><version>1.0</version></theme>';
                         }
                         return fs.readFileSync(p, encoding);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
-                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                        if (typeof dirPath === 'string') dirPath = toPosix(dirPath);
+                        if (dirPath === 'public/files/perm/themes/base') {
                             return [
                                 { name: 'multi-format-theme', isDirectory: () => true, isFile: () => false },
                             ] as fs.Dirent[];
@@ -770,13 +773,14 @@ describe('Themes Routes', () => {
                         return fs.existsSync(p);
                     },
                     readFileSync: (p: string, encoding?: BufferEncoding) => {
-                        if (typeof p === 'string' && p.includes('priority-theme/config.xml')) {
+                        if (typeof p === 'string' && toPosix(p).includes('priority-theme/config.xml')) {
                             return '<theme><name>Priority Theme</name><version>1.0</version></theme>';
                         }
                         return fs.readFileSync(p, encoding);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
-                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                        if (typeof dirPath === 'string') dirPath = toPosix(dirPath);
+                        if (dirPath === 'public/files/perm/themes/base') {
                             return [
                                 { name: 'priority-theme', isDirectory: () => true, isFile: () => false },
                             ] as fs.Dirent[];
@@ -820,13 +824,14 @@ describe('Themes Routes', () => {
                         return fs.existsSync(p);
                     },
                     readFileSync: (p: string, encoding?: BufferEncoding) => {
-                        if (typeof p === 'string' && p.includes('png-gif-theme/config.xml')) {
+                        if (typeof p === 'string' && toPosix(p).includes('png-gif-theme/config.xml')) {
                             return '<theme><name>PNG GIF Theme</name><version>1.0</version></theme>';
                         }
                         return fs.readFileSync(p, encoding);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
-                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                        if (typeof dirPath === 'string') dirPath = toPosix(dirPath);
+                        if (dirPath === 'public/files/perm/themes/base') {
                             return [
                                 { name: 'png-gif-theme', isDirectory: () => true, isFile: () => false },
                             ] as fs.Dirent[];
@@ -868,13 +873,14 @@ describe('Themes Routes', () => {
                         return fs.existsSync(p);
                     },
                     readFileSync: (p: string, encoding?: BufferEncoding) => {
-                        if (typeof p === 'string' && p.includes('mixed-files-theme/config.xml')) {
+                        if (typeof p === 'string' && toPosix(p).includes('mixed-files-theme/config.xml')) {
                             return '<theme><name>Mixed Files Theme</name><version>1.0</version></theme>';
                         }
                         return fs.readFileSync(p, encoding);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
-                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                        if (typeof dirPath === 'string') dirPath = toPosix(dirPath);
+                        if (dirPath === 'public/files/perm/themes/base') {
                             return [
                                 { name: 'mixed-files-theme', isDirectory: () => true, isFile: () => false },
                             ] as fs.Dirent[];
@@ -983,14 +989,14 @@ describe('Themes Routes', () => {
                         return fs.existsSync(p);
                     },
                     readFileSync: (p: string, encoding?: BufferEncoding) => {
-                        if (typeof p === 'string' && p.includes('malformed-theme/config.xml')) {
+                        if (typeof p === 'string' && toPosix(p).includes('malformed-theme/config.xml')) {
                             return '<theme><name>Test</name></theme>';
                         }
                         return fs.readFileSync(p, encoding);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                         // Make readdirSync throw for the theme directory (inside parseThemeConfig try block)
-                        if (typeof dirPath === 'string' && dirPath.includes('malformed-theme')) {
+                        if (typeof dirPath === 'string' && toPosix(dirPath).includes('malformed-theme')) {
                             throw new Error('Cannot read directory');
                         }
                         return fs.readdirSync(dirPath, options);
@@ -1012,6 +1018,7 @@ describe('Themes Routes', () => {
             configure({
                 fs: {
                     existsSync: (p: string) => {
+                        p = toPosix(p);
                         // config.xml exists
                         if (typeof p === 'string' && p.includes('empty-theme/config.xml')) {
                             return true;
@@ -1023,13 +1030,14 @@ describe('Themes Routes', () => {
                         return fs.existsSync(p);
                     },
                     readFileSync: (p: string, encoding?: BufferEncoding) => {
-                        if (typeof p === 'string' && p.includes('empty-theme/config.xml')) {
+                        if (typeof p === 'string' && toPosix(p).includes('empty-theme/config.xml')) {
                             return '<theme><name>Empty Theme</name><version>1.0</version></theme>';
                         }
                         return fs.readFileSync(p, encoding);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
-                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                        if (typeof dirPath === 'string') dirPath = toPosix(dirPath);
+                        if (dirPath === 'public/files/perm/themes/base') {
                             return [
                                 {
                                     name: 'empty-theme',
@@ -1373,7 +1381,7 @@ describe('Themes Routes', () => {
             expect(touched.length).toBeGreaterThan(0);
             // Every consulted path stays inside an expected themes base directory.
             for (const p of touched) {
-                expect(p.includes('themes/base') || p.includes('themes/site')).toBe(true);
+                expect(toPosix(p).includes('themes/base') || toPosix(p).includes('themes/site')).toBe(true);
             }
 
             resetDependencies();

@@ -1140,7 +1140,7 @@ describe('iDevices Routes', () => {
             expect(typeof body.exportObject).toBe('string');
             expect(body.exportObject.startsWith('$')).toBe(true);
             // url points at the parsed base directory for this iDevice.
-            expect(body.url).toContain('idevices/base/text');
+            expect(body.url.replace(/\\/g, '/')).toContain('idevices/base/text');
         });
 
         it('should return 404 for a syntactically valid but unknown slug', async () => {
