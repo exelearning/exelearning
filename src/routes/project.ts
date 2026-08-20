@@ -32,7 +32,6 @@ import {
 
 import * as queriesDefault from '../db/queries';
 import { db as dbDefault } from '../db/client';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import {
@@ -411,7 +410,6 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
 
     return (
         new Elysia({ prefix: '/api/project' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
@@ -815,7 +813,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
     return (
         new Elysia()
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
