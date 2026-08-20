@@ -326,27 +326,16 @@ export const BASE_LIBRARIES = [
     'common_i18n.js',
     'common.js',
     'exe_export.js',
+    // xAPI emitter: every export is xAPI-capable for analytics/external-LRS use.
+    // Whether statements carry a usable identity is decided by the injected
+    // window.exeXapi config, and the loader tag is only emitted alongside it.
+    'xapi/exe_xapi.js',
     // Bootstrap (JS bundle includes Popper)
     'bootstrap/bootstrap.bundle.min.js',
     'bootstrap/bootstrap.bundle.min.js.map',
     'bootstrap/bootstrap.min.css',
     'bootstrap/bootstrap.min.css.map',
 ] as const;
-
-/**
- * The xAPI emitter, shipped only by the web export family.
- *
- * SCORM and IMS packages carry their own authoritative scoring runtime (`cmi.*`), and
- * neither SCORM nor the ADL xAPI SCORM Profile defines which wins when both are
- * present; EPUB3 defines no tracking mechanism at all. Shipping the emitter there adds
- * a second, non-authoritative channel that cannot deliver the grade. See ADR-2302-02.
- */
-export const XAPI_EMITTER_LIBRARY = 'xapi/exe_xapi.js';
-
-/**
- * Libraries shipped by the web export family (HTML5, ELPX, single page, preview).
- */
-export const WEB_EXPORT_LIBRARIES = [...BASE_LIBRARIES, XAPI_EMITTER_LIBRARY] as const;
 
 /**
  * SCORM-specific libraries

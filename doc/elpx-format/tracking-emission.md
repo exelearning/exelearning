@@ -24,11 +24,11 @@ Related: [export-pipeline.md](./export-pipeline.md) ·
 - It does **not** implement **cmi5**. cmi5 requires additional launch (fetch
   token), session `LaunchData`, AU metadata, `moveOn` rules, cmi5-defined context
   categories and packaging semantics that are intentionally out of scope here.
-  The emitter ships only in the **web export family** — HTML5, ELPX, single page and
-  the editor preview. SCORM 1.2, SCORM 2004, IMS Content Package, EPUB3 and the print
-  preview carry no emitter: SCORM grades through `cmi.*`, IMS CP defers runtime
-  communication out of scope, and EPUB3 defines no tracking mechanism. See
-  [ADR-2302-02](../architecture/adr/ADR-2302-02-ship-xapi-emitter-only-in-web-exports.md).
+  The emitter ships with **every export format** as an analytics/external-LRS channel:
+  grading authority stays with each format's own runtime (SCORM's `cmi.*`) or with the
+  consumer's server. Every format injects the identity config, and the loader tag is
+  emitted only alongside it (the print preview passes no config and loads no emitter).
+  See [ADR-2302-01](../architecture/adr/ADR-2302-01-suppress-multipage-package-verdicts.md).
 
   The `initialized`/`terminated` statements below are **generic xAPI lifecycle
   statements**, not cmi5 ones.
@@ -73,8 +73,7 @@ so SCORM does nothing outside SCORM exports.
 ## 2. How xAPI is emitted
 
 xAPI emission lives in `public/app/common/xapi/exe_xapi.js`
-(`$exeDevices.iDevice.xapi`), included in **web exports** via
-`WEB_EXPORT_LIBRARIES` / `BaseExporter.emitsXapi()` (ADR-2302-02).
+(`$exeDevices.iDevice.xapi`), included in **every** export via `BASE_LIBRARIES`.
 It does **not** depend on SCORM/pipwerks.
 
 ### 2.1 Wiring at export time
@@ -82,7 +81,7 @@ It does **not** depend on SCORM/pipwerks.
 | Piece | Where |
 |---|---|
 | Emitter library | `public/app/common/xapi/exe_xapi.js` |
-| Inclusion (web exports only) | `WEB_EXPORT_LIBRARIES` (`src/shared/export/constants.ts`) + `BaseExporter.emitsXapi()` / `selectBaseLibraries()` |
+| Inclusion (every export) | `BASE_LIBRARIES` (`src/shared/export/constants.ts`); loader tag gated on the injected config |
 | Identity config in `<head>` | `window.exeXapi` injected by `PageRenderer` (both multi-page and single-page heads) |
 | Config source | `BaseExporter.buildXapiConfig()`, called by every web-family exporter |
 

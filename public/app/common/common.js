@@ -1382,11 +1382,10 @@ var $exeDevices = {
              * whether or not the learner ever answers it.
              *
              * Mirrors what registerActivity already does for SCORM's suspend_data
-             * lmsData, but for the web export family: without it the emitter only
-             * ever learns about answered iDevices, so the single-page package
-             * verdict normalizes over the answered subset and a partial attempt
-             * reports an inflated score (#2302). A no-op in packages that ship no
-             * emitter (SCORM/IMS/EPUB, see ADR-2302-02).
+             * lmsData: without it the emitter only ever learns about answered
+             * iDevices, so the single-page package verdict normalizes over the
+             * answered subset and a partial attempt reports an inflated score
+             * (#2302).
              *
              * @param {object} game
              */
@@ -1409,10 +1408,9 @@ var $exeDevices = {
             /**
              * Transport-agnostic dispatch to the xAPI emitter (exe_xapi.js),
              * independent of SCORM/pipwerks (it is therefore a sibling of `scorm`,
-             * not nested in it). A no-op in packages that ship no emitter — the web
-             * export family carries it, SCORM/IMS/EPUB do not (ADR-2302-02). Score
-             * math stays single-source (game.scorerp + getFinalScore); this only
-             * forwards it as an xAPI statement.
+             * not nested in it) and shipped with every export as the analytics
+             * channel (ADR-2302-01). Score math stays single-source (game.scorerp +
+             * getFinalScore); this only forwards it as an xAPI statement.
              * See https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
              *
              * @param {string} eventType e.g. 'answered'

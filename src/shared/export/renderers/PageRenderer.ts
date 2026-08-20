@@ -310,7 +310,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // The config is the single switch for the emitter: a format that ships no xAPI
         // config ships no loader either. Emitting the tag unconditionally used to leave
         // the emitter active in every format and made the print preview request a file
-        // its exporter never copies (ADR-2302-02).
+        // its exporter never copies (ADR-2302-01).
         if (xapi) {
             head += `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>`;
             head += `<script src="${basePath}libs/xapi/exe_xapi.js"> </script>`;

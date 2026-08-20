@@ -11,7 +11,7 @@ reviewers:
 related:
   prs: [2302]
   changes: []
-  adrs: [ADR-2302-02]
+  adrs: []
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -55,7 +55,12 @@ ever know the whole attempt?
    back/forward cache); statements carry the page identity (`page-id`, `page-title`, `page-count`)
    injected by the exporter, since the runtime tracker never supplies it.
 
-Which formats ship the emitter at all is decided by [ADR-2302-02](ADR-2302-02-ship-xapi-emitter-only-in-web-exports.md).
+The emitter ships with the base libraries of **every** export format, as an analytics/external-LRS
+channel: grading authority stays with each format's own runtime (SCORM's `cmi.*`) or with the
+consumer's server. Every format injects the identity config (`odeId`, `pageCount`, page identity), and
+the loader `<script>` tag is only emitted alongside that config — a format that passed no config used
+to load an emitter that fell back to per-page document URLs and no `package-id` (garbage identity),
+and the print preview requested a file its exporter never copies.
 
 ## Alternatives considered and rejected
 
@@ -84,6 +89,18 @@ tested — and then reverted after an architectural necessity review established
 Rejected: the weight is resolved per iDevice type at runtime from four undocumented storage shapes,
 a naive reader is correct for 4 of 35 gradable types, and a mis-derived weight fails silently as a
 wrong published grade. Recorded here so it is not re-proposed as a simplification.
+
+### Scoping the emitter to web exports only (built, then reverted)
+
+A mid-review revision removed the emitter from SCORM/IMS/EPUB packages entirely (an `emitsXapi()`
+predicate plus a base-library filter), on the argument that those formats have their own
+authoritative scoring channel. It was reverted once the consumer made the SCORM shim its default
+grading channel: the decisive justification — `mod_exelearning` selecting its grading channel by
+probing for the emitter file — was neutralized by that default, the split added a permanent
+packaging axis threaded through five files (which caused a real bug: the emitter silently vanished
+from the editor preview because the required-files list and the provider map disagreed), and it
+shrank the reach of the very channel this ADR defines as analytics. What survived the revert: the
+loader tag gated on the config, and identity config injection in every exporter.
 
 ### Moodle core_xapi and its State API
 

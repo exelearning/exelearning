@@ -60,7 +60,7 @@ class MockResourceProvider implements ResourceProvider {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
         // The provider hands the same set to every format; the exporter decides
-        // whether the emitter survives (ADR-2302-02). Seeding it here is what makes
+        // whether the emitter survives (ADR-2302-01). Seeding it here is what makes
         // the presence and absence assertions mean anything.
         files.set('xapi/exe_xapi.js', Buffer.from('// xapi emitter'));
         return files;
@@ -910,7 +910,7 @@ describe('PageExporter', () => {
             expect(indexHtml).toContain('libs/exe_tooltips/exe_tooltips.js');
         });
     });
-    describe('xAPI emitter scope (ADR-2302-02)', () => {
+    describe('xAPI emitter scope (ADR-2302-01)', () => {
         it('ships the emitter, inherited from the HTML5 web family', async () => {
             // A web export has no scoring runtime of its own, so the emitter is its
             // only channel rather than a second, non-authoritative one.

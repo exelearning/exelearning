@@ -728,7 +728,7 @@ describe('PageElpxExporter Unit Tests', () => {
             expect(resourceFiles.some(f => f.includes('gallery-image.png'))).toBe(true);
         });
     });
-    describe('xAPI emitter scope (ADR-2302-02)', () => {
+    describe('xAPI emitter scope (ADR-2302-01)', () => {
         it('ships the emitter, two levels of inheritance down from Html5Exporter', async () => {
             // PageElpxExporter extends ElpxExporter extends Html5Exporter, so it opts in
             // without an override of its own. That makes inheritance load-bearing:

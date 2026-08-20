@@ -828,8 +828,6 @@ export interface LibraryDetectionOptions {
     includeMathJax?: boolean;
     /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
     skipMathJax?: boolean;
-    /** Include the xAPI emitter: web export family only (ADR-2302-02) */
-    includeXapiEmitter?: boolean;
 }
 
 /**

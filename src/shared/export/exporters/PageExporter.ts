@@ -145,7 +145,7 @@ export class PageExporter extends Html5Exporter {
 
             // 5. Fetch and add base libraries
             try {
-                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
+                const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [path, content] of baseLibs) {
                     this.zip.addFile(`libs/${path}`, content);
                 }

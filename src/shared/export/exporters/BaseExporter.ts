@@ -24,7 +24,7 @@ import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
-import { ELPX_DOWNLOAD_ONCLICK, XAPI_EMITTER_LIBRARY, formatLicenseText } from '../constants';
+import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 import { convertSrtToVtt } from '../../utils/srt-to-vtt';
 
@@ -217,44 +217,11 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Whether this export format ships the xAPI emitter.
-     *
-     * False by default: a format only carries the emitter when it has no scoring
-     * runtime of its own. SCORM and IMS packages do — `cmi.*` is their authoritative
-     * channel, and no standard says which wins when both are present — and EPUB3
-     * defines no tracking at all. See ADR-2302-02.
-     *
-     * @returns True for the web export family only
-     */
-    protected emitsXapi(): boolean {
-        return false;
-    }
-
-    /**
-     * Drop the xAPI emitter from a base-library set unless this format ships it.
-     *
-     * The resource providers return one library map for every format, so this is the
-     * single point where the web-family scope is applied. Filtering here also removes
-     * the file from the SCORM/IMS `<file>` manifests and the EPUB OPF, because those
-     * entries are generated from the same loops that copy the bytes.
-     *
-     * @param libraries Base libraries as returned by the resource provider
-     * @returns The same map, minus the emitter when this format does not ship it
-     */
-    protected selectBaseLibraries<T>(libraries: Map<string, T>): Map<string, T> {
-        if (this.emitsXapi()) return libraries;
-        if (!libraries.has(XAPI_EMITTER_LIBRARY)) return libraries;
-        const selected = new Map(libraries);
-        selected.delete(XAPI_EMITTER_LIBRARY);
-        return selected;
-    }
-
-    /**
      * Build the runtime xAPI config injected into an exported page.
      *
      * Single source of truth shared by every format that ships the emitter —
      * the web export family (see `emitsXapi()` / WEB_EXPORT_LIBRARIES,
-     * ADR-2302-02) — so all of them describe the same package identity.
+     * ADR-2302-01) — so all of them describe the same package identity.
      * Formats that omitted this config used to fall back to a per-page
      * document URL as the activity IRI.
      *
@@ -1236,11 +1203,7 @@ export abstract class BaseExporter {
                     excludedLibraries: JSON_PROPERTY_LIBRARY_EXCLUSIONS,
                 },
             ],
-            // The emitter is a base library only for the formats that ship it, so the
-            // required-files list has to agree with selectBaseLibraries(). The browser
-            // and preview paths fetch by this list rather than by copying the provider
-            // map, so a disagreement silently drops the emitter from the preview.
-            { includeXapiEmitter: this.emitsXapi(), ...options },
+            options,
         );
     }
 

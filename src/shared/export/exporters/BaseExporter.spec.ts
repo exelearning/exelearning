@@ -188,20 +188,6 @@ class MockZipProvider implements ZipProvider {
 
 // Concrete test implementation of BaseExporter
 class TestExporter extends BaseExporter {
-    /** Expose the protected library-detection entry point. */
-    publicRequiredLibraryFiles(pages: ExportPage[]): string[] {
-        return this.getRequiredLibraryFilesForPages(pages).files;
-    }
-
-    /** Expose the protected xAPI-scope hooks for direct assertions. */
-    publicEmitsXapi(): boolean {
-        return this.emitsXapi();
-    }
-
-    publicSelectBaseLibraries<T>(libs: Map<string, T>): Map<string, T> {
-        return this.selectBaseLibraries(libs);
-    }
-
     getFileExtension(): string {
         return '.zip';
     }
@@ -2145,44 +2131,6 @@ describe('BaseExporter', () => {
             expect(exporter.countPageComponents(malformed)).toBe(0);
             expect(exporter.countPageComponents(blockWithoutComponents)).toBe(0);
             expect(exporter.countComponents([malformed, page('p2', [2]), blockWithoutComponents])).toBe(2);
-        });
-    });
-
-    describe('xAPI emitter scope (ADR-2302-02)', () => {
-        it('does not ship the emitter by default', () => {
-            // A format only carries the emitter when it has no scoring runtime of its
-            // own, so the safe default is off and each web-family exporter opts in.
-            expect(exporter.publicEmitsXapi()).toBe(false);
-        });
-
-        it('drops the emitter from the base libraries when the format does not ship it', () => {
-            const libs = new Map<string, string>([
-                ['jquery/jquery.min.js', 'jq'],
-                ['xapi/exe_xapi.js', 'emitter'],
-                ['common.js', 'common'],
-            ]);
-
-            const selected = exporter.publicSelectBaseLibraries(libs);
-
-            expect([...selected.keys()]).toEqual(['jquery/jquery.min.js', 'common.js']);
-            // The input map is shared across formats, so it must not be mutated.
-            expect(libs.has('xapi/exe_xapi.js')).toBe(true);
-        });
-
-        it('agrees with the required-files list, which is how the preview fetches', () => {
-            // The browser and preview paths fetch by this list instead of copying the
-            // provider map, so if the two disagree the emitter silently vanishes from
-            // the preview while every exporter unit test still passes.
-            const files = exporter.publicRequiredLibraryFiles([]);
-
-            expect(exporter.publicEmitsXapi()).toBe(false);
-            expect(files).not.toContain('xapi/exe_xapi.js');
-        });
-
-        it('returns the same map untouched when there is nothing to drop', () => {
-            const libs = new Map<string, string>([['common.js', 'common']]);
-
-            expect(exporter.publicSelectBaseLibraries(libs)).toBe(libs);
         });
     });
 

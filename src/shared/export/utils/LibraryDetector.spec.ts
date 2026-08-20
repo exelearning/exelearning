@@ -657,28 +657,14 @@ describe('LibraryDetector', () => {
             expect(mathGames).toBeDefined();
         });
     });
-    describe('xAPI emitter inclusion (ADR-2302-02)', () => {
-        it('excludes the emitter from the base set by default', () => {
-            // Default off: a format only carries the emitter when it opts in, so the
-            // safe answer to "which libraries does every format need" excludes it.
-            expect(detector.getBaseLibraries()).not.toContain('xapi/exe_xapi.js');
-        });
-
-        it('includes the emitter for the web export family', () => {
-            expect(detector.getBaseLibraries(true)).toContain('xapi/exe_xapi.js');
-        });
-
-        it('threads includeXapiEmitter through the required-files computation', () => {
-            // This list is what the browser and preview paths fetch by, so the option
-            // must reach it — dropping it here is how the emitter silently vanished
-            // from the preview while every exporter unit test stayed green (#2302).
-            const withEmitter = detector.getAllRequiredFilesWithPatternsFromFragmentGroups([{ fragments: [] }], {
-                includeXapiEmitter: true,
-            });
-            const withoutEmitter = detector.getAllRequiredFilesWithPatternsFromFragmentGroups([{ fragments: [] }], {});
-
-            expect(withEmitter.files).toContain('xapi/exe_xapi.js');
-            expect(withoutEmitter.files).not.toContain('xapi/exe_xapi.js');
+    describe('xAPI emitter inclusion', () => {
+        it('ships the emitter with the base libraries of every export', () => {
+            // Every export is xAPI-capable for analytics/external-LRS use; the
+            // injected config (and the loader tag gated on it) is what gives the
+            // statements a usable identity.
+            expect(detector.getBaseLibraries()).toContain('xapi/exe_xapi.js');
+            const required = detector.getAllRequiredFilesWithPatternsFromFragmentGroups([{ fragments: [] }], {});
+            expect(required.files).toContain('xapi/exe_xapi.js');
         });
     });
 });

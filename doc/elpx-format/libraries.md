@@ -50,20 +50,13 @@ export const BASE_LIBRARIES = [
     'common_i18n.js',
     'common.js',
     'exe_export.js',
+    // xAPI analytics emitter; see tracking-emission.md
+    'xapi/exe_xapi.js',
     'bootstrap/bootstrap.bundle.min.js',
     'bootstrap/bootstrap.bundle.min.js.map',
     'bootstrap/bootstrap.min.css',
     'bootstrap/bootstrap.min.css.map',
 ];
-```
-
-The xAPI emitter is **not** in this set: only the web export family ships it
-(HTML5, ELPX, single page, editor preview — see ADR-2302-02 and
-tracking-emission.md), on top of the base set:
-
-```typescript
-export const XAPI_EMITTER_LIBRARY = 'xapi/exe_xapi.js';
-export const WEB_EXPORT_LIBRARIES = [...BASE_LIBRARIES, XAPI_EMITTER_LIBRARY];
 ```
 
 `Html5Exporter` fetches this set at step 7 (`Html5Exporter.ts:267–275`):

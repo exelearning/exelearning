@@ -29,17 +29,6 @@ import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 
 export class Html5Exporter extends BaseExporter {
-    /**
-     * The web export family carries the xAPI emitter: it has no scoring runtime of
-     * its own, so the emitter is the only channel, not a second one (ADR-2302-02).
-     * Inherited by ElpxExporter, PageElpxExporter and PageExporter.
-     *
-     * @returns True
-     */
-    protected emitsXapi(): boolean {
-        return true;
-    }
-
     private getBrowserLatexPreRenderer(): {
         preRender: (
             html: string,
@@ -291,7 +280,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 7. Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
             try {
-                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
+                const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [libPath, content] of baseLibs) {
                     addFile(`libs/${libPath}`, content);
                 }
@@ -729,7 +718,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 7. Fetch base libraries
             try {
-                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
+                const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [libPath, content] of baseLibs) {
                     addFile(`libs/${libPath}`, content);
                 }

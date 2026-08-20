@@ -15,11 +15,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { ResourceProvider, LibraryPattern } from '../interfaces';
-import {
-    normalizeIdeviceType as normalizeIdeviceTypeFromConstants,
-    LEGACY_IDEVICE_MAPPING,
-    XAPI_EMITTER_LIBRARY,
-} from '../constants';
+import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants, LEGACY_IDEVICE_MAPPING } from '../constants';
 import { parseXlfTranslations } from '../generators/I18nGenerator';
 
 /**
@@ -149,10 +145,8 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
-            // xAPI emitter; the exporter drops it for formats that do not ship it.
-            // The dest is the exact key selectBaseLibraries() deletes, so it must be
-            // the shared constant — a literal would desynchronize on rename silently.
-            { src: 'app/common/xapi/exe_xapi.js', dest: XAPI_EMITTER_LIBRARY },
+            // xAPI analytics emitter (every export is xAPI-capable; ADR-2302-01)
+            { src: 'app/common/xapi/exe_xapi.js', dest: 'xapi/exe_xapi.js' },
             // Favicon
             { src: 'favicon.ico', dest: 'favicon.ico' },
             // Note: common_i18n.js is generated dynamically by I18nGenerator per project language

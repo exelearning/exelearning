@@ -2167,7 +2167,7 @@ describe('PageRenderer', () => {
             expect(JSON.parse(serialized)).toEqual(value);
         });
     });
-    describe('xAPI emitter loader (ADR-2302-02)', () => {
+    describe('xAPI emitter loader (ADR-2302-01)', () => {
         const page = { id: 'p1', title: 'Page', blocks: [] } as unknown as ExportPage;
 
         it('emits the loader only alongside the config, in the multi-page head', () => {

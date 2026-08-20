@@ -116,7 +116,7 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toBeDefined();
         });
 
-        it('should not request the xAPI emitter it never bundles (ADR-2302-02)', async () => {
+        it('should not request the xAPI emitter it never bundles (ADR-2302-01)', async () => {
             // The preview renders into a blob: iframe from an exporter that copies no
             // base libraries, so an unconditional loader tag resolved to nothing.
             const result = await exporter.generatePreview();

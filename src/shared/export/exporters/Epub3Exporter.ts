@@ -295,7 +295,7 @@ export class Epub3Exporter extends BaseExporter {
                 }
             } catch {
                 try {
-                    const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
+                    const baseLibs = await this.resources.fetchBaseLibraries();
                     for (const [path, content] of baseLibs) {
                         // Also transform scripts in fallback path
                         const finalContent = this.transformForEpub(path, content);
@@ -322,7 +322,7 @@ export class Epub3Exporter extends BaseExporter {
             // 7.6. Always add base libraries (including favicon) - these are essential for any export
             // This ensures libs/favicon.ico is always present regardless of library detection results
             try {
-                const baseLibs = this.selectBaseLibraries(await this.resources.fetchBaseLibraries());
+                const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [path, content] of baseLibs) {
                     const zipPath = `EPUB/libs/${path}`;
                     if (!this.zip.hasFile(zipPath)) {
@@ -704,6 +704,8 @@ export class Epub3Exporter extends BaseExporter {
             navLabels: navLabels as { previous: string; next: string; page: string; license?: string },
             // Application version for generator meta tag
             version: meta.exelearningVersion,
+            // xAPI runtime config for the analytics emitter (stable IRIs from odeId)
+            xapi: this.buildXapiConfig(meta, allPages.length, page),
             // EPUB-specific: load guard script for duplicate execution protection
             isEpub: true,
         });

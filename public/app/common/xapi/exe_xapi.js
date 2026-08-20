@@ -15,15 +15,12 @@
 
     xAPI (Experience API) emitter for web-family eXeLearning exports.
 
-    This library is bundled into the WEB export family (HTML5, ELPX, single-page and
-    the editor preview) via WEB_EXPORT_LIBRARIES, with no export-time option. SCORM,
-    IMS and EPUB packages do not carry it: SCORM grades through cmi.*, IMS CP defers
-    runtime communication out of scope, and EPUB defines no tracking mechanism, so a
-    second channel there could only compete with the authoritative one (ADR-2302-02).
-
-    It emits one statement per gradable iDevice ("answered") and, for single-page
-    packages only, one package-level statement ("completed" + "passed"/"failed")
-    whenever a score is reported.
+    This library is bundled into EVERY export format via BASE_LIBRARIES, with no
+    export-time option, as an ANALYTICS channel: grading authority stays with each
+    format's own runtime (SCORM's cmi.*) or with the consumer's server. It emits one
+    statement per gradable iDevice ("answered") and, for single-page packages only,
+    one package-level statement ("completed" + "passed"/"failed") whenever a score
+    is reported; multipage packages emit no package verdict (ADR-2302-01).
 
     It does NOT depend on SCORM or pipwerks: the gamification layer in common.js
     calls `gamification.track(...)` (which forwards here) regardless of format.

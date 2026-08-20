@@ -74,8 +74,6 @@ export {
     getIdeviceConfig,
     LIBRARY_PATTERNS,
     BASE_LIBRARIES,
-    WEB_EXPORT_LIBRARIES,
-    XAPI_EMITTER_LIBRARY,
     SCORM_LIBRARIES,
     MIME_TO_EXTENSION,
     getExtensionFromMime,
