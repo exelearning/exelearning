@@ -139,8 +139,10 @@ We will adopt **Option 3, with Option 2 as one of its steps**.
 (`public/app/workarea/project/idevices/content/editionLifecycle.js`) owns the
 resources of one edition instance. `IdeviceNode.initExeDeviceEdition()` creates
 one and publishes it as `$exeDevice.$lifecycle` and `window.$exeEditionLifecycle`
-before calling `$exeDevice.init(...)`. All three clearing sites now call one
-`IdeviceNode.destroyEditionInstance()`, which:
+before calling `$exeDevice.init(...)`. All four clearing sites now call one
+`IdeviceNode.destroyEditionInstance()` — the three above plus
+`IdevicesEngine.destroyEditionIdevices()`, before a page change wipes the
+content wholesale. It:
 
 1. stops the initialization poll;
 2. disposes the lifecycle — marking it inactive first, then cancelling timers and
@@ -153,6 +155,13 @@ before calling `$exeDevice.init(...)`. All three clearing sites now call one
    data registry while leaving the markup on screen until the export view
    replaces it;
 5. clears `$exeDevice`, last.
+
+Ownership is derived, never mirrored: the active lifecycle lives in a single
+module slot and names its `ownerNode`, so a node asks "is the open edition mine?"
+instead of holding a reference that could go stale. A node that owns no edition
+leaves the open one — and `$exeDevice` with it — untouched, which is what keeps
+collaborative sync from stranding a live editor while it re-renders a remote
+iDevice through the export path.
 
 Callbacks registered through the lifecycle are bound to the device that owned it,
 so a callback created by edition A can never operate on edition B.
@@ -173,6 +182,9 @@ change than the defect. The #2278 guards are kept.
 - Teardown is idempotent and survives a failing disposer, so a cleanup bug
   cannot strand the application with a half-destroyed editor.
 - New iDevices get one documented pattern for events, timers and disposal.
+- The optional `destroyEdition()` hook is kept although no iDevice needs it yet:
+  it is the only teardown that runs *before* the registered disposers, which run
+  last and in reverse order and so cannot express "clean this up first".
 
 ### Negative
 
@@ -182,6 +194,10 @@ change than the defect. The #2278 guards are kept.
 
 ### Neutral
 
+- One deliberate exception to "the edition owns its resources": the LOMLOE
+  tooltip controller is a page-scoped singleton whose `__lomloeTipBound` guard is
+  shared with `lomloe/export/lomloe.js`. Releasing it on close would kill every
+  other LOMLOE tooltip on the page, with nothing able to reinstall it.
 - `isSync` keeps its meaning: a synchronized reload deliberately preserves the
   open editor, so teardown does not run there.
 - Guards added by #2278 stay. They are now redundant in the paths the lifecycle
@@ -191,6 +207,10 @@ change than the defect. The #2278 guards are kept.
 
 - **Migration coverage.** A resource missed during the audit stays leaked. Low
   severity — the behaviour is no worse than before the change.
+- **Speculative API.** Migrating the scripts is the experiment that says which
+  helpers earn their place; those that ended it unused were removed. A helper is
+  justified only when it encodes a cleanup recipe a bare `own()` disposer would
+  get wrong at each site — as `ownMedia()` and `ownFileReader()` do.
 - **Over-eager teardown.** Emptying the form at the wrong moment would destroy
   data the editor still needs. Mitigated by ordering: `$exeDevice.save()` runs in
   `saveIdeviceProcess()` before `loadInitScriptIdevice('export')` reaches
@@ -215,6 +235,13 @@ change than the defect. The #2278 guards are kept.
   adding a new guard.
 - Consider removing the #2278 guards once every affected script is migrated and
   covered; they are intentionally left in place for now.
+- Replace the one-off static sweep with a runtime leak sentinel in
+  `public/vitest.setup.js`, asserting after `destroy()` that an edition left no
+  timer, listener or observer behind. It beats a source regex: it sees aliased
+  receivers (`doc.addEventListener`) and leaks from the libraries the scripts
+  inject themselves, and it cannot fire on correct code. Biome cannot serve this
+  role — it must never run over this tree (AGENTS.md section 6), which
+  `biome.json` now enforces by excluding it.
 
 ## References
 
