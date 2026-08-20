@@ -305,7 +305,11 @@ pipwerks.SCORM.connection.terminate = function () {
 
     if (API) {
 
-      if (scorm.handleExitMode && !exitStatus) {
+      // Only auto-handle the exit mode when the content never expressed one. The test
+      // must be "still unset" (null), not "falsy": a finished SCORM 1.2 page exits with
+      // "" -- SetExit maps "normal" to "" because 1.2 has no "normal" -- and "" is falsy,
+      // so a !exitStatus guard would still overwrite the very value the content chose.
+      if (scorm.handleExitMode && exitStatus === null) {
 
         if (completionStatus !== "completed" && completionStatus !== "passed") {
 
@@ -471,6 +475,19 @@ pipwerks.SCORM.data.set = function (parameter, value) {
         if (parameter === "cmi.core.lesson_status" || parameter === "cmi.completion_status") {
 
           scorm.data.completionStatus = value;
+
+        }
+
+        // Mirror the exit value the same way completionStatus is mirrored. Without this,
+        // data.exitStatus stayed at its initial null -- it is only ever assigned in
+        // data.get, and nothing in eXeLearning reads cmi.core.exit -- so the
+        // `handleExitMode && !exitStatus` guard in connection.terminate always fired and
+        // overwrote whatever SetExit had just written. A finished-but-failed page was
+        // rewritten to "suspend" right after being committed, and Moodle resumed a SCO
+        // the learner had already completed. See exelearning/exelearning#1831.
+        if (parameter === "cmi.core.exit" || parameter === "cmi.exit") {
+
+          scorm.data.exitStatus = value;
 
         }
 

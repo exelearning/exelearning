@@ -517,6 +517,45 @@ describe('SCORM_API_wrapper.js', () => {
       expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
     });
 
+    it('keeps the exit written by SetExit instead of overwriting it (SCORM 1.2)', () => {
+      // Regression for #1831. data.exitStatus is only assigned inside data.get, and
+      // nothing in eXeLearning ever reads cmi.core.exit, so it stayed null and the
+      // handleExitMode guard overwrote the value SetExit had just written: a finished
+      // page that the learner failed was rewritten to "suspend" and Moodle resumed it.
+      pipwerks.SCORM.version = '1.2';
+      pipwerks.SCORM.data.completionStatus = 'failed';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
+
+      // A finished page exits "normal", which SetExit maps to "" for SCORM 1.2.
+      pipwerks.SCORM.SetExit('normal');
+      expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.exit', '');
+      mockAPI12.LMSSetValue.mockClear();
+
+      pipwerks.SCORM.connection.terminate();
+
+      expect(mockAPI12.LMSSetValue).not.toHaveBeenCalledWith(
+        'cmi.core.exit',
+        'suspend',
+      );
+      expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
+      expect(mockAPI12.LMSFinish).toHaveBeenCalledWith('');
+    });
+
+    it('keeps the exit written by SetExit instead of overwriting it (SCORM 2004)', () => {
+      pipwerks.SCORM.version = '2004';
+      pipwerks.SCORM.data.completionStatus = 'incomplete';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+      pipwerks.SCORM.SetExit('normal');
+      expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.exit', 'normal');
+      mockAPI2004.SetValue.mockClear();
+
+      pipwerks.SCORM.connection.terminate();
+
+      expect(mockAPI2004.SetValue).not.toHaveBeenCalled();
+      expect(mockAPI2004.Terminate).toHaveBeenCalledWith('');
+    });
+
     it('returns false when API is null', () => {
       vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(null);
 

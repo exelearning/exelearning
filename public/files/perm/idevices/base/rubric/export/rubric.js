@@ -1544,7 +1544,15 @@ var $rubric = {
         var game = data.scormGame;
         game.scorerp = score;
         game.gameStarted = true;
-        game.gameOver = false;
+        // Ticking a score cell assesses the rubric, so the activity counts as completed
+        // and every later tick keeps it completed while refreshing the score.
+        //
+        // This must be true, not false: updateActivity derives the stored state from these
+        // flags alone -- `state: game.gameOver ? 2 : (game.gameStarted ? 1 : 0)`
+        // (common.js) -- so gameOver=false pinned the rubric at state 1 (incomplete)
+        // forever. Because a SCO page only completes when every iDevice reaches state 2
+        // (getActivityState), any page holding a rubric could never be completed at all.
+        game.gameOver = true;
 
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, game);
@@ -1557,7 +1565,12 @@ var $rubric = {
         var game = data.scormGame;
         game.scorerp = 0;
         game.gameStarted = true;
-        game.gameOver = true;
+        // Clearing the rubric undoes the assessment, so the activity goes back to
+        // incomplete rather than staying completed with a zero: gameStarted without
+        // gameOver makes updateActivity store state 1 (common.js). The save below then
+        // runs showFinalScore, which recomputes the SCO status from every iDevice on the
+        // page and marks it incomplete again.
+        game.gameOver = false;
 
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, game);

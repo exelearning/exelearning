@@ -622,4 +622,114 @@ describe('interactive-video iDevice export', () => {
       }
     });
   });
+
+  describe('SCORM save wiring', () => {
+    let registerActivity;
+
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+
+      // The shared markup addButtonScoreNew renders: classes, never ids.
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Interactive video</h1></header>
+          <div id="interactive-video-1" class="idevice_node interactive-video">
+            <div class="exe-interactive-video">
+              <input type="button" class="Games-SendScore" value="Save score" />
+              <span class="Games-RepeatActivity"></span>
+            </div>
+          </div>
+        </article>
+      `;
+
+      registerActivity = vi.fn();
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: { registerActivity },
+            report: { updateEvaluationIcon: vi.fn() },
+          },
+        },
+      };
+
+      global.InteractiveVideo = {
+        ideviceID: 'interactive-video-1',
+        evaluation: false,
+        evaluationID: '',
+        scoreNIA: false,
+        weighted: 100,
+        scorm: { isScorm: 2, textButtonScorm: 'Save score' },
+        i18n: $interactivevideo.i18n,
+        slides: [
+          { type: 'singleChoice' },
+          { type: 'multipleChoice' },
+          { type: 'text' },
+        ],
+      };
+
+      $interactivevideo.mOptions = null;
+      $interactivevideo.scoreSlides = [];
+      $interactivevideo.score = 0;
+      $interactivevideo.isInExe = false;
+    });
+
+    it('binds the shared .Games-SendScore button so a manual save reaches the LMS', () => {
+      const sendScore = vi
+        .spyOn($interactivevideo, 'sendScore')
+        .mockImplementation(() => {});
+      const saveEvaluation = vi
+        .spyOn($interactivevideo, 'saveEvaluation')
+        .mockImplementation(() => {});
+
+      try {
+        $interactivevideo.cover.hide(false);
+        $('.Games-SendScore').trigger('click');
+
+        // Was bound by id (#interactiveSendScore), which nothing renders, so in manual
+        // mode the button did nothing and the score never left the browser.
+        expect(sendScore).toHaveBeenCalledWith(false);
+        expect(saveEvaluation).toHaveBeenCalled();
+      } finally {
+        sendScore.mockRestore();
+        saveEvaluation.mockRestore();
+      }
+    });
+
+    it('registers the same options object that the saves use', () => {
+      $interactivevideo.cover.hide(false);
+
+      expect(registerActivity).toHaveBeenCalledTimes(1);
+      // Used to receive a throwaway copy, leaving sendScore working off an unregistered
+      // object.
+      expect(registerActivity.mock.calls[0][0]).toBe($interactivevideo.mOptions);
+    });
+
+    it('rebuilds scoreSlides on restart instead of duplicating them', () => {
+      $interactivevideo.cover.hide(false);
+      expect($interactivevideo.scoreSlides).toHaveLength(3);
+      expect($interactivevideo.numSlides).toBe(2); // only the 2 scorable slides
+
+      // Restarting re-runs cover.hide(): appending without clearing doubled the array,
+      // which doubled numSlides and halved the score stored in the LMS.
+      $interactivevideo.cover.hide(false);
+      expect($interactivevideo.scoreSlides).toHaveLength(3);
+      expect($interactivevideo.numSlides).toBe(2);
+    });
+
+    it('shows the score in the shared .Games-RepeatActivity label', () => {
+      global.InteractiveVideo.scorm.isScorm = 1;
+      $interactivevideo.cover.hide(false);
+
+      vi.spyOn($interactivevideo, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'saveEvaluation').mockImplementation(() => {});
+      $interactivevideo.updateScore(0, '100');
+
+      // Targeted #interactiveRepeatActivity, which nothing renders, so the learner got no
+      // confirmation and assumed nothing had been saved.
+      expect($('.Games-RepeatActivity').text()).toContain(
+        $interactivevideo.i18n.msgYouScore,
+      );
+    });
+  });
 });

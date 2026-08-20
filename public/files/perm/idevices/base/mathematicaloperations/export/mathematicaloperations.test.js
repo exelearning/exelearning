@@ -205,4 +205,99 @@ describe('mathematicaloperations iDevice export', () => {
       expect($eXeMathOperations.sendScore).toHaveBeenCalledWith(true, 0);
     });
   });
+
+  describe('showFeedBack', () => {
+    function setupFeedback(opts, feedbackHtml) {
+      document.body.innerHTML = `
+        <div class="MTHO-DivFeedBack" id="mthoDivFeedBack-0" style="display:none">
+          <div class="mathoperations-feedback-game">${feedbackHtml}</div>
+        </div>
+        <p id="mthoPShowClue-0"></p>
+      `;
+      $eXeMathOperations.options[0] = {
+        hits: 2,
+        number: 2,
+        percentajeFB: 0,
+        msgs: { msgTryAgain: 'Try again %s' },
+        ...opts,
+      };
+      vi.spyOn($eXeMathOperations, 'showCubiertaOptions').mockImplementation(
+        () => {},
+      );
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('does not open the panel when feedback is disabled', () => {
+      setupFeedback({ feedBack: false }, '<p>Well done</p>');
+
+      $eXeMathOperations.showFeedBack(0);
+
+      expect($eXeMathOperations.showCubiertaOptions).not.toHaveBeenCalled();
+    });
+
+    it('does not open an empty panel even when feedback is enabled', () => {
+      // The panel markup is always exported, so an author who enabled feedback but wrote
+      // no text used to get an empty box covering the activity.
+      setupFeedback({ feedBack: true }, '');
+
+      $eXeMathOperations.showFeedBack(0);
+
+      expect($eXeMathOperations.showCubiertaOptions).not.toHaveBeenCalled();
+    });
+
+    it('opens the panel when feedback is enabled and has content', () => {
+      setupFeedback({ feedBack: true }, '<p>Well done</p>');
+
+      $eXeMathOperations.showFeedBack(0);
+
+      expect($eXeMathOperations.showCubiertaOptions).toHaveBeenCalledWith(1, 0);
+    });
+  });
+
+  describe('loadDataGame feedback flag', () => {
+    let previousExeDevices;
+
+    beforeEach(() => {
+      previousExeDevices = global.$exeDevices;
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            helpers: { isJsonString: (json) => JSON.parse(json) },
+          },
+        },
+      };
+    });
+
+    afterEach(() => {
+      global.$exeDevices = previousExeDevices;
+      vi.restoreAllMocks();
+    });
+
+    // A legacy or imported activity can store the flag as a string. "false" is truthy in
+    // JS, which popped the feedback panel open on activities that never enabled it.
+    it.each([
+      ['false', false],
+      ['0', false],
+      [0, false],
+      [undefined, false],
+      ['true', true],
+      ['1', true],
+      [true, true],
+    ])('normalizes feedBack %p to %p', (stored, expected) => {
+      vi.spyOn($eXeMathOperations, 'loadQuestions').mockImplementation(
+        (options) => options,
+      );
+      const data = {
+        text: () => JSON.stringify({ feedBack: stored, msgs: {} }),
+      };
+
+      const options = $eXeMathOperations.loadDataGame(data, 0);
+
+      expect(options.feedBack).toBe(expected);
+    });
+  });
 });
