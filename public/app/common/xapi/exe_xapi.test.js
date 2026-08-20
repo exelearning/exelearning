@@ -55,7 +55,6 @@ describe('exe_xapi emitter', () => {
         xapi._state = {};
         xapi._lastSig = {};
         xapi._lifecycle = { initialized: false, terminated: false };
-        xapi._census = {};
         delete window.exeXapi;
         // No getFinalScore stub: common.js installs the real one on
         // $exeDevices.iDevice.gamification.scorm, which is what the emitter reads.

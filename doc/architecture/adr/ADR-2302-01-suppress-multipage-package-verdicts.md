@@ -23,7 +23,7 @@ ai_assistance:
 
 ## Context
 
-Each page of a multipage web export is a separate HTML document with a fresh JavaScript context. The
+Each page of a multipage export is a separate HTML document with a fresh JavaScript context. The
 xAPI emitter's per-page state (`_state`) therefore only ever holds the scores answered on the current
 page, yet the emitter computed a package-level `completed` + `passed`/`failed` pair from it on every
 answer, against the package's Activity IRI. Two pages of one attempt could emit a `passed` (raw 100)
@@ -128,6 +128,5 @@ statements' shape against the real `gamification.scorm.getFinalScore`.
 
 ## References
 
-- [ADR-2302-02](ADR-2302-02-ship-xapi-emitter-only-in-web-exports.md)
 - [PR #2302](https://github.com/exelearning/exelearning/pull/2302)
 - [`doc/elpx-format/tracking-emission.md`](../../elpx-format/tracking-emission.md)

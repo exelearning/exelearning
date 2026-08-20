@@ -149,9 +149,9 @@ describe('gamification.track (xAPI dispatch)', () => {
     });
 
     it('registerActivity declares the iDevice to the emitter outside SCORM too', () => {
-        // The link the census depends on. registerActivity's own census only exists
-        // under pipwerks (it lives in cmi.suspend_data), so in an HTML5 export this
-        // forward is the ONLY way the emitter learns about an iDevice nobody answers.
+        // Outside pipwerks there is no SCORM-side registration (it lives in
+        // cmi.suspend_data), so this forward is the ONLY way the emitter learns
+        // about an iDevice nobody answers — the score-0 seeding depends on it.
         const registerEvaluable = vi.fn();
         global.$exeDevices.iDevice.xapi = { registerEvaluable };
         document.body.innerHTML = `
@@ -172,8 +172,8 @@ describe('gamification.track (xAPI dispatch)', () => {
     });
 
     it('registerActivity survives a package with no emitter at all', () => {
-        // SCORM, IMS and EPUB exports ship no emitter (ADR-2302-02), so the forwarder
-        // must no-op rather than throw and take the activity down with it.
+        // The print preview loads no emitter, so the forwarder must no-op
+        // rather than throw and take the activity down with it.
         global.$exeDevices.iDevice.xapi = undefined;
         document.body.innerHTML = `
             <article>

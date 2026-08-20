@@ -1396,7 +1396,7 @@ describe('ElpxExporter', () => {
         });
     });
     describe('xAPI emitter scope (ADR-2302-01)', () => {
-        it('ships the emitter, inherited from the HTML5 web family', async () => {
+        it('ships the emitter, inherited from Html5Exporter', async () => {
             // A web export has no scoring runtime of its own, so the emitter is its
             // only channel rather than a second, non-authoritative one.
             await exporter.export();

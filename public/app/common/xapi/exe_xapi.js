@@ -13,7 +13,7 @@
     GNU General Public License for more details.
 ===============================================================================
 
-    xAPI (Experience API) emitter for web-family eXeLearning exports.
+    xAPI (Experience API) emitter for eXeLearning exports.
 
     This library is bundled into EVERY export format via BASE_LIBRARIES, with no
     export-time option, as an ANALYTICS channel: grading authority stays with each

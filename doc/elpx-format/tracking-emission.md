@@ -5,9 +5,11 @@ scores** to a host (LMS / LRS). Two channels coexist:
 
 - **SCORM 1.2/2004** — emitted only by SCORM exports, via the bundled SCORM API
   wrapper. Pre-existing behaviour.
-- **xAPI (Experience API)** — emitted by the **web export family** (HTML5, ELPX,
-  single page, editor preview) via `libs/xapi/exe_xapi.js`, with **no export-time
-  option**. SCORM, IMS and EPUB packages do not carry it (ADR-2302-02).
+- **xAPI (Experience API)** — emitted by **every** export format, always on, via
+  `libs/xapi/exe_xapi.js`, with **no export-time option**. It is an **analytics
+  channel**: grading authority stays with each format's own runtime (SCORM's
+  `cmi.*`) or with the consumer's server (see
+  [ADR-2302-01](../architecture/adr/ADR-2302-01-suppress-multipage-package-verdicts.md)).
 
 Both channels are fed from the **same single score source** in
 `public/app/common/common.js` (the `gamification` namespace), so the score math
@@ -24,12 +26,6 @@ Related: [export-pipeline.md](./export-pipeline.md) ·
 - It does **not** implement **cmi5**. cmi5 requires additional launch (fetch
   token), session `LaunchData`, AU metadata, `moveOn` rules, cmi5-defined context
   categories and packaging semantics that are intentionally out of scope here.
-  The emitter ships with **every export format** as an analytics/external-LRS channel:
-  grading authority stays with each format's own runtime (SCORM's `cmi.*`) or with the
-  consumer's server. Every format injects the identity config, and the loader tag is
-  emitted only alongside it (the print preview passes no config and loads no emitter).
-  See [ADR-2302-01](../architecture/adr/ADR-2302-01-suppress-multipage-package-verdicts.md).
-
   The `initialized`/`terminated` statements below are **generic xAPI lifecycle
   statements**, not cmi5 ones.
 - The package only **emits** statements. The host LMS/LRS is responsible for
@@ -83,7 +79,7 @@ It does **not** depend on SCORM/pipwerks.
 | Emitter library | `public/app/common/xapi/exe_xapi.js` |
 | Inclusion (every export) | `BASE_LIBRARIES` (`src/shared/export/constants.ts`); loader tag gated on the injected config |
 | Identity config in `<head>` | `window.exeXapi` injected by `PageRenderer` (both multi-page and single-page heads) |
-| Config source | `BaseExporter.buildXapiConfig()`, called by every web-family exporter |
+| Config source | `BaseExporter.buildXapiConfig()`, called by every exporter |
 
 The exporter injects, before the emitter script:
 
@@ -133,8 +129,6 @@ the SCORM gate) and the running aggregate (reusing the pure `getFinalScore`):
 
 - **Per iDevice** — verb [`answered`](http://adlnet.gov/expapi/verbs/answered),
   object = per-iDevice IRI, `result.score = { scaled, raw, min: 0, max: 10 }`.
-  Its context also carries the iDevice's effective configured weight, allowing a
-  consumer to reconstruct the package result independently.
 - **Package** — verb [`completed`](http://adlnet.gov/expapi/verbs/completed) plus
   [`passed`](http://adlnet.gov/expapi/verbs/passed) /
   [`failed`](http://adlnet.gov/expapi/verbs/failed) at the same ≥ 50 threshold,
@@ -235,8 +229,8 @@ unanswered iDevices is emitted.
 
 ### 2.5 Notes
 
-- The emitter debounces duplicate statements (same iDevice + same score, weight,
-  and package order) and assigns each statement a UUID `id` for LRS idempotency.
+- The emitter debounces duplicate statements (same iDevice + same score) and
+  assigns each statement a UUID `id` for LRS idempotency.
 - The package-level statement reuses `gamification.scorm.getFinalScore()` (a pure
   function) for the weighted total — single source of truth with SCORM.
 - The `initialized`/`terminated` lifecycle statements are emitted at most once and

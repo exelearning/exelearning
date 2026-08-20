@@ -1162,8 +1162,8 @@ var $exeDevices = {
                     if (typeof game !== 'object' || game === null) return;
 
                     // Resolve the iDevice identity from the DOM once. This is used by
-                    // both SCORM tracking and the xAPI emitter (exe_xapi.js), so it
-                    // must run in every export format, not only under SCORM.
+                    // both SCORM tracking and the always-on xAPI emitter (exe_xapi.js),
+                    // so it must run in every export format, not only under SCORM.
                     game.mainElement = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
                     let $ideviceNode = game.mainElement.closest('.idevice_node');
                     // The node id equals the stable odeIdeviceId, used as the xAPI object IRI.
@@ -1173,8 +1173,8 @@ var $exeDevices = {
                     game.ideviceNumber = $('.idevice_node').index($ideviceNode) + 1;
 
                     // Declare this iDevice to the xAPI emitter before any answer
-                    // (a no-op where no emitter ships). The SCORM census below is
-                    // gated on pipwerks, so it does not exist in web exports.
+                    // (a no-op when no emitter is loaded, e.g. the print preview);
+                    // the SCORM-side registration below stays gated on pipwerks.
                     $exeDevices.iDevice.gamification.registerEvaluable(game);
 
                     let lmsData = {};
