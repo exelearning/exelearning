@@ -251,6 +251,17 @@ ifndef PASSWORD
 endif
 	@$(CLI) create-user $(EMAIL) $(PASSWORD) $(if $(ROLES),--roles=$(ROLES),) $(if $(QUOTA),--quota=$(QUOTA),) $(if $(NO_FAIL),--no-fail,)
 
+# Change the password of a local account
+# Usage: make change-password EMAIL=user@example.com
+# The new password is asked for interactively (and hidden), so it never reaches
+# the shell history or a process listing.
+.PHONY: change-password
+change-password: check-bun
+ifndef EMAIL
+	$(error EMAIL is required. Usage: make change-password EMAIL=user@example.com)
+endif
+	@$(CLI) user:password $(EMAIL)
+
 # Grant ROLE_ADMIN to a user
 # Usage: make promote-admin EMAIL=x
 .PHONY: promote-admin
@@ -437,10 +448,21 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests
+lint: check-bun lint-ts lint-js lint-tests architecture-check
 
 .PHONY: fix
 fix: check-bun fix-ts fix-js fix-tests
+
+# Print the architecture record index, derived from document frontmatter.
+# Deliberately not a committed file: it would conflict on every concurrent branch.
+.PHONY: architecture-records
+architecture-records: check-bun
+	@bun run scripts/architecture-records.mts list
+
+# Validate architecture record identifiers, metadata and cross-references.
+.PHONY: architecture-check
+architecture-check: check-bun
+	bun run scripts/architecture-records.mts check
 
 # Lint TypeScript source files (src/)
 .PHONY: lint-ts
@@ -862,6 +884,7 @@ help:
 	@echo ""
 	@echo "CLI Commands:"
 	@echo "  make cli ARGS='...'                           Generic CLI access"
+	@echo "  make change-password EMAIL=x                  Change a local account password"
 	@echo "  make create-user EMAIL=x PASSWORD=y           Create a new user"
 	@echo "  make demote-admin EMAIL=x                     Remove ROLE_ADMIN"
 	@echo "  make generate-jwt EMAIL=x [TTL=3600]          Generate JWT token"

@@ -3,7 +3,7 @@
  *
  */
 
-import IdeviceNode from './content/ideviceNode.js';
+import IdeviceNode, { parseIdeviceJsonProperties } from './content/ideviceNode.js';
 import IdeviceBlockNode from './content/blockNode.js';
 import { getInitials, generateGravatarUrl } from '../../../utils/avatarUtils.js';
 import { sanitizeCollaborativeHtml } from '../../../utils/sanitizeHtml.js';
@@ -1497,13 +1497,16 @@ export default class IdevicesEngine {
             ideviceNode.htmlView = componentData.htmlContent || '';
         }
         if (componentData.jsonProperties !== undefined) {
-            try {
-                ideviceNode.jsonProperties =
-                    typeof componentData.jsonProperties === 'string'
-                        ? JSON.parse(componentData.jsonProperties || '{}')
-                        : componentData.jsonProperties || {};
-            } catch {
-                ideviceNode.jsonProperties = {};
+            const parsed = parseIdeviceJsonProperties(componentData.jsonProperties);
+            ideviceNode.jsonProperties = parsed.value;
+            ideviceNode.jsonPropertiesParseError = parsed.error;
+            ideviceNode.malformedJsonPropertiesRaw = parsed.error
+                ? componentData.jsonProperties
+                : null;
+            if (parsed.error) {
+                Logger.warn(
+                    `[IdevicesEngine] Ignoring malformed jsonProperties update for ${componentData.id}: ${parsed.error.message}`
+                );
             }
         }
 
@@ -2840,6 +2843,10 @@ export default class IdevicesEngine {
         }
 
         let script = document.createElement('script');
+        // Dynamically inserted scripts are async by default: execution follows
+        // network completion, so dependency lists (e.g. three.min.js before
+        // OrbitControls.js) can run out of order. Force insertion order.
+        script.async = false;
         script.id = this.generateId();
         script.setAttribute('type', 'text/javascript');
         if (newVersion) {
@@ -2930,6 +2937,8 @@ export default class IdevicesEngine {
                 break;
             case 'js':
                 tag = document.createElement('script');
+                // Keep insertion order for multi-file loads (see issue #2270)
+                tag.async = false;
                 tag.id = this.generateId();
                 tag.setAttribute('type', 'text/javascript');
                 tag.src = `${url}?t=${Date.now()}`;

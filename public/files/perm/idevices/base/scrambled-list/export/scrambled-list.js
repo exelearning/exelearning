@@ -101,7 +101,7 @@ var $scrambledlist = {
     },
 
     updateConfig: function (odata, ideviceId) {
-        const data = JSON.parse(JSON.stringify(odata));
+        const data = JSON.parse(JSON.stringify(odata || {}));
         const isInExe = eXe.app.isInExe() ?? false;
         data.idevicePath = isInExe
             ? eXe.app.getIdeviceInstalledExportPath('scrambled-list')

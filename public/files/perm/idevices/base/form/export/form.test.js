@@ -190,6 +190,50 @@ describe('form iDevice export', () => {
     });
   });
 
+  describe('updateConfig', () => {
+    beforeEach(() => {
+      eXe.app.isInExe = vi.fn(() => false);
+      eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/form/');
+      document.body.innerHTML = '';
+    });
+
+    // An activity whose saved data was lost or discarded arrives as {}, and the
+    // shared getQuestions helper hands back an empty array for it.
+    it('normalises missing questions to an empty list', () => {
+      let result;
+
+      expect(() => {
+        result = $form.updateConfig({}, 'form-1');
+      }).not.toThrow();
+
+      expect(result.questionsData).toEqual([]);
+      expect(result.numberQuestions).toBe(0);
+    });
+
+    it('does not throw when there is no saved data at all', () => {
+      expect(() => $form.updateConfig(undefined, 'form-1')).not.toThrow();
+    });
+  });
+
+  describe('renderBehaviour', () => {
+    beforeEach(() => {
+      eXe.app.isInExe = vi.fn(() => false);
+      eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/form/');
+      document.body.innerHTML = '<div id="form-questions-form-1"></div>';
+    });
+
+    // getQuestions now yields [] rather than undefined, so the early return has
+    // to test for emptiness instead of falsiness.
+    it('renders nothing when the activity has no questions', () => {
+      const getHtmlFormView = vi.spyOn($form, 'getHtmlFormView');
+
+      expect(() => $form.renderBehaviour({}, 0, 'form-1')).not.toThrow();
+
+      expect(getHtmlFormView).not.toHaveBeenCalled();
+      getHtmlFormView.mockRestore();
+    });
+  });
+
   describe('mergeFields', () => {
     it('returns obj2 if obj1 is null', () => {
       const obj2 = { a: 1, b: 2 };

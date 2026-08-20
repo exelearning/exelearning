@@ -139,7 +139,7 @@ var $form = {
         this.idevicePath = this.isInExe
             ? eXe.app.getIdeviceInstalledExportPath('form')
             : $('.idevice_node.form').eq(0).attr('data-idevice-path');
-        const data = JSON.parse(JSON.stringify(odata));
+        const data = JSON.parse(JSON.stringify(odata || {}));
         data.msgs = $form.mergeFields(data.msgs, $form.msgs);
         data.id = ideviceId || data.ideviceId || data.id;
         data.evaluation = data.evaluation || false;
@@ -203,7 +203,7 @@ var $form = {
     renderBehaviour: function (data, accesibility, ideviceId) {
         const ldata = this.updateConfig(data, ideviceId);
         const addBtnAnswers = ldata.addBtnAnswers;
-        if (!ldata.questionsData) return;
+        if (!ldata.questionsData.length) return;
         const questionsHtml = $form.getHtmlFormView(ldata.questionsData, ldata);
         $('#form-questions-' + ldata.id).empty();
         $('#form-questions-' + ldata.id).append(questionsHtml);

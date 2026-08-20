@@ -32,7 +32,8 @@ lomloe/
     ├── lomloe-ES-CN.json   # Canary Islands (ISO ES-CN) LOMLOE concretion
     ├── lomloe-ES-GA.json   # Galicia (ISO ES-GA) — DOG decrees, Galician language
     ├── lomloe-ES-NC.json   # Com. Foral de Navarra (ISO ES-NC) — Decretos Forales 61/67/71/72-2022, Spanish
-    └── lomloe-ES-VC.json   # Comunitat Valenciana (ISO ES-VC) — Decrets 100/106/107/108-2022, Valencian
+    ├── lomloe-ES-VC.json   # Comunitat Valenciana (ISO ES-VC) — Decrets 100/106/107/108-2022, Valencian
+    └── lomloe-ES-PV.json   # Euskadi / País Vasco (ISO ES-PV) — Decretos 75/2023, 77/2023, Basque
 ```
 
 ## Dataset format
@@ -138,7 +139,7 @@ File names follow the pattern `lomloe-{ISO-code}.json`.
 | ES    | Estado (national)             | ES-MD | Comunidad de Madrid     |
 | ES-AN | Andalucía                     | ES-MC | Región de Murcia        |
 | ES-AR | Aragón                        | ES-NC | **Com. Foral de Navarra** ✓ (available) |
-| ES-AS | Asturias, Principado de       | ES-PV | País Vasco / Euskadi    |
+| ES-AS | Asturias, Principado de       | ES-PV | **País Vasco / Euskadi** ✓ (available) |
 | ES-CB | Cantabria                     | ES-RI | La Rioja                |
 | ES-CL | Castilla y León               | ES-VC | **Comunitat Valenciana** ✓ (available) |
 | ES-CM | Castilla-La Mancha            | ES-CE | Ceuta                   |
@@ -472,6 +473,132 @@ The Canary Islands dataset (`lomloe-canarias.json`) is derived from the official
 | ESO | 4 | 66 | 406 | — |
 | Bachillerato | 2 | 92 | 508 | — |
 | **Total** | **18** | **240** | **1,268** | **7,884+** |
+
+## Data source (Euskadi / País Vasco)
+
+`lomloe-ES-PV.json` is a **full, direct extraction from the official Basque-language
+(euskara) decrees** — nothing is inherited from the state RDs and nothing is
+machine-translated. Both decrees were published in the same gazette, *Euskal
+Herriko Agintaritzaren Aldizkaria* (EHAA) núm. 109, 9 June 2023.
+
+| EHAA disposition | Norma | Etapa | Canonical PDF (language) |
+|---|---|---|---|
+| 2023/2727 | Decreto 75/2023, de 30 de mayo | Haur Hezkuntza (Educación Infantil) | `haur_hezkuntza_curriculum_dekretua_e.pdf` (Basque) |
+| 2023/2729 | Decreto 77/2023, de 30 de mayo | Oinarrizko Hezkuntza (Educación Básica: Primaria + ESO) | `Oinarrizko Hezkuntzaren Dekretua.pdf` (Basque) |
+
+The Spanish editions of both decrees were used **only as a structural oracle**
+(to cross-check the number of areas, competencias, criterios per cycle and saber
+blocks); all curriculum text shipped in the dataset is the official Basque text.
+
+### Etapas, niveles and codes
+
+The dataset uses Basque stage/level keys (matching the co-official-language
+precedent of `ES-VC`). There is **no Bachillerato** — Decreto 77/2023 only covers
+Educación Básica.
+
+| Etapa key | Niveles | Areas | Competencias | Criterios | Saberes | Code tag |
+|---|---|---|---|---|---|---|
+| `Haur Hezkuntza` | `Lehen zikloa (0-2 urte)`, `Bigarren zikloa (3-5 urte)` | 3 | 24 | 80 | 255 | `INF1`, `INF2` |
+| `Lehen Hezkuntza` | `Lehen Hezkuntzako 1. maila` … `6. maila` | 8 | 329 | 831 | 1 936 | `PRI1` … `PRI6` |
+| `Derrigorrezko Bigarren Hezkuntza` | `DBHko 1. maila` … `4. maila` | 29 | 408 | 1 115 | 3 338 | `ESO1` … `ESO4` |
+
+(Competencias/criterios/saberes counted per `(nivel, area)`, i.e. including the
+per-year/per-course duplication.)
+
+The JSON keeps the original range keys `Lehen zikloa (0-3 urte)` and
+`Bigarren zikloa (3-6 urte)` so persisted selection identifiers remain stable.
+The editor displays the inclusive age labels `0-2 urte` and `3-5 urte` through
+the `ES-PV` dataset configuration.
+
+Codes follow `ES-PV-{tag}-{AREA}-CE##` (competencia), `…-CR##` (criterio) and
+`ES-PV-{tag}-{AREA}-SB##-###` (saber), with the year/course tag embedded so the
+same cycle content duplicated across two years keeps unique selection ids.
+
+`stage` adapters were extended for the Basque names: `ETAPA_ORDER` recognises
+`haur`/`lehen`/`bigarren` and `isInfantil()` recognises `haur` (see
+`edition/lomloe.js`), with tests in `edition/lomloe.test.js`.
+
+### Subject codes (`codArea`)
+
+Neither decree publishes official subject *siglas*, so the area/materia codes are
+**derived deterministically from the official Basque names** (initials of the
+significant words, e.g. `NGKIE` = *Natura, Gizarte eta Kultura Ingurunearen
+Ezagutza*, `EL`/`GL` = *Euskara*/*Gaztelania eta Literatura*, `GH` = *Geografia
+eta Historia*). The mapping is fixed in the generator and guarded by tests.
+
+### Cycle / year mapping
+
+- **Primaria** criterios and saberes are published *by cycle* (Lehen / Bigarren /
+  Hirugarren zikloa). Each cycle's content is duplicated into its two years
+  (cycle 1 → 1.º/2.º, cycle 2 → 3.º/4.º, cycle 3 → 5.º/6.º) with year-specific
+  codes. `Balio Zibiko eta Etikoetako Heziketa` is taught **only in 6.º** (art.
+  12.2) and is exposed only under `Lehen Hezkuntzako 6. maila`.
+
+### ESO per-course distribution
+
+ESO criterios are published per course-block in each materia's own *maila* column
+header (e.g. *Lehen eta bigarren mailak* → 1.º/2.º, *Hirugarren maila* → 3.º). The
+generator reads those headers to map each column to its courses, bounded by the
+materia's course offering in **art. 13** (`COURSE_MAP`). The result is encoded
+**directly per course** in the JSON — a materia simply does not appear in a course
+where it is not taught — so **no `ESO_COURSE_SUBJECTS` runtime filter is needed**
+(a regression test in the colocated `lomloe-ES-PV.test.js` asserts the per-course
+distribution). `Musika` is available in 1.º–4.º; `Kultura Zientifikoa` in
+3.º/4.º; and `Latina` plus `Adierazpen Artistikoa` in 4.º. `Matematika Lantegia`
+is listed in art. 13 for 4.º but has no curriculum annex in Decreto 77/2023, so it
+is exposed with an intentionally empty curriculum rather than fabricated content.
+4.º Matemáticas reuses the 3.º column the decree publishes.
+
+### Descriptors / competencias clave strategy
+
+The Basque ANEXO I defines the *irteera-profila* operational descriptors with
+**Basque family codes** that differ from the Castilian set: `HKK`=CCL, `KE`=CP,
+`STEM`=STEM, `KD`=CD, `KPSII`=CPSAA, `HK`=CC, `EK`=CE, `KAKK`=CCEC. Each
+competencia específica lists the descriptors it connects to (`… deskriptore
+hauekin lotzen da: HKK1, KE1, STEM4 …`); those codes are copied onto every
+criterio of the competencia. The browser renders those links once at competencia
+level, while the selected-criterio panel remains in checkbox mode so the teacher
+can choose the applicable subset (`ES-PV` is **not** `descriptorsPerCriterion`).
+The decree's PDF text contains systematic OCR/source
+variants of these codes (`PSIIK`/`SII`→`KPSII`, `DK`/`LD`→`KD`, `ELK`→`KE`,
+`EKK`→`EK`, `KKAK`→`KAKK`, `STEAM`→`STEM`, the Castilian leak `CP`→`KE`); the
+generator normalises them to the ANEXO I family set and validates every code is
+in range, dropping (never inventing) anything that fails.
+
+The full Basque descriptor catalogue (43 codes: 8 families + the numbered
+descriptors, end-of-Oinarrizko-Hezkuntza wording, union of both exit levels) is
+shipped under the reserved top-level **`descriptors`** key, so the editor and
+exports render Basque descriptor tooltips instead of the shared Castilian
+`CC_DESCRIPTIONS` fallback.
+
+### Infantil competencias clave (documented limitation)
+
+Decreto 75/2023 publishes **no per-competencia or per-criterio competencia-clave
+mapping** for Infantil — the perfil de salida descriptors are defined only at the
+end of Lehen Hezkuntza and Oinarrizko Hezkuntza. Unlike `ES`/`ES-EX`/`ES-MD`
+(which backfill Infantil from the Canarias matrix), **`ES-PV` leaves the Infantil
+criterios' `competencias_clave` empty** rather than fabricate or copy a mapping
+the Basque source does not make. This decision is locked by a test in
+`lomloe-ES-PV.test.js`.
+
+### Known limitations
+
+- `4.º Matemáticas A/B` is represented as a single `MAT` reusing the 3.º criterios
+  the decree publishes. Its saberes matrix cannot be segmented reliably (46
+  apparent blocks), so the 4.º bloques are left empty rather than ship mis-split
+  content.
+- `Matematika Lantegia` (`ML`) is listed as a 4.º optative in art. 13, but Decreto
+  77/2023 publishes no competencias específicas, criterios de evaluación or
+  saberes for it. The subject is visible with an intentionally empty curriculum.
+- One `Lanbide-jarduerari Aplikatutako Zientziak` (`LAZ`) competencia in 4.º whose
+  criterios column is empty in the source is dropped (no usable criterios).
+
+### Generator script
+
+A single self-contained Python script (`parse_es_pv.py`, `pdfplumber`-based)
+deterministically regenerates `lomloe-ES-PV.json` from the two Basque PDFs. It is
+**attached to the PR** that introduced this dataset rather than committed to the
+repo.
 
 ## Persisted data model
 

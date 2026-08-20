@@ -15,6 +15,7 @@ import { TrueFalseHandler } from './TrueFalseHandler';
 import { GalleryHandler } from './GalleryHandler';
 import { CaseStudyHandler } from './CaseStudyHandler';
 import { GameHandler } from './GameHandler';
+import { FileAttachHandler } from './FileAttachHandler';
 
 describe('HandlerRegistry', () => {
     beforeEach(() => {
@@ -70,6 +71,12 @@ describe('HandlerRegistry', () => {
             expect(LEGACY_TYPE_MAP.FreeTextfpdIdevice).toBe('text');
             expect(LEGACY_TYPE_MAP.ReflectionfpdIdevice).toBe('text');
             expect(LEGACY_TYPE_MAP.VerdaderoFalsoFPDIdevice).toBe('trueorfalse');
+        });
+
+        it('should map file attachment iDevices to file-attachment (not text)', () => {
+            expect(LEGACY_TYPE_MAP.FileAttachIdevice).toBe('file-attachment');
+            expect(LEGACY_TYPE_MAP.FileAttachIdeviceInc).toBe('file-attachment');
+            expect(LEGACY_TYPE_MAP.AttachmentIdevice).toBe('file-attachment');
         });
     });
 
@@ -128,6 +135,17 @@ describe('HandlerRegistry', () => {
         it('should return CaseStudyHandler for CaseStudyIdevice', () => {
             const handler = LegacyHandlerRegistry.getHandler('exe.engine.casestudyidevice.CaseStudyIdevice');
             expect(handler).toBeInstanceOf(CaseStudyHandler);
+        });
+
+        it('should return FileAttachHandler for FileAttachIdeviceInc', () => {
+            const handler = LegacyHandlerRegistry.getHandler('exe.engine.fileattachidevice.FileAttachIdeviceInc');
+            expect(handler).toBeInstanceOf(FileAttachHandler);
+            expect(handler.getTargetType()).toBe('file-attachment');
+        });
+
+        it('should return FileAttachHandler for AttachmentIdevice', () => {
+            const handler = LegacyHandlerRegistry.getHandler('exe.engine.attachmentidevice.AttachmentIdevice');
+            expect(handler).toBeInstanceOf(FileAttachHandler);
         });
 
         it('should return GameHandler for JsIdevice with flipcards type', () => {
