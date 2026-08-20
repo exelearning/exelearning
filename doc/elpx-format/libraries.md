@@ -42,16 +42,14 @@ This sample uses only the `text` iDevice, so no iDevice-specific or conditional 
 
 ## 2. Always-bundled base libraries
 
-The constant `BASE_LIBRARIES` in `src/shared/export/constants.ts` defines the set of files fetched unconditionally for every export:
+The constant `BASE_LIBRARIES` in `src/shared/export/constants.ts:325` defines the set of files fetched unconditionally for every export:
 
 ```typescript
 export const BASE_LIBRARIES = [
     'jquery/jquery.min.js',
-    'common_i18n.js',
     'common.js',
     'exe_export.js',
-    // xAPI analytics emitter; see tracking-emission.md
-    'xapi/exe_xapi.js',
+    'xapi/exe_xapi.js', // always-on xAPI emitter; see tracking-emission.md
     'bootstrap/bootstrap.bundle.min.js',
     'bootstrap/bootstrap.bundle.min.js.map',
     'bootstrap/bootstrap.min.css',

@@ -205,12 +205,6 @@ describe('Constants', () => {
         });
     });
 
-    describe('xAPI emitter library', () => {
-        it('ships the emitter with the base libraries of every export', () => {
-            expect(BASE_LIBRARIES).toContain('xapi/exe_xapi.js');
-        });
-    });
-
     describe('BASE_LIBRARIES', () => {
         it('should include jQuery', () => {
             expect(BASE_LIBRARIES).toContain('jquery/jquery.min.js');

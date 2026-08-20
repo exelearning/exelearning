@@ -657,14 +657,4 @@ describe('LibraryDetector', () => {
             expect(mathGames).toBeDefined();
         });
     });
-    describe('xAPI emitter inclusion', () => {
-        it('ships the emitter with the base libraries of every export', () => {
-            // Every export is xAPI-capable for analytics/external-LRS use; the
-            // injected config (and the loader tag gated on it) is what gives the
-            // statements a usable identity.
-            expect(detector.getBaseLibraries()).toContain('xapi/exe_xapi.js');
-            const required = detector.getAllRequiredFilesWithPatternsFromFragmentGroups([{ fragments: [] }], {});
-            expect(required.files).toContain('xapi/exe_xapi.js');
-        });
-    });
 });

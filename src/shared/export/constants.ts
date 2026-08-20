@@ -326,9 +326,7 @@ export const BASE_LIBRARIES = [
     'common_i18n.js',
     'common.js',
     'exe_export.js',
-    // xAPI emitter: every export is xAPI-capable for analytics/external-LRS use.
-    // Whether statements carry a usable identity is decided by the injected
-    // window.exeXapi config, and the loader tag is only emitted alongside it.
+    // Always-on xAPI emitter (every export is xAPI-compatible out of the box)
     'xapi/exe_xapi.js',
     // Bootstrap (JS bundle includes Popper)
     'bootstrap/bootstrap.bundle.min.js',
