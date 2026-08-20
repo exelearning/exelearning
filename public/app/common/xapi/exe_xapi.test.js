@@ -10,11 +10,6 @@ const ANSWERED_VERB = 'http://adlnet.gov/expapi/verbs/answered';
 const COMPLETED_VERB = 'http://adlnet.gov/expapi/verbs/completed';
 const PASSED_VERB = 'http://adlnet.gov/expapi/verbs/passed';
 const FAILED_VERB = 'http://adlnet.gov/expapi/verbs/failed';
-const IDEVICE_ID_EXTENSION = 'https://exelearning.net/xapi/extensions/idevice-id';
-const PAGE_COUNT_EXTENSION = 'https://exelearning.net/xapi/extensions/page-count';
-const PAGE_ID_EXTENSION = 'https://exelearning.net/xapi/extensions/page-id';
-const PAGE_TITLE_EXTENSION = 'https://exelearning.net/xapi/extensions/page-title';
-const INITIALIZED_VERB = 'http://adlnet.gov/expapi/verbs/initialized';
 
 /** The one shipped implementation of the weighted package total. */
 const getFinalScore = global.$exeDevices.iDevice.gamification.scorm.getFinalScore;
@@ -98,17 +93,12 @@ describe('exe_xapi emitter', () => {
         expect(s.id).toMatch(/^[0-9a-f-]{36}$/i);
     });
 
-
-
-
-
-
     it.each([
         ['zero (jQuery could not locate the node)', 0],
         ['negative', -1],
         ['missing', undefined],
-    ])('omits the order and the package aggregate for a %s iDevice number', (_label, ideviceNumber) => {
-        window.exeXapi = { odeId: 'PKG1', ideviceOrderOffset: 4 };
+    ])('omits the package aggregate for a %s iDevice number', (_label, ideviceNumber) => {
+        window.exeXapi = { odeId: 'PKG1' };
         const spy = installFakeParent();
         xapi.init();
 

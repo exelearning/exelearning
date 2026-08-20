@@ -102,6 +102,13 @@ from the editor preview because the required-files list and the provider map dis
 shrank the reach of the very channel this ADR defines as analytics. What survived the revert: the
 loader tag gated on the config, and identity config injection in every exporter.
 
+### Emitter-side sessionStorage cross-page state
+
+Carrying the page-local aggregate across documents in `sessionStorage` would let a multipage package
+emit a package verdict again. Rejected: it is per-origin and per-tab (absent in sandboxed iframes and
+in `file://` SCORM players), it survives across attempts, and the verdict would still be a
+learner-authored reconstruction of package structure — the property Decision 1 exists to remove.
+
 ### Moodle core_xapi and its State API
 
 Rejected for grading: `core_xapi` provides statement routing/validation only (no attempts model, no
@@ -123,7 +130,7 @@ wrong shape for durable package metadata. A per-user save-state feature would be
 
 Unit tests pin: verdict suppression on `pageCount > 1`, the single-page verdict staying accurate for
 partial attempts (25, not 100), seeding never overwriting an answered score, unresolvable page slots
-never entering the aggregate, the 0..10 clamp at both ends, `pagehide`-only termination, and the
+never entering the aggregate, the 0..10 clamp at both ends, a single `terminated` statement per page, and the
 statements' shape against the real `gamification.scorm.getFinalScore`.
 
 ## References

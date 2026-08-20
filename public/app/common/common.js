@@ -1379,13 +1379,9 @@ var $exeDevices = {
 
             /**
              * Declare an evaluable iDevice to the xAPI emitter as the page loads,
-             * whether or not the learner ever answers it.
-             *
-             * Mirrors what registerActivity already does for SCORM's suspend_data
-             * lmsData: without it the emitter only ever learns about answered
-             * iDevices, so the single-page package verdict normalizes over the
-             * answered subset and a partial attempt reports an inflated score
-             * (#2302).
+             * mirroring what registerActivity already does for SCORM's suspend_data
+             * lmsData. Without it a partial attempt reports an inflated score
+             * (ADR-2302-01).
              *
              * @param {object} game
              */

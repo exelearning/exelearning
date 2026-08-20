@@ -19,6 +19,9 @@ import {
     Scorm12Exporter,
     Scorm2004Exporter,
     ImsExporter,
+    Epub3Exporter,
+    ElpxExporter,
+    PageElpxExporter,
     unzipSync,
     type ParsedOdeStructure,
 } from '../../src/shared/export';
@@ -461,5 +464,111 @@ describe('Unified Export System Integration', () => {
             expect(contentXml).toContain('Test Project'); // Title
             expect(contentXml).toContain('Introduction'); // Page title
         });
+    });
+
+    describe('xAPI emitter (ADR-2302-01)', () => {
+        // Every packaged format must ship the emitter and inject its identity config.
+        // The config is what gates the loader tag and what carries pageCount, which is
+        // what suppresses the package verdict on a multipage package.
+        const cases: Array<{
+            name: string;
+            entry: string;
+            emitter: string;
+            pageCount: number;
+            pageId?: string;
+            options?: Record<string, unknown>;
+            make: (
+                document: ReturnType<typeof createDocumentFromStructure>,
+                resources: FileSystemResourceProvider,
+                assets: FileSystemAssetProvider,
+                zip: FflateZipProvider,
+            ) => { export: (options?: never) => Promise<{ data?: Uint8Array }> };
+        }> = [
+            {
+                name: 'HTML5',
+                emitter: 'libs/xapi/exe_xapi.js',
+                entry: 'index.html',
+                pageCount: 2,
+                pageId: 'page-1',
+                make: (d, r, a, z) => new Html5Exporter(d, r, a, z),
+            },
+            {
+                name: 'SCORM 1.2',
+                emitter: 'libs/xapi/exe_xapi.js',
+                entry: 'index.html',
+                pageCount: 2,
+                pageId: 'page-1',
+                make: (d, r, a, z) => new Scorm12Exporter(d, r, a, z),
+            },
+            {
+                name: 'SCORM 2004',
+                emitter: 'libs/xapi/exe_xapi.js',
+                entry: 'index.html',
+                pageCount: 2,
+                pageId: 'page-1',
+                make: (d, r, a, z) => new Scorm2004Exporter(d, r, a, z),
+            },
+            {
+                name: 'IMS',
+                emitter: 'libs/xapi/exe_xapi.js',
+                entry: 'index.html',
+                pageCount: 2,
+                pageId: 'page-1',
+                make: (d, r, a, z) => new ImsExporter(d, r, a, z),
+            },
+            {
+                name: 'EPUB3',
+                emitter: 'EPUB/libs/xapi/exe_xapi.js',
+                entry: 'EPUB/index.xhtml',
+                pageCount: 2,
+                pageId: 'page-1',
+                make: (d, r, a, z) => new Epub3Exporter(d, r, a, z),
+            },
+            {
+                name: 'ELPX',
+                emitter: 'libs/xapi/exe_xapi.js',
+                entry: 'index.html',
+                pageCount: 2,
+                pageId: 'page-1',
+                make: (d, r, a, z) => new ElpxExporter(d, r, a, z),
+            },
+            {
+                name: 'single-page ELPX',
+                emitter: 'libs/xapi/exe_xapi.js',
+                entry: 'index.html',
+                pageCount: 1,
+                pageId: 'page-2',
+                options: { rootPageId: 'page-2' },
+                make: (d, r, a, z) => new PageElpxExporter(d, r, a, z),
+            },
+            {
+                name: 'single page',
+                emitter: 'libs/xapi/exe_xapi.js',
+                entry: 'index.html',
+                pageCount: 1,
+                make: (d, r, a, z) => new PageExporter(d, r, a, z),
+            },
+        ];
+
+        for (const testCase of cases) {
+            it(`${testCase.name} ships the emitter with its identity config`, async () => {
+                const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
+                const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
+                const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
+                const zip = new FflateZipProvider();
+
+                const result = await testCase.make(document, resources, assets, zip).export(testCase.options as never);
+                const zipFile = unzipSync(result.data!);
+                const html = new TextDecoder().decode(zipFile[testCase.entry]);
+
+                expect(html).toContain('window.exeXapi');
+                expect(html).toContain('libs/xapi/exe_xapi.js');
+                expect(html).toContain(`"pageCount":${testCase.pageCount}`);
+                if (testCase.pageId) {
+                    expect(html).toContain(`"pageId":"${testCase.pageId}"`);
+                }
+                expect(zipFile[testCase.emitter]).toBeDefined();
+            });
+        }
     });
 });

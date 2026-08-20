@@ -136,7 +136,7 @@ the SCORM gate) and the running aggregate (reusing the pure `getFinalScore`):
 - **Lifecycle (generic xAPI, not cmi5)** —
   [`initialized`](http://adlnet.gov/expapi/verbs/initialized) emitted once per page
   load and [`terminated`](http://adlnet.gov/expapi/verbs/terminated) once on
-  `pagehide`/`unload`, both against the package Activity and only when a transport
+  `pagehide`, both against the package Activity and only when a transport
   is available. They carry no `result`.
 
   A multi-page package emits one pair **per page visited**, not one per attempt: each

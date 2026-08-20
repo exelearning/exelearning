@@ -59,10 +59,6 @@ class MockResourceProvider implements ResourceProvider {
     async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
-        // The provider hands the same set to every format; the exporter decides
-        // whether the emitter survives (ADR-2302-01). Seeding it here is what makes
-        // the presence and absence assertions mean anything.
-        files.set('xapi/exe_xapi.js', Buffer.from('// xapi emitter'));
         return files;
     }
 
@@ -908,18 +904,6 @@ describe('PageExporter', () => {
             expect(indexHtml).toContain('id="exe-index"');
             expect(indexHtml).toContain('libs/exe_math/tex-mml-svg.js');
             expect(indexHtml).toContain('libs/exe_tooltips/exe_tooltips.js');
-        });
-    });
-    describe('xAPI emitter scope (ADR-2302-01)', () => {
-        it('ships the emitter, inherited from Html5Exporter', async () => {
-            // A web export has no scoring runtime of its own, so the emitter is its
-            // only channel rather than a second, non-authoritative one.
-            await exporter.export();
-
-            const indexHtml = zip.files.get('index.html') as string;
-            expect(indexHtml).toContain('window.exeXapi');
-            expect(indexHtml).toContain('libs/xapi/exe_xapi.js');
-            expect(zip.files.has('libs/xapi/exe_xapi.js')).toBe(true);
         });
     });
 });

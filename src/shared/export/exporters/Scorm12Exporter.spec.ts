@@ -59,10 +59,6 @@ class MockResourceProvider implements ResourceProvider {
     async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
-        // The provider hands the same set to every format; the exporter decides
-        // whether the emitter survives (ADR-2302-01). Seeding it here is what makes
-        // the presence and absence assertions mean anything.
-        files.set('xapi/exe_xapi.js', Buffer.from('// xapi emitter'));
         return files;
     }
 
@@ -841,44 +837,6 @@ describe('Scorm12Exporter', () => {
 
             const indexHtml = zip.files.get('index.html') as string;
             expect(indexHtml).toContain('theme/icons/activity.png');
-        });
-    });
-    describe('xAPI analytics emitter', () => {
-        it('ships the emitter with its identity config and gated loader', () => {
-            // SCORM 1.2 grades through its own runtime (cmi.*); the emitter is the
-            // analytics/external-LRS channel and must carry a usable identity —
-            // without the injected config it would fall back to per-page document
-            // URLs and no package-id.
-            const first = exporter.generateScormPageHtml(
-                samplePages[0],
-                samplePages,
-                document.getMetadata(),
-                true,
-                [],
-                0,
-            );
-            const second = exporter.generateScormPageHtml(
-                samplePages[1],
-                samplePages,
-                document.getMetadata(),
-                false,
-                [],
-                1,
-            );
-
-            for (const html of [first, second]) {
-                expect(html).toContain('window.exeXapi');
-                expect(html).toContain('libs/xapi/exe_xapi.js');
-                expect(html).toContain(`"pageCount":${samplePages.length}`);
-            }
-            expect(first).toContain('"pageId":"page-1"');
-            expect(second).toContain('"pageId":"page-2"');
-        });
-
-        it('copies the emitter into the package', async () => {
-            await exporter.export();
-
-            expect([...zip.files.keys()].some(name => name.includes('xapi/exe_xapi.js'))).toBe(true);
         });
     });
 });

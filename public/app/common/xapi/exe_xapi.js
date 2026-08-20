@@ -76,7 +76,7 @@
     var PASS_THRESHOLD = 50;
 
     var xapi = {
-        /** Resolved configuration, including package identity, delivery options, and iDevice order offset. */
+        /** Resolved configuration: { odeId, baseIri, activityId, packageTitle, language, actor, parentOrigin, registration, pageCount, pageId, pageTitle }. */
         config: null,
         /** Parsed xAPI launch parameters from the URL, or null. */
         launch: null,
@@ -109,16 +109,10 @@
         },
 
         /**
-         * Declare an evaluable iDevice for this page, whether or not it is ever
-         * answered, seeding the page-local aggregate at score 0.
-         *
-         * Mirrors what registerActivity already does for SCORM's suspend_data
-         * lmsData. Without it the single-page package verdict normalizes over the
-         * answered subset only, and a partial attempt reports an inflated score
-         * (answering only the weight-25 iDevice of a 25/75 package read as 100).
-         * The real weight is kept: seeding at weight 1 would skew the same
-         * aggregate this seeding exists to fix. Internal state only — nothing about
-         * unanswered iDevices is emitted anywhere.
+         * Seed the page-local aggregate at score 0 for an evaluable iDevice, with its
+         * REAL weight (a weight-1 seed would skew the denominator), so a partial
+         * attempt is not normalized over the answered subset. Internal state only.
+         * See ADR-2302-01.
          *
          * @param {{ideviceId:?string, ideviceNumber:?number, title:?string, weighted:?number}} evt
          */
@@ -137,7 +131,6 @@
             };
         },
 
-
         /**
          * Emit the generic xAPI "initialized" lifecycle statement once, when a
          * transport is available. No-op otherwise. NOT a cmi5 statement.
@@ -152,18 +145,16 @@
         },
 
         /**
-         * Register a one-shot unload listener that emits "terminated" once.
-         * Uses both pagehide and unload for browser coverage; the guard in
-         * _emitTerminated() keeps it to a single statement.
+         * Register a one-shot pagehide listener that emits "terminated" once.
+         * Never bind `unload`: the _emitTerminated() guard makes it a duplicate and
+         * an unload listener disables the back/forward cache (ADR-2302-01, the same
+         * rule as #2209).
          */
         _bindTerminate: function () {
             try {
                 if (!root || typeof root.addEventListener !== 'function') return;
                 var self = this;
                 var handler = function () { self._emitTerminated(); };
-                // pagehide only: the _emitTerminated once-guard would make an unload
-                // duplicate a no-op anyway, and registering unload disables Chromium's
-                // back/forward cache (the same pagehide-only rule as #2209).
                 root.addEventListener('pagehide', handler);
             } catch (e) { /* no-op */ }
         },
@@ -277,15 +268,10 @@
                 this._send(perIdevice);
             }
 
-            // Package "completed" + "passed"/"failed", reusing the shared,
-            // pure getFinalScore() so the weighting logic stays single-source.
-            //
-            // Only for single-page packages. Every page holds just its own
-            // scores, so on a multipage package this aggregate is a page-local
-            // verdict wearing the package's Activity IRI: two pages would emit
-            // a "passed" and a "failed" for the same activity in one attempt
-            // (ADR-2302-01). Multipage packages emit no package verdict at all;
-            // consumers grade from the per-iDevice "answered" statements.
+            // Package "completed" + "passed"/"failed", reusing the shared, pure
+            // getFinalScore() so the weighting logic stays single-source. Single-page
+            // packages only: a page-local aggregate wearing the package IRI makes a
+            // multipage attempt emit both "passed" and "failed" (ADR-2302-01).
             var finalScore = this._isMultipage() ? null : this._packageScore();
             if (finalScore != null) {
                 var pkg = this._buildPackageStatements(finalScore);

@@ -66,10 +66,6 @@ class MockResourceProvider implements ResourceProvider {
     async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
-        // The provider hands the same set to every format; the exporter decides
-        // whether the emitter survives (ADR-2302-01). Seeding it here is what makes
-        // the presence and absence assertions mean anything.
-        files.set('xapi/exe_xapi.js', Buffer.from('// xapi emitter'));
         files.set('common.js', Buffer.from('// common'));
         return files;
     }
@@ -874,20 +870,6 @@ describe('Epub3Exporter', () => {
             // Check sub-page (chapter-1.xhtml) has correct relative path
             const chapter1Xhtml = zip.files.get('EPUB/html/chapter-1.xhtml') as string;
             expect(chapter1Xhtml).toContain('<link rel="icon" type="image/x-icon" href="../theme/img/favicon.ico"');
-        });
-    });
-
-    describe('xAPI analytics emitter', () => {
-        it('ships the emitter with its identity config', async () => {
-            // EPUB readers offer no transport, but the emitter is part of the base
-            // libraries of every export and stays inert there; the config keeps any
-            // statement it might build correctly identified.
-            await exporter.export();
-
-            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
-            expect(indexXhtml).toContain('window.exeXapi');
-            expect(indexXhtml).toContain('libs/xapi/exe_xapi.js');
-            expect([...zip.files.keys()].some(name => name.includes('xapi/exe_xapi.js'))).toBe(true);
         });
     });
 
