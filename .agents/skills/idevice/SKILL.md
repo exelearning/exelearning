@@ -107,9 +107,9 @@ init: function (element, data) {
 
     // Anything with its own cleanup API — name the method, never assume one.
     this.$lifecycle.ownInstance(player, 'destroy');   // YouTube player
-    this.$lifecycle.ownObserver(observer);            // .disconnect()
+    this.$lifecycle.ownInstance(observer, 'disconnect');
     this.$lifecycle.ownMedia(audioElement);           // pause + release the stream
-    this.$lifecycle.ownObjectUrl(blobUrl);            // revoke, if you created it
+    this.$lifecycle.own(() => URL.revokeObjectURL(blobUrl));
     this.$lifecycle.ownFileReader(reader);            // abort an in-flight read
     this.$lifecycle.own(() => widget.teardown());     // anything else
 
@@ -134,8 +134,9 @@ Form-local handlers (`$('#myFormField').on('click', ...)`) need nothing: the cen
 unbinds the edition form through jQuery, which removes them. TinyMCE editors inside the form are
 also disposed centrally — do not add your own.
 
-If an iDevice needs bespoke teardown, add one optional hook. It runs while the instance and its
-DOM are both still alive, and at most once:
+`own()` disposers run last, in reverse order. If something must be cleaned up *before* them, add
+the optional hook instead — it runs first, while the instance and its DOM are both still alive,
+and at most once:
 
 ```javascript
 destroyEdition: function () { /* ... */ },
