@@ -816,7 +816,7 @@ var $exeDevice = {
         resize_ob.observe(dropArea);
         // Disconnected with the edition: the observer holds the drop area alive
         // and would keep firing while the form is being replaced.
-        this.$lifecycle.ownObserver(resize_ob);
+        this.$lifecycle.ownInstance(resize_ob, 'disconnect');
 
         this.dropAreaEvents(dropArea);
     },

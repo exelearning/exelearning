@@ -1381,7 +1381,7 @@ var $exeDevicesEdition = {
                     const lifecycle =
                         $exeDevicesEdition.iDevice.getLifecycle();
                     const releaseLink = lifecycle ? lifecycle.own(removeLink) : null;
-                    const releaseUrl = lifecycle ? lifecycle.ownObjectUrl(data) : null;
+                    const releaseUrl = lifecycle ? lifecycle.own(() => window.URL.revokeObjectURL(data)) : null;
                     const release = function () {
                         if (releaseUrl) releaseUrl();
                         else window.URL.revokeObjectURL(data);
@@ -1745,7 +1745,7 @@ var $exeDevicesEdition = {
                         childList: true,
                         subtree: true,
                     });
-                    if (lifecycle) lifecycle.ownObserver(this._detachObserver);
+                    if (lifecycle) lifecycle.ownInstance(this._detachObserver, 'disconnect');
                 }
 
                 if (lifecycle) {

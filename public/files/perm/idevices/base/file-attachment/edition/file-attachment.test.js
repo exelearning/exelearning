@@ -510,6 +510,49 @@ describe('file-attachment iDevice edition', () => {
             delete global.eXeLearning.app;
         });
 
+        it('releases the handler the Media Library singleton parked on itself', () => {
+            init();
+            // The modal lives as long as the application, so a handler left on
+            // it would keep this editor's DOM and its owning node reachable.
+            const fileManager = {
+                onSelectCallback: null,
+                show: vi.fn(opts => {
+                    fileManager.onSelectCallback = opts.onSelect;
+                }),
+            };
+            global.eXeLearning.app = { modals: { filemanager: fileManager } };
+
+            $exeDevice.openFileManager();
+            expect(fileManager.onSelectCallback).not.toBeNull();
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(fileManager.onSelectCallback).toBeNull();
+
+            delete global.eXeLearning.app;
+        });
+
+        it('leaves a handler the Media Library has since replaced alone', () => {
+            init();
+            const fileManager = {
+                onSelectCallback: null,
+                show: vi.fn(opts => {
+                    fileManager.onSelectCallback = opts.onSelect;
+                }),
+            };
+            global.eXeLearning.app = { modals: { filemanager: fileManager } };
+
+            $exeDevice.openFileManager();
+            const somebodyElse = () => {};
+            fileManager.onSelectCallback = somebodyElse;
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(fileManager.onSelectCallback).toBe(somebodyElse);
+
+            delete global.eXeLearning.app;
+        });
+
         it('does not add a row for an upload that finishes after the edition closed', async () => {
             init();
             let release;

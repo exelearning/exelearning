@@ -71,8 +71,6 @@ export default class IdeviceNode {
         this.ideviceButtons = null;
         // Time lapse waiting to load idevice
         this.checkDeviceLoadInterval = null;
-        // Lifecycle of the edition currently open on this node, if any
-        this.editionLifecycle = null;
         // Time (ms) of loop
         this.interval = 100;
         // Number of loops (default to 5000ms / 100ms = 50 iterations if not configured)
@@ -3326,7 +3324,7 @@ export default class IdeviceNode {
         tinymce.remove();
         // Give the edition an explicit lifecycle before it can register
         // anything, so every resource it creates has a known owner.
-        this.editionLifecycle = setActiveEditionLifecycle(
+        $exeDevice.$lifecycle = setActiveEditionLifecycle(
             new EditionLifecycle({
                 device: $exeDevice,
                 name: this.odeIdeviceTypeName || 'idevice',
@@ -3335,7 +3333,6 @@ export default class IdeviceNode {
                 logger: Logger,
             })
         );
-        $exeDevice.$lifecycle = this.editionLifecycle;
         // Init idevice edition script
         $exeDevice.init(
             this.ideviceBody,
@@ -3380,13 +3377,13 @@ export default class IdeviceNode {
         this.checkDeviceLoadInterval = null;
 
         const openEdition = getActiveEditionLifecycle();
-        const lifecycle = options.anyOpenEdition
-            ? this.editionLifecycle || openEdition
-            : this.editionLifecycle;
+        // The open edition is this node's when the lifecycle says so; a node
+        // never holds a reference of its own, so it cannot go stale.
+        const ownEdition = openEdition && openEdition.ownerNode === this ? openEdition : null;
+        const lifecycle = options.anyOpenEdition ? ownEdition || openEdition : ownEdition;
 
         if (lifecycle) {
             const formElement = lifecycle.formElement;
-            const owner = lifecycle.ownerNode;
             lifecycle.destroy();
             this.removeEditionEditors(formElement);
             this.clearEditionFormHandlers(formElement);
@@ -3394,11 +3391,7 @@ export default class IdeviceNode {
             if (getActiveEditionLifecycle() === lifecycle) {
                 setActiveEditionLifecycle(null);
             }
-            // Drop the owner's reference too, so disposing another node's
-            // edition does not leave it holding a destroyed lifecycle.
-            if (owner && owner !== this) owner.editionLifecycle = null;
         }
-        this.editionLifecycle = null;
 
         // Releasing the global belongs to whoever owns the edition. A node that
         // owns none must leave another node's open editor alone: collaborative
@@ -3408,7 +3401,7 @@ export default class IdeviceNode {
         // An edition whose script loaded but never reached
         // `initExeDeviceEdition()` has no lifecycle either, so it is still
         // released — nothing else would.
-        const foreignEditionOpen = !lifecycle && openEdition !== null && openEdition.isActive();
+        const foreignEditionOpen = openEdition !== null && openEdition !== lifecycle && openEdition.isActive();
 
         // Released last, so nothing above ran against a cleared global.
         if (!foreignEditionOpen && typeof $exeDevice !== 'undefined') {
