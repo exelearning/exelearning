@@ -158,7 +158,7 @@ describe('Selection ID helpers', () => {
 
     it('saber and criterio IDs with same fields are distinguishable', () => {
         const saberId = makeSaberSelId('ESO', '1º ESO', 'BIG', 'Bloque I', 'code');
-        const critId = makeCriterioSelId('ESO', '1º ESO', 'BIG', 'comp1', 'code');
+        const critId  = makeCriterioSelId('ESO', '1º ESO', 'BIG', 'comp1', 'code');
         expect(saberId.startsWith('saber')).toBe(true);
         expect(critId.startsWith('criterio')).toBe(true);
         expect(saberId).not.toBe(critId);
@@ -1721,8 +1721,8 @@ describe('lomloe-ES-EFP.json (Ministry-managed territory: MEFPD)', () => {
         expect(Object.keys(eso)).toEqual(['1º ESO', '2º ESO', '3º ESO', '4º ESO']);
         const firstYear = eso['1º ESO'];
         // Real materia codes inherited from the state RD.
-        expect(firstYear['BIG']).toBeDefined(); // Biología y Geología
-        expect(firstYear['FQX']).toBeDefined(); // Física y Química (data; UI hides in 1º)
+        expect(firstYear['BIG']).toBeDefined();          // Biología y Geología
+        expect(firstYear['FQX']).toBeDefined();          // Física y Química (data; UI hides in 1º)
         expect(firstYear['BIG'].denominacion).toBe('Biología y Geología');
         // None of the old parser-artifact area codes survive.
         for (const garbage of ['EXX', 'EPE', 'ESC', 'EX2', 'EP7']) {
