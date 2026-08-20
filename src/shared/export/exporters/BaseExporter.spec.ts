@@ -2101,39 +2101,6 @@ describe('BaseExporter', () => {
             expect(zip.files.get('content/resources/broken-subtitle.vtt')).toBe('WEBVTT\n');
         });
     });
-    describe('page component counting', () => {
-        const page = (id: string, componentCounts: number[]): ExportPage =>
-            ({
-                id,
-                pageId: id,
-                title: id,
-                blocks: componentCounts.map((count, blockIndex) => ({
-                    id: `${id}-b${blockIndex}`,
-                    components: Array.from({ length: count }, (_unused, i) => ({
-                        id: `${id}-b${blockIndex}-c${i}`,
-                        type: 'text',
-                    })),
-                })),
-            }) as unknown as ExportPage;
-
-        it('counts the components of a page across its blocks', () => {
-            expect(exporter.countPageComponents(page('p1', [2, 3]))).toBe(5);
-            expect(exporter.countComponents([page('p1', [2]), page('p2', [3, 1])])).toBe(6);
-        });
-
-        it('treats a page with no blocks and a block with no components as empty', () => {
-            // Pages from a legacy .elp import or a partially built Y.Doc can carry
-            // an undefined blocks/components; a single malformed page must not
-            // abort the whole export (#2302).
-            const malformed = { id: 'legacy', title: 'legacy' } as unknown as ExportPage;
-            const blockWithoutComponents = { id: 'p', blocks: [{ id: 'b' }] } as unknown as ExportPage;
-
-            expect(exporter.countPageComponents(malformed)).toBe(0);
-            expect(exporter.countPageComponents(blockWithoutComponents)).toBe(0);
-            expect(exporter.countComponents([malformed, page('p2', [2]), blockWithoutComponents])).toBe(2);
-        });
-    });
-
     describe('xAPI runtime config', () => {
         it('describes the package identity and the page count', () => {
             const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1', title: 'Course', language: 'es' };

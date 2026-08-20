@@ -141,7 +141,7 @@ export class PageRenderer {
             assetExportPathMap,
             // Application version for generator meta tag
             version,
-            // xAPI runtime config; absent in formats that ship no emitter
+            // xAPI runtime config (always-on emitter)
             xapi,
         } = options;
 
@@ -306,11 +306,9 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         head += `<script src="${basePath}libs/common.js"> </script>`;
         head += `<script src="${basePath}libs/exe_export.js"> </script>`;
 
-        // xAPI emitter: identity config + emitter library, web export family only.
-        // The config is the single switch for the emitter: a format that ships no xAPI
-        // config ships no loader either. Emitting the tag unconditionally used to leave
-        // the emitter active in every format and made the print preview request a file
-        // its exporter never copies (ADR-2302-01).
+        // xAPI emitter: the injected config is the switch — no config, no loader.
+        // An unconditional tag made the print preview request a file its exporter
+        // never copies (ADR-2302-01).
         if (xapi) {
             head += `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>`;
             head += `<script src="${basePath}libs/xapi/exe_xapi.js"> </script>`;

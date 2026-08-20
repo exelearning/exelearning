@@ -471,7 +471,6 @@ export class Scorm2004Exporter extends Html5Exporter {
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
             version: meta.exelearningVersion,
-            // xAPI runtime config for the analytics emitter (stable IRIs from odeId)
             xapi: this.buildXapiConfig(meta, allPages.length, page),
         });
     }

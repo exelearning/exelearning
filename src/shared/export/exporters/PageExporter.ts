@@ -271,9 +271,7 @@ export class PageExporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            // xAPI runtime config for the emitter (stable IRIs from odeId)
-            // Single-page export: every iDevice lives on one page, so the page-local
-            // iDevice number is already the package-global order (offset 0).
+            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
             xapi: this.buildXapiConfig(meta),
             detectedLibraries,
             linkToElp: meta.exportSource !== false,

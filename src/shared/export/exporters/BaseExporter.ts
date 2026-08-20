@@ -219,11 +219,9 @@ export abstract class BaseExporter {
     /**
      * Build the runtime xAPI config injected into an exported page.
      *
-     * Single source of truth shared by every format that ships the emitter —
-     * the web export family (see `emitsXapi()` / WEB_EXPORT_LIBRARIES,
-     * ADR-2302-01) — so all of them describe the same package identity.
-     * Formats that omitted this config used to fall back to a per-page
-     * document URL as the activity IRI.
+     * Single source of truth shared by every export format, so all of them
+     * describe the same package identity; formats that omitted this config
+     * used to fall back to a per-page document URL as the activity IRI.
      *
      * @param meta Export metadata carrying the package identity
      * @param pageCount Number of pages in the package (1 for single-page exports)
@@ -241,31 +239,6 @@ export abstract class BaseExporter {
         if (page?.id) config.pageId = page.id;
         if (page?.title) config.pageTitle = page.title;
         return config;
-    }
-
-    /**
-     * Count the iDevice components rendered on a single page.
-     *
-     * Single source of truth for "how many iDevices does this page render",
-     * used by the export-timing logs. Pages arriving from a legacy .elp import or a partially built
-     * Y.Doc may carry an undefined `blocks` (or a block with undefined
-     * `components`), so both levels are guarded.
-     *
-     * @param page Page to inspect
-     * @returns Number of components rendered on the page (0 when malformed)
-     */
-    countPageComponents(page: ExportPage): number {
-        return (page.blocks || []).reduce((blockTotal, block) => blockTotal + (block.components?.length || 0), 0);
-    }
-
-    /**
-     * Count the iDevice components rendered across a list of pages.
-     *
-     * @param pages Pages to inspect
-     * @returns Total number of components rendered
-     */
-    countComponents(pages: ExportPage[]): number {
-        return pages.reduce((total, page) => total + this.countPageComponents(page), 0);
     }
 
     /**
@@ -1025,7 +998,10 @@ export abstract class BaseExporter {
      * export → re-import round trip (#1927).
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
-        const componentCount = this.countComponents(pages);
+        const componentCount = pages.reduce((total, page) => {
+            const blocks = page.blocks || [];
+            return total + blocks.reduce((blockTotal, block) => blockTotal + (block.components?.length || 0), 0);
+        }, 0);
         this.logElpxExportDebugPhase('exporter:preprocess-pages:start', {
             pages: pages.length,
             components: componentCount,

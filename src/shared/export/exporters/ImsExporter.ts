@@ -459,7 +459,6 @@ export class ImsExporter extends Html5Exporter {
             navLabels,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            // xAPI runtime config for the analytics emitter (stable IRIs from odeId)
             xapi: this.buildXapiConfig(meta, allPages.length, page),
         });
     }

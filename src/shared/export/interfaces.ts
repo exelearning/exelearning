@@ -598,7 +598,7 @@ export interface AssetResolverOptions {
 
 /**
  * xAPI runtime configuration serialized into `window.exeXapi` and consumed by
- * the emitter (`public/app/common/xapi/exe_xapi.js`), which web exports carry.
+ * the always-on emitter (`public/app/common/xapi/exe_xapi.js`).
  *
  * This type is the single source of truth for the config shape: every key here
  * is read by the emitter, and the emitter reads nothing that is not declared
@@ -678,7 +678,7 @@ export interface PageRenderOptions {
 
     /**
      * xAPI runtime config injected into <head> as `window.exeXapi` so the
-     * emitter (exe_xapi.js) can build stable per-iDevice IRIs.
+     * always-on emitter (exe_xapi.js) can build stable per-iDevice IRIs.
      */
     xapi?: XapiConfig;
 

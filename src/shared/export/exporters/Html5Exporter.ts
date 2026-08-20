@@ -171,6 +171,7 @@ export class Html5Exporter extends BaseExporter {
             // Manifest script tags are injected inline (they reference the file, not its content)
             let latexWasRendered = false;
             let mermaidWasRendered = false;
+
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 let html = this.generatePageHtml(
@@ -462,7 +463,7 @@ export class Html5Exporter extends BaseExporter {
             assetExportPathMap,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            // xAPI runtime config for the emitter (stable IRIs from odeId)
+            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
             xapi: this.buildXapiConfig(meta, allPages.length, page),
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
@@ -623,6 +624,7 @@ export class Html5Exporter extends BaseExporter {
             const pageEntries: Array<{ filename: string; html: string; page: ExportPage; index: number }> = [];
             let latexWasRendered = false;
             let mermaidWasRendered = false;
+
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 let html = this.generatePageHtml(
