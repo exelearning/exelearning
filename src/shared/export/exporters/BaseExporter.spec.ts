@@ -2115,7 +2115,7 @@ describe('BaseExporter', () => {
             expect(zip.files.get('content/resources/broken-subtitle.vtt')).toBe('WEBVTT\n');
         });
     });
-    describe('xAPI iDevice order offsets', () => {
+    describe('page component counting', () => {
         const page = (id: string, componentCounts: number[]): ExportPage =>
             ({
                 id,
@@ -2144,19 +2144,7 @@ describe('BaseExporter', () => {
 
             expect(exporter.countPageComponents(malformed)).toBe(0);
             expect(exporter.countPageComponents(blockWithoutComponents)).toBe(0);
-            expect(exporter.buildIdeviceOrderOffsets([malformed, page('p2', [2]), blockWithoutComponents])).toEqual([
-                0, 0, 2,
-            ]);
-        });
-
-        it('builds a prefix sum so each page starts after the preceding iDevices', () => {
-            const pages = [page('p1', [2]), page('p2', [1, 1]), page('p3', [3])];
-
-            expect(exporter.buildIdeviceOrderOffsets(pages)).toEqual([0, 2, 4]);
-        });
-
-        it('returns an empty offset list for an empty package', () => {
-            expect(exporter.buildIdeviceOrderOffsets([])).toEqual([]);
+            expect(exporter.countComponents([malformed, page('p2', [2]), blockWithoutComponents])).toBe(2);
         });
     });
 
@@ -2199,14 +2187,13 @@ describe('BaseExporter', () => {
     });
 
     describe('xAPI runtime config', () => {
-        it('describes the package identity and the page position', () => {
+        it('describes the package identity and the page count', () => {
             const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1', title: 'Course', language: 'es' };
 
-            expect(exporter.buildXapiConfig(meta, 4, 7)).toEqual({
+            expect(exporter.buildXapiConfig(meta, 7)).toEqual({
                 odeId: 'PKG1',
                 packageTitle: 'Course',
                 language: 'es',
-                ideviceOrderOffset: 4,
                 pageCount: 7,
             });
         });
@@ -2215,7 +2202,7 @@ describe('BaseExporter', () => {
             const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1' };
             const page = { id: 'page-7', title: 'Chapter 7' } as unknown as ExportPage;
 
-            const config = exporter.buildXapiConfig(meta, 0, 4, page);
+            const config = exporter.buildXapiConfig(meta, 4, page);
 
             expect(config.pageId).toBe('page-7');
             expect(config.pageTitle).toBe('Chapter 7');
@@ -2224,18 +2211,17 @@ describe('BaseExporter', () => {
         it('omits page identity rather than emitting empty strings', () => {
             const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1' };
 
-            expect(exporter.buildXapiConfig(meta, 0, 1)).not.toHaveProperty('pageId');
-            expect(exporter.buildXapiConfig(meta, 0, 1, {} as unknown as ExportPage)).not.toHaveProperty('pageTitle');
+            expect(exporter.buildXapiConfig(meta, 1)).not.toHaveProperty('pageId');
+            expect(exporter.buildXapiConfig(meta, 1, {} as unknown as ExportPage)).not.toHaveProperty('pageTitle');
         });
 
-        it('defaults to a single page at offset 0 and never emits undefined identity', () => {
+        it('defaults to a single page and never emits undefined identity', () => {
             const meta = { ...document.getMetadata(), odeIdentifier: undefined, title: undefined, language: undefined };
 
             expect(exporter.buildXapiConfig(meta as ExportMetadata)).toEqual({
                 odeId: '',
                 packageTitle: '',
                 language: 'en',
-                ideviceOrderOffset: 0,
                 pageCount: 1,
             });
         });

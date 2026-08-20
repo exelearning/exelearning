@@ -610,8 +610,6 @@ export interface AssetResolverOptions {
  * - `activityId`   – the root activity IRI; defaults to `baseIri`.
  * - `packageTitle` – human-readable activity name.
  * - `language`     – BCP-47 language tag for language-map values (default `en`).
- * - `ideviceOrderOffset` – number of iDevices rendered on preceding pages; used
- *   with the page-local iDevice number to expose package-global scoring order.
  * - `pageCount` – number of pages in the package. When it is greater than 1 the
  *   emitter suppresses its package-level verdict, because each page only knows
  *   its own scores; the package result is reconstructed by the consumer from the
@@ -643,8 +641,6 @@ export interface XapiConfig {
     activityId?: string;
     packageTitle?: string;
     language?: string;
-    /** Internal: number of iDevices rendered before the current page. */
-    ideviceOrderOffset?: number;
     /** Internal: number of pages in the package; >1 suppresses the page-local package verdict. */
     pageCount?: number;
     /** Internal: stable id of the page this document renders. */

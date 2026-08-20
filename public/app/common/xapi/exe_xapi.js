@@ -71,9 +71,6 @@
         ideviceType: 'https://exelearning.net/xapi/extensions/idevice-type',
         pageId: 'https://exelearning.net/xapi/extensions/page-id',
         pageTitle: 'https://exelearning.net/xapi/extensions/page-title',
-        ideviceOrder: 'https://exelearning.net/xapi/extensions/idevice-order',
-        ideviceWeight: 'https://exelearning.net/xapi/extensions/idevice-weight',
-        ideviceCensus: 'https://exelearning.net/xapi/extensions/idevice-census',
         pageCount: 'https://exelearning.net/xapi/extensions/page-count',
     };
 
@@ -88,8 +85,6 @@
         launch: null,
         /** Per-iDevice running scores keyed by ideviceNumber, on a 0..100 scale (feeds getFinalScore for the package total). */
         _state: {},
-        /** Census of the evaluable iDevices on THIS page, keyed by ideviceId, in registration order. */
-        _census: {},
         /** Debounce cache: last payload signature emitted per iDevice, to avoid duplicate statements. */
         _lastSig: {},
         /** Lifecycle guards so "initialized"/"terminated" are each emitted at most once. */
@@ -112,99 +107,39 @@
             this._initialised = true;
             // Generic xAPI lifecycle: announce the session start and arrange to
             // announce its end. Only when a transport can actually carry them.
-            //
-            // "initialized" carries this page's census of evaluable iDevices, so it
-            // must wait until they have registered. This script is injected in the
-            // <head>, so at this point the <body> does not even exist yet. The flush
-            // is therefore deferred to DOM-ready plus a macrotask, and emit() flushes
-            // it synchronously if a learner answers first, so "initialized" always
-            // precedes any "answered".
-            this._scheduleInitialized();
+            this._emitInitialized();
             this._bindTerminate();
         },
 
         /**
-         * Record an evaluable iDevice for this page, whether or not it is ever
-         * answered. Called by gamification.scorm.registerActivity() for every
-         * evaluable iDevice as the page initializes.
+         * Declare an evaluable iDevice for this page, whether or not it is ever
+         * answered, seeding the page-local aggregate at score 0.
          *
-         * Two purposes, and both need the unanswered ones:
-         *  - The census published on the "initialized" statement, which is the only
-         *    way a consumer can learn the package denominator (an unvisited or
-         *    unanswered iDevice emits nothing at all).
-         *  - Seeding `_state` with a score of 0, mirroring what registerActivity
-         *    already does for SCORM's suspend_data `lmsData`. Without it the package
-         *    aggregate normalizes over the answered subset only and a partial attempt
-         *    reports an inflated score.
+         * Mirrors what registerActivity already does for SCORM's suspend_data
+         * lmsData. Without it the single-page package verdict normalizes over the
+         * answered subset only, and a partial attempt reports an inflated score
+         * (answering only the weight-25 iDevice of a 25/75 package read as 100).
+         * The real weight is kept: seeding at weight 1 would skew the same
+         * aggregate this seeding exists to fix. Internal state only — nothing about
+         * unanswered iDevices is emitted anywhere.
          *
          * @param {{ideviceId:?string, ideviceNumber:?number, title:?string, weighted:?number}} evt
          */
         registerEvaluable: function (evt) {
             if (!this._initialised) this.init();
             if (!evt || typeof evt !== 'object' || !evt.ideviceId) return;
-            var ideviceOrder = effectiveIdeviceOrder(this.config, evt.ideviceNumber);
-            // An iDevice the consumer cannot place must not appear in the census with
-            // a false order, exactly as it does not enter the aggregate (#2302).
-            if (ideviceOrder == null) return;
-            if (Object.prototype.hasOwnProperty.call(this._census, evt.ideviceId)) return;
-            var weight = effectiveWeight(evt.weighted);
-            this._census[evt.ideviceId] = { ideviceId: evt.ideviceId, weight: weight, ideviceOrder: ideviceOrder };
-            // Seed the aggregate only if this iDevice has not already been answered.
-            if (!Object.prototype.hasOwnProperty.call(this._state, evt.ideviceNumber)) {
-                this._state[evt.ideviceNumber] = { title: evt.title || '', score: 0, weighted: weight };
-            }
+            // A page-local number jQuery could not resolve (index() -1 -> 0) must
+            // not enter the aggregate under a false slot.
+            var slot = parseInt(evt.ideviceNumber, 10);
+            if (!slot || slot < 1) return;
+            if (Object.prototype.hasOwnProperty.call(this._state, slot)) return;
+            this._state[slot] = {
+                title: evt.title || '',
+                score: 0,
+                weighted: evt.weighted != null ? evt.weighted : 1,
+            };
         },
 
-        /**
-         * This page's evaluable census as a plain array in package order, shaped for
-         * the `idevice-census` extension.
-         *
-         * @returns {object[]}
-         */
-        _censusList: function () {
-            var self = this;
-            return Object.keys(this._census)
-                .map(function (key) { return self._census[key]; })
-                .sort(function (a, b) { return a.ideviceOrder - b.ideviceOrder; })
-                .map(function (entry) {
-                    // Short keys INSIDE the extension value; the extension key itself
-                    // stays a full IRI. xAPI only requires IRIs for the keys of the
-                    // extensions map, and nesting IRIs inside a value is unidiomatic:
-                    // profiles expand short names through a JSON-LD @context instead.
-                    return {
-                        'idevice-id': entry.ideviceId,
-                        'idevice-weight': entry.weight,
-                        'idevice-order': entry.ideviceOrder,
-                    };
-                });
-        },
-
-        /**
-         * Defer the "initialized" statement until this page's evaluable iDevices
-         * have registered. DOM-ready plus a macrotask covers iDevices that register
-         * from a jQuery ready handler, which is how they are written.
-         *
-         * There is no marker in the exported document that identifies an evaluable
-         * iDevice, so the expected count is unknowable and the flush cannot wait for
-         * a complete set. An iDevice registering later than this misses the census
-         * for this page load; consumers that persist the census per package recover
-         * it on the next visit.
-         */
-        _scheduleInitialized: function () {
-            var self = this;
-            var flush = function () { self._emitInitialized(); };
-            try {
-                var doc = root && root.document;
-                if (!doc || typeof root.setTimeout !== 'function') return flush();
-                if (doc.readyState === 'loading') {
-                    doc.addEventListener('DOMContentLoaded', function () { root.setTimeout(flush, 0); });
-                } else {
-                    root.setTimeout(flush, 0);
-                }
-            } catch (e) {
-                flush();
-            }
-        },
 
         /**
          * Emit the generic xAPI "initialized" lifecycle statement once, when a
@@ -215,8 +150,6 @@
                 if (this._lifecycle.initialized) return;
                 if (!this._hasTransport()) return;
                 this._lifecycle.initialized = true;
-                // Carries the early census copy: the only report of evaluable iDevices
-                // a learner never answers, i.e. the package denominator (#2302).
                 this._send(this._buildLifecycleStatement(VERBS.initialized));
             } catch (e) { /* no-op */ }
         },
@@ -247,9 +180,6 @@
                 if (this._lifecycle.terminated) return;
                 if (!this._hasTransport()) return;
                 this._lifecycle.terminated = true;
-                // Carries the complete census copy: "initialized" flushes on a
-                // macrotask after DOM-ready and can miss a late registration, while
-                // page unload is by definition after every registration.
                 this._send(this._buildLifecycleStatement(VERBS.terminated));
             } catch (e) { /* no-op */ }
         },
@@ -259,7 +189,7 @@
          * `window.exeXapi`. Falls back to the document URL so statements are
          * still structurally valid in a plain standalone page.
          *
-         * @returns {{odeId:string, baseIri:string, activityId:string, packageTitle:string, language:string, actor:?object, parentOrigin:?string, ideviceOrderOffset:number}}
+         * @returns {{odeId:string, baseIri:string, activityId:string, packageTitle:string, language:string, actor:?object, parentOrigin:?string, pageCount:number, pageId:string, pageTitle:string}}
          */
         _resolveConfig: function () {
             var cfg = (root && root.exeXapi) ? root.exeXapi : {};
@@ -276,7 +206,6 @@
                 actor: cfg.actor || null,
                 parentOrigin: cfg.parentOrigin || null,
                 registration: cfg.registration || null,
-                ideviceOrderOffset: Math.max(0, parseInt(cfg.ideviceOrderOffset, 10) || 0),
                 pageCount: Math.max(1, parseInt(cfg.pageCount, 10) || 1),
                 pageId: cfg.pageId || '',
                 pageTitle: cfg.pageTitle || '',
@@ -325,37 +254,28 @@
          */
         emit: function (evt) {
             if (!this._initialised) this.init();
-            // Flush the deferred lifecycle statement so "initialized", and with it the
-            // census, always reaches the consumer before the first "answered".
-            this._emitInitialized();
             if (!evt || typeof evt !== 'object') return;
             var score = parseFloat(evt.score);
             if (isNaN(score)) return;
             // Clamp onto the declared 0..10 scale: the statement advertises
             // min 0 / max 10, and an out-of-range raw (or a scaled above 1) is
-            // exactly the shape a strict LRS — and the Moodle consumer's score
-            // validation — must reject.
+            // exactly the shape a strict LRS must reject.
             score = Math.max(0, Math.min(10, score));
-            var weight = effectiveWeight(evt.weighted);
-            var ideviceOrder = effectiveIdeviceOrder(this.config, evt.ideviceNumber);
 
             // Update the package aggregate from this iDevice's score (0..100 scale).
-            // Gated on the same condition as the emitted order: getFinalScore's
-            // largest-remainder tie-break follows key order, so an iDevice whose
-            // package-global position cannot be resolved (no ideviceNumber, or a
-            // node jQuery could not locate, which yields 0) must not shift the
-            // total either. Both guards agreeing is what guarantees that every
-            // statement feeding the aggregate carries an idevice-order.
-            if (ideviceOrder != null) {
-                this._state[evt.ideviceNumber] = {
+            // A page-local number jQuery could not resolve (index() -1 -> 0) must not
+            // enter the aggregate under a false slot.
+            var slot = parseInt(evt.ideviceNumber, 10);
+            if (slot && slot >= 1) {
+                this._state[slot] = {
                     title: evt.title || '',
                     score: Math.max(0, Math.min(100, score * 10)),
-                    weighted: weight,
+                    weighted: evt.weighted != null ? evt.weighted : 1,
                 };
             }
 
             // Per-iDevice "answered" statement (the granular payload).
-            var perIdevice = this._buildIdeviceStatement(evt, score, weight, ideviceOrder);
+            var perIdevice = this._buildIdeviceStatement(evt, score);
             if (perIdevice && !this._isDuplicate('idevice:' + evt.ideviceId, perIdevice)) {
                 this._send(perIdevice);
             }
@@ -366,11 +286,9 @@
             // Only for single-page packages. Every page holds just its own
             // scores, so on a multipage package this aggregate is a page-local
             // verdict wearing the package's Activity IRI: two pages would emit
-            // a "passed" and a "failed" for the same activity in one attempt.
-            // Multipage package results are reconstructed by the consumer from
-            // the per-iDevice "answered" statements, which is exactly what the
-            // idevice-order and idevice-weight extensions exist for
-            // (ADR-2302-01).
+            // a "passed" and a "failed" for the same activity in one attempt
+            // (ADR-2302-01). Multipage packages emit no package verdict at all;
+            // consumers grade from the per-iDevice "answered" statements.
             var finalScore = this._isMultipage() ? null : this._packageScore();
             if (finalScore != null) {
                 var pkg = this._buildPackageStatements(finalScore);
@@ -417,11 +335,9 @@
          *
          * @param {object} evt
          * @param {number} score 0..10
-         * @param {number} weight configured iDevice weight, normalized to 1..100
-         * @param {?number} ideviceOrder 1-based package-global scoring order
          * @returns {?object} xAPI statement
          */
-        _buildIdeviceStatement: function (evt, score, weight, ideviceOrder) {
+        _buildIdeviceStatement: function (evt, score) {
             if (!evt.ideviceId) return null;
             var objectId = this.config.baseIri + '/idevice/' + evt.ideviceId;
             var definition = {
@@ -440,7 +356,7 @@
                 score: { scaled: round4(score / 10), raw: round2(score), min: 0, max: 10 },
                 success: score >= 5,
                 completion: true,
-            }, [{ id: this.config.activityId }], this._contextExtensions(evt, weight, ideviceOrder));
+            }, [{ id: this.config.activityId }], this._contextExtensions(evt));
         },
 
         /**
@@ -449,11 +365,9 @@
          * Page id/title are populated only when the caller supplies them.
          *
          * @param {object} [evt]
-         * @param {number} [weight] normalized iDevice weight
-         * @param {?number} [ideviceOrder] 1-based package-global scoring order
          * @returns {?object}
          */
-        _contextExtensions: function (evt, weight, ideviceOrder) {
+        _contextExtensions: function (evt) {
             var ext = {};
             if (this.config && this.config.odeId) ext[EXT.packageId] = this.config.odeId;
             // Page identity comes from the injected export config: the runtime
@@ -466,8 +380,6 @@
                 if (evt.ideviceType) ext[EXT.ideviceType] = evt.ideviceType;
                 if (evt.pageId) ext[EXT.pageId] = evt.pageId;
                 if (evt.pageTitle) ext[EXT.pageTitle] = evt.pageTitle;
-                if (typeof ideviceOrder === 'number') ext[EXT.ideviceOrder] = ideviceOrder;
-                if (typeof weight === 'number') ext[EXT.ideviceWeight] = weight;
             }
             return Object.keys(ext).length ? ext : null;
         },
@@ -519,12 +431,7 @@
          * @returns {object}
          */
         _buildLifecycleStatement: function (verb) {
-            // Both lifecycle statements publish this page's evaluable census — the
-            // early copy on "initialized", the complete one on "terminated" — so the
-            // census is attached here rather than by each caller.
-            var ext = this._contextExtensions(null) || {};
-            ext[EXT.ideviceCensus] = this._censusList();
-            return this._statement(verb, this._packageObject(), null, null, ext);
+            return this._statement(verb, this._packageObject(), null, null, this._contextExtensions(null));
         },
 
         /**
@@ -664,29 +571,25 @@
                         'X-Experience-API-Version': '1.0.3',
                     },
                     body: JSON.stringify(statement),
-                    // The "terminated" statement carries the complete census copy and
-                    // fires on pagehide; without keepalive the browser cancels the
-                    // request when the document unloads and that copy never arrives.
+                    // The "terminated" statement fires on pagehide; without keepalive
+                    // the browser cancels the request when the document unloads and it
+                    // never arrives.
                     keepalive: true,
                 })['catch'](function () { /* swallow network errors */ });
             } catch (e) { /* no-op */ }
         },
 
         /**
-         * Debounce duplicate statements: same key + same verb + same score,
-         * effective weight and package order is skipped so a re-render or
-         * repeated save does not double-report.
+         * Debounce duplicate statements: same key + same verb + same score is
+         * skipped so a re-render or repeated save does not double-report.
          *
          * @param {string} key
          * @param {object} statement
          * @returns {boolean} true if this statement is a duplicate of the last one for the key
          */
         _isDuplicate: function (key, statement) {
-            var extensions = statement.context && statement.context.extensions;
-            var weight = extensions ? extensions[EXT.ideviceWeight] : '';
-            var ideviceOrder = extensions ? extensions[EXT.ideviceOrder] : '';
             var sig = statement.verb.id + '|' +
-                (statement.result && statement.result.score ? statement.result.score.raw : '') + '|' + weight + '|' + ideviceOrder;
+                (statement.result && statement.result.score ? statement.result.score.raw : '');
             if (this._lastSig[key] === sig) return true;
             this._lastSig[key] = sig;
             return false;
@@ -707,14 +610,6 @@
 
     function round2(n) { return Math.round(n * 100) / 100; }
     function round4(n) { return Math.round(n * 10000) / 10000; }
-    function effectiveWeight(value) {
-        return Math.max(1, Math.min(parseFloat(value) || 1, 100));
-    }
-    function effectiveIdeviceOrder(config, ideviceNumber) {
-        var localOrder = parseInt(ideviceNumber, 10);
-        if (!localOrder || localOrder < 1) return null;
-        return (config && config.ideviceOrderOffset ? config.ideviceOrderOffset : 0) + localOrder;
-    }
 
     /**
      * RFC 4122 v4 UUID for statement ids (idempotency at the LRS).

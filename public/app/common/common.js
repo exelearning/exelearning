@@ -1383,12 +1383,10 @@ var $exeDevices = {
              *
              * Mirrors what registerActivity already does for SCORM's suspend_data
              * lmsData, but for the web export family: without it the emitter only
-             * ever learns about answered iDevices, so the package aggregate
-             * normalizes over the answered subset and a partial attempt reports an
-             * inflated score. It is also the only way a consumer can learn the
-             * package denominator, since an unanswered iDevice emits nothing
-             * (#2302). A no-op in packages that ship no emitter (SCORM/IMS/EPUB,
-             * see ADR-2302-02).
+             * ever learns about answered iDevices, so the single-page package
+             * verdict normalizes over the answered subset and a partial attempt
+             * reports an inflated score (#2302). A no-op in packages that ship no
+             * emitter (SCORM/IMS/EPUB, see ADR-2302-02).
              *
              * @param {object} game
              */

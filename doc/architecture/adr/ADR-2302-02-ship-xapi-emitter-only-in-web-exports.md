@@ -147,7 +147,7 @@ config becomes the one switch for the emitter.
 
 ## References
 
-- [ADR-2302-01](ADR-2302-01-expose-xapi-weight-and-order.md)
+- [ADR-2302-01](ADR-2302-01-suppress-multipage-package-verdicts.md)
 - [PR #2302](https://github.com/exelearning/exelearning/pull/2302)
 - [xAPI 1.0.3 data specification](https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md)
 - [`doc/elpx-format/tracking-emission.md`](../../elpx-format/tracking-emission.md)

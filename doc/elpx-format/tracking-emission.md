@@ -90,14 +90,13 @@ The exporter injects, before the emitter script:
 
 ```html
 <script>window.exeXapi={"odeId":"202604272111114JQLDV","packageTitle":"…","language":"en",
-    "ideviceOrderOffset":2,"pageCount":4,"pageId":"page-3","pageTitle":"…"}</script>
+    "pageCount":4,"pageId":"page-3","pageTitle":"…"}</script>
 <script src="libs/xapi/exe_xapi.js"> </script>
 ```
 
-Beyond the identity keys, the config carries `ideviceOrderOffset` (iDevices rendered on
-the preceding pages, the base of the package-global `idevice-order`), `pageCount`
-(above 1 the emitter suppresses its page-local package verdict) and `pageId` /
-`pageTitle` (the page identity no runtime event supplies).
+Beyond the identity keys, the config carries `pageCount` (above 1 the emitter
+suppresses its page-local package verdict) and `pageId` / `pageTitle` (the page
+identity no runtime event supplies).
 
 The serialized config is **HTML-safe**: `PageRenderer.serializeForScript()` escapes
 `<` (→ `\u003c`) plus U+2028/U+2029 before embedding, so a package title containing
@@ -147,11 +146,6 @@ the SCORM gate) and the running aggregate (reusing the pure `getFinalScore`):
   `pagehide`/`unload`, both against the package Activity and only when a transport
   is available. They carry no `result`.
 
-  `initialized` is deferred to DOM-ready plus a macrotask, because it carries the
-  page's [iDevice census](#the-idevice-census) and the iDevices have to register
-  first. Answering flushes it synchronously, so `initialized` always precedes the
-  first `answered`.
-
   A multi-page package emits one pair **per page visited**, not one per attempt: each
   page is a separate document with its own JavaScript context and no shared state, so
   no page can know whether it is the first or the last. Consumers must treat these as
@@ -173,138 +167,35 @@ Each statement also includes richer metadata:
   - `https://exelearning.net/xapi/extensions/package-id`
   - `https://exelearning.net/xapi/extensions/idevice-id`
   - `https://exelearning.net/xapi/extensions/idevice-type`
-  - `https://exelearning.net/xapi/extensions/idevice-order` (answered statements only)
-  - `https://exelearning.net/xapi/extensions/idevice-weight` (answered statements only)
   - `https://exelearning.net/xapi/extensions/page-id` (page rendering this document)
   - `https://exelearning.net/xapi/extensions/page-title` (page rendering this document)
   - `https://exelearning.net/xapi/extensions/page-count` (pages in the package)
-  - `https://exelearning.net/xapi/extensions/idevice-census` (`initialized` + `terminated`)
 
 Statement shape follows the xAPI Data spec:
 <https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md>.
 
-#### The iDevice census
+#### Multipage packages and the package result
 
-A consumer that only sees `answered` statements sees only what the learner answered,
-never the full set of gradable iDevices. Normalizing over that subset inflates a
-partial attempt: a learner who answers only the weight-25 iDevice of a 25/75 package
-scores 100 instead of 25. The unanswered iDevices emit nothing at all, so the
-denominator has to be published separately.
+**Multi-page packages emit no package-level verdict.** Each page is a separate
+document with a fresh JavaScript context: it only knows the scores answered on that
+page, so a page-local aggregate wearing the package Activity IRI would let one page
+report `passed` and another `failed` for the same activity within one attempt.
+`completed` and `passed`/`failed` are therefore emitted only when the package is a
+single page (`window.exeXapi.pageCount === 1`, which the exporters inject). See
+[ADR-2302-01](../architecture/adr/ADR-2302-01-suppress-multipage-package-verdicts.md).
 
-Every page therefore declares its gradable iDevices as they initialize, answered or
-not, and publishes them under `https://exelearning.net/xapi/extensions/idevice-census`, on that
-page's `initialized` statement and again on its `terminated`:
+For multipage packages, the per-iDevice `answered` statements are the grading-relevant
+signal: each carries the stable `idevice-id`, the clamped 0–10 score and the package
+and page identity. A consumer that needs a package-level result derives it from those
+statements together with its own knowledge of the package — the reference consumer,
+`mod_exelearning`, grades per iDevice against the roster it derives from the uploaded
+package itself, so the wire carries no package-structural metadata from learners.
 
-```json
-"https://exelearning.net/xapi/extensions/idevice-census": [
-  { "idevice-id": "IDEVICE-A", "idevice-weight": 25, "idevice-order": 1 }
-]
-```
-
-The extension **key** is a full IRI, as xAPI requires for the keys of the extensions
-map. The keys **inside** each entry are short names: xAPI imposes no constraint on the
-interior of an extension value, and nesting IRIs there is unidiomatic — profiles expand
-short names through a JSON-LD `@context` instead.
-
-Rules a consumer can rely on:
-
-- Entries are sorted by `idevice-order` and use the **same** `idevice-id`,
-  `idevice-weight` and `idevice-order` values that the matching `answered` statement
-  carries — one `effectiveWeight()` applied to one live options object feeds both, so
-  the two can never disagree.
-- An iDevice whose package-global order cannot be resolved is **omitted** rather than
-  published with a false order, exactly as it is kept out of the package aggregate.
-- The census covers **one page**. A consumer assembles the package denominator from
-  the pages it has seen; `page-count` says how many there are in total. Because the
-  census is package metadata rather than learner data, it only has to be collected
-  once ever, by any learner, and then applies to every attempt.
-- A page with no gradable iDevices still emits `initialized` with an empty census,
-  which is how a consumer distinguishes "this page has nothing to answer" from "this
-  page was never opened".
-- The census is published **twice per page**: on `initialized`, as early as possible,
-  and again on `terminated`. `initialized` is flushed on a macrotask just after
-  DOM-ready, which a gradable iDevice normally beats because it registers from a
-  DOM-ready handler that runs inside the same dispatch; but there is no marker in the
-  exported document identifying a gradable iDevice, so the expected count is unknowable
-  and the flush cannot wait for a complete set. Page unload is by definition after every
-  registration, so the `terminated` copy is the complete one. A consumer should take the
-  union, or simply the larger of the two.
-
-#### Reconstructing the weighted package score
-
-The `idevice-weight` extension is a JSON number containing the effective configured
-iDevice weight in eXeLearning weight points. Authoring uses a 1–100 percentage
-scale, but the values are relative: package scoring normalizes all current
-iDevice weights to a total of 100. Missing, zero, or non-numeric weights have an
-effective value of 1, and values outside the supported range are clamped to
-1–100. Non-evaluable iDevices do not emit `answered` statements and therefore do
-not carry this extension.
-
-For example, an answered statement can contain:
-
-```json
-{
-  "verb": { "id": "http://adlnet.gov/expapi/verbs/answered" },
-  "object": { "id": "https://exelearning.net/xapi/PKG1/idevice/IDEVICE-A" },
-  "result": {
-    "score": { "scaled": 0.8, "raw": 8, "min": 0, "max": 10 },
-    "success": true,
-    "completion": true
-  },
-  "context": {
-    "extensions": {
-      "https://exelearning.net/xapi/extensions/package-id": "PKG1",
-      "https://exelearning.net/xapi/extensions/idevice-id": "IDEVICE-A",
-      "https://exelearning.net/xapi/extensions/idevice-type": "quiz",
-      "https://exelearning.net/xapi/extensions/idevice-order": 1,
-      "https://exelearning.net/xapi/extensions/idevice-weight": 25
-    }
-  }
-}
-```
-
-To reconstruct current package state, consumers should group statements by
-attempt/registration and package, then retain the latest `answered` statement
-for each stable `idevice-id`. A later answer replaces that iDevice's prior score;
-answer history must not be summed.
-
-Then add every iDevice in the [census](#the-idevice-census) that has no `answered`
-statement, with a score of 0 and its published weight. Skipping this step is what
-inflates a partial attempt. Then apply the same steps as
-`gamification.scorm.getFinalScore()`, **in this order**:
-
-1. **Sort** the latest statements by the numeric, 1-based `idevice-order`, which
-   is the package render order across all pages. This order is the deterministic
-   tie break in step 3, so it must be applied before it.
-2. **Scale** each record: the score onto 0–100 (`result.score.scaled × 100`, which
-   is what the reference consumer reads; `raw × 10` is equivalent since the emitter
-   clamps onto its declared 0–10 scale) and clamp the weight onto 1–100.
-3. **Normalize the weights to 100 integer points, before applying them.** Scale
-   each weight by `100 / Σweights`, take the floor, and distribute the remaining
-   `100 − Σfloors` points one at a time to the largest fractional remainders,
-   resolving equal remainders by the package order from step 1.
-4. **Apply** the apportioned integer weights: `Σ(score × points) / 100`, rounded
-   to two decimals.
-
-Normalizing after multiplying instead — that is, a plain continuous weighted mean
-— agrees on tie-free inputs but diverges by up to a normalized point when
-remainders tie. For weights 25 and 75 with scores 100 and 40, both give
-`(100 × 25 + 40 × 75) / 100 = 55`; for three equal weights with scores 100, 0 and
-0, the contract gives `34` (the first iDevice in package order receives the extra
-point) while a continuous mean gives `33.33`.
-
-Because every per-iDevice statement contains its stable identity, score, weight
-and package-global order, this reconstruction works across multi-page
-publications even though each page has a separate JavaScript context.
-
-**Multi-page packages emit no package-level verdict.** Each page only knows the
-scores answered on that page, so a page-local aggregate wearing the package
-Activity IRI would let one page report `passed` and another `failed` for the same
-activity within one attempt. `completed` and `passed`/`failed` are therefore
-emitted only when the package is a single page (`window.exeXapi.pageCount === 1`,
-which the exporters inject). For every other package the reconstruction above is
-the authority. See
-[ADR-2302-01](../architecture/adr/ADR-2302-01-expose-xapi-weight-and-order.md).
+On **single-page** packages the emitted verdict is accurate for partial attempts too:
+gradable iDevices seed the page aggregate at score 0 as they register (with their real
+weight), so a learner who answers only the weight-25 iDevice of a 25/75 package is
+reported as 25, not 100. The seeding is internal emitter state; nothing about
+unanswered iDevices is emitted.
 
 ### 2.4 Transport (silent fall-through)
 
