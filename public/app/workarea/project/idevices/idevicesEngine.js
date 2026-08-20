@@ -2359,6 +2359,15 @@ export default class IdevicesEngine {
      * Used before the page content is discarded wholesale, where the nodes are
      * detached directly instead of through `IdeviceNode.remove()`. A failure on
      * one node must not stop the others from being released.
+     *
+     * Only one iDevice can be edited at a time, so this looks like it could
+     * dispose the active lifecycle directly instead of walking every node. It
+     * cannot: `destroyEditionInstance()` also does per-node work that no
+     * lifecycle owns. It stops the node's `checkDeviceLoadInterval` poll, and it
+     * releases `$exeDevice` for an edition whose script defined the global but
+     * never reached `initExeDeviceEdition()` — that edition has no lifecycle at
+     * all, so nothing else would ever clean it up, and the next iDevice's poll
+     * would adopt the stale global.
      */
     destroyEditionIdevices() {
         this.components.idevices.forEach((idevice) => {

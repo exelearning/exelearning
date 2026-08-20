@@ -107,18 +107,6 @@ describe('EditionLifecycle', () => {
         });
     });
 
-    describe('run()', () => {
-        it('executes while active and skips after teardown', () => {
-            const spy = vi.fn();
-            lifecycle.run(spy);
-            expect(spy).toHaveBeenCalledTimes(1);
-
-            lifecycle.destroy();
-            lifecycle.run(spy);
-            expect(spy).toHaveBeenCalledTimes(1);
-        });
-    });
-
     /*******************************************************************************
      * DISPOSERS
      *******************************************************************************/
@@ -569,23 +557,6 @@ describe('EditionLifecycle', () => {
             expect(spy).toHaveBeenCalledTimes(2);
         });
 
-        it('supports one() and removes it on teardown if it never fired', () => {
-            const fired = vi.fn();
-            const never = vi.fn();
-
-            lifecycle.one('#inside', 'click', fired);
-            lifecycle.one('#outside', 'click', never);
-
-            $('#inside').trigger('click');
-            $('#inside').trigger('click');
-            expect(fired).toHaveBeenCalledTimes(1);
-
-            lifecycle.destroy();
-            $('#outside').trigger('click');
-
-            expect(never).not.toHaveBeenCalled();
-        });
-
         it('binds jQuery handlers to the owning device', () => {
             let seen = null;
             lifecycle.on('#inside', 'click', function () {
@@ -671,17 +642,6 @@ describe('EditionLifecycle', () => {
         });
     });
 
-    describe('ownObserver()', () => {
-        it('disconnects the observer on teardown', () => {
-            const observer = { disconnect: vi.fn() };
-            lifecycle.ownObserver(observer);
-
-            lifecycle.destroy();
-
-            expect(observer.disconnect).toHaveBeenCalledTimes(1);
-        });
-    });
-
     describe('ownInstance()', () => {
         it('calls the named cleanup method', () => {
             const player = { destroy: vi.fn() };
@@ -695,28 +655,6 @@ describe('EditionLifecycle', () => {
         it('does nothing when the instance lacks that method', () => {
             expect(() => lifecycle.ownInstance({}, 'destroy')).not.toThrow();
             expect(() => lifecycle.destroy()).not.toThrow();
-        });
-    });
-
-    describe('ownObjectUrl()', () => {
-        it('revokes the URL on teardown', () => {
-            const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
-            lifecycle.ownObjectUrl('blob:fake-url');
-
-            lifecycle.destroy();
-
-            expect(revoke).toHaveBeenCalledWith('blob:fake-url');
-            revoke.mockRestore();
-        });
-
-        it('ignores an empty URL', () => {
-            const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
-            lifecycle.ownObjectUrl('');
-
-            lifecycle.destroy();
-
-            expect(revoke).not.toHaveBeenCalled();
-            revoke.mockRestore();
         });
     });
 
@@ -805,6 +743,36 @@ describe('EditionLifecycle', () => {
 
         it('is optional', () => {
             expect(() => lifecycle.destroy()).not.toThrow();
+        });
+    });
+
+    /*******************************************************************************
+     * RETENTION
+     *******************************************************************************/
+
+    describe('retention', () => {
+        it('drops the edition it owned, so a stray bound callback retains nothing', () => {
+            const formElement = document.createElement('div');
+            const ownerNode = { engine: {} };
+            const owned = new EditionLifecycle({
+                device: { name: 'device' },
+                formElement,
+                ownerNode,
+            });
+            // `bind()` closes over the whole lifecycle, so anything parked in an
+            // application-lifetime registry keeps it — and whatever it still
+            // points at — reachable.
+            const stray = owned.bind(function () {});
+
+            owned.destroy();
+
+            expect(owned.device).toBeNull();
+            expect(owned.formElement).toBeNull();
+            expect(owned.ownerNode).toBeNull();
+            expect(owned.disposers).toEqual([]);
+            // The callback survives and stays inert, which is the point.
+            expect(() => stray()).not.toThrow();
+            expect(stray()).toBeUndefined();
         });
     });
 

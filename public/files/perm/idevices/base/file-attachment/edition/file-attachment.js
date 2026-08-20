@@ -133,14 +133,18 @@ var $exeDevice = {
             return;
         }
 
-        fileManager.show({
-            multiSelect: true,
-            // The modal outlives the edition form, so a selection confirmed
-            // after the editor closed must not add rows to it.
-            onSelect: this.$lifecycle.bind((result) => {
-                const results = Array.isArray(result) ? result : [result];
-                results.forEach((item) => this.addAttachmentFromAsset(item));
-            }),
+        // The modal outlives the edition form, so a selection confirmed after
+        // the editor closed must not add rows to it.
+        const onSelect = this.$lifecycle.bind((result) => {
+            const results = Array.isArray(result) ? result : [result];
+            results.forEach((item) => this.addAttachmentFromAsset(item));
+        });
+        fileManager.show({ multiSelect: true, onSelect });
+        // The File Manager is an application-lifetime singleton that keeps the
+        // callback until it is next closed or reopened. Dropping it with the
+        // edition stops a bound handler from holding this editor's DOM.
+        this.$lifecycle.own(() => {
+            if (fileManager.onSelectCallback === onSelect) fileManager.onSelectCallback = null;
         });
     },
 

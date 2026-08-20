@@ -744,6 +744,10 @@ var $exeDevice = (function () {
             if (current) position(current);
         }
 
+        // Deliberately NOT owned by the edition lifecycle: a page-scoped
+        // singleton whose `__lomloeTipBound` guard is shared with export/, so
+        // releasing it on close would kill every other LOMLOE tooltip on the
+        // page with nothing able to reinstall it. It captures no edition state.
         doc.addEventListener('mouseover', onOver, true);
         doc.addEventListener('mouseout',  onOut,  true);
         doc.addEventListener('focusin',   onOver, true);

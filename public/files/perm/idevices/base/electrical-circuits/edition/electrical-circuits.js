@@ -1946,7 +1946,7 @@ var $exeDevice = {
         const data = window.URL.createObjectURL(newBlob);
         // Owned by the edition, so the blob is released even when the editor
         // closes before the cleanup timer runs.
-        this.$lifecycle.ownObjectUrl(data);
+        this.$lifecycle.own(() => window.URL.revokeObjectURL(data));
         const link = document.createElement('a');
         link.href = data;
         link.download = `${_('test')}.txt`;

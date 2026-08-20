@@ -9,8 +9,8 @@
  * shared edition helpers that run outside the device object).
  *
  * The lifecycle owns everything the edition creates that can outlive it:
- * timers, event handlers, abortable requests, file readers, observers, object
- * URLs and third-party instances. When the editor closes, `destroy()` releases
+ * timers, event handlers, abortable requests, file readers, media elements and
+ * third-party instances. When the editor closes, `destroy()` releases
  * all of it **before** the global `$exeDevice` is cleared or replaced.
  *
  * Two invariants make this safe:
@@ -41,10 +41,6 @@
  *     // most iDevices do not need this at all.
  *     destroyEdition: function () { ... },
  */
-
-const STATE_ACTIVE = 'active';
-const STATE_DESTROYING = 'destroying';
-const STATE_DESTROYED = 'destroyed';
 
 /**
  * Name of the optional teardown hook an edition object may implement.
@@ -135,7 +131,7 @@ export default class EditionLifecycle {
         this.device = options.device || null;
         this.formElement = options.formElement || null;
         this.ownerNode = options.ownerNode || null;
-        this.state = STATE_ACTIVE;
+        this.destroyed = false;
         this.namespace = buildNamespace(this.id);
         this.logger = options.logger || (typeof window !== 'undefined' && window.AppLogger) || console;
 
@@ -145,7 +141,6 @@ export default class EditionLifecycle {
         this.timeouts = new Set();
         this.intervals = new Set();
         this.animationFrames = new Set();
-        this.jqueryTargets = new Set();
         /** Errors raised by disposers, kept for tests and diagnostics. */
         this.errors = [];
     }
@@ -162,14 +157,14 @@ export default class EditionLifecycle {
      * @returns {Boolean}
      */
     isActive() {
-        return this.state === STATE_ACTIVE;
+        return !this.destroyed;
     }
 
     /**
      * @returns {Boolean}
      */
     isDestroyed() {
-        return this.state === STATE_DESTROYED;
+        return this.destroyed;
     }
 
     /**
@@ -209,17 +204,6 @@ export default class EditionLifecycle {
         };
     }
 
-    /**
-     * Run a callback immediately, but only while the edition is still active.
-     * Useful at the tail of a promise chain that cannot be cancelled.
-     *
-     * @param {Function} callback
-     * @returns {*}
-     */
-    run(callback) {
-        return this.bind(callback)();
-    }
-
     /*******************************************************************************
      * OWNERSHIP
      *******************************************************************************/
@@ -231,7 +215,7 @@ export default class EditionLifecycle {
      *
      * Returns a function that releases the resource early and unregisters it,
      * matching the disposer convention already used by
-     * `IdeviceNode.trackInactivity()`.
+     * `IdeviceNode.inactivityInElement()`.
      *
      * @param {Function} disposer
      * @returns {Function} Runs the disposer now and forgets it.
@@ -272,16 +256,6 @@ export default class EditionLifecycle {
     }
 
     /**
-     * Own a MutationObserver / ResizeObserver / IntersectionObserver.
-     *
-     * @param {Object} observer
-     * @returns {Function}
-     */
-    ownObserver(observer) {
-        return this.ownInstance(observer, 'disconnect');
-    }
-
-    /**
      * Own a FileReader: an in-flight read is aborted on teardown, and reads
      * that already completed are left alone.
      *
@@ -298,20 +272,6 @@ export default class EditionLifecycle {
         return this.own(() => {
             if (reader.readyState === FILE_READER_LOADING) reader.abort();
         });
-    }
-
-    /**
-     * Own an object URL created by this edition. Never pass a URL created
-     * elsewhere: revoking it would break its real owner.
-     *
-     * @param {String} url
-     * @returns {Function}
-     */
-    ownObjectUrl(url) {
-        if (typeof url !== 'string' || !url) {
-            return () => undefined;
-        }
-        return this.own(() => URL.revokeObjectURL(url));
     }
 
     /**
@@ -419,15 +379,6 @@ export default class EditionLifecycle {
         return id;
     }
 
-    /**
-     * @param {Number} id
-     */
-    cancelAnimationFrame(id) {
-        if (id === null || id === undefined) return;
-        this.animationFrames.delete(id);
-        if (typeof window.cancelAnimationFrame === 'function') window.cancelAnimationFrame(id);
-    }
-
     /*******************************************************************************
      * EVENT HANDLERS
      *******************************************************************************/
@@ -491,20 +442,7 @@ export default class EditionLifecycle {
     }
 
     /**
-     * jQuery `.one()` owned by this edition.
-     *
-     * @param {*} target
-     * @param {String} events
-     * @param {String|Function} selector
-     * @param {Function} [handler]
-     * @returns {Function}
-     */
-    one(target, events, selector, handler) {
-        return this.bindJQuery('one', target, events, selector, handler);
-    }
-
-    /**
-     * Shared implementation of `on()` / `one()`.
+     * Shared implementation of the jQuery binding helpers.
      *
      * @param {String} method
      * @param {*} target
@@ -540,15 +478,13 @@ export default class EditionLifecycle {
             $target[method](namespaced, delegation, guarded);
         }
 
-        this.jqueryTargets.add(target);
-
-        return () => {
+        return this.own(() => {
             if (delegation === undefined) {
                 jq(target).off(namespaced, guarded);
             } else {
                 jq(target).off(namespaced, delegation, guarded);
             }
-        };
+        });
     }
 
     /*******************************************************************************
@@ -562,7 +498,7 @@ export default class EditionLifecycle {
      * Order matters. The lifecycle is marked inactive first so nothing it owns
      * can run while teardown is in progress; pending async work is cancelled
      * next; the iDevice's own hook then runs while its instance and its DOM are
-     * both still available; registered disposers and jQuery handlers follow.
+     * both still available; registered disposers follow, in reverse order.
      *
      * A failing disposer never aborts teardown: errors are collected, logged
      * and reported, and the remaining resources are still released.
@@ -570,23 +506,27 @@ export default class EditionLifecycle {
      * @returns {Array} Errors raised while disposing, empty when clean.
      */
     destroy() {
-        if (this.state !== STATE_ACTIVE) {
+        if (this.destroyed) {
             return this.errors;
         }
-        this.state = STATE_DESTROYING;
+        // Set first, so nothing this owns can run while teardown is in progress
+        // and a reentrant call returns immediately.
+        this.destroyed = true;
 
         try {
             this.cancelPendingWork();
             this.runDestroyHook();
             this.runDisposers();
-            this.removeJQueryHandlers();
         } finally {
-            // Reaching `destroyed` unconditionally is what keeps a failure from
-            // leaving the application with a half-destroyed edition.
-            this.state = STATE_DESTROYED;
+            // Released unconditionally, so a failing disposer cannot leave the
+            // lifecycle holding the edition. `bind()` closes over the whole
+            // lifecycle, so a bound callback that outlives teardown — parked in
+            // an app-lifetime registry, say — would otherwise keep the form's
+            // DOM subtree and the owning node's entire engine reachable.
             this.disposers = [];
-            this.jqueryTargets.clear();
             this.device = null;
+            this.formElement = null;
+            this.ownerNode = null;
         }
 
         return this.errors;
@@ -630,20 +570,6 @@ export default class EditionLifecycle {
         for (let i = disposers.length - 1; i >= 0; i--) {
             this.safely(disposers[i], 'disposer');
         }
-    }
-
-    /**
-     * Remove every jQuery handler registered by this edition, on every target
-     * it touched, using the edition's own namespace so unrelated handlers on
-     * shared targets are preserved.
-     */
-    removeJQueryHandlers() {
-        const jq = getJQuery();
-        if (!jq) return;
-        const namespace = `.${this.namespace}`;
-        this.jqueryTargets.forEach((target) => {
-            this.safely(() => jq(target).off(namespace), 'jquery-off');
-        });
     }
 
     /**

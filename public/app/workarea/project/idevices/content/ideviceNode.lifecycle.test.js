@@ -78,7 +78,7 @@ describe('IdeviceNode edition teardown (#2293)', () => {
             formElement: node.ideviceBody,
             ownerNode: node,
         });
-        node.editionLifecycle = setActiveEditionLifecycle(lifecycle);
+        setActiveEditionLifecycle(lifecycle);
         device.$lifecycle = lifecycle;
         global.$exeDevice = device;
         return lifecycle;
@@ -176,7 +176,6 @@ describe('IdeviceNode edition teardown (#2293)', () => {
             idevice.destroyEditionInstance();
 
             expect(getActiveEditionLifecycle()).toBeNull();
-            expect(idevice.editionLifecycle).toBeNull();
             expect(window.$exeEditionLifecycle).toBeNull();
         });
 
@@ -378,7 +377,7 @@ describe('IdeviceNode edition teardown (#2293)', () => {
             expect(global.$exeDevice).toBeUndefined();
         });
 
-        it('drops the owning node reference when another node disposes the edition', async () => {
+        it('disposes another node\'s edition before loading its own', async () => {
             const device = {};
             const owner = new IdeviceNode(mockEngine, {
                 id: 'idevice-owner',
@@ -387,7 +386,7 @@ describe('IdeviceNode edition teardown (#2293)', () => {
                 blockId: 'block-1',
                 mode: 'edition',
             });
-            openEdition(owner, device);
+            const ownerLifecycle = openEdition(owner, device);
 
             idevice.loadScriptsEdition = vi.fn();
             idevice.loadStylesEdition = vi.fn().mockResolvedValue([]);
@@ -395,7 +394,29 @@ describe('IdeviceNode edition teardown (#2293)', () => {
 
             await idevice.loadEditionIdevice();
 
-            expect(owner.editionLifecycle).toBeNull();
+            expect(ownerLifecycle.isDestroyed()).toBe(true);
+            expect(getActiveEditionLifecycle()).toBeNull();
+        });
+
+        it('leaves another node\'s live editor alone, and its global with it', () => {
+            // A node that owns no edition must not strand the open one: this is
+            // the collaborative-sync path, where a remote iDevice re-renders
+            // while a different one is being edited locally.
+            const device = { name: 'owner-device' };
+            const owner = new IdeviceNode(mockEngine, {
+                id: 'idevice-owner',
+                odeIdeviceId: 'idevice-id-owner',
+                odeIdeviceTypeName: 'text',
+                blockId: 'block-1',
+                mode: 'edition',
+            });
+            const ownerLifecycle = openEdition(owner, device);
+
+            idevice.destroyEditionInstance();
+
+            expect(ownerLifecycle.isDestroyed()).toBe(false);
+            expect(getActiveEditionLifecycle()).toBe(ownerLifecycle);
+            expect(global.$exeDevice).toBe(device);
         });
 
         it('loadEditionIdevice() does dispose an editor owned by another node', async () => {
@@ -560,6 +581,99 @@ describe('IdeviceNode edition teardown (#2293)', () => {
             }
 
             expect(healthy.remove).toHaveBeenCalledTimes(1);
+        });
+
+        it('does nothing when TinyMCE is not loaded', () => {
+            const original = tinymce.editors;
+            tinymce.editors = undefined;
+            try {
+                expect(() => idevice.removeEditionEditors(document.createElement('div'))).not.toThrow();
+            } finally {
+                tinymce.editors = original;
+            }
+        });
+    });
+
+    describe('clearEditionFormHandlers()', () => {
+        it('unbinds the form in place without emptying it', () => {
+            const form = document.createElement('div');
+            form.innerHTML = '<button id="bound">go</button>';
+            document.body.appendChild(form);
+            const spy = vi.fn();
+            window.jQuery('#bound', form).on('click', spy);
+
+            idevice.clearEditionFormHandlers(form);
+
+            window.jQuery('#bound', form).trigger('click');
+            expect(spy).not.toHaveBeenCalled();
+            // The content stays visible until the caller has a replacement.
+            expect(form.querySelector('#bound')).not.toBeNull();
+        });
+
+        it('ignores a missing form or a page without jQuery', () => {
+            const jq = window.jQuery;
+            expect(() => idevice.clearEditionFormHandlers(null)).not.toThrow();
+            window.jQuery = undefined;
+            try {
+                expect(() => idevice.clearEditionFormHandlers(document.createElement('div'))).not.toThrow();
+            } finally {
+                window.jQuery = jq;
+            }
+        });
+
+        it('falls back to emptying the form when jQuery exposes no cleanData', () => {
+            const form = document.createElement('div');
+            form.innerHTML = '<button>go</button>';
+            const empty = vi.fn();
+            const jq = window.jQuery;
+            window.jQuery = Object.assign(() => ({ empty }), {});
+            try {
+                idevice.clearEditionFormHandlers(form);
+            } finally {
+                window.jQuery = jq;
+            }
+
+            expect(empty).toHaveBeenCalledTimes(1);
+        });
+
+        it('reports a failing cleanup instead of aborting teardown', () => {
+            const jq = window.jQuery;
+            window.jQuery = Object.assign(
+                () => {
+                    throw new Error('jquery exploded');
+                },
+                { cleanData: () => {} }
+            );
+            try {
+                expect(() => idevice.clearEditionFormHandlers(document.createElement('div'))).not.toThrow();
+            } finally {
+                window.jQuery = jq;
+            }
+        });
+    });
+
+    describe('initExeDeviceEdition()', () => {
+        it('publishes a lifecycle owned by this node before the script initializes', () => {
+            let lifecycleAtInit;
+            idevice.ideviceBody = document.createElement('div');
+            idevice.getSavedData = vi.fn(() => ({}));
+            idevice.getPathEdition = vi.fn(() => '/edition/');
+            global.$exeDevice = {
+                init: vi.fn(() => {
+                    // The edition script can already own resources here.
+                    lifecycleAtInit = global.$exeDevice.$lifecycle;
+                }),
+            };
+
+            idevice.initExeDeviceEdition();
+
+            const lifecycle = getActiveEditionLifecycle();
+            expect(lifecycle).not.toBeNull();
+            expect(lifecycleAtInit).toBe(lifecycle);
+            expect(lifecycle.ownerNode).toBe(idevice);
+            expect(lifecycle.name).toBe('text');
+            expect(lifecycle.formElement).toBe(idevice.ideviceBody);
+            expect(global.$exeDevice.init).toHaveBeenCalledTimes(1);
         });
     });
 });
