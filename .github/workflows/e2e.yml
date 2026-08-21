@@ -205,6 +205,11 @@ jobs:
       # build-public and the re-run merge finds no blob-* to merge. A step `if:`
       # without a status function implicitly ANDs success(), so this also skips
       # (retaining the artifacts) if any earlier merge-report step fails.
+      #
+      # Deletion is best-effort. On pull_request runs from forks GitHub caps
+      # GITHUB_TOKEN at read-only (the job-level `actions: write` grant cannot
+      # raise it), so deleteArtifact 403s there. Never fail the run over it:
+      # leftover intermediates expire on their own via retention-days.
       - name: Delete intermediate artifacts
         if: ${{ needs.e2e.result == 'success' }}
         uses: actions/github-script@v9
@@ -218,12 +223,24 @@ jobs:
             });
             const intermediate = /^(build-public|build-static|blob-.*)$/;
             for (const artifact of data.artifacts) {
-              if (intermediate.test(artifact.name)) {
-                core.info(`Deleting artifact ${artifact.name} (#${artifact.id})`);
+              if (!intermediate.test(artifact.name)) {
+                continue;
+              }
+              core.info(`Deleting artifact ${artifact.name} (#${artifact.id})`);
+              try {
                 await github.rest.actions.deleteArtifact({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   artifact_id: artifact.id,
                 });
+              } catch (error) {
+                core.warning(
+                  `Could not delete artifact ${artifact.name} (#${artifact.id}): ${error.message}. ` +
+                    'It will expire via its retention policy.',
+                );
+                if (error.status === 403) {
+                  // Read-only token (fork PR): every remaining delete would 403 too.
+                  break;
+                }
               }
             }

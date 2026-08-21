@@ -2367,6 +2367,60 @@ describe('IdevicesEngine', () => {
             expect(mockIdevice.htmlView).toBe('new content');
             expect(mockIdevice.lockedByRemote).toBe(false);
         });
+
+        it('does not wipe saved htmlView on lock-only remote updates', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: '<p>Original content</p>',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                lockedByRemote: false,
+                lockUserName: null,
+                lockUserColor: null,
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            mockIdevice.ideviceBody.innerHTML = '<p>Original content</p>';
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({
+                id: 'comp-1',
+                lockedBy: 'client-2',
+                lockUserName: 'Remote User',
+                lockUserColor: '#0af',
+            });
+
+            expect(mockIdevice.htmlView).toBe('<p>Original content</p>');
+            expect(mockIdevice.ideviceBody.innerHTML).toBe('<p>Original content</p>');
+            expect(mockIdevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+            expect(mockIdevice.lockedByRemote).toBe(true);
+            expect(mockIdevice.lockUserName).toBe('Remote User');
+            expect(mockIdevice.updateLockIndicator).toHaveBeenCalled();
+        });
+
+        it('does not erase saved htmlView when remote htmlContent is empty', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: '<p>Original content</p>',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            mockIdevice.ideviceBody.innerHTML = '<p>Original content</p>';
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({
+                id: 'comp-1',
+                htmlContent: '',
+            });
+
+            expect(mockIdevice.htmlView).toBe('<p>Original content</p>');
+            expect(mockIdevice.ideviceBody.innerHTML).toBe('<p>Original content</p>');
+            expect(mockIdevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+        });
     });
 
     describe('initPagePropertiesObserver', () => {
