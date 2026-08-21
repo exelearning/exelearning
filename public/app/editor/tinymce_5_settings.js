@@ -646,11 +646,6 @@ var $exeTinyMCE = {
                 // Must run after init when windowManager is available.
                 $exeTinyMCE._patchAssetDialogs(ed);
 
-                // Hook for Yjs collaborative editing - bind editor if Yjs is enabled
-                if (typeof $exeTinyMCE.onEditorInit === 'function') {
-                    $exeTinyMCE.onEditorInit(ed);
-                }
-
                 // Note: SetContent handler is now registered in setup() callback
                 // to catch the initial content load before init_instance_callback runs
 
