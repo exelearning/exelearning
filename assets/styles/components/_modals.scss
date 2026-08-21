@@ -4029,3 +4029,49 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     font-weight: 600;
     color: #495057;
 }
+
+/* -------------------------------------------------------------------------
+   Change password dialog (#2261)
+   ------------------------------------------------------------------------- */
+
+.modal-change-password .change-password-feedback {
+    margin-bottom: 1rem;
+}
+
+.modal-change-password .change-password-strength {
+    margin-top: 0.5rem;
+}
+
+.modal-change-password .change-password-strength .progress {
+    height: 6px;
+    background-color: var(--gray-200);
+}
+
+.modal-change-password .change-password-strength-label {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--bold-gray);
+    font-size: 12px;
+}
+
+/* Advisory only: the colours describe the password, they never block it. */
+.modal-change-password .change-password-strength-bar {
+    transition: width 0.2s ease-in-out;
+}
+
+.modal-change-password .change-password-strength-bar.strength-too-short,
+.modal-change-password .change-password-strength-bar.strength-weak {
+    background-color: var(--system-red);
+}
+
+.modal-change-password .change-password-strength-bar.strength-fair {
+    background-color: #e0a800;
+}
+
+.modal-change-password .change-password-strength-bar.strength-good {
+    background-color: var(--brand-primary-500);
+}
+
+.modal-change-password .change-password-strength-bar.strength-strong {
+    background-color: var(--brand-primary-700);
+}

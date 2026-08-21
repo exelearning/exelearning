@@ -14,11 +14,12 @@ const MAX_PATHS_PER_ACTIVITY = 10;
 /**
  * Escape text that came from the imported package before it reaches innerHTML.
  * Activity types and file names are attacker-controlled in a crafted package.
+ * Shared with damagedPropertiesNotice.js (#2190).
  *
  * @param {string} value
  * @returns {string}
  */
-function escapeHtml(value) {
+export function escapeHtml(value) {
     return String(value)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
