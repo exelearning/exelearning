@@ -806,9 +806,7 @@ describe('Assets Routes', () => {
                 client_id: clientId,
             });
 
-            const res = await handle(
-                new Request(`http://localhost/api/projects/1/assets/by-client-id/${clientId}`),
-            );
+            const res = await handle(new Request(`http://localhost/api/projects/1/assets/by-client-id/${clientId}`));
 
             expect(res.status).toBe(200);
             const xFilename = res.headers.get('x-filename') ?? '';
