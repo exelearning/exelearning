@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -50,7 +49,6 @@ describe('Project Routes Integration', () => {
 
         // Create project routes that use test db
         app = new Elysia({ name: 'project-test', prefix: '/api/project' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
