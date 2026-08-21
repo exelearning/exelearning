@@ -21,9 +21,18 @@ import {
     type AssetsSessionManagerDeps,
     type AssetsPriorityQueueDeps,
 } from './assets';
+import {
+    buildAssetStoragePath,
+    getAssetShard,
+    resolveAssetStoragePath as resolveAssetStoragePathPure,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
+} from '../utils/asset-paths';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'assets-test');
 const testProjectId = 'test-project-123';
+// Legacy (pre-sharding) on-disk project directory. Several fixtures seed files
+// here with absolute storage_path values to exercise the legacy read fallback.
+const legacyProjectDir = path.join(testDir, 'assets', testProjectId);
 const OWNER_USER_ID = 42;
 // Match the fallback in getJwtSecret() so we don't have to mutate process.env.
 const TEST_JWT_SECRET = 'dev_secret_change_me';
@@ -44,7 +53,8 @@ let mockSessions: Map<string, any>;
 function createMockFileHelper(): AssetsFileHelperDeps {
     return {
         getOdeSessionTempDir: (sessionId: string) => path.join(testDir, 'tmp', sessionId),
-        getProjectAssetsDir: (projectUuid: string) => path.join(testDir, 'assets', projectUuid),
+        resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(testDir, storagePath),
+        tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(testDir, storagePath),
         fileExists: async (filePath: string) => fs.pathExists(filePath),
         readFile: async (filePath: string) => fs.readFile(filePath),
         writeFile: async (filePath: string, data: Buffer) => fs.writeFile(filePath, data),
@@ -543,10 +553,123 @@ describe('Assets Routes', () => {
         });
     });
 
+    describe('Sharded relative storage (issue #2250)', () => {
+        const expectedShard = getAssetShard(testProjectId);
+
+        it('should store a FILES_DIR-relative sharded storage_path on upload', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['sharded content'], { type: 'text/plain' }), 'photo.png');
+            formData.append('clientId', 'client-shard-1');
+
+            // Addressed by numeric id on purpose: storage must still use the
+            // canonical project UUID, never the raw URL parameter.
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets`, { method: 'POST', body: formData }),
+            );
+            expect(res.status).toBe(200);
+
+            const stored = Array.from(mockAssets.values()).find(a => a.client_id === 'client-shard-1');
+            expect(stored).toBeDefined();
+            expect(stored.storage_path).toBe(buildAssetStoragePath(testProjectId, 'client-shard-1.png'));
+            expect(stored.storage_path).toBe(`assets/${expectedShard}/${testProjectId}/client-shard-1.png`);
+            expect(path.isAbsolute(stored.storage_path)).toBe(false);
+
+            const physical = path.join(testDir, 'assets', expectedShard, testProjectId, 'client-shard-1.png');
+            expect(await fs.pathExists(physical)).toBe(true);
+            expect(await fs.readFile(physical, 'utf-8')).toBe('sharded content');
+        });
+
+        it('should serve a download from the sharded location after upload', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['roundtrip content'], { type: 'text/plain' }), 'note.txt');
+            formData.append('clientId', 'client-shard-2');
+
+            const uploadRes = await handle(
+                new Request(`http://localhost/api/projects/1/assets`, { method: 'POST', body: formData }),
+            );
+            expect(uploadRes.status).toBe(200);
+
+            const res = await handle(new Request(`http://localhost/api/projects/1/assets/by-client-id/client-shard-2`));
+            expect(res.status).toBe(200);
+            expect(await res.text()).toBe('roundtrip content');
+        });
+
+        it('should remove the sharded file on delete', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['delete me'], { type: 'text/plain' }), 'gone.txt');
+            formData.append('clientId', 'client-shard-3');
+
+            await handle(new Request(`http://localhost/api/projects/1/assets`, { method: 'POST', body: formData }));
+            const physical = path.join(testDir, 'assets', expectedShard, testProjectId, 'client-shard-3.txt');
+            expect(await fs.pathExists(physical)).toBe(true);
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/client-shard-3`, {
+                    method: 'DELETE',
+                }),
+            );
+            expect(res.status).toBe(200);
+            expect(await fs.pathExists(physical)).toBe(false);
+        });
+
+        it('should remove the file at the previous location when a re-upload relocates the asset', async () => {
+            // A conflict-parked row points at the legacy unsharded location.
+            const legacyFile = path.join(legacyProjectDir, 'parked-client.png');
+            await fs.writeFile(legacyFile, 'old parked bytes');
+            mockAssets.set(60, {
+                id: 60,
+                project_id: 1,
+                filename: 'parked.png',
+                storage_path: `assets/${testProjectId}/parked-client.png`,
+                mime_type: 'image/png',
+                client_id: 'parked-client',
+            });
+
+            const formData = new FormData();
+            formData.append('file', new Blob(['new bytes'], { type: 'image/png' }), 'parked.png');
+            formData.append('clientId', 'parked-client');
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets`, { method: 'POST', body: formData }),
+            );
+            expect(res.status).toBe(200);
+
+            // Row repointed to the sharded location; the superseded legacy
+            // file is removed so it cannot linger as an untracked orphan.
+            const row = mockAssets.get(60);
+            expect(row.storage_path).toBe(`assets/${expectedShard}/${testProjectId}/parked-client.png`);
+            expect(await fs.pathExists(legacyFile)).toBe(false);
+            const physical = path.join(testDir, 'assets', expectedShard, testProjectId, 'parked-client.png');
+            expect(await fs.readFile(physical, 'utf-8')).toBe('new bytes');
+        });
+
+        it('should still serve an asset whose row holds a legacy absolute storage_path', async () => {
+            // Simulates a not-yet-migrated row: absolute path from an old
+            // FILES_DIR mount that no longer exists. The resolver re-roots the
+            // assets/... suffix under the current FILES_DIR.
+            const legacyFile = path.join(legacyProjectDir, 'legacy-row.png');
+            await fs.writeFile(legacyFile, 'legacy bytes');
+            mockAssets.set(50, {
+                id: 50,
+                project_id: 1,
+                filename: 'legacy-row.png',
+                storage_path: `/old-deployment/data/assets/${testProjectId}/legacy-row.png`,
+                mime_type: 'image/png',
+                client_id: 'legacy-client-50',
+            });
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/legacy-client-50`),
+            );
+            expect(res.status).toBe(200);
+            expect(await res.text()).toBe('legacy bytes');
+        });
+    });
+
     describe('GET /api/projects/:projectId/assets/:assetId - Download Asset', () => {
         it('should download asset file', async () => {
             // Create test file
-            const filePath = path.join(testDir, 'test-asset.txt');
+            const filePath = path.join(legacyProjectDir, 'test-asset.txt');
             await fs.writeFile(filePath, 'Asset content');
 
             mockAssets.set(1, {
@@ -581,7 +704,7 @@ describe('Assets Routes', () => {
         });
 
         it('should return 404 when numeric asset belongs to another project', async () => {
-            const filePath = path.join(testDir, 'other-project-asset.txt');
+            const filePath = path.join(legacyProjectDir, 'other-project-asset.txt');
             await fs.writeFile(filePath, 'Other project content');
 
             mockAssets.set(1, {
@@ -599,7 +722,7 @@ describe('Assets Routes', () => {
         });
 
         it('should resolve UUID-like client_id in :assetId param', async () => {
-            const filePath = path.join(testDir, 'uuid-client-asset.txt');
+            const filePath = path.join(legacyProjectDir, 'uuid-client-asset.txt');
             await fs.writeFile(filePath, 'UUID client asset content');
 
             const clientId = '960cbe4b-0c2c-4466-95d4-6a3c4d7fd275';
@@ -645,7 +768,7 @@ describe('Assets Routes', () => {
         // accented characters (e.g. "San Marcial de Rubicón.png") used to surface
         // as a 500 with "Header has invalid value" instead of streaming the file.
         it('should download asset whose filename contains non-ASCII characters', async () => {
-            const filePath = path.join(testDir, 'rubicon-asset.png');
+            const filePath = path.join(legacyProjectDir, 'rubicon-asset.png');
             await fs.writeFile(filePath, 'Rubicón content');
 
             mockAssets.set(1, {
@@ -667,7 +790,7 @@ describe('Assets Routes', () => {
         });
 
         it('should expose the asset filename in by-client-id X-Filename header without throwing on accents', async () => {
-            const filePath = path.join(testDir, 'valeron-asset.png');
+            const filePath = path.join(legacyProjectDir, 'valeron-asset.png');
             await fs.writeFile(filePath, 'Valerón content');
 
             const clientId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
@@ -694,7 +817,7 @@ describe('Assets Routes', () => {
 
     describe('GET /api/projects/:projectId/assets/by-client-id/:clientId', () => {
         it('should download asset by client ID', async () => {
-            const filePath = path.join(testDir, 'client-asset.txt');
+            const filePath = path.join(legacyProjectDir, 'client-asset.txt');
             await fs.writeFile(filePath, 'Client asset content');
 
             mockAssets.set(1, {
@@ -770,7 +893,7 @@ describe('Assets Routes', () => {
 
     describe('DELETE /api/projects/:projectId/assets/:assetId', () => {
         it('should delete asset', async () => {
-            const filePath = path.join(testDir, 'to-delete.txt');
+            const filePath = path.join(legacyProjectDir, 'to-delete.txt');
             await fs.writeFile(filePath, 'Delete me');
 
             mockAssets.set(1, {
@@ -803,7 +926,7 @@ describe('Assets Routes', () => {
         });
 
         it('should not delete an asset owned by another project (cross-tenant IDOR)', async () => {
-            const filePath = path.join(testDir, 'other-tenant.txt');
+            const filePath = path.join(legacyProjectDir, 'other-tenant.txt');
             await fs.writeFile(filePath, 'Belongs to project 2');
 
             // Asset belongs to project 2; attacker owns project 1 and targets it
@@ -830,7 +953,7 @@ describe('Assets Routes', () => {
 
     describe('DELETE /api/projects/:projectId/assets/by-client-id/:clientId', () => {
         it('should delete asset by client ID', async () => {
-            const filePath = path.join(testDir, 'client-delete.txt');
+            const filePath = path.join(legacyProjectDir, 'client-delete.txt');
             await fs.writeFile(filePath, 'Delete me');
 
             mockAssets.set(1, {
@@ -882,8 +1005,8 @@ describe('Assets Routes', () => {
 
     describe('DELETE /api/projects/:projectId/assets/bulk', () => {
         it('should delete multiple assets by client IDs', async () => {
-            const filePath1 = path.join(testDir, 'bulk-delete-1.txt');
-            const filePath2 = path.join(testDir, 'bulk-delete-2.txt');
+            const filePath1 = path.join(legacyProjectDir, 'bulk-delete-1.txt');
+            const filePath2 = path.join(legacyProjectDir, 'bulk-delete-2.txt');
             await fs.writeFile(filePath1, 'Delete me 1');
             await fs.writeFile(filePath2, 'Delete me 2');
 
@@ -961,7 +1084,7 @@ describe('Assets Routes', () => {
         });
 
         it('should only delete assets that exist (partial match)', async () => {
-            const filePath = path.join(testDir, 'partial-delete.txt');
+            const filePath = path.join(legacyProjectDir, 'partial-delete.txt');
             await fs.writeFile(filePath, 'Delete me');
 
             mockAssets.set(1, {
