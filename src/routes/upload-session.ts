@@ -12,14 +12,16 @@
  */
 import { Elysia } from 'elysia';
 import * as fs from 'fs-extra';
+import * as path from 'path';
 import type { Kysely } from 'kysely';
 
 import { db } from '../db/client';
 import type { Database } from '../db/types';
 import { createAssets, findAssetsByClientIds, bulkUpdateAssets, findProjectByUuid } from '../db/queries';
 
-import { getProjectAssetsDir } from '../services/file-helper';
-import { isSafePathSegment, safeJoin, sanitizeFileExtension } from '../utils/safe-path';
+import { resolveAssetStoragePath, tryResolveAssetStoragePath, remove } from '../services/file-helper';
+import { isSafePathSegment, sanitizeFileExtension } from '../utils/safe-path';
+import { buildAssetStoragePath } from '../utils/asset-paths';
 import {
     uploadSessionManager,
     validateSession,
@@ -186,9 +188,9 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                         }
                     }
 
-                    // Get base storage path using project UUID
-                    const baseStoragePath = getProjectAssetsDir(session.projectId);
-                    await fs.ensureDir(baseStoragePath);
+                    // Storage paths are derived from the session's project UUID:
+                    // assets/<shard>/<projectUuid>/<clientId>.<ext> relative to
+                    // FILES_DIR, resolved to a physical path per file below.
 
                     // =====================================================
                     // PHASE 1: Convert files to buffers sequentially, aborting early
@@ -205,6 +207,7 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                         folderPath: string;
                         fileBuffer: Buffer;
                         filePath: string;
+                        storagePath: string;
                         flatFilename: string;
                     };
                     const fileData: BufferedFile[] = [];
@@ -245,11 +248,13 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                         }
 
                         // Use clientId as filename with original extension. clientId was validated as a
-                        // safe path segment above; safeJoin re-validates and asserts containment so a
-                        // crafted clientId or extension cannot escape the project assets directory.
+                        // safe path segment above; buildAssetStoragePath re-validates every segment and
+                        // resolveAssetStoragePath asserts containment, so a crafted clientId or extension
+                        // cannot escape the project assets directory.
                         const ext = sanitizeFileExtension(filename);
                         const flatFilename = `${fileMeta.clientId}${ext}`;
-                        const filePath = safeJoin(baseStoragePath, flatFilename);
+                        const storagePath = buildAssetStoragePath(session.projectId, flatFilename);
+                        const filePath = resolveAssetStoragePath(storagePath);
 
                         fileData.push({
                             clientId: fileMeta.clientId,
@@ -258,8 +263,15 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                             folderPath,
                             fileBuffer,
                             filePath,
+                            storagePath,
                             flatFilename,
                         });
+                    }
+
+                    // Lazy directory creation: the sharded project directory is
+                    // created only when there is something to write.
+                    if (fileData.length > 0) {
+                        await fs.ensureDir(path.dirname(fileData[0].filePath));
                     }
 
                     // =====================================================
@@ -366,10 +378,19 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                         const existing = existingMap.get(data.clientId);
 
                         if (existing) {
+                            // A relocating update (row still pointing at a legacy
+                            // or conflict-parked location) must not leave the
+                            // superseded file behind as an untracked orphan.
+                            if (existing.storage_path && existing.storage_path !== data.storagePath) {
+                                const oldPath = tryResolveAssetStoragePath(existing.storage_path);
+                                if (oldPath && oldPath !== data.filePath) {
+                                    await remove(oldPath).catch(() => {});
+                                }
+                            }
                             toUpdate.push({
                                 id: existing.id,
                                 data: {
-                                    storage_path: data.filePath,
+                                    storage_path: data.storagePath,
                                     file_size: String(data.fileBuffer.length),
                                     folder_path: data.folderPath,
                                 },
@@ -383,7 +404,7 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
                             toCreate.push({
                                 project_id: session.projectIdNum,
                                 filename: data.filename,
-                                storage_path: data.filePath,
+                                storage_path: data.storagePath,
                                 mime_type: data.mimeType,
                                 file_size: String(data.fileBuffer.length),
                                 component_id: null,

@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
 import { createTestDb, closeTestDb, testRequest, findTestUser } from '../helpers/integration-app';
 import type { Database } from '../../../src/db/types';
@@ -20,7 +19,6 @@ const DEFAULT_USER_EMAIL = 'user@exelearning.net';
 function createPagesApp(db: Kysely<Database>, isOffline: boolean) {
     return (
         new Elysia({ name: 'pages-test' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
