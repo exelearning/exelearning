@@ -271,6 +271,56 @@ handler; nothing is deferred.
     safety net does not fire (controlled navigation still persists);
   - `cmi.core.exit` is `""` after a terminal status and `"suspend"`
     otherwise (legacy wrote `suspend` or `""` depending on the call site);
+  - the legacy runtime also wrote `"logout"` — pipwerks' `terminate()`
+    overwrote `doQuit()`'s `"suspend"` for a passed/completed page — so which
+    of the two reached the LMS depended on the `LMSFinish` request winning a
+    race with page dismissal. `"logout"` additionally asks a conformant LMS
+    to log the learner out of the course. Neither value is sent any more, and
+    the single exit write now happens *before* the commit that persists it;
+  - as a consequence, `cmi.core.entry` changes on re-launch of a page that
+    was already completed: an LMS that derives entry from the stored exit
+    (Moodle does, `mod/scorm/datamodels/scorm_12lib.php`) hands the SCO `""`
+    — "loaded for review" — where the legacy runtime yielded `"resume"` or
+    `""` depending on that race. Restored `cmi.suspend_data`,
+    `cmi.core.score.raw` and `cmi.core.lesson_status` are unaffected, and an
+    *incomplete* page still exits `"suspend"` and still re-enters as
+    `"resume"`;
+  - `cmi.core.lesson_status = "not attempted"` is never sent. `loadPage()`
+    used to send it twice per launch (via `SetCompletionStatus("unknown")`,
+    which the wrapper mapped to `not attempted` in 1.2); SCORM 1.2 reserves
+    that value for the LMS, so a conformant LMS rejected both calls with
+    error 405 and nothing stored changed;
+  - every value reaches `LMSSetValue` as a string. The legacy runtime passed
+    JavaScript numbers for `cmi.core.score.raw`/`.min`/`.max`; the SCORM 1.2
+    API is defined over strings, and an LMS that compares the received type
+    against its data-model default (Moodle's `CollectData` does) can re-send
+    an unchanged element;
+  - `cmi.core.score.min`/`.max` are re-sent with every score change instead
+    of once per launch. The values never vary (`0` and `100`), so this is
+    idempotent — slightly more API traffic, nothing stored differs;
+  - `cmi.student_data.mastery_score` is read once per launch and adopted as
+    the success threshold when the LMS publishes one, falling back to the eXe
+    default of 50. `Scorm12Exporter` emits no `adlcp:masteryscore`, so an eXe
+    package launched in Moodle reads `""` and keeps the 50 default; the read
+    is legal (the element is optional and read-only) and a minimal LMS
+    answering "not implemented" is not an error;
+  - a page the learner opened but never answered publishes **no**
+    `cmi.core.score.raw` and stays `incomplete`, where the legacy runtime
+    wrote `score.raw = 0` and `lesson_status = "failed"` at page load, before
+    any interaction. `score.raw` cannot express "not answered", and Moodle
+    promotes a stored `incomplete` to `completed` as soon as any `score.raw`
+    exists (`scorm_insert_track`, under `forcecompleted`) — so publishing a
+    placeholder zero would make a merely-visited page count as a finished
+    learning object under grademethod *Learning objects*. With the guard that
+    grademethod agrees with the legacy runtime; grademethod *Average*
+    differs, because an unanswered page no longer contributes a zero to the
+    divisor;
+  - upstream pipwerks ships `debug.isActive = true` and a `UTILS.trace()`
+    that calls `console.log` unconditionally. The vendored file must stay
+    byte-identical, so the adapter turns tracing off at boot; the legacy fork
+    had instead edited the trace body to log only under Firebug. Without
+    this, every data-model get and set — including `cmi.core.student_name`
+    and the whole `cmi.suspend_data` — prints into the LMS player console;
   - `goBack`/`goForward` become inert stubs (their Moodle-1.9-only
     `nav.event` hack has been dead for years);
   - `SetMode()` and `SetSuccessStatus()` become documented no-ops, and
@@ -335,8 +385,14 @@ handler; nothing is deferred.
   iframe below a parent page exposing a strict `window.API`, then drives the
   lifecycle and asserts the recorded call order and the stored data model.
   Passes on the `chromium` and `firefox` projects.
-- Real-LMS smoke testing (Moodle) is follow-up work below. Neither Moodle nor
-  `scorm-again` compatibility has been tested.
+- Wire-level parity: a call-by-call recording of both runtimes driving the
+  same exported two-SCO package through the same four learner scenarios
+  (complete, abandoned, resumed, abandoned-then-resumed) under a
+  `window.API` transcribed from Moodle's own SCORM 1.2 data model, with the
+  differences confirmed against a real Moodle install (`scorm_scoes_value`
+  plus `scorm_grade_user()` under all four grademethods). Every divergence it
+  found is listed in the compatibility bullets above.
+- `scorm-again` compatibility has not been tested.
 
 ### Limits of the E2E harness
 
@@ -370,6 +426,14 @@ and `static` Playwright projects.
    not preemptively.
 5. Legal review of the remaining legacy files while they still ship for the
    2004 path.
+6. Trace the `setValue('cmi.suspend_data') rejected: no active SCORM session`
+   reports the parity recording saw during a fully answered run. The client
+   layer refuses the call, so nothing reaches the LMS and every stored
+   `cmi.suspend_data` was correct in all four scenarios — but a caller still
+   asks the runtime to persist outside an active session
+   (`common.js updateActivity` calls `policy.persistActivities()` without
+   consulting the session state), and the same shape of race reaching the API
+   would be a real defect.
 
 ## References
 

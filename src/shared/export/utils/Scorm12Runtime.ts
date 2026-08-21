@@ -6,8 +6,9 @@
  * Source files (under public/app/common/scorm/):
  * - scorm12/vendor/pipwerks/SCORM_API_wrapper.js — vendored upstream pipwerks
  *   wrapper (MIT, see THIRD-PARTY-NOTICES.md). Shipped byte-identical.
- * - scorm12/exe-scorm12-{client,policy,lifecycle,adapter}.js — project-owned
- *   runtime layers (AGPL-3.0-or-later).
+ * - scorm12/exe-scorm12-{client,activities,policy,lifecycle,adapter}.js —
+ *   project-owned runtime layers (AGPL-3.0-or-later), in the load order given
+ *   by SCORM12_RUNTIME_LAYER_PATHS below.
  *
  * Package files (the two names are frozen by the runtime contract, see
  * doc/development/scorm12-runtime-contract.md — iDevices and the Moodle

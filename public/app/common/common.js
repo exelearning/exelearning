@@ -1585,7 +1585,12 @@ var $exeDevices = {
                     const newFinalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
 
                     const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
-                    if (runtime && runtime.policy) {
+                    // Branch on the CAPABILITY, not on the runtime object: a host that
+                    // ships an older or partial runtime (the Moodle plugin injects a
+                    // subset of these layers) still exposes `policy`, and calling a
+                    // method it does not have would throw before the score is written.
+                    // Falling through to the legacy branch keeps that host scoring.
+                    if (runtime && runtime.policy && typeof runtime.policy.setScoreDetailed === 'function') {
                         // Game iDevices call this from jQuery ready, which
                         // runs before loadPage() restores cmi.suspend_data.
                         // Writing score.raw=0 then would erase a resumed
@@ -1593,10 +1598,49 @@ var $exeDevices = {
                         const entryReady =
                             typeof runtime.policy.hasAppliedEntry !== 'function' || runtime.policy.hasAppliedEntry();
                         if (entryReady) {
-                            // SCORM 1.2 packages: the runtime owns score
-                            // validation and the completion/success policy.
-                            runtime.policy.setScoreDetailed(newFinalScore, 0, 100);
-                            runtime.policy.recordActivityOutcome();
+                            // A page the learner opened but never answered must not
+                            // publish a score. cmi.core.score.raw cannot express "no
+                            // answer" — a 0 there reads as "scored zero" — and Moodle
+                            // promotes an `incomplete` status to `completed` as soon as
+                            // any score.raw exists (mod/scorm/locallib.php
+                            // scorm_insert_track, under forcecompleted), so a merely
+                            // visited page would be counted as a finished learning
+                            // object. The status policy still runs: leaving the page
+                            // `incomplete` is the honest report.
+                            // Ask the registry whether any evaluable activity has
+                            // actually produced a score. NOT summary.answered: that
+                            // counter has one writer, `parseFloat(game.answered)` in
+                            // reportActivity(), and no iDevice ever sets game.answered —
+                            // the real ones carry answeredIndexes, questionsAnswered and
+                            // the like — so it is structurally always 0 and keying on it
+                            // would suppress EVERY score, not just the unanswered ones.
+                            // Nor summary.score, which counts an evaluable activity that
+                            // has not scored yet as 0 and so cannot tell the two apart.
+                            //
+                            // A host that ships the runtime WITHOUT the registry layer
+                            // (the Moodle plugin injects a four-layer subset) gets a null
+                            // registry: it cannot answer the question, so it keeps
+                            // scoring exactly as before rather than being silently
+                            // suppressed.
+                            const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                            // An EMPTY registry is treated the same way as an absent
+                            // one: no activity registered, so there is nothing to base
+                            // the judgement on. Suppressing there would silence the
+                            // legacy iDevices that score without registering.
+                            const records = registry ? registry.list() : null;
+                            const nothingScored = !!records && records.length > 0 && !records.some(
+                                (record) => record.evaluable
+                                    && record.score !== null
+                                    && record.score !== undefined
+                            );
+                            if (!nothingScored) {
+                                // SCORM 1.2 packages: the runtime owns score
+                                // validation and the completion/success policy.
+                                runtime.policy.setScoreDetailed(newFinalScore, 0, 100);
+                            }
+                            if (typeof runtime.policy.recordActivityOutcome === 'function') {
+                                runtime.policy.recordActivityOutcome();
+                            }
                         }
                     } else {
                         // Legacy runtime (SCORM 2004 packages and packages

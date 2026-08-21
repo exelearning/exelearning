@@ -2138,6 +2138,67 @@ describe('common.js $exeDevices', () => {
       expect(set).toHaveBeenCalledWith('cmi.core.score.raw', score);
       expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
     });
+
+    it('showFinalScore publishes no score for a page the learner never answered', () => {
+      // score.raw cannot express "no answer", and Moodle promotes an incomplete
+      // status to completed as soon as any score.raw exists, so a merely-visited
+      // page would count as a finished learning object under grademethod SCOES.
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+      // The registry's own shape: an evaluable activity that has not produced a
+      // score yet carries score: null. Asserted through list(), not summary(),
+      // because summary.answered is structurally always 0 — no iDevice sets
+      // game.answered — and summary.score counts an unscored evaluable as 0, so
+      // neither can tell "never answered" from "answered and scored zero".
+      registry.list.mockReturnValue([{ id: 'ide-a', evaluable: true, score: null }]);
+
+      getScorm().showFinalScore({ 1: { title: 'Q', score: 0, weighted: 1 } }, game);
+
+      expect(policy.setScoreDetailed).not.toHaveBeenCalled();
+      // The status policy still runs — 'incomplete' is the honest report.
+      expect(policy.recordActivityOutcome).toHaveBeenCalled();
+    });
+
+    it('showFinalScore publishes a genuine zero once something has been scored', () => {
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+      registry.list.mockReturnValue([{ id: 'ide-a', evaluable: true, score: 0 }]);
+
+      getScorm().showFinalScore({ 1: { title: 'Q', score: 0, weighted: 1 } }, game);
+
+      expect(policy.setScoreDetailed).toHaveBeenCalledWith(0, 0, 100);
+    });
+
+    it('showFinalScore keeps scoring when the host ships no activity registry', () => {
+      // The Moodle plugin injects a four-layer subset with no registry. It cannot
+      // answer "has anything been scored?", so it must keep publishing exactly as
+      // before rather than being silently suppressed into never grading at all.
+      window.exeScorm12 = { policy, lifecycle: {}, client: {} };
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+
+      getScorm().showFinalScore({ 1: { title: 'Q', score: 80, weighted: 1 } }, game);
+
+      expect(policy.setScoreDetailed).toHaveBeenCalledWith(80, 0, 100);
+    });
+
+    it('showFinalScore falls back to the legacy path when the host runtime is partial', () => {
+      // The Moodle plugin injects a SUBSET of these layers, so window.exeScorm12
+      // and .policy exist while the newer methods do not. Branching on the object
+      // instead of the capability threw before the score was ever written.
+      window.exeScorm12 = { policy: { setScore: vi.fn() } };
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+
+      expect(() => getScorm().showFinalScore({ 1: { title: 'Q', score: 90, weighted: 1 } }, game)).not.toThrow();
+
+      expect(set).toHaveBeenCalledWith('cmi.core.score.raw', 90);
+      expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+    });
   });
 
   describe('gamification.media', () => {

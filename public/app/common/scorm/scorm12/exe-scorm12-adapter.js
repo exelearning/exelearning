@@ -45,10 +45,16 @@
     var exeScorm12 = global.exeScorm12;
     var pipwerks = global.pipwerks;
 
+    // `activities` is deliberately NOT required. This adapter only binds and
+    // re-exports the registry, never calls it, and `policy` already degrades to
+    // its page-level fallback when the registry is absent. Requiring it here
+    // made the layer set non-composable: a host that ships the runtime WITHOUT
+    // the registry — the Moodle plugin does, so that its packages keep writing
+    // the legacy cmi.suspend_data format its parsers understand — got no
+    // runtime at all instead of one without the registry.
     if (
         !exeScorm12 ||
         !exeScorm12.client ||
-        !exeScorm12.activities ||
         !exeScorm12.policy ||
         !exeScorm12.lifecycle ||
         !pipwerks
@@ -59,6 +65,15 @@
             );
         }
         return;
+    }
+
+    // Upstream pipwerks ships with debug tracing ON, and its trace() writes every
+    // data-model get and set to console.log — including the learner's name and the
+    // whole suspend_data. The wrapper is vendored byte-identical (its provenance is
+    // pinned by checksum), so this is configured here rather than patched there.
+    // The runtime reports its own problems through console.warn/error.
+    if (pipwerks.debug) {
+        pipwerks.debug.isActive = false;
     }
 
     var client = exeScorm12.client;
