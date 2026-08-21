@@ -806,7 +806,9 @@ describe('Assets Routes', () => {
                 client_id: clientId,
             });
 
-            const res = await handle(new Request(`http://localhost/api/projects/1/assets/by-client-id/${clientId}`));
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/by-client-id/${clientId}`),
+            );
 
             expect(res.status).toBe(200);
             const xFilename = res.headers.get('x-filename') ?? '';
@@ -2225,8 +2227,11 @@ describe('Chunked upload FILES_DIR resolution (#2283)', () => {
         expect(json.success).toBe(true);
         expect(json.complete).toBe(true);
 
-        // Assembled asset lands in the (mock) project assets dir with the chunks concatenated in order.
-        const finalPath = path.join(testDir, 'assets', '1', 'files-dir-client.bin');
+        // Assembled asset follows the same sharded storage path used by normal asset uploads.
+        const finalPath = resolveAssetStoragePathPure(
+            testDir,
+            buildAssetStoragePath(testProjectId, 'files-dir-client.bin'),
+        );
         expect((await fs.readFile(finalPath)).toString()).toBe('first-second');
 
         // Chunk workspace is gone from the configured location.
