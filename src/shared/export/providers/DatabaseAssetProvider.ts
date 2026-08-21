@@ -25,6 +25,14 @@ import {
     findAssetByClientId as findAssetByClientIdDefault,
     findAllAssetsForProject as findAllAssetsForProjectDefault,
 } from '../../../db/queries/assets';
+import { tryResolveAssetStoragePath as tryResolveAssetStoragePathDefault } from '../../../services/file-helper';
+
+/**
+ * Resolves a stored `assets.storage_path` value to an absolute filesystem
+ * path, or null when it cannot be resolved. Injected for testing; defaults to
+ * the FILES_DIR-bound resolver from the file-helper service.
+ */
+export type StoragePathResolver = (storedPath: string) => string | null;
 
 /**
  * Query functions interface for dependency injection
@@ -52,24 +60,36 @@ export class DatabaseAssetProvider implements AssetProvider {
     private sessionPath?: string;
     private assetCache: Map<string, ExportAsset>;
     private queries: DatabaseAssetProviderQueries;
+    private resolveStoragePath: StoragePathResolver;
 
     /**
      * @param db - Kysely database instance
      * @param projectId - Project ID in the database
      * @param sessionPath - Optional session temp directory path for session-specific assets
      * @param queries - Optional query implementations for dependency injection (testing)
+     * @param resolveStoragePath - Optional storage path resolver override (testing)
      */
     constructor(
         db: Kysely<Database>,
         projectId: number,
         sessionPath?: string,
         queries?: Partial<DatabaseAssetProviderQueries>,
+        resolveStoragePath?: StoragePathResolver,
     ) {
         this.db = db;
         this.projectId = projectId;
         this.sessionPath = sessionPath;
         this.assetCache = new Map();
         this.queries = { ...defaultQueries, ...queries };
+        this.resolveStoragePath = resolveStoragePath ?? tryResolveAssetStoragePathDefault;
+    }
+
+    /**
+     * Resolve a row's stored storage_path to an absolute file path, or null
+     * when the row has no path or the value cannot be resolved safely.
+     */
+    private resolveAssetFile(dbAsset: Pick<Asset, 'storage_path'>): string | null {
+        return dbAsset.storage_path ? this.resolveStoragePath(dbAsset.storage_path) : null;
     }
 
     /**
@@ -94,10 +114,11 @@ export class DatabaseAssetProvider implements AssetProvider {
         // Try to find in database
         const dbAsset = await this.queries.findAssetByClientId(this.db, clientId, this.projectId);
 
-        if (dbAsset?.storage_path) {
-            // Read from storage_path
-            if (await fs.pathExists(dbAsset.storage_path)) {
-                const content = await fs.readFile(dbAsset.storage_path);
+        const storageFile = dbAsset ? this.resolveAssetFile(dbAsset) : null;
+        if (dbAsset && storageFile) {
+            // Read from the resolved storage path
+            if (await fs.pathExists(storageFile)) {
+                const content = await fs.readFile(storageFile);
                 const asset: ExportAsset = {
                     id: dbAsset.client_id || normalizedPath,
                     filename: dbAsset.filename,
@@ -196,9 +217,10 @@ export class DatabaseAssetProvider implements AssetProvider {
         const dbAssets = await this.queries.findAllAssetsForProject(this.db, this.projectId);
 
         for (const dbAsset of dbAssets) {
-            if (dbAsset.storage_path && (await fs.pathExists(dbAsset.storage_path))) {
+            const storageFile = this.resolveAssetFile(dbAsset);
+            if (storageFile && (await fs.pathExists(storageFile))) {
                 try {
-                    const content = await fs.readFile(dbAsset.storage_path);
+                    const content = await fs.readFile(storageFile);
                     const folderPath = dbAsset.folder_path || '';
                     // Build originalPath based on folderPath
                     const exportPath = folderPath ? `${folderPath}/${dbAsset.filename}` : dbAsset.filename;
@@ -289,9 +311,10 @@ export class DatabaseAssetProvider implements AssetProvider {
         // Database assets
         const dbAssets = await this.queries.findAllAssetsForProject(this.db, this.projectId);
         for (const dbAsset of dbAssets) {
-            if (dbAsset.storage_path && (await fs.pathExists(dbAsset.storage_path))) {
+            const storageFile = this.resolveAssetFile(dbAsset);
+            if (storageFile && (await fs.pathExists(storageFile))) {
                 try {
-                    const content = await fs.readFile(dbAsset.storage_path);
+                    const content = await fs.readFile(storageFile);
                     const folderPath = dbAsset.folder_path || '';
                     const exportPath = folderPath ? `${folderPath}/${dbAsset.filename}` : dbAsset.filename;
                     await callback({
@@ -355,7 +378,8 @@ export class DatabaseAssetProvider implements AssetProvider {
 
         const dbAssets = await this.queries.findAllAssetsForProject(this.db, this.projectId);
         for (const dbAsset of dbAssets) {
-            if (dbAsset.storage_path && (await fs.pathExists(dbAsset.storage_path))) {
+            const storageFile = this.resolveAssetFile(dbAsset);
+            if (storageFile && (await fs.pathExists(storageFile))) {
                 result.push({
                     id: dbAsset.client_id || String(dbAsset.id),
                     filename: dbAsset.filename,

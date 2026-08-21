@@ -101,7 +101,6 @@
       'SaveManager.js',
       'CollaborativeAutosaveManager.js',  // Collaborative autosave coordinator (issue #1592), used by the bridge
       'CollaborativeSaveStatusView.js',  // Renders the compact collaborative autosave status (issue #1592)
-      'YjsTinyMCEBinding.js',
       'YjsStructureTreeAdapter.js',
       'YjsPropertiesBinding.js',
     ],

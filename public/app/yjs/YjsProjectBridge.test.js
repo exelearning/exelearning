@@ -3303,6 +3303,74 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('buildRemoteComponentUpdate', () => {
+    const makeCompMap = (values) => ({
+      get: (key) => values[key],
+    });
+
+    it('omits html and json payloads for lock-only key changes', () => {
+      const update = YjsProjectBridge.buildRemoteComponentUpdate(
+        makeCompMap({
+          id: 'comp-1',
+          ideviceType: 'text',
+          htmlContent: { toString: () => '<p>Original content</p>' },
+          jsonProperties: '{"textTextarea":"<p>Original content</p>"}',
+          lockedBy: 'client-a',
+          lockUserName: 'Alice',
+          lockUserColor: '#f00',
+        }),
+        ['lockedBy', 'lockUserName', 'lockUserColor', 'updatedAt'],
+      );
+
+      expect(update.id).toBe('comp-1');
+      expect(update.lockedBy).toBe('client-a');
+      expect(update.lockUserName).toBe('Alice');
+      expect(update.htmlContent).toBeUndefined();
+      expect(update.jsonProperties).toBeUndefined();
+    });
+
+    it('includes json without empty html when only jsonProperties change', () => {
+      const update = YjsProjectBridge.buildRemoteComponentUpdate(
+        makeCompMap({
+          id: 'comp-1',
+          type: 'text',
+          htmlContent: { toString: () => '' },
+          jsonProperties: '{"textTextarea":"<p>Updated by client A</p>"}',
+          lockedBy: null,
+        }),
+        ['jsonProperties', 'updatedAt'],
+      );
+
+      expect(update.htmlContent).toBeUndefined();
+      expect(update.jsonProperties).toBe('{"textTextarea":"<p>Updated by client A</p>"}');
+    });
+
+    it('includes html when htmlContent changes', () => {
+      const update = YjsProjectBridge.buildRemoteComponentUpdate(
+        makeCompMap({
+          id: 'comp-1',
+          ideviceType: 'text',
+          htmlContent: { toString: () => '<p>Updated by client A</p>' },
+        }),
+        ['htmlContent'],
+      );
+
+      expect(update.htmlContent).toBe('<p>Updated by client A</p>');
+      expect(update.jsonProperties).toBeUndefined();
+    });
+
+    it('falls back to htmlView when htmlContent is empty', () => {
+      const html = YjsProjectBridge.readComponentHtml(
+        makeCompMap({
+          htmlContent: { toString: () => '' },
+          htmlView: '<p>Imported</p>',
+        }),
+      );
+
+      expect(html).toBe('<p>Imported</p>');
+    });
+  });
+
   describe('updateRemoteBlock', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
@@ -4777,25 +4845,26 @@ describe('YjsProjectBridge', () => {
     });
 
     /**
-     * #2223. This is the only funnel every import goes through: the online menu
-     * reaches it via projectManager.importFromElpxViaYjs, but the static build
-     * and the embedding bridge call it directly.
+     * #2223 / #2190. This is the only funnel every import goes through: the
+     * online menu reaches it via projectManager.importFromElpxViaYjs, but the
+     * static build and the embedding bridge call it directly.
      */
-    it('reports the missing-asset result to the project manager', async () => {
+    it('reports the import result to the project manager for the notices', async () => {
       const stats = {
         assets: 0,
         missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+        malformedProperties: [{ componentId: 'c2', ideviceType: 'trueorfalse' }],
       };
       global.window.ElpxImporter = mock(function() {
         return { importFromFile: mock(() => Promise.resolve(stats)) };
       });
       bridge._checkAndImportTheme = mock(() => Promise.resolve());
-      const showMissingAssetsNotice = mock(() => undefined);
-      global.window.eXeLearning.app.project = { showMissingAssetsNotice };
+      const showImportNotices = mock(() => undefined);
+      global.window.eXeLearning.app.project = { showImportNotices };
 
       await bridge.importFromElpx(new Blob(['test'], { type: 'application/zip' }));
 
-      expect(showMissingAssetsNotice).toHaveBeenCalledWith(stats);
+      expect(showImportNotices).toHaveBeenCalledWith(stats);
     });
 
     it('imports fine when no project manager is listening for the report', async () => {
