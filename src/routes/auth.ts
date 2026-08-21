@@ -5,7 +5,6 @@
 import { Elysia, t } from 'elysia';
 import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
 import type { User, Database } from '../db/types';
@@ -169,7 +168,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
     return (
         new Elysia({ name: 'auth-routes' })
             // Add cookie and JWT plugins
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
