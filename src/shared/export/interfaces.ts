@@ -133,6 +133,14 @@ export interface ExportComponent {
     content: string; // HTML content
     properties: Record<string, unknown>;
 
+    /**
+     * Raw jsonProperties payload stored in the document that could not be
+     * parsed (#2190). When set, `properties` is {} and content.xml must carry
+     * this string verbatim so a save/export does not destroy the damaged
+     * activity's data.
+     */
+    malformedProperties?: string;
+
     // Component-level structure properties (visibility, teacherOnly, cssClass)
     structureProperties?: ExportComponentProperties;
 }

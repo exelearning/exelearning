@@ -14,11 +14,11 @@
 *   Package: @biomejs/biome
     *   Copyright: Emanuele Stoppa
     *   License: MIT OR Apache-2.0
+*   Package: @codecov/bundle-analyzer
+    *   Copyright: Codecov
+    *   License: MIT
 *   Package: @electron/notarize
     *   Copyright: Samuel Attard
-    *   License: MIT
-*   Package: @elysiajs/cookie
-    *   Copyright: saltyAom
     *   License: MIT
 *   Package: @elysiajs/cors
     *   Copyright: saltyAom
@@ -38,9 +38,6 @@
 *   Package: @sinclair/typebox
     *   Copyright: sinclairzx81
     *   License: MIT
-*   Package: @types/bcryptjs
-    *   Copyright: Microsoft Corporation
-    *   License: MIT
 *   Package: @types/fs-extra
     *   Copyright: Alan Agius, midknight41, Brendan Forster
     *   License: MIT
@@ -52,9 +49,6 @@
     *   License: MIT
 *   Package: @types/nunjucks
     *   Copyright: Matthew Burstein
-    *   License: MIT
-*   Package: @types/uuid
-    *   Copyright: Microsoft Corporation
     *   License: MIT
 *   Package: @types/ws
     *   Copyright: Paul Loyd, Margus Lamp, Philippe D'Alva
