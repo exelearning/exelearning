@@ -1,11 +1,24 @@
 version: 2
 updates:
 
-  # JavaScript/Node dependencies
-  - package-ecosystem: "npm"
+  # JavaScript dependencies (Bun). The root package manager is Bun and the
+  # real lockfile is bun.lock: the previous "npm" entry only ever rewrote
+  # package.json, leaving bun.lock stale (#2225, #2229) and CVEs pinned in the
+  # lockfile invisible to Dependabot (#2241, #2286). Dependabot only supports
+  # *version* updates for Bun — security updates and the Dependency Graph do
+  # not read bun.lock — so CVE coverage for the lockfile still needs an
+  # external scanner on top of this entry.
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      # Playwright 1.62 ships a Firefox build whose driver intermittently
+      # never attaches the SW-served preview iframe, hanging frameLocator
+      # calls (#2291). Held at ~1.58.2; re-test new releases per the issue's
+      # exit criteria and drop this together with the pin once fixed.
+      - dependency-name: "@playwright/test"
+        versions: [">=1.59"]
 
   # Electron main-process dependencies. app/ has its own manifest and lockfile,
   # which the "/" entry above does not cover, so electron-updater, electron-log,

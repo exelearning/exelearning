@@ -22,6 +22,9 @@ ARG VERSION=latest
 RUN bun run build:static -- --version=${VERSION}
 
 FROM nginx:alpine
+# nginx's bundled mime.types has no entry for several extensions we serve and
+# falls back to application/octet-stream, which browsers reject for ES modules.
+COPY docker/nginx/mime-extra.conf /etc/nginx/conf.d/mime-extra.conf
 COPY --from=builder /app/dist/static /usr/share/nginx/html
 LABEL org.opencontainers.image.title="eXeLearning Static" \
       org.opencontainers.image.description="eXeLearning PWA - Static version" \
