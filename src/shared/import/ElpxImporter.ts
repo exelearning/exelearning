@@ -34,6 +34,7 @@ import type {
     PageData,
     BlockData,
     ComponentData,
+    MalformedPropertiesRef,
     OdeMetadata,
     Logger,
 } from './interfaces';
@@ -46,6 +47,7 @@ import {
     defaultLogger,
 } from './interfaces';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
+import { addUnresolvedAssetRefs, type UnresolvedAssetRef } from './unresolvedAssetRefs';
 import {
     DEFAULT_ZIP_LIMITS,
     ZipLimitError,
@@ -133,6 +135,10 @@ export class ElpxImporter {
     private onProgress: ((progress: ImportProgress) => void) | null = null;
     private logger: Logger;
     private zipLimits: ZipDecompressionLimits;
+    /** Activities whose asset references the package could not satisfy (#2223). */
+    private unresolvedAssets: UnresolvedAssetRef[] = [];
+    /** Activities whose persisted jsonProperties could not be parsed (#2190). */
+    private malformedProperties: MalformedPropertiesRef[] = [];
 
     /**
      * Create a new ElpxImporter
@@ -537,6 +543,19 @@ export class ElpxImporter {
     }
 
     /**
+     * Note that an activity still carries asset references the package could
+     * not satisfy, so the caller can tell the author which files are missing
+     * instead of leaving them to read a raw placeholder in a form field (#2223).
+     *
+     * @param componentId - id of the activity the text belongs to
+     * @param ideviceType - iDevice type, so the notice can name the activity
+     * @param text - HTML or serialized properties, after asset conversion ran
+     */
+    private recordUnresolvedAssets(componentId: string, ideviceType: string, text: string): void {
+        addUnresolvedAssetRefs(this.unresolvedAssets, componentId, ideviceType, text);
+    }
+
+    /**
      * Import document structure from parsed XML
      */
     async importStructure(
@@ -546,6 +565,8 @@ export class ElpxImporter {
     ): Promise<ElpxImportResult> {
         const { clearExisting = true, parentId = null } = options;
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+        this.unresolvedAssets = [];
+        this.malformedProperties = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -726,6 +747,8 @@ export class ElpxImporter {
 
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
+        stats.missingAssets = this.unresolvedAssets;
+        stats.malformedProperties = this.malformedProperties;
 
         const { zipContents: _zip, ...statsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Import complete:', statsWithoutZip);
@@ -742,6 +765,8 @@ export class ElpxImporter {
     ): Promise<ElpxImportResult> {
         const { clearExisting = true, parentId = null } = options;
         const stats: ElpxImportResult = { pages: 0, blocks: 0, components: 0, assets: 0 };
+        this.unresolvedAssets = [];
+        this.malformedProperties = [];
 
         // Phase 2: Extracting assets (10-50%)
         this.reportProgress('assets', 10, 'Extracting assets...');
@@ -835,6 +860,8 @@ export class ElpxImporter {
 
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
+        stats.missingAssets = this.unresolvedAssets;
+        stats.malformedProperties = this.malformedProperties;
 
         const { zipContents: _zipLegacy, ...legacyStatsWithoutZip } = stats;
         this.logger.log('[ElpxImporter] Legacy import complete:', legacyStatsWithoutZip);
@@ -946,6 +973,7 @@ export class ElpxImporter {
                 this.logger.warn(`[ElpxImporter] Error converting asset paths for ${legacyIdevice.id}:`, convErr);
             }
         }
+        this.recordUnresolvedAssets(legacyIdevice.id, legacyIdevice.type || 'unknown', htmlView);
 
         // For text iDevices, the editor expects the content in jsonProperties.textTextarea
         // So we need to populate it from htmlView
@@ -1506,6 +1534,7 @@ export class ElpxImporter {
             }
 
             compData.htmlView = typeof htmlContent === 'string' ? htmlContent : '';
+            this.recordUnresolvedAssets(componentId, ideviceType, compData.htmlView);
         }
 
         // Extract JSON properties
@@ -1533,44 +1562,55 @@ export class ElpxImporter {
                 }
 
                 if (!parsed) {
-                    this.logger.warn(`[ElpxImporter] Invalid JSON for ${componentId}, using empty object`);
-                    props = {};
-                }
+                    // Replacing an unparseable payload with {} would permanently
+                    // destroy the activity's configuration (#2190). Preserve the
+                    // raw payload verbatim instead: the workarea detects the parse
+                    // failure, blocks editing and keeps the value (#2178), so the
+                    // data stays recoverable. No transform below can run on it —
+                    // guessing at broken JSON would only corrupt it further.
+                    this.logger.warn(`[ElpxImporter] Invalid JSON for ${componentId}, preserving raw payload`);
+                    compData.malformedProperties = rawJsonStr;
+                    this.malformedProperties.push({ componentId, ideviceType });
+                } else {
+                    props = this.decodeLegacyEncodedHtmlInObject(props) as Record<string, unknown>;
 
-                props = this.decodeLegacyEncodedHtmlInObject(props) as Record<string, unknown>;
-
-                // Convert {{context_path}} in parsed JSON values
-                if (this.assetHandler && this.assetMap.size > 0 && props && typeof props === 'object') {
-                    try {
-                        props = this.convertAssetPathsInObject(props) as Record<string, unknown>;
-                    } catch (convErr) {
-                        this.logger.warn(`[ElpxImporter] Error converting paths in JSON for ${componentId}:`, convErr);
+                    // Convert {{context_path}} in parsed JSON values
+                    if (this.assetHandler && this.assetMap.size > 0 && props && typeof props === 'object') {
+                        try {
+                            props = this.convertAssetPathsInObject(props) as Record<string, unknown>;
+                        } catch (convErr) {
+                            this.logger.warn(
+                                `[ElpxImporter] Error converting paths in JSON for ${componentId}:`,
+                                convErr,
+                            );
+                        }
                     }
-                }
 
-                if (typeof props.textTextarea === 'string') {
-                    props.textTextarea = stripLegacyExeTextWrapper(props.textTextarea);
-                }
+                    if (typeof props.textTextarea === 'string') {
+                        props.textTextarea = stripLegacyExeTextWrapper(props.textTextarea);
+                    }
 
-                if (typeof props.htmlView === 'string') {
-                    props.htmlView = stripLegacyExeTextWrapper(props.htmlView);
-                }
+                    if (typeof props.htmlView === 'string') {
+                        props.htmlView = stripLegacyExeTextWrapper(props.htmlView);
+                    }
 
-                // When merge-mode collision regenerated the component id, an embedded
-                // `ideviceId` inside jsonProperties (commonly stored by text/quiz
-                // iDevices and used by the workarea for self-reference) would still
-                // point at the old XML id. Rewrite it so the Yjs field and the JSON
-                // payload stay in sync.
-                if (
-                    originalComponentId &&
-                    originalComponentId !== componentId &&
-                    typeof props.ideviceId === 'string' &&
-                    props.ideviceId === originalComponentId
-                ) {
-                    props.ideviceId = componentId;
-                }
+                    // When merge-mode collision regenerated the component id, an embedded
+                    // `ideviceId` inside jsonProperties (commonly stored by text/quiz
+                    // iDevices and used by the workarea for self-reference) would still
+                    // point at the old XML id. Rewrite it so the Yjs field and the JSON
+                    // payload stay in sync.
+                    if (
+                        originalComponentId &&
+                        originalComponentId !== componentId &&
+                        typeof props.ideviceId === 'string' &&
+                        props.ideviceId === originalComponentId
+                    ) {
+                        props.ideviceId = componentId;
+                    }
 
-                compData.properties = props;
+                    compData.properties = props;
+                    this.recordUnresolvedAssets(componentId, ideviceType, JSON.stringify(props));
+                }
             } catch (e) {
                 this.logger.warn(`[ElpxImporter] Failed to process JSON properties for ${componentId}:`, e);
             }
@@ -1780,7 +1820,14 @@ export class ElpxImporter {
         }
 
         // Store jsonProperties as plain string
-        if (compData.properties && typeof compData.properties === 'object') {
+        if (typeof compData.malformedProperties === 'string') {
+            // Carry the damaged payload into the Y.Doc untouched (#2190). This
+            // write happens inside the import transaction on purpose: the write
+            // boundary (prepareJsonPropertiesForSync, #2179) would reject it,
+            // but rejecting here would mean discarding the author's data. The
+            // workarea detects the parse failure and blocks editing (#2178).
+            compMap.set('jsonProperties', compData.malformedProperties);
+        } else if (compData.properties && typeof compData.properties === 'object') {
             try {
                 const jsonStr = JSON.stringify(compData.properties);
                 compMap.set('jsonProperties', jsonStr);

@@ -14,7 +14,6 @@
 
 import { Elysia, t } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
@@ -278,7 +277,6 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
 
     return (
         new Elysia({ name: 'convert-routes' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

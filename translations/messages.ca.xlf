@@ -12593,18 +12593,6 @@
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
         <target>~Escriu la paraula o frase correcta i fes clic al botó "Responder".</target>
       </trans-unit>
-      <trans-unit id="pxcfex9" resname="Timeout">
-        <source>Timeout</source>
-        <target>~Temps d'espera esgotat</target>
-      </trans-unit>
-      <trans-unit id="evt1eda" resname="Network error">
-        <source>Network error</source>
-        <target>~Error de xarxa</target>
-      </trans-unit>
-      <trans-unit id="ewyu264" resname="Invalid URL">
-        <source>Invalid URL</source>
-        <target>~URL no vàlida</target>
-      </trans-unit>
       <trans-unit id="0ptelwp" resname="Session Expired">
         <source>Session Expired</source>
         <target>~Sessió expirada</target>
@@ -12980,10 +12968,6 @@
       <trans-unit id="d8xt34k" resname="Error validating links">
         <source>Error validating links</source>
         <target>~Error en validar els enllaços</target>
-      </trans-unit>
-      <trans-unit id="484ojvj" resname="No broken links to export">
-        <source>No broken links to export</source>
-        <target>~Sense enllaços trencats per exportar</target>
       </trans-unit>
       <trans-unit id="3foktxa" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
@@ -14081,10 +14065,6 @@
         <source>Close without saving</source>
         <target>~Tancar sense guardar</target>
       </trans-unit>
-      <trans-unit id="7kskr8s" resname="Could not be checked: HTTP content is blocked on HTTPS pages.">
-        <source>Could not be checked: HTTP content is blocked on HTTPS pages.</source>
-        <target>~No es pot comprovar: el contingut HTTP està bloquejat en pàgines HTTPS.</target>
-      </trans-unit>
       <trans-unit id="73bgw6a" resname="You can only add one Rubric iDevice per page.">
         <source>You can only add one Rubric iDevice per page.</source>
         <target>~Només podeu afegir un iDevice Rúbrica per pàgina.</target>
@@ -14284,10 +14264,6 @@
       <trans-unit id="c2qabkh" resname="The battery drains">
         <source>The battery drains</source>
         <target>~La bateria s'esgota</target>
-      </trans-unit>
-      <trans-unit id="4lxasmt" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.">
-        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays.</source>
-        <target>~Genera 5 preguntes d'opció múltiple sobre circuits elèctrics. Una pregunta per línia. Cada línia ha de contenir tots els camps separats per #: una descripció curta, codi TikZ (usant circuitikz) per al diagrama del circuit, la resposta correcta en lletres (p. ex.: A, AB), la pregunta i de 2 a 4 opcions de resposta. No utilitzis el caràcter # dins de cap camp. No afegeixis salts de línia dins d'una pregunta. IMPORTANT: El codi TikZ ha de ser compatible amb la versió 0.9.6 de circuitikz. Utilitza només components disponibles en aquesta versió: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. NO utilitzis components de circuitikz 1.0 o posterior com dipchip, qfpchip, muxdemux, flipflop, latch o pantalles de 7 segments.</target>
       </trans-unit>
       <trans-unit id="sypff0g" resname="Drop an .elpx file here to open it">
         <source>Drop an .elpx file here to open it</source>
@@ -15465,22 +15441,6 @@
         <source>Save or discard the open iDevice before saving the project.</source>
         <target>~Guardeu o descarteu el iDevice obert abans de guardar el projecte.</target>
       </trans-unit>
-      <trans-unit id="t86aqo9" resname="All collaborative changes are saved.">
-        <source>All collaborative changes are saved.</source>
-        <target>~Tots els canvis col·laboratius estan guardats.</target>
-      </trans-unit>
-      <trans-unit id="sn5vre4" resname="Collaborative changes are shared live and will be saved automatically.">
-        <source>Collaborative changes are shared live and will be saved automatically.</source>
-        <target>~Els canvis col·laboratius es comparteixen en temps real i es guardaran automàticament.</target>
-      </trans-unit>
-      <trans-unit id="aakxbny" resname="Saving collaborative changes...">
-        <source>Saving collaborative changes...</source>
-        <target>~Guardant canvis col·laboratius...</target>
-      </trans-unit>
-      <trans-unit id="i7okyvg" resname="Autosave failed. Please click Save before leaving.">
-        <source>Autosave failed. Please click Save before leaving.</source>
-        <target>~El desat automàtic ha fallat. Fes clic a Guardar abans de sortir.</target>
-      </trans-unit>
       <trans-unit id="1823w67" resname="Language changes may require reloading or reopening eXeLearning to update the whole interface.">
         <source>Language changes may require reloading or reopening eXeLearning to update the whole interface.</source>
         <target>~Els canvis d'idioma poden requerir recarregar o tornar a obrir eXeLearning per actualitzar tota la interfície.</target>
@@ -15500,6 +15460,238 @@
       <trans-unit id="sswuu14" resname="Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.">
         <source>Some collaborative changes have not been saved yet. Click Save before leaving to avoid losing them.</source>
         <target>~Alguns canvis col·laboratius encara no s'han guardat. Feu clic a Guardar abans de sortir per evitar perdre'ls.</target>
+      </trans-unit>
+      <trans-unit id="exbrw47" resname="Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.">
+        <source>Content marked as teacher only is hidden by default in exports and previews. Open it with ?exe-teacher=1 to reveal it.</source>
+        <target>~El contingut marcat com a només per al professorat està amagat de manera predeterminada a les exportacions i les previsualitzacions. Obre’l amb ?exe-teacher=1 per mostrar-lo.</target>
+      </trans-unit>
+      <trans-unit id="ecnmqlm" resname="The file &quot;%1&quot; contains a large asset (%2).">
+        <source>The file "%1" contains a large asset (%2).</source>
+        <target>~El fitxer "%1" conté un recurs de gran mida (%2).</target>
+      </trans-unit>
+      <trans-unit id="j1sus10" resname="Importing it may use a large amount of memory.">
+        <source>Importing it may use a large amount of memory.</source>
+        <target>~Importar-lo pot consumir molta memòria.</target>
+      </trans-unit>
+      <trans-unit id="96jli6b" resname="The desktop application can open assets up to %1.">
+        <source>The desktop application can open assets up to %1.</source>
+        <target>~L’aplicació d’escriptori pot obrir recursos de fins a %1.</target>
+      </trans-unit>
+      <trans-unit id="m59i4p1" resname="Protection against malformed or malicious archives remains active.">
+        <source>Protection against malformed or malicious archives remains active.</source>
+        <target>~La protecció contra arxius comprimits malformats o maliciosos continua activa.</target>
+      </trans-unit>
+      <trans-unit id="k538mpa" resname="Import large file?">
+        <source>Import large file?</source>
+        <target>~Vols importar un fitxer gran?</target>
+      </trans-unit>
+      <trans-unit id="7hy4j2m" resname="The file &quot;%1&quot; (%2) is larger than the maximum this application can open (%3).">
+        <source>The file "%1" (%2) is larger than the maximum this application can open (%3).</source>
+        <target>~El fitxer "%1" (%2) supera la mida màxima que aquesta aplicació pot obrir (%3).</target>
+      </trans-unit>
+      <trans-unit id="i639wmy" resname="This project (%1) is larger than the maximum this application can open (%2).">
+        <source>This project (%1) is larger than the maximum this application can open (%2).</source>
+        <target>~Aquest projecte (%1) supera la mida màxima que aquesta aplicació pot obrir (%2).</target>
+      </trans-unit>
+      <trans-unit id="lno7j9v" resname="This project has too many files to open (%1 of a maximum %2).">
+        <source>This project has too many files to open (%1 of a maximum %2).</source>
+        <target>~Aquest projecte té massa fitxers per poder obrir-se (%1 d’un màxim de %2).</target>
+      </trans-unit>
+      <trans-unit id="v82lxxc" resname="The project was not imported.">
+        <source>The project was not imported.</source>
+        <target>~El projecte no s’ha importat.</target>
+      </trans-unit>
+      <trans-unit id="ouea181" resname="To reduce its size, open the File Manager and:">
+        <source>To reduce its size, open the File Manager and:</source>
+        <target>~Per reduir-ne la mida, obre el Gestor de fitxers i:</target>
+      </trans-unit>
+      <trans-unit id="62zf3q8" resname="Sort by &quot;Largest first&quot; and review each asset\&apos;s references.">
+        <source>Sort by "Largest first" and review each asset\'s references.</source>
+        <target>~Ordena per "Més grans primer" i revisa les referències de cada recurs.</target>
+      </trans-unit>
+      <trans-unit id="td7inu9" resname="Remove an unused older version of a large asset.">
+        <source>Remove an unused older version of a large asset.</source>
+        <target>~Elimina una versió anterior sense fer servir d’un recurs de gran mida.</target>
+      </trans-unit>
+      <trans-unit id="i112w1z" resname="Optimise, replace, or remove the large file.">
+        <source>Optimise, replace, or remove the large file.</source>
+        <target>~Optimitza, substitueix o elimina el fitxer de gran mida.</target>
+      </trans-unit>
+      <trans-unit id="4htc8ou" resname="File too large to open">
+        <source>File too large to open</source>
+        <target>~Fitxer massa gran per obrir-lo</target>
+      </trans-unit>
+      <trans-unit id="ov7akaf" resname="The asset &quot;%1&quot; (%2) exceeds the maximum size the desktop application can open (%3).">
+        <source>The asset "%1" (%2) exceeds the maximum size the desktop application can open (%3).</source>
+        <target>~El recurs "%1" (%2) supera la mida màxima que l’aplicació d’escriptori pot obrir (%3).</target>
+      </trans-unit>
+      <trans-unit id="41eyv2a" resname="This project (%1) exceeds the maximum size the desktop application can open (%2).">
+        <source>This project (%1) exceeds the maximum size the desktop application can open (%2).</source>
+        <target>~Aquest projecte (%1) supera la mida màxima que l’aplicació d’escriptori pot obrir (%2).</target>
+      </trans-unit>
+      <trans-unit id="kiwl50y" resname="The resulting ELPX may not open in the desktop application.">
+        <source>The resulting ELPX may not open in the desktop application.</source>
+        <target>~És possible que l’ELPX resultant no es pugui obrir a l’aplicació d’escriptori.</target>
+      </trans-unit>
+      <trans-unit id="z1pisxh" resname="Do you want to continue exporting anyway?">
+        <source>Do you want to continue exporting anyway?</source>
+        <target>~Vols continuar amb l’exportació igualment?</target>
+      </trans-unit>
+      <trans-unit id="12pg8oy" resname="Large ELPX export">
+        <source>Large ELPX export</source>
+        <target>~Exportació ELPX de gran mida</target>
+      </trans-unit>
+      <trans-unit id="65c7eyk" resname="Export anyway">
+        <source>Export anyway</source>
+        <target>~Exporta igualment</target>
+      </trans-unit>
+      <trans-unit id="pcsh7km" resname="Page title">
+        <source>Page title</source>
+        <target>~Títol de la pàgina</target>
+      </trans-unit>
+      <trans-unit id="x0lh0bv" resname="This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.">
+        <source>This iDevice cannot be edited because its saved data is damaged. Its existing content has been preserved.</source>
+        <target>~Aquest iDevice no es pot editar perquè les seves dades desades estan malmeses. S’ha conservat el seu contingut actual.</target>
+      </trans-unit>
+      <trans-unit id="9lh81bb" resname="Invalid iDevice data. The save was discarded.">
+        <source>Invalid iDevice data. The save was discarded.</source>
+        <target>~Dades de l’iDevice no vàlides. S’ha descartat el desament.</target>
+      </trans-unit>
+      <trans-unit id="czefw7d" resname="Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).">
+        <source>Generate 5 multiple-choice questions about electrical circuits. One question per line. Each line must contain all fields separated by #: a short description, TikZ code (using circuitikz) for the circuit diagram, the correct answer as letters (e.g., A, AB), the question, and 2 to 4 answer options. Do not use the # character inside any field. Do not add line breaks within a question. IMPORTANT: The TikZ code must be compatible with circuitikz version 0.9.6. Only use components available in this version: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (diode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (with t=A for ammeter, t=V for voltmeter), and gate, or gate, not gate, nand gate, nor gate. Do NOT use components from circuitikz 1.0 or later such as dipchip, qfpchip, muxdemux, flipflop, latch, or 7-segment displays. The diagram is rendered by TikZJax, which only loads the LaTeX packages circuitikz, amsmath and amssymb; do NOT use commands from any other package. Write units as plain text or Unicode (for example Ω, µ, V, A, W, F, H, Hz, kΩ, µF), never as siunitx or gensymb macros such as \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} or \\qty{...}{...}, and never wrap a unit in angle brackets (write 100 Ω, not 100&lt;\\ohm&gt;).</source>
+        <target>~Genera 5 preguntes d’opció múltiple sobre circuits elèctrics. Una pregunta per línia. Cada línia ha de contenir tots els camps separats per #: una descripció breu, el codi TikZ (fent servir circuitikz) de l’esquema del circuit, la resposta correcta en lletres (per exemple, A, AB), la pregunta i de 2 a 4 opcions de resposta. No facis servir el caràcter # dins de cap camp. No afegeixis salts de línia dins d’una pregunta. IMPORTANT: el codi TikZ ha de ser compatible amb la versió 0.9.6 de circuitikz. Fes servir únicament components disponibles en aquesta versió: R, C, L, V, I, battery1, battery2, lamp, fuse, switch, closing switch, opening switch, D (díode), lD (LED), zD (Zener), npn, pnp, nmos, pmos, op amp, ground, rground, short, open, rmeter (amb t=A per a amperímetre, t=V per a voltímetre), and gate, or gate, not gate, nand gate, nor gate. NO facis servir components de circuitikz 1.0 o posterior com dipchip, qfpchip, muxdemux, flipflop, latch o displays de 7 segments. L’esquema el renderitza TikZJax, que només carrega els paquets LaTeX circuitikz, amsmath i amssymb; NO facis servir ordres de cap altre paquet. Escriu les unitats com a text pla o Unicode (per exemple Ω, µ, V, A, W, F, H, Hz, kΩ, µF), mai com a macros de siunitx o gensymb com ara \\ohm, \\volt, \\ampere, \\micro, \\si{...}, \\SI{...}{...} o \\qty{...}{...}, i mai no envoltis una unitat entre claudàtors angulars (escriu 100 Ω, no 100&lt;\\ohm&gt;).</target>
+      </trans-unit>
+      <trans-unit id="m5hta25" resname="Attachment">
+        <source>Attachment</source>
+        <target>~Adjunt</target>
+      </trans-unit>
+      <trans-unit id="lm8tbzy" resname="No files attached.">
+        <source>No files attached.</source>
+        <target>~No hi ha cap fitxer adjunt.</target>
+      </trans-unit>
+      <trans-unit id="rciutwc" resname="File unavailable">
+        <source>File unavailable</source>
+        <target>~Fitxer no disponible</target>
+      </trans-unit>
+      <trans-unit id="x4uh105" resname="File attachments">
+        <source>File attachments</source>
+        <target>~Fitxers adjunts</target>
+      </trans-unit>
+      <trans-unit id="se3zzvn" resname="Show file descriptions">
+        <source>Show file descriptions</source>
+        <target>~Mostra les descripcions dels fitxers</target>
+      </trans-unit>
+      <trans-unit id="t6hs70z" resname="No files attached yet.">
+        <source>No files attached yet.</source>
+        <target>~Encara no hi ha cap fitxer adjunt.</target>
+      </trans-unit>
+      <trans-unit id="athag5s" resname="Unknown file">
+        <source>Unknown file</source>
+        <target>~Fitxer desconegut</target>
+      </trans-unit>
+      <trans-unit id="skdvdi3" resname="The attached file is missing. Re-add it from the Media Library.">
+        <source>The attached file is missing. Re-add it from the Media Library.</source>
+        <target>~Falta el fitxer adjunt. Torna a afegir-lo des de la Biblioteca de mitjans.</target>
+      </trans-unit>
+      <trans-unit id="oocb29m" resname="The Media Library is not available.">
+        <source>The Media Library is not available.</source>
+        <target>~La Biblioteca de mitjans no està disponible.</target>
+      </trans-unit>
+      <trans-unit id="mix6uls" resname="The file could not be uploaded.">
+        <source>The file could not be uploaded.</source>
+        <target>~No s’ha pogut pujar el fitxer.</target>
+      </trans-unit>
+      <trans-unit id="69ltswg" resname="File properties">
+        <source>File properties</source>
+        <target>~Propietats del fitxer</target>
+      </trans-unit>
+      <trans-unit id="56xzbay" resname="Please wait">
+        <source>Please wait</source>
+        <target>~Espera, si us plau</target>
+      </trans-unit>
+      <trans-unit id="rmjdwvy" resname="Generating the circuit images, this may take a few minutes, please wait…">
+        <source>Generating the circuit images, this may take a few minutes, please wait…</source>
+        <target>~S’estan generant les imatges dels circuits; això pot trigar uns minuts, espera si us plau…</target>
+      </trans-unit>
+      <trans-unit id="bh7vfse" resname="Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.">
+        <source>Some questions could not be added because their circuit could not be generated. They have been kept in the text box so you can correct them and try again.</source>
+        <target>~Algunes preguntes no s’han pogut afegir perquè no s’ha pogut generar el seu circuit. S’han mantingut al quadre de text perquè les puguis corregir i tornar-ho a provar.</target>
+      </trans-unit>
+      <trans-unit id="sg932tq" resname="Requires manual review">
+        <source>Requires manual review</source>
+        <target>~Requereix revisió manual</target>
+      </trans-unit>
+      <trans-unit id="eduwl5z" resname="Broken">
+        <source>Broken</source>
+        <target>~Trencat</target>
+      </trans-unit>
+      <trans-unit id="3vtfply" resname="Listing links...">
+        <source>Listing links...</source>
+        <target>~Llistant enllaços...</target>
+      </trans-unit>
+      <trans-unit id="ae60hhe" resname="Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.">
+        <source>Due to browser security restrictions, this version of eXeLearning cannot check external links automatically. Open each link to review it manually.</source>
+        <target>~Per restriccions de seguretat del navegador, aquesta versió d’eXeLearning no pot comprovar els enllaços externs automàticament. Obre cada enllaç per revisar-lo manualment.</target>
+      </trans-unit>
+      <trans-unit id="v8ongwz" resname="the status of these links could not be checked automatically; open them to confirm.">
+        <source>the status of these links could not be checked automatically; open them to confirm.</source>
+        <target>~Aquests enllaços no s’han pogut comprovar automàticament.</target>
+      </trans-unit>
+      <trans-unit id="sgbrdnm" resname="A check mark means the server responded: some sites answer 200 even for pages that do not exist.">
+        <source>A check mark means the server responded: some sites answer 200 even for pages that do not exist.</source>
+        <target>~Una marca de verificació significa que el servidor ha respost, però alguns llocs responen 200 fins i tot per a pàgines que no existeixen.</target>
+      </trans-unit>
+      <trans-unit id="9svklsy" resname="Links listed">
+        <source>Links listed</source>
+        <target>~Enllaços llistats</target>
+      </trans-unit>
+      <trans-unit id="w79j7rq" resname="to review manually">
+        <source>to review manually</source>
+        <target>~per revisar manualment</target>
+      </trans-unit>
+      <trans-unit id="ks1epit" resname="to review">
+        <source>to review</source>
+        <target>~per revisar</target>
+      </trans-unit>
+      <trans-unit id="zvgh1zk" resname="No links to export">
+        <source>No links to export</source>
+        <target>~No hi ha enllaços per exportar</target>
+      </trans-unit>
+      <trans-unit id="zthq27r" resname="External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.">
+        <source>External links cannot be checked automatically in this version of eXeLearning: you will get a list of links to review manually.</source>
+        <target>~Els enllaços externs no es poden comprovar automàticament en aquesta versió d’eXeLearning: obtindràs una llista d’enllaços per revisar manualment.</target>
+      </trans-unit>
+      <trans-unit id="j8lehpx" resname="Not checked automatically: open the link to review it">
+        <source>Not checked automatically: open the link to review it</source>
+        <target>~No comprovat automàticament; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="ocs9vt1" resname="Local or private address: open the link to review it manually">
+        <source>Local or private address: open the link to review it manually</source>
+        <target>~Adreça local o privada; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="ot54nq2" resname="Redirects to another site — open the link to verify it">
+        <source>Redirects to another site — open the link to verify it</source>
+        <target>~Redirigeix a un altre lloc; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="bdkb70w" resname="Could not be fully verified: open the link to confirm it">
+        <source>Could not be fully verified: open the link to confirm it</source>
+        <target>~Verificació incompleta; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="11b4k56" resname="Redirects could not be followed: open the link to review it">
+        <source>Redirects could not be followed: open the link to review it</source>
+        <target>~No s’han pogut seguir les redireccions; obrir per revisar</target>
+      </trans-unit>
+      <trans-unit id="7xpdvd3" resname="and %1 more">
+        <source>and %1 more</source>
+        <target>~i %1 més</target>
+      </trans-unit>
+      <trans-unit id="rwfxiot" resname="Missing files">
+        <source>Missing files</source>
+        <target>~Fitxers que falten</target>
+      </trans-unit>
+      <trans-unit id="qx81u52" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
+        <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
+        <target>~Aquestes activitats fan referència a fitxers que no s'inclouen en el paquet importat. S'han conservat les referències, de manera que en tornar a afegir els fitxers es restauraran.</target>
       </trans-unit>
     </body>
   </file>

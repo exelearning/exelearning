@@ -284,4 +284,71 @@ describe('trueorfalse iDevice export', () => {
       expect(updateEvaluationIcon).toHaveBeenCalledWith(options, false);
     });
   });
+
+  describe('createInterfaceTrueOrFalse', () => {
+    const options = () => ({
+      id: 'tof-1',
+      msgs: {
+        msgTime: 'Time',
+        msgStartGame: 'Start',
+        msgCheck: 'Check',
+        msgReboot: 'Restart',
+      },
+      eXeGameInstructions: '<p>Instructions</p>',
+      eXeIdeviceTextAfter: '<p>After</p>',
+      textButtonScorm: 'Save score',
+      isTest: true,
+      time: 0,
+      isScorm: 1,
+      evaluation: false,
+      evaluationID: '',
+    });
+
+    it('returns balanced markup', () => {
+      const html = $trueorfalse.createInterfaceTrueOrFalse(options());
+
+      const opened = (html.match(/<div\b/g) || []).length;
+      const closed = (html.match(/<\/div>/g) || []).length;
+
+      expect(closed).toBe(opened);
+    });
+
+    /**
+     * The main container carries `.TOFP-MainContainer p { margin: 0 !important }`, which
+     * would flatten the author's rich text. Both the score button and the after-text
+     * belong outside it — as the LaTeX docblock above `updateLatexInView` states, and as
+     * the sibling `form` iDevice lays them out.
+     */
+    it('keeps the score button and the after-text outside the main container', () => {
+      const html = $trueorfalse.createInterfaceTrueOrFalse(options());
+
+      document.body.innerHTML = `<div class="exe-trueorfalse-container">${html}</div>`;
+
+      const main = document.querySelector('.TOFP-MainContainer');
+      expect(main.querySelector('.Games-BottonContainer')).toBeNull();
+      expect(main.querySelector('.TOFP-After')).toBeNull();
+      expect(document.querySelector('.TOFP-After')).not.toBeNull();
+    });
+
+    /**
+     * The exporter concatenates each iDevice's markup as a sibling of the next one
+     * inside the block, so an unclosed tag does not stay inside this iDevice: the HTML
+     * parser nests whatever follows into it, and exe_export.js then removes it with
+     * `ideviceNode.innerHTML = htmlIdevice`.
+     */
+    it('closes its main container, so a following iDevice stays a sibling', () => {
+      const html = $trueorfalse.createInterfaceTrueOrFalse(options());
+
+      document.body.innerHTML = `
+        <div class="box-content">
+          <div class="idevice_node trueorfalse" id="tof-1">${html}</div>
+          <div class="idevice_node text" id="text-2"></div>
+        </div>
+      `;
+
+      const following = document.getElementById('text-2');
+      expect(following.parentElement.className).toBe('box-content');
+      expect(document.getElementById('tof-1').contains(following)).toBe(false);
+    });
+  });
 });

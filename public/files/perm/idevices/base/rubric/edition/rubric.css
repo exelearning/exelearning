@@ -296,9 +296,53 @@
   background-position: 0 0;
 }
 
-#ri_CellEditModal {
-  z-index: 1060;
+/* Table edition dialogs.
+   They are part of the iDevice, not application modals: the backdrop covers the
+   rubric form and blocks its controls, while the rest of the workarea stays
+   usable. */
+#ri_IdeviceForm {
+  position: relative;
 }
+.ri-edit-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
+  /* A faint white veil, not the dark one of the application modals: the rubric
+     controls under an open dialog only need to read as inactive, not to be
+     hidden. Blocking them is this layer's real job: it swallows the clicks. */
+  background: rgba(255, 255, 255, 0.3);
+}
+/* Bootstrap's .modal supplies the panel look (its --bs-modal-* variables), but
+   not the layout: the panel is positioned inside the rubric form, horizontally
+   centred on it, and only the panel itself captures clicks, so everything
+   outside the iDevice keeps working. The vertical offset is set on open (see
+   centreEditModal) to keep the panel within the visible part of the form. */
+.ri-edit-dialog {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: auto;
+  overflow: visible;
+}
+.ri-edit-dialog.show {
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.ri-edit-dialog .modal-dialog {
+  pointer-events: auto;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.ri-edit-dialog .modal-content {
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.3);
+}
+
 #ri_CellEditModal .modal-dialog {
   width: 90%;
   max-width: 560px;
@@ -309,9 +353,6 @@
   width: 100%;
 }
 
-#ri_RowEditModal {
-  z-index: 1060;
-}
 #ri_RowEditModal .modal-dialog {
   width: 90%;
   max-width: 560px;
@@ -357,9 +398,6 @@
   font-size: 18px;
 }
 
-#ri_ColumnEditModal {
-  z-index: 1060;
-}
 #ri_ColumnEditModal .modal-dialog {
   width: 90%;
   max-width: 560px;
