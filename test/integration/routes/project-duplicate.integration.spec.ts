@@ -6,7 +6,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { Kysely } from 'kysely';
 import * as Y from 'yjs';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,7 +36,6 @@ describe('Project Duplication - YJS Title Update', () => {
 
         // Create a test app with the duplicate endpoint that uses our test db
         app = new Elysia({ name: 'project-duplicate-test' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

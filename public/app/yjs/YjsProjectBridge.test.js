@@ -3303,6 +3303,74 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('buildRemoteComponentUpdate', () => {
+    const makeCompMap = (values) => ({
+      get: (key) => values[key],
+    });
+
+    it('omits html and json payloads for lock-only key changes', () => {
+      const update = YjsProjectBridge.buildRemoteComponentUpdate(
+        makeCompMap({
+          id: 'comp-1',
+          ideviceType: 'text',
+          htmlContent: { toString: () => '<p>Original content</p>' },
+          jsonProperties: '{"textTextarea":"<p>Original content</p>"}',
+          lockedBy: 'client-a',
+          lockUserName: 'Alice',
+          lockUserColor: '#f00',
+        }),
+        ['lockedBy', 'lockUserName', 'lockUserColor', 'updatedAt'],
+      );
+
+      expect(update.id).toBe('comp-1');
+      expect(update.lockedBy).toBe('client-a');
+      expect(update.lockUserName).toBe('Alice');
+      expect(update.htmlContent).toBeUndefined();
+      expect(update.jsonProperties).toBeUndefined();
+    });
+
+    it('includes json without empty html when only jsonProperties change', () => {
+      const update = YjsProjectBridge.buildRemoteComponentUpdate(
+        makeCompMap({
+          id: 'comp-1',
+          type: 'text',
+          htmlContent: { toString: () => '' },
+          jsonProperties: '{"textTextarea":"<p>Updated by client A</p>"}',
+          lockedBy: null,
+        }),
+        ['jsonProperties', 'updatedAt'],
+      );
+
+      expect(update.htmlContent).toBeUndefined();
+      expect(update.jsonProperties).toBe('{"textTextarea":"<p>Updated by client A</p>"}');
+    });
+
+    it('includes html when htmlContent changes', () => {
+      const update = YjsProjectBridge.buildRemoteComponentUpdate(
+        makeCompMap({
+          id: 'comp-1',
+          ideviceType: 'text',
+          htmlContent: { toString: () => '<p>Updated by client A</p>' },
+        }),
+        ['htmlContent'],
+      );
+
+      expect(update.htmlContent).toBe('<p>Updated by client A</p>');
+      expect(update.jsonProperties).toBeUndefined();
+    });
+
+    it('falls back to htmlView when htmlContent is empty', () => {
+      const html = YjsProjectBridge.readComponentHtml(
+        makeCompMap({
+          htmlContent: { toString: () => '' },
+          htmlView: '<p>Imported</p>',
+        }),
+      );
+
+      expect(html).toBe('<p>Imported</p>');
+    });
+  });
+
   describe('updateRemoteBlock', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
