@@ -100,7 +100,6 @@ export default class projectManager {
         // Yjs collaborative editing
         this._yjsEnabled = false;
         this._yjsBridge = null;
-        this._yjsBindings = new Map(); // TinyMCE bindings by componentId
     }
 
     /**
