@@ -4,7 +4,6 @@
  */
 import { Elysia, t } from 'elysia';
 import { getJwtSecret } from './auth';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { db } from '../db/client';
 import {
@@ -193,7 +192,6 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
 
     return (
         new Elysia({ name: 'user-routes' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

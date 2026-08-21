@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { db } from '../../../db/client';
 import { findProjectByUuid } from '../../../db/queries';
-import { getFilesDir } from '../../../services/file-helper';
+import { getProjectAssetsDirCandidates } from '../../../services/file-helper';
 import { buildContentDisposition } from '../../../shared/http/headers';
 import {
     Html5Exporter,
@@ -181,13 +181,15 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                     const wrapper = new ServerYjsDocumentWrapper(ydoc, params.uuid);
                     const documentAdapter = new YjsDocumentAdapter(wrapper);
 
-                    // Create asset providers
-                    const filesDir = getFilesDir();
-                    const assetsPath = path.join(filesDir, 'assets', params.uuid);
-
-                    const fsAssetProvider = new FileSystemAssetProvider(assetsPath);
+                    // Create asset providers. Filesystem providers cover both
+                    // the sharded directory and the legacy unsharded directory,
+                    // so filename-addressed files without database rows are
+                    // still exported while an installation converges (the
+                    // startup migration can be interrupted and retried).
+                    const assetDirs = getProjectAssetsDirCandidates(project!.uuid);
+                    const fsAssetProviders = assetDirs.map(dir => new FileSystemAssetProvider(dir));
                     const dbAssetProvider = new DatabaseAssetProvider(db, project!.id);
-                    const assetProvider = new CombinedAssetProvider([fsAssetProvider, dbAssetProvider]);
+                    const assetProvider = new CombinedAssetProvider([...fsAssetProviders, dbAssetProvider]);
 
                     // Create resource provider (themes, idevices, base CSS)
                     // Note: ResourceProvider expects the public/ directory as root

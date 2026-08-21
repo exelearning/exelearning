@@ -149,7 +149,8 @@ describe('ProjectManager', () => {
         it('initializes Yjs state as disabled', () => {
             expect(projectManager._yjsEnabled).toBe(false);
             expect(projectManager._yjsBridge).toBe(null);
-            expect(projectManager._yjsBindings).toBeInstanceOf(Map);
+            // The per-editor TinyMCE binding map was removed in #2169
+            expect(projectManager._yjsBindings).toBeUndefined();
         });
 
         it('creates properties, idevices and structure engines', () => {
