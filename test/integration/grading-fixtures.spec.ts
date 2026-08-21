@@ -47,10 +47,15 @@ import {
 const testDir = path.join(process.cwd(), 'test', 'temp', 'grading-fixtures-test');
 const publicDir = path.join(process.cwd(), 'public');
 
-/** Where the exported, unzipped packages are written for the recorder to inspect. */
+/**
+ * Where the exported, unzipped packages are written for the recorder to inspect.
+ *
+ * Defaults inside the repo's own gitignored scratch area so a checkout runs anywhere;
+ * set GRADING_FIXTURE_OUT_DIR to put them somewhere the recorder can reach when the two
+ * halves run on different machines.
+ */
 const FIXTURE_OUT_DIR =
-    process.env.GRADING_FIXTURE_OUT_DIR ??
-    '/private/tmp/claude-501/-Users-ernesto-Downloads-git-exelearning-8/2741b553-1178-49c1-b23d-dc74c14ba9fd/scratchpad/fixtures';
+    process.env.GRADING_FIXTURE_OUT_DIR ?? path.join(process.cwd(), 'test', 'temp', 'grading-fixtures');
 
 /** The scenario: two pages, one gradable iDevice each, weights 25 / 75. */
 const SPEC: ProjectSpec = {

@@ -5,7 +5,7 @@
  * real browser under the `mod_exelearning` serving model
  * (see helpers/moodle-serving-model.ts, which reproduces scorm_injector.php AND
  * idevice_patch.php) and writes the observed SCORM 1.2 + xAPI traffic to
- * `<scratchpad>/traces/<scenario>.trace.json` per the frozen contract
+ * `<TRACE_DIR>/<scenario>.trace.json` per the frozen contract
  * (TRACE-CONTRACT.md v1).
  *
  * Every iDevice is answered through its OWN UI controls: radio clicks for
@@ -55,9 +55,12 @@ import {
     type FixtureRepairs,
 } from '../helpers/moodle-serving-model';
 
-const TRACE_DIR =
-    process.env.GRADING_TRACE_DIR ??
-    '/private/tmp/claude-501/-Users-ernesto-Downloads-git-exelearning-8/2741b553-1178-49c1-b23d-dc74c14ba9fd/scratchpad/traces';
+/**
+ * Where the recorded traces are written. Defaults inside the repo's own gitignored
+ * scratch area so a checkout runs anywhere; set GRADING_TRACE_DIR to redirect them, for
+ * instance straight into the plugin's tests/fixtures/traces/.
+ */
+const TRACE_DIR = process.env.GRADING_TRACE_DIR ?? path.join(process.cwd(), 'test', 'temp', 'grading-traces');
 
 /** trueorfalse cannot score with the fixture's authored isTest:false (see docblock). */
 const REPAIRS: FixtureRepairs = { isTest: true };
