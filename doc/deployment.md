@@ -393,3 +393,12 @@ eXeLearning stores intermediate/temporary files (exports, conversions, etc.) und
 - `bun cli tmp-cleanup [--max-age=SECONDS]`
 - Example cron (daily at 03:00, keeping 24h):
   - `0 3 * * * cd /opt/exelearning && bun cli tmp-cleanup --max-age=86400`
+
+### Asset storage conflicts
+
+When the startup migration to the sharded asset layout (see ADR-2250-01) finds a legacy file **and** a different file already present at the canonical location, it keeps both copies and logs a warning on every boot — it never overwrites data on its own. Such rows stay in the legacy layout until an operator picks a winner:
+
+- `bun cli assets:conflicts` — list unresolved conflicts with both absolute paths, sizes and modification times (`--json` for scripting).
+- `bun cli assets:conflicts resolve <asset-id> --keep-old|--keep-new [--dry-run]` — resolve one conflict: `--keep-old` keeps the legacy copy (moving it into the canonical location), `--keep-new` keeps the canonical copy. Nothing is deleted without one of these explicit flags.
+
+After resolution the database row points at the canonical sharded location and the next startup tidies the emptied legacy directory.
