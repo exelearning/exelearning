@@ -4,7 +4,6 @@
  * Requires ROLE_ADMIN for all routes
  */
 import { Elysia, t } from 'elysia';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
@@ -679,7 +678,6 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
     return (
         new Elysia({ name: 'admin-routes' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
