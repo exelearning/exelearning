@@ -3,13 +3,13 @@
  *
  * DO NOT EDIT — generated from `translations/messages.<lang>.xlf` by
  * `scripts/generate-truefalse-messages.ts`. Run
- * `bun run generate:truefalse-messages` after the catalogue changes.
+ * `bun run generate:truefalse-messages && make fix` after the catalogue changes.
  *
  * English is absent on purpose: it is the source language, held by
  * TRUE_FALSE_DEFAULT_MESSAGES.
  */
 
-import type { TrueFalseMessages } from './trueFalseMessages';
+import type { TrueFalseMessages } from './trueFalseMessages.definition';
 
 export const TRUE_FALSE_MESSAGE_TRANSLATIONS: Record<string, TrueFalseMessages> = {
     ca: {

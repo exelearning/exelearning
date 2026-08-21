@@ -94,13 +94,22 @@ describe('renderTrueFalseMessagesModule', () => {
         expect(source.endsWith('\n')).toBe(true);
     });
 
-    it('should quote values the way Biome formats them', () => {
+    it('should emit values that survive JavaScript string escaping', () => {
+        // parseXlfTranslations decodes numeric character references, so a target
+        // can legitimately carry a real newline, quotes or a backslash.
         const source = renderTrueFalseMessagesModule({
-            xx: { msgTrue: 'Verdadero', msgYouLastScore: "L'ultimo punteggio" },
+            xx: {
+                msgTrue: 'Verdadero',
+                msgYouLastScore: "L'ultimo punteggio",
+                msgSuggestion: 'first\nsecond',
+                msgFeedback: 'a "quoted" back\\slash',
+            },
         });
 
-        expect(source).toContain("msgTrue: 'Verdadero',");
+        expect(source).toContain('msgTrue: "Verdadero",');
         expect(source).toContain('msgYouLastScore: "L\'ultimo punteggio",');
+        expect(source).toContain('msgSuggestion: "first\\nsecond",');
+        expect(source).toContain('msgFeedback: "a \\"quoted\\" back\\\\slash",');
     });
 });
 
@@ -117,7 +126,7 @@ describe('generateModuleSource', () => {
         expect(requested).toEqual(['es', 'gl']);
         expect(source).toContain('    es: {');
         expect(source).toContain('    gl: {');
-        expect(source).toContain("msgTrue: 'gl-True',");
+        expect(source).toContain('msgTrue: "gl-True",');
     });
 
     it('should refuse to emit a locale whose catalogue is incomplete', () => {
@@ -142,7 +151,27 @@ describe('writeGeneratedModule', () => {
 
         expect(langs).toEqual(['es']);
         expect(Object.keys(written)).toEqual([path.join('/repo', GENERATED_MODULE_PATH)]);
-        expect(written[path.join('/repo', GENERATED_MODULE_PATH)]).toContain("msgTrue: 'es-True',");
+        expect(written[path.join('/repo', GENERATED_MODULE_PATH)]).toContain('msgTrue: "es-True",');
+    });
+});
+
+describe('module graph', () => {
+    // The generator must never depend on the module that imports its output:
+    // that made regenerating a deleted trueFalseMessages.generated.ts impossible.
+    it('should read the message keys from the leaf definition module only', () => {
+        const generator = fs.readFileSync(path.join(ROOT, 'scripts/generate-truefalse-messages.ts'), 'utf-8');
+
+        expect(generator).toContain("legacy-handlers/trueFalseMessages.definition'");
+        expect(generator).not.toMatch(/from '[^']*legacy-handlers\/trueFalseMessages'/);
+    });
+
+    it('should keep the definition module free of imports', () => {
+        const definition = fs.readFileSync(
+            path.join(ROOT, 'src/shared/import/legacy-handlers/trueFalseMessages.definition.ts'),
+            'utf-8',
+        );
+
+        expect(definition).not.toMatch(/^\s*import\s/m);
     });
 });
 

@@ -16,8 +16,12 @@
  * `generate-truefalse-messages.spec.ts` fails if it ever drifts from
  * `translations/`.
  *
+ * It reads the message keys from `trueFalseMessages.definition.ts`, never from
+ * `trueFalseMessages.ts`: the latter imports the generated module, so depending
+ * on it would make the generator unable to recreate a deleted output.
+ *
  * Usage:
- *   bun run generate:truefalse-messages
+ *   bun run generate:truefalse-messages && make fix
  */
 
 import * as fs from 'fs';
@@ -26,7 +30,7 @@ import { parseXlfTranslations } from '../src/shared/export/generators/I18nGenera
 import {
     TRUE_FALSE_DEFAULT_MESSAGES,
     type TrueFalseMessages,
-} from '../src/shared/import/legacy-handlers/trueFalseMessages';
+} from '../src/shared/import/legacy-handlers/trueFalseMessages.definition';
 
 /** Repository-relative directory holding the XLF catalogues. */
 export const TRANSLATIONS_DIR = 'translations';
@@ -88,19 +92,13 @@ export function buildTranslationTable(catalogues: Record<string, Map<string, str
 }
 
 /**
- * Quote a value the way Biome formats string literals: single quotes, switching
- * to double quotes when that avoids escaping an apostrophe. Keeping the output
- * formatter-stable is what lets the drift test compare sources byte for byte.
- */
-function quote(value: string): string {
-    if (value.includes("'") && !value.includes('"')) {
-        return `"${value}"`;
-    }
-    return `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
-}
-
-/**
  * Render the generated module source for a translation table.
+ *
+ * Values go through JSON.stringify rather than hand-rolled quoting: XLF targets
+ * can carry quotes, backslashes and — since parseXlfTranslations decodes numeric
+ * character references — real control characters. Biome rewrites the resulting
+ * double quotes to the project style on `make fix`, which is harmless because
+ * the drift test compares the table data, not the file bytes.
  */
 export function renderTrueFalseMessagesModule(table: TranslationTable): string {
     const lines: string[] = [
@@ -109,13 +107,13 @@ export function renderTrueFalseMessagesModule(table: TranslationTable): string {
         ' *',
         ' * DO NOT EDIT — generated from `translations/messages.<lang>.xlf` by',
         ' * `scripts/generate-truefalse-messages.ts`. Run',
-        ' * `bun run generate:truefalse-messages` after the catalogue changes.',
+        ' * `bun run generate:truefalse-messages && make fix` after the catalogue changes.',
         ' *',
         ' * English is absent on purpose: it is the source language, held by',
         ' * TRUE_FALSE_DEFAULT_MESSAGES.',
         ' */',
         '',
-        "import type { TrueFalseMessages } from './trueFalseMessages';",
+        "import type { TrueFalseMessages } from './trueFalseMessages.definition';",
         '',
         'export const TRUE_FALSE_MESSAGE_TRANSLATIONS: Record<string, TrueFalseMessages> = {',
     ];
@@ -123,7 +121,7 @@ export function renderTrueFalseMessagesModule(table: TranslationTable): string {
     for (const [lang, messages] of Object.entries(table)) {
         lines.push(`    ${lang}: {`);
         for (const [key, value] of Object.entries(messages)) {
-            lines.push(`        ${key}: ${quote(value as string)},`);
+            lines.push(`        ${key}: ${JSON.stringify(value)},`);
         }
         lines.push('    },');
     }
