@@ -389,6 +389,7 @@ var $trueorfalse = {
                     <button id="tofRebootTest-${instance}" type="button" class="btn btn-primary TOFP-EHidden">${msgs.msgReboot}</button>
                 </div>
         </div> 
+        </div>
         <div class="Games-BottonContainer">
             <div class="Games-GetScore">
                 <input id="tofPSendScore-${instance}" type="button" value="${mOptions.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:${display}"/> <span class="Games-RepeatActivity"></span>

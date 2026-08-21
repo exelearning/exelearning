@@ -2,6 +2,20 @@
 
 This guide shows how to integrate the Yjs collaborative editing system into eXeLearning.
 
+## Collaboration Model
+
+Collaboration operates at the **node and iDevice level**, not inside individual rich-text fields:
+
+- Yjs synchronizes the project structure: pages, blocks, nodes, and **complete iDevices**.
+- Editing an iDevice acquires an **exclusive iDevice-level lock**; other users cannot edit that
+  iDevice until the lock is released.
+- While an iDevice is being edited, its internal fields and TinyMCE instances are **edited
+  locally**. The complete iDevice is synchronized to other clients when it is saved.
+- TinyMCE content is **not** synchronized character by character. There is no TinyMCE-Yjs
+  binding; a former `YjsTinyMCEBinding` implementing per-editor sync was never activated and
+  was removed (issue #2169). Character-level sync would conflict with iDevice-level locking
+  and could bind multiple editors inside one iDevice to a single value.
+
 ## Quick Start
 
 ### 1. Include the Loader
@@ -62,28 +76,7 @@ const idevice = project.addComponentViaYjs(pageId, block.id, 'FreeTextIdevice');
 project.updateComponentHtmlViaYjs(pageId, block.id, idevice.id, '<p>Hello World!</p>');
 ```
 
-### 5. Binding TinyMCE Editors
-
-```javascript
-// When opening an iDevice editor
-function onIdeviceEdit(editor, pageId, blockId, componentId) {
-  // Bind the TinyMCE editor to Yjs for real-time sync
-  const binding = project.bindEditorToYjs(editor, pageId, blockId, componentId);
-
-  // Store binding reference for cleanup
-  editor._yjsBinding = binding;
-}
-
-// When closing the editor
-function onIdeviceClose(editor) {
-  if (editor._yjsBinding) {
-    editor._yjsBinding.destroy();
-    editor._yjsBinding = null;
-  }
-}
-```
-
-### 6. Collaborative Locking
+### 5. Collaborative Locking
 
 ```javascript
 // Before editing an iDevice
@@ -105,7 +98,7 @@ function afterEdit(componentId) {
 }
 ```
 
-### 7. Undo/Redo
+### 6. Undo/Redo
 
 ```javascript
 // Programmatic undo/redo
@@ -118,7 +111,7 @@ project.redo();
 // - Ctrl+Y: Redo (Windows)
 ```
 
-### 8. Import/Export .elpx Files
+### 7. Import/Export .elpx Files
 
 ```javascript
 // Export current project to .elpx
@@ -134,7 +127,7 @@ fileInput.addEventListener('change', async (e) => {
 });
 ```
 
-### 9. Listen for Changes
+### 8. Listen for Changes
 
 ```javascript
 // Subscribe to structure changes (pages/blocks/components)
@@ -152,7 +145,7 @@ project.onSaveStatus((status, message) => {
 });
 ```
 
-### 10. Disable Yjs Mode
+### 9. Disable Yjs Mode
 
 ```javascript
 // Revert to legacy REST API mode
@@ -171,8 +164,9 @@ await project.disableYjsMode();
 │    ├── YjsLockManager (iDevice-level locking)               │
 │    └── AssetCacheManager (IndexedDB blob storage)           │
 ├─────────────────────────────────────────────────────────────┤
-│  TinyMCE ←→ YjsTinyMCEBinding ←→ Y.Text                     │
 │  Navigation Tree ←→ YjsStructureTreeAdapter ←→ Y.Array      │
+│  (iDevices sync as complete components on save — no         │
+│   per-editor TinyMCE binding)                               │
 └─────────────────────────────────────────────────────────────┘
                               │
                               │ WebSocket (Socket.io)

@@ -4,7 +4,6 @@
  */
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import {
     findProjectByUuid,
     upsertSnapshot,
@@ -87,7 +86,6 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
 
     return (
         new Elysia({ prefix: '/api/projects' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

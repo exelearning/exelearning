@@ -134,3 +134,19 @@ export async function updateUserRoles(db: Kysely<Database>, id: number, roles: s
         updated_at: now(),
     });
 }
+
+/**
+ * Replace a user's password hash.
+ * The caller is responsible for hashing (see `services/password.ts`) and for
+ * checking that the account is an eXeLearning password account.
+ */
+export async function updateUserPassword(
+    db: Kysely<Database>,
+    id: number,
+    hashedPassword: string,
+): Promise<User | undefined> {
+    return updateByIdAndReturn(db, 'users', id, {
+        password: hashedPassword,
+        updated_at: now(),
+    });
+}

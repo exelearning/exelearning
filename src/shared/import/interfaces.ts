@@ -7,6 +7,8 @@
  * - Backend (CLI): Using filesystem for assets
  */
 
+import type { UnresolvedAssetRef } from './unresolvedAssetRefs';
+
 /**
  * Progress phases during import
  */
@@ -128,6 +130,24 @@ export interface ElpxImportResult {
      * Only populated in browser environment for performance optimization.
      */
     zipContents?: Record<string, Uint8Array>;
+    /**
+     * Activities that reference files the package does not contain (#2223).
+     * Their references are preserved as-is; this is what lets the caller tell
+     * the author which files are missing instead of showing a raw placeholder.
+     */
+    missingAssets?: UnresolvedAssetRef[];
+    /**
+     * Activities whose persisted jsonProperties could not be parsed (#2190).
+     * Their raw payload is preserved verbatim in the document; this report is
+     * what lets the caller warn the author instead of only logging to console.
+     */
+    malformedProperties?: MalformedPropertiesRef[];
+}
+
+/** An activity whose persisted jsonProperties could not be parsed (#2190). */
+export interface MalformedPropertiesRef {
+    componentId: string;
+    ideviceType: string;
 }
 
 /**
@@ -258,6 +278,12 @@ export interface ComponentData {
     createdAt: string;
     htmlView: string;
     properties: Record<string, unknown> | null;
+    /**
+     * Raw jsonProperties payload that could not be parsed, preserved verbatim
+     * so the damaged activity's data survives the import (#2190). Mutually
+     * exclusive with `properties`.
+     */
+    malformedProperties?: string;
     componentProps: Record<string, string>;
     structureProps: Record<string, unknown>;
 }

@@ -765,6 +765,34 @@ export function shouldShowLicenseFooter(licenseName: string): boolean {
     return true;
 }
 
+/**
+ * Check whether the "Page footer" project property holds anything renderable.
+ * Whitespace-only values count as empty.
+ *
+ * @param userFooterContent - Raw HTML from the "Page footer" project property
+ * @returns true when there is user content to render
+ */
+export function hasUserFooterContent(userFooterContent?: string): boolean {
+    return (userFooterContent ?? '').trim().length > 0;
+}
+
+/**
+ * Check whether the site footer has any content to display.
+ *
+ * The footer is considered empty when there is no license to show (empty,
+ * propietary or "not appropriate") and the user-defined "Page footer" property
+ * holds nothing but whitespace. Empty footers are still rendered — themes give
+ * them a background and border — so they are tagged with the `siteFooter-empty`
+ * class and hidden via CSS.
+ *
+ * @param license - The license name from metadata
+ * @param userFooterContent - Raw HTML from the "Page footer" project property
+ * @returns true when the footer has license or user content, false when empty
+ */
+export function hasSiteFooterContent(license: string, userFooterContent?: string): boolean {
+    return shouldShowLicenseFooter(license) || hasUserFooterContent(userFooterContent);
+}
+
 // =============================================================================
 // XML Namespaces
 // =============================================================================
