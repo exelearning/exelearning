@@ -704,7 +704,7 @@ export class Epub3Exporter extends BaseExporter {
             navLabels: navLabels as { previous: string; next: string; page: string; license?: string },
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            xapi: this.buildXapiConfig(meta, allPages.length, page),
+            xapi: this.buildXapiConfig(meta, page),
             // EPUB-specific: load guard script for duplicate execution protection
             isEpub: true,
         });

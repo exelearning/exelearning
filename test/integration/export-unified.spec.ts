@@ -468,13 +468,13 @@ describe('Unified Export System Integration', () => {
 
     describe('xAPI emitter (ADR-2302-01)', () => {
         // Every packaged format must ship the emitter and inject its identity config.
-        // The config is what gates the loader tag and what carries pageCount, which is
-        // what suppresses the package verdict on a multipage package.
+        // The config is what gates the loader tag and what gives the emitter a stable
+        // package/page identity; without it the activity IRI falls back to the
+        // per-page document URL.
         const cases: Array<{
             name: string;
             entry: string;
             emitter: string;
-            pageCount: number;
             pageId?: string;
             options?: Record<string, unknown>;
             make: (
@@ -488,7 +488,6 @@ describe('Unified Export System Integration', () => {
                 name: 'HTML5',
                 emitter: 'libs/xapi/exe_xapi.js',
                 entry: 'index.html',
-                pageCount: 2,
                 pageId: 'page-1',
                 make: (d, r, a, z) => new Html5Exporter(d, r, a, z),
             },
@@ -496,7 +495,6 @@ describe('Unified Export System Integration', () => {
                 name: 'SCORM 1.2',
                 emitter: 'libs/xapi/exe_xapi.js',
                 entry: 'index.html',
-                pageCount: 2,
                 pageId: 'page-1',
                 make: (d, r, a, z) => new Scorm12Exporter(d, r, a, z),
             },
@@ -504,7 +502,6 @@ describe('Unified Export System Integration', () => {
                 name: 'SCORM 2004',
                 emitter: 'libs/xapi/exe_xapi.js',
                 entry: 'index.html',
-                pageCount: 2,
                 pageId: 'page-1',
                 make: (d, r, a, z) => new Scorm2004Exporter(d, r, a, z),
             },
@@ -512,7 +509,6 @@ describe('Unified Export System Integration', () => {
                 name: 'IMS',
                 emitter: 'libs/xapi/exe_xapi.js',
                 entry: 'index.html',
-                pageCount: 2,
                 pageId: 'page-1',
                 make: (d, r, a, z) => new ImsExporter(d, r, a, z),
             },
@@ -520,7 +516,6 @@ describe('Unified Export System Integration', () => {
                 name: 'EPUB3',
                 emitter: 'EPUB/libs/xapi/exe_xapi.js',
                 entry: 'EPUB/index.xhtml',
-                pageCount: 2,
                 pageId: 'page-1',
                 make: (d, r, a, z) => new Epub3Exporter(d, r, a, z),
             },
@@ -528,7 +523,6 @@ describe('Unified Export System Integration', () => {
                 name: 'ELPX',
                 emitter: 'libs/xapi/exe_xapi.js',
                 entry: 'index.html',
-                pageCount: 2,
                 pageId: 'page-1',
                 make: (d, r, a, z) => new ElpxExporter(d, r, a, z),
             },
@@ -536,7 +530,6 @@ describe('Unified Export System Integration', () => {
                 name: 'single-page ELPX',
                 emitter: 'libs/xapi/exe_xapi.js',
                 entry: 'index.html',
-                pageCount: 1,
                 pageId: 'page-2',
                 options: { rootPageId: 'page-2' },
                 make: (d, r, a, z) => new PageElpxExporter(d, r, a, z),
@@ -545,7 +538,6 @@ describe('Unified Export System Integration', () => {
                 name: 'single page',
                 emitter: 'libs/xapi/exe_xapi.js',
                 entry: 'index.html',
-                pageCount: 1,
                 make: (d, r, a, z) => new PageExporter(d, r, a, z),
             },
         ];
@@ -563,7 +555,6 @@ describe('Unified Export System Integration', () => {
 
                 expect(html).toContain('window.exeXapi');
                 expect(html).toContain('libs/xapi/exe_xapi.js');
-                expect(html).toContain(`"pageCount":${testCase.pageCount}`);
                 if (testCase.pageId) {
                     expect(html).toContain(`"pageId":"${testCase.pageId}"`);
                 }

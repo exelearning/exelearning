@@ -9,6 +9,14 @@
 - New `make change-password EMAIL=user@example.com` command, which asks for the new password without showing it on screen
 - Password changes are unavailable for guest accounts and for users signed in through CAS, OpenID Connect or SAML; those users change their password with their identity provider
 
+### Changed
+
+- Export: xAPI tracking is now a pure activity feed — exported packages report each activity's result, but no longer report an overall pass/fail verdict for the whole package. Systems that need an overall result calculate it from the per-activity results
+
+### Fixed
+
+- Export: SCORM, IMS and EPUB packages now identify themselves correctly in the xAPI statements they send, instead of reporting each page as a separate resource
+
 ## v4.0.3 – 2026-08-06
 
 ### Added

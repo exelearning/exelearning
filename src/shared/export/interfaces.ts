@@ -610,10 +610,6 @@ export interface AssetResolverOptions {
  * - `activityId`   – the root activity IRI; defaults to `baseIri`.
  * - `packageTitle` – human-readable activity name.
  * - `language`     – BCP-47 language tag for language-map values (default `en`).
- * - `pageCount` – number of pages in the package. When it is greater than 1 the
- *   emitter suppresses its package-level verdict, because each page only knows
- *   its own scores; the package result is reconstructed by the consumer from the
- *   per-iDevice statements (see ADR-2302-01).
  * - `pageId` / `pageTitle` – identity of the page this document renders. The
  *   runtime tracker never supplies them, so without this injection no statement
  *   ever carried page identity; consumers need it to tell which pages of the
@@ -641,8 +637,6 @@ export interface XapiConfig {
     activityId?: string;
     packageTitle?: string;
     language?: string;
-    /** Internal: number of pages in the package; >1 suppresses the page-local package verdict. */
-    pageCount?: number;
     /** Internal: stable id of the page this document renders. */
     pageId?: string;
     /** Internal: title of the page this document renders. */

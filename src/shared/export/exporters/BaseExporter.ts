@@ -224,16 +224,14 @@ export abstract class BaseExporter {
      * used to fall back to a per-page document URL as the activity IRI.
      *
      * @param meta Export metadata carrying the package identity
-     * @param pageCount Number of pages in the package (1 for single-page exports)
      * @param page Page this document renders, when the format renders one page per document
      * @returns Config serialized into `window.exeXapi`
      */
-    buildXapiConfig(meta: ExportMetadata, pageCount = 1, page?: ExportPage): XapiConfig {
+    buildXapiConfig(meta: ExportMetadata, page?: ExportPage): XapiConfig {
         const config: XapiConfig = {
             odeId: meta.odeIdentifier || '',
             packageTitle: meta.title || '',
             language: meta.language || 'en',
-            pageCount,
         };
         // Page identity is only known here: the runtime tracker never supplies it.
         if (page?.id) config.pageId = page.id;

@@ -493,7 +493,7 @@ export class Scorm12Exporter extends Html5Exporter {
             navLabels,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            xapi: this.buildXapiConfig(meta, allPages.length, page),
+            xapi: this.buildXapiConfig(meta, page),
         });
     }
 

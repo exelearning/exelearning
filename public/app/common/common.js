@@ -1172,11 +1172,6 @@ var $exeDevices = {
                         .find('header .box-title').text() || '').replace(/"/g, ' ');
                     game.ideviceNumber = $('.idevice_node').index($ideviceNode) + 1;
 
-                    // Declare this iDevice to the xAPI emitter before any answer
-                    // (a no-op when no emitter is loaded, e.g. the print preview);
-                    // the SCORM-side registration below stays gated on pipwerks.
-                    $exeDevices.iDevice.gamification.registerEvaluable(game);
-
                     let lmsData = {};
                     if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
                         $exeDevices.iDevice.gamification.scorm.createScoreScormHtml(game);
@@ -1378,35 +1373,11 @@ var $exeDevices = {
             },
 
             /**
-             * Declare an evaluable iDevice to the xAPI emitter as the page loads,
-             * mirroring what registerActivity already does for SCORM's suspend_data
-             * lmsData. Without it a partial attempt reports an inflated score
-             * (ADR-2302-01).
-             *
-             * @param {object} game
-             */
-            registerEvaluable: function (game) {
-                try {
-                    let xapi = $exeDevices.iDevice.xapi;
-                    if (!xapi || typeof xapi.registerEvaluable !== 'function') return;
-                    if (typeof game !== 'object' || game === null) return;
-                    xapi.registerEvaluable({
-                        ideviceId: game.ideviceId,
-                        ideviceNumber: game.ideviceNumber,
-                        title: game.title,
-                        weighted: game.weighted,
-                    });
-                } catch (e) {
-                    // Never let tracking break the activity.
-                }
-            },
-
-            /**
              * Transport-agnostic dispatch to the xAPI emitter (exe_xapi.js),
              * independent of SCORM/pipwerks (it is therefore a sibling of `scorm`,
              * not nested in it) and shipped with every export as the analytics
-             * channel (ADR-2302-01). Score math stays single-source (game.scorerp +
-             * getFinalScore); this only forwards it as an xAPI statement.
+             * channel (ADR-2302-01). Score math stays single-source (game.scorerp);
+             * this only forwards it as an xAPI statement.
              * See https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
              *
              * @param {string} eventType e.g. 'answered'
@@ -1429,10 +1400,8 @@ var $exeDevices = {
                         // populated by the real callers, so prefer it only when a
                         // caller explicitly sets it and fall back to game.idevice.
                         ideviceType: game.ideviceType || game.idevice,
-                        ideviceNumber: game.ideviceNumber,
                         title: game.title,
                         score: parseFloat(game.scorerp),
-                        weighted: game.weighted,
                     });
                 } catch (e) {
                     // Never let tracking break the activity.

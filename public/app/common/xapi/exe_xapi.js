@@ -16,11 +16,11 @@
     xAPI (Experience API) emitter for eXeLearning exports.
 
     This library is bundled into EVERY export format via BASE_LIBRARIES, with no
-    export-time option, as an ANALYTICS channel: grading authority stays with each
-    format's own runtime (SCORM's cmi.*) or with the consumer's server. It emits one
-    statement per gradable iDevice ("answered") and, for single-page packages only,
-    one package-level statement ("completed" + "passed"/"failed") whenever a score
-    is reported; multipage packages emit no package verdict (ADR-2302-01).
+    export-time option, as an ANALYTICS/LRS feed: grading authority stays with each
+    format's own runtime (SCORM's cmi.*) or with the consumer's server. Per page it
+    emits "initialized", one "answered" per gradable iDevice, and "terminated". It
+    emits NO package-level verdict: a consumer that needs a package result derives
+    it from the "answered" statements (ADR-2302-01).
 
     It does NOT depend on SCORM or pipwerks: the gamification layer in common.js
     calls `gamification.track(...)` (which forwards here) regardless of format.
@@ -38,7 +38,7 @@
         https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
       - Communication / LRS Statements API + X-Experience-API-Version header:
         https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Communication.md
-      - ADL verbs: http://adlnet.gov/expapi/verbs/{answered,completed,passed,failed}
+      - ADL verbs: http://adlnet.gov/expapi/verbs/{initialized,answered,terminated}
       - Primer: https://xapi.com/statements-101/
 =========================================================================== */
 
@@ -48,9 +48,6 @@
     // ADL standard verb IRIs. See http://adlnet.gov/expapi/verbs/
     var VERBS = {
         answered: { id: 'http://adlnet.gov/expapi/verbs/answered', display: { 'en-US': 'answered' } },
-        completed: { id: 'http://adlnet.gov/expapi/verbs/completed', display: { 'en-US': 'completed' } },
-        passed: { id: 'http://adlnet.gov/expapi/verbs/passed', display: { 'en-US': 'passed' } },
-        failed: { id: 'http://adlnet.gov/expapi/verbs/failed', display: { 'en-US': 'failed' } },
         // Generic xAPI lifecycle verbs (NOT cmi5): emitted once on load/unload.
         initialized: { id: 'http://adlnet.gov/expapi/verbs/initialized', display: { 'en-US': 'initialized' } },
         terminated: { id: 'http://adlnet.gov/expapi/verbs/terminated', display: { 'en-US': 'terminated' } },
@@ -68,20 +65,13 @@
         ideviceType: 'https://exelearning.net/xapi/extensions/idevice-type',
         pageId: 'https://exelearning.net/xapi/extensions/page-id',
         pageTitle: 'https://exelearning.net/xapi/extensions/page-title',
-        pageCount: 'https://exelearning.net/xapi/extensions/page-count',
     };
 
-    // The package is considered passed at >= 50/100, identical to the SCORM
-    // lesson_status threshold used by gamification.scorm.showFinalScore().
-    var PASS_THRESHOLD = 50;
-
     var xapi = {
-        /** Resolved configuration: { odeId, baseIri, activityId, packageTitle, language, actor, parentOrigin, registration, pageCount, pageId, pageTitle }. */
+        /** Resolved configuration: { odeId, baseIri, activityId, packageTitle, language, actor, parentOrigin, registration, pageId, pageTitle }. */
         config: null,
         /** Parsed xAPI launch parameters from the URL, or null. */
         launch: null,
-        /** Per-iDevice running scores keyed by ideviceNumber, on a 0..100 scale (feeds getFinalScore for the package total). */
-        _state: {},
         /** Debounce cache: last payload signature emitted per iDevice, to avoid duplicate statements. */
         _lastSig: {},
         /** Lifecycle guards so "initialized"/"terminated" are each emitted at most once. */
@@ -106,29 +96,6 @@
             // announce its end. Only when a transport can actually carry them.
             this._emitInitialized();
             this._bindTerminate();
-        },
-
-        /**
-         * Seed the page-local aggregate at score 0 for an evaluable iDevice, with its
-         * REAL weight (a weight-1 seed would skew the denominator), so a partial
-         * attempt is not normalized over the answered subset. Internal state only.
-         * See ADR-2302-01.
-         *
-         * @param {{ideviceId:?string, ideviceNumber:?number, title:?string, weighted:?number}} evt
-         */
-        registerEvaluable: function (evt) {
-            if (!this._initialised) this.init();
-            if (!evt || typeof evt !== 'object' || !evt.ideviceId) return;
-            // A page-local number jQuery could not resolve (index() -1 -> 0) must
-            // not enter the aggregate under a false slot.
-            var slot = parseInt(evt.ideviceNumber, 10);
-            if (!slot || slot < 1) return;
-            if (Object.prototype.hasOwnProperty.call(this._state, slot)) return;
-            this._state[slot] = {
-                title: evt.title || '',
-                score: 0,
-                weighted: evt.weighted != null ? evt.weighted : 1,
-            };
         },
 
         /**
@@ -177,7 +144,7 @@
          * `window.exeXapi`. Falls back to the document URL so statements are
          * still structurally valid in a plain standalone page.
          *
-         * @returns {{odeId:string, baseIri:string, activityId:string, packageTitle:string, language:string, actor:?object, parentOrigin:?string, pageCount:number, pageId:string, pageTitle:string}}
+         * @returns {{odeId:string, baseIri:string, activityId:string, packageTitle:string, language:string, actor:?object, parentOrigin:?string, pageId:string, pageTitle:string}}
          */
         _resolveConfig: function () {
             var cfg = (root && root.exeXapi) ? root.exeXapi : {};
@@ -194,7 +161,6 @@
                 actor: cfg.actor || null,
                 parentOrigin: cfg.parentOrigin || null,
                 registration: cfg.registration || null,
-                pageCount: Math.max(1, parseInt(cfg.pageCount, 10) || 1),
                 pageId: cfg.pageId || '',
                 pageTitle: cfg.pageTitle || '',
             };
@@ -237,7 +203,10 @@
         /**
          * Public entry point called by gamification.track() in common.js.
          *
-         * @param {{type:string, ideviceId:?string, ideviceType:?string, ideviceNumber:?number, title:?string, score:number, weighted:?number}} evt
+         * Emits one "answered" statement for the iDevice. No package-level verdict
+         * is derived from it: see ADR-2302-01.
+         *
+         * @param {{type:string, ideviceId:?string, ideviceType:?string, title:?string, score:number}} evt
          *   score is the per-iDevice score on a 0..10 scale (game.scorerp).
          */
         emit: function (evt) {
@@ -250,66 +219,11 @@
             // exactly the shape a strict LRS must reject.
             score = Math.max(0, Math.min(10, score));
 
-            // Update the package aggregate from this iDevice's score (0..100 scale).
-            // A page-local number jQuery could not resolve (index() -1 -> 0) must not
-            // enter the aggregate under a false slot.
-            var slot = parseInt(evt.ideviceNumber, 10);
-            if (slot && slot >= 1) {
-                this._state[slot] = {
-                    title: evt.title || '',
-                    score: Math.max(0, Math.min(100, score * 10)),
-                    weighted: evt.weighted != null ? evt.weighted : 1,
-                };
-            }
-
-            // Per-iDevice "answered" statement (the granular payload).
+            // Per-iDevice "answered" statement: the only score-bearing statement
+            // this emitter produces.
             var perIdevice = this._buildIdeviceStatement(evt, score);
             if (perIdevice && !this._isDuplicate('idevice:' + evt.ideviceId, perIdevice)) {
                 this._send(perIdevice);
-            }
-
-            // Package "completed" + "passed"/"failed", reusing the shared, pure
-            // getFinalScore() so the weighting logic stays single-source. Single-page
-            // packages only: a page-local aggregate wearing the package IRI makes a
-            // multipage attempt emit both "passed" and "failed" (ADR-2302-01).
-            var finalScore = this._isMultipage() ? null : this._packageScore();
-            if (finalScore != null) {
-                var pkg = this._buildPackageStatements(finalScore);
-                for (var i = 0; i < pkg.length; i++) {
-                    if (!this._isDuplicate('package:' + pkg[i].verb.id, pkg[i])) {
-                        this._send(pkg[i]);
-                    }
-                }
-            }
-        },
-
-        /**
-         * Whether the package spans more than one page, in which case no single
-         * page can compute the package result.
-         *
-         * @returns {boolean}
-         */
-        _isMultipage: function () {
-            return !!(this.config && this.config.pageCount > 1);
-        },
-
-        /**
-         * Weighted package total (0..100) from the running per-iDevice state,
-         * reusing gamification.scorm.getFinalScore() (a pure function). Returns
-         * null when the aggregator is unavailable.
-         *
-         * @returns {?number}
-         */
-        _packageScore: function () {
-            try {
-                var dev = root && root.$exeDevices && root.$exeDevices.iDevice;
-                var fn = dev && dev.gamification && dev.gamification.scorm
-                    && dev.gamification.scorm.getFinalScore;
-                if (typeof fn !== 'function') return null;
-                if (!Object.keys(this._state).length) return null;
-                return fn(this._state);
-            } catch (e) {
-                return null;
             }
         },
 
@@ -357,7 +271,6 @@
             // tracker has never supplied it, so before #2302 no statement carried it.
             if (this.config && this.config.pageId) ext[EXT.pageId] = this.config.pageId;
             if (this.config && this.config.pageTitle) ext[EXT.pageTitle] = this.config.pageTitle;
-            if (this.config && this.config.pageCount) ext[EXT.pageCount] = this.config.pageCount;
             if (evt) {
                 if (evt.ideviceId) ext[EXT.ideviceId] = evt.ideviceId;
                 if (evt.ideviceType) ext[EXT.ideviceType] = evt.ideviceType;
@@ -368,30 +281,9 @@
         },
 
         /**
-         * Build the package-level statements: always "completed", plus
-         * "passed" or "failed" depending on the threshold.
-         *
-         * @param {number} finalScore 0..100
-         * @returns {object[]}
-         */
-        _buildPackageStatements: function (finalScore) {
-            var object = this._packageObject();
-            var result = {
-                score: { scaled: round4(finalScore / 100), raw: round2(finalScore), min: 0, max: 100 },
-                success: finalScore >= PASS_THRESHOLD,
-                completion: true,
-            };
-            var ext = this._contextExtensions(null);
-            var passVerb = finalScore >= PASS_THRESHOLD ? VERBS.passed : VERBS.failed;
-            return [
-                this._statement(VERBS.completed, object, result, null, ext),
-                this._statement(passVerb, object, result, null, ext),
-            ];
-        },
-
-        /**
          * The package-level Activity object (id + definition with localized
-         * name and a stable type IRI). Shared by package and lifecycle statements.
+         * name and a stable type IRI). Carries the package identity of the
+         * lifecycle statements; it never carries a verdict.
          *
          * @returns {object}
          */

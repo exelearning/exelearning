@@ -6,10 +6,11 @@ scores** to a host (LMS / LRS). Two channels coexist:
 - **SCORM 1.2/2004** — emitted only by SCORM exports, via the bundled SCORM API
   wrapper. Pre-existing behaviour.
 - **xAPI (Experience API)** — emitted by **every** export format, always on, via
-  `libs/xapi/exe_xapi.js`, with **no export-time option**. It is an **analytics
-  channel**: grading authority stays with each format's own runtime (SCORM's
-  `cmi.*`) or with the consumer's server (see
-  [ADR-2302-01](../architecture/adr/ADR-2302-01-suppress-multipage-package-verdicts.md)).
+  `libs/xapi/exe_xapi.js`, with **no export-time option**. It is an **analytics /
+  LRS feed**, not a grading channel: it emits **no package-level verdict**, and
+  grading authority stays with each format's own runtime (SCORM's `cmi.*`) or with
+  the consumer's server (see
+  [ADR-2302-01](../architecture/adr/ADR-2302-01-emit-xapi-without-a-package-verdict.md)).
 
 Both channels are fed from the **same single score source** in
 `public/app/common/common.js` (the `gamification` namespace), so the score math
@@ -85,13 +86,12 @@ The exporter injects, before the emitter script:
 
 ```html
 <script>window.exeXapi={"odeId":"202604272111114JQLDV","packageTitle":"…","language":"en",
-    "pageCount":4,"pageId":"page-3","pageTitle":"…"}</script>
+    "pageId":"page-3","pageTitle":"…"}</script>
 <script src="libs/xapi/exe_xapi.js"> </script>
 ```
 
-Beyond the identity keys, the config carries `pageCount` (above 1 the emitter
-suppresses its page-local package verdict) and `pageId` / `pageTitle` (the page
-identity no runtime event supplies).
+Beyond the package identity keys, the config carries `pageId` / `pageTitle` — the
+identity of the page this document renders, which no runtime event supplies.
 
 The serialized config is **HTML-safe**: `PageRenderer.serializeForScript()` escapes
 `<` (→ `\u003c`) plus U+2028/U+2029 before embedding, so a package title containing
@@ -101,8 +101,9 @@ The config shape is a single source of truth: the TypeScript type `XapiConfig`
 (`src/shared/export/interfaces.ts`) declares **exactly** the keys the emitter reads
 in `exe_xapi.js#_resolveConfig`. It has two groups of keys:
 
-- **Identity keys** — `odeId`, `baseIri`, `activityId`, `packageTitle`, `language`.
-  Populated by `Html5Exporter` / `PageExporter` from `meta` on every export.
+- **Identity keys** — `odeId`, `baseIri`, `activityId`, `packageTitle`, `language`,
+  `pageId`, `pageTitle`. Built by `BaseExporter.buildXapiConfig()` from `meta` and
+  the rendered page, and injected by every exporter.
 - **Delivery keys** — `parentOrigin`, `actor`, `registration`. These are **opt-in
   and NOT populated by the default export pipeline**. Origin-restricted postMessage
   delivery (`parentOrigin`), a pre-resolved learner `actor`, and an attempt
@@ -124,15 +125,14 @@ statements stay structurally valid.
 
 ### 2.3 Statements
 
-Fed from `gamification.track('answered', game)` (called by `sendScoreNew`, before
-the SCORM gate) and the running aggregate (reusing the pure `getFinalScore`):
+A page emits exactly three verbs: `initialized`, one `answered` per gradable iDevice
+that reports a score, and `terminated`. The score-bearing one is fed from
+`gamification.track('answered', game)` (called by `sendScoreNew`, before the SCORM
+gate):
 
 - **Per iDevice** — verb [`answered`](http://adlnet.gov/expapi/verbs/answered),
-  object = per-iDevice IRI, `result.score = { scaled, raw, min: 0, max: 10 }`.
-- **Package** — verb [`completed`](http://adlnet.gov/expapi/verbs/completed) plus
-  [`passed`](http://adlnet.gov/expapi/verbs/passed) /
-  [`failed`](http://adlnet.gov/expapi/verbs/failed) at the same ≥ 50 threshold,
-  `result.score = { scaled, raw, min: 0, max: 100 }`.
+  object = per-iDevice IRI, `result.score = { scaled, raw, min: 0, max: 10 }`. The
+  raw score is clamped onto that declared scale.
 - **Lifecycle (generic xAPI, not cmi5)** —
   [`initialized`](http://adlnet.gov/expapi/verbs/initialized) emitted once per page
   load and [`terminated`](http://adlnet.gov/expapi/verbs/terminated) once on
@@ -162,33 +162,25 @@ Each statement also includes richer metadata:
   - `https://exelearning.net/xapi/extensions/idevice-type`
   - `https://exelearning.net/xapi/extensions/page-id` (page rendering this document)
   - `https://exelearning.net/xapi/extensions/page-title` (page rendering this document)
-  - `https://exelearning.net/xapi/extensions/page-count` (pages in the package)
 
 Statement shape follows the xAPI Data spec:
 <https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md>.
 
-#### Multipage packages and the package result
+#### There is no package-level statement
 
-**Multi-page packages emit no package-level verdict.** Each page is a separate
-document with a fresh JavaScript context: it only knows the scores answered on that
-page, so a page-local aggregate wearing the package Activity IRI would let one page
-report `passed` and another `failed` for the same activity within one attempt.
-`completed` and `passed`/`failed` are therefore emitted only when the package is a
-single page (`window.exeXapi.pageCount === 1`, which the exporters inject). See
-[ADR-2302-01](../architecture/adr/ADR-2302-01-suppress-multipage-package-verdicts.md).
+**The emitter never emits `completed`, `passed` or `failed`** — on any format, single
+page or multipage. Each page is a separate document with a fresh JavaScript context: it
+only knows the scores answered on that page, so a page-local aggregate wearing the
+package Activity IRI would let one page report `passed` and another `failed` for the
+same activity within one attempt. See
+[ADR-2302-01](../architecture/adr/ADR-2302-01-emit-xapi-without-a-package-verdict.md).
 
-For multipage packages, the per-iDevice `answered` statements are the grading-relevant
-signal: each carries the stable `idevice-id`, the clamped 0–10 score and the package
-and page identity. A consumer that needs a package-level result derives it from those
-statements together with its own knowledge of the package — the reference consumer,
-`mod_exelearning`, grades per iDevice against the roster it derives from the uploaded
-package itself, so the wire carries no package-structural metadata from learners.
-
-On **single-page** packages the emitted verdict is accurate for partial attempts too:
-gradable iDevices seed the page aggregate at score 0 as they register (with their real
-weight), so a learner who answers only the weight-25 iDevice of a 25/75 package is
-reported as 25, not 100. The seeding is internal emitter state; nothing about
-unanswered iDevices is emitted.
+The per-iDevice `answered` statements are the grading-relevant signal: each carries the
+stable `idevice-id`, the clamped 0–10 score and the package and page identity. **A
+consumer that needs a package-level result derives it from those statements** together
+with its own knowledge of the package — the reference consumer, `mod_exelearning`,
+grades per iDevice against the roster it derives from the uploaded package itself, so
+the wire carries no package-structural metadata from learners.
 
 ### 2.4 Transport (silent fall-through)
 
@@ -231,8 +223,11 @@ unanswered iDevices is emitted.
 
 - The emitter debounces duplicate statements (same iDevice + same score) and
   assigns each statement a UUID `id` for LRS idempotency.
-- The package-level statement reuses `gamification.scorm.getFinalScore()` (a pure
-  function) for the weighted total — single source of truth with SCORM.
+- The emitter keeps no score aggregate: the weighted package total
+  (`gamification.scorm.getFinalScore()`) stays a SCORM-only concern.
+- The LRS POST uses `keepalive`, so the `pagehide`-time `terminated` statement is
+  not cancelled when the document unloads. The terminate hook binds `pagehide`
+  only — an `unload` listener would disable the back/forward cache.
 - The `initialized`/`terminated` lifecycle statements are emitted at most once and
   are plain xAPI lifecycle statements. They are **not** cmi5: this emitter does
   not implement cmi5 launch, fetch token, `LaunchData`, `moveOn` rules, AU

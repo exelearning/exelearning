@@ -2102,14 +2102,13 @@ describe('BaseExporter', () => {
         });
     });
     describe('xAPI runtime config', () => {
-        it('describes the package identity and the page count', () => {
+        it('describes the package identity', () => {
             const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1', title: 'Course', language: 'es' };
 
-            expect(exporter.buildXapiConfig(meta, 7)).toEqual({
+            expect(exporter.buildXapiConfig(meta)).toEqual({
                 odeId: 'PKG1',
                 packageTitle: 'Course',
                 language: 'es',
-                pageCount: 7,
             });
         });
 
@@ -2117,7 +2116,7 @@ describe('BaseExporter', () => {
             const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1' };
             const page = { id: 'page-7', title: 'Chapter 7' } as unknown as ExportPage;
 
-            const config = exporter.buildXapiConfig(meta, 4, page);
+            const config = exporter.buildXapiConfig(meta, page);
 
             expect(config.pageId).toBe('page-7');
             expect(config.pageTitle).toBe('Chapter 7');
@@ -2126,18 +2125,17 @@ describe('BaseExporter', () => {
         it('omits page identity rather than emitting empty strings', () => {
             const meta = { ...document.getMetadata(), odeIdentifier: 'PKG1' };
 
-            expect(exporter.buildXapiConfig(meta, 1)).not.toHaveProperty('pageId');
-            expect(exporter.buildXapiConfig(meta, 1, {} as unknown as ExportPage)).not.toHaveProperty('pageTitle');
+            expect(exporter.buildXapiConfig(meta)).not.toHaveProperty('pageId');
+            expect(exporter.buildXapiConfig(meta, {} as unknown as ExportPage)).not.toHaveProperty('pageTitle');
         });
 
-        it('defaults to a single page and never emits undefined identity', () => {
+        it('never emits undefined identity', () => {
             const meta = { ...document.getMetadata(), odeIdentifier: undefined, title: undefined, language: undefined };
 
             expect(exporter.buildXapiConfig(meta as ExportMetadata)).toEqual({
                 odeId: '',
                 packageTitle: '',
                 language: 'en',
-                pageCount: 1,
             });
         });
     });

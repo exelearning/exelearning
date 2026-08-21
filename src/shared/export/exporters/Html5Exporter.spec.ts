@@ -463,13 +463,11 @@ describe('Html5Exporter', () => {
             expect(files).toContain('xapi/exe_xapi.js');
         });
 
-        it('should inject the package page count and the page identity', () => {
-            // pageCount tells the emitter the package spans pages, so it must not
-            // claim a page-local verdict; pageId is the only source of page identity
-            // because the runtime tracker never supplies one (#2302).
+        it('should inject the page identity', () => {
+            // pageId is the only source of page identity in a statement, because
+            // the runtime tracker never supplies one (#2302).
             const firstPageHtml = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
-            expect(firstPageHtml).toContain(`"pageCount":${samplePages.length}`);
             expect(firstPageHtml).toContain('"pageId":"page-1"');
         });
     });

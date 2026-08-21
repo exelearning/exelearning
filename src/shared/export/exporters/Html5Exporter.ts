@@ -464,7 +464,7 @@ export class Html5Exporter extends BaseExporter {
             // Application version for generator meta tag
             version: meta.exelearningVersion,
             // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
-            xapi: this.buildXapiConfig(meta, allPages.length, page),
+            xapi: this.buildXapiConfig(meta, page),
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
         });
