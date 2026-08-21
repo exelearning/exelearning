@@ -1,5 +1,32 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import ModalFilemanager from './modalFileManager.js';
+
+// The upload <input> lives in the server-rendered Nunjucks view, not in this
+// module, so the most direct way to catch a regression here is to read the
+// real template source (see AGENTS.md -- no view-rendering harness exists on
+// the frontend/Vitest side; src/services/template.spec.ts covers the
+// server-rendered-HTML version of this same assertion via real nunjucks).
+describe('filemanager.njk upload input accept attribute (issue #2034)', () => {
+  it('allows selecting .srt and .vtt subtitle files from the media library upload chooser', () => {
+    const njkPath = join(process.cwd(), 'views', 'workarea', 'modals', 'pages', 'filemanager.njk');
+    const source = readFileSync(njkPath, 'utf-8');
+
+    const inputMatch = source.match(/<input[^>]*class="media-library-upload-input"[^>]*>/);
+    expect(inputMatch).not.toBeNull();
+
+    const acceptMatch = inputMatch[0].match(/accept="([^"]*)"/);
+    expect(acceptMatch).not.toBeNull();
+
+    const acceptedExtensions = acceptMatch[1].split(',').map((s) => s.trim());
+
+    // "Subtitles (srt / vtt)" is offered in the Text iDevice video dialog,
+    // but the shared upload chooser silently rejects both extensions today.
+    expect(acceptedExtensions).toContain('.srt');
+    expect(acceptedExtensions).toContain('.vtt');
+  });
+});
 
 describe('ModalFilemanager', () => {
   let modal;
@@ -757,6 +784,98 @@ it('should filter by accept=3d for 3D models', () => {
       expect(modal.grid.querySelectorAll('.media-library-item').length).toBe(1);
       modal.renderList([asset]);
       expect(modal.listTbody.querySelectorAll('tr').length).toBe(1);
+    });
+  });
+
+  describe('renderCurrentView - single-select preservation (collaborative Yjs refresh)', () => {
+    it('preserves the single-select selection when the asset survives a re-render', () => {
+      const asset = { id: 'a1', filename: 'keep.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.multiSelect = false;
+      modal.viewMode = 'grid';
+      modal.selectedAsset = asset;
+      modal.selectedAssets = [];
+      modal.selectedFolder = null;
+      modal.filteredAssets = [asset];
+
+      const showContentSpy = vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+      const showEmptySpy = vi.spyOn(modal, 'showSidebarEmpty');
+
+      modal.renderCurrentView();
+
+      // Selection reference is kept (points at the freshly-rendered asset).
+      expect(modal.selectedAsset).toBe(asset);
+      // Sidebar shows the asset details instead of being emptied.
+      expect(showContentSpy).toHaveBeenCalledWith(asset);
+      expect(showEmptySpy).not.toHaveBeenCalled();
+      // Visual selection is re-applied to the matching grid item.
+      const item = modal.grid.querySelector('.media-library-item[data-asset-id="a1"]');
+      expect(item).not.toBeNull();
+      expect(item.classList.contains('selected')).toBe(true);
+      // Single selection keeps the rename button enabled.
+      expect(modal.renameBtn.disabled).toBe(false);
+    });
+
+    it('re-applies the selection to the matching list row in list view', () => {
+      const asset = { id: 'a1', filename: 'keep.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.multiSelect = false;
+      modal.viewMode = 'list';
+      modal.selectedAsset = asset;
+      modal.selectedAssets = [];
+      modal.selectedFolder = null;
+      modal.filteredAssets = [asset];
+
+      vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+
+      modal.renderCurrentView();
+
+      expect(modal.selectedAsset).toBe(asset);
+      const row = modal.listTbody.querySelector('tr[data-asset-id="a1"]');
+      expect(row).not.toBeNull();
+      expect(row.classList.contains('selected')).toBe(true);
+    });
+
+    it('refreshes the selection reference to the rebuilt asset object with the same id', () => {
+      const oldAsset = { id: 'a1', filename: 'old.png', mime: 'image/png', blob: new Blob(['x']) };
+      const rebuiltAsset = { id: 'a1', filename: 'renamed.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.multiSelect = false;
+      modal.viewMode = 'grid';
+      modal.selectedAsset = oldAsset;
+      modal.selectedAssets = [];
+      modal.selectedFolder = null;
+      // The remote refresh rebuilt the list with a new object instance.
+      modal.filteredAssets = [rebuiltAsset];
+
+      const showContentSpy = vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+
+      modal.renderCurrentView();
+
+      // The reference is updated to the freshly-rebuilt object, not the stale one.
+      expect(modal.selectedAsset).toBe(rebuiltAsset);
+      expect(showContentSpy).toHaveBeenCalledWith(rebuiltAsset);
+    });
+
+    it('clears the single-select selection when the asset is gone after a re-render', () => {
+      const removedAsset = { id: 'a1', filename: 'gone.png', mime: 'image/png', blob: new Blob(['x']) };
+      const otherAsset = { id: 'a2', filename: 'other.png', mime: 'image/png', blob: new Blob(['x']) };
+      modal.multiSelect = false;
+      modal.viewMode = 'grid';
+      modal.selectedAsset = removedAsset;
+      modal.selectedAssets = [];
+      modal.selectedFolder = null;
+      // The removed asset is no longer in the rendered list.
+      modal.filteredAssets = [otherAsset];
+
+      const showContentSpy = vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+      const showEmptySpy = vi.spyOn(modal, 'showSidebarEmpty');
+
+      modal.renderCurrentView();
+
+      expect(modal.selectedAsset).toBeNull();
+      expect(modal.selectedAssets).toEqual([]);
+      expect(showEmptySpy).toHaveBeenCalled();
+      expect(showContentSpy).not.toHaveBeenCalledWith(removedAsset);
+      // With nothing selected the rename button is disabled again.
+      expect(modal.renameBtn.disabled).toBe(true);
     });
   });
 
@@ -2811,14 +2930,24 @@ describe('getMimeTypeFromFilename', () => {
       expect(modal.deleteBtn?.disabled).toBe(false);
     });
 
-    it('should enable insert button when file is selected', () => {
-      // Insert button is enabled based on file selection, not callback
+    it('should enable insert button when file is selected and an iDevice is being edited', () => {
+      window.eXeLearning.app.idevices = { getIdeviceActive: vi.fn(() => ({ id: 'idevice-1' })) };
       modal.selectedAsset = { id: 'test', filename: 'test.jpg', mime: 'image/jpeg' };
       modal.selectedAssets = [{ id: 'test', filename: 'test.jpg', mime: 'image/jpeg' }];
 
       modal.updateButtonStates();
 
       expect(modal.insertBtn?.disabled).toBe(false);
+    });
+
+    it('should disable insert button when file is selected but no iDevice is being edited', () => {
+      window.eXeLearning.app.idevices = { getIdeviceActive: vi.fn(() => null) };
+      modal.selectedAsset = { id: 'test', filename: 'test.jpg', mime: 'image/jpeg' };
+      modal.selectedAssets = [{ id: 'test', filename: 'test.jpg', mime: 'image/jpeg' }];
+
+      modal.updateButtonStates();
+
+      expect(modal.insertBtn?.disabled).toBe(true);
     });
 
     it('should disable insert button when no file is selected', () => {

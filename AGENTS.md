@@ -157,7 +157,7 @@ CLIENT (Browser)                        SERVER (Bun/Elysia)
 YjsDocumentManager (Y.Doc)              SessionManager: lightweight metadata
 ├── navigation (Y.Array)                WebSocket: stateless relay
 ├── metadata (Y.Map)                    Database: projects + yjs snapshots
-├── assets (Y.Map)                      Filesystem: FILES_DIR/assets/{uuid}/
+├── assets (Y.Map)                      Filesystem: FILES_DIR/assets/{shard}/{uuid}/
 └── themeFiles (Y.Map)
 ```
 
@@ -185,7 +185,7 @@ Client-side storage:
 
 ```
 FILES_DIR/
-├── assets/{projectUuid}/           # Permanent project assets
+├── assets/{shard}/{projectUuid}/   # Permanent project assets (shard = first 2 hex chars of UUID, ADR-2250-01)
 ├── tmp/{year}/{month}/{day}/{id}/  # Temporary files
 ├── dist/{year}/{month}/{day}/{id}/ # Ready-to-download exports
 ├── chunks/                         # Upload chunks
@@ -196,6 +196,8 @@ FILES_DIR/
 Key rules:
 - Directories created **lazily** (on-demand), never eagerly
 - Assets use project **UUID**, not numeric ID
+- `assets.storage_path` is stored **relative to FILES_DIR** (`assets/<shard>/<uuid>/...`, POSIX separators) —
+  never absolute; always build/resolve through `src/utils/asset-paths.ts` via `src/services/file-helper.ts`
 - Always use `isPathSafe()` for user-supplied paths
 - Use `path.join()` for cross-platform paths
 
@@ -240,6 +242,25 @@ The UI **tries browser-side first**, falling back to server-side.
 ### 7.10 Embedding
 
 Static editor embeds in LMS plugins (WordPress, Moodle, Drupal, Omeka-S) via iframe + postMessage. Key files: `RuntimeConfig.js`, `Capabilities.js`, `EmbeddingBridge.js`, `app.js`, `previewPanel.js`, `main.scss`. See `doc/development/embedding.md`.
+
+### 7.11 Architecture Decision Records (ADR) & change documents
+
+Significant technical work is documented before or alongside the code. Full policy: [ADR guide](doc/architecture/adr/README.md), [change guide](doc/architecture/changes/README.md).
+
+**Identifiers are based on the GitHub tracking number — there is NO global counter.** Never compute `max(existing) + 1`; that rule is retired (see [ADR-2232-01](doc/architecture/adr/ADR-2232-01-use-tracking-issue-based-architecture-identifiers.md)). The tracking number is the change's **issue** if it has one, otherwise its **pull request** — GitHub draws both from one repository-wide sequence, so they never collide. **Never open an issue just to obtain an identifier.**
+
+- **ADR filename**: `ADR-<number>-<NN>-<decision-slug>.md`, e.g. `ADR-1858-02-use-asset-uri-references.md`. `<NN>` is a two-digit sequence scoped **only to that tracking number**, starting at `01`; it is present even for a single ADR. The slug names the decision, not the topic. Frontmatter `id` and `tracking_issue` must match the filename (`tracking_issue` keeps its name because GitHub models a PR as an issue).
+- **Change documents**: one directory per change, `doc/architecture/changes/<number>-<change-slug>/`, holding any of `proposal.md`, `spec.md`, `design.md`, `research.md`, `tasks.md`. **Create only the files with real content** — no empty placeholders — and don't duplicate content across them.
+- **Create or update an ADR** when a change introduces or modifies a **durable architecture decision**: architecture, storage model, file formats (ELP/ELPX), import/export behavior, the collaboration model, security/sandboxing, accessibility strategy, public APIs (REST v1, embedding bridge), or AI-generation workflows. Don't create one ADR per section of a design, and don't create empty ADRs to fill sequence gaps — gaps are expected.
+- **Create a change directory** for significant features, major refactors, design gates, cross-cutting changes, or proposals with multiple implementation phases. **Durable decisions inside a design must link to an ADR** (existing or newly proposed) — don't bury the decision.
+- Templates: `doc/architecture/adr/template.md`, `doc/architecture/changes/template.md`.
+- **There is no committed index.** `make architecture-records` prints one on demand; `make architecture-check` validates identifiers and metadata and runs in CI. Never create a `records.md` — a generated file in git conflicts on every concurrent branch, and these records are contributor-facing, so they are excluded from the published docs site.
+- **Do not rewrite accepted ADRs** — supersede them with a new ADR (`supersedes` / `superseded_by`, and set the old one to `status: Superseded`). **Do not rewrite implemented designs** except for typo/link fixes.
+- Status values: ADRs use `Proposed` / `Accepted` / `Rejected` / `Superseded`; change documents use `draft` / `in-review` / `accepted` / `implemented` / `superseded` / `abandoned`. Status lives in the frontmatter **only** — never add a `## Status` section.
+- `implementation_prs` / `related.prs` are traceability lists, not the identifier. The identifier is the single stable number in `tracking_issue`.
+- Retired `ADR-NNNN` / `SDD-NNNN` identifiers must not appear in new content; CI fails on them. See [`doc/architecture/migration-map.md`](doc/architecture/migration-map.md).
+- Document AI assistance in the frontmatter (`ai_assistance.tool` / `ai_assistance.model`; `none` if not used).
+- Mention any ADRs or change documents a PR creates or updates in the PR description.
 
 ## 8. Environment Configuration
 
@@ -317,6 +338,7 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | [xlf-translate](.agents/skills/xlf-translate/SKILL.md) | Filling empty `<target>` elements in XLF files with `~`-prefixed translations |
 | [mkdocs-nav](.agents/skills/mkdocs-nav/SKILL.md) | Sync `mkdocs.yml` nav with the actual contents of `doc/` |
 | [api-v1](.agents/skills/api-v1/SKILL.md) | External REST API v1 endpoints |
+| [changelog](.agents/skills/changelog/SKILL.md) | Drafting or updating `public/CHANGELOG.md` from merged PRs |
 
 ## 12. Deep-Dive Documentation
 
@@ -333,3 +355,5 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | Styles/Themes | [doc/development/styles.md](doc/development/styles.md) |
 | Conventions | [doc/conventions.md](doc/conventions.md) |
 | Architecture | [doc/architecture.md](doc/architecture.md) |
+| Architecture Decision Records | [doc/architecture/adr/README.md](doc/architecture/adr/README.md) |
+| Software Design Documents | [doc/architecture/sdd/README.md](doc/architecture/sdd/README.md) |

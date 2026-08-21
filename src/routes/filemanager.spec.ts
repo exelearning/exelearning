@@ -10,6 +10,10 @@ import * as assetQueries from '../db/queries/assets';
 import { findProjectByUuid, findAssetByClientId, updateAsset, checkProjectAccess } from '../db/queries';
 import { createFileManagerRoutes } from './filemanager';
 import { createFolderManagerService } from '../services/folder-manager';
+import {
+    resolveAssetStoragePath as resolveAssetStoragePathPure,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
+} from '../utils/asset-paths';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
@@ -101,14 +105,17 @@ describe('File Manager Routes', () => {
             title: 'Test Project',
         });
 
-        // Create folder manager with injected dependencies
+        // Create folder manager with injected dependencies. The storage
+        // resolvers are bound to tempDir so stored FILES_DIR-relative paths
+        // (and legacy absolute fixtures under tempDir) resolve there.
         const folderManager = createFolderManagerService({
             db,
             queries: assetQueries,
             fs,
             path,
             fflate,
-            getProjectAssetsDir: (uuid: string) => path.join(tempDir, 'assets', uuid),
+            resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(tempDir, storagePath),
+            tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(tempDir, storagePath),
         });
 
         // Create routes with injected dependencies

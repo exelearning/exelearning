@@ -96,10 +96,6 @@ label[for=geogebraActivityHeight] {
     visibility: hidden
 }
 
-#geogebraActivitySize {
-    display: none
-}
-
 #geogebraActivityScale,
 #geogebraActivityWeight {
     width: 55px;

@@ -8,9 +8,11 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 
-import { ElpxImporter, ZipLimitError, DEFAULT_ZIP_LIMITS } from './ElpxImporter';
+import { ElpxImporter, ZipLimitError, DEFAULT_ZIP_LIMITS, inspectZipArchive } from './ElpxImporter';
 import { FileSystemAssetHandler } from './FileSystemAssetHandler';
 import type { Logger } from './interfaces';
+import { YjsDocumentAdapter } from '../export/adapters/YjsDocumentAdapter';
+import { generateOdeXml } from '../export/generators/OdeXmlGenerator';
 
 // Silent logger for tests
 const silentLogger: Logger = {
@@ -341,6 +343,53 @@ describe('ElpxImporter', () => {
             ydoc.destroy();
         });
 
+        /**
+         * #2223. `missing-asset-refs.elpx` is a Classify activity whose package
+         * carries no `content/resources/` at all, so its eight references have
+         * nothing to resolve against and reach the editor as raw placeholders.
+         */
+        it('should report the activities whose asset references the package cannot satisfy', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/missing-asset-refs.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.assets).toBe(0);
+            expect(result.missingAssets).toHaveLength(1);
+            expect(result.missingAssets![0].ideviceType).toBe('classify');
+            expect(result.missingAssets![0].paths.sort()).toEqual([
+                'ardilla.svg',
+                'chipmunk_name.mp3',
+                'leon.svg',
+                'lion_name.mp3',
+                'rabbit.svg',
+                'rabbit_name.mp3',
+                'tiger_name.mp3',
+                'tigre.svg',
+            ]);
+
+            ydoc.destroy();
+        });
+
+        it('should leave the report empty when every asset reference resolves', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.missingAssets).toEqual([]);
+
+            ydoc.destroy();
+        });
+
         it('should preserve escaped script-like text in text iDevice JSON properties', async () => {
             const textTextarea =
                 'Text with the word &lt;script&gt; as plain text. Content after the marker must remain visible.';
@@ -419,6 +468,110 @@ describe('ElpxImporter', () => {
             expect(importedProps.textTextarea).not.toContain('<script>');
 
             ydoc.destroy();
+        });
+    });
+
+    describe('damaged jsonProperties preservation (#2190)', () => {
+        // The verbatim payload persisted inside test/fixtures/damaged-trueorfalse-json.elpx:
+        // the #2177 corruption shape, where lost escape backslashes leave raw quotes
+        // inside a JSON string. It must never parse.
+        const DAMAGED_RAW =
+            '{"ideviceId":"idevice-damaged-malformed","typeGame":"TrueOrFalse","questionsData":[{"baseText":"<audio controls="controls" src=""><a href="">audio.webm</a></audio>","answer":"True"}]}';
+
+        const getComponentById = (ydoc: Y.Doc, componentId: string): Y.Map<unknown> | null => {
+            const navigation = ydoc.getArray('navigation');
+            for (let p = 0; p < navigation.length; p++) {
+                const page = navigation.get(p) as Y.Map<unknown>;
+                const blocks = page.get('blocks') as Y.Array<unknown>;
+                for (let b = 0; b < blocks.length; b++) {
+                    const block = blocks.get(b) as Y.Map<unknown>;
+                    const components = block.get('components') as Y.Array<unknown>;
+                    for (let c = 0; c < components.length; c++) {
+                        const comp = components.get(c) as Y.Map<unknown>;
+                        if (comp.get('id') === componentId) return comp;
+                    }
+                }
+            }
+            return null;
+        };
+
+        it('preserves the raw payload of a damaged activity and reports it', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/damaged-trueorfalse-json.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // The rest of the project imports normally.
+            expect(result.pages).toBe(1);
+            expect(result.blocks).toBe(3);
+            expect(result.components).toBe(3);
+
+            // The damaged payload survives byte for byte instead of becoming {} —
+            // and it is genuinely unparseable, which is what lets the workarea
+            // detect it and block editing (#2178).
+            const damaged = getComponentById(ydoc, 'idevice-damaged-malformed');
+            expect(damaged?.get('jsonProperties')).toBe(DAMAGED_RAW);
+            expect(() => JSON.parse(DAMAGED_RAW)).toThrow();
+
+            // The import result names the affected activity for the notice.
+            expect(result.malformedProperties).toEqual([
+                { componentId: 'idevice-damaged-malformed', ideviceType: 'trueorfalse' },
+            ]);
+
+            // Valid siblings are unaffected: empty stays empty, the text block parses.
+            expect(getComponentById(ydoc, 'idevice-damaged-empty')?.get('jsonProperties')).toBe('{}');
+            const textProps = JSON.parse(
+                getComponentById(ydoc, 'idevice-after-damaged')?.get('jsonProperties') as string,
+            ) as { textTextarea: string };
+            expect(textProps.textTextarea).toContain('after the damaged activities');
+
+            ydoc.destroy();
+        });
+
+        it('leaves the report empty when every payload parses', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.malformedProperties).toEqual([]);
+
+            ydoc.destroy();
+        });
+
+        it('keeps the damaged payload through an export round-trip instead of normalizing it to {}', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/damaged-trueorfalse-json.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // Export the imported document the way a save does: through the
+            // shared adapter + content.xml generator.
+            const manager = {
+                getMetadata: () => ydoc.getMap('metadata'),
+                getNavigation: () => ydoc.getArray('navigation'),
+                projectId: 'roundtrip-test',
+            };
+            const adapter = new YjsDocumentAdapter(manager as never);
+            const contentXml = generateOdeXml(adapter.getMetadata(), adapter.getNavigation());
+            expect(contentXml).toContain(DAMAGED_RAW);
+
+            // Re-importing the exported XML must still carry the original data.
+            const ydoc2 = new Y.Doc();
+            const importer2 = new ElpxImporter(ydoc2, null, silentLogger);
+            await importer2.importFromZipContents({
+                'content.xml': new TextEncoder().encode(contentXml),
+            });
+            expect(getComponentById(ydoc2, 'idevice-damaged-malformed')?.get('jsonProperties')).toBe(DAMAGED_RAW);
+
+            ydoc.destroy();
+            ydoc2.destroy();
         });
     });
 
@@ -531,11 +684,13 @@ describe('ElpxImporter', () => {
         it('rejects a per-entry decompression bomb without inflating it', async () => {
             const fflate = await import('fflate');
 
-            // 200 MB of zeros compresses to ~200 KB (a ~1000:1 bomb). With a 5 MB
-            // per-entry cap the importer must refuse it BEFORE inflation. fflate
-            // reads originalSize from the central directory in the filter callback,
-            // so the 200 MB is never materialised.
-            const bombPayload = new Uint8Array(200 * 1024 * 1024);
+            // A 2 MB run of zeros compresses to a few KB (a strong bomb ratio). With a
+            // 1 MB per-entry cap the importer must refuse it BEFORE inflation. fflate
+            // reads originalSize from the central directory in the filter callback, so
+            // the payload is never materialised — the absolute size is irrelevant to the
+            // guard, only originalSize > cap matters, so a small payload exercises the
+            // same code path while keeping zipSync at milliseconds.
+            const bombPayload = new Uint8Array(2 * 1024 * 1024);
             const zip = fflate.zipSync(
                 {
                     'content.xml': new TextEncoder().encode(minimalContentXml),
@@ -544,11 +699,11 @@ describe('ElpxImporter', () => {
                 { level: 6 },
             );
             // Sanity: the crafted archive really is tiny on disk (the DoS vector).
-            expect(zip.length).toBeLessThan(2 * 1024 * 1024);
+            expect(zip.length).toBeLessThan(64 * 1024);
 
             const ydoc = new Y.Doc();
             const importer = new ElpxImporter(ydoc, null, silentLogger, {
-                maxEntryBytes: 5 * 1024 * 1024,
+                maxEntryBytes: 1 * 1024 * 1024,
             });
 
             await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
@@ -561,19 +716,21 @@ describe('ElpxImporter', () => {
             const fflate = await import('fflate');
 
             // Several individually-acceptable entries that together blow the total cap.
-            const chunk = new Uint8Array(2 * 1024 * 1024); // 2 MB each (compresses small)
+            // Each entry's originalSize is read from the central directory, so small
+            // zeroed chunks keep zipSync at milliseconds while still tripping the guard.
+            const chunk = new Uint8Array(1 * 1024 * 1024); // 1 MB each (compresses small)
             const entries: Record<string, Uint8Array> = {
                 'content.xml': new TextEncoder().encode(minimalContentXml),
             };
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 5; i++) {
                 entries[`pad-${i}.bin`] = chunk;
             }
             const zip = fflate.zipSync(entries, { level: 6 });
 
             const ydoc = new Y.Doc();
             const importer = new ElpxImporter(ydoc, null, silentLogger, {
-                maxEntryBytes: 5 * 1024 * 1024, // each entry passes
-                maxTotalBytes: 8 * 1024 * 1024, // but the sum does not
+                maxEntryBytes: 2 * 1024 * 1024, // each 1 MB entry passes
+                maxTotalBytes: 4 * 1024 * 1024, // but the 5 MB sum does not
             });
 
             await expect(importer.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
@@ -608,20 +765,22 @@ describe('ElpxImporter', () => {
             const fflate = await import('fflate');
 
             // Inner ELP carries the bomb; the outer ZIP wraps it as a single .elp entry,
-            // exercising the nested-ELP branch in importFromBuffer.
+            // exercising the nested-ELP branch in importFromBuffer. A 2 MB zeroed payload
+            // over a 1 MB cap trips the same guard as a huge one (originalSize is read
+            // from the central directory, never inflated) while staying fast.
             const innerBomb = fflate.zipSync(
                 {
                     'content.xml': new TextEncoder().encode(minimalContentXml),
-                    'bomb.bin': new Uint8Array(200 * 1024 * 1024),
+                    'bomb.bin': new Uint8Array(2 * 1024 * 1024),
                 },
                 { level: 6 },
             );
             const outerZip = fflate.zipSync({ 'project.elp': innerBomb }, { level: 6 });
-            expect(outerZip.length).toBeLessThan(2 * 1024 * 1024);
+            expect(outerZip.length).toBeLessThan(64 * 1024);
 
             const ydoc = new Y.Doc();
             const importer = new ElpxImporter(ydoc, null, silentLogger, {
-                maxEntryBytes: 5 * 1024 * 1024,
+                maxEntryBytes: 1 * 1024 * 1024,
             });
 
             await expect(importer.importFromBuffer(outerZip)).rejects.toThrow(ZipLimitError);
@@ -679,6 +838,94 @@ describe('ElpxImporter', () => {
             expect(result.pages).toBeGreaterThan(0);
 
             ydoc.destroy();
+        });
+    });
+
+    describe('preflight inspection and runtime policy', () => {
+        const minimalContentXml = '<?xml version="1.0" encoding="UTF-8"?><odeProperties></odeProperties>';
+
+        it('inspectZipArchive reports entry metadata without enforcing limits or inflating', async () => {
+            const fflate = await import('fflate');
+            // A 3 MB run of zeros compresses tiny; inspection reads the declared
+            // originalSize from the central directory, so it never inflates.
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'big.bin': new Uint8Array(3 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+            expect(zip.length).toBeLessThan(64 * 1024);
+
+            const inspection = inspectZipArchive(zip, 'archive');
+
+            expect(inspection.entryCount).toBe(2);
+            expect(inspection.totalBytes).toBe(3 * 1024 * 1024 + minimalContentXml.length);
+            expect(inspection.largestEntry?.name).toBe('big.bin');
+            expect(inspection.largestEntry?.size).toBe(3 * 1024 * 1024);
+        });
+
+        it('rejects an invalid limits override at construction time', () => {
+            const ydoc = new Y.Doc();
+            expect(() => new ElpxImporter(ydoc, null, silentLogger, { maxEntryBytes: -1 })).toThrow();
+            expect(() => new ElpxImporter(ydoc, null, silentLogger, { maxEntryBytes: Number.NaN })).toThrow();
+            expect(() => new ElpxImporter(ydoc, null, silentLogger, { maxEntries: 2.5 })).toThrow();
+            ydoc.destroy();
+        });
+
+        it('throws a structured ZipLimitError identifying the offending entry', async () => {
+            const fflate = await import('fflate');
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'video.mp4': new Uint8Array(2 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger, { maxEntryBytes: 1 * 1024 * 1024 });
+
+            let caught: ZipLimitError | null = null;
+            try {
+                await importer.importFromBuffer(zip);
+            } catch (err) {
+                caught = err as ZipLimitError;
+            }
+            expect(caught).toBeInstanceOf(ZipLimitError);
+            expect(caught?.details.kind).toBe('entry-size');
+            expect(caught?.details.entryName).toBe('video.mp4');
+            expect(caught?.details.actualValue).toBe(2 * 1024 * 1024);
+            expect(caught?.details.limitValue).toBe(1 * 1024 * 1024);
+            ydoc.destroy();
+        });
+
+        it('accepts, under a larger runtime override, an entry the conservative cap rejects', async () => {
+            const fflate = await import('fflate');
+            // 2 MB entry: rejected by a 1 MB conservative cap, accepted by a 4 MB
+            // desktop-style cap. This is the core of the #2193 fix: the same
+            // archive succeeds only because an explicit larger policy is injected.
+            const zip = fflate.zipSync(
+                {
+                    'content.xml': new TextEncoder().encode(minimalContentXml),
+                    'video.mp4': new Uint8Array(2 * 1024 * 1024),
+                },
+                { level: 6 },
+            );
+
+            const rejectDoc = new Y.Doc();
+            const conservative = new ElpxImporter(rejectDoc, null, silentLogger, { maxEntryBytes: 1 * 1024 * 1024 });
+            await expect(conservative.importFromBuffer(zip)).rejects.toThrow(ZipLimitError);
+            rejectDoc.destroy();
+
+            const acceptDoc = new Y.Doc();
+            const desktop = new ElpxImporter(acceptDoc, null, silentLogger, {
+                maxEntryBytes: 4 * 1024 * 1024,
+                maxTotalBytes: 8 * 1024 * 1024,
+            });
+            const result = await desktop.importFromBuffer(zip);
+            expect(result.assets).toBeGreaterThanOrEqual(0);
+            acceptDoc.destroy();
         });
     });
 
@@ -1806,6 +2053,104 @@ describe('ElpxImporter - findAssetUrlForPath coverage', () => {
 
             // Should contain asset:// URL
             expect(htmlView).toContain('asset://');
+
+            ydoc.destroy();
+        });
+
+        it('should convert images embedded in a legacy dropdown (ListaIdevice) form to asset:// URLs', async () => {
+            // Regression for legacy "Actividad desplegable" (ListaIdevice → form):
+            // the image lives inside the question HTML stored in an iDevice
+            // PROPERTY (questionsData[].baseText), not in htmlView. It must still
+            // be rewritten to an asset:// URL, otherwise the picture renders
+            // broken and only its alt text is shown.
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.listaidevice.ListaIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Dropdown"/>
+              <string role="key" value="_content"/>
+              <instance class="exe.engine.listaidevice.ListaField" reference="4">
+                <dictionary>
+                  <string role="key" value="_encodedContent"/>
+                  <unicode value="&lt;p&gt;&lt;img src=&quot;dropimg.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                  <string role="key" value="content_w_resourcePaths"/>
+                  <unicode value="&lt;p&gt;&lt;img src=&quot;resources/dropimg.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                  <string role="key" value="otras"/>
+                  <unicode value="wrong1|wrong2"/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            // Image stored at root level (legacy format)
+            const imageData = new Uint8Array([137, 80, 78, 71]); // PNG header
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'dropimg.png': imageData,
+            };
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromZipContents(zipContents);
+            expect(result.assets).toBeGreaterThanOrEqual(1);
+
+            // Collect every string stored under the imported navigation tree
+            // (iDevice properties are serialised into the jsonProperties string).
+            const collectStrings = (obj: unknown): string[] => {
+                if (typeof obj === 'string') return [obj];
+                if (obj instanceof Y.Text) return [obj.toString()];
+                if (obj instanceof Y.Map) {
+                    const out: string[] = [];
+                    obj.forEach(v => out.push(...collectStrings(v)));
+                    return out;
+                }
+                if (obj instanceof Y.Array) {
+                    const out: string[] = [];
+                    obj.forEach(v => out.push(...collectStrings(v)));
+                    return out;
+                }
+                if (obj && typeof obj === 'object') {
+                    return Object.values(obj).flatMap(collectStrings);
+                }
+                return [];
+            };
+
+            const navigation = ydoc.getArray('navigation');
+            const questionProps = collectStrings(navigation).filter(s => s.includes('questionsData'));
+
+            // The dropdown must have been imported as a form with questionsData
+            expect(questionProps.length).toBeGreaterThan(0);
+            const parsed = JSON.parse(questionProps[0]) as { questionsData: { baseText: string }[] };
+            const baseText = parsed.questionsData[0].baseText;
+
+            // Gap markers must survive, and the embedded image must be rewritten
+            // to an asset:// URL rather than left as a bare or resources/ path.
+            expect(baseText).toContain('<u>right</u>');
+            expect(baseText).toContain('asset://');
+            expect(baseText).not.toContain('src="dropimg.png"');
+            expect(baseText).not.toContain('src="resources/dropimg.png"');
 
             ydoc.destroy();
         });
@@ -3392,5 +3737,79 @@ describe('ElpxImporter - remapInternalPageLinks prefix-collision safety', () => 
         expect(remapped).not.toContain(`exe-node:${fresh.get('Page 10')}0`);
 
         ydoc.destroy();
+    });
+
+    describe('legacy UDL iDevice with reference-based fields (issue #2159)', () => {
+        let udlTestDir: string;
+
+        beforeEach(() => {
+            udlTestDir = path.join('/tmp', `elp-udl-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+            if (!existsSync(udlTestDir)) {
+                mkdirSync(udlTestDir, { recursive: true });
+            }
+        });
+
+        afterEach(() => {
+            if (existsSync(udlTestDir)) {
+                rmSync(udlTestDir, { recursive: true, force: true });
+            }
+        });
+
+        // Collect every imported component together with its owning page title.
+        function collectComponents(ydoc: Y.Doc): { pageTitle: string; type: string; htmlView: string }[] {
+            const out: { pageTitle: string; type: string; htmlView: string }[] = [];
+            const nav = ydoc.getArray('navigation');
+            for (let i = 0; i < nav.length; i++) {
+                const page = nav.get(i) as Y.Map<unknown>;
+                const pageTitle = (page.get('title') as string) || '';
+                const blocks = page.get('blocks') as Y.Array<unknown> | undefined;
+                if (!blocks) continue;
+                for (let b = 0; b < blocks.length; b++) {
+                    const block = blocks.get(b) as Y.Map<unknown>;
+                    const comps = block.get('components') as Y.Array<unknown> | undefined;
+                    if (!comps) continue;
+                    for (let c = 0; c < comps.length; c++) {
+                        const comp = comps.get(c) as Y.Map<unknown>;
+                        out.push({
+                            pageTitle,
+                            type: (comp.get('type') as string) || '',
+                            htmlView: (comp.get('htmlView') as string) || '',
+                        });
+                    }
+                }
+            }
+            return out;
+        }
+
+        it('imports the Diario node with its own content, not another node duplicated', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_epvelp_udl.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(udlTestDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+            expect(result.pages).toBeGreaterThan(0);
+            expect(result.components).toBeGreaterThan(0);
+
+            const components = collectComponents(ydoc);
+            const allHtml = components.map(c => c.htmlView).join('\n');
+
+            // Field 33 content. Before the fix, DefaultHandler overwrote it with the
+            // content of an unrelated field (36), so this text was never imported.
+            expect(allHtml).toContain('Ides cubrir os apartados da Fase 2');
+
+            // The component holding field 33 content must not also carry field 36 content
+            // (the duplication reported in the issue).
+            const withField33 = components.filter(c => c.htmlView.includes('Ides cubrir os apartados da Fase 2'));
+            expect(withField33.length).toBeGreaterThan(0);
+            for (const comp of withField33) {
+                expect(comp.htmlView).not.toContain('Agora que xa sabedes cal é o reto');
+                expect(comp.type).toBe('udl-content');
+            }
+
+            ydoc.destroy();
+        });
     });
 });

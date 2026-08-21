@@ -10,7 +10,6 @@
  */
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import { SignJWT } from 'jose';
 import {
     findProjectByUuid as findProjectByUuidDefault,
@@ -55,7 +54,6 @@ export function createYjsDebugRoutes(deps: YjsDebugDependencies = defaultDepende
 
     return (
         new Elysia({ name: 'yjs-debug-routes', prefix: '/api/yjs/debug' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

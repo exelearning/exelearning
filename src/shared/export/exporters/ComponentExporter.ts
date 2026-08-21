@@ -264,7 +264,12 @@ export class ComponentExporter extends BaseExporter {
     private generateIdeviceExportXml(comp: ExportComponent, blockId: string, pageId: string): string {
         // Content already has {{context_path}}/content/resources/ URLs from preprocessing
         const htmlContent = comp.content || '';
-        const propsJson = JSON.stringify(comp.properties || {});
+        // A payload the adapter could not parse (#2190) is exported verbatim —
+        // it is the only copy of the damaged activity's data.
+        const propsJson =
+            typeof comp.malformedProperties === 'string'
+                ? comp.malformedProperties
+                : JSON.stringify(comp.properties || {});
 
         let xml = '      <odeComponent>\n';
         xml += `        <odeIdeviceId>${this.escapeXml(comp.id)}</odeIdeviceId>\n`;
@@ -365,7 +370,10 @@ export class ComponentExporter extends BaseExporter {
                     const exportPath = exportPathMap.get(asset.id);
                     if (exportPath) {
                         const zipPath = `content/resources/${exportPath}`;
-                        this.zip.addFile(zipPath, asset.data);
+                        // Route through the shared writer so .srt subtitle assets are
+                        // converted to WebVTT (buildAssetExportPathMap already renamed
+                        // the path .srt -> .vtt) -- see issue #2034.
+                        await this.writeAssetToZip(zipPath, asset);
                         console.log(`[ComponentExporter] Added asset: ${zipPath}`);
                         addedCount++;
                     } else {

@@ -140,7 +140,7 @@ test.describe('Save Detection - Static', () => {
         await expect(saveButton).toHaveClass(/unsaved/);
     });
 
-    test('static save (download) clears dirty state', async ({ staticPage }) => {
+    test('static save with an asset clears every beforeunload state', async ({ staticPage }) => {
         test.skip(test.info().project.name !== 'static', 'Static-only tests');
         const page = staticPage;
 
@@ -154,29 +154,57 @@ test.describe('Save Detection - Static', () => {
             { timeout: 10000 },
         );
 
-        await page.evaluate(() => {
+        await page.dispatchEvent('body', 'pointerdown');
+        await page.waitForFunction(() => (window as any).UnsavedChangesHelper?._beforeUnloadHandler != null);
+
+        await page.evaluate(async () => {
             const bridge = (window as any).eXeLearning.app.project._yjsBridge;
-            const metadata = bridge.documentManager.getMetadata();
-            metadata.set('title', 'Static Save Clears Dirty');
+            const file = new File(['issue-2200'], 'issue-2200.png', { type: 'image/png' });
+            const assetUrl = await bridge.assetManager.insertImage(file);
+            bridge.documentManager.getMetadata().set('description', assetUrl);
         });
-        await page.waitForTimeout(300);
+
+        await page.waitForFunction(() => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            return bridge?.documentManager?.isDirty === true && bridge?.assetManager?.hasUnsavedAssets() === true;
+        });
 
         const saveIndicator = page.locator('#head-top-save-button');
         await expect(saveIndicator).toHaveClass(/unsaved/);
 
-        await page.evaluate(() => {
-            const btn = document.getElementById('head-top-download-button');
-            btn?.click();
+        const beforeSave = await page.evaluate(() => {
+            const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+            window.dispatchEvent(event);
+            return {
+                hasUnsavedChanges: (window as any).UnsavedChangesHelper.hasUnsavedChanges(),
+                defaultPrevented: event.defaultPrevented,
+            };
+        });
+        expect(beforeSave).toEqual({ hasUnsavedChanges: true, defaultPrevented: true });
+
+        await page.evaluate(async () => {
+            await (window as any).eXeLearning.app.menus.navbar.file.downloadProjectViaYjs();
         });
 
-        await page.waitForFunction(
-            () => {
-                const btn = document.getElementById('head-top-save-button');
-                return btn?.classList.contains('saved');
-            },
-            undefined,
-            { timeout: 10000 },
-        );
+        const afterSave = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+            window.dispatchEvent(event);
+            return {
+                isDirty: bridge.documentManager.isDirty,
+                hasUnsavedAssets: bridge.assetManager.hasUnsavedAssets(),
+                hasUnsavedChanges: (window as any).UnsavedChangesHelper.hasUnsavedChanges(),
+                defaultPrevented: event.defaultPrevented,
+                returnValue: event.returnValue,
+            };
+        });
+        expect(afterSave).toEqual({
+            isDirty: false,
+            hasUnsavedAssets: false,
+            hasUnsavedChanges: false,
+            defaultPrevented: false,
+            returnValue: true,
+        });
     });
 
     test('static open shows save prompt when dirty', async ({ staticPage }) => {

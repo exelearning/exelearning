@@ -117,6 +117,58 @@ describe('DefaultHandler', () => {
             expect(handler.extractHtmlView(dict)).toBe('Fallback content');
         });
 
+        it('resolves a <reference> field via the context resolver (Strategy 1, #2159)', () => {
+            const referenced = createDomElement(`
+                <instance class="exe.engine.field.TextAreaField" reference="33">
+                    <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Correct referenced content"/>
+                    </dictionary>
+                </instance>
+            `);
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            const context = {
+                language: 'en',
+                ideviceId: 'idevice-1',
+                className: 'exe.engine.jsidevice.JsIdevice',
+                resolveReference: (key: string) => (key === '33' ? referenced : undefined),
+            };
+            expect(handler.extractHtmlView(dict, context)).toBe('Correct referenced content');
+        });
+
+        it('does not pull a foreign nested field when the fields entry is an unresolved reference (#2159)', () => {
+            // fields -> <reference> (unresolved, no resolver) plus a foreign TextAreaField
+            // inlined under a Node boundary. The fallback must stay empty instead of
+            // returning the foreign iDevice content.
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.node.Node">
+                        <dictionary>
+                            <instance class="exe.engine.field.TextAreaField">
+                                <dictionary>
+                                    <string role="key" value="content_w_resourcePaths"/>
+                                    <unicode value="Foreign content"/>
+                                </dictionary>
+                            </instance>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractHtmlView(dict)).toBe('');
+        });
+
         it('should remove legacy outer exe-text wrapper for normal text content', () => {
             const dict = createDomElement(`
                 <dictionary>
@@ -1462,6 +1514,34 @@ describe('FillHandler', () => {
             expect(questions[0].answers).toContain('mat');
         });
 
+        it('prefers content_w_resourcePaths over _encodedContent so cloze image paths keep the resources/ prefix', () => {
+            // Same defect as DropdownHandler: a ClozeField stores its gap text
+            // twice. _encodedContent holds BARE image paths (src="tree.png"),
+            // content_w_resourcePaths holds resources/-prefixed paths that can be
+            // resolved to asset:// URLs on import. Prefer the resolvable copy.
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="_content"/>
+                    <instance class="ClozeField">
+                        <dictionary>
+                            <string role="key" value="_encodedContent"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;tree.png&quot;/&gt;A &lt;u&gt;cone&lt;/u&gt;&lt;/p&gt;"/>
+                            <string role="key" value="content_w_resourcePaths"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;resources/tree.png&quot;/&gt;A &lt;u&gt;cone&lt;/u&gt;&lt;/p&gt;"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict);
+            const questions = props.questionsData as { baseText: string; answers: string[] }[];
+            expect(questions.length).toBe(1);
+            // Cloze gap answers must still be parsed from the <u> markers
+            expect(questions[0].answers).toContain('cone');
+            // The image must keep the resources/ prefix so it resolves to asset://
+            expect(questions[0].baseText).toContain('resources/tree.png');
+            expect(questions[0].baseText).not.toContain('src="tree.png"');
+        });
+
         it('should extract from _cloze key', () => {
             const dict = createDomElement(`
                 <dictionary>
@@ -1713,6 +1793,38 @@ describe('DropdownHandler', () => {
             const questions = props.questionsData as { baseText: string }[];
             expect(questions.length).toBe(1);
             expect(questions[0].baseText).toContain('<u>blank</u>');
+        });
+
+        it('prefers content_w_resourcePaths over _encodedContent so image paths keep the resources/ prefix', () => {
+            // Real legacy ListaIdevice stores the question twice: _encodedContent
+            // holds the editor/display copy with BARE image paths (src="pic.png"),
+            // while content_w_resourcePaths holds the canonical copy with
+            // resources/-prefixed paths (src="resources/pic.png"). Only the
+            // resources/-prefixed form can later be resolved to an asset:// URL,
+            // so the handler must prefer it (as every other field extraction does).
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="_content"/>
+                    <instance class="ListaField">
+                        <dictionary>
+                            <string role="key" value="_encodedContent"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;pic.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                            <string role="key" value="content_w_resourcePaths"/>
+                            <string value="&lt;p&gt;&lt;img src=&quot;resources/pic.png&quot;/&gt;&lt;/p&gt;&lt;p&gt;Pick the &lt;u&gt;right&lt;/u&gt; one&lt;/p&gt;"/>
+                            <string role="key" value="otras"/>
+                            <string value="wrong1|wrong2"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict);
+            const questions = props.questionsData as { baseText: string }[];
+            expect(questions.length).toBe(1);
+            // Dropdown gap markers must survive regardless of which copy is used
+            expect(questions[0].baseText).toContain('<u>right</u>');
+            // The image must keep the resources/ prefix so it resolves to asset://
+            expect(questions[0].baseText).toContain('resources/pic.png');
+            expect(questions[0].baseText).not.toContain('src="pic.png"');
         });
 
         it('should include eXeFormInstructions', () => {
@@ -2662,17 +2774,13 @@ describe('FileAttachHandler', () => {
     });
 
     describe('getTargetType', () => {
-        it('should return text', () => {
-            expect(handler.getTargetType()).toBe('text');
+        it('should return file-attachment', () => {
+            expect(handler.getTargetType()).toBe('file-attachment');
         });
     });
 
     describe('extractHtmlView', () => {
-        it('should return empty for null dict', () => {
-            expect(handler.extractHtmlView(null as unknown as Element)).toBe('');
-        });
-
-        it('should extract introHTML content', () => {
+        it('should return empty (file-attachment renders from JSON properties)', () => {
             const dict = createDomElement(`
                 <dictionary>
                     <string role="key" value="introHTML"/>
@@ -2684,10 +2792,45 @@ describe('FileAttachHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            expect(handler.extractHtmlView(dict)).toContain('These are the instructions');
+            expect(handler.extractHtmlView(dict)).toBe('');
+        });
+    });
+
+    describe('extractFeedback', () => {
+        it('should return empty feedback', () => {
+            const dict = createDomElement(`<dictionary/>`);
+            const result = handler.extractFeedback(dict);
+            expect(result.content).toBe('');
+            expect(result.buttonCaption).toBe('');
+        });
+    });
+
+    describe('extractProperties', () => {
+        it('should return an empty file-attachment state when there is no content', () => {
+            const dict = createDomElement(`<dictionary/>`);
+            const props = handler.extractProperties(dict);
+            expect(props.intro).toBe('');
+            expect(props.showDescriptions).toBe(true);
+            expect(props.attachments).toEqual([]);
         });
 
-        it('should generate file links from fileAttachmentFields', () => {
+        it('should extract intro instructions', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="introHTML"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content_w_resourcePaths"/>
+                            <unicode value="&lt;p&gt;Read me&lt;/p&gt;"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict);
+            expect(props.intro).toContain('Read me');
+        });
+
+        it('should build attachments from fileAttachmentFields with resources/ paths', () => {
             const dict = createDomElement(`
                 <dictionary>
                     <string role="key" value="fileAttachmentFields"/>
@@ -2713,45 +2856,16 @@ describe('FileAttachHandler', () => {
                     </list>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('resources/document.pdf');
-            expect(result).toContain('Important Document');
-            expect(result).toContain('target="_blank"');
-            expect(result).toContain('download="document.pdf"');
+            const props = handler.extractProperties(dict);
+            const attachments = props.attachments as Array<Record<string, unknown>>;
+            expect(attachments.length).toBe(1);
+            expect(attachments[0].url).toBe('resources/document.pdf');
+            expect(attachments[0].filename).toBe('document.pdf');
+            // The legacy file description becomes the modern link label (title).
+            expect(attachments[0].title).toBe('Important Document');
         });
 
-        it('should combine intro and file links', () => {
-            const dict = createDomElement(`
-                <dictionary>
-                    <string role="key" value="introHTML"/>
-                    <instance class="TextAreaField">
-                        <dictionary>
-                            <string role="key" value="content"/>
-                            <unicode value="Intro text"/>
-                        </dictionary>
-                    </instance>
-                    <string role="key" value="fileAttachmentFields"/>
-                    <list>
-                        <instance class="FileField">
-                            <dictionary>
-                                <string role="key" value="fileResource"/>
-                                <instance class="Resource">
-                                    <dictionary>
-                                        <string role="key" value="_storageName"/>
-                                        <string value="file.txt"/>
-                                    </dictionary>
-                                </instance>
-                            </dictionary>
-                        </instance>
-                    </list>
-                </dictionary>
-            `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('Intro text');
-            expect(result).toContain('file.txt');
-        });
-
-        it('should use filename as link text when no description', () => {
+        it('should leave the title empty when there is no real description', () => {
             const dict = createDomElement(`
                 <dictionary>
                     <string role="key" value="fileAttachmentFields"/>
@@ -2770,28 +2884,58 @@ describe('FileAttachHandler', () => {
                     </list>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('>data.csv</a>');
+            const props = handler.extractProperties(dict);
+            const attachments = props.attachments as Array<Record<string, unknown>>;
+            expect(attachments[0].title).toBe('');
+            expect(attachments[0].filename).toBe('data.csv');
         });
 
-        it('should find files from direct FileField list', () => {
+        it('should extract multiple attachments preserving order', () => {
             const dict = createDomElement(`
                 <dictionary>
+                    <string role="key" value="fileAttachmentFields"/>
                     <list>
                         <instance class="FileField">
                             <dictionary>
-                                <string role="key" value="_storageName"/>
-                                <string value="direct.zip"/>
+                                <string role="key" value="fileResource"/>
+                                <instance class="Resource">
+                                    <dictionary>
+                                        <string role="key" value="_storageName"/>
+                                        <string value="a.pdf"/>
+                                    </dictionary>
+                                </instance>
+                            </dictionary>
+                        </instance>
+                        <instance class="FileField">
+                            <dictionary>
+                                <string role="key" value="fileResource"/>
+                                <instance class="Resource">
+                                    <dictionary>
+                                        <string role="key" value="_storageName"/>
+                                        <string value="b.txt"/>
+                                    </dictionary>
+                                </instance>
                             </dictionary>
                         </instance>
                     </list>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('resources/direct.zip');
+            const props = handler.extractProperties(dict);
+            const attachments = props.attachments as Array<Record<string, unknown>>;
+            expect(attachments.map(a => a.filename)).toEqual(['a.pdf', 'b.txt']);
         });
 
-        it('should extract single file resource', () => {
+        it('should honour an explicit showDesc=0 flag', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="showDesc"/>
+                    <bool value="0"/>
+                </dictionary>
+            `);
+            expect(handler.extractProperties(dict).showDescriptions).toBe(false);
+        });
+
+        it('should extract a single file resource (no field list)', () => {
             const dict = createDomElement(`
                 <dictionary>
                     <string role="key" value="fileResource"/>
@@ -2803,40 +2947,9 @@ describe('FileAttachHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict);
-            expect(result).toContain('resources/single.doc');
-        });
-    });
-
-    describe('extractFeedback', () => {
-        it('should return empty feedback', () => {
-            const dict = createDomElement(`<dictionary/>`);
-            const result = handler.extractFeedback(dict);
-            expect(result.content).toBe('');
-            expect(result.buttonCaption).toBe('');
-        });
-    });
-
-    describe('extractProperties', () => {
-        it('should return empty when no content', () => {
-            const dict = createDomElement(`<dictionary/>`);
-            expect(handler.extractProperties(dict)).toEqual({});
-        });
-
-        it('should set textTextarea property', () => {
-            const dict = createDomElement(`
-                <dictionary>
-                    <string role="key" value="introHTML"/>
-                    <instance class="TextAreaField">
-                        <dictionary>
-                            <string role="key" value="content"/>
-                            <unicode value="Content"/>
-                        </dictionary>
-                    </instance>
-                </dictionary>
-            `);
             const props = handler.extractProperties(dict);
-            expect(props.textTextarea).toBe('Content');
+            const attachments = props.attachments as Array<Record<string, unknown>>;
+            expect(attachments[0].url).toBe('resources/single.doc');
         });
     });
 });
@@ -4001,6 +4114,48 @@ describe('GameHandler', () => {
             `);
             const result = handler.extractHtmlView(dict);
             expect(result).toContain('flipcards-DataGame');
+        });
+
+        // Legacy contentv3.xml serializes each object once as <instance reference="N">
+        // and every later mention as a back-pointer <reference key="N">. A game
+        // iDevice whose content field is written as a <reference> must still resolve
+        // to the referenced instance (issue #2167, sibling of #2159).
+        it('should resolve a <reference> field via the context resolver (issue #2167)', () => {
+            const referenced = createDomElement(`
+                <instance class="TextAreaField" reference="33">
+                    <dictionary>
+                        <string role="key" value="content"/>
+                        <unicode value="&lt;div class=&quot;flipcards-DataGame&quot;&gt;{&quot;typeGame&quot;:&quot;FlipCards&quot;}&lt;/div&gt;"/>
+                    </dictionary>
+                </instance>
+            `);
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            const context = {
+                language: 'en',
+                ideviceId: 'idevice-1',
+                className: 'exe.engine.jsidevice.JsIdevice',
+                resolveReference: (key: string) => (key === '33' ? referenced : undefined),
+            };
+            expect(handler.extractHtmlView(dict, context)).toContain('flipcards-DataGame');
+        });
+
+        it('should skip a <reference> field when no resolver is provided', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <reference key="33"/>
+                    </list>
+                </dictionary>
+            `);
+            expect(handler.extractHtmlView(dict)).toBe('');
         });
 
         it('should return empty when no fields', () => {
