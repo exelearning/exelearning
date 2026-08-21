@@ -4,6 +4,10 @@
  * The plugin defines the syntax-highlighting languages offered to the user
  * when wrapping a snippet of code with Prism. These tests guard the dropdown
  * entries so accidental removals during refactors are caught.
+ *
+ * They also execute the real plugin source against a mocked tinymce global to
+ * guard activateButton() against stale editor state (issue #2273): NodeChange
+ * can fire on a destroyed editor whose `dom` is already gone.
  */
 
 /* eslint-disable no-undef */
@@ -82,5 +86,111 @@ describe('pastecode plugin - syntax highlighting language list', () => {
         expect(bashIndex).toBeGreaterThan(-1);
         expect(batchIndex).toBeGreaterThan(cTypeIndex);
         expect(powershellIndex).toBeGreaterThan(batchIndex);
+    });
+});
+
+describe('pastecode plugin - activateButton stale editor guard (issue #2273)', () => {
+    function makeEditor() {
+        const handlers = {};
+        return {
+            ui: {
+                registry: {
+                    addIcon: vi.fn(),
+                    addToggleButton: vi.fn(),
+                    addButton: vi.fn(),
+                    addMenuItem: vi.fn(),
+                },
+            },
+            on(name, callback) {
+                (handlers[name] = handlers[name] || []).push(callback);
+            },
+            off: vi.fn(),
+            dom: {
+                // Same contract as TinyMCE's DOMUtils.getParents: collect the
+                // ancestors matching the selector, walking up from the node.
+                getParents(node, selector) {
+                    const wanted = selector.toUpperCase();
+                    const parents = [];
+                    let current = node && node.parentNode;
+                    while (current) {
+                        if (current.nodeName === wanted) parents.push(current);
+                        current = current.parentNode;
+                    }
+                    return parents;
+                },
+                loadCSS: vi.fn(),
+            },
+            _handlers: handlers,
+        };
+    }
+
+    // Executes the real plugin source (sloppy mode, like a classic script) so
+    // PasteCodeDialog lands on globalThis, then registers it on the editor.
+    function loadPlugin(editor) {
+        let registered = null;
+        const tinymceMock = {
+            PluginManager: {
+                add: (name, callback) => {
+                    registered = callback;
+                },
+            },
+            dom: { DomQuery: vi.fn() },
+            DOM: { setStyle: vi.fn(), setStyles: vi.fn(), setAttrib: vi.fn() },
+        };
+        new Function('tinymce', 'tinyMCE', '_', pluginSource)(tinymceMock, tinymceMock, (s) => s);
+        expect(typeof registered).toBe('function');
+        registered(editor, '/libs/tinymce_5/js/tinymce/plugins/pastecode');
+        return globalThis.PasteCodeDialog;
+    }
+
+    afterEach(() => {
+        delete globalThis.PasteCodeDialog;
+        document.body.innerHTML = '';
+    });
+
+    it('does not throw when NodeChange fires after the editor was destroyed (Sentry repro)', () => {
+        const editor = makeEditor();
+        loadPlugin(editor);
+
+        const toggleConfig = editor.ui.registry.addToggleButton.mock.calls[0][1];
+        const buttonApi = { setActive: vi.fn() };
+        toggleConfig.onSetup(buttonApi);
+
+        // Destroying the editor removes its dom; a late NodeChange still fires.
+        editor.dom = undefined;
+        const nodeChange = editor._handlers.NodeChange[0];
+
+        expect(() => nodeChange({ element: document.createElement('pre') })).not.toThrow();
+        expect(buttonApi.setActive).toHaveBeenCalledWith(false);
+    });
+
+    it('returns false instead of crashing when editor.dom is gone', () => {
+        const editor = makeEditor();
+        const dialog = loadPlugin(editor);
+
+        editor.dom = undefined;
+
+        expect(dialog.activateButton(document.createElement('code'))).toBe(false);
+    });
+
+    it('still activates the button for CODE inside a pre-code wrapper (normal path)', () => {
+        const editor = makeEditor();
+        const dialog = loadPlugin(editor);
+
+        document.body.innerHTML =
+            '<div class="pre-code"><div><pre><code id="target">let a = 1;</code></pre></div></div>';
+        const code = document.getElementById('target');
+
+        expect(dialog.activateButton(code)).toBe(true);
+    });
+
+    it('still keeps the button inactive on plain content (normal path)', () => {
+        const editor = makeEditor();
+        const dialog = loadPlugin(editor);
+
+        document.body.innerHTML = '<div><p id="plain">plain text</p></div>';
+        const paragraph = document.getElementById('plain');
+
+        expect(dialog.activateButton(paragraph)).toBe(false);
     });
 });
