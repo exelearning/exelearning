@@ -60,7 +60,6 @@ describe('YjsProjectManagerMixin', () => {
       YjsModules: {
         initializeProject: mock(() => undefined).mockResolvedValue(mockBridge),
         cleanup: mock(() => undefined).mockResolvedValue(),
-        bindTinyMCE: mock(() => undefined),
       },
       YjsLoader: {
         load: mock(() => undefined).mockResolvedValue(),
@@ -118,9 +117,13 @@ describe('YjsProjectManagerMixin', () => {
       expect(projectManager._yjsBridge).toBeNull();
     });
 
-    it('adds _yjsBindings Map', () => {
+    it('does not install the removed TinyMCE binding helpers (#2169)', () => {
       YjsProjectManagerMixin.applyMixin(projectManager);
-      expect(projectManager._yjsBindings).toBeInstanceOf(Map);
+      expect(projectManager._yjsBindings).toBeUndefined();
+      expect(projectManager.bindEditorToYjs).toBeUndefined();
+      expect(projectManager.unbindEditorFromYjs).toBeUndefined();
+      expect(projectManager._setupTinyMCEHook).toBeUndefined();
+      expect(projectManager._extractIdsFromEditor).toBeUndefined();
     });
 
     it('adds enableYjsMode method', () => {
@@ -141,16 +144,6 @@ describe('YjsProjectManagerMixin', () => {
     it('adds getYjsBridge method', () => {
       YjsProjectManagerMixin.applyMixin(projectManager);
       expect(typeof projectManager.getYjsBridge).toBe('function');
-    });
-
-    it('adds bindEditorToYjs method', () => {
-      YjsProjectManagerMixin.applyMixin(projectManager);
-      expect(typeof projectManager.bindEditorToYjs).toBe('function');
-    });
-
-    it('adds unbindEditorFromYjs method', () => {
-      YjsProjectManagerMixin.applyMixin(projectManager);
-      expect(typeof projectManager.unbindEditorFromYjs).toBe('function');
     });
   });
 
@@ -174,7 +167,6 @@ describe('YjsProjectManagerMixin', () => {
         window.YjsModules = {
           initializeProject: mock(() => undefined).mockResolvedValue(mockBridge),
           cleanup: mock(() => undefined).mockResolvedValue(),
-          bindTinyMCE: mock(() => undefined),
         };
       });
 
@@ -216,10 +208,10 @@ describe('YjsProjectManagerMixin', () => {
       expect(projectManager.intervalSaveOde).toBeNull();
     });
 
-    it('sets up TinyMCE hook', async () => {
+    it('does not install a TinyMCE editor hook (#2169)', async () => {
       await projectManager.enableYjsMode(123, 'token');
 
-      expect(window.$exeTinyMCE.onEditorInit).toBeDefined();
+      expect(window.$exeTinyMCE.onEditorInit).toBeNull();
     });
 
     it('initializes title element binding', async () => {
@@ -274,16 +266,6 @@ describe('YjsProjectManagerMixin', () => {
       projectManager._yjsEnabled = false;
       await projectManager.disableYjsMode();
       // Should not throw
-    });
-
-    it('cleans up bindings', async () => {
-      const mockBinding = { destroy: mock(() => undefined) };
-      projectManager._yjsBindings.set('editor-1', mockBinding);
-
-      await projectManager.disableYjsMode();
-
-      expect(mockBinding.destroy).toHaveBeenCalled();
-      expect(projectManager._yjsBindings.size).toBe(0);
     });
 
     it('calls YjsModules.cleanup', async () => {
@@ -341,67 +323,6 @@ describe('YjsProjectManagerMixin', () => {
     });
   });
 
-  describe('bindEditorToYjs', () => {
-    beforeEach(async () => {
-      YjsProjectManagerMixin.applyMixin(projectManager);
-      await projectManager.enableYjsMode(123, 'token');
-    });
-
-    it('calls YjsModules.bindTinyMCE', () => {
-      const mockEditor = { id: 'editor-1' };
-      projectManager.bindEditorToYjs(mockEditor, 'page-1', 'block-1', 'comp-1');
-
-      expect(window.YjsModules.bindTinyMCE).toHaveBeenCalledWith(
-        mockEditor,
-        'page-1',
-        'block-1',
-        'comp-1'
-      );
-    });
-
-    it('stores binding in _yjsBindings by componentId', () => {
-      const mockBinding = { binding: true };
-      window.YjsModules.bindTinyMCE.mockReturnValue(mockBinding);
-
-      const mockEditor = { id: 'editor-1' };
-      projectManager.bindEditorToYjs(mockEditor, 'page-1', 'block-1', 'comp-1');
-
-      // Binding is stored by componentId, not editor.id
-      expect(projectManager._yjsBindings.get('comp-1')).toBe(mockBinding);
-    });
-
-    it('does nothing if Yjs not enabled', () => {
-      projectManager._yjsEnabled = false;
-
-      const mockEditor = { id: 'editor-1' };
-      projectManager.bindEditorToYjs(mockEditor, 'page-1', 'block-1', 'comp-1');
-
-      expect(window.YjsModules.bindTinyMCE).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('unbindEditorFromYjs', () => {
-    beforeEach(async () => {
-      YjsProjectManagerMixin.applyMixin(projectManager);
-      await projectManager.enableYjsMode(123, 'token');
-    });
-
-    it('destroys binding and removes from map', () => {
-      const mockBinding = { destroy: mock(() => undefined) };
-      projectManager._yjsBindings.set('editor-1', mockBinding);
-
-      projectManager.unbindEditorFromYjs('editor-1');
-
-      expect(mockBinding.destroy).toHaveBeenCalled();
-      expect(projectManager._yjsBindings.has('editor-1')).toBe(false);
-    });
-
-    it('does nothing if binding not found', () => {
-      // Should not throw
-      projectManager.unbindEditorFromYjs('non-existent');
-    });
-  });
-
   describe('save override', () => {
     beforeEach(() => {
       YjsProjectManagerMixin.applyMixin(projectManager);
@@ -419,96 +340,6 @@ describe('YjsProjectManagerMixin', () => {
 
       // The mixin should have overridden save behavior
       // (actual implementation depends on mixin details)
-    });
-  });
-
-  describe('_extractIdsFromEditor', () => {
-    beforeEach(async () => {
-      YjsProjectManagerMixin.applyMixin(projectManager);
-      await projectManager.enableYjsMode(123, 'token');
-    });
-
-    it('returns null when container not available', () => {
-      const mockEditor = {
-        getContainer: mock(() => null),
-      };
-
-      const ids = projectManager._extractIdsFromEditor(mockEditor);
-
-      expect(ids).toBeNull();
-    });
-
-    it('returns null when no page ID found', () => {
-      projectManager.structure = { nodeSelected: null };
-
-      const container = document.createElement('div');
-      const mockEditor = {
-        getContainer: mock(() => container),
-      };
-
-      const ids = projectManager._extractIdsFromEditor(mockEditor);
-
-      expect(ids).toBeNull();
-    });
-
-    it('extracts IDs from data attributes', () => {
-      // Create DOM structure
-      const ideviceEl = document.createElement('div');
-      ideviceEl.className = 'idevice-node';
-      ideviceEl.dataset.odeIdeviceId = 'comp-123';
-
-      const blockEl = document.createElement('div');
-      blockEl.className = 'block-node';
-      blockEl.dataset.odeBlockId = 'block-456';
-      blockEl.appendChild(ideviceEl);
-
-      const container = document.createElement('div');
-      ideviceEl.appendChild(container);
-
-      const mockEditor = {
-        getContainer: mock(() => container),
-      };
-
-      projectManager.structure = { nodeSelected: { id: 'page-789' } };
-
-      const ids = projectManager._extractIdsFromEditor(mockEditor);
-
-      expect(ids).toBeDefined();
-      expect(ids.pageId).toBe('page-789');
-      expect(ids.componentId).toBe('comp-123');
-    });
-  });
-
-  describe('_setupTinyMCEHook', () => {
-    beforeEach(async () => {
-      YjsProjectManagerMixin.applyMixin(projectManager);
-    });
-
-    it('sets onEditorInit hook', async () => {
-      await projectManager.enableYjsMode(123, 'token');
-
-      expect(window.$exeTinyMCE.onEditorInit).toBeDefined();
-      expect(typeof window.$exeTinyMCE.onEditorInit).toBe('function');
-    });
-
-    it('calls original hook if exists', async () => {
-      const originalHook = mock(() => undefined);
-      window.$exeTinyMCE.onEditorInit = originalHook;
-
-      await projectManager.enableYjsMode(123, 'token');
-
-      const mockEditor = { id: 'test-editor', getContainer: mock(() => null) };
-      window.$exeTinyMCE.onEditorInit(mockEditor);
-
-      expect(originalHook).toHaveBeenCalledWith(mockEditor);
-    });
-
-    it('does nothing when $exeTinyMCE not available', async () => {
-      window.$exeTinyMCE = undefined;
-
-      await projectManager.enableYjsMode(123, 'token');
-
-      // Should not throw
     });
   });
 
