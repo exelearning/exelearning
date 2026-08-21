@@ -25,8 +25,10 @@ import {
     readFileAsString as readFileAsStringDefault,
     appendFile as appendFileDefault,
     getFilesDir as getFilesDirDefault,
-    getProjectAssetsDir as getProjectAssetsDirDefault,
+    resolveAssetStoragePath as resolveAssetStoragePathDefault,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathDefault,
 } from '../services/file-helper';
+import { buildAssetStoragePath } from '../utils/asset-paths';
 
 // yjs-persistence functions no longer used here - endpoints moved to routes/yjs.ts
 
@@ -175,7 +177,8 @@ export interface FileHelperDeps {
     readFileAsString: typeof readFileAsStringDefault;
     appendFile: typeof appendFileDefault;
     getFilesDir: typeof getFilesDirDefault;
-    getProjectAssetsDir: typeof getProjectAssetsDirDefault;
+    resolveAssetStoragePath: typeof resolveAssetStoragePathDefault;
+    tryResolveAssetStoragePath: typeof tryResolveAssetStoragePathDefault;
 }
 
 /**
@@ -270,7 +273,8 @@ const defaultFileHelper: FileHelperDeps = {
     readFileAsString: readFileAsStringDefault,
     appendFile: appendFileDefault,
     getFilesDir: getFilesDirDefault,
-    getProjectAssetsDir: getProjectAssetsDirDefault,
+    resolveAssetStoragePath: resolveAssetStoragePathDefault,
+    tryResolveAssetStoragePath: tryResolveAssetStoragePathDefault,
 };
 
 const defaultQueries: QueriesDeps = {
@@ -806,7 +810,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
     const { getSession, updateSession, generateSessionId } = deps.sessionManager ?? defaultSessionManager;
 
     // File helper functions
-    const { getOdeSessionTempDir, getFilesDir, getProjectAssetsDir } = deps.fileHelper ?? defaultFileHelper;
+    const { getOdeSessionTempDir, getFilesDir, resolveAssetStoragePath, tryResolveAssetStoragePath } =
+        deps.fileHelper ?? defaultFileHelper;
 
     // Optional link-validation overrides (hermetic DNS/fetch for tests; empty in production)
     const linkValidation = deps.linkValidation ?? {};
@@ -1519,8 +1524,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 const sourceAssets = await findAllAssetsForProject(db, project.id);
 
                 if (sourceAssets.length > 0) {
-                    const targetAssetsDir = getProjectAssetsDir(duplicateProject.uuid);
-
                     for (const asset of sourceAssets) {
                         if (!asset.client_id) continue;
 
@@ -1529,20 +1532,29 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                         // alternate/legacy Yjs shapes or historical content fragments.
                         const duplicatedClientId = asset.client_id;
 
-                        // Copy physical file if it exists
+                        // Copy physical file if it exists. The stored path is
+                        // FILES_DIR-relative (legacy absolute values are handled
+                        // by the resolver); the copy is stored with a relative
+                        // sharded path under the new project's directory.
                         if (asset.storage_path) {
                             try {
-                                const sourceExists = await fs.pathExists(asset.storage_path);
-                                if (sourceExists) {
-                                    const targetFile = path.join(targetAssetsDir, duplicatedClientId, asset.filename);
+                                const sourcePath = tryResolveAssetStoragePath(asset.storage_path);
+                                const sourceExists = sourcePath ? await fs.pathExists(sourcePath) : false;
+                                if (sourcePath && sourceExists) {
+                                    const targetStoragePath = buildAssetStoragePath(
+                                        duplicateProject.uuid,
+                                        duplicatedClientId,
+                                        asset.filename,
+                                    );
+                                    const targetFile = resolveAssetStoragePath(targetStoragePath);
                                     await fs.ensureDir(path.dirname(targetFile));
-                                    await fs.copy(asset.storage_path, targetFile);
+                                    await fs.copy(sourcePath, targetFile);
 
                                     // Create new asset record with new client_id
                                     await createAsset(db, {
                                         project_id: duplicateProject.id,
                                         filename: asset.filename,
-                                        storage_path: targetFile,
+                                        storage_path: targetStoragePath,
                                         mime_type: asset.mime_type,
                                         file_size: asset.file_size,
                                         client_id: duplicatedClientId,
