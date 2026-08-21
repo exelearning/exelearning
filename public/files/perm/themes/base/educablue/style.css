@@ -1,0 +1,950 @@
+/*!
+ * eXeLearning v4+ EducaBlue Style
+ * ----------------------
+ * Author: Eduardo Gros for EducaMadrid
+ * Project: www.educa.madrid.org
+ *
+ * This CSS file is part of a style for eXeLearning.
+ * Licensed under Creative Commons Attribution-ShareAlike (CC BY-SA).
+ *
+ * Note: The style's config.xml contains additional information
+ *       about materials (images, fonts, etc.) created by third parties
+ *       and included in this style.
+ */
+
+@font-face {
+    font-family: 'Inclusive Sans';
+    font-style: normal;
+    font-weight: 300 700; /* variable font weights */
+    font-display: swap;
+    src: url('fonts/InclusiveSans-VariableFont_wght.ttf') format('truetype');
+    unicode-range: U+0000-00FF, U+0100-024F, U+0259, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+1E00-1EFF, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Inclusive Sans';
+    font-style: italic;
+    font-weight: 300 700;
+    font-display: swap;
+    src: url('fonts/InclusiveSans-Italic-VariableFont_wght.ttf') format('truetype');
+    unicode-range: U+0000-00FF, U+0100-024F, U+0259, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+1E00-1EFF, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Common definitions */
+:root {
+    --exe-nav-bg: #f9f9f9;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body.exe-content {
+    background: #ffffff;
+}
+
+.exe-content h2 {
+    font-size: 1.3em;
+    color: #444;
+    letter-spacing: .5px;
+    font-weight: bold;
+    margin: 1em 0
+}
+
+.exe-content h3 {
+    font-size: 1.2em;
+    color: #555;
+    letter-spacing: .5px;
+    font-weight: bold;
+    margin: 1em 0
+}
+
+.exe-content h4 {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #666;
+    margin: 1em 0
+}
+
+.exe-content h5 {
+    font-size: 1.0em;
+    font-weight: bold;
+    color: #6e6e6e;
+    margin: 1em 0
+}
+
+.exe-content h6 {
+    font-size: 1em;
+    font-weight: bold;
+    color: #767676;
+    margin: 1em 0
+}
+
+/* Page counter */
+body.exe-web-site {
+    padding-top: 50px; /* .nav-buttons (top navigation bar) height */
+}
+
+/* Font */
+.exe-content,
+body#tinymce {
+    font-family: 'Inclusive Sans', Arial, Verdana, Helvetica, sans-serif;
+    line-height: 1.5em;
+    font-size: 1em;
+}
+
+.exe-content a {
+    color: #005fcc;
+    text-decoration: none;
+}
+
+.exe-content a:hover,
+.exe-content a:focus {
+    color: #003f88;
+    text-decoration: underline;
+}
+
+/* Underlined links */
+.box-content a {
+    text-decoration: underline;
+}
+
+.box-content a:hover {
+    text-decoration: none;
+}
+
+.box-content a:focus {
+    text-decoration: underline;
+}
+
+/* Fix some issues... */
+/* Quote With Authorship */
+.exe-content .styled-qc {
+    margin-top: 4em;
+}
+
+/* Page header */
+.exe-content .package-header {
+    background: #ddebf8;
+    color: #000;
+    padding: 20px;
+}
+
+body:has(#teacher-mode-toggler-wrapper) .package-title {
+    padding-right: 100px;
+}
+
+#teacher-mode-toggler-wrapper {
+    float: right;
+}
+
+.exe-content .package-title {
+    font-size: 1.2em;
+    margin: 0;
+}
+
+.exe-content .package-subtitle {
+    font-size: 1em;
+    margin: 0.5em 0 0 0;
+    opacity: 0.8;
+}
+
+.exe-content .page-header {
+    color: #212529;
+    padding: 10px;
+    margin-top: 20px;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.15);
+}
+
+.exe-content .page-title {
+    font-size: 1.8em;
+    margin: 0;
+}
+
+/* Page content and common elements (max-width) */
+.exe-content {
+    max-width: 1280px;
+    padding: 20px;
+    margin: 0 auto;
+    position: relative; /* To set the position of the Page counter */
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+.exe-content #exe-client-search {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* Page counter */
+.exe-content .page-counter {
+    background: transparent;
+    color: #000;
+    font-size: 0.9em;
+    text-align: left;
+    padding-left: 10px;
+}
+
+/* Boxes / iDevices */
+.exe-content .box {
+    border: none;
+}
+
+.exe-content .box-head {
+    background: #0d77d1;
+    min-height: 70px; /* Icon size + margin */
+    padding: 10px;
+    position: relative;
+    border-radius: 4px;
+
+}
+
+.exe-content .box-icon {
+    float: left;
+    margin-right: 10px;
+}
+
+.exe-content .box-icon img {
+    width: 50px;
+    height: auto;
+}
+
+.exe-content .box-title {
+    padding-top: 15px;
+}
+
+.exe-content .box-head .box-title {
+    color: #fff;
+}
+
+.exe-content .box-head.no-icon .box-title {
+    padding-left: 20px;
+}
+
+.exe-content .box-head .box-toggle {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    border: none;
+    display: block;
+    background: url(img/arrow-down-2-light.svg) no-repeat 0 0;
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    transform: rotate(-180deg);
+    transition: transform 0.5s ease;
+    filter: invert(1);
+}
+
+.exe-content .box.minimized .box-head .box-toggle {
+    transform: rotate(0deg);
+}
+
+.exe-content .box-head .box-toggle span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+.exe-content .box-content {
+    padding: 20px;
+}
+
+/* Site footer */
+.exe-content #siteFooter {
+    background: #ddebf8;
+    border-top: 1px solid #b8d5f1;
+    color: #000;
+    font-size: 0.95em;
+    padding: 20px;
+    margin-top: auto;
+    transition: margin-left 0.25s ease-in-out;
+}
+
+.exe-content #siteFooter a {
+    color: #005fcc;
+    text-decoration: underline;
+}
+
+.exe-content #siteFooter #packageLicense p {
+    margin-top: 0;
+}
+
+.exe-content #packageLicense.cc {
+    padding: 0 20px 0 90px;
+    background: url(img/licenses.gif) no-repeat 0 5px;
+}
+
+.exe-content #packageLicense.cc-by-sa {
+    background-position: 0 -95px;
+}
+
+.exe-content #packageLicense.cc-by-nd {
+    background-position: 0 -195px;
+}
+
+.exe-content #packageLicense.cc-by-nc {
+    background-position: 0 -295px;
+}
+
+.exe-content #packageLicense.cc-by-nc-sa {
+    background-position: 0 -395px;
+}
+
+.exe-content #packageLicense.cc-by-nc-nd {
+    background-position: 0 -495px;
+}
+
+.exe-content #packageLicense.cc-0 {
+    background-position: 0 -595px;
+}
+
+/* Hide visually */
+.exe-content #siteFooter #packageLicense span {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+/* Website */
+.exe-web-site .exe-content {
+    max-width: none;
+    padding: 0;
+}
+
+.exe-web-site .exe-content #siteFooter {
+    margin-left: 300px;
+}
+
+.exe-web-site .main-header,
+.exe-web-site .page-content,
+.exe-web-site #siteFooterContent {
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.exe-web-site .page-content {
+    padding: 0;
+}
+
+.exe-content .box.no-header:not(:has(.box-toggle)) .box-head {
+    display: none;
+}
+
+/* Navigation menu */
+#siteNav {
+    padding-bottom: 3rem;
+    height: calc(100vh - 50px);
+    width: 300px;
+    position: fixed;
+    top: 50px;
+    left: 0;
+    overflow-y: auto;
+    transition: width 0.25s ease-in-out;
+    background-color: var(--exe-nav-bg);
+}
+
+#siteNav .other-section {
+    display: none; /* Optional (hide subpages) */
+}
+
+#siteNav ul {
+    margin: 10px 0 0 10px;
+    padding: 0;
+    list-style: none;
+    white-space: normal;
+}
+
+#siteNav ul ul {
+    margin-top: 5px;
+}
+
+#siteNav li {
+    margin: 0 0 5px 0;
+    padding: 0 10px 0 0;
+    list-style: none;
+    min-width: 280px;
+    position: relative;
+}
+
+#siteNav li>ul {
+    max-width: 90%;
+    margin-left: auto;
+    font-size: 0.9em;
+}
+
+#siteNav li>ul>li {
+    min-width: initial;
+}
+
+#siteNav a {
+    color: #252529;
+    display: block;
+    padding: 8px 15px;
+    max-width: 280px; /* Menu width - margin */
+}
+
+#siteNav a.active,
+#siteNav a.active:hover {
+    text-decoration: none;
+    background: #0d77d1;
+    color: #fff;
+    border-radius: 6px;
+}
+
+#siteNav a.highlighted-link {
+    background: #bcddfb;
+    border-radius: 6px;
+}
+
+#siteNav a.highlighted-link:hover,
+#siteNav a.highlighted-link:focus {
+    background: #e0f2ff;
+    text-decoration: underline;
+    color: #000;
+}
+
+#siteNav a:hover,
+#siteNav a:focus {
+    color: #0b5ed7;
+    text-decoration: underline;
+}
+
+#siteNav a.active.highlighted-link {
+    color: #0b5ed7;
+    background-color: #e0f2ff;
+}
+
+#siteNav ul ul ul a {
+    text-align: left;
+    font-size: 0.9em;
+}
+
+#siteNav ul ul ul ul a {
+    padding-left: 75px;
+}
+
+#siteNav a {
+    position: relative;
+}
+
+#siteNav li:has(> button) > a {
+    padding-right: 35px;
+}
+
+#siteNav li > button {
+    width: 30px;
+    height: 30px;
+    position: absolute;
+    border: none;
+    right: 10px;
+    top: 5px;
+    background: url(img/arrow-down-2-light.svg) no-repeat 0 center;
+    background-size: auto 30px;
+    transform: rotate(0);
+    transition: all 0.25s ease-out;
+}
+
+#siteNav li:has(> a.active) > button {
+    filter: invert(1);
+}
+
+#siteNav li > button.open-ul {
+    transform: rotate(180deg);
+}
+
+#siteNav li > button span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+.exe-web-site .exe-content {
+    padding: 0;
+    position: relative;
+    box-shadow: 300px 0 0 0 var(--exe-nav-bg) inset; /* False left column when the menu is visible */
+}
+
+.exe-web-site main.page {
+    flex: 1;
+    margin-left: 320px; /* #siteNav width + margin */
+    padding: 20px;
+    min-height: calc(100vh - 171px); /* Sticky footer */
+    transition: margin-left 0.25s ease-in-out;
+    background-color: #fff;
+}
+
+.exe-web-site #siteFooterContent {
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Hidden navigation */
+body.siteNav-off .exe-content {
+    box-shadow: none; /* No false left column */
+}
+
+body.siteNav-off #siteNav {
+    width: 0;
+}
+
+body.siteNav-off main.page,
+body.siteNav-off .exe-content #siteFooter {
+    margin-left: 0;
+}
+
+/* Search bar */
+#exe-client-search {
+    display: block !important; /* fights the inline display:none from $('#exe-client-search').hide() in exe_export.js */
+}
+
+#exe-client-search-text {
+    max-width: calc(100% - 90px);
+    display: inline;
+}
+
+#exe-client-search form p {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    width: auto;
+}
+
+#exe-client-search form input.form-control {
+    max-width: 400px;
+    margin-right: 10px;
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+#exe-client-search #exe-client-search-submit {
+    width: 30px;
+    height: 30px;
+    background: url(img/search-01.svg) no-repeat center;
+    background-color: #0d77d1;
+    background-size: auto 20px;
+    color: transparent; /* Hide value text */
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+#exe-client-search-reset {
+    flex-basis: 100%;
+    padding: 5px 0 0 5px;
+}
+
+
+/* Top navigation bar */
+/* Navigation buttons */
+#siteNavToggler span,
+#darkModeToggler span,
+.nav-buttons a span,
+.nav-buttons span span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+.nav-buttons span.nav-button {
+    /* Disabled Next/Prev buttons */
+    opacity: 0.35;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+
+.siteNav-off #siteNavToggler {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border: none;
+    display: block;
+    background: #0a376b url(img/menu-01.svg) no-repeat right 0;
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    z-index: 100;
+}
+
+#siteNavToggler {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border: none;
+    display: block;
+    background: #0d77d1 url(img/cancel-01-stroke-rounded.svg) no-repeat right 0;
+    background-size: auto 50px;
+    width: 300px;
+    height: 50px;
+    z-index: 100;
+    transition: 0.25s ease-in-out;
+}
+
+.siteNav-off .nav-buttons,
+.nav-buttons {
+    background-color: #ddebf8;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 50px;
+    border: none;
+    width: 100%;
+    border-bottom: 1px solid #00000026;
+    z-index: 2;
+}
+
+.siteNav-off .nav-buttons {
+    background-position: 60px 5px;
+}
+
+.nav-buttons {
+    background-position: 340px 5px;
+    transition: background-position 0.25s ease-in-out;
+}
+
+.nav-buttons .nav-button-left {
+    position: absolute;
+    top: 0;
+    right: 70px;
+    display: block;
+    width: 50px;
+    height: 50px;
+    background: url(img/arrow-left-01.svg) no-repeat 0 0;
+    background-size: auto 50px;
+}
+
+.nav-buttons .nav-button-right {
+    position: absolute;
+    top: 0;
+    right: 20px;
+    word-break: break-all;
+    display: block;
+    background: #005fcc;
+    width: 50px;
+    height: 50px;
+    background: url(img/arrow-left-01.svg) no-repeat 0 0;
+    background-size: auto 50px;
+    transform: rotate(180deg);
+}
+
+/* Inside content button */
+input.feedbacktooglebutton {
+    border: none;
+    color: #fff;
+    padding: 8px;
+    background-color: #c10f03;
+}
+
+@media print {
+    html body.exe-content {
+        background: #ffffff;
+    }
+
+    .exe-content {
+        background: #ffffff;
+        box-shadow: none;
+        color: #000000;
+        padding: 0;
+    }
+
+    @page {
+        margin: 1.5cm;
+    }
+
+    a {
+        font-weight: bolder;
+        text-decoration: none !important; /* beats .box-content a and #siteFooter a, both more specific */
+    }
+
+    a[href^=http]:after {
+        content: " <" attr(href) "> ";
+    }
+
+    .exe-content p:has(img) {
+        text-align: left !important;
+    }
+
+    .exe-content img {
+        max-width: 300px;
+        height: auto;
+    }
+
+    .exe-web-site #siteNav,
+    .exe-web-site .nav-buttons,
+    .exe-web-site button.toggler,
+    .exe-content #exe-client-search,
+    .exe-content .box-toggle,
+    .exe-content .page-counter,
+    .exe-content .box-icon,
+    .exe-content .box-head .box-toggle,
+    .exe-content .box-head:not(:has(.box-title)),
+    .exe-content #teacher-mode-toggler-wrapper {
+        display: none !important; /* beats the id selectors that lay out these controls */
+    }
+
+    .exe-content main.page,
+    .exe-web-site .exe-content #siteFooter {
+        margin-left: 0;
+    }
+
+    .exe-content #siteFooter,
+    .exe-content #siteFooterContent,
+    .exe-content main.page,
+    .exe-content .package-header,
+    .exe-content .page-header {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .exe-content .page-counter {
+        top: 0;
+        right: 0;
+    }
+}
+
+/* In eXeLearning */
+#node-content-container .box-head {
+    border: 1px solid #ebebee !important;
+    margin-bottom: 10px;
+}
+
+body[installation-type].left-column-hidden #node-content-container {
+    margin: 0 auto;
+}
+
+body[installation-type] .edit-icon,
+body[installation-type] .arrow-down-icon,
+body[installation-type] .arrow-up-icon,
+body[installation-type] .small-icon.dots-menu-vertical-icon,
+#node-content-container.exe-content .box-head .btn-expandblock span,
+#node-content-container.exe-content .box-head .box-icon.exe-no-icon {
+    filter: brightness(100);
+    opacity: 1;
+}
+
+.modal #change-block-icon-modal-content .option-block-icon.exe-icon {
+    filter: invert(1);
+    opacity: 0.7;
+}
+
+/* Dark mode toggler */
+.siteNav-off #darkModeToggler,
+#darkModeToggler {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border: none;
+    display: block;
+    background: transparent url(img/moon.svg) no-repeat center center;
+    background-size: auto 30px;
+    width: 50px;
+    height: 50px;
+    z-index: 0;
+}
+
+#darkModeToggler {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border: none;
+    display: block;
+    background: transparent url(img/moon.svg) no-repeat center center;
+    background-size: auto 30px;
+    width: 50px;
+    height: 50px;
+    z-index: 200;
+    transition: 0.25s ease-in-out;
+}
+
+/* Dark mode */
+html.exe-dark-mode {
+    --exe-nav-bg: #e5e5e5;
+    filter: invert(100%) hue-rotate(180deg);
+}
+
+/* Revert filter */
+html.exe-dark-mode :is(img, video, iframe):not(.exe-icon img),
+html.exe-dark-mode #packageLicense,
+html.exe-dark-mode .nav-button,
+html.exe-dark-mode .siteNav-off .nav-buttons,
+html.exe-dark-mode .nav-buttons {
+    filter: invert(100%) hue-rotate(180deg);
+}
+
+html.exe-dark-mode #made-with-eXe a {
+    filter: invert(100%) hue-rotate(180deg);
+    opacity: 1;
+}
+
+html.exe-dark-mode .siteNav-off #darkModeToggler {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border: none;
+    display: block;
+    background: transparent url(img/sun.svg) no-repeat center center;
+    background-size: auto 30px;
+    width: 50px;
+    height: 50px;
+    z-index: 0;
+}
+
+html.exe-dark-mode #darkModeToggler {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border: none;
+    display: block;
+    background: transparent url(img/sun.svg) no-repeat center center;
+    background-size: auto 30px;
+    width: 50px;
+    height: 50px;
+    z-index: 200;
+    transition: 0.25s ease-in-out;
+}
+
+/* Dark mode footer: #packageLicense is re-inverted. */
+html.exe-dark-mode .exe-content #siteFooter #packageLicense a {
+    color: #fff;
+}
+
+/* Dark mode warning block */
+html.exe-dark-mode .exe-block-warning {
+    background-color: #e2dfce;
+}
+
+/* Dark mode logo */
+html.exe-dark-mode .siteNav-off .nav-buttons,
+html.exe-dark-mode .nav-buttons {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 50px;
+    border: none;
+    width: 100%;
+    border-bottom: 1px solid #00000026;
+    background-color: #0a376b;
+    z-index: 2;
+}
+
+html.exe-dark-mode .siteNav-off .nav-buttons {
+    background-position: 60px 5px;
+}
+
+html.exe-dark-mode .nav-buttons {
+    background-position: 340px 5px;
+    transition: background-position 0.25s ease-in-out;
+}
+
+/* Dark mode menu toggler */
+html.exe-dark-mode .siteNav-off #siteNavToggler {
+    background-color: #a4cfff;
+    background-image: url(img/menu-01-dm.svg);
+}
+
+html.exe-dark-mode #siteNavToggler {
+    background-image: url(img/cancel-01-stroke-rounded-dm.svg);
+    background-color: #3fa5fb;
+}
+
+/* Dark mode nav left/right */
+html.exe-dark-mode .nav-button {
+    filter: invert(98%) hue-rotate(180deg);
+}
+
+/* Dark mode active button */
+html.exe-dark-mode #siteNav a.active {
+    background-color: #3fa5fb;
+    color: #000;
+}
+
+/* Dark mode article box */
+html.exe-dark-mode .exe-content .box-head {
+    background-color: #3fa5fb;
+}
+
+/* Accessibility toolbar */
+html.exe-dark-mode #eXeAtoolsBtnSet,
+html.exe-dark-mode #eXeAtoolsSet {
+    filter: invert(94%) hue-rotate(180deg);
+    box-shadow: #ffffff 0px 0 2px;
+}
+
+/* Never print the dark mode */
+@media print {
+    html.exe-dark-mode,
+    html.exe-dark-mode :is(img, video, iframe):not(.exe-icon img),
+    html.exe-dark-mode #packageLicense,
+    html.exe-dark-mode .nav-button,
+    html.exe-dark-mode .siteNav-off .nav-buttons,
+    html.exe-dark-mode .nav-buttons,
+    html.exe-dark-mode #eXeAtoolsBtnSet,
+    html.exe-dark-mode #eXeAtoolsSet {
+        filter: none;
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.siteNav-off #siteNav {
+        /* display:none; */
+        width: 0;
+    }
+
+    #siteNav {
+        float: none;
+        position: fixed;
+        width: 100%;
+        max-height: calc(100vh - 50px);
+        height: 100vh;
+        padding-bottom: 10px;
+        z-index: 3;
+        background-color: rgba(0, 0, 0, 0.6);
+        transition: 0.35s ease-in-out;
+    }
+
+    #siteNav>ul {
+        margin: 0;
+        height: 100%;
+        padding: 20px 5px 40px;
+        max-width: 300px;
+        background-color: #f9f9f9;
+        overflow-y: auto;
+        border-bottom-right-radius: 8px;
+    }
+
+    /* Dark mode */
+    html.exe-dark-mode #siteNav {
+        background-color: rgba(255, 255, 255, 0.6);
+    }
+    html.exe-dark-mode #siteNav > ul {
+        background-color: #e5e5e5;
+    }
+
+    #siteNav a {
+        max-width: 100%;
+    }
+
+    .exe-web-site main.page,
+    .exe-web-site .exe-content #siteFooter {
+        padding-left: 20px;
+        margin: 0;
+    }
+
+    .exe-web-site .exe-content {
+        box-shadow: none; /* No false left column */
+    }
+
+    .nav-buttons,
+    html.exe-dark-mode .nav-buttons {
+        background-position: 310px 5px;
+    }
+
+}

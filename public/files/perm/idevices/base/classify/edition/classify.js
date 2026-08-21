@@ -36,6 +36,9 @@ var $exeDevice = {
     playerAudio: '',
     isVideoType: false,
     numberCards: 3,
+    // Shortest string accepted as a media URL. Empty media is stored as '', so
+    // this only guards against blank or truncated values.
+    minMediaUrlLength: 4,
     version: 0.8,
     id: false,
     checkAltImage: true,
@@ -849,15 +852,14 @@ var $exeDevice = {
         p.msgHit = $('#clasificaEMessageOK').val();
         p.msgError = $('#clasificaEMessageKO').val();
 
-        if (p.type === 0 && p.url.length < 5) {
-            message = msgs.msgCompleteImage;
-        } else if (p.type === 1 && p.eText.trim().length === 0) {
-            message = msgs.msgCompleteText;
-        } else if (
-            p.type === 2 &&
-            (p.eText.trim().length === 0 || p.url.length < 5)
-        ) {
-            message = msgs.msgCompleteBoth;
+        if (!$exeDevice.isQuestionComplete(p)) {
+            if (p.type === 1) {
+                message = msgs.msgCompleteText;
+            } else if (p.type === 2) {
+                message = msgs.msgCompleteBoth;
+            } else {
+                message = msgs.msgCompleteImage;
+            }
         }
 
         p = $exeDevice.normalizeQuestionByType(p);
@@ -938,13 +940,10 @@ var $exeDevice = {
                 $exeDevice.wordsGame[i]
             );
             $exeDevice.wordsGame[i] = mquestion;
-            if (
-                (mquestion.type === 0 && mquestion.url.length < 4) ||
-                (mquestion.type === 1 && mquestion.eText.trim().length === 0) ||
-                (mquestion.type === 2 &&
-                    (mquestion.url.length < 4 ||
-                        mquestion.eText.trim().length === 0))
-            ) {
+            if (!$exeDevice.isQuestionComplete(mquestion)) {
+                // Bring the offending card up so the message points at something.
+                $exeDevice.active = i;
+                $exeDevice.showQuestion(i);
                 $exeDevice.showMessage($exeDevice.msgs.msgCompleteData);
                 return false;
             }
@@ -998,6 +997,36 @@ var $exeDevice = {
             }
         );
         return false;
+    },
+
+    /**
+     * Whether a card carries enough content to be playable.
+     *
+     * The player builds a card out of any of image / text / audio, and renders
+     * a card that has only an audio as a big audio button (CQP-LinkAudioBig in
+     * the export code), so an audio on its own is enough for Image and Text
+     * cards. "Both" cards are the exception: they promise an image *and* a text.
+     * This is the rule msgCompleteImage / msgCompleteText / msgCompleteData have
+     * always stated.
+     *
+     * Shared by the per-card and the whole-form validation so a card can never
+     * pass one and fail the other.
+     *
+     * @param {object} question
+     * @returns {boolean}
+     */
+    isQuestionComplete: function (question) {
+        if (!question) return false;
+        const text = (value) => (typeof value === 'string' ? value.trim() : '');
+        const hasImage =
+            text(question.url).length >= $exeDevice.minMediaUrlLength;
+        const hasAudio =
+            text(question.audio).length >= $exeDevice.minMediaUrlLength;
+        const hasText = text(question.eText).length > 0;
+
+        if (question.type === 2) return hasImage && hasText;
+        if (question.type === 1) return hasText || hasAudio;
+        return hasImage || hasAudio;
     },
 
     normalizeQuestionByType: function (question) {

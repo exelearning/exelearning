@@ -1156,6 +1156,77 @@ describe('IdevicesEngine', () => {
 
             expect(document.head.contains(script)).toBe(true);
         });
+
+        describe('execution order (issue #2270)', () => {
+            let createElementSpy;
+
+            beforeEach(() => {
+                // Browsers force-async dynamically inserted scripts (execution
+                // follows network completion, not insertion order). happy-dom
+                // defaults async to false, so emulate the browser default here.
+                const originalCreateElement =
+                    document.createElement.bind(document);
+                createElementSpy = vi
+                    .spyOn(document, 'createElement')
+                    .mockImplementation((tagName, options) => {
+                        const element = originalCreateElement(tagName, options);
+                        if (String(tagName).toLowerCase() === 'script') {
+                            element.async = true;
+                        }
+                        return element;
+                    });
+            });
+
+            afterEach(() => {
+                createElementSpy.mockRestore();
+            });
+
+            it('disables async so scripts execute in insertion order', () => {
+                const dependency = engine.loadScriptDynamically(
+                    '/idevices/three-sixty-viewer/export/three.min.js',
+                    false
+                );
+                const dependent = engine.loadScriptDynamically(
+                    '/idevices/three-sixty-viewer/export/OrbitControls.js',
+                    false
+                );
+
+                expect(dependency.async).toBe(false);
+                expect(dependent.async).toBe(false);
+                // Insertion order in head matches call order
+                expect(
+                    dependency.compareDocumentPosition(dependent) &
+                        Node.DOCUMENT_POSITION_FOLLOWING
+                ).toBeTruthy();
+            });
+
+            it('keeps id, type and src attributes intact', () => {
+                const script = engine.loadScriptDynamically(
+                    '/idevices/select-media-files/export/mansory-jq.js',
+                    false
+                );
+
+                expect(script.async).toBe(false);
+                expect(script.id).not.toBe('');
+                expect(script.getAttribute('type')).toBe('text/javascript');
+                expect(script.src).toContain(
+                    '/idevices/select-media-files/export/mansory-jq.js'
+                );
+                expect(document.head.contains(script)).toBe(true);
+            });
+
+            it('disables async on the cache-busting newVersion path', () => {
+                const script = engine.loadScriptDynamically(
+                    '/idevices/select-media-files/export/select-media-files.js',
+                    true
+                );
+
+                expect(script.async).toBe(false);
+                expect(script.id).not.toBe('');
+                expect(script.getAttribute('type')).toBe('text/javascript');
+                expect(script.src).toMatch(/\?t=\d+/);
+            });
+        });
     });
 
     describe('loadStyleDynamically', () => {
@@ -1201,6 +1272,42 @@ describe('IdevicesEngine', () => {
             engine.loadScript('/path/to/file.txt');
 
             expect(engine.ideviceScriptsElements.length).toBe(0);
+        });
+
+        describe('execution order (issue #2270)', () => {
+            let createElementSpy;
+
+            beforeEach(() => {
+                // Emulate the browser force-async default for dynamic scripts
+                const originalCreateElement =
+                    document.createElement.bind(document);
+                createElementSpy = vi
+                    .spyOn(document, 'createElement')
+                    .mockImplementation((tagName, options) => {
+                        const element = originalCreateElement(tagName, options);
+                        if (String(tagName).toLowerCase() === 'script') {
+                            element.async = true;
+                        }
+                        return element;
+                    });
+            });
+
+            afterEach(() => {
+                createElementSpy.mockRestore();
+            });
+
+            it('disables async on injected JS scripts', () => {
+                engine.loadScript('/idevices/some-idevice/export/library.js');
+
+                const script = document.head.querySelector(
+                    'script[src*="library.js"]'
+                );
+                expect(script.async).toBe(false);
+                expect(script.id).not.toBe('');
+                expect(script.getAttribute('type')).toBe('text/javascript');
+                expect(script.src).toMatch(/\?t=\d+/);
+                expect(engine.ideviceScriptsElements).toContain(script);
+            });
         });
     });
 
@@ -2260,6 +2367,60 @@ describe('IdevicesEngine', () => {
             expect(mockIdevice.htmlView).toBe('new content');
             expect(mockIdevice.lockedByRemote).toBe(false);
         });
+
+        it('does not wipe saved htmlView on lock-only remote updates', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: '<p>Original content</p>',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                lockedByRemote: false,
+                lockUserName: null,
+                lockUserColor: null,
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            mockIdevice.ideviceBody.innerHTML = '<p>Original content</p>';
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({
+                id: 'comp-1',
+                lockedBy: 'client-2',
+                lockUserName: 'Remote User',
+                lockUserColor: '#0af',
+            });
+
+            expect(mockIdevice.htmlView).toBe('<p>Original content</p>');
+            expect(mockIdevice.ideviceBody.innerHTML).toBe('<p>Original content</p>');
+            expect(mockIdevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+            expect(mockIdevice.lockedByRemote).toBe(true);
+            expect(mockIdevice.lockUserName).toBe('Remote User');
+            expect(mockIdevice.updateLockIndicator).toHaveBeenCalled();
+        });
+
+        it('does not erase saved htmlView when remote htmlContent is empty', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: '<p>Original content</p>',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            mockIdevice.ideviceBody.innerHTML = '<p>Original content</p>';
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({
+                id: 'comp-1',
+                htmlContent: '',
+            });
+
+            expect(mockIdevice.htmlView).toBe('<p>Original content</p>');
+            expect(mockIdevice.ideviceBody.innerHTML).toBe('<p>Original content</p>');
+            expect(mockIdevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+        });
     });
 
     describe('initPagePropertiesObserver', () => {
@@ -3295,6 +3456,31 @@ describe('IdevicesEngine', () => {
             });
 
             expect(mockIdevice.jsonProperties).toEqual({});
+            expect(mockIdevice.malformedJsonPropertiesRaw).toBe('{invalid json');
+        });
+
+        it('clears malformed state when a valid remote payload arrives', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                jsonProperties: {},
+                jsonPropertiesParseError: new SyntaxError('Invalid JSON'),
+                malformedJsonPropertiesRaw: '{invalid json',
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({
+                id: 'comp-1',
+                jsonProperties: '{"recovered":true}',
+            });
+
+            expect(mockIdevice.jsonProperties).toEqual({ recovered: true });
+            expect(mockIdevice.jsonPropertiesParseError).toBeNull();
+            expect(mockIdevice.malformedJsonPropertiesRaw).toBeNull();
         });
     });
 

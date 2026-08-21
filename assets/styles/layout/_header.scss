@@ -101,17 +101,26 @@
                     position: relative;
                     margin-right: 6px;
 
+                    // Same geometry as the collaborative status dot below
+                    // (14px at bottom:3/left:5) so the marker looks identical
+                    // whether it is the manual "unsaved" dot or the collab dot.
                     &.unsaved:before {
                         content: "";
                         display: block;
-                        width: 10px;
-                        height: 10px;
+                        width: 14px;
+                        height: 14px;
                         background: var(--system-red);
                         position: absolute;
                         border-radius: 50%;
-                        bottom: 5px;
-                        left: 7px;
+                        bottom: 3px;
+                        left: 5px;
                         border: 2px solid #fff;
+                    }
+                    // While a collaborative autosave status dot is showing it
+                    // stands in for the manual "unsaved" dot, so the button
+                    // never shows two overlapping markers.
+                    &.collab-autosave-active.unsaved:before {
+                        display: none;
                     }
                     &.saving {
                         opacity: 0.7;
@@ -120,51 +129,67 @@
                     &:disabled {
                         background-color: var(--gray-600);
                     }
-                }
-                // Collaborative autosave notice (issue #1592). Small, muted and
-                // non-intrusive; revealed by JS only in collaborative sessions.
-                #exe-collab-save-status {
-                    display: inline-flex;
-                    align-items: center;
-                    margin-right: 8px;
-                    max-width: 22ch;
-                    font-size: 0.78rem;
-                    line-height: 1.2;
-                    color: var(--gray-600);
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
 
-                    &.d-none {
-                        display: none;
-                    }
-                    .content {
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                    }
-                    &:before {
-                        content: "";
-                        flex: 0 0 auto;
-                        width: 8px;
-                        height: 8px;
-                        margin-right: 6px;
+                    // Compact collaborative autosave status dot (issue #1592).
+                    // Reuses the familiar "unsaved" red-dot placement and is
+                    // coloured per phase; colour is never the only cue — saving
+                    // pulses (motion) and clean/failed carry a glyph (shape) — so
+                    // the state is perceivable without colour (WCAG 1.4.1). It is
+                    // absolutely positioned, so the button width never changes.
+                    .collab-autosave-badge {
+                        position: absolute;
+                        bottom: 3px;
+                        left: 5px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 14px;
+                        height: 14px;
                         border-radius: 50%;
+                        border: 2px solid #fff;
+                        font-family: var(--icons-ff);
+                        font-size: 10px;
+                        line-height: 1;
+                        color: #fff;
                         background: var(--gray-500);
+                        // A colour transition forces a repaint when the phase
+                        // changes, so the dot never stays a stale colour until a
+                        // hover (it also softens the state change visually).
+                        transition: background-color 0.2s ease;
+
+                        &.d-none {
+                            display: none;
+                        }
+                        &[data-collab-phase="pending"] {
+                            background: var(--system-red);
+                        }
+                        &[data-collab-phase="saving"] {
+                            background: var(--system-yellow, #f9a825);
+                            animation: exe-collab-save-pulse 1.1s ease-in-out infinite;
+                        }
+                        &[data-collab-phase="clean"] {
+                            background: var(--system-green, #2e7d32);
+                        }
+                        &[data-collab-phase="failed"] {
+                            background: var(--system-red);
+                        }
                     }
-                    &.collab-save-status--clean:before {
-                        background: var(--system-green, #2e7d32);
-                    }
-                    &.collab-save-status--pending:before,
-                    &.collab-save-status--saving:before {
-                        background: var(--system-yellow, #f9a825);
-                    }
-                    &.collab-save-status--failed {
-                        color: var(--system-red);
-                        font-weight: 600;
-                    }
-                    &.collab-save-status--failed:before {
-                        background: var(--system-red);
-                    }
+                }
+                // Collaborative autosave live region (issue #1592): visually
+                // hidden so it consumes no horizontal toolbar space while staying
+                // in the accessibility tree. Screen readers still announce state
+                // transitions; the visible, compact state lives in the
+                // Save-button badge above.
+                #exe-collab-save-status {
+                    position: absolute;
+                    width: 1px;
+                    height: 1px;
+                    padding: 0;
+                    margin: -1px;
+                    overflow: hidden;
+                    clip: rect(0, 0, 0, 0);
+                    white-space: nowrap;
+                    border: 0;
                 }
                 .small-icon.image-icon-green {
                     height: 18px;
@@ -465,3 +490,23 @@
     }
 }
 
+// Pulse for the collaborative autosave status dot "saving" phase (issue #1592).
+// The motion is a non-colour cue distinguishing "saving" from the static dots.
+@keyframes exe-collab-save-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.35;
+    }
+}
+
+// Respect reduced-motion preferences: keep the dot static. The amber colour
+// still marks the "saving" phase, and the surrounding states remain
+// distinguishable by their glyphs (clean/failed) and the live region.
+@media (prefers-reduced-motion: reduce) {
+    #head-top-save-button .collab-autosave-badge[data-collab-phase="saving"] {
+        animation: none;
+    }
+}
