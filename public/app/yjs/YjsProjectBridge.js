@@ -11,6 +11,63 @@
  *   // Now all save operations go through Yjs
  *   bridge.enableAutoSync();
  */
+
+const REMOTE_COMPONENT_CONTENT_KEYS = ['htmlContent', 'htmlView', 'jsonProperties'];
+const REMOTE_COMPONENT_LOCK_KEYS = ['lockedBy', 'lockUserName', 'lockUserColor'];
+
+/**
+ * Read the current HTML payload from a Yjs component map.
+ * Prefers htmlContent (Y.Text) and falls back to htmlView (import string).
+ *
+ * @param {Y.Map} compMap
+ * @returns {string}
+ */
+function readComponentHtml(compMap) {
+  const htmlContent = compMap.get('htmlContent');
+  const fromYText = htmlContent?.toString?.() || '';
+  if (fromYText) {
+    return fromYText;
+  }
+  const htmlView = compMap.get('htmlView');
+  return typeof htmlView === 'string' ? htmlView : '';
+}
+
+/**
+ * Build the payload sent to updateRemoteComponent.
+ *
+ * Lock-only Y.Map updates (lockedBy / lockUserName / lockUserColor) must not
+ * include htmlContent or jsonProperties. Those fields being present is treated
+ * as a content update and would re-render — and an empty htmlContent would
+ * wipe the last saved remote view.
+ *
+ * @param {Y.Map} compMap
+ * @param {string[]|null} changedKeys - keys that changed; omit or pass null to include content
+ * @returns {Object}
+ */
+function buildRemoteComponentUpdate(compMap, changedKeys = null) {
+  const data = {
+    id: compMap.get('id'),
+    ideviceType: compMap.get('ideviceType') || compMap.get('type'),
+    lockedBy: compMap.get('lockedBy'),
+    lockUserName: compMap.get('lockUserName'),
+    lockUserColor: compMap.get('lockUserColor'),
+  };
+
+  const keys = changedKeys ? new Set(changedKeys) : null;
+  const htmlChanged = !keys || keys.has('htmlContent') || keys.has('htmlView');
+  const jsonChanged = !keys || keys.has('jsonProperties');
+
+  if (htmlChanged) {
+    data.htmlContent = readComponentHtml(compMap);
+  }
+
+  if (jsonChanged) {
+    data.jsonProperties = compMap.get('jsonProperties');
+  }
+
+  return data;
+}
+
 class YjsProjectBridge {
   /**
    * @param {Object} app - The eXeLearning app instance
@@ -947,15 +1004,7 @@ class YjsProjectBridge {
             const compMap = components.get(compIndex);
             if (!compMap) continue;
 
-            const componentData = {
-              id: compMap.get('id'),
-              ideviceType: compMap.get('ideviceType'),
-              htmlContent: compMap.get('htmlContent')?.toString?.() || '',
-              jsonProperties: compMap.get('jsonProperties'),
-              lockedBy: compMap.get('lockedBy'),
-              lockUserName: compMap.get('lockUserName'),
-              lockUserColor: compMap.get('lockUserColor'),
-            };
+            const componentData = buildRemoteComponentUpdate(compMap, changedKeys);
 
             Logger.log('[YjsProjectBridge] Remote component updated:', componentData.id, 'changed keys:', changedKeys);
 
@@ -988,15 +1037,7 @@ class YjsProjectBridge {
           const compMap = components.get(compIndex);
           if (!compMap) continue;
 
-          const componentData = {
-            id: compMap.get('id'),
-            ideviceType: compMap.get('ideviceType'),
-            htmlContent: compMap.get('htmlContent')?.toString?.() || '',
-            jsonProperties: compMap.get('jsonProperties'),
-            lockedBy: compMap.get('lockedBy'),
-            lockUserName: compMap.get('lockUserName'),
-            lockUserColor: compMap.get('lockUserColor'),
-          };
+          const componentData = buildRemoteComponentUpdate(compMap, ['htmlContent']);
 
           Logger.log('[YjsProjectBridge] Remote component content updated (Y.Text):', componentData.id);
 
@@ -4728,6 +4769,11 @@ class YjsProjectBridge {
     Logger.log('[YjsProjectBridge] Metadata cleared for new project');
   }
 }
+
+YjsProjectBridge.buildRemoteComponentUpdate = buildRemoteComponentUpdate;
+YjsProjectBridge.readComponentHtml = readComponentHtml;
+YjsProjectBridge.REMOTE_COMPONENT_CONTENT_KEYS = REMOTE_COMPONENT_CONTENT_KEYS;
+YjsProjectBridge.REMOTE_COMPONENT_LOCK_KEYS = REMOTE_COMPONENT_LOCK_KEYS;
 
 // Export for use
 if (typeof module !== 'undefined' && module.exports) {
