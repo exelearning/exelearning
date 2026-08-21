@@ -169,6 +169,20 @@ var $trueorfalse = {
 
         data.isTest = typeof data.isTest === 'undefined' ? false : data.isTest;
 
+        // Saving a SCORM score needs quiz mode: outside it `startGame()` is
+        // unreachable (createInterfaceTrueOrFalse hides both the start and the
+        // check controls), so `gameStarted` never becomes true and the shared
+        // gamification layer refuses every score. The edition form rejects this
+        // pair on save, but content written straight through the REST API can
+        // still carry it, and the activity then looks fine while silently never
+        // reporting. Say so rather than failing mutely.
+        if (data.isScorm > 0 && !data.isTest) {
+            console.warn(
+                `[trueorfalse] "${data.id}" asks for a SCORM score with quiz mode off; ` +
+                    'no score can ever be saved. Enable quiz mode (isTest) or turn the SCORM option off.'
+            );
+        }
+
         data.hits = 0;
         data.errors = 0;
         data.scorerp = 0;

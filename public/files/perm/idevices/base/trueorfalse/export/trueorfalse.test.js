@@ -306,4 +306,33 @@ describe('trueorfalse iDevice export', () => {
       expect(source()).toContain('mOptions.hits');
     });
   });
+
+  describe('updateConfig SCORM invariant', () => {
+    let warn;
+
+    beforeEach(() => {
+      warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warn.mockRestore();
+    });
+
+    it('warns when a SCORM score is requested with quiz mode off', () => {
+      $trueorfalse.updateConfig({ ideviceId: 'tof-1', isScorm: 1, isTest: false });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toContain('tof-1');
+      expect(warn.mock.calls[0][0]).toContain('no score can ever be saved');
+    });
+
+    it.each([
+      ['quiz mode on', { isScorm: 1, isTest: true }],
+      ['SCORM off', { isScorm: 0, isTest: false }],
+    ])('stays quiet for a valid combination: %s', (_label, flags) => {
+      $trueorfalse.updateConfig({ ideviceId: 'tof-1', ...flags });
+
+      expect(warn).not.toHaveBeenCalled();
+    });
+  });
 });
