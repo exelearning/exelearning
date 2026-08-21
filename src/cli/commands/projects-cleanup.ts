@@ -20,7 +20,7 @@ import {
     deleteProjectWithRelatedData as deleteProjectWithRelatedDataDefault,
 } from '../../db/queries/projects';
 import { getFilesDir, remove, fileExists } from '../../services/file-helper';
-import * as path from 'path';
+import { getProjectAssetsDirCandidates } from '../../utils/asset-paths';
 
 export interface ProjectsCleanupResult {
     success: boolean;
@@ -71,25 +71,41 @@ const defaultDependencies: ProjectsCleanupDependencies = {
 };
 
 /**
- * Remove project assets from disk
+ * Remove project assets from disk. Removes both the sharded directory and the
+ * legacy unsharded directory, so projects created before the sharding
+ * migration are fully cleaned up.
  */
 async function cleanupProjectAssets(
     projectUuid: string,
     fileHelper: ProjectsCleanupDependencies['fileHelper'],
 ): Promise<{ removed: boolean; error?: string }> {
-    const assetsDir = path.join(fileHelper.getFilesDir(), 'assets', projectUuid);
-
+    // Candidate computation can reject an unsafe project uuid; report that as
+    // a cleanup failure instead of letting it abort the whole run.
+    let candidates: string[];
     try {
-        const exists = await fileHelper.fileExists(assetsDir);
-        if (!exists) {
-            return { removed: false };
-        }
-        await fileHelper.remove(assetsDir);
-        return { removed: true };
+        candidates = getProjectAssetsDirCandidates(fileHelper.getFilesDir(), projectUuid);
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        return { removed: false, error: `${assetsDir}: ${message}` };
+        return { removed: false, error: `${projectUuid}: ${message}` };
     }
+    let removed = false;
+    const errors: string[] = [];
+
+    for (const assetsDir of candidates) {
+        try {
+            const exists = await fileHelper.fileExists(assetsDir);
+            if (!exists) {
+                continue;
+            }
+            await fileHelper.remove(assetsDir);
+            removed = true;
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            errors.push(`${assetsDir}: ${message}`);
+        }
+    }
+
+    return { removed, error: errors.length > 0 ? errors.join('; ') : undefined };
 }
 
 export async function execute(
@@ -155,9 +171,12 @@ export async function execute(
         const assetResult = await cleanupProjectAssets(project.uuid, fileHelper);
         if (assetResult.removed) {
             diskStats.cleaned++;
-        } else if (assetResult.error) {
+        }
+        // A partial failure (e.g. sharded dir removed, legacy dir locked)
+        // reports both removed=true AND an error.
+        if (assetResult.error) {
             diskStats.failures.push(assetResult.error);
-        } else {
+        } else if (!assetResult.removed) {
             diskStats.missing++;
         }
     }
@@ -168,9 +187,12 @@ export async function execute(
         const assetResult = await cleanupProjectAssets(project.uuid, fileHelper);
         if (assetResult.removed) {
             diskStats.cleaned++;
-        } else if (assetResult.error) {
+        }
+        // A partial failure (e.g. sharded dir removed, legacy dir locked)
+        // reports both removed=true AND an error.
+        if (assetResult.error) {
             diskStats.failures.push(assetResult.error);
-        } else {
+        } else if (!assetResult.removed) {
             diskStats.missing++;
         }
     }
