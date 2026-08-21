@@ -11,6 +11,8 @@ import { existsSync, mkdirSync, rmSync } from 'fs';
 import { ElpxImporter, ZipLimitError, DEFAULT_ZIP_LIMITS, inspectZipArchive } from './ElpxImporter';
 import { FileSystemAssetHandler } from './FileSystemAssetHandler';
 import type { Logger } from './interfaces';
+import { YjsDocumentAdapter } from '../export/adapters/YjsDocumentAdapter';
+import { generateOdeXml } from '../export/generators/OdeXmlGenerator';
 
 // Silent logger for tests
 const silentLogger: Logger = {
@@ -466,6 +468,110 @@ describe('ElpxImporter', () => {
             expect(importedProps.textTextarea).not.toContain('<script>');
 
             ydoc.destroy();
+        });
+    });
+
+    describe('damaged jsonProperties preservation (#2190)', () => {
+        // The verbatim payload persisted inside test/fixtures/damaged-trueorfalse-json.elpx:
+        // the #2177 corruption shape, where lost escape backslashes leave raw quotes
+        // inside a JSON string. It must never parse.
+        const DAMAGED_RAW =
+            '{"ideviceId":"idevice-damaged-malformed","typeGame":"TrueOrFalse","questionsData":[{"baseText":"<audio controls="controls" src=""><a href="">audio.webm</a></audio>","answer":"True"}]}';
+
+        const getComponentById = (ydoc: Y.Doc, componentId: string): Y.Map<unknown> | null => {
+            const navigation = ydoc.getArray('navigation');
+            for (let p = 0; p < navigation.length; p++) {
+                const page = navigation.get(p) as Y.Map<unknown>;
+                const blocks = page.get('blocks') as Y.Array<unknown>;
+                for (let b = 0; b < blocks.length; b++) {
+                    const block = blocks.get(b) as Y.Map<unknown>;
+                    const components = block.get('components') as Y.Array<unknown>;
+                    for (let c = 0; c < components.length; c++) {
+                        const comp = components.get(c) as Y.Map<unknown>;
+                        if (comp.get('id') === componentId) return comp;
+                    }
+                }
+            }
+            return null;
+        };
+
+        it('preserves the raw payload of a damaged activity and reports it', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/damaged-trueorfalse-json.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // The rest of the project imports normally.
+            expect(result.pages).toBe(1);
+            expect(result.blocks).toBe(3);
+            expect(result.components).toBe(3);
+
+            // The damaged payload survives byte for byte instead of becoming {} —
+            // and it is genuinely unparseable, which is what lets the workarea
+            // detect it and block editing (#2178).
+            const damaged = getComponentById(ydoc, 'idevice-damaged-malformed');
+            expect(damaged?.get('jsonProperties')).toBe(DAMAGED_RAW);
+            expect(() => JSON.parse(DAMAGED_RAW)).toThrow();
+
+            // The import result names the affected activity for the notice.
+            expect(result.malformedProperties).toEqual([
+                { componentId: 'idevice-damaged-malformed', ideviceType: 'trueorfalse' },
+            ]);
+
+            // Valid siblings are unaffected: empty stays empty, the text block parses.
+            expect(getComponentById(ydoc, 'idevice-damaged-empty')?.get('jsonProperties')).toBe('{}');
+            const textProps = JSON.parse(
+                getComponentById(ydoc, 'idevice-after-damaged')?.get('jsonProperties') as string,
+            ) as { textTextarea: string };
+            expect(textProps.textTextarea).toContain('after the damaged activities');
+
+            ydoc.destroy();
+        });
+
+        it('leaves the report empty when every payload parses', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            expect(result.malformedProperties).toEqual([]);
+
+            ydoc.destroy();
+        });
+
+        it('keeps the damaged payload through an export round-trip instead of normalizing it to {}', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/damaged-trueorfalse-json.elpx');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // Export the imported document the way a save does: through the
+            // shared adapter + content.xml generator.
+            const manager = {
+                getMetadata: () => ydoc.getMap('metadata'),
+                getNavigation: () => ydoc.getArray('navigation'),
+                projectId: 'roundtrip-test',
+            };
+            const adapter = new YjsDocumentAdapter(manager as never);
+            const contentXml = generateOdeXml(adapter.getMetadata(), adapter.getNavigation());
+            expect(contentXml).toContain(DAMAGED_RAW);
+
+            // Re-importing the exported XML must still carry the original data.
+            const ydoc2 = new Y.Doc();
+            const importer2 = new ElpxImporter(ydoc2, null, silentLogger);
+            await importer2.importFromZipContents({
+                'content.xml': new TextEncoder().encode(contentXml),
+            });
+            expect(getComponentById(ydoc2, 'idevice-damaged-malformed')?.get('jsonProperties')).toBe(DAMAGED_RAW);
+
+            ydoc.destroy();
+            ydoc2.destroy();
         });
     });
 

@@ -381,8 +381,8 @@ const PDF_EMBED_HANDLER_SCRIPT = `
             return vi >= 0 ? window.location.pathname.substring(0, vi) + '/' : '/';
         })();
 
-        import(bp + 'libs/pdfjs/pdf.min.mjs').then(function(m) {
-            m.GlobalWorkerOptions.workerSrc = bp + 'libs/pdfjs/pdf.worker.min.mjs';
+        import(bp + 'libs/pdfjs/pdf.min.js').then(function(m) {
+            m.GlobalWorkerOptions.workerSrc = bp + 'libs/pdfjs/pdf.worker.min.js';
             for (var i = 0; i < embeds.length; i++) renderPdfEmbed(m, embeds[i]);
         }).catch(function(err) {
             console.warn('[Preview] PDF.js load failed:', err);
@@ -642,7 +642,7 @@ function createSuccessResponse(body, mimeType) {
  * content (top-level, iframe, embed, object). This viewer uses PDF.js to parse and
  * render each page to <canvas> elements, bypassing Chrome's SW-PDF restrictions entirely.
  *
- * The viewer loads pdf.min.mjs from the network (not SW-intercepted) and uses
+ * The viewer loads pdf.min.js from the network (not SW-intercepted) and uses
  * window.location.href as the PDF source. When PDF.js fetches it, the SW intercepts
  * the request as a regular fetch (destination ''), serving raw PDF bytes — no loop.
  *
@@ -690,8 +690,8 @@ function createPdfViewerResponse(filePath, pathname, basePath) {
         '<div id="error"></div>' +
         '<script type="module">' +
         'try{' +
-        'var m=await import("' + safeBasePath + 'libs/pdfjs/pdf.min.mjs");' +
-        'm.GlobalWorkerOptions.workerSrc="' + safeBasePath + 'libs/pdfjs/pdf.worker.min.mjs";' +
+        'var m=await import("' + safeBasePath + 'libs/pdfjs/pdf.min.js");' +
+        'm.GlobalWorkerOptions.workerSrc="' + safeBasePath + 'libs/pdfjs/pdf.worker.min.js";' +
         'var pdf=await m.getDocument(window.location.href).promise;' +
         'document.getElementById("loading").style.display="none";' +
         'var tb=document.getElementById("tb");tb.style.display="flex";' +
