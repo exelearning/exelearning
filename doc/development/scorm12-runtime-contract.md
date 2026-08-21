@@ -62,7 +62,12 @@ The lazy-load gates are `typeof pipwerks === 'undefined'` (wrapper) and
 
 `libs/SCOFunctions.js` is assembled by
 `src/shared/export/utils/Scorm12Runtime.ts` from five source layers, in load
-order:
+order. Four of them are **required**; `exe-scorm12-activities.js` is optional,
+and the adapter's install guard says so explicitly. A host may assemble the
+runtime without the registry — the Moodle plugin does, so that the packages it
+serves keep writing the legacy `cmi.suspend_data` its own parsers read — and
+`exe-scorm12-policy.js` then degrades to its page-level fallback. eXeLearning's
+own SCORM exports always ship all five.
 
 | Layer | Responsibility |
 |---|---|

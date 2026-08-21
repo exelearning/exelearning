@@ -816,4 +816,32 @@ describe('exe-scorm12-policy', () => {
             expect(api.data['cmi.suspend_data']).toContain('1;40;1');
         });
     });
+    describe('without an activity registry (four-layer host)', () => {
+        it('does not pin a scored page to incomplete for ever', () => {
+            // The Moodle plugin assembles the runtime WITHOUT
+            // exe-scorm12-activities.js, so getActivities() returns null and
+            // nothing will ever report progress. The page-flag branch answered
+            // allRequiredComplete: false on every call, so decideStatus returned
+            // `incomplete` for the rest of the session — on a page the learner
+            // may well have finished.
+            policy.configure({ getClient: () => client, getActivities: () => null, warn: warnSpy });
+            startSession({ 'cmi.core.lesson_status': '' });
+            policy.setHasScoredActivities(true);
+
+            const decision = policy.decideStatus();
+
+            expect(decision.status).not.toBe('incomplete');
+            expect(decision.reason).toBe('no-required-activities');
+        });
+
+        it('still lets an EMPTY registry hold the page incomplete until something registers', () => {
+            // Deliberately a different case: the registry exists, so registration
+            // is merely pending and resolves as soon as an activity arrives.
+            startSession({ 'cmi.core.lesson_status': '' });
+            policy.setHasScoredActivities(true);
+
+            expect(policy.decideStatus().status).toBe('incomplete');
+        });
+    });
+
 });

@@ -193,9 +193,25 @@
                 source: 'registry',
             };
         }
+        if (!activities) {
+            // No registry layer at all. A host may assemble the runtime without
+            // it (the Moodle plugin does), and then NOTHING will ever report
+            // progress — so the page-flag branch below would pin such a page to
+            // `incomplete` for the rest of time. Completion is simply not this
+            // host's business: report no required activities and let the status
+            // be decided without them.
+            return {
+                hasRequired: false,
+                allRequiredComplete: true,
+                score: null,
+                source: 'no-registry',
+            };
+        }
         return {
             hasRequired: state.pageHasScoredActivities,
-            // Nothing reported progress, so a scored page cannot be complete.
+            // The registry exists but is empty: registration is still pending, so
+            // a scored page cannot be complete YET. Unlike the branch above, this
+            // one resolves as soon as an activity registers.
             allRequiredComplete: !state.pageHasScoredActivities,
             score: null,
             source: 'page-flag',
