@@ -521,9 +521,9 @@ var $exeDevice = {
     },
 
     addEventCard: function () {
-        const loadAndPlayImage = (index) => $exeDevice.loadImage(index),
+        const loadAndPlayImage = (index) => $exeDevice?.loadImage(index),
             loadAndPlayAudio = (selector) =>
-                $exeDevice.loadAudio($(selector).val());
+                $exeDevice?.loadAudio($(selector).val());
 
         $('#dadEURLImage').on('change', () => loadAndPlayImage(0));
         $('#dadEURLImageBack').on('change', () => loadAndPlayImage(1));
@@ -567,6 +567,7 @@ var $exeDevice = {
         });
 
         $('#dadEBgColor, #dadEBgColorBack').on('change', function () {
+            if (!$exeDevice) return;
             const textDiv = $(this).is('#dadEBgColor')
                     ? '#dadETextDiv'
                     : '#dadETextDivBack',
@@ -575,7 +576,7 @@ var $exeDevice = {
         });
 
         $('#dadEImage').on('click', (e) =>
-            $exeDevice.clickImage(e.pageX, e.pageY)
+            $exeDevice?.clickImage(e.pageX, e.pageY)
         );
 
         $('#dadECursor').on('click', function () {
@@ -584,7 +585,7 @@ var $exeDevice = {
         });
 
         $('#dadEImageBack').on('click', (e) =>
-            $exeDevice.clickImageBack(e.pageX, e.pageY)
+            $exeDevice?.clickImageBack(e.pageX, e.pageY)
         );
 
         $('#dadECursorBack').on('click', function () {
@@ -873,6 +874,7 @@ var $exeDevice = {
         $image
             .prop('src', url)
             .on('load', function () {
+                if (!$exeDevice) return false;
                 if (
                     this.complete &&
                     typeof this.naturalWidth !== 'undefined' &&
@@ -900,7 +902,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
         $exeDevice.playerAudio.addEventListener('canplaythrough', () => {
-            $exeDevice.playerAudio.play();
+            $exeDevice?.playerAudio.play();
         });
     },
 
@@ -969,27 +971,27 @@ var $exeDevice = {
 
         $('#dadEAddC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.addCard(true);
+            $exeDevice?.addCard(true);
         });
 
         $('#dadEDeleteC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.removeCard();
+            $exeDevice?.removeCard();
         });
 
         $('#dadECopyC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.copyCard();
+            $exeDevice?.copyCard();
         });
 
         $('#dadECutC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.cutCard();
+            $exeDevice?.cutCard();
         });
 
         $('#dadEPasteC').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.pasteCard();
+            $exeDevice?.pasteCard();
         });
 
         $('#dadEFirstC, #dadEPreviousC, #dadENextC, #dadELastC').on(
@@ -1002,7 +1004,7 @@ var $exeDevice = {
                     dadENextC: 'nextCard',
                     dadELastC: 'lastCard',
                 };
-                $exeDevice[actions[e.currentTarget.id]]();
+                $exeDevice?.[actions[e.currentTarget.id]]();
             }
         );
 
@@ -1037,12 +1039,12 @@ var $exeDevice = {
                 }
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    $exeDevice.importGame(e.target.result, file.type);
+                    $exeDevice?.importGame(e.target.result, file.type);
                 };
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', () => {
-                $exeDevice.exportQuestions();
+                $exeDevice?.exportQuestions();
             });
         } else {
             $('#eXeGameExportImport').hide();
@@ -1052,23 +1054,24 @@ var $exeDevice = {
                 let v = this.value.replace(/\D/g, '').substring(0, 3);
                 this.value = v;
                 if (this.value > 0 && this.value < 101) {
-                    $exeDevice.updateCardsNumber();
+                    $exeDevice?.updateCardsNumber();
                 }
             })
             .on('focusout', function () {
                 this.value = this.value.trim() === '' ? 100 : this.value;
                 this.value = Math.max(1, Math.min(100, this.value));
-                $exeDevice.updateCardsNumber();
+                $exeDevice?.updateCardsNumber();
             })
             .on('click', () => {
-                $exeDevice.updateCardsNumber();
+                $exeDevice?.updateCardsNumber();
             });
 
         $('#dadEURLAudioDefinition').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
+            $exeDevice?.loadAudio($(this).val());
         });
 
         $('#dadENumberCard').keyup(function (e) {
+            if (!$exeDevice) return;
             if (e.keyCode === 13) {
                 const num = parseInt($(this).val(), 10);
                 if (!isNaN(num) && num > 0) {
@@ -1118,44 +1121,44 @@ var $exeDevice = {
 
         $('#dadEURLImage').on('change', function () {
             const url = $(this).val().trim();
-            $exeDevice.loadImage(url);
+            $exeDevice?.loadImage(url);
         });
 
         $('#dadEPlayImage').on('click', function (e) {
             e.preventDefault();
             const url = $('#dadEURLImage').val().trim();
-            $exeDevice.loadImage(url);
+            $exeDevice?.loadImage(url);
         });
 
         $('#dadEURLAudio').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
+            $exeDevice?.loadAudio($(this).val());
         });
 
         $('#dadEPlayAudio').on('click', function (e) {
             e.preventDefault();
             const audio = $('#dadEURLAudio').val();
-            $exeDevice.loadAudio(audio);
+            $exeDevice?.loadAudio(audio);
         });
 
         $('#dadEURLImage').on('change', function () {
             const url = $(this).val().trim();
-            $exeDevice.loadImage(url);
+            $exeDevice?.loadImage(url);
         });
 
         $('#dadEPlayImage').on('click', function (e) {
             e.preventDefault();
             const url = $('#dadEURLImage').val().trim();
-            $exeDevice.loadImage(url);
+            $exeDevice?.loadImage(url);
         });
 
         $('#dadEURLAudio').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
+            $exeDevice?.loadAudio($(this).val());
         });
 
         $('#dadEPlayAudio').on('click', function (e) {
             e.preventDefault();
             const audio = $('#dadEURLAudio').val();
-            $exeDevice.loadAudio(audio);
+            $exeDevice?.loadAudio(audio);
         });
 
         $('#dadEShowMore').on('click', function (e) {

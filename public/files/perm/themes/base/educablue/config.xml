@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<theme>
+  <name>educablue</name>
+  <title>EducaBlue</title>
+  <version>20260814</version>
+  <compatibility>4.0</compatibility>
+  <author>EducaMadrid</author>
+  <license>Creative Commons BY-SA 4.0</license>
+  <license-url>http://creativecommons.org/licenses/by-sa/4.0/</license-url>
+  <description>Responsive modern blue style for eXeLearning, with dark mode. Its colours and typography meet WCAG 2.2 level AA.
+
+iDevice icons by tabler-icons (https://github.com/tabler/tabler-icons), MIT License.
+
+Navigation icons by Hugeicons (https://hugeicons.com), free license. These icons are not under CC-BY-SA and cannot be relicensed; they have their own license with restrictions on redistribution. See https://hugeicons.com for details.
+
+Creative Commons license badges (img/licenses.gif) are trademarks of Creative Commons (https://creativecommons.org) and are used under their trademark policy (https://creativecommons.org/policies/). They are not covered by this style's CC BY-SA license.
+
+Inclusive Sans Font, Copyright 2022 The Inclusive Sans Project Authors (https://github.com/LivKing/Inclusive-Sans). This font software is licensed under the SIL Open Font License, Version 1.1. The license text is available at: https://openfontlicense.org.</description>
+</theme>

@@ -11,6 +11,7 @@ import { colors, error, success, EXIT_CODES } from './utils/output';
 // Import commands
 import * as createUser from './commands/create-user';
 import * as userRole from './commands/user-role';
+import * as userPassword from './commands/user-password';
 import * as generateJwt from './commands/generate-jwt';
 import * as tmpCleanup from './commands/tmp-cleanup';
 import * as translations from './commands/translations';
@@ -22,6 +23,7 @@ import * as elpExport from './commands/elp-export';
 import * as checkQuota from './commands/check-quota';
 import * as projectsPurge from './commands/projects-purge';
 import * as projectsCleanup from './commands/projects-cleanup';
+import * as assetsConflicts from './commands/assets-conflicts';
 import * as updateLicenses from './commands/update-licenses';
 import * as maintenance from './commands/maintenance';
 
@@ -30,13 +32,14 @@ interface CommandModule {
     execute: (
         positional: string[],
         flags: Record<string, string | boolean | string[]>,
-    ) => Promise<{ success: boolean; message?: string; token?: string }>;
+    ) => Promise<{ success: boolean; message?: string; token?: string; raw?: boolean }>;
     printHelp: () => void;
 }
 
 const COMMANDS: Record<string, CommandModule> = {
     'create-user': createUser,
     'user:role': userRole,
+    'user:password': userPassword,
     'jwt:generate': generateJwt,
     'tmp:cleanup': tmpCleanup,
     translations: translations,
@@ -48,6 +51,7 @@ const COMMANDS: Record<string, CommandModule> = {
     'check-quota': checkQuota,
     'projects:purge': projectsPurge,
     'projects:cleanup': projectsCleanup,
+    'assets:conflicts': assetsConflicts,
     'update-licenses': updateLicenses,
     maintenance: maintenance,
 };
@@ -177,6 +181,7 @@ ${colors.cyan('Usage:')} bun cli <command> [arguments] [options]
 ${colors.cyan('User Management:')}
   create-user <email> <password> <user_id>   Create a new user
   user:role <email> [--add|--remove|--list]  Manage user roles
+  user:password <email>                       Change a local account password
   check-quota <email>                         Check storage usage and quota
   promote-admin <email>                       Grant ROLE_ADMIN to user
   demote-admin <email>                        Remove ROLE_ADMIN from user
@@ -197,6 +202,7 @@ ${colors.cyan('Maintenance:')}
   translations:format [--locale=en]           Add CDATA where needed and normalise indentation
   projects:purge --yes                        Delete all projects and assets
   projects:cleanup [--unsaved-age=24]        Clean unsaved/guest projects
+  assets:conflicts [list|resolve <id>]       List/resolve asset storage conflicts
   update-licenses [--dry-run]                Update license info in public/libs/README.md
 
 ${colors.cyan('ELPX Processing:')}
@@ -216,6 +222,7 @@ ${colors.cyan('Global Options:')}
 ${colors.cyan('Examples:')}
   bun cli create-user admin@example.com secret123 admin
   bun cli user:role admin@example.com --add=ROLE_ADMIN --add=ROLE_EDITOR
+  bun cli user:password user@example.com
   bun cli check-quota admin@example.com
   bun cli promote-admin admin@example.com
   bun cli jwt:generate admin@example.com --ttl=86400
@@ -290,6 +297,9 @@ async function main(): Promise<void> {
             // Special handling for jwt:generate - output token only
             if (command === 'jwt:generate' && result.token) {
                 console.log(result.token);
+            } else if (result.message && result.raw) {
+                // Machine-parseable output (e.g. --json): no SUCCESS prefix.
+                console.log(result.message);
             } else if (result.message) {
                 success(result.message);
             }
