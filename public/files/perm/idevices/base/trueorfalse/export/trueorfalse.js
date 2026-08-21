@@ -722,7 +722,6 @@ var $trueorfalse = {
                             : $trueorfalse.initialScore;
                     $trueorfalse.updateScoreData(mOptions);
                     $trueorfalse.sendScore(true, mOptions);
-                    $trueorfalse.initialScore = score;
                 }
             }
         );
@@ -869,15 +868,14 @@ var $trueorfalse = {
             });
 
         mOptions.hits = hits;
-        mOptions.errors = hits;
-        score = (mOptions.hist * 10) / mOptions.numberQuestions;
+        mOptions.errors = errors;
+        mOptions.scorep = (10 * mOptions.hits) / mOptions.numberQuestions;
 
-        $('#tofPMultimedia').data('score', score);
+        $('#tofPMultimedia').data('score', mOptions.scorep);
         $('#tofPMultimedia').data('isscorm', mOptions.isScorm);
         $('#tofPMultimedia').data('evaluation', mOptions.evaluation);
         $('#tofPMultimedia').data('evaluationID', mOptions.evaluationID);
 
-        mOptions.scorep = (10 * mOptions.hits) / mOptions.numberQuestions;
         const message =
             mOptions.msgs.msgYouScore + ': ' + mOptions.scorep.toFixed(2);
         const type = mOptions.scorep < 5 ? 1 : 2;
@@ -891,7 +889,6 @@ var $trueorfalse = {
                     ? ''
                     : $trueorfalse.initialScore;
             $trueorfalse.sendScore(true, data);
-            $trueorfalse.initialScore = score;
         }
     },
 

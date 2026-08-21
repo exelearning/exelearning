@@ -284,4 +284,26 @@ describe('trueorfalse iDevice export', () => {
       expect(updateEvaluationIcon).toHaveBeenCalledWith(options, false);
     });
   });
+
+  describe('source hygiene', () => {
+    const source = () =>
+      readFileSync(join(__dirname, 'trueorfalse.js'), 'utf-8');
+
+    /**
+     * `score` was assigned without a declaration, so it leaked as an implicit
+     * global — and it read `mOptions.hist`, a typo for `hits`, so the value was
+     * NaN. The only two consumers were an assignment to a field nothing reads
+     * and a `$('#tofPMultimedia')` selector that matches nothing (the rendered
+     * id carries an instance suffix). `mOptions.scorep`, computed two lines
+     * below, is the real score.
+     */
+    it('declares every variable it assigns', () => {
+      expect(source()).not.toMatch(/^\s*score\s*=/m);
+    });
+
+    it('does not read the misspelled mOptions.hist', () => {
+      expect(source()).not.toContain('mOptions.hist');
+      expect(source()).toContain('mOptions.hits');
+    });
+  });
 });
