@@ -4,7 +4,6 @@
  * Requires ROLE_ADMIN for all routes
  */
 import { Elysia, t } from 'elysia';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
@@ -679,7 +678,6 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
     return (
         new Elysia({ name: 'admin-routes' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
@@ -1321,15 +1319,18 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
                 const yjsDoc = await reconstructDocument(project.id);
                 const publicDir = pathModule.resolve(__dirname, '../../public');
-                const assetsDir = fileHelper!.getProjectAssetsDir(project.uuid);
+                // Sharded directory first, legacy unsharded directory second, so
+                // filename-addressed files without database rows still export
+                // while an installation converges after the storage migration.
+                const assetDirs = fileHelper!.getProjectAssetsDirCandidates(project.uuid);
 
                 const wrapper = new ServerYjsDocumentWrapper(yjsDoc, project.uuid);
                 const document = new YjsDocumentAdapter(wrapper);
                 const resources = new FileSystemResourceProvider(publicDir);
                 const zip = new FflateZipProvider();
-                const fsAssets = new FileSystemAssetProvider(assetsDir);
-                const dbAssets = new DatabaseAssetProvider(db, project.id, assetsDir);
-                const assets = new CombinedAssetProvider([dbAssets, fsAssets]);
+                const fsAssets = assetDirs.map(dir => new FileSystemAssetProvider(dir));
+                const dbAssets = new DatabaseAssetProvider(db, project.id, assetDirs[0]);
+                const assets = new CombinedAssetProvider([dbAssets, ...fsAssets]);
 
                 const exporter = new ElpxExporter(document, resources, assets, zip);
                 const result = await exporter.export();
@@ -1391,18 +1392,28 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 const userProjects = await queries.findProjectsByOwnerId(db, userId);
                 const deletedProjectsCount = userProjects.length;
 
-                // Clean up asset directories for each project
-                // Continue even if some cleanups fail - the DB cascade will still remove records
+                // Clean up asset directories for each project (both the sharded
+                // and the legacy unsharded location, so pre-sharding projects
+                // are fully cleaned up). Errors are isolated per candidate so a
+                // failure on one directory never skips the other, and per
+                // project so a failure never skips the remaining projects — the
+                // DB cascade will still remove the records either way.
                 for (const project of userProjects) {
+                    let candidates: string[] = [];
                     try {
-                        const assetsDir = fileHelper.getProjectAssetsDir(project.uuid);
-                        const exists = await fileHelper.fileExists(assetsDir);
-                        if (exists) {
-                            await fileHelper.remove(assetsDir);
-                        }
+                        candidates = fileHelper.getProjectAssetsDirCandidates(project.uuid);
                     } catch (err) {
-                        console.error(`Failed to clean up assets for project ${project.uuid}:`, err);
-                        // Continue with deletion - DB cascade will handle records
+                        console.error(`Failed to compute asset directories for project ${project.uuid}:`, err);
+                    }
+                    for (const assetsDir of candidates) {
+                        try {
+                            const exists = await fileHelper.fileExists(assetsDir);
+                            if (exists) {
+                                await fileHelper.remove(assetsDir);
+                            }
+                        } catch (err) {
+                            console.error(`Failed to clean up assets for project ${project.uuid}:`, err);
+                        }
                     }
                 }
 
