@@ -1122,17 +1122,27 @@ export default class IdevicesEngine {
             const pageId =
                 this.project.app.project.structure.getSelectNodePageId();
 
+            // A drop race or a concurrent Yjs re-render can detach the dragged
+            // element from the container. A stale reference makes insertBefore
+            // throw NotFoundError, and its getBoundingClientRect() is all zeros,
+            // which would place the block first in Yjs while the DOM appends it
+            // last. Resolve the reference once, before both uses, and fall back
+            // to null: append at the end in the DOM and in the Yjs order.
+            const dragRef =
+                this.draggedElement?.parentNode === container
+                    ? this.draggedElement
+                    : null;
+
             // Calculate block order from DOM position
             const existingBlocks = container.querySelectorAll(
                 ':scope > article.box'
             );
             let blockOrder = existingBlocks.length;
-            if (this.draggedElement) {
+            if (dragRef) {
                 const blocksArray = Array.from(existingBlocks);
                 for (let i = 0; i < blocksArray.length; i++) {
                     const blockRect = blocksArray[i].getBoundingClientRect();
-                    const dragRect =
-                        this.draggedElement.getBoundingClientRect();
+                    const dragRect = dragRef.getBoundingClientRect();
                     if (dragRect.top < blockRect.top + blockRect.height / 2) {
                         blockOrder = i;
                         break;
@@ -1155,14 +1165,7 @@ export default class IdevicesEngine {
             ideviceBlockNode.boxContent.append(ideviceNodeContent);
             // Set block data to idevice
             this.setBlockDataToIdeviceNode(ideviceNode, ideviceBlockNode);
-            // Insert block into node content
-            // A drop race or Yjs re-render can detach the dragged element from
-            // the container; insertBefore with a stale reference would throw
-            // NotFoundError, so fall back to appending at the end (null ref)
-            const dragRef =
-                this.draggedElement?.parentNode === container
-                    ? this.draggedElement
-                    : null;
+            // Insert block into node content (dragRef is null when stale)
             container.insertBefore(ideviceBlockNodeContent, dragRef);
         } else {
             // Add only the idevice

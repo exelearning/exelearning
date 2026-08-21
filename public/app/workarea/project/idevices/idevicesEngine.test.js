@@ -4050,6 +4050,58 @@ describe('IdevicesEngine', () => {
             expect(blockContent.nextSibling).toBe(engine.draggedElement);
         });
 
+        it('keeps the Yjs block order aligned with the DOM when draggedElement is stale', () => {
+            const existingBlock = document.createElement('article');
+            existingBlock.classList.add('box');
+            existingBlock.getBoundingClientRect = () => ({
+                top: 100,
+                height: 50,
+                bottom: 150,
+                left: 0,
+                right: 0,
+                width: 0,
+            });
+            container.appendChild(existingBlock);
+
+            const addBlock = vi.fn(() => 'yjs-block-id');
+            engine.project._yjsBridge = { addBlock };
+
+            // A detached element reports an all-zero rect, which used to place
+            // the block first in Yjs while the DOM fallback appended it last
+            engine.draggedElement = document.createElement('div');
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+
+            expect(addBlock).toHaveBeenCalledWith(expect.any(String), 'Test iDevice', null, 1);
+            expect(container.lastChild).toBe(blockContent);
+        });
+
+        it('still computes the drop order from the rect when draggedElement is attached', () => {
+            const existingBlock = document.createElement('article');
+            existingBlock.classList.add('box');
+            existingBlock.getBoundingClientRect = () => ({
+                top: 100,
+                height: 50,
+                bottom: 150,
+                left: 0,
+                right: 0,
+                width: 0,
+            });
+            container.appendChild(existingBlock);
+
+            const addBlock = vi.fn(() => 'yjs-block-id');
+            engine.project._yjsBridge = { addBlock };
+
+            // Attached placeholder sitting above the existing block
+            engine.draggedElement = document.createElement('div');
+            container.insertBefore(engine.draggedElement, existingBlock);
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+
+            expect(addBlock).toHaveBeenCalledWith(expect.any(String), 'Test iDevice', null, 0);
+            expect(blockContent.nextSibling).toBe(engine.draggedElement);
+        });
+
         it('appends at the end when draggedElement is null', () => {
             const existingChild = document.createElement('div');
             container.appendChild(existingChild);
