@@ -979,9 +979,14 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
             // The userId is used for session validation but the actual auth is via the session token
             const userId = project.user_id || 0;
 
-            // Create session (async due to jose JWT library)
+            // Create session (async due to jose JWT library). The session's
+            // projectId is the CANONICAL projects.uuid from the database, not
+            // the raw client-supplied value: storage paths are derived from it
+            // (upload-session.ts), and a case-variant identifier (possible with
+            // case-insensitive DB collations) would otherwise mint a second
+            // on-disk directory that cleanup would never remove.
             const { sessionToken, expiresAt } = await uploadSessionManager.createSession({
-                projectId: projectUuid,
+                projectId: project.uuid,
                 projectIdNum: project.id,
                 userId,
                 clientId,
