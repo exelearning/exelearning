@@ -406,6 +406,42 @@ describe('ComponentExporter', () => {
             expect(contentXml).toContain('"title":"Welcome"');
         });
 
+        it('should export a malformed payload verbatim instead of {} (#2190)', async () => {
+            const malformed = '{"questionsData":[{"baseText":"<audio src="broken.webm"></audio>"}]}';
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'trueorfalse',
+                                    order: 0,
+                                    content: '<p>Damaged</p>',
+                                    properties: {},
+                                    malformedProperties: malformed,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            exporter = new ComponentExporter(new MockDocument({}, pages), resources, assets, zip);
+
+            await exporter.exportComponent('block-1', 'idevice-1');
+
+            const contentXml = new TextDecoder().decode(zip.files.get('content.xml'));
+
+            expect(contentXml).toContain(`<jsonProperties><![CDATA[${malformed}]]></jsonProperties>`);
+        });
+
         it('should include page ID', async () => {
             await exporter.exportComponent('block-1', 'idevice-1');
 
