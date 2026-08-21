@@ -1488,13 +1488,21 @@ export default class IdevicesEngine {
 
         Logger.log(`[IdevicesEngine] Updating remote iDevice content: ${componentData.id}`);
 
+        const incomingHtml = componentData.htmlContent;
+        const hasIncomingHtml = incomingHtml !== undefined;
+        const incomingHtmlIsEmpty = hasIncomingHtml && String(incomingHtml).trim() === '';
+        const existingHtml = ideviceNode.htmlView;
+        // Same integrity rule as YjsStructureBinding: an empty remote HTML payload
+        // must not erase a last-saved view. Lock-only updates omit htmlContent.
+        const shouldApplyHtml =
+            hasIncomingHtml && (!incomingHtmlIsEmpty || !existingHtml || String(existingHtml).trim() === '');
+
         const hasContentUpdate =
-            componentData.htmlContent !== undefined ||
-            componentData.jsonProperties !== undefined;
+            shouldApplyHtml || componentData.jsonProperties !== undefined;
 
         // Update in-memory content first (used when opening edition mode later)
-        if (componentData.htmlContent !== undefined) {
-            ideviceNode.htmlView = componentData.htmlContent || '';
+        if (shouldApplyHtml) {
+            ideviceNode.htmlView = incomingHtml || '';
         }
         if (componentData.jsonProperties !== undefined) {
             const parsed = parseIdeviceJsonProperties(componentData.jsonProperties);
@@ -1536,12 +1544,12 @@ export default class IdevicesEngine {
             // Keep immediate HTML refresh for plain-content updates.
             // This preserves existing behavior and unit-test expectations while
             // loadInitScriptIdevice('export') performs full iDevice re-render.
-            if (componentData.htmlContent !== undefined) {
+            if (shouldApplyHtml) {
                 // SECURITY: this HTML originates from a REMOTE collaborator over
                 // Yjs and is attacker-controlled. Sanitize before injecting via
                 // innerHTML to prevent stored DOM-XSS. Legitimate interactivity
                 // is re-attached below by loadInitScriptIdevice('export').
-                ideviceNode.ideviceBody.innerHTML = sanitizeCollaborativeHtml(componentData.htmlContent);
+                ideviceNode.ideviceBody.innerHTML = sanitizeCollaborativeHtml(incomingHtml);
             }
             await ideviceNode.loadInitScriptIdevice('export');
         }
@@ -2843,6 +2851,10 @@ export default class IdevicesEngine {
         }
 
         let script = document.createElement('script');
+        // Dynamically inserted scripts are async by default: execution follows
+        // network completion, so dependency lists (e.g. three.min.js before
+        // OrbitControls.js) can run out of order. Force insertion order.
+        script.async = false;
         script.id = this.generateId();
         script.setAttribute('type', 'text/javascript');
         if (newVersion) {
@@ -2933,6 +2945,8 @@ export default class IdevicesEngine {
                 break;
             case 'js':
                 tag = document.createElement('script');
+                // Keep insertion order for multi-file loads (see issue #2270)
+                tag.async = false;
                 tag.id = this.generateId();
                 tag.setAttribute('type', 'text/javascript');
                 tag.src = `${url}?t=${Date.now()}`;

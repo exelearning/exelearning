@@ -6,7 +6,6 @@
  */
 import { Elysia } from 'elysia';
 import { getJwtSecret } from './auth';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import { randomBytes } from 'crypto';
 import type { Kysely } from 'kysely';
@@ -305,7 +304,6 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
      */
     return (
         new Elysia({ name: 'pages-routes' })
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',

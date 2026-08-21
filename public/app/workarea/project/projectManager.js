@@ -4,6 +4,7 @@ import StructureEngine from './structure/structureEngine.js';
 import ImportProgress from '../interface/importProgress.js';
 import { storePendingImport, retrievePendingImport } from './pendingImport.js';
 import { buildMissingAssetsNotice } from './missingAssetsNotice.js';
+import { buildDamagedPropertiesNotice } from './damagedPropertiesNotice.js';
 import { isImportCancelled } from '../interface/importResult.js';
 
 // Use global AppLogger for debug-controlled logging
@@ -25,7 +26,6 @@ export default class projectManager {
         // Yjs collaborative editing
         this._yjsEnabled = false;
         this._yjsBridge = null;
-        this._yjsBindings = new Map(); // TinyMCE bindings by componentId
     }
 
     /**
@@ -240,21 +240,37 @@ export default class projectManager {
     }
 
     /**
-     * Tell the author which activities reference files the imported package did
-     * not carry (#2223). Called from every browser import path through
-     * `importFromElpxViaYjs`, so the notice does not depend on which entry point
+     * Tell the author what the import could not fully restore: activities whose
+     * saved data is damaged (#2190) and activities referencing files the package
+     * did not carry (#2223). Called from every browser import path through
+     * `importFromElpxViaYjs`, so the notices do not depend on which entry point
      * started the import.
      *
-     * @param {Object} stats - Import result, `missingAssets` is the report
+     * The alert modal is a singleton — a second show() replaces the first — so
+     * when both reports have content they must share one dialog.
+     *
+     * @param {Object} stats - Import result, `malformedProperties` and
+     *   `missingAssets` are the reports
      */
-    showMissingAssetsNotice(stats) {
-        const notice = buildMissingAssetsNotice(stats?.missingAssets);
-        if (!notice) return;
+    showImportNotices(stats) {
+        const notices = [];
+        const damaged = buildDamagedPropertiesNotice(stats?.malformedProperties);
+        if (damaged) notices.push({ ...damaged, contentId: 'damaged-activities' });
+        const missing = buildMissingAssetsNotice(stats?.missingAssets);
+        if (missing) notices.push({ ...missing, contentId: 'missing-assets' });
+        if (notices.length === 0) return;
+
+        if (notices.length === 1) {
+            this.app?.modals?.alert?.show(notices[0]);
+            return;
+        }
 
         this.app?.modals?.alert?.show({
-            title: notice.title,
-            body: notice.body,
-            contentId: 'missing-assets',
+            title: _('Import warnings'),
+            body: notices
+                .map((notice) => `<h6>${notice.title}</h6>${notice.body}`)
+                .join(''),
+            contentId: 'import-warnings',
         });
     }
 

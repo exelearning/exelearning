@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <path d="M0 0L48 0L48 48L0 48L0 0Z" />
+    <path d="M0.000326157 30.6584L8.00033 30.6584C8.00033 30.6584 29.0003 9.65836 29.0003 9.65836C30.4303 8.22943 30.989 6.14605 30.4659 4.19336C29.9429 2.24068 28.4176 0.71551 26.4649 0.192634C24.5122 -0.330243 22.4288 0.22865 21 1.65869C21 1.65869 0 22.6587 0 22.6587L0 30.6587" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 9.342)" />
+    <path d="M0 0L8 8" fill="none" stroke-width="1.5" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="translate(27 13)" />
+  </g>
+</svg>
