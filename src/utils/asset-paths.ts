@@ -196,6 +196,34 @@ export function tryResolveAssetStoragePath(filesDir: string, storedPath: string)
 }
 
 /**
+ * Derives the canonical sharded stored path (`assets/<shard>/<uuid>/...`) for
+ * any interpretable stored value: canonical values map to themselves, parked
+ * conflict values (`assets/<uuid>/...`) and legacy absolute values map to
+ * their sharded target. Returns null when the value has no safe
+ * interpretation. Pure companion to the startup migration's per-row
+ * derivation, used by the conflict-resolution service (issue #2287).
+ */
+export function deriveShardedAssetStoragePath(projectUuid: string, storedPath: string): string | null {
+    const segments = extractAssetsRelativeSegments(storedPath);
+    if (!segments || segments.length < 2) {
+        return null;
+    }
+    let shard: string;
+    try {
+        shard = getAssetShard(projectUuid);
+    } catch {
+        return null;
+    }
+    const alreadySharded = segments.length >= 3 && segments[0] === shard && segments[1] === projectUuid;
+    const relWithinProject = alreadySharded ? segments.slice(2) : segments.slice(1);
+    try {
+        return buildAssetStoragePath(projectUuid, ...relWithinProject);
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Returns the physical project asset directory candidates for `projectUuid`
  * under `filesDir`: the canonical sharded directory first, then the legacy
  * unsharded directory. Deletion/cleanup paths must remove both so projects

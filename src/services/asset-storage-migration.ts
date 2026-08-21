@@ -22,6 +22,11 @@
  *   next run reconciles. The guard also makes concurrent execution by several
  *   app instances safe: exactly one instance wins each row, the others
  *   re-observe an already-converged state.
+ * - Phase 1 re-examines every non-canonical row, including conflict rows
+ *   parked on `assets/<uuid>/...` by a previous run. That is what makes an
+ *   interrupted `assets:conflicts resolve` (issue #2287) self-heal at the
+ *   next startup: whichever copy the interruption left behind is either
+ *   moved or adopted, and the row converges.
  * - Never overwrite: when source and destination both exist with different
  *   content, both files are kept, the conflict is reported, and the row is
  *   rewritten to the portable relative form of its CURRENT (legacy) location.
@@ -95,6 +100,14 @@ const PROGRESS_LOG_INTERVAL = 1000;
 const SHARD_BUCKET = /^[0-9a-f]{2}$/;
 
 /**
+ * LIKE pattern matching rows already in the canonical sharded form
+ * (`assets/<two-char shard>/...`). Phase 1 selects everything else: legacy
+ * absolute paths AND parked conflict rows (`assets/<uuid>/...`), so states
+ * left by an interrupted CLI resolution are reconciled at the next startup.
+ */
+const CANONICAL_ROW_LIKE = `${ASSETS_ROOT_DIR_NAME}/__/%`;
+
+/**
  * Two-DIGIT names are ambiguous: they are valid shard buckets AND possible
  * legacy numeric project-id directories (ids 10-99, from routes that used the
  * raw numeric URL parameter as the directory name).
@@ -105,8 +118,11 @@ const DECIMAL_BUCKET = /^\d{2}$/;
  * Move a file, preferring an atomic rename. On EXDEV (cross-device link, e.g.
  * bind mounts inside FILES_DIR) falls back to copy-to-temp + rename + verify +
  * remove, so the destination never holds a partially written file.
+ *
+ * Exported for reuse by the conflict-resolution service (issue #2287) — the
+ * migration and the CLI must move files with identical semantics.
  */
-async function moveFile(fs: typeof fsExtra, src: string, dest: string): Promise<void> {
+export async function moveFile(fs: typeof fsExtra, src: string, dest: string): Promise<void> {
     try {
         await fs.rename(src, dest);
         return;
@@ -132,8 +148,11 @@ async function moveFile(fs: typeof fsExtra, src: string, dest: string): Promise<
 
 /**
  * Compare two files by size and SHA-256 content hash (streamed).
+ *
+ * Exported for reuse by the conflict-resolution service (issue #2287) so
+ * "conflict" means the same thing at startup and in the CLI.
  */
-async function filesAreIdentical(fs: typeof fsExtra, a: string, b: string): Promise<boolean> {
+export async function filesAreIdentical(fs: typeof fsExtra, a: string, b: string): Promise<boolean> {
     const [statA, statB] = await Promise.all([fs.stat(a), fs.stat(b)]);
     if (statA.size !== statB.size) {
         return false;
@@ -153,8 +172,12 @@ async function filesAreIdentical(fs: typeof fsExtra, a: string, b: string): Prom
 /**
  * Rewrite one row's storage_path with an optimistic concurrency guard.
  * Returns true when this call performed the update.
+ *
+ * Exported for reuse by the conflict-resolution service (issue #2287); the
+ * guard is what makes CLI resolution safe against a concurrently starting
+ * instance re-running the migration.
  */
-async function rewriteRow(db: Kysely<Database>, id: number, oldPath: string, newPath: string): Promise<boolean> {
+export async function rewriteRow(db: Kysely<Database>, id: number, oldPath: string, newPath: string): Promise<boolean> {
     const result = await db
         .updateTable('assets')
         .set({ storage_path: newPath, updated_at: now() })
@@ -251,7 +274,7 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
         const legacyRow = await db
             .selectFrom('assets')
             .select('assets.id')
-            .where('assets.storage_path', 'not like', `${ASSETS_ROOT_DIR_NAME}/%`)
+            .where('assets.storage_path', 'not like', CANONICAL_ROW_LIKE)
             .limit(1)
             .executeTakeFirst();
         if (legacyRow) {
@@ -265,7 +288,8 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
 
     // =========================================================================
     // Phase 1: row-driven migration.
-    // Every row whose storage_path is not FILES_DIR-relative is legacy.
+    // Every row whose storage_path is not in the canonical sharded form is
+    // (re)examined — legacy absolute paths and parked conflict rows alike.
     // Cursor pagination (id > lastId) guarantees termination even for rows
     // that are skipped without being rewritten.
     // =========================================================================
@@ -276,7 +300,7 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
             .selectFrom('assets')
             .innerJoin('projects', 'assets.project_id', 'projects.id')
             .select(['assets.id as id', 'assets.storage_path as storage_path', 'projects.uuid as project_uuid'])
-            .where('assets.storage_path', 'not like', `${ASSETS_ROOT_DIR_NAME}/%`)
+            .where('assets.storage_path', 'not like', CANONICAL_ROW_LIKE)
             .where('assets.id', '>', lastId)
             .orderBy('assets.id', 'asc')
             .limit(batchSize)
@@ -295,7 +319,7 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
                 .selectFrom('assets')
                 .innerJoin('projects', 'assets.project_id', 'projects.id')
                 .select(eb => eb.fn.countAll<number>().as('count'))
-                .where('assets.storage_path', 'not like', `${ASSETS_ROOT_DIR_NAME}/%`)
+                .where('assets.storage_path', 'not like', CANONICAL_ROW_LIKE)
                 .executeTakeFirst();
             totalLegacyRows = Number(countRow?.count ?? 0);
         }
@@ -395,15 +419,22 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
                 return;
             }
             // Different content: never overwrite. Keep BOTH files, report the
-            // conflict, and rewrite the row to the portable relative form of
-            // its current (legacy) location so it stays valid and portable.
+            // conflict with both absolute paths and sizes so the operator can
+            // decide without hunting for the files, and rewrite the row to the
+            // portable relative form of its current (legacy) location so it
+            // stays valid and portable.
             summary.conflicts++;
             const legacyStored = [ASSETS_ROOT_DIR_NAME, ...segments].join('/');
+            const [srcStat, destStat] = await Promise.all([fs.stat(src), fs.stat(dest)]);
             warn(
-                `[AssetStorage] Conflict for asset ${row.id}: '${legacyStored}' and '${targetStored}' differ. ` +
-                    `Keeping both; the database keeps pointing at the legacy location. Resolve manually.`,
+                `[AssetStorage] Conflict for asset ${row.id}: legacy '${src}' (${srcStat.size} bytes) and ` +
+                    `sharded '${dest}' (${destStat.size} bytes) differ. Keeping both; the database keeps ` +
+                    `pointing at the legacy location. Resolve with 'bun cli assets:conflicts'.`,
             );
-            if (isCanonicalAssetStoragePath(legacyStored)) {
+            // Already-parked rows re-enter this branch on every startup while
+            // the conflict stays unresolved; only rewrite when the stored
+            // value actually changes, so re-reporting causes no row churn.
+            if (isCanonicalAssetStoragePath(legacyStored) && legacyStored !== row.storage_path) {
                 if (await rewriteRow(db, row.id, row.storage_path, legacyStored)) {
                     summary.rewrittenRows++;
                 }
@@ -544,9 +575,12 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
                             await fs.remove(src);
                         } else {
                             summary.conflicts++;
+                            const [srcStat, destStat] = await Promise.all([fs.stat(src), fs.stat(dest)]);
                             warn(
-                                `[AssetStorage] Conflict sweeping '${src}': destination '${dest}' differs. ` +
-                                    `Keeping both. Resolve manually.`,
+                                `[AssetStorage] Conflict sweeping '${src}' (${srcStat.size} bytes): destination ` +
+                                    `'${dest}' (${destStat.size} bytes) differs. Keeping both. No database row ` +
+                                    `references this file, so 'bun cli assets:conflicts' cannot resolve it; ` +
+                                    `compare the copies and remove one manually.`,
                             );
                         }
                     } catch (err) {

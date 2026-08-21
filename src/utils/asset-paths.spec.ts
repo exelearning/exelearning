@@ -2,6 +2,7 @@ import * as nodePath from 'path';
 import {
     ASSETS_ROOT_DIR_NAME,
     buildAssetStoragePath,
+    deriveShardedAssetStoragePath,
     extractAssetsRelativeSegments,
     getAssetShard,
     getProjectAssetsDirCandidates,
@@ -287,6 +288,41 @@ describe('asset-paths', () => {
             expect(tryResolveAssetStoragePath(filesDir, '/mnt/elsewhere/file.png')).toBeNull();
             expect(tryResolveAssetStoragePath(filesDir, 'assets/../evil')).toBeNull();
             expect(tryResolveAssetStoragePath(filesDir, '')).toBeNull();
+        });
+    });
+
+    describe('deriveShardedAssetStoragePath', () => {
+        const uuid = 'ab12cd34-1234-4abc-8def-1234567890ab';
+
+        it('maps an already-sharded canonical value to itself', () => {
+            expect(deriveShardedAssetStoragePath(uuid, `assets/ab/${uuid}/f.png`)).toBe(`assets/ab/${uuid}/f.png`);
+            expect(deriveShardedAssetStoragePath(uuid, `assets/ab/${uuid}/client/inner.html`)).toBe(
+                `assets/ab/${uuid}/client/inner.html`,
+            );
+        });
+
+        it('maps a parked conflict value (assets/<uuid>/...) to its sharded target', () => {
+            expect(deriveShardedAssetStoragePath(uuid, `assets/${uuid}/f.png`)).toBe(`assets/ab/${uuid}/f.png`);
+        });
+
+        it('maps a legacy absolute value to its sharded target via the assets suffix', () => {
+            expect(deriveShardedAssetStoragePath(uuid, `/mnt/data/assets/${uuid}/f.png`)).toBe(
+                `assets/ab/${uuid}/f.png`,
+            );
+            expect(deriveShardedAssetStoragePath(uuid, `C:\\data\\assets\\${uuid}\\f.png`)).toBe(
+                `assets/ab/${uuid}/f.png`,
+            );
+        });
+
+        it('re-parents a legacy numeric-directory value under the project uuid', () => {
+            expect(deriveShardedAssetStoragePath(uuid, 'assets/42/f.png')).toBe(`assets/ab/${uuid}/f.png`);
+        });
+
+        it('returns null for uninterpretable or unsafe values', () => {
+            expect(deriveShardedAssetStoragePath(uuid, '/etc/passwd')).toBeNull();
+            expect(deriveShardedAssetStoragePath(uuid, `assets/${uuid}/../../evil`)).toBeNull();
+            expect(deriveShardedAssetStoragePath(uuid, '')).toBeNull();
+            expect(deriveShardedAssetStoragePath('', `assets/${uuid}/f.png`)).toBeNull();
         });
     });
 });

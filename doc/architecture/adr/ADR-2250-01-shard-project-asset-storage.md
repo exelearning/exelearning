@@ -275,7 +275,7 @@ We will:
 - A transitional legacy-read fallback exists in the resolver until installations
   converge; it must eventually be removed (see "Follow-up work").
 - Startup performs a cheap, bounded check per boot even on converged installations: one
-  indexed-free `NOT LIKE 'assets/%'` query, one readdir of the assets root, and a
+  indexed-free `NOT LIKE 'assets/__/%'` query, one readdir of the assets root, and a
   content check (`readdir`) of each existing two-decimal shard bucket (`00`-`99`) to
   distinguish it from a legacy numeric project-id directory.
 
@@ -340,7 +340,8 @@ We will:
   the migration's per-boot summary tells operators when their installation is clean).
 - Provide a CLI subcommand that lists parked migration conflicts and resolves them
   with an explicit keep-old / keep-new choice
-  (<https://github.com/exelearning/exelearning/issues/2287>).
+  (<https://github.com/exelearning/exelearning/issues/2287>, implemented as
+  `assets:conflicts` — see the change document for #2287).
 - Consider validating client-supplied project identifiers at creation time so the
   FNV-1a fallback becomes purely defensive.
 
