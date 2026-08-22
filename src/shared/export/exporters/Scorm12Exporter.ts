@@ -293,7 +293,13 @@ export class Scorm12Exporter extends Html5Exporter {
             // the export (buildScorm12RuntimeFiles throws with the missing
             // file list and the outer catch reports it).
             const scormSources = await this.resources.fetchScormFiles('1.2');
-            const scormRuntimeFiles = buildScorm12RuntimeFiles(scormSources);
+            // Stamp the assembled runtime with the version that produced it: one
+            // eXeLearning version, one runtime, and a consumer can prove which.
+            // The project's own `exelearningVersion` is NOT used as a fallback: it
+            // is the version that authored the project, so an old project exported
+            // by a new eXeLearning would be stamped with the wrong runtime. An
+            // unstamped runtime says 'unknown', which is honest.
+            const scormRuntimeFiles = buildScorm12RuntimeFiles(scormSources, options?.runtimeVersion);
             for (const [filePath, content] of scormRuntimeFiles) {
                 addFile(`libs/${filePath}`, content);
                 commonFiles.push(`libs/${filePath}`);

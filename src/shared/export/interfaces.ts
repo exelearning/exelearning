@@ -422,6 +422,20 @@ export interface ExportOptions {
     /** Output filename (without extension) */
     filename?: string;
 
+    /**
+     * Version of the eXeLearning that is producing this export.
+     *
+     * Stamped into the assembled SCORM 1.2 runtime so a consumer can say which
+     * runtime it is carrying — the Moodle plugin above all, which vendors the
+     * same file and must be able to prove it matches the release it claims to.
+     * There is one runtime per eXeLearning version, so this is that version.
+     *
+     * Distinct from `ExportMetadata.exelearningVersion`, which records the
+     * version that AUTHORED the project. An old project exported by a new
+     * eXeLearning carries a new runtime and an old authoring version.
+     */
+    runtimeVersion?: string;
+
     /** Include data-* attributes for JS initialization */
     includeDataAttributes?: boolean;
 

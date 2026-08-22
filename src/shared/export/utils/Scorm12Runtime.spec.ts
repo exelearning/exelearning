@@ -7,6 +7,7 @@ import {
     SCORM12_RUNTIME_LAYER_PATHS,
     SCORM12_RUNTIME_SOURCE_PATHS,
     buildScorm12RuntimeFiles,
+    SCORM12_RUNTIME_VERSION_TAG,
 } from './Scorm12Runtime';
 
 /**
@@ -28,6 +29,39 @@ function syntheticSources(): Map<string, Uint8Array> {
 }
 
 describe('Scorm12Runtime', () => {
+    describe('version stamp', () => {
+        it('records the eXeLearning version that produced the runtime', () => {
+            const files = buildScorm12RuntimeFiles(syntheticSources(), '4.1.0');
+            const text = String(files.get('SCOFunctions.js'));
+
+            expect(text).toContain(`${SCORM12_RUNTIME_VERSION_TAG}: 4.1.0`);
+            expect(text).toContain('ns.runtimeVersion = "4.1.0"');
+        });
+
+        it('says so explicitly when the caller has no version, rather than omitting it', () => {
+            // A consumer must be able to tell "this runtime is not stamped" from "this
+            // runtime predates stamping"; a missing line looks like the second.
+            const text = String(buildScorm12RuntimeFiles(syntheticSources()).get('SCOFunctions.js'));
+
+            expect(text).toContain(`${SCORM12_RUNTIME_VERSION_TAG}: unknown`);
+            expect(text).toContain('ns.runtimeVersion = "unknown"');
+        });
+
+        it('treats a blank version as no version', () => {
+            const text = String(buildScorm12RuntimeFiles(syntheticSources(), '   ').get('SCOFunctions.js'));
+
+            expect(text).toContain(`${SCORM12_RUNTIME_VERSION_TAG}: unknown`);
+        });
+
+        it('puts the stamp after the layers, so it cannot be shadowed by one of them', () => {
+            const text = String(buildScorm12RuntimeFiles(syntheticSources(), '4.1.0').get('SCOFunctions.js'));
+
+            expect(text.indexOf('/* ==== runtime-version ==== */')).toBeGreaterThan(
+                text.indexOf('/* ==== exe-scorm12-adapter.js ==== */'),
+            );
+        });
+    });
+
     describe('buildScorm12RuntimeFiles', () => {
         it('produces exactly the two frozen package filenames', () => {
             const files = buildScorm12RuntimeFiles(syntheticSources());
