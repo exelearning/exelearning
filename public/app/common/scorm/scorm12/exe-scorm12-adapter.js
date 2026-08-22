@@ -357,7 +357,10 @@
          * "optional element not implemented", which is not an error).
          */
         SetScoreMax: function (maxScore) {
-            return client.setOptionalValueDetailed('cmi.core.score.max', maxScore).success;
+            // Through the policy, which owns "already sent this session": content sets
+            // the bounds at initGame and the runtime sets them again with each score,
+            // and the legacy runtime only ever put one pair on the wire.
+            return policy.setScoreBound('cmi.core.score.max', maxScore);
         },
         /**
          * LMS call. cmi.core.score.min is optional in SCORM 1.2.
@@ -372,7 +375,7 @@
          * @returns {boolean} True when the LMS accepted it.
          */
         SetScoreMin: function (minScore) {
-            return client.setOptionalValueDetailed('cmi.core.score.min', minScore).success;
+            return policy.setScoreBound('cmi.core.score.min', minScore);
         },
         /** LMS call. @returns {string} cmi.core.score.raw. */
         GetScoreRaw: function () {

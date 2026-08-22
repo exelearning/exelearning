@@ -512,6 +512,46 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
             expect(api.data['cmi.core.score.min']).toBe('0');
         });
 
+        it('SetScoreMax/SetScoreMin send each bound once per session', () => {
+            // The bounds are constants for the attempt, and the legacy runtime puts one
+            // pair on the wire, at initGame. Content sets them there and the runtime sets
+            // them again with every score, so without a single owner an LMS sees the same
+            // value two or three times a page — measured on a real 51-page project.
+            useLms({});
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pageWindow.scorm.SetScoreMax(100);
+            pageWindow.scorm.SetScoreMin(0);
+            pageWindow.scorm.SetScoreMax(100);
+            pageWindow.scorm.SetScoreMin(0);
+
+            const bounds = api
+                .callsFor('LMSSetValue')
+                .filter(call => String(call[0]).startsWith('cmi.core.score.'));
+            expect(bounds).toEqual([
+                ['cmi.core.score.max', '100'],
+                ['cmi.core.score.min', '0'],
+            ]);
+            expect(api.data['cmi.core.score.max']).toBe('100');
+            expect(api.data['cmi.core.score.min']).toBe('0');
+        });
+
+        it('SetScoreMax sends again when the bound actually changes', () => {
+            useLms({});
+            pageWindow.loadPage();
+            api.calls.length = 0;
+
+            pageWindow.scorm.SetScoreMax(100);
+            pageWindow.scorm.SetScoreMax(10);
+
+            expect(api.data['cmi.core.score.max']).toBe('10');
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.score.max')).toEqual([
+                ['cmi.core.score.max', '100'],
+                ['cmi.core.score.max', '10'],
+            ]);
+        });
+
         it('SetScoreMax/SetScoreMin treat LMS 401 as unsupported, not an error', () => {
             const errorSpy = vi.fn();
             client.configure({
