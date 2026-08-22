@@ -316,4 +316,157 @@ describe('challenge iDevice export', () => {
       expect(result[0].state).toBe(3);
     });
   });
+
+  describe('completion signal', () => {
+    /**
+     * The LMS decides whether a page may be reported passed/failed from what the
+     * activity says about itself: common.js computes
+     * `gameOver === true || auto !== true` at the single funnel every gradable
+     * iDevice goes through. This desafio ends in exactly one place — gameOver(),
+     * reached when the desafio is solved (type 0) or the clock runs out (type 1) —
+     * so that is the only report allowed to carry the flag.
+     */
+    let calls;
+    let previousExeDevices;
+    let previousLocalStorage;
+
+    beforeEach(() => {
+      calls = [];
+      previousExeDevices = global.$exeDevices;
+      // saveDataStorage persists the attempt; this environment provides no
+      // localStorage, so a minimal in-memory one stands in for it.
+      previousLocalStorage = global.localStorage;
+      const store = {};
+      global.localStorage = {
+        getItem: (key) => (key in store ? store[key] : null),
+        setItem: (key, value) => {
+          store[key] = String(value);
+        },
+        removeItem: (key) => {
+          delete store[key];
+        },
+      };
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            report: { saveEvaluation: () => {} },
+            scorm: {
+              // A snapshot is captured: gameOver() keeps mutating the same
+              // options object after the report has gone out.
+              sendScoreNew: (auto, game) =>
+                calls.push({ auto, gameOver: game.gameOver, scorerp: game.scorerp }),
+            },
+          },
+        },
+      };
+    });
+
+    afterEach(() => {
+      global.$exeDevices = previousExeDevices;
+      global.localStorage = previousLocalStorage;
+    });
+
+    /**
+     * Minimal instance state for a three-challenge desafio in auto-report mode
+     * (`isScorm === 1`), the only mode that reports without the learner pressing
+     * the send-score button.
+     *
+     * @param {Object} [overrides] fields merged into the instance
+     * @returns {number} the instance index to pass to the runtime
+     */
+    function givenInstance(overrides) {
+      const mOptions = Object.assign(
+        {
+          desafioID: 7,
+          isScorm: 1,
+          main: 'desafioMainContainer-0',
+          challengesGame: [{}, {}, {}],
+          stateChallenges: [
+            { solved: 0, state: 3 },
+            { solved: 0, state: 0 },
+            { solved: 0, state: 0 },
+          ],
+          solvedsChallenges: [],
+          desafioSolved: false,
+          timesShow: [],
+          gameStarted: true,
+          gameOver: false,
+          endGame: false,
+          counter: 120,
+          desafioTime: 10,
+          desafioType: 0,
+          typeQuestion: 0,
+          activeChallenge: 0,
+          desafioDate: '',
+          msgs: {
+            msgChallengesCompleted: 'Completed',
+            msgDesafioSolved: 'Solved',
+            msgEndTime: 'Time is up',
+            msgEndTimeRestart: 'Time is up, restart',
+            msgInformationLooking: 'Looking',
+            msgStartTime: 'Start',
+            msgSuccesses: 'Well done|Great',
+            msgYouScore: 'Your score',
+          },
+        },
+        overrides
+      );
+      $eXeDesafio.options = [mOptions];
+      return 0;
+    }
+
+    it('scores the solved challenges plus the desafio itself', () => {
+      // One of three challenges solved, desafio still open: 1 point out of 4.
+      $eXeDesafio.sendScore(true, givenInstance({ solvedsChallenges: [0] }));
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].scorerp).toBe(2.5);
+    });
+
+    it('does not mark the activity finished while the game is still running', () => {
+      $eXeDesafio.saveDataStorage(givenInstance({ solvedsChallenges: [0] }));
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].auto).toBe(true);
+      expect(calls[0].gameOver).toBe(false);
+    });
+
+    it('reports the activity as finished once the desafio is solved', () => {
+      // Full marks: every challenge and the desafio itself.
+      const instance = givenInstance({
+        solvedsChallenges: [0, 1, 2],
+        desafioSolved: true,
+      });
+
+      $eXeDesafio.gameOver(0, instance);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].gameOver).toBe(true);
+      expect(calls[0].scorerp).toBe(10);
+    });
+
+    it('reports the activity as finished once the clock runs out', () => {
+      // Running out of time also ends the attempt, so it completes as well —
+      // with whatever the learner had managed to solve.
+      const instance = givenInstance({ solvedsChallenges: [0] });
+
+      $eXeDesafio.gameOver(1, instance);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].gameOver).toBe(true);
+      expect(calls[0].scorerp).toBe(2.5);
+    });
+
+    it('sends the terminal report after the intermediate one on the solving path', () => {
+      // answerChallenge saves (and so reports) before calling gameOver, so the LMS
+      // must see an unfinished report followed by a finished one.
+      const instance = givenInstance({ solvedsChallenges: [0, 1, 2] });
+
+      $eXeDesafio.options[instance].desafioSolved = true;
+      $eXeDesafio.saveDataStorage(instance);
+      $eXeDesafio.gameOver(0, instance);
+
+      expect(calls.map((call) => call.gameOver)).toEqual([false, true]);
+    });
+  });
 });

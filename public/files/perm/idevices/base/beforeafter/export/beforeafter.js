@@ -748,6 +748,14 @@ var $eXeBeforeAfter = {
 
         mOptions.scorerp =
             ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
+        // This activity is finished when every card has been seen — that is the
+        // same condition its own score expresses, so the two can never disagree.
+        // Without the flag the page stays `incomplete` in the LMS even at 100%,
+        // because completion is decided from what the activity reports, not from
+        // the score.
+        if (mOptions.visiteds + 1 >= mOptions.cardsGame.length) {
+            mOptions.gameOver = true;
+        }
         mOptions.previousScore = $eXeBeforeAfter.previousScore;
         mOptions.userName = $eXeBeforeAfter.userName;
 

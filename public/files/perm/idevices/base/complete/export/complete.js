@@ -615,6 +615,9 @@ var $eXeCompleta = {
                 mOptions.counter--;
                 $eXeCompleta.updateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
+                    // Time is up, so this forced check is the end of the activity:
+                    // flag it before checkPhrase reports the score.
+                    mOptions.gameOver = true;
                     $eXeCompleta.checkPhrase(instance);
                     $eXeCompleta.gameOver(2, instance);
                 }
@@ -799,7 +802,18 @@ var $eXeCompleta = {
         $('#cmptCheckPhrase-' + instance).hide();
 
         mOptions.attempsNumber--;
-        const score = ((mOptions.hits * 10) / mOptions.number).toFixed(2);
+        const score = ((mOptions.hits * 10) / mOptions.number).toFixed(2),
+            isGameOver =
+                mOptions.attempsNumber <= 0 ||
+                mOptions.hits === mOptions.number;
+
+        // The activity is over once the attempts run out or every gap is right. Raise
+        // the flag here, before the automatic report below, so the report carrying the
+        // final score is the one that tells the LMS the activity is finished. Never on
+        // an intermediate check: attempts left means the learner is still playing.
+        if (isGameOver) {
+            mOptions.gameOver = true;
+        }
 
         if (mOptions.isScorm === 1) {
             $eXeCompleta.sendScore(true, instance);
@@ -827,7 +841,7 @@ var $eXeCompleta = {
 
         $eXeCompleta.saveEvaluation(instance);
 
-        if (mOptions.attempsNumber <= 0 || mOptions.hits === mOptions.number) {
+        if (isGameOver) {
             $eXeCompleta.gameOver(1, instance);
             return;
         }
