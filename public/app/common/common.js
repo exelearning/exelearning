@@ -1627,12 +1627,15 @@ var $exeDevices = {
                             // one: no activity registered, so there is nothing to base
                             // the judgement on. Suppressing there would silence the
                             // legacy iDevices that score without registering.
-                            const records = registry ? registry.list() : null;
-                            const nothingScored = !!records && records.length > 0 && !records.some(
-                                (record) => record.evaluable
-                                    && record.score !== null
-                                    && record.score !== undefined
-                            );
+                            //
+                            // `summary().scored` is the registry's own count and its
+                            // single owner; policy.applyEntryPolicy() reads the same
+                            // field. Recomputing the predicate here from list() is what
+                            // let the two paths drift apart in the first place — the
+                            // entry policy published a 0 this branch would have
+                            // suppressed.
+                            const summary = registry ? registry.summary() : null;
+                            const nothingScored = !!summary && summary.total > 0 && summary.scored === 0;
                             if (!nothingScored) {
                                 // SCORM 1.2 packages: the runtime owns score
                                 // validation and the completion/success policy.

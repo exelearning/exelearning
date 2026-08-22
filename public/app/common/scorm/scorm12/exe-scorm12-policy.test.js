@@ -90,6 +90,73 @@ describe('exe-scorm12-policy', () => {
             ]);
         });
 
+        it('writes no score at all when an evaluable activity is registered but unanswered', () => {
+            // The real ordering, which the other entry-policy cases invert: iDevices
+            // bootstrap on jQuery ready and register BEFORE loadPage() runs the entry
+            // policy on the window load event. A learner who merely opens the page must
+            // not be scored — cmi.core.score.raw cannot express "no answer", and a 0
+            // there reads as "scored zero" to every LMS.
+            startSession({ 'cmi.core.lesson_status': '' });
+            activities.register('quiz-a', { evaluable: true, completionRequired: true, total: 4 });
+
+            policy.applyEntryPolicy();
+
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.score.raw')).toEqual([]);
+            // The LMS keeps the SCORM 1.2 default it seeded, untouched.
+            expect(api.data['cmi.core.score.raw']).toBe('');
+        });
+
+        it('still restores a real zero the LMS was already holding', () => {
+            // The mirror image of the case above, and the reason the guard cannot simply
+            // be "never write 0 on entry": a learner who genuinely scored 0 and comes
+            // back must keep that 0, not lose it.
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.core.score.raw': '0',
+                'cmi.suspend_data': 'exe12/1|quiz;7;4;4;0;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+
+            expect(api.data['cmi.core.score.raw']).toBe('0');
+        });
+
+        it('sends the score bounds once, not again on every later score', () => {
+            // The legacy runtime writes cmi.core.score.min/max once, at initGame, and
+            // then only ever touches score.raw. Re-sending unchanged bounds on every
+            // update is traffic the old runtime never produced — measured on a real
+            // 51-page project, where 21 pages received the pair two or three times.
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+
+            policy.setScoreDetailed(20, 0, 100);
+            policy.setScoreDetailed(60, 0, 100);
+            policy.setScoreDetailed(90, 0, 100);
+
+            const bounds = api
+                .callsFor('LMSSetValue')
+                .filter(call => call[0] === 'cmi.core.score.min' || call[0] === 'cmi.core.score.max');
+            expect(bounds).toEqual([
+                ['cmi.core.score.min', '0'],
+                ['cmi.core.score.max', '100'],
+            ]);
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.score.raw')).toEqual([
+                ['cmi.core.score.raw', '20'],
+                ['cmi.core.score.raw', '60'],
+                ['cmi.core.score.raw', '90'],
+            ]);
+        });
+
+        it('sends a bound again when it actually changes', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+
+            policy.setScoreDetailed(20, 0, 100);
+            policy.setScoreDetailed(3, 0, 10);
+
+            expect(
+                api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.score.max'),
+            ).toEqual([['cmi.core.score.max', '100'], ['cmi.core.score.max', '10']]);
+        });
+
         it('claims a pre-registered activity when suspend_data is loaded', () => {
             startSession({
                 'cmi.core.lesson_status': 'incomplete',

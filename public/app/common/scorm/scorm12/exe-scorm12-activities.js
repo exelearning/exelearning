@@ -519,8 +519,17 @@
          * number, so the status decided during the session and the status
          * decided at exit can never disagree.
          *
-         * @returns {{total: number, evaluable: number, required: number,
-         * requiredCompleted: number, hasRequired: boolean,
+         * `scored` is the registry's answer to "has ANY evaluable activity
+         * actually produced a score yet?". It is deliberately separate from
+         * `score`: the aggregate maps an unanswered evaluable activity to 0
+         * (so a partially answered page still has a defensible running
+         * total), which makes `score` useless for telling "nobody has
+         * answered anything" from "everybody scored zero". Every caller that
+         * needs that distinction must read `scored`, and this is the only
+         * place it is computed.
+         *
+         * @returns {{total: number, evaluable: number, scored: number,
+         * required: number, requiredCompleted: number, hasRequired: boolean,
          * allRequiredComplete: boolean, answered: number, questions: number,
          * score: number|null}} The summary the policy layer consumes.
          */
@@ -528,6 +537,7 @@
             var summary = {
                 total: state.order.length,
                 evaluable: 0,
+                scored: 0,
                 required: 0,
                 requiredCompleted: 0,
                 hasRequired: false,
@@ -542,6 +552,9 @@
                 summary.questions += activity.total;
                 if (activity.evaluable) {
                     summary.evaluable += 1;
+                    if (activity.score !== null && activity.score !== undefined) {
+                        summary.scored += 1;
+                    }
                 }
                 if (activity.completionRequired) {
                     summary.required += 1;

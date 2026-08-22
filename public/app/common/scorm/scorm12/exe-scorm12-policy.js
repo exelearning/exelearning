@@ -115,6 +115,11 @@
             // True after applyEntryPolicy() has restored suspend_data. Game
             // iDevices register on jQuery ready, which is before loadPage().
             entryApplied: false,
+            // Last score bounds this session actually sent, so an unchanged
+            // pair is not re-sent on every score update. The legacy runtime
+            // writes them once and then only touches score.raw; matching that
+            // keeps the wire traffic identical instead of merely equivalent.
+            sentBounds: { 'cmi.core.score.min': null, 'cmi.core.score.max': null },
         };
     }
 
@@ -287,7 +292,13 @@
             }
             state.entryApplied = true;
             var summary = activities ? activities.summary() : null;
-            if (summary && summary.score !== null) {
+            // `summary.scored`, not `summary.score !== null`: the aggregate maps an
+            // unanswered evaluable activity to 0, so testing the aggregate publishes a
+            // zero for a page the learner has merely opened. Only republish a score the
+            // registry can actually account for — which, on entry, means one restored
+            // from cmi.suspend_data. `scored` is the registry's single owner of that
+            // question and common.js reads the same field.
+            if (summary && summary.score !== null && summary.scored > 0) {
                 policy.setScoreDetailed(summary.score, 0, 100);
             }
         },
@@ -678,6 +689,36 @@
          * ok: boolean}} Structured outcome. `ok` is the legacy boolean: every
          * attempted write succeeded.
          */
+        /**
+         * Write one score bound, once per session.
+         *
+         * The bounds are constants for the whole attempt, and the legacy runtime sends
+         * them exactly once, at initGame. Content reaches them two ways — the pipwerks
+         * extensions SetScoreMin/SetScoreMax, and setScoreDetailed alongside a score —
+         * so the "have I already sent this" answer has to live in one place, here,
+         * or the two paths each send their own copy.
+         *
+         * @param {string} element - cmi.core.score.min or cmi.core.score.max.
+         * @param {number|string} value - The bound to publish.
+         * @returns {boolean} True when the LMS holds this value, whether this call
+         * sent it or an earlier one did.
+         */
+        setScoreBound: function (element, value) {
+            if (element !== SCORE_MIN && element !== SCORE_MAX) {
+                deps.warn('[exe-scorm12] setScoreBound only handles cmi.core.score.min and .max.');
+                return false;
+            }
+            var text = String(value);
+            if (state.sentBounds[element] === text) {
+                return true;
+            }
+            var write = deps.getClient().setOptionalValueDetailed(element, text);
+            if (write.success) {
+                state.sentBounds[element] = text;
+            }
+            return write.success;
+        },
+
         setScoreDetailed: function (raw, min, max) {
             var client = deps.getClient();
             var validation = policy.validateScore(raw, min, max);
@@ -711,9 +752,25 @@
                 if (bounds[index].value === null) {
                     continue;
                 }
+                var boundValue = String(bounds[index].value);
+                if (state.sentBounds[bounds[index].element] === boundValue) {
+                    // Already sent this session and unchanged. Reporting it as
+                    // written keeps the caller's view of the score complete
+                    // without putting a redundant call on the wire.
+                    result.optional.push({
+                        element: bounds[index].element,
+                        written: true,
+                        unsupported: false,
+                        errorCode: '0',
+                    });
+                    continue;
+                }
                 // Optional-element write: a 401 answer is a conforming LMS
                 // skipping score.min/max, so nothing is logged for it.
-                var write = client.setOptionalValueDetailed(bounds[index].element, String(bounds[index].value));
+                var write = client.setOptionalValueDetailed(bounds[index].element, boundValue);
+                if (write.success) {
+                    state.sentBounds[bounds[index].element] = boundValue;
+                }
                 var unsupported = !write.success && write.errorCode === 401;
                 result.optional.push({
                     element: bounds[index].element,

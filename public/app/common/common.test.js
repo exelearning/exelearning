@@ -1826,7 +1826,7 @@ describe('common.js $exeDevices', () => {
         register: vi.fn(descriptor => descriptor),
         get: vi.fn(() => null),
         list: vi.fn(() => []),
-        summary: vi.fn(() => ({ score: null })),
+        summary: vi.fn(() => ({ score: null, total: 0, scored: 0 })),
       };
       policy = {
         setScoreDetailed: vi.fn(),
@@ -2146,12 +2146,12 @@ describe('common.js $exeDevices', () => {
       const set = vi.fn(() => true);
       global.pipwerks = { SCORM: { get: () => '', set } };
       const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
-      // The registry's own shape: an evaluable activity that has not produced a
-      // score yet carries score: null. Asserted through list(), not summary(),
-      // because summary.answered is structurally always 0 — no iDevice sets
-      // game.answered — and summary.score counts an unscored evaluable as 0, so
-      // neither can tell "never answered" from "answered and scored zero".
-      registry.list.mockReturnValue([{ id: 'ide-a', evaluable: true, score: null }]);
+      // `summary().scored` is the registry's own count of evaluable activities that
+      // have actually produced a score, and its single owner — the entry policy reads
+      // the same field. Not summary.answered, which is structurally always 0 because
+      // no iDevice sets game.answered; and not summary.score, which counts an unscored
+      // evaluable as 0 and so cannot tell "never answered" from "scored zero".
+      registry.summary.mockReturnValue({ score: 0, total: 1, scored: 0 });
 
       getScorm().showFinalScore({ 1: { title: 'Q', score: 0, weighted: 1 } }, game);
 
@@ -2164,7 +2164,7 @@ describe('common.js $exeDevices', () => {
       const set = vi.fn(() => true);
       global.pipwerks = { SCORM: { get: () => '', set } };
       const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
-      registry.list.mockReturnValue([{ id: 'ide-a', evaluable: true, score: 0 }]);
+      registry.summary.mockReturnValue({ score: 0, total: 1, scored: 1 });
 
       getScorm().showFinalScore({ 1: { title: 'Q', score: 0, weighted: 1 } }, game);
 

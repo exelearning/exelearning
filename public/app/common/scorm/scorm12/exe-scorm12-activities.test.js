@@ -123,6 +123,7 @@ describe('exe-scorm12-activities', () => {
             expect(activities.summary()).toEqual({
                 total: 0,
                 evaluable: 0,
+                scored: 0,
                 required: 0,
                 requiredCompleted: 0,
                 hasRequired: false,
@@ -131,6 +132,22 @@ describe('exe-scorm12-activities', () => {
                 questions: 0,
                 score: null,
             });
+        });
+
+        it('counts only the evaluable activities that have actually produced a score', () => {
+            // `score` cannot answer this: aggregateScore() maps an unanswered evaluable
+            // activity to 0, so a page where nobody has answered anything and a page
+            // where everybody scored zero both aggregate to 0. `scored` is what the
+            // entry policy reads to avoid publishing the first as if it were the second.
+            activities.register('answered', { evaluable: true, score: 0 });
+            activities.register('unanswered', { evaluable: true });
+            activities.register('not-evaluable', { evaluable: false, score: 100 });
+
+            const summary = activities.summary();
+
+            expect(summary.evaluable).toBe(2);
+            expect(summary.scored).toBe(1);
+            expect(summary.score).toBe(0);
         });
 
         it('counts required and completed activities', () => {
