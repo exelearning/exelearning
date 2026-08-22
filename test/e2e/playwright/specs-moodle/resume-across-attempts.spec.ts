@@ -60,10 +60,19 @@ test.describe('resume across visits', () => {
                 const lms = createMoodleHost(page, host, BASE_URL);
                 await lms.login(learner, PASSWORD);
 
+                // Moodle's player needs to be told which SCO to launch: with none it
+                // answers "A required parameter (scoid) was missing" rather than picking
+                // the only launchable one.
+                const sco = activity.scoes.find(candidate => candidate.launch !== '');
+                if (!sco) throw new Error(`${SCENARIO}-${producer} has no launchable SCO`);
+
                 // Visit one: answer the activity, then leave the way the exit control does.
-                await lms.openSco(activity);
+                await lms.openSco(activity, sco);
                 await lms.waitReady();
                 const idevice = 'ide-a';
+                // waitReady() waits for the SCORM connection, which comes up before the
+                // iDevice has rendered. Answering needs the question, so wait for that too.
+                await lms.idevices.waitForInFrame(`#tofPGameContainer-${idevice} .TOFP-QuestionDiv`);
                 await lms.idevices.answerTrueOrFalse(idevice, 0, 1);
                 await lms.idevices.checkTrueOrFalse(idevice);
                 const firstVisit = await readScormCalls(page);
@@ -73,9 +82,11 @@ test.describe('resume across visits', () => {
                 // Visit two: come back. Nothing is answered this time — the question is
                 // purely what the runtime does with what the LMS replays at it.
                 await instrumentScormApi(page);
-                await lms.openSco(activity);
+                await lms.openSco(activity, sco);
                 await lms.waitReady();
-                await page.waitForTimeout(1500);
+                // Entry replay is what this visit is about, and it happens as the package
+                // boots: wait for the traffic to settle rather than for a fixed pause.
+                await page.waitForLoadState('networkidle');
                 const secondVisit = await readScormCalls(page);
                 await lms.exitPlayer(activity);
                 const afterSecond = readState(activity.cmid, learner);

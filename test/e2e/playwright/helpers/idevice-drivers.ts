@@ -50,6 +50,25 @@ export function createIdeviceDriver(page: Page, frameId: string): IdeviceDriver 
     const sel = `#${frameId}`;
     const frame = () => page.frameLocator(sel);
 
+    /**
+     * Press one of the activity's own controls.
+     *
+     * Dispatched on the element rather than at its coordinates. The host owns the viewport
+     * the package sits in — Moodle pins a navbar over the top of it — and an activity's
+     * check button that happens to line up with that navbar is unclickable by pointer even
+     * after scrolling: measured as two lost cells of a 400-cell Firefox run, both reported
+     * as `<nav class="navbar fixed-top"> intercepts pointer events`. The handler under test
+     * is the activity's; the host's chrome is not part of the question.
+     *
+     * @param selector the control, inside the content frame
+     */
+    const press = async (selector: string): Promise<void> => {
+        const control = frame().locator(selector);
+        await control.waitFor({ state: 'attached' });
+        await control.scrollIntoViewIfNeeded().catch(() => {});
+        await control.evaluate(element => (element as HTMLElement).click());
+    };
+
     return {
         frameId,
 
@@ -147,7 +166,7 @@ export function createIdeviceDriver(page: Page, frameId: string): IdeviceDriver 
             // Answering reveals feedback and moves the button; scroll to the button
             // itself, not to the container it was in before the answers were entered.
             await this.scrollToInFrame(`#tofPCheckTest-${ideviceId}`);
-            await frame().locator(`#tofPCheckTest-${ideviceId}`).click();
+            await press(`#tofPCheckTest-${ideviceId}`);
         },
 
         /**
@@ -201,7 +220,7 @@ export function createIdeviceDriver(page: Page, frameId: string): IdeviceDriver 
         /** dragdrop — its own check button (`checkState()` -> `sendScore(true)`). */
         async checkDragDrop(instance: number): Promise<void> {
             await this.scrollToInFrame(`#dadPCheckButton-${instance}`);
-            await frame().locator(`#dadPCheckButton-${instance}`).click();
+            await press(`#dadPCheckButton-${instance}`);
         },
 
         /**
@@ -296,7 +315,7 @@ export function createIdeviceDriver(page: Page, frameId: string): IdeviceDriver 
         /** scrambled-list — its own check button (`check()` -> `sendScore()`). */
         async checkScrambledList(listOrder: number): Promise<void> {
             await this.scrollToInFrame(`#exe-sortableListButton-${listOrder}`);
-            await frame().locator(`#exe-sortableListButton-${listOrder} input[type="button"]`).click();
+            await press(`#exe-sortableListButton-${listOrder} input[type="button"]`);
         },
 
         /**
@@ -360,7 +379,7 @@ export function createIdeviceDriver(page: Page, frameId: string): IdeviceDriver 
         /** form — its own check button (`gameOver()` -> `checkAllQuestions()` -> `sendScore()`). */
         async checkForm(ideviceId: string): Promise<void> {
             await this.scrollToInFrame(`#form-button-check-${ideviceId}`);
-            await frame().locator(`#form-button-check-${ideviceId}`).click();
+            await press(`#form-button-check-${ideviceId}`);
         },
     };
 }
