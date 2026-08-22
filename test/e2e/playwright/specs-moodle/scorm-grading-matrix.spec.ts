@@ -26,7 +26,17 @@ const AUDIT_ROOT = process.env.AUDIT_ROOT ?? path.resolve(__dirname, '../../../.
 const BASE_URL = process.env.MOODLE_BASE_URL ?? 'http://localhost:8097';
 const LEARNER = process.env.AUDIT_LEARNER ?? 'learner1';
 const PASSWORD = process.env.AUDIT_PASSWORD ?? 'Audit#1234';
-const EVIDENCE_DIR = path.join(AUDIT_ROOT, 'evidence', 'moodle');
+/**
+ * One directory per browser engine.
+ *
+ * The cell name identifies a scenario, a producer, a host and a grading method — but not
+ * the engine, and two engines running the same matrix into one directory means the second
+ * silently overwrites the first. There is then no way to compare them, and no way to tell
+ * which engine any surviving file came from.
+ */
+function evidenceDir(): string {
+    return path.join(AUDIT_ROOT, 'evidence', 'moodle', test.info().project.name);
+}
 
 /** Which producers to run; override to bisect a single revision. */
 const PRODUCERS = (process.env.AUDIT_PRODUCERS ?? 'main,2209').split(',').filter(Boolean);
@@ -63,10 +73,47 @@ const catalogue: Catalogue | null = fs.existsSync(CATALOGUE_PATH)
     : null;
 const scenarios = (catalogue?.scenarios ?? []).filter(s => !ONLY || ONLY.includes(s.id));
 
-/** The revision each producer's packages came from, for the evidence header. */
-function producerHead(producer: string): string {
-    const manifest = path.join(AUDIT_ROOT, 'packages', producer, `manifest-${producer}.json`);
-    return (fs.readJsonSync(manifest) as { head: string }).head;
+interface PackageManifest {
+    head: string;
+    worktreeDirty?: boolean;
+    scenarios: {
+        id: string;
+        packages: Record<string, { file: string; sha256?: string; runtimeSha256?: Record<string, string> }>;
+    }[];
+}
+
+/**
+ * Everything needed to say which bytes produced a cell.
+ *
+ * The producing revision is not enough on its own: packages are regenerated, and a file
+ * name is reused. A digest is what ties a recorded result to the artefact it came from
+ * once the worktree that built it is gone.
+ *
+ * @param producer Producer label, i.e. which revision built the packages.
+ * @param scenarioId Scenario whose package this cell used.
+ * @returns Head, dirty flag and the digests of the zip and of its runtime files.
+ */
+function packageProvenance(
+    producer: string,
+    scenarioId: string,
+): {
+    producerHead: string;
+    producerDirty: boolean;
+    packageFile: string | null;
+    packageSha256: string | null;
+    runtimeSha256: Record<string, string> | null;
+} {
+    const manifestPath = path.join(AUDIT_ROOT, 'packages', producer, `manifest-${producer}.json`);
+    const manifest = fs.readJsonSync(manifestPath) as PackageManifest;
+    const entry = manifest.scenarios.find(item => item.id === scenarioId);
+    const pkg = entry?.packages?.scorm12;
+    return {
+        producerHead: manifest.head,
+        producerDirty: manifest.worktreeDirty === true,
+        packageFile: pkg?.file ?? null,
+        packageSha256: pkg?.sha256 ?? null,
+        runtimeSha256: pkg?.runtimeSha256 ?? null,
+    };
 }
 
 test.describe('SCORM grading matrix against a live Moodle', () => {
@@ -115,15 +162,18 @@ test.describe('SCORM grading matrix against a live Moodle', () => {
 
                         const persisted = readState(activity.cmid, LEARNER);
 
-                        await fs.ensureDir(EVIDENCE_DIR);
+                        const out = evidenceDir();
+                        await fs.ensureDir(out);
                         await fs.writeJson(
-                            path.join(EVIDENCE_DIR, `${cell}.json`),
+                            path.join(out, `${cell}.json`),
                             {
                                 cell,
                                 scenario: scenario.id,
                                 title: scenario.title,
                                 producer,
-                                producerHead: producerHead(producer),
+                                ...packageProvenance(producer, scenario.id),
+                                browser: test.info().project.name,
+                                moodle: persisted.moodleRelease ?? null,
                                 host,
                                 grademethod,
                                 learner: LEARNER,

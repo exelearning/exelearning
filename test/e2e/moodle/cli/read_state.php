@@ -118,7 +118,14 @@ foreach ($scoes as $sco) {
     ];
 }
 
+// Which LMS produced this reading. Evidence outlives the container it came from, and a
+// grading result that cannot name its host is not attributable.
+$moduleversion = $DB->get_field('config_plugins', 'value', ['plugin' => 'mod_' . $module, 'name' => 'version']);
+
 echo json_encode([
+    'moodleRelease'  => $CFG->release,
+    'moodleVersion'  => $CFG->version,
+    'moduleVersion'  => $moduleversion === false ? null : $moduleversion,
     'module' => $module,
     'cmid' => (int) $cm->id,
     'instanceid' => (int) $instance->id,

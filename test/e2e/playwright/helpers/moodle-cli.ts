@@ -17,6 +17,10 @@ const PACKAGE_DIR = process.env.AUDIT_MOODLE_PACKAGE_DIR ?? '/var/www/packages';
 
 /** Everything Moodle persisted for one learner on one activity. */
 export interface PersistedState {
+    /** Which LMS produced this reading — evidence outlives the container it came from. */
+    moodleRelease: string;
+    moodleVersion: string;
+    moduleVersion: string | null;
     module: ScormModule;
     cmid: number;
     instanceid: number;

@@ -18,6 +18,7 @@ require(__DIR__ . '/../config.php');
 require_once($CFG->libdir . '/clilib.php');
 require_once($CFG->dirroot . '/course/lib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
+require_once($CFG->dirroot . '/lib/enrollib.php');
 
 [$options, $unrecognised] = cli_get_params([
     'module' => 'scorm',
@@ -52,7 +53,33 @@ require_once($CFG->dirroot . '/mod/' . $module . '/locallib.php');
 $admin = get_admin();
 \core\session\manager::set_user($admin);
 
-$course = $DB->get_record('course', ['shortname' => 'SCORMAUDIT'], '*', MUST_EXIST);
+// One course per activity.
+//
+// Piling every cell of a matrix into a single course is what a first version does, and it
+// breaks at scale in a way that looks like a product bug: Moodle keeps the course total as
+// a grade item whose maximum is the sum of its children, and after a few hundred
+// activities at 100 points each the UPDATE fails with "Out of range value for column
+// 'grademax'" — measured at cell 321 of a 400-cell run. A course is cheap, and one per
+// activity also removes any gradebook cross-talk between cells, which is worth having on
+// its own.
+$parent = $DB->get_record('course', ['shortname' => 'SCORMAUDIT'], '*', MUST_EXIST);
+$shortname = 'SCORMAUDIT-' . substr(sha1($options['name'] . microtime(true) . random_int(0, PHP_INT_MAX)), 0, 12);
+$course = create_course((object) [
+    'fullname'    => 'SCORM audit — ' . $options['name'],
+    'shortname'   => $shortname,
+    'category'    => $parent->category,
+    'format'      => 'topics',
+    'numsections' => 1,
+    'visible'     => 1,
+]);
+
+// Enrol everyone the audit uses, so a cell can be played by any learner account.
+$studentrole = $DB->get_record('role', ['shortname' => 'student'], '*', MUST_EXIST);
+$enrol = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
+$plugin = enrol_get_plugin('manual');
+foreach ($DB->get_records_select('user', "username LIKE 'learner%'") as $learner) {
+    $plugin->enrol_user($enrol, $learner->id, $studentrole->id);
+}
 $moduleid = $DB->get_field('modules', 'id', ['name' => $module], MUST_EXIST);
 
 // Stage the package in the admin's draft file area; both modules read it from there.
