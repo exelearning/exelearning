@@ -65,6 +65,36 @@ other.
 | `AUDIT_PASSWORD` | `Audit#1234` | the learner accounts' password |
 | `AUDIT_PRODUCERS` | every producer in the spec | restrict a lane to some producers |
 
+## The mod_exelearning lane
+
+The lanes above measure a package inside an LMS's own SCORM player. `exelearning-live`
+measures the eXeLearning **plugin**, which serves the content itself, injects its own copy
+of the runtime and bridges scores to its own endpoint — a path no SCORM lane touches.
+
+It needs a Moodle with `mod_exelearning` installed. Point the harness at it and provision
+the course:
+
+```bash
+docker exec <container> php /var/www/html/exeaudit/setup_exe.php
+EXE_BASE_URL=http://localhost:8096 EXE_MOODLE_CONTAINER=exeaudit-moodle-1 \
+  bun x playwright test -c playwright.moodle.config.ts --project=chromium \
+    specs-moodle/exelearning-live.spec.ts
+```
+
+| variable | default | what it selects |
+|---|---|---|
+| `EXE_BASE_URL` | `http://localhost:8096` | the Moodle running the plugin |
+| `EXE_MOODLE_CONTAINER` | `exeaudit-moodle-1` | container for `add_exelearning.php` / `read_exelearning_state.php` |
+| `EXE_MOODLE_CLI_DIR` | `/var/www/html/exeaudit` | where those two are mounted inside it |
+| `EXE_FIXTURE_DIR` | the plugin's `research/fixtures/elpx` | ELPX packages to build activities from |
+| `EXE_SCORM_PACKAGE` | unset (that test skips) | a SCORM 1.2 zip, to check the plugin still installs exactly one runtime |
+
+What it asserts, all read back from Moodle rather than from the browser: exactly one copy
+of the runtime is served (in both serving models); the per-iDevice grade model publishes
+the answered iDevice's own column and no overall column; the overall model publishes one
+aggregated column instead; and with grading switched off the plugin records nothing at
+all — no attempt row, no grade.
+
 ## The CLI helpers
 
 `cli/` is mounted into the container and runs inside Moodle's bootstrap, so the harness
@@ -73,7 +103,9 @@ never has to drive the admin UI to create an activity:
 - `setup.php` — course, learner accounts, enrolments;
 - `add_activity.php` — create one `mod_scorm` (or `mod_exescorm`) activity from a package
   in `/var/www/packages`, and print its cmid and its SCO list as JSON;
-- `read_state.php` — dump the tracking rows and the gradebook value for one learner.
+- `read_state.php` — dump the tracking rows and the gradebook value for one learner;
+- `setup_exe.php`, `add_exelearning.php`, `read_exelearning_state.php` — the same three
+  jobs for the mod_exelearning lane, against the plugin's own tables.
 
 Everything they print is JSON, so a lane records the LMS's own state next to the API
 traffic it captured in the browser.

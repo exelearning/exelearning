@@ -127,12 +127,19 @@ export function createIdeviceDriver(page: Page, frameId: string): IdeviceDriver 
          * @param value 1 = true, 0 = false (the radio's `value`)
          */
         async answerTrueOrFalse(ideviceId: string, questionIndex: number, value: 0 | 1): Promise<void> {
+            const selector =
+                `#tofPGameContainer-${ideviceId} .TOFP-QuestionDiv[data-number="${questionIndex}"] ` +
+                `.TOFP-Answer[value="${value}"]`;
+            await this.scrollToInFrame(selector);
+            // Click the radio itself rather than at its coordinates. The host page owns
+            // the viewport the iframe sits in — Moodle pins a navbar over the top of it,
+            // and the iDevice reflows as questions are answered — so a pointer click can
+            // be intercepted by something that is not part of the activity at all. What
+            // is under test is the runtime's scoring, not whether Moodle's chrome is in
+            // the way.
             await frame()
-                .locator(
-                    `#tofPGameContainer-${ideviceId} .TOFP-QuestionDiv[data-number="${questionIndex}"] ` +
-                        `.TOFP-Answer[value="${value}"]`,
-                )
-                .click();
+                .locator(selector)
+                .evaluate(element => (element as HTMLElement).click());
         },
 
         /** trueorfalse — its own check button (`gameOver()` -> `sendScore(true)`). */
@@ -269,12 +276,19 @@ export function createIdeviceDriver(page: Page, frameId: string): IdeviceDriver 
                     const at = current.indexOf(wanted[position]);
                     if (at === -1) throw new Error(`orig-index ${wanted[position]} not in list ${listOrder}`);
                     if (at === position) break;
+                    // Dispatch the click on the element itself rather than through the
+                    // pointer. The arrow is a real anchor with a real handler, but whether
+                    // it is *visible* depends on the host: mod_exescorm sizes its player
+                    // iframe differently from mod_scorm, and an arrow scrolled out of the
+                    // iframe's own viewport fails Playwright's visibility check even with
+                    // `force`. What is under test is the runtime's reordering, not the
+                    // host's iframe height.
                     await frame()
                         .locator(`#exe-sortableList-${listOrder} > li`)
                         .nth(at)
                         .locator('a.up')
                         .first()
-                        .click({ force: true });
+                        .evaluate(element => (element as HTMLElement).click());
                 }
             }
         },

@@ -70,7 +70,11 @@ function producerHead(producer: string): string {
 }
 
 test.describe('SCORM grading matrix against a live Moodle', () => {
-    test.describe.configure({ mode: 'serial' });
+    // Not `serial`: with 400 cells, one cell failing must not skip the other 399.
+    // The config already pins workers to 1, so cells still run one at a time against
+    // the single Moodle; what changes is that a failure is reported and the run
+    // continues, which is the only way a matrix is a matrix.
+    test.describe.configure({ mode: 'default' });
 
     // With no catalogue the loops below produce no tests at all, and a lane that
     // silently contributes nothing is indistinguishable from one that passed. Say so.
