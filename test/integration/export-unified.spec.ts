@@ -191,6 +191,36 @@ describe('Unified Export System Integration', () => {
             expect(zipFile['imsmanifest.xml']).toBeDefined();
         });
 
+        it('Scorm12Exporter stamps the runtime with the version it was given', async () => {
+            // The stamp is what lets another project say which eXeLearning release the
+            // runtime in a package came from — the Moodle plugin vendors that exact file
+            // and its provenance test rejects an unstamped copy. Asserting it on a real
+            // export closes the gap the unit tests cannot: an exporter that accepts the
+            // option and then drops it.
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export({ runtimeVersion: 'v9.9.9-test' });
+
+            expect(result.success).toBe(true);
+            const files = unzipSync(result.data!);
+            const runtime = new TextDecoder().decode(files['libs/SCOFunctions.js']);
+
+            expect(runtime).toContain('eXeLearning-SCORM12-Runtime: v9.9.9-test');
+            expect(runtime).toContain('ns.runtimeVersion = "v9.9.9-test"');
+        });
+
+        it('Scorm12Exporter says "unknown" rather than nothing when no version reaches it', async () => {
+            // "unknown" is a real signal, not a default to be comfortable with: it is what
+            // the plugin's provenance test refuses. A missing line would instead look like
+            // a package that predates stamping.
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const files = unzipSync(result.data!);
+            const runtime = new TextDecoder().decode(files['libs/SCOFunctions.js']);
+
+            expect(runtime).toContain('eXeLearning-SCORM12-Runtime: unknown');
+        });
+
         it('Scorm2004Exporter produces ZIP with imsmanifest.xml', async () => {
             const exporter = new Scorm2004Exporter(document, resources, assets, zip);
             const result = await exporter.export();
