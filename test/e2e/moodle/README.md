@@ -87,7 +87,7 @@ EXE_BASE_URL=http://localhost:8096 EXE_MOODLE_CONTAINER=exeaudit-moodle-1 \
 | `EXE_MOODLE_CONTAINER` | `exeaudit-moodle-1` | container for `add_exelearning.php` / `read_exelearning_state.php` |
 | `EXE_MOODLE_CLI_DIR` | `/var/www/html/exeaudit` | where those two are mounted inside it |
 | `EXE_FIXTURE_DIR` | the plugin's `research/fixtures/elpx` | ELPX packages to build activities from |
-| `EXE_SCORM_PACKAGE` | unset (that test skips) | a SCORM 1.2 zip, to check the plugin still installs exactly one runtime |
+| `EXE_SCORM_PACKAGE` | `/var/www/moodledata/audit/scorm12-upload.zip` | a SCORM 1.2 zip, to check the plugin still installs exactly one runtime. Stage it with `docker cp <zip> <container>:/var/www/moodledata/audit/scorm12-upload.zip`; the test fails with that instruction rather than skipping |
 
 What it asserts, all read back from Moodle rather than from the browser: exactly one copy
 of the runtime is served (in both serving models); the per-iDevice grade model publishes

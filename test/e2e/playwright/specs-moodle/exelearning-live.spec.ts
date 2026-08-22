@@ -11,12 +11,17 @@
  * So this lane plays the activity as a learner and then reads the plugin's own tables and
  * Moodle's gradebook, for both grade models and for the ungraded case.
  */
+import { execFileSync } from 'child_process';
+
 import { expect, test } from '@playwright/test';
 
 import { createIdeviceDriver } from '../helpers/idevice-drivers';
 import {
     EXE_FRAME_ID,
     addExeActivity,
+    apiCallCount,
+    countApiCalls,
+    dispatchPageHide,
     openExeActivity,
     readExeState,
     readRuntimeAuthority,
@@ -54,36 +59,82 @@ async function answerTrueOrFalseFully(page: import('@playwright/test').Page, ide
     await driver.checkTrueOrFalse(ideviceId);
 }
 
+/** One acknowledged tracking POST, as the plugin answered it. */
+interface TrackAck {
+    ok?: boolean;
+    noop?: boolean;
+    rawscore?: number;
+}
+
 /**
- * Wait until the plugin has acknowledged a tracking POST.
+ * Run an action and collect every tracking POST the plugin answers.
  *
- * The tracker debounces auto-commits by 500 ms, so asserting on the database immediately
- * after the last click reads it before the write. Waiting on the response makes the test
- * deterministic without a sleep.
+ * Two things make this deterministic rather than timed. The waiter is armed BEFORE the
+ * action, so a response that arrives quickly cannot be missed — the earlier version armed
+ * it afterwards and raced. And what it waits for is the plugin's own acknowledgement,
+ * parsed, rather than a fixed pause chosen to be longer than the tracker's 500 ms debounce.
  *
  * @param page The page to watch.
  * @param action What to do while watching.
+ * @returns Every acknowledgement body, in order.
  */
-async function withTrackPost(page: import('@playwright/test').Page, action: () => Promise<void>): Promise<number> {
-    let posts = 0;
-    const listener = (response: import('@playwright/test').Response) => {
-        if (response.url().includes('/mod/exelearning/track.php') && response.request().method() === 'POST') {
-            posts++;
+async function withTrackPost(page: import('@playwright/test').Page, action: () => Promise<void>): Promise<TrackAck[]> {
+    const acks: TrackAck[] = [];
+    const isTrack = (response: import('@playwright/test').Response) =>
+        response.url().includes('/mod/exelearning/track.php') && response.request().method() === 'POST';
+
+    const collect = async (response: import('@playwright/test').Response) => {
+        if (!isTrack(response)) return;
+        try {
+            acks.push((await response.json()) as TrackAck);
+        } catch {
+            acks.push({});
         }
     };
-    page.on('response', listener);
+    page.on('response', collect);
+    // Armed first, awaited last: the response may land before `action` returns.
+    const firstAck = page.waitForResponse(isTrack, { timeout: 20000 });
     try {
         await action();
-        await page.waitForResponse(
-            response => response.url().includes('/mod/exelearning/track.php') && response.request().method() === 'POST',
-            { timeout: 20000 },
-        );
-        // Give a trailing debounced commit room to land before the database is read.
-        await page.waitForTimeout(1500);
+        await firstAck;
+        // The tracker debounces by 500 ms, so a trailing commit can still be in flight.
+        // Wait for the traffic to go quiet instead of guessing how long that takes.
+        await page.waitForLoadState('networkidle');
     } finally {
-        page.off('response', listener);
+        page.off('response', collect);
     }
-    return posts;
+    return acks;
+}
+
+/**
+ * Poll the plugin's own tables until they say what the test is waiting for.
+ *
+ * The database is written by the server after it answers, so even an acknowledged POST is
+ * not a guarantee that the row is visible yet. Polling a condition beats sleeping: it is
+ * as fast as the system allows and it fails with what it actually saw.
+ *
+ * @param cmid Activity to read.
+ * @param username Learner to read.
+ * @param predicate What the state has to satisfy.
+ * @param what Description used in the failure message.
+ * @returns The state that satisfied the predicate.
+ */
+async function waitForState(
+    cmid: number,
+    username: string,
+    predicate: (state: ReturnType<typeof readExeState>) => boolean,
+    what: string,
+): Promise<ReturnType<typeof readExeState>> {
+    const deadline = Date.now() + 20000;
+    let last = readExeState(cmid, username);
+    while (!predicate(last)) {
+        if (Date.now() > deadline) {
+            throw new Error(`timed out waiting for ${what}; last state: ${JSON.stringify(last.attempts)}`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 250));
+        last = readExeState(cmid, username);
+    }
+    return last;
 }
 
 test.describe('mod_exelearning in a live Moodle', () => {
@@ -119,15 +170,36 @@ test.describe('mod_exelearning in a live Moodle', () => {
         // itself, so it is the case where the plugin's injection can double up — and it
         // is also a different serving model, because a SCORM export carries the
         // `exe-scorm` body class that a web export does not.
-        const scormPackage = process.env.EXE_SCORM_PACKAGE;
-        test.skip(!scormPackage, 'set EXE_SCORM_PACKAGE to a SCORM 1.2 zip inside the container');
+        // Not a `test.skip`: an assertion that quietly stops running is worse than one
+        // that fails, and this is the case the injector's dedupe exists for. The package
+        // is staged where the README says to stage it; if it is not there, say so.
+        // Outside the plugin directory on purpose: that path is a mount of a working copy
+        // and gets rewritten, so a package staged there disappears without warning.
+        const scormPackage = process.env.EXE_SCORM_PACKAGE ?? '/var/www/moodledata/audit/scorm12-upload.zip';
+        const staged = execFileSync(
+            'docker',
+            [
+                'exec',
+                process.env.EXE_MOODLE_CONTAINER ?? 'exeaudit-moodle-1',
+                'sh',
+                '-c',
+                `test -f ${scormPackage} && echo yes || echo no`,
+            ],
+            { encoding: 'utf8' },
+        ).trim();
+        expect(
+            staged,
+            `stage a SCORM 1.2 zip at ${scormPackage} inside the container (see test/e2e/moodle/README.md)`,
+        ).toBe('yes');
 
         const activity = addExeActivity({
-            packagePath: scormPackage as string,
+            packagePath: scormPackage,
             name: `EXE-FROM-SCORM-${Date.now()}`,
             grademodel: GRADEMODEL_PERITEM,
         });
+        await countApiCalls(page);
         await openExeActivity(page, activity.cmid, 'exelearner4');
+        await page.waitForLoadState('networkidle');
 
         const authority = await readRuntimeAuthority(page);
 
@@ -136,6 +208,42 @@ test.describe('mod_exelearning in a live Moodle', () => {
         // And the package keeps its own nature: this one DOES run the runtime's page
         // lifecycle, unlike the web export the plugin normally serves.
         expect(authority.bodyClass).toContain('exe-scorm');
+
+        // One session, one end to it. Before the injector deduped the tags, this page
+        // carried two of each; the traffic happened to stay single, which is worth pinning
+        // precisely because nothing guaranteed it.
+        expect(await apiCallCount(page, 'LMSInitialize')).toBe(1);
+        await dispatchPageHide(page);
+        await page.waitForLoadState('networkidle');
+        expect(await apiCallCount(page, 'LMSFinish')).toBe(1);
+        expect(await apiCallCount(page, 'LMSCommit')).toBe(1);
+    });
+
+    test('the runtime initialises once and ends the session once', async ({ page }) => {
+        // The measurable consequence of loading a runtime twice is doing everything twice:
+        // two sessions opened, two commits, two finishes. Counting the calls is what turns
+        // "the page has one script tag" into "the LMS sees one session", and it is the
+        // assertion that was missing while the duplicate tags went unnoticed.
+        const activity = addExeActivity({
+            packagePath: SINGLE_PAGE,
+            name: `EXE-CALLS-${Date.now()}`,
+            grademodel: GRADEMODEL_PERITEM,
+        });
+        await countApiCalls(page);
+        await openExeActivity(page, activity.cmid, 'exelearner4');
+        await page.waitForLoadState('networkidle');
+
+        expect(await apiCallCount(page, 'LMSInitialize')).toBe(1);
+
+        await dispatchPageHide(page);
+        await page.waitForLoadState('networkidle');
+
+        // A web export never arms the runtime's page lifecycle — no `exe-scorm` body class,
+        // so `loadPage()` never runs — and therefore ends no session on the way out. That
+        // is the serving model, not a defect, and pinning it is how a change to it becomes
+        // visible instead of silent.
+        expect(await apiCallCount(page, 'LMSInitialize')).toBe(1);
+        expect(await apiCallCount(page, 'LMSFinish')).toBe(0);
     });
 
     test('PERITEM publishes the answered iDevice in its own gradebook column', async ({ page }) => {
@@ -150,7 +258,12 @@ test.describe('mod_exelearning in a live Moodle', () => {
         const first = activity.gradeitems[0];
         await withTrackPost(page, () => answerTrueOrFalseFully(page, first.objectid));
 
-        const state = readExeState(activity.cmid, 'exelearner1');
+        const state = await waitForState(
+            activity.cmid,
+            'exelearner1',
+            candidate => candidate.attempts.some(row => row.itemnumber === first.itemnumber),
+            `an attempt row for item ${first.itemnumber}`,
+        );
         const item = state.gradebook.find(row => row.itemnumber === first.itemnumber);
         const overallColumn = state.gradebook.find(row => row.itemnumber === 0);
 
@@ -174,7 +287,12 @@ test.describe('mod_exelearning in a live Moodle', () => {
         const first = activity.gradeitems[0];
         await withTrackPost(page, () => answerTrueOrFalseFully(page, first.objectid));
 
-        const state = readExeState(activity.cmid, 'exelearner2');
+        const state = await waitForState(
+            activity.cmid,
+            'exelearner2',
+            candidate => candidate.gradebook.some(row => row.itemnumber === 0 && row.grade !== null),
+            'the overall gradebook column to be published',
+        );
         const overallColumn = state.gradebook.find(row => row.itemnumber === 0);
         const perItemColumn = state.gradebook.find(row => row.itemnumber === first.itemnumber);
 
@@ -206,10 +324,17 @@ test.describe('mod_exelearning in a live Moodle', () => {
             .first()
             .getAttribute('id');
         expect(idevice).not.toBeNull();
-        await answerTrueOrFalseFully(page, idevice as string);
-        // Nothing to wait for: the point is that no write happens. Give the debounced
-        // commit more than its 500 ms window so this is a real observation.
-        await page.waitForTimeout(3000);
+        // A negative result needs a positive event to hang off, or it only says the test
+        // was faster than the write. The client still POSTs with grading off — it is the
+        // server that declines — so wait for that POST and read what the plugin answered.
+        const acks = await withTrackPost(page, () => answerTrueOrFalseFully(page, idevice as string));
+
+        expect(acks.length).toBeGreaterThan(0);
+        for (const ack of acks) {
+            expect(ack.ok).toBe(true);
+            expect(ack.noop).toBe(true);
+            expect(ack.rawscore).toBeUndefined();
+        }
 
         const state = readExeState(activity.cmid, 'exelearner3');
         expect(state.attempts).toHaveLength(0);

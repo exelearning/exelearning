@@ -305,13 +305,30 @@ export function createIdeviceDriver(page: Page, frameId: string): IdeviceDriver 
          * @param value 1 = true, 0 = false
          */
         async answerForm(ideviceId: string, questionIndex: number, value: 0 | 1): Promise<void> {
-            await frame()
+            const radio = frame()
                 .locator(
                     `#frmMainContainer-${ideviceId} li.FormView_question[data-question-index="${questionIndex}"] ` +
                         `.true-false-radio-buttons-container input[value="${value}"]`,
                 )
-                .first()
-                .click();
+                .first();
+            await radio.scrollIntoViewIfNeeded().catch(() => {});
+            await radio.evaluate(element => (element as HTMLElement).click());
+
+            // Verify the answer took, and retry once.
+            //
+            // The form binds its handlers asynchronously, so a click can land on a radio
+            // that is in the DOM but not yet wired: the input looks answered to nobody and
+            // the iDevice scores as if the question were skipped. Measured: one cell of a
+            // 400-cell run recorded `ide-d;…;75;…` for the same click sequence that scored
+            // 100 everywhere else, which read as a difference between two LMS hosts until
+            // the per-item payload showed it was this.
+            for (let attempt = 0; attempt < 2; attempt++) {
+                if (await radio.isChecked()) return;
+                await radio.evaluate(element => (element as HTMLElement).click());
+            }
+            if (!(await radio.isChecked())) {
+                throw new Error(`form ${ideviceId} question ${questionIndex} did not register the answer`);
+            }
         },
 
         /**

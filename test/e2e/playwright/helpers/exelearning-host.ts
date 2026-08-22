@@ -178,3 +178,70 @@ export async function readRuntimeAuthority(page: Page): Promise<{
         };
     });
 }
+
+/**
+ * Count every call the served content makes to the plugin's SCORM API.
+ *
+ * Must be installed before the activity page loads: the plugin assigns `window.API` while
+ * the page initialises, and this replaces that property with an accessor that wraps
+ * whatever is assigned. Without it there is no way to say "the runtime initialised once"
+ * — which is the only thing that makes a duplicated script tag observable.
+ *
+ * @param page Page that will host the activity.
+ */
+export async function countApiCalls(page: Page): Promise<void> {
+    await page.addInitScript(() => {
+        const scope = window as unknown as { __exeApiCalls?: string[]; API?: unknown };
+        scope.__exeApiCalls = [];
+        let assigned: Record<string, unknown> | undefined;
+        Object.defineProperty(scope, 'API', {
+            configurable: true,
+            get() {
+                return assigned;
+            },
+            set(value: Record<string, unknown>) {
+                assigned = new Proxy(value, {
+                    get(target, property) {
+                        const member = (target as Record<string | symbol, unknown>)[property];
+                        if (typeof member !== 'function') return member;
+                        return (...args: unknown[]) => {
+                            scope.__exeApiCalls?.push(String(property));
+                            return (member as (...rest: unknown[]) => unknown).apply(target, args);
+                        };
+                    },
+                });
+            },
+        });
+    });
+}
+
+/**
+ * How many times the content called one API method so far.
+ *
+ * @param page Page the counter was installed on.
+ * @param method SCORM API method name.
+ * @returns Call count.
+ */
+export async function apiCallCount(page: Page, method: string): Promise<number> {
+    const calls = await page.evaluate(
+        () => ((window as unknown as { __exeApiCalls?: string[] }).__exeApiCalls ?? []) as string[],
+    );
+    return calls.filter(name => name === method).length;
+}
+
+/**
+ * Fire the end-of-session event the runtime listens for, inside the content frame.
+ *
+ * A real navigation would destroy the counter along with the window that holds it, so the
+ * event is dispatched and the counts read from the still-live page. What is under test is
+ * how many handlers respond, which is exactly what a doubly-loaded runtime gets wrong.
+ *
+ * @param page Page holding the content frame.
+ */
+export async function dispatchPageHide(page: Page): Promise<void> {
+    const frame = page.frames().find(f => f.url().includes('pluginfile.php'));
+    if (!frame) throw new Error('the plugin content frame is not present');
+    await frame.evaluate(() => {
+        window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false }));
+    });
+}
