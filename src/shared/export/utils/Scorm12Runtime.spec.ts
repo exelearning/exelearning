@@ -7,6 +7,7 @@ import {
     SCORM12_RUNTIME_LAYER_PATHS,
     SCORM12_RUNTIME_SOURCE_PATHS,
     buildScorm12RuntimeFiles,
+    resolveScorm12RuntimeVersion,
     SCORM12_RUNTIME_VERSION_TAG,
 } from './Scorm12Runtime';
 
@@ -51,6 +52,64 @@ describe('Scorm12Runtime', () => {
             const text = String(buildScorm12RuntimeFiles(syntheticSources(), '   ').get('SCOFunctions.js'));
 
             expect(text).toContain(`${SCORM12_RUNTIME_VERSION_TAG}: unknown`);
+        });
+
+        it('falls back to the version the running application publishes', () => {
+            // The browser has no caller that knows the release: the exporter runs inside
+            // the application, which already publishes its own version. Without this the
+            // package a user exports from the editor is stamped "unknown", which is the
+            // one place the stamp needed to work.
+            const scope = globalThis as { eXeLearning?: { version?: string } };
+            const previous = scope.eXeLearning;
+            scope.eXeLearning = { version: '4.2.0' };
+            try {
+                const text = String(buildScorm12RuntimeFiles(syntheticSources()).get('SCOFunctions.js'));
+
+                expect(text).toContain(`${SCORM12_RUNTIME_VERSION_TAG}: 4.2.0`);
+                expect(text).toContain('ns.runtimeVersion = "4.2.0"');
+            } finally {
+                if (previous === undefined) {
+                    delete scope.eXeLearning;
+                } else {
+                    scope.eXeLearning = previous;
+                }
+            }
+        });
+
+        it('prefers what the caller passed over what the application publishes', () => {
+            const scope = globalThis as { eXeLearning?: { version?: string } };
+            const previous = scope.eXeLearning;
+            scope.eXeLearning = { version: '4.2.0' };
+            try {
+                expect(resolveScorm12RuntimeVersion('4.1.0')).toBe('4.1.0');
+            } finally {
+                if (previous === undefined) {
+                    delete scope.eXeLearning;
+                } else {
+                    scope.eXeLearning = previous;
+                }
+            }
+        });
+
+        it('ignores an application version that is blank or not a string', () => {
+            const scope = globalThis as { eXeLearning?: { version?: unknown } };
+            const previous = scope.eXeLearning;
+            try {
+                scope.eXeLearning = { version: '   ' };
+                expect(resolveScorm12RuntimeVersion()).toBe('unknown');
+
+                scope.eXeLearning = { version: 42 };
+                expect(resolveScorm12RuntimeVersion()).toBe('unknown');
+
+                scope.eXeLearning = {};
+                expect(resolveScorm12RuntimeVersion()).toBe('unknown');
+            } finally {
+                if (previous === undefined) {
+                    delete (scope as { eXeLearning?: unknown }).eXeLearning;
+                } else {
+                    scope.eXeLearning = previous;
+                }
+            }
         });
 
         it('puts the stamp after the layers, so it cannot be shadowed by one of them', () => {

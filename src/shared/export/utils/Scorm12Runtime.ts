@@ -48,6 +48,38 @@ export const SCORM12_RUNTIME_SOURCE_PATHS: readonly string[] = [
 ];
 
 /**
+ * Resolve the eXeLearning version to stamp into the assembled runtime.
+ *
+ * The stamp only has value if it is present in every package, and the exporter has
+ * five call sites — CLI, three server routes, the platform-integration service and the
+ * browser — so leaving each of them to remember the argument is how a package ends up
+ * shipping `unknown` in the field that is supposed to identify it.
+ *
+ * An explicit value always wins: a caller that knows which release it is building for
+ * (the CLI, a server route) is more authoritative than anything inferred here. In the
+ * browser there is nothing to pass, because the running application already publishes
+ * its own version, so read it from there. Anything else — a caller in an environment
+ * with neither — gets `unknown`, which is deliberately the same value a missing stamp
+ * would produce and is what the Moodle plugin's provenance test rejects.
+ *
+ * @param explicit - Version the caller supplied, if any.
+ * @returns The version to stamp, never empty.
+ */
+export function resolveScorm12RuntimeVersion(explicit?: string): string {
+    if (explicit !== undefined && explicit.trim() !== '') {
+        return explicit.trim();
+    }
+
+    const app = (globalThis as { eXeLearning?: { version?: unknown } }).eXeLearning;
+    const running = app?.version;
+    if (typeof running === 'string' && running.trim() !== '') {
+        return running.trim();
+    }
+
+    return 'unknown';
+}
+
+/**
  * Build the two runtime files shipped in a SCORM 1.2 package from the fetched
  * source files.
  *
@@ -76,7 +108,7 @@ export function buildScorm12RuntimeFiles(
         return `/* ==== ${name} ==== */\n${text.trim()}\n`;
     });
 
-    const version = exelearningVersion && exelearningVersion.trim() !== '' ? exelearningVersion.trim() : 'unknown';
+    const version = resolveScorm12RuntimeVersion(exelearningVersion);
 
     const banner =
         '/*\n' +
