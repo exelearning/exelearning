@@ -1,0 +1,79 @@
+# Live-LMS grading harness
+
+A real Moodle, in Docker, that grades packages this repository exported — so a claim about
+what an LMS records can be produced by measurement rather than by reading the SCORM
+specification.
+
+This is not part of `make test-e2e`. `playwright.config.ts` only picks up
+`test/e2e/playwright/specs`; the lanes here live in `specs-moodle` and run from
+`playwright.moodle.config.ts`, which declares no `webServer` because the LMS is external
+by definition — starting one from a test run would hide which instance the results came
+from.
+
+## What it can answer
+
+- what a package sends the LMS on entry, page by page, with no interaction at all;
+- what it sends once every gradable iDevice has been played with a fixed click script;
+- what Moodle then stores (`scorm_scoes_value` / `exescorm_scoes_track`) and what value
+  lands in the gradebook, per grading method;
+- whether two runtimes, two browsers or two hosts differ — the lanes write one JSON per
+  run, so any two are directly comparable.
+
+## Setup
+
+```bash
+cd test/e2e/moodle
+docker compose -p scormaudit up -d
+docker exec scormaudit-moodle-1 php /var/www/html/scormaudit/setup.php   # course + learners
+```
+
+`setup.php` creates the course and the learner accounts the lanes use. Packages are read
+from `./packages`, which is mounted into the container at `/var/www/packages`: put the
+exported ZIPs you want graded there.
+
+To grade with `mod_exescorm` as well, clone `exelearning/mod_exescorm` into
+`./plugins/exescorm` before starting the stack.
+
+## Running a lane
+
+```bash
+# from the repository root
+AUDIT_ROOT=$PWD/test-results/moodle-harness \
+MOODLE_BASE_URL=http://localhost:8097 \
+  bun x playwright test -c playwright.moodle.config.ts --project=chromium specs-moodle/probe.spec.ts
+```
+
+`probe.spec.ts` first: it proves login, the player URL, the iframe and the API
+instrumentation all work, so a later failure is about grading and not about plumbing.
+
+Two engines are configured, `chromium` and `firefox`. Run both when the change touches the
+end-of-session path: `pagehide`, `visibilitychange` and the back/forward cache do not fire
+on the same schedule in Gecko as in Chromium, and a grading result that only holds in one
+engine is not a grading result. Evidence from the default engine keeps its plain file name;
+any other engine tags its own (`walk-main.firefox.json`), so runs never overwrite each
+other.
+
+## Environment
+
+| variable | default | what it selects |
+|---|---|---|
+| `MOODLE_BASE_URL` | `http://localhost:8097` | the LMS under test |
+| `AUDIT_ROOT` | `test-results/moodle-harness` | where evidence JSON is written |
+| `AUDIT_ACTIVITY_DIR` | `$AUDIT_ROOT/activities` | activity descriptors written by `add_activity.php` |
+| `AUDIT_MOODLE_CONTAINER` | `scormaudit-moodle-1` | container the CLI helpers exec into |
+| `AUDIT_MOODLE_CLI_DIR` | `/var/www/html/scormaudit` | where `cli/` is mounted inside it |
+| `AUDIT_PASSWORD` | `Audit#1234` | the learner accounts' password |
+| `AUDIT_PRODUCERS` | every producer in the spec | restrict a lane to some producers |
+
+## The CLI helpers
+
+`cli/` is mounted into the container and runs inside Moodle's bootstrap, so the harness
+never has to drive the admin UI to create an activity:
+
+- `setup.php` — course, learner accounts, enrolments;
+- `add_activity.php` — create one `mod_scorm` (or `mod_exescorm`) activity from a package
+  in `/var/www/packages`, and print its cmid and its SCO list as JSON;
+- `read_state.php` — dump the tracking rows and the gradebook value for one learner.
+
+Everything they print is JSON, so a lane records the LMS's own state next to the API
+traffic it captured in the browser.
