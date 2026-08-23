@@ -28,11 +28,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 K6_BIN="${K6_BIN:-k6}"
 
-SCENARIO_FILE="${REPO_ROOT}/test/load/k6/${SCENARIO}.js"
+SCENARIO_FILE="${REPO_ROOT}/test/load/k6/${SCENARIO}.mjs"
 if [[ ! -f "${SCENARIO_FILE}" ]]; then
     available=()
-    for f in "${REPO_ROOT}"/test/load/k6/*.js; do
-        available+=("$(basename "${f}" .js)")
+    for f in "${REPO_ROOT}"/test/load/k6/*.mjs; do
+        available+=("$(basename "${f}" .mjs)")
     done
     echo "Unknown scenario '${SCENARIO}'. Available: ${available[*]}" >&2
     exit 1

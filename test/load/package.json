@@ -1,5 +1,0 @@
-{
-    "private": true,
-    "type": "module",
-    "description": "k6 load-test scripts for issue #2255 (C10k benchmark). Not part of the npm dependency graph; this file only marks the directory as ES modules for tooling (Biome) since the repo root declares \"type\": \"commonjs\"."
-}

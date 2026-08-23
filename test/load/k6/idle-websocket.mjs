@@ -10,10 +10,10 @@
 //       -e TARGET_VUS=1000 -e HOLD_DURATION_S=600 -e RAMP_UP_S=60
 import ws from 'k6/ws';
 import { Counter, Trend } from 'k6/metrics';
-import { getConfig } from './lib/config.js';
-import { login, accountForVu } from './lib/auth.js';
-import { loadProjects, pickProject } from './lib/projects.js';
-import { wsUrl, fakeYjsUpdate } from './lib/ws.js';
+import { getConfig } from './lib/config.mjs';
+import { login, accountForVu } from './lib/auth.mjs';
+import { loadProjects, pickProject } from './lib/projects.mjs';
+import { wsUrl, fakeYjsUpdate } from './lib/ws.mjs';
 
 const config = getConfig();
 const projects = loadProjects(config.projectsFile);
@@ -31,7 +31,14 @@ export const options = {
         idle_ws: {
             executor: 'ramping-vus',
             startVUs: 0,
-            stages: [{ duration: `${config.rampUpS}s`, target: targetVus }],
+            // The trailing 5s plateau at the same target guarantees VUs
+            // scheduled to start right at the end of the ramp actually get
+            // to run their iteration, instead of being silently dropped by
+            // the executor at the stage boundary.
+            stages: [
+                { duration: `${config.rampUpS}s`, target: targetVus },
+                { duration: '5s', target: targetVus },
+            ],
             gracefulRampDown: `${config.holdDurationS + 60}s`,
             gracefulStop: `${config.holdDurationS + 60}s`,
         },

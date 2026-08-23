@@ -29,7 +29,7 @@ Adapt hostnames/IPs via environment variables if you run this elsewhere.
 - **Many projects, few collaborators.** Per the issue, the primary
   scalability model is many independent projects with 1-10 collaborators
   each — not thousands of users in one Yjs room (that is tested separately,
-  see `k6/collaboration.js`). Test data is pre-created projects, not
+  see `k6/collaboration.mjs`). Test data is pre-created projects, not
   thousands of distinct user accounts: the Yjs WebSocket relay scales by
   project ("room"), and JWT auth does not limit concurrent connections per
   account, so a small pool of accounts owning many projects is a faithful
@@ -38,7 +38,7 @@ Adapt hostnames/IPs via environment variables if you run this elsewhere.
   forwards any binary WebSocket frame that isn't a JSON asset-coordination
   message as an opaque Yjs update — the server never decodes it. Load
   scripts therefore send randomly-filled binary frames shaped like real Yjs
-  traffic (see `k6/lib/ws.js`) instead of depending on the real `yjs` /
+  traffic (see `k6/lib/ws.mjs`) instead of depending on the real `yjs` /
   `y-protocols` JS libraries, which keeps k6 scripts dependency-free.
 - **One variable at a time.** Change Nginx settings, or add an instance, or
   switch load-balancing strategy — then repeat the same scenario and
@@ -68,15 +68,15 @@ test/load/
   README.md
   k6/
     lib/
-      config.js      # env-driven configuration, shared across scenarios
-      auth.js         # login helper + account pool selection
-      projects.js     # loads the pre-seeded project pool
-      ws.js           # WebSocket URL builder + synthetic Yjs-shaped payloads
-    smoke.js           # ~10 users, one iteration each — run this first
-    idle-websocket.js  # phase 2: idle WebSocket connection capacity
-    normal-editing.js  # phase 3: realistic editing workload
-    collaboration.js   # phase 4: single-project collaboration fan-out
-    api.js              # pure HTTP baseline, no WebSocket
+      config.mjs      # env-driven configuration, shared across scenarios
+      auth.mjs         # login helper + account pool selection
+      projects.mjs     # loads the pre-seeded project pool
+      ws.mjs           # WebSocket URL builder + synthetic Yjs-shaped payloads
+    smoke.mjs           # ~10 users, one iteration each — run this first
+    idle-websocket.mjs  # phase 2: idle WebSocket connection capacity
+    normal-editing.mjs  # phase 3: realistic editing workload
+    collaboration.mjs   # phase 4: single-project collaboration fan-out
+    api.mjs              # pure HTTP baseline, no WebSocket
   scripts/
     prepare.sh              # seed bench users + projects (idempotent)
     run.sh                   # run one scenario, store artifacts under a RUN_ID
@@ -101,8 +101,8 @@ so the same code runs against any topology. The most common ones:
 | `BENCH_PASSWORD` | `Bench1234!` | Password for bench accounts created by `prepare.sh` |
 | `BENCH_PROJECTS_FILE` | `test/load/data/projects.json` | Project pool (auto-set to an absolute path by `run.sh`) |
 | `TARGET_VUS` | scenario-specific | Concurrency target |
-| `USERS_PER_PROJECT` | `1` | Collaborators sharing one project (normal-editing.js) |
-| `COLLABORATORS` / `PROJECT_COUNT` | `10` / `1` | collaboration.js sizing |
+| `USERS_PER_PROJECT` | `1` | Collaborators sharing one project (normal-editing.mjs) |
+| `COLLABORATORS` / `PROJECT_COUNT` | `10` / `1` | collaboration.mjs sizing |
 | `HOLD_DURATION_S` | `600` | How long connections stay open (10 min default, per issue) |
 | `RAMP_UP_S` / `RAMP_DOWN_S` | `60` / `30` | Ramp timing |
 

@@ -7,9 +7,9 @@
 //   test/load/scripts/run.sh api <RUN_ID> -- -e TARGET_VUS=50 -e HOLD_DURATION_S=300
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { getConfig, authHeaders, randomBetween } from './lib/config.js';
-import { login, accountForVu } from './lib/auth.js';
-import { loadProjects, pickProject } from './lib/projects.js';
+import { getConfig, authHeaders, randomBetween } from './lib/config.mjs';
+import { login, accountForVu } from './lib/auth.mjs';
+import { loadProjects, pickProject } from './lib/projects.mjs';
 
 const config = getConfig();
 const projects = loadProjects(config.projectsFile);

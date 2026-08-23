@@ -9,10 +9,10 @@ import http from 'k6/http';
 import ws from 'k6/ws';
 import { check, sleep } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
-import { getConfig, authHeaders } from './lib/config.js';
-import { login, accountForVu } from './lib/auth.js';
-import { loadProjects, pickProject } from './lib/projects.js';
-import { wsUrl, fakeYjsUpdate } from './lib/ws.js';
+import { getConfig, authHeaders } from './lib/config.mjs';
+import { login, accountForVu } from './lib/auth.mjs';
+import { loadProjects, pickProject } from './lib/projects.mjs';
+import { wsUrl, fakeYjsUpdate } from './lib/ws.mjs';
 
 const config = getConfig();
 const projects = loadProjects(config.projectsFile);
