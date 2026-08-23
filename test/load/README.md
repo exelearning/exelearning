@@ -16,6 +16,42 @@ This tooling assumes the three-machine setup used for the benchmark:
 
 Adapt hostnames/IPs via environment variables if you run this elsewhere.
 
+## Multi-generator mode (Zoidberg + Bender)
+
+k6's classic executor pre-allocates one JS VM per virtual user, which gets memory-expensive at a few thousand VUs.
+Zoidberg (an old 4-thread/7.2 GiB laptop) was observed at **71% RAM usage and heavy zram compression at just 2500
+concurrent VUs** — a real risk of the load generator itself becoming the bottleneck the benchmark is trying to
+measure on the server side. Above ~2000-2500 VUs, split the target across Zoidberg and Bender (also LAN-reachable
+to Gordobot, and far more capable: 10-core Apple Silicon, 24 GiB RAM) instead of pushing Zoidberg alone.
+
+Every scenario reads `VU_OFFSET` (`test/load/k6/lib/config.mjs`, `globalVuIndex()`) and adds it to the local
+`__VU` before indexing into the account/project pool — since k6's `__VU` restarts at 1 in every separate process,
+this is what keeps two machines from both hammering the same accounts/projects. To split a 5000-VU idle-WebSocket
+run as (Zoidberg: 1500, Bender: 3500):
+
+```bash
+# On Zoidberg:
+bash test/load/scripts/run.sh idle-websocket E2255-SINGLE-IDLE-5000-001-zoidberg -- \
+    -e TARGET_VUS=1500 -e VU_OFFSET=0 -e RAMP_UP_S=200 -e HOLD_DURATION_S=600
+
+# On Bender, at the same time (install a k6 binary matching Zoidberg's exact version first — see below):
+bash test/load/scripts/run.sh idle-websocket E2255-SINGLE-IDLE-5000-001-bender -- \
+    -e TARGET_VUS=3500 -e VU_OFFSET=1500 -e RAMP_UP_S=200 -e HOLD_DURATION_S=600
+```
+
+`prepare.sh` must have seeded at least `VU_OFFSET + TARGET_VUS` projects so neither machine's index range runs out.
+Combine the two `summary.json` files when reporting (sum counters, keep the worse of the two latency
+distributions) — the report should state the split used for reproducibility.
+
+**Use the same k6 version on every generator.** Zoidberg installed k6 as a static binary at `~/bin/k6`
+(no root required). To match it exactly on Bender rather than pulling whatever Homebrew currently packages:
+
+```bash
+curl -fsSL -o /tmp/k6.zip https://github.com/grafana/k6/releases/download/v0.55.0/k6-v0.55.0-macos-arm64.zip
+unzip -o /tmp/k6.zip -d /tmp/k6-extracted
+mv /tmp/k6-extracted/k6-v0.55.0-macos-arm64/k6 ~/bin/k6 && chmod +x ~/bin/k6
+```
+
 ## Methodology notes (read before running)
 
 - **Bypass Cloudflare/WAN.** The test deployment is also reachable at

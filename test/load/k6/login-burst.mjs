@@ -7,7 +7,7 @@
 //
 // Usage:
 //   test/load/scripts/run.sh login-burst <RUN_ID> -- -e TARGET_VUS=500
-import { getConfig } from './lib/config.mjs';
+import { getConfig, globalVuIndex } from './lib/config.mjs';
 import { login, accountForVu } from './lib/auth.mjs';
 
 const config = getConfig();
@@ -29,6 +29,6 @@ export const options = {
 };
 
 export default function () {
-    const account = accountForVu(config, __VU - 1);
+    const account = accountForVu(config, globalVuIndex());
     login(config, account);
 }

@@ -10,7 +10,7 @@
 //       -e COLLABORATORS=50 -e PROJECT_COUNT=1 -e HOLD_DURATION_S=300
 import ws from 'k6/ws';
 import { Counter } from 'k6/metrics';
-import { getConfig, randomBetween } from './lib/config.mjs';
+import { getConfig, randomBetween, globalVuIndex } from './lib/config.mjs';
 import { login, accountForVu } from './lib/auth.mjs';
 import { loadProjects, pickProject } from './lib/projects.mjs';
 import { wsUrl, fakeYjsUpdate } from './lib/ws.mjs';
@@ -48,13 +48,13 @@ export const options = {
 };
 
 export default function () {
-    const account = accountForVu(config, __VU - 1);
+    const account = accountForVu(config, globalVuIndex());
     const token = login(config, account);
     if (!token) return;
 
     // Restrict to the first `projectCount` projects so `collaborators` VUs
     // pile up on each one, instead of spreading across the whole pool.
-    const project = pickProject(projects.slice(0, projectCount), __VU - 1, collaborators);
+    const project = pickProject(projects.slice(0, projectCount), globalVuIndex(), collaborators);
     const url = wsUrl(config, project.uuid, token);
     let sawOpen = false;
     let closedCleanly = false;

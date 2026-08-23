@@ -9,7 +9,7 @@ import http from 'k6/http';
 import ws from 'k6/ws';
 import { check, sleep } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
-import { getConfig, authHeaders } from './lib/config.mjs';
+import { getConfig, authHeaders, globalVuIndex } from './lib/config.mjs';
 import { login, accountForVu } from './lib/auth.mjs';
 import { loadProjects, pickProject } from './lib/projects.mjs';
 import { wsUrl, fakeYjsUpdate } from './lib/ws.mjs';
@@ -39,11 +39,11 @@ export const options = {
 };
 
 export default function () {
-    const account = accountForVu(config, __VU - 1);
+    const account = accountForVu(config, globalVuIndex());
     const token = login(config, account);
     if (!token) return;
 
-    const project = pickProject(projects, __VU - 1, 1);
+    const project = pickProject(projects, globalVuIndex(), 1);
 
     const metaRes = http.get(`${config.baseUrl}/api/v1/projects/${project.uuid}`, {
         headers: authHeaders(config, token),

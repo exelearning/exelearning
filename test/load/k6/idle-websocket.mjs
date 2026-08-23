@@ -10,7 +10,7 @@
 //       -e TARGET_VUS=1000 -e HOLD_DURATION_S=600 -e RAMP_UP_S=60
 import ws from 'k6/ws';
 import { Counter, Trend } from 'k6/metrics';
-import { getConfig } from './lib/config.mjs';
+import { getConfig, globalVuIndex } from './lib/config.mjs';
 import { login, accountForVu } from './lib/auth.mjs';
 import { loadProjects, pickProject } from './lib/projects.mjs';
 import { wsUrl, fakeYjsUpdate } from './lib/ws.mjs';
@@ -49,11 +49,11 @@ export const options = {
 };
 
 export default function () {
-    const account = accountForVu(config, __VU - 1);
+    const account = accountForVu(config, globalVuIndex());
     const token = login(config, account);
     if (!token) return;
 
-    const project = pickProject(projects, __VU - 1, usersPerProject);
+    const project = pickProject(projects, globalVuIndex(), usersPerProject);
     const url = wsUrl(config, project.uuid, token);
     const connectStart = Date.now();
     let sawOpen = false;

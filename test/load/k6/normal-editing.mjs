@@ -14,7 +14,7 @@ import http from 'k6/http';
 import ws from 'k6/ws';
 import { check } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
-import { getConfig, authHeaders, randomBetween } from './lib/config.mjs';
+import { getConfig, authHeaders, randomBetween, globalVuIndex } from './lib/config.mjs';
 import { login, accountForVu } from './lib/auth.mjs';
 import { loadProjects, pickProject } from './lib/projects.mjs';
 import { wsUrl, fakeYjsUpdate } from './lib/ws.mjs';
@@ -73,11 +73,11 @@ function pollMetadata(token, projectUuid) {
 }
 
 export default function () {
-    const account = accountForVu(config, __VU - 1);
+    const account = accountForVu(config, globalVuIndex());
     const token = login(config, account);
     if (!token) return;
 
-    const project = pickProject(projects, __VU - 1, usersPerProject);
+    const project = pickProject(projects, globalVuIndex(), usersPerProject);
     const url = wsUrl(config, project.uuid, token);
     let sawOpen = false;
     let closedCleanly = false;

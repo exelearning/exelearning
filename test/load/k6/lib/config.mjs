@@ -51,6 +51,16 @@ export function randomBetween(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+// A single logical test can be sharded across multiple load-generator
+// machines running the identical script (see test/load/README.md's
+// "multi-generator" section). Each machine gets a disjoint slice of the
+// account/project pool by setting VU_OFFSET to its share's starting index;
+// __VU always restarts at 1 per k6 process, so plain `__VU - 1` would
+// collide across machines without this offset.
+export function globalVuIndex() {
+    return envInt('VU_OFFSET', 0) + (__VU - 1);
+}
+
 export function authHeaders(config, token) {
     return {
         Host: config.hostHeader,
