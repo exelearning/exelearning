@@ -101,6 +101,77 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
         });
     });
 
+    describe('session.open', () => {
+        it('brings the client up and applies the entry policy without the SCO lifecycle', () => {
+            // The host that embeds an exported website owns the page: several of its
+            // pages share one session, so installing the SCO lifecycle would end that
+            // session as soon as one page reached a terminal status.
+            useLms({});
+
+            const opened = pageWindow.exeScorm12.session.open({ ownsLifecycle: false });
+
+            expect(opened).toBe(true);
+            expect(api.callSignatures()).toEqual([
+                'LMSInitialize',
+                'LMSGetValue(cmi.core.lesson_status)',
+                'LMSSetValue(cmi.core.lesson_status=incomplete)',
+                'LMSGetValue(cmi.student_data.mastery_score)',
+                'LMSGetValue(cmi.suspend_data)',
+            ]);
+            expect(fakeWindow.listeners.pagehide ?? []).toHaveLength(0);
+            expect(fakeWindow.listeners.pageshow ?? []).toHaveLength(0);
+        });
+
+        it('leaves the client able to write, which opening pipwerks alone does not', () => {
+            // The defect this exists for: a host that opened pipwerks' connection but not
+            // the client's own state machine gets every write refused with 301, silently
+            // — the registry holds the score and cmi.core.score.raw stays empty.
+            useLms({});
+
+            const refused = pageWindow.exeScorm12.policy.setScoreDetailed(50, 0, 100);
+            expect(refused.requiredWritten).toBe(false);
+            expect(refused.required.errorCode).toBe(301);
+
+            pageWindow.exeScorm12.session.open({ ownsLifecycle: false });
+            const accepted = pageWindow.exeScorm12.policy.setScoreDetailed(50, 0, 100);
+
+            expect(accepted.requiredWritten).toBe(true);
+            expect(accepted.required.errorCode).toBe(0);
+        });
+
+        it('installs the lifecycle when the caller owns it', () => {
+            useLms({});
+
+            pageWindow.exeScorm12.session.open({ ownsLifecycle: true });
+
+            expect(fakeWindow.listeners.pagehide).toHaveLength(1);
+        });
+
+        it('defaults to owning the lifecycle, so an argument-less call is the SCO case', () => {
+            useLms({});
+
+            pageWindow.exeScorm12.session.open();
+
+            expect(fakeWindow.listeners.pagehide).toHaveLength(1);
+        });
+
+        it('does not initialize twice when called again', () => {
+            useLms({});
+            pageWindow.exeScorm12.session.open({ ownsLifecycle: false });
+            const initializes = api.callSignatures().filter(name => name === 'LMSInitialize').length;
+
+            pageWindow.exeScorm12.session.open({ ownsLifecycle: false });
+
+            expect(api.callSignatures().filter(name => name === 'LMSInitialize')).toHaveLength(initializes);
+        });
+
+        it('reports failure when the session cannot be opened', () => {
+            useLms({}, { failures: { LMSInitialize: { result: 'false', errorCode: 101 } } });
+
+            expect(pageWindow.exeScorm12.session.open({ ownsLifecycle: false })).toBe(false);
+        });
+    });
+
     describe('loadPage', () => {
         it('initializes and applies the entry policy (exact call sequence)', () => {
             useLms({});

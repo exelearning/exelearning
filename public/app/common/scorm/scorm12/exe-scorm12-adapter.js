@@ -112,24 +112,63 @@
     };
 
     // ------------------------------------------------------------------ //
+    // Session                                                            //
+    // ------------------------------------------------------------------ //
+
+    /**
+     * Start a session, with or without owning the page lifecycle.
+     *
+     * Two hosts run this runtime and they are not the same shape. A SCORM package is a
+     * SCO: it owns the page, so the runtime installs the end-of-session handlers and
+     * decides completion. A host that embeds the exported website — the Moodle
+     * eXeLearning plugin does exactly this — owns the page itself: several of its pages
+     * share one session and one lesson_status, so a runtime that ran the SCO lifecycle
+     * per page would close the session as soon as one page reached a terminal status.
+     * Measured on a live Moodle: after page one published `passed`, page two ran with a
+     * dead session and recorded nothing.
+     *
+     * What both need is identical and is what this does: bring the client's own state
+     * machine up, then apply the entry policy. Opening pipwerks' connection is not
+     * enough — the client refuses every write with 301 while its own state is idle,
+     * which is silent from outside: the registry holds the score, the entry policy
+     * reports as applied, and `cmi.core.score.raw` stays empty.
+     *
+     * @param {object} [options] - Session options.
+     * @param {boolean} [options.ownsLifecycle=true] - False when the host owns the page
+     * and its end-of-session handling, so the SCO lifecycle must not be installed.
+     * @returns {boolean} True when the session is open.
+     */
+    exeScorm12.session = {
+        open: function (options) {
+            var ownsLifecycle = !options || options.ownsLifecycle !== false;
+            if (!client.initialize()) {
+                return false;
+            }
+            policy.applyEntryPolicy();
+            if (ownsLifecycle) {
+                lifecycle.install();
+            }
+            return true;
+        },
+    };
+
+    // ------------------------------------------------------------------ //
     // Page lifecycle globals                                             //
     // ------------------------------------------------------------------ //
 
     /**
-     * Open the SCORM session for this page. Idempotent — the exporter's
+     * Open the SCORM session for this page, as a SCO. Idempotent — the exporter's
      * body onload attribute and exe_export.js may both call it.
      */
     global.loadPage = function () {
         if (state.loadPageRan) {
             return;
         }
-        if (client.initialize()) {
-            // Only a successful initialize consumes the latch: a transient
-            // failure (the LMS API not attached yet) must stay retryable —
-            // exe_export.js calls loadPage() again after the body onload.
+        // Only a successful open consumes the latch: a transient failure (the LMS API
+        // not attached yet) must stay retryable — exe_export.js calls loadPage() again
+        // after the body onload.
+        if (exeScorm12.session.open({ ownsLifecycle: true })) {
             state.loadPageRan = true;
-            policy.applyEntryPolicy();
-            lifecycle.install();
         }
     };
 
