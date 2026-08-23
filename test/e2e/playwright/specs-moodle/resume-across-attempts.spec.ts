@@ -27,7 +27,14 @@ import { addActivity, readState } from '../helpers/moodle-cli';
 const AUDIT_ROOT = process.env.AUDIT_ROOT ?? path.resolve(__dirname, '../../../../test-results/moodle-harness');
 const BASE_URL = process.env.MOODLE_BASE_URL ?? 'http://localhost:8097';
 const PASSWORD = process.env.AUDIT_PASSWORD ?? 'Audit#1234';
-const OUT = path.join(AUDIT_ROOT, 'evidence', 'resume');
+/**
+ * One directory per engine, for the same reason the matrix has one: the cell name says
+ * scenario, producer and host, so a second engine writing beside the first overwrites it
+ * and the surviving files cannot say which engine produced them.
+ */
+function outDir(): string {
+    return path.join(AUDIT_ROOT, 'evidence', 'resume', test.info().project.name);
+}
 
 /** Producers to compare, and the learner each one uses. */
 const PRODUCERS: Record<string, { learner: string }> = {
@@ -91,10 +98,21 @@ test.describe('resume across visits', () => {
                 await lms.exitPlayer(activity);
                 const afterSecond = readState(activity.cmid, learner);
 
-                await fs.ensureDir(OUT);
+                const out = outDir();
+                await fs.ensureDir(out);
                 await fs.writeJson(
-                    path.join(OUT, `${SCENARIO}-${producer}-${host}.json`),
-                    { scenario: SCENARIO, producer, host, firstVisit, afterFirst, secondVisit, afterSecond },
+                    path.join(out, `${SCENARIO}-${producer}-${host}.json`),
+                    {
+                        scenario: SCENARIO,
+                        producer,
+                        host,
+                        browser: test.info().project.name,
+                        moodle: afterFirst.moodleRelease,
+                        firstVisit,
+                        afterFirst,
+                        secondVisit,
+                        afterSecond,
+                    },
                     { spaces: 2 },
                 );
 
