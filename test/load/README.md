@@ -77,6 +77,7 @@ test/load/
     normal-editing.mjs  # phase 3: realistic editing workload
     collaboration.mjs   # phase 4: single-project collaboration fan-out
     api.mjs              # pure HTTP baseline, no WebSocket
+    login-burst.mjs      # isolated POST /api/auth/login concurrency test
   scripts/
     prepare.sh              # seed bench users + projects (idempotent)
     run.sh                   # run one scenario, store artifacts under a RUN_ID
@@ -161,6 +162,16 @@ bash test/load/scripts/run.sh collaboration E2255-COLLAB-0050-001 -- \
 
 ```bash
 bash test/load/scripts/run.sh api E2255-API-0050-001 -- -e TARGET_VUS=50
+```
+
+### 7. Isolated login-burst test
+
+Use this to measure the auth endpoint's own concurrency ceiling — e.g. to
+compare before/after a change to password verification — without WebSocket
+traffic mixed in:
+
+```bash
+bash test/load/scripts/run.sh login-burst E2255-LOGIN-0500-001 -- -e TARGET_VUS=500
 ```
 
 All commands above are run **on Zoidberg** (`ssh ernesto@192.168.4.8` then
