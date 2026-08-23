@@ -76,22 +76,30 @@ if ((existing_count >= NUM_PROJECTS)); then
 fi
 
 mkdir -p "$(dirname "${PROJECTS_FILE}")"
-tmp_file="$(mktemp)"
-if [[ -f "${PROJECTS_FILE}" ]]; then
-    cp "${PROJECTS_FILE}" "${tmp_file}"
-else
-    echo "[]" >"${tmp_file}"
+if [[ ! -f "${PROJECTS_FILE}" ]]; then
+    echo "[]" >"${PROJECTS_FILE}"
 fi
+
+# Log in once per owner and reuse the token for every project it creates,
+# instead of re-authenticating per project — this used to dominate seeding
+# time (and auth-endpoint load) once project counts reached the thousands.
+declare -a owner_tokens
+for ((u = 0; u < NUM_USERS; u++)); do
+    owner_tokens[u]="$(login_token "${BENCH_USER_PREFIX}${u}@${BENCH_USER_DOMAIN}")"
+done
 
 to_create=$((NUM_PROJECTS - existing_count))
 echo "== Creating ${to_create} project(s) =="
 for ((i = 0; i < to_create; i++)); do
     idx=$((existing_count + i))
-    owner_email="${BENCH_USER_PREFIX}$((idx % NUM_USERS))@${BENCH_USER_DOMAIN}"
-    token="$(login_token "${owner_email}")"
-    uuid="$(create_project "${token}" "bench-project-${idx}")"
+    user_index=$((idx % NUM_USERS))
+    owner_email="${BENCH_USER_PREFIX}${user_index}@${BENCH_USER_DOMAIN}"
+    uuid="$(create_project "${owner_tokens[user_index]}" "bench-project-${idx}")"
     echo "  - ${uuid} (owner: ${owner_email})"
-    python3 - "$tmp_file" "$uuid" "$owner_email" <<'PY'
+    # Written directly to PROJECTS_FILE after every project (not a temp file
+    # moved in at the end) so an interrupted run keeps whatever it already
+    # created instead of losing it.
+    python3 - "$PROJECTS_FILE" "$uuid" "$owner_email" <<'PY'
 import json, sys
 path, uuid, owner = sys.argv[1:4]
 with open(path) as f:
@@ -102,5 +110,4 @@ with open(path, "w") as f:
 PY
 done
 
-mv "${tmp_file}" "${PROJECTS_FILE}"
 echo "== Done. ${NUM_PROJECTS} project(s) available at ${PROJECTS_FILE} =="
