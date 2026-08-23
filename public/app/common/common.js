@@ -896,6 +896,14 @@ var $exeDevices = {
                         console.warn("La inicialización SCORM falló: scorm no está definido");
                         return;
                     }
+                    // Pin the exported SCORM version before the wrapper probes the window
+                    // tree: its auto-detection prefers the 2004 API, so a 1.2 package in a
+                    // host exposing both generations bound the wrong one. This runs on
+                    // document-ready, which is earlier than the body onload that calls
+                    // loadPage(), so whichever fires first pins the version (idempotent).
+                    if (typeof window !== 'undefined' && typeof window.pinScormVersionFromPage === 'function') {
+                        window.pinScormVersionFromPage();
+                    }
                     // Do NOT gate on init()'s return value: it is false when the SCO session is
                     // already active (opened by the page's loadPage), which used to skip the setup
                     // below and lose the learner name and score bounds. The connection stays active

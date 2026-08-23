@@ -149,7 +149,14 @@ describe('SCORM_API_wrapper.js', () => {
     });
 
     it('handles zero time', () => {
-      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(0, true)).toBe('0000:00:00.0');
+      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(0, true)).toBe('0000:00:00.00');
+    });
+
+    it('zero-pads a fraction below ten hundredths', () => {
+      // CMITimespan reads the digits after the point positionally: ".4" means four
+      // TENTHS, so 30.04s used to be reported to the LMS as 30.4s.
+      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(30040, true)).toBe('0000:00:30.04');
+      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(1010, true)).toBe('0000:00:01.01');
     });
 
     it('defaults to include fraction when not specified', () => {
@@ -159,13 +166,50 @@ describe('SCORM_API_wrapper.js', () => {
     it('handles very large times (over 9999 hours)', () => {
       const hugeTime = 36000000000; // More than 9999 hours
       // The function handles the 10000 hour edge case but caps at 9999:60:00
-      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(hugeTime, true)).toBe('9999:60:00.0');
+      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(hugeTime, true)).toBe('9999:60:00.00');
     });
 
     it('handles 10000 hours edge case', () => {
       const time10000Hours = 10000 * 3600000;
       const result = pipwerks.UTILS.convertTotalMiliSecondsSCORM12(time10000Hours, true);
       expect(result).toContain('9999:');
+    });
+  });
+
+  describe('pipwerks.SCORM.SetCompletionStatus', () => {
+    beforeEach(() => {
+      pipwerks.SCORM.connection.isActive = true;
+    });
+
+    it('forwards passed/failed to lesson_status in SCORM 1.2', () => {
+      // Both are part of the 1.2 lesson_status vocabulary, but they used to fall
+      // into the default branch and be dropped without reaching the LMS at all.
+      pipwerks.SCORM.version = '1.2';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
+
+      pipwerks.SCORM.SetCompletionStatus('passed');
+      pipwerks.SCORM.SetCompletionStatus('failed');
+
+      expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+      expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+    });
+
+    it('rejects passed/failed in SCORM 2004, where they belong to success_status', () => {
+      pipwerks.SCORM.version = '2004';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+      pipwerks.SCORM.SetCompletionStatus('passed');
+
+      expect(mockAPI2004.SetValue).not.toHaveBeenCalled();
+    });
+
+    it('still forwards the shared vocabulary', () => {
+      pipwerks.SCORM.version = '1.2';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
+
+      pipwerks.SCORM.SetCompletionStatus('incomplete');
+
+      expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
     });
   });
 

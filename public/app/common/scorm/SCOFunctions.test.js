@@ -13,6 +13,7 @@ globalThis.doBack = scoFunctions.doBack;
 globalThis.doContinue = scoFunctions.doContinue;
 globalThis.doQuit = scoFunctions.doQuit;
 globalThis.unloadPage = scoFunctions.unloadPage;
+globalThis.pinScormVersionFromPage = scoFunctions.pinScormVersionFromPage;
 globalThis.goBack = scoFunctions.goBack;
 globalThis.goForward = scoFunctions.goForward;
 
@@ -63,6 +64,49 @@ describe('SCOFunctions.js', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('pinScormVersionFromPage', () => {
+    afterEach(() => {
+      document.body.className = '';
+      globalThis.pipwerks.SCORM.version = null;
+    });
+
+    // pipwerks auto-detection prefers API_1484_11, so a 1.2 package launched in a
+    // host exposing both API generations bound the 2004 one and spoke
+    // Initialize/Terminate to it. The exported body carries the version.
+    it('pins 1.2 from the exported body class', () => {
+      globalThis.pipwerks.SCORM.version = null;
+      document.body.className = 'exe-export exe-scorm exe-scorm12';
+
+      expect(globalThis.pinScormVersionFromPage()).toBe('1.2');
+      expect(globalThis.pipwerks.SCORM.version).toBe('1.2');
+    });
+
+    it('pins 2004 from the exported body class', () => {
+      globalThis.pipwerks.SCORM.version = null;
+      document.body.className = 'exe-export exe-scorm exe-scorm2004';
+
+      expect(globalThis.pinScormVersionFromPage()).toBe('2004');
+    });
+
+    it('never overrides a version already established', () => {
+      globalThis.pipwerks.SCORM.version = '2004';
+      document.body.className = 'exe-export exe-scorm exe-scorm12';
+
+      globalThis.pinScormVersionFromPage();
+
+      expect(globalThis.pipwerks.SCORM.version).toBe('2004');
+    });
+
+    it('leaves auto-detection alone on a page without the marker', () => {
+      globalThis.pipwerks.SCORM.version = null;
+      document.body.className = 'exe-export exe-web-site';
+
+      globalThis.pinScormVersionFromPage();
+
+      expect(globalThis.pipwerks.SCORM.version).toBeNull();
+    });
   });
 
   describe('loadPage', () => {
@@ -162,7 +206,7 @@ describe('SCOFunctions.js', () => {
 
       expect(globalThis.pipwerks.SCORM.SetSessionTime).toHaveBeenCalled();
       const callArg = globalThis.pipwerks.SCORM.SetSessionTime.mock.calls[0][0];
-      expect(callArg).toBe('0000:00:00.0'); // Zero time
+      expect(callArg).toBe('0000:00:00.00'); // Zero time, hundredths zero-padded
     });
 
     it('handles an uninitialized start date', () => {
@@ -170,7 +214,7 @@ describe('SCOFunctions.js', () => {
 
       globalThis.computeTime();
 
-      expect(globalThis.pipwerks.SCORM.SetSessionTime).toHaveBeenCalledWith('0000:00:00.0');
+      expect(globalThis.pipwerks.SCORM.SetSessionTime).toHaveBeenCalledWith('0000:00:00.00');
     });
 
     it('calculates elapsed time correctly', () => {

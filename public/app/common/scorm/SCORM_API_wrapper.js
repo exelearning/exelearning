@@ -835,7 +835,12 @@ pipwerks.UTILS.convertTotalMiliSecondsSCORM12 = function (intTotalMilliseconds, 
   strCMITimeSpan = pipwerks.UTILS.ZeroPad(intHours, 4) + ":" + pipwerks.UTILS.ZeroPad(intMinutes, 2) + ":" + pipwerks.UTILS.ZeroPad(intSeconds, 2);
 
   if (blnIncludeFraction) {
-    strCMITimeSpan += "." + intHundredths;
+    // Zero-pad the fraction: CMITimespan reads the digits after the decimal
+    // point positionally, so 4 hundredths written as ".4" is parsed as four
+    // TENTHS. Every session whose hundredths were below 10 reported a duration
+    // inflated tenfold (30.04s stored as 30.4s). The string was grammatically
+    // valid, so no LMS rejected it.
+    strCMITimeSpan += "." + pipwerks.UTILS.ZeroPad(intHundredths, 2);
   }
 
   //check for case where total milliseconds is greater than max supported by strCMITimeSpan
@@ -1035,6 +1040,18 @@ pipwerks.SCORM.SetCompletionStatus = function (status) {
       case "not attempted": break;
       case "unknown": if (scorm.version == "1.2") { status = "not attempted"; } break; // "unknown" is only valid for 2004
       case "browsed": if (scorm.version == "2004") { status = "incomplete"; } break; // "browsed" is only valid for 1.2
+      // "passed"/"failed" are part of the SCORM 1.2 cmi.core.lesson_status
+      // vocabulary (RTE §3.4.4). They used to fall through to the default
+      // branch and be dropped without ever reaching the LMS, so pass/fail could
+      // not be recorded through this channel at all. In 2004 they belong to
+      // cmi.success_status, not completion_status, so they stay rejected there.
+      case "passed":
+      case "failed":
+        if (scorm.version != "1.2") {
+          trace("pipwerks.SCORM.SetCompletionStatus failed: '" + status + "' is only valid for SCORM 1.2.");
+          return;
+        }
+        break;
       default: trace("pipwerks.SCORM.SetCompletionStatus failed: status value is not valid."); return;
     }
     switch (scorm.version) {

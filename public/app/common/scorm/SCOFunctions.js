@@ -87,12 +87,37 @@ function _markScormFinalized(win) {
 }
 
 /**
+ * Pin the SCORM version the package was exported for, before any API discovery.
+ *
+ * pipwerks auto-detects by probing the window tree and PREFERS API_1484_11, so a
+ * SCORM 1.2 package launched in a window that also exposes a 2004 API bound the
+ * wrong generation and spoke Initialize/Terminate to it — the 1.2 API was never
+ * called. The exporters stamp the version on the body (`exe-scorm12` /
+ * `exe-scorm2004`), so read it from there. Idempotent and safe to call twice.
+ */
+function pinScormVersionFromPage(doc) {
+  doc = doc || (typeof document !== 'undefined' ? document : null);
+  if (!doc || !doc.body || !scorm || scorm.version) {
+    return scorm ? scorm.version : null;
+  }
+  var classes = doc.body.className || '';
+  if (classes.indexOf('exe-scorm12') !== -1) {
+    scorm.version = '1.2';
+  } else if (classes.indexOf('exe-scorm2004') !== -1) {
+    scorm.version = '2004';
+  }
+  return scorm.version;
+}
+
+/**
  *
  */
 function loadPage() {
   if (pageLoaded) {
     return true;
   }
+
+  pinScormVersionFromPage();
 
   var result = scorm.init();
   if (!result) {
@@ -379,6 +404,7 @@ if (typeof module !== 'undefined' && module.exports) {
         doContinue,
         doQuit,
         unloadPage,
+        pinScormVersionFromPage,
         registerScormLifecycleHandlers,
         goBack,
         goForward,
