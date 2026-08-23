@@ -9,7 +9,10 @@
  * gradebook — is read back through the CLI helpers, never inferred from the browser.
  */
 import { execFileSync } from 'child_process';
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+
+import { createIdeviceDriver } from './idevice-drivers';
+import type { HostActivity, HostSco, LmsHost } from './lms-host';
 
 const CONTAINER = process.env.EXE_MOODLE_CONTAINER ?? 'exeaudit-moodle-1';
 const CLI_DIR = process.env.EXE_MOODLE_CLI_DIR ?? '/var/www/html/exeaudit';
@@ -244,4 +247,70 @@ export async function dispatchPageHide(page: Page): Promise<void> {
     await frame.evaluate(() => {
         window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false }));
     });
+}
+
+/**
+ * Bind an LmsHost to a live mod_exelearning activity.
+ *
+ * The plugin is not a SCORM player: it serves the whole export as a website in one iframe
+ * and pages are navigated by URL, not launched as SCOs. Wearing the same interface anyway
+ * lets the declared scenarios — the ones the SCORM matrix runs — drive this host too, so
+ * the two are answering the same question about the same content.
+ *
+ * @param page The page holding the activity.
+ * @param cmid Activity to drive.
+ * @returns A host the scenario runner can drive.
+ */
+export function createExeLearningHost(page: Page, cmid: number): LmsHost {
+    const idevices = createIdeviceDriver(page, EXE_FRAME_ID);
+    let base: string | null = null;
+
+    return {
+        module: 'scorm',
+        frameId: EXE_FRAME_ID,
+        idevices,
+
+        async login(username: string): Promise<void> {
+            await openExeActivity(page, cmid, username);
+            const src = await page.locator(`#${EXE_FRAME_ID}`).getAttribute('src');
+            if (!src) throw new Error('the plugin served no content frame');
+            base = src.replace(/[^/]*$/, '');
+        },
+
+        async openSco(_activity: HostActivity, sco?: HostSco): Promise<void> {
+            const launch = sco?.launch ?? 'index.html';
+            const target = `${base}${launch}`;
+            const current = page.frames().find(frame => frame.url().includes('pluginfile.php'));
+            if (current?.url().endsWith(launch)) return;
+            await page.locator(`#${EXE_FRAME_ID}`).evaluate((frame, url) => {
+                (frame as HTMLIFrameElement).src = url as string;
+            }, target);
+            // Wait on Playwright's own view of the frame tree rather than on
+            // `contentWindow.location`, which is read from the host document and can be
+            // unreadable or stale exactly while the navigation everyone is waiting for is
+            // in flight.
+            await expect
+                .poll(() => page.frames().some(frame => frame.url().endsWith(launch)), { timeout: 30000 })
+                .toBe(true);
+        },
+
+        async waitReady(): Promise<void> {
+            await idevices.waitForScormActive();
+        },
+
+        async exitPlayer(): Promise<void> {
+            const frame = page.frames().find(candidate => candidate.url().includes('pluginfile.php'));
+            if (!frame) return;
+            await frame.evaluate(() => {
+                window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false }));
+            });
+            await page.waitForLoadState('networkidle');
+        },
+
+        async readParentCmi(): Promise<Record<string, string> | null> {
+            // The plugin's bridge keeps no LMS-side data model to read: what it produced
+            // is in its own tables, which is what this lane asserts on.
+            return null;
+        },
+    };
 }
