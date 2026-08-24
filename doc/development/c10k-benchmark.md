@@ -73,6 +73,42 @@ HA topology (Redis + PostgreSQL + N instances + Nginx) is defined in [`test/load
 and adapts [`doc/deploy/docker-compose.redis.yml`](../deploy/docker-compose.redis.yml); results below under
 [HA results](#ha-results) once that phase runs.
 
+```mermaid
+flowchart LR
+    subgraph Bender["Bender (macOS) — controller"]
+        K6B["k6 (load, larger share)"]
+    end
+    subgraph Zoidberg["Zoidberg (Ubuntu) — load generator"]
+        K6Z["k6 (load, smaller share)"]
+    end
+    subgraph Gordobot["Gordobot (Ubuntu) — system under test"]
+        direction TB
+        Traefik["Traefik (public domain,\nsingle-instance only)"]
+        subgraph Single["Single-instance topology"]
+            App1["exenew (1 instance)"]
+            MariaDB[("MariaDB")]
+        end
+        subgraph HA["HA topology (2 instances)"]
+            Nginx["Nginx LB\nleast_conn / ip_hash"]
+            AppHA1["exelearning-1"]
+            AppHA2["exelearning-2"]
+            Redis[("Redis\npub/sub")]
+            Postgres[("PostgreSQL")]
+        end
+    end
+
+    K6B -- "LAN-direct, bypasses WAN" --> Gordobot
+    K6Z -- "LAN-direct, bypasses WAN" --> Gordobot
+    Traefik -.->|"real-browser validation only"| App1
+    App1 --> MariaDB
+    Nginx --> AppHA1
+    Nginx --> AppHA2
+    AppHA1 <-->|"cross-instance sync"| Redis
+    AppHA2 <-->|"cross-instance sync"| Redis
+    AppHA1 --> Postgres
+    AppHA2 --> Postgres
+```
+
 ## Benchmark implementation
 
 k6 scenarios and orchestration scripts: [`test/load/`](../../test/load/README.md).
@@ -435,7 +471,14 @@ scenario in this benchmark, not just collaboration.
 
 ## Browser validation
 
-*(Pending.)*
+While a 300-VU `normal-editing` k6 run drove background load against the single instance, a real Chrome session
+(via Bender) went through the **public domain** (`https://exenew.miquistiquis.com/`, through Cloudflare and
+Traefik — deliberately *not* the LAN-direct path k6 uses, since a real user's traffic does go through both) and:
+logged in, waited for the workarea to finish loading, edited the project title, clicked Save, and received the
+expected "Proyecto guardado" confirmation. No console errors were observed. This is a small, qualitative check
+(one session, one pass) rather than a systematic multi-session sweep — see [Limitations](#limitations) — but it
+directly answers the question k6 cannot: the application remained fully interactive and functionally correct to a
+real user while the server handled 300 concurrent simulated editors.
 
 ## Modifications tested
 
@@ -450,7 +493,10 @@ scenario in this benchmark, not just collaboration.
 
 - Gordobot hosts ~29 unrelated containers for other projects; absolute CPU/latency figures include contention from
   that unrelated load and are not representative of a dedicated host. Relative comparisons (before/after a single
-  changed variable) remain valid since the unrelated load was constant across each pair of runs.
+  changed variable) remain valid since the unrelated load was constant across each pair of runs. Host load average
+  was observed to drift upward over the course of the session (baseline ~1.6-2.9 at the start, transient spikes
+  past 10 during the heaviest HA tests) — always driven by this benchmark's own load, confirmed by CPU dropping to
+  near-idle within seconds of each test ending, but a reminder this was never a dedicated, isolated bench host.
 - Both benchmark machines are consumer laptops (2013-2017 era), not server hardware; the capacity ceilings measured
   here are specific to this hardware and should not be read as eXeLearning's absolute limit.
 - Zoidberg's load-generating NIC is Wi-Fi (measured ~130 Mbps), a ceiling to watch for bandwidth-heavy scenarios.
@@ -458,6 +504,49 @@ scenario in this benchmark, not just collaboration.
   (`ghcr.io/exelearning/exelearning:exenew-before-authfix`, digest `sha256:2897af5996f92dcd183b76e27c6db5573c338e88ab63456af2ae013145dc2f04`)
   built from commit `0bc68d55e` (the commit immediately before the fix on this same branch) — not a different
   branch — to isolate exactly the one changed line.
+- **4-instance HA scaling was not tested** in this session (the compose stack supports it via `--profile ha4`, but
+  no run was completed) — time was spent instead on establishing and correcting the 2-instance baseline (which
+  surfaced two real product bugs and one significant test-tooling bug along the way). Comparing 2 vs. 4 instances
+  is the most direct next step for a follow-up session.
+- **HA capacity was validated at 1000 VUs (nginx tuning) and 500 collaborators (fan-out), not pushed to a hard
+  ceiling.** Both left the instances at well under their CPU limit (under 15%), suggesting real headroom above
+  these numbers, but the exact HA breaking point on this hardware was not pinned down.
+- **Browser validation was a single qualitative session**, not the systematic 5/10/20-session sweep the issue
+  suggests. It confirms the application stays usable under background load; it does not quantify how usability
+  degrades (if at all) as concurrent real-browser sessions scale up.
+- **`APP_ENV=dev` vs `prod` was not isolated as its own experiment** — see [Modifications tested](#modifications-tested).
+  All single-instance results in this report used the deployment's existing `APP_ENV=dev`.
+
+## Benchmark summary table
+
+All rows use the leak-fixed image (`sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645`)
+unless noted. "—" means not measured for that scenario. Full detail and RUN IDs are in each section above.
+
+| Scenario | Users | Instances | Duration | WS success | HTTP errors | SUT CPU | Redis CPU | Result |
+|---|---|---|---|---|---|---|---|---|
+| Idle WS | 100 | 1 | 145s | 100% | 0% | negligible | — | PASS |
+| Idle WS | 500 | 1 | 460s | 100% | 0% | 1.1% | — | PASS |
+| Idle WS | 1000 | 1 | 305s | 100% | 0% | 1.5% | — | PASS |
+| Idle WS | 2500 | 1 | 855s | 100% | 0% | 5.3% | — | PASS |
+| Idle WS | 5000 | 1 (split gen.) | 655s | 100% | 0% | 1.7% | — | PASS |
+| Idle WS | 10000 | 1 (Bender only) | 1605s | 99.92% | 0.078% | 1.15% | — | PASS |
+| Normal editing (1-10 users/project) | 40 | 1 | 130s | 100% | 0% | 1.3% | — | PASS |
+| Login burst | 500 | 1 | 23-60s | 100%¹ | 0%¹ | — | — | PASS¹ |
+| HA smoke | 10 | 2 | 5s | 100% | 0% | — | — | PASS |
+| HA collaboration | 20-100 | 2 | 40-100s | 100% | 0% | <1% | 0.35-5.2% | PASS |
+| HA collaboration | 500 | 2 | 150s | 99% | 0% | 13-14% | 6.0% | PASS |
+| HA idle WS, `least_conn` | 100 | 2 | 50s | 100% | 0% | — | — | PASS |
+| HA idle WS, `ip_hash` (skew check) | 100 | 2 | 50s | 100% | 0% | — | — | PASS² |
+| HA `worker_connections` default | 1000 | 2 | 220s | 58.4% | 41.6% | pegged @ limit³ | — | **FAIL** |
+| HA `worker_connections` tuned | 1000 | 2 | 220s | 100% | 0% | 9-15% | — | PASS |
+| HA `worker_connections` default, 5000 VUs (confounded) | 5000 | 2 | — | 0.02-0.06% | 99.94-99.98% | pegged @ limit | — | **FAIL (confounded, see report)** |
+
+¹ 100% success is the *after-fix* login-burst result; the *before-fix* comparison (same commit range, isolated) was
+36% success / 64% timeout — see [bottleneck #1](#1-bcryptjscompare-blocked-the-event-loop-under-concurrent-logins-fixed).
+² "Success" here means the WebSocket handshake completed; the finding is the *skewed distribution* (~100/0 split
+across instances), not a failure — see [ip_hash vs least_conn](#ip_hash-vs-least_conn--the-issues-specific-concern-confirmed).
+³ Instances capped at 2 CPUs each; CPU was the actual bottleneck for this row, not Nginx — see the
+[worker_connections section](#worker_connections-default-vs-tuned--confirmed-after-correcting-a-confound) for the full account.
 
 ## Reproducibility
 
@@ -466,8 +555,74 @@ commands to reproduce every run above, including RUN IDs.
 
 ## Capacity recommendations
 
-*(Pending final single-instance and HA numbers.)*
+Based on measured results only (see each section above for the underlying data):
+
+1. **Ship the two fixes in this branch before anything else.** The bcrypt event-loop-blocking fix and the
+   WebSocket room-leak fix are both correctness/stability issues independent of concurrency targets — the leak in
+   particular grows unbounded over a server's uptime under completely normal usage (any client disconnect that
+   lands in a specific timing window, not just crashes), not something only a benchmark would trigger.
+2. **Apply the updated `nginx-ha.conf`** (`least_conn` for the WebSocket upstream, `worker_connections 32768`,
+   `worker_rlimit_nofile 200000`, matching container `ulimits`) to any HA deployment — the previous defaults were
+   measured to fail at a concurrency level (1000 WebSocket connections) well within realistic reach.
+3. **A single instance is not the near-term bottleneck for WebSocket capacity.** 10,000 concurrent idle
+   connections held for 10 minutes at 1.15% CPU and 257 MiB RAM — this architecture's "lightweight stateless
+   relay" design claim holds up under measurement. The practical ceiling observed in this benchmark was **login
+   throughput under a sustained high arrival rate** (bcrypt cost divided by available CPU cores), not the
+   WebSocket layer itself.
+4. **Collaborator-per-project guidance in the issue is well justified and has margin to spare.** 500 simultaneous
+   collaborators on one project — 50x the issue's own "extreme" threshold of 10 — held 99% of connections for the
+   full session at 13-14% instance CPU. The realistic guidance (2-4 normal, up to 10 uncommon) is nowhere near
+   this hardware's actual limit; there is no evidence from this benchmark that the current architecture needs a
+   hard collaborator cap for correctness or performance reasons at the scales that matter in practice.
+5. **CPU-per-instance sizing matters more than connection-count tuning for HA.** The clearest failure mode
+   observed in this benchmark (99.94-99.98% request failure) came from capping HA instances at 2 CPUs under a
+   login burst, not from WebSocket connection limits. Size HA instance CPU allocation for the expected login
+   *rate*, not just steady-state connection count.
+6. **Treat a login-burst scenario (many users authenticating in a short window, e.g. the start of a class or
+   school day) as its own capacity question**, separate from steady-state WebSocket capacity — this benchmark's
+   `test/load/k6/login-burst.mjs` isolates exactly this, and it is the workload shape that broke first at every
+   concurrency tier tested.
 
 ## Conclusions
 
-*(Pending.)*
+```mermaid
+xychart-beta
+    title "Single-instance idle WebSocket capacity — success rate by tier"
+    x-axis [100, 500, 1000, 2500, 5000, 10000]
+    y-axis "WS success %" 0 --> 100
+    bar [100, 100, 100, 100, 100, 99.92]
+```
+
+This benchmark set out to answer, with measurement rather than assumption, how many concurrent users and
+long-lived WebSocket connections one eXeLearning instance — and a horizontally scaled HA deployment — can sustain.
+On the hardware available for this session (consumer laptops, not server-class machines, one of them shared with
+~29 unrelated containers):
+
+- **A single instance sustains 10,000 concurrent idle WebSocket connections for a full 10-minute hold**, at 99.92%
+  success and negligible resource cost (1.15% CPU, 257 MiB RAM). The architecture's core design claims — stateless
+  relay, no server-side Y.Doc, Bun's native WebSocket handling — held up under direct measurement.
+- **The realistic editing and collaboration workloads the issue actually cares about are comfortably within
+  reach**: 40 concurrent editors across 1/2/4/10-users-per-project ratios all completed cleanly, and 500
+  simultaneous collaborators on a single project — a scenario the issue itself frames as extreme — worked at 99%
+  success and modest CPU cost.
+- **The first real bottleneck this benchmark found was not WebSocket capacity — it was login throughput under a
+  concentrated arrival rate**, rooted in bcrypt's CPU cost divided across however many cores are actually
+  available to an instance. This is now measured and documented, not guessed at, and is what should drive future
+  capacity planning conversations (e.g., rate limiting, CPU sizing, or an async/offloaded verification path) more
+  than raw WebSocket connection limits.
+- **Two genuine server bugs were found and fixed** as a direct result of this benchmark: password verification
+  blocking Bun's event loop under concurrent logins, and WebSocket connections leaking from the room manager
+  forever on every close (not just crashes) due to Elysia's per-event socket wrapper. Both would have degraded a
+  real production deployment over time independent of any specific concurrency target — arguably the most
+  valuable outcome of this work, ahead of any specific number.
+- **HA horizontal scaling was validated architecturally** (Redis cross-instance sync, correct load distribution
+  under `least_conn`) but not pushed to its own capacity ceiling in this session — see [Limitations](#limitations)
+  for exactly what remains open (4-instance scaling, a harder HA ceiling search, and a systematic multi-session
+  browser sweep).
+
+Do not read "10,000" as a promise about production hardware, and do not read "not tested" (4-instance scaling,
+HA's own ceiling) as "does not work" — both are honestly scoped gaps for a follow-up session, not negative
+findings. What this session does establish, with evidence, is that the architecture's core scalability claims are
+real, the specific concerns issue #2255 raised (`ip_hash` skew, default `worker_connections`) were both confirmed
+and fixed, and the practical limiting factor at the scales tested is CPU-bound authentication cost, not the
+WebSocket relay layer the issue was originally worried about.
