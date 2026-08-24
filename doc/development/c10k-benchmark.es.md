@@ -62,7 +62,7 @@ WebSocket (acotadas por número de conexiones/tasa de mensajes) a la escala prob
 
 ## Topología
 
-Línea base de instancia única: el despliegue existente del SUT en `/home/ernesto/exenew` — un contenedor
+Línea base de instancia única: el despliegue existente del SUT en `/home/deploy/exenew` — un contenedor
 `exenew`, MariaDB, expuesto por Traefik (accedido en LAN directa, sin pasar por Cloudflare como se explicó arriba).
 `APP_ENV=dev` (el valor ya configurado en el despliegue; ver [Modificaciones probadas](#modificaciones-probadas)
 sobre por qué no se cambió para las pruebas de capacidad WebSocket).
@@ -224,7 +224,7 @@ Correcciones: commits `32c268257` y `5c9d27ca9` en la rama `2255-c10k-load-testi
 
 ## Resultados de instancia única (definitivos)
 
-Despliegue: el SUT, `/home/ernesto/exenew` (una instancia `exenew` + MariaDB), `APP_ENV=dev`, digest de imagen
+Despliegue: el SUT, `/home/deploy/exenew` (una instancia `exenew` + MariaDB), `APP_ENV=dev`, digest de imagen
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645` (incluye tanto la corrección de login como
 las dos correcciones de la fuga de conexiones WebSocket). Cada ejecución de abajo se confirmó libre de fugas
 mediante `GET /api/websocket/info` devolviendo `totalConnections: 0` al terminar.
@@ -267,7 +267,7 @@ sobre todo para mantenerlo participando, no porque el orquestador necesite ayuda
 
 ## Resultados de instancia única — previos a la corrección de la fuga (superados, se conservan como registro)
 
-Despliegue: el SUT, `/home/ernesto/exenew` (una instancia `exenew` + MariaDB), `APP_ENV=dev`, digest de imagen
+Despliegue: el SUT, `/home/deploy/exenew` (una instancia `exenew` + MariaDB), `APP_ENV=dev`, digest de imagen
 `sha256:489cdc8d177f69584971d3aa11728f0a9536e1b21df995183977d749d32157dd` (incluye la corrección de login, todavía
 no la de la fuga de WebSocket). **Estas cifras se conservan como rastro de evidencia para encontrar la fuga (ver
 arriba), pero quedan superadas por la [repetición limpia](#resultados-de-instancia-única-definitivos) de arriba**,
@@ -337,7 +337,7 @@ reportado aquí.
 
 ## Resultados HA
 
-Despliegue: el SUT, `/home/ernesto/exenew-ha` — 2 instancias `exenew` (digest de imagen
+Despliegue: el SUT, `/home/deploy/exenew-ha` — 2 instancias `exenew` (digest de imagen
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645`), PostgreSQL 18, Redis, LB Nginx (ver
 [`test/load/deploy/`](../../test/load/deploy/)). `APP_ENV=prod`. El stack de instancia única se detuvo (no se
 eliminó — los datos se conservaron) para liberar CPU/RAM para esta fase, así que las dos topologías nunca se

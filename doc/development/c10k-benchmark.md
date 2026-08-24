@@ -64,7 +64,7 @@ scale tested so far.
 
 ## Topology
 
-Single-instance baseline: the SUT's existing `/home/ernesto/exenew` deployment — one `exenew` container, MariaDB,
+Single-instance baseline: the SUT's existing `/home/deploy/exenew` deployment — one `exenew` container, MariaDB,
 fronted by Traefik (reached LAN-direct, bypassing Cloudflare as above). `APP_ENV=dev` (the deployment's existing
 setting; see [Modifications tested](#modifications-tested) for why this was not changed for the WebSocket-capacity
 runs).
@@ -215,7 +215,7 @@ Fixes: commits `32c268257` and `5c9d27ca9` on branch `2255-c10k-load-testing`.
 
 ## Single-instance results (final)
 
-Deployment: the SUT, `/home/ernesto/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
+Deployment: the SUT, `/home/deploy/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645` (includes both the login fix and both
 WebSocket connection-leak fixes above). Every run below was confirmed leak-free via
 `GET /api/websocket/info` returning `totalConnections: 0` after completion.
@@ -254,7 +254,7 @@ participating at all, not because the orchestrator needs the help.
 
 ## Single-instance results — pre-leak-fix (superseded, kept for the record)
 
-Deployment: the SUT, `/home/ernesto/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
+Deployment: the SUT, `/home/deploy/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
 `sha256:489cdc8d177f69584971d3aa11728f0a9536e1b21df995183977d749d32157dd` (includes the login fix, not yet the
 WebSocket connection-leak fix). **These numbers are retained as the evidence trail for finding the leak (see
 above) but are superseded by the [clean re-run](#single-instance-results-final) below**, since every room the
@@ -319,7 +319,7 @@ comfortably have driven every tier reported here.
 
 ## HA results
 
-Deployment: the SUT, `/home/ernesto/exenew-ha` — 2 `exenew` instances (image digest
+Deployment: the SUT, `/home/deploy/exenew-ha` — 2 `exenew` instances (image digest
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645`), PostgreSQL 18, Redis, Nginx LB (see
 [`test/load/deploy/`](../../test/load/deploy/)). `APP_ENV=prod`. The single-instance stack was stopped (not
 removed — data preserved) to free CPU/RAM for this phase, so the two topologies were never measured concurrently.
