@@ -1146,41 +1146,25 @@ var $exeDevices = {
                         };
                     });
 
-                    let sumWeights = interactionsData.reduce((acc, item) => acc + item.weighted, 0);
-                    const factor = (sumWeights !== 0) ? 100 / sumWeights : 1;
-                    const tempWeights = interactionsData.map(item => {
-                        const scaled = item.weighted * factor;
-                        const floored = Math.floor(scaled);
-                        const fraction = scaled - floored;
-                        return {
-                            score: item.score,
-                            floored,
-                            fraction
-                        };
-                    });
-
-                    let sumFloors = tempWeights.reduce((acc, w) => acc + w.floored, 0);
-                    let diff = 100 - sumFloors;
-
-                    tempWeights.sort((a, b) => b.fraction - a.fraction);
-
-                    for (let i = 0; i < tempWeights.length && diff !== 0; i++) {
-                        if (diff > 0) {
-                            tempWeights[i].floored += 1;
-                            diff--;
-                        }
+                    // Weighted average in full precision, rounded once at the end.
+                    //
+                    // This used to normalise the weights to integers summing 100: each weight was
+                    // floored and the leftover points handed to the entries with the largest
+                    // fraction. With equal weights every fraction ties, so the spare point always
+                    // went to the FIRST entry, and the page's mark depended on the order the author
+                    // happened to place the iDevices in: three equal activities scoring 100/50/0
+                    // came out 50.5 (passed), and the same three scoring 0/50/100 came out 49.5
+                    // (failed). Same work, opposite verdict. Dividing by the real sum of weights is
+                    // both symmetric and exact — it gives 50 in either order. (#1831)
+                    const sumWeights = interactionsData.reduce((acc, item) => acc + item.weighted, 0);
+                    if (sumWeights === 0) {
+                        return 0;
                     }
-
-                    function round2(num) {
-                        return Math.round(num * 100) / 100;
-                    }
-
-                    let sumWeighted = 0;
-                    tempWeights.forEach(item => {
-                        sumWeighted += (item.score * item.floored);
-                    });
-                    const finalScore = round2(sumWeighted / 100);
-                    return finalScore;
+                    const sumWeighted = interactionsData.reduce(
+                        (acc, item) => acc + item.score * item.weighted,
+                        0,
+                    );
+                    return Math.round((sumWeighted / sumWeights) * 100) / 100;
                 },
 
                 // Aggregates the per-iDevice state stored in suspend_data into the page (SCO) state:

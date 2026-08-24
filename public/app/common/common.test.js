@@ -1728,6 +1728,35 @@ describe('common.js $exeDevices', () => {
       expect(result).toBeGreaterThan(0);
     });
 
+    // The mark must not depend on the order the author placed the iDevices in. The weights used to
+    // be normalised to integers summing 100 by flooring each one and handing the leftover points to
+    // the largest fractions; with equal weights every fraction ties, so the spare point always went
+    // to the FIRST entry. Three equal activities scoring 100/50/0 came out 50.5 (passed) and the
+    // same three scoring 0/50/100 came out 49.5 (failed) — same work, opposite verdict. (#1831)
+    it('getFinalScore gives the same mark whatever the order of the activities', () => {
+      const scorm = getScorm();
+      const equalWeights = (scores) =>
+        Object.fromEntries(scores.map((score, i) => [i + 1, { score, weighted: 100 }]));
+
+      // True weighted average of 100, 50 and 0 is exactly 50: the pass boundary.
+      expect(scorm.getFinalScore(equalWeights([100, 50, 0]))).toBe(50);
+      expect(scorm.getFinalScore(equalWeights([0, 50, 100]))).toBe(50);
+      expect(scorm.getFinalScore(equalWeights([50, 0, 100]))).toBe(50);
+
+      // And finishing one of three scores the same wherever that one sits.
+      expect(scorm.getFinalScore(equalWeights([100, 0, 0]))).toBe(33.33);
+      expect(scorm.getFinalScore(equalWeights([0, 0, 100]))).toBe(33.33);
+    });
+
+    it('getFinalScore respects the weights, including when they do not add up to 100', () => {
+      const scorm = getScorm();
+
+      // 100 at weight 25 against 0 at weight 75.
+      expect(scorm.getFinalScore({ 1: { score: 100, weighted: 25 }, 2: { score: 0, weighted: 75 } })).toBe(25);
+      // Weights summing 60: the average is over the real total, not over 100.
+      expect(scorm.getFinalScore({ 1: { score: 100, weighted: 30 }, 2: { score: 0, weighted: 30 } })).toBe(50);
+    });
+
     it('parseSuspendData returns empty object for empty data', () => {
       const scorm = getScorm();
       expect(scorm.parseSuspendData(null)).toEqual({});
