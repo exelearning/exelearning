@@ -1122,17 +1122,27 @@ export default class IdevicesEngine {
             const pageId =
                 this.project.app.project.structure.getSelectNodePageId();
 
+            // A drop race or a concurrent Yjs re-render can detach the dragged
+            // element from the container. A stale reference makes insertBefore
+            // throw NotFoundError, and its getBoundingClientRect() is all zeros,
+            // which would place the block first in Yjs while the DOM appends it
+            // last. Resolve the reference once, before both uses, and fall back
+            // to null: append at the end in the DOM and in the Yjs order.
+            const dragRef =
+                this.draggedElement?.parentNode === container
+                    ? this.draggedElement
+                    : null;
+
             // Calculate block order from DOM position
             const existingBlocks = container.querySelectorAll(
                 ':scope > article.box'
             );
             let blockOrder = existingBlocks.length;
-            if (this.draggedElement) {
+            if (dragRef) {
                 const blocksArray = Array.from(existingBlocks);
                 for (let i = 0; i < blocksArray.length; i++) {
                     const blockRect = blocksArray[i].getBoundingClientRect();
-                    const dragRect =
-                        this.draggedElement.getBoundingClientRect();
+                    const dragRect = dragRef.getBoundingClientRect();
                     if (dragRect.top < blockRect.top + blockRect.height / 2) {
                         blockOrder = i;
                         break;
@@ -1155,11 +1165,8 @@ export default class IdevicesEngine {
             ideviceBlockNode.boxContent.append(ideviceNodeContent);
             // Set block data to idevice
             this.setBlockDataToIdeviceNode(ideviceNode, ideviceBlockNode);
-            // Insert block into node content
-            container.insertBefore(
-                ideviceBlockNodeContent,
-                this.draggedElement
-            );
+            // Insert block into node content (dragRef is null when stale)
+            container.insertBefore(ideviceBlockNodeContent, dragRef);
         } else {
             // Add only the idevice
             let ideviceBlockNode = this.getBlockById(container.id);
@@ -1170,7 +1177,13 @@ export default class IdevicesEngine {
                 // Set block ids
                 this.setBlockDataToIdeviceNode(ideviceNode, ideviceBlockNode);
                 // Insert idevice into block's box-content wrapper
-                ideviceBlockNode.boxContent.insertBefore(ideviceNodeContent, this.draggedElement);
+                // Same stale-reference guard as above: append when the dragged
+                // element is no longer inside the block's box-content
+                const dragRef =
+                    this.draggedElement?.parentNode === ideviceBlockNode.boxContent
+                        ? this.draggedElement
+                        : null;
+                ideviceBlockNode.boxContent.insertBefore(ideviceNodeContent, dragRef);
             }
         }
         // Move window to idevice element
@@ -1488,13 +1501,21 @@ export default class IdevicesEngine {
 
         Logger.log(`[IdevicesEngine] Updating remote iDevice content: ${componentData.id}`);
 
+        const incomingHtml = componentData.htmlContent;
+        const hasIncomingHtml = incomingHtml !== undefined;
+        const incomingHtmlIsEmpty = hasIncomingHtml && String(incomingHtml).trim() === '';
+        const existingHtml = ideviceNode.htmlView;
+        // Same integrity rule as YjsStructureBinding: an empty remote HTML payload
+        // must not erase a last-saved view. Lock-only updates omit htmlContent.
+        const shouldApplyHtml =
+            hasIncomingHtml && (!incomingHtmlIsEmpty || !existingHtml || String(existingHtml).trim() === '');
+
         const hasContentUpdate =
-            componentData.htmlContent !== undefined ||
-            componentData.jsonProperties !== undefined;
+            shouldApplyHtml || componentData.jsonProperties !== undefined;
 
         // Update in-memory content first (used when opening edition mode later)
-        if (componentData.htmlContent !== undefined) {
-            ideviceNode.htmlView = componentData.htmlContent || '';
+        if (shouldApplyHtml) {
+            ideviceNode.htmlView = incomingHtml || '';
         }
         if (componentData.jsonProperties !== undefined) {
             const parsed = parseIdeviceJsonProperties(componentData.jsonProperties);
@@ -1536,12 +1557,12 @@ export default class IdevicesEngine {
             // Keep immediate HTML refresh for plain-content updates.
             // This preserves existing behavior and unit-test expectations while
             // loadInitScriptIdevice('export') performs full iDevice re-render.
-            if (componentData.htmlContent !== undefined) {
+            if (shouldApplyHtml) {
                 // SECURITY: this HTML originates from a REMOTE collaborator over
                 // Yjs and is attacker-controlled. Sanitize before injecting via
                 // innerHTML to prevent stored DOM-XSS. Legitimate interactivity
                 // is re-attached below by loadInitScriptIdevice('export').
-                ideviceNode.ideviceBody.innerHTML = sanitizeCollaborativeHtml(componentData.htmlContent);
+                ideviceNode.ideviceBody.innerHTML = sanitizeCollaborativeHtml(incomingHtml);
             }
             await ideviceNode.loadInitScriptIdevice('export');
         }
