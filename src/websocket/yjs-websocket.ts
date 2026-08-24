@@ -334,7 +334,7 @@ export async function handleWebSocketOpen(
                     );
 
                     // Find the first (oldest) client in the room to request state
-                    const firstClient = Array.from(room.conns)[0];
+                    const firstClient = Array.from(room.conns.values())[0];
                     if (firstClient) {
                         // Send JSON message to request sync-state
                         const syncRequestMsg = JSON.stringify({
@@ -353,7 +353,7 @@ export async function handleWebSocketOpen(
 
         // Ask existing clients to re-broadcast awareness when a new client joins.
         // This keeps presence UI in sync without forcing reconnects.
-        for (const existingConn of room.conns) {
+        for (const existingConn of room.conns.values()) {
             if (existingConn.readyState === 1) {
                 try {
                     existingConn.send(
