@@ -283,7 +283,68 @@ comfortably have driven every tier reported here.
 
 ## HA results
 
-*(Pending — single-instance baseline not yet fully established.)*
+Deployment: Gordobot, `/home/ernesto/exenew-ha` — 2 `exenew` instances (image digest
+`sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645`), PostgreSQL 18, Redis, Nginx LB (see
+[`test/load/deploy/`](../../test/load/deploy/)). `APP_ENV=prod`. The single-instance stack was stopped (not
+removed — data preserved) to free CPU/RAM for this phase, so the two topologies were never measured concurrently.
+
+### Topology sanity
+
+Both instances started with `[Redis] Pub/sub clients connected successfully` and `[RoomManager] Cross-instance
+handler initialized` — multi-instance mode active as documented. A basic smoke test (10 VUs) through the Nginx LB
+passed cleanly (100% success).
+
+### Cross-instance Yjs sync (Redis) — confirmed working
+
+20 collaborators joined a single project through the LB (`least_conn`). `GET /api/websocket/info` queried directly
+on each instance mid-run showed **10 connections on `exelearning-1`, 9 on `exelearning-2`** (and one still
+connecting) for the *same* Yjs room — direct proof `least_conn` splits connections for one room across instances,
+not just across independent rooms. All 20 collaborators held their connection for the full duration and exchanged
+3,453 fan-out messages (799 KB) with 0 failures — proof the Redis pub/sub bridge correctly relays updates between
+clients connected to *different* instances, not just within one instance's local relay.
+
+**Methodology note — a real bug was found and fixed in the test script, not the server.** The first attempt at
+this test used the generic bench-account pool for every collaborator; since new projects default to `private`
+visibility (no sharing configured by `prepare.sh`), roughly half the VUs got an immediate `ACCESS_DENIED` close
+right after the WS handshake — invisible in k6's summary because the close was clean, just early (median session
+duration 68ms against a 45s hold; `bench_ws_connect_success` looked fine at 100%, but the newly-added
+`bench_ws_held_open_full_duration` counter would have shown the gap immediately). Fixed by having every
+collaborator authenticate as the target project's actual owner (`test/load/k6/collaboration.mjs`, commit
+`93137426b`) — correct for a fan-out/relay load test, since the access-check code path costs the same regardless
+of which valid account is used.
+
+### `ip_hash` vs `least_conn` — the issue's specific concern, confirmed
+
+100 concurrent WebSocket connections (100 independent projects) were driven from a single machine (Bender — one
+source IP, exactly the load-generator topology this benchmark uses) against each Nginx config in turn, checking
+`GET /api/websocket/info` on both instances mid-hold:
+
+| Config | `exelearning-1` connections | `exelearning-2` connections |
+|---|---|---|
+| `nginx-tuned-ip-hash.conf` | ~0 (0 of 87 pending-cleanup rooms after the run) | ~100 |
+| `nginx-tuned-least-conn.conf` | **50** | **50** |
+
+**Confirmed, not just plausible: `ip_hash` routes (effectively) 100% of connections from a single-IP load
+generator to one backend instance**, exactly the skew the issue raised as a concern — Zoidberg/Bender each being
+one source IP would make any `ip_hash`-balanced benchmark measure "one instance plus one idle instance," not real
+2-instance capacity. `least_conn` produced a clean 50/50 split under the identical test. Since Redis already
+synchronizes Yjs state across instances (confirmed above), `least_conn` loses no correctness by not pinning a
+client to one backend — **recommendation: use `least_conn` for the WebSocket upstream in
+`doc/deploy/nginx-ha.conf`, not `ip_hash`.**
+
+### Traefik routing (added for inspection, not used for load)
+
+`test/load/deploy/docker-compose.ha.yml` also connects the LB to Gordobot's Traefik
+(`https://exenew-ha.miquistiquis.com/`) for manual browsing — k6 load always hits the LB directly over the LAN
+(`http://192.168.4.5:8090`), per this benchmark's WAN-bypass methodology; nothing in the numbers above went
+through Traefik or Cloudflare. Getting this working also surfaced an environment quirk: the Nginx container's
+Docker `HEALTHCHECK` (`wget` via `docker exec`) hung indefinitely on this host even though the service itself
+responded correctly to real HTTP requests — and since Traefik excludes containers Docker reports unhealthy, the
+route silently never appeared. Removed the healthcheck (commit `ff3851d40`); nothing in the compose file depends
+on Nginx's own health.
+
+*(Nginx `worker_connections` default-vs-tuned comparison, HA capacity progression, and 4-instance scaling to
+follow.)*
 
 ## Collaboration fan-out results
 
