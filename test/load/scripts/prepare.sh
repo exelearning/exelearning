@@ -9,14 +9,14 @@
 # Usage:
 #   test/load/scripts/prepare.sh [NUM_PROJECTS] [NUM_USERS]
 #
-# Environment variables (BASE_URL/HOST_HEADER/GORDOBOT_SSH/GORDOBOT_COMPOSE_DIR
+# Environment variables (BASE_URL/HOST_HEADER/SUT_SSH/SUT_COMPOSE_DIR
 # are required — they're specific to your own deployment, no personal default):
 #   BASE_URL              e.g. http://sut-host:8080 (LAN-direct, bypasses any CDN/proxy)
 #   HOST_HEADER           virtual host routed by your reverse proxy, e.g. bench.example.com
-#   GORDOBOT_SSH          e.g. deploy@sut-host
-#   GORDOBOT_COMPOSE_DIR  e.g. /home/deploy/exenew
-#   GORDOBOT_COMPOSE_FILE default: docker-compose.yml
-#   GORDOBOT_SERVICE      default: exenew
+#   SUT_SSH          e.g. deploy@sut-host
+#   SUT_COMPOSE_DIR  e.g. /home/deploy/exenew
+#   SUT_COMPOSE_FILE default: docker-compose.yml
+#   SUT_SERVICE      default: exenew
 #   BENCH_USER_PREFIX     default: bench-user-
 #   BENCH_USER_DOMAIN     default: exelearning.net
 #   BENCH_PASSWORD        default: Bench1234!
@@ -29,10 +29,10 @@ NUM_USERS="${2:-2}"
 
 : "${BASE_URL:?Set BASE_URL to the target deployment LAN-direct entry point, e.g. BASE_URL=http://sut-host:8080}"
 : "${HOST_HEADER:?Set HOST_HEADER to the virtual host your reverse proxy routes, e.g. HOST_HEADER=bench.example.com}"
-: "${GORDOBOT_SSH:?Set GORDOBOT_SSH to the system-under-test SSH target, e.g. GORDOBOT_SSH=deploy@sut-host}"
-: "${GORDOBOT_COMPOSE_DIR:?Set GORDOBOT_COMPOSE_DIR to the deployment compose directory on that host}"
-GORDOBOT_COMPOSE_FILE="${GORDOBOT_COMPOSE_FILE:-docker-compose.yml}"
-GORDOBOT_SERVICE="${GORDOBOT_SERVICE:-exenew}"
+: "${SUT_SSH:?Set SUT_SSH to the system-under-test SSH target, e.g. SUT_SSH=deploy@sut-host}"
+: "${SUT_COMPOSE_DIR:?Set SUT_COMPOSE_DIR to the deployment compose directory on that host}"
+SUT_COMPOSE_FILE="${SUT_COMPOSE_FILE:-docker-compose.yml}"
+SUT_SERVICE="${SUT_SERVICE:-exenew}"
 BENCH_USER_PREFIX="${BENCH_USER_PREFIX:-bench-user-}"
 BENCH_USER_DOMAIN="${BENCH_USER_DOMAIN:-exelearning.net}"
 BENCH_PASSWORD="${BENCH_PASSWORD:-Bench1234!}"
@@ -45,8 +45,8 @@ echo "== Ensuring ${NUM_USERS} bench user account(s) exist on Gordobot =="
 for ((i = 0; i < NUM_USERS; i++)); do
     email="${BENCH_USER_PREFIX}${i}@${BENCH_USER_DOMAIN}"
     echo "  - ${email}"
-    ssh "${GORDOBOT_SSH}" \
-        "docker compose -f '${GORDOBOT_COMPOSE_DIR}/${GORDOBOT_COMPOSE_FILE}' exec -T ${GORDOBOT_SERVICE} \
+    ssh "${SUT_SSH}" \
+        "docker compose -f '${SUT_COMPOSE_DIR}/${SUT_COMPOSE_FILE}' exec -T ${SUT_SERVICE} \
          bun run dist/cli.js create-user '${email}' '${BENCH_PASSWORD}' --no-fail"
 done
 

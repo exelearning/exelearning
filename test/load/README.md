@@ -115,11 +115,11 @@ test/load/
     api.mjs              # pure HTTP baseline, no WebSocket
     login-burst.mjs      # isolated POST /api/auth/login concurrency test
   scripts/
-    prepare.sh              # seed bench users + projects (idempotent)
-    run.sh                   # run one scenario, store artifacts under a RUN_ID
-    collect-gordobot.sh       # snapshot SUT host/Docker/Redis/PostgreSQL metrics
-    collect-zoidberg.sh       # snapshot load-generator host metrics
-    reset-environment.sh      # guarded `docker compose down -v && up -d`
+    prepare.sh            # seed bench users + projects (idempotent)
+    run.sh                # run one scenario, store artifacts under a RUN_ID
+    collect-sut.sh        # snapshot SUT host/Docker/Redis/PostgreSQL metrics
+    collect-generator.sh  # snapshot load-generator host metrics
+    reset-environment.sh  # guarded `docker compose down -v && up -d`
   data/        # gitignored: projects.json produced by prepare.sh
   results/     # gitignored: raw k6 output per RUN_ID, kept locally
 ```
@@ -222,10 +222,10 @@ and `timeseries.ndjson.gz` (per-request/per-check time series) under
 Take a snapshot before and after (or periodically during) a run:
 
 ```bash
-./test/load/scripts/collect-gordobot.sh test/load/results/<RUN_ID>/gordobot-before.txt before
-./test/load/scripts/collect-gordobot.sh test/load/results/<RUN_ID>/gordobot-after.txt after
-./test/load/scripts/collect-zoidberg.sh  test/load/results/<RUN_ID>/zoidberg-before.txt before
-./test/load/scripts/collect-zoidberg.sh  test/load/results/<RUN_ID>/zoidberg-after.txt after
+./test/load/scripts/collect-sut.sh test/load/results/<RUN_ID>/sut-before.txt before
+./test/load/scripts/collect-sut.sh test/load/results/<RUN_ID>/sut-after.txt after
+./test/load/scripts/collect-generator.sh test/load/results/<RUN_ID>/generator-before.txt before
+./test/load/scripts/collect-generator.sh test/load/results/<RUN_ID>/generator-after.txt after
 ```
 
 For longer runs, loop these on an interval (e.g. every 60s) in a separate

@@ -38,9 +38,9 @@ docker compose -f docker-compose.ha.yml down -v             # full reset
 Then seed data against it (adjust the compose file/service name):
 
 ```bash
-GORDOBOT_COMPOSE_DIR=/home/deploy/exenew-ha \
-GORDOBOT_COMPOSE_FILE=docker-compose.ha.yml \
-GORDOBOT_SERVICE=exelearning-1 \
+SUT_COMPOSE_DIR=/home/deploy/exenew-ha \
+SUT_COMPOSE_FILE=docker-compose.ha.yml \
+SUT_SERVICE=exelearning-1 \
 BASE_URL=http://sut-host:8090 \
 HOST_HEADER=bench.example.com \
 ../scripts/prepare.sh 200 2

@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Snapshots Zoidberg (load generator) host metrics, so we can prove the
+# Snapshots load-generator host metrics, so we can prove the
 # generator itself was not the bottleneck for a given run. Read-only.
 #
 # Usage:
-#   test/load/scripts/collect-zoidberg.sh <output-file> [label]
+#   test/load/scripts/collect-generator.sh <output-file> [label]
 #
 # Environment variables:
-#   ZOIDBERG_SSH  e.g. deploy@load-generator-host
+#   GENERATOR_SSH  e.g. deploy@load-generator-host
 
 set -euo pipefail
 
 OUTPUT_FILE="$1"
 LABEL="${2:-snapshot}"
-: "${ZOIDBERG_SSH:?Set ZOIDBERG_SSH to the load generator SSH target, e.g. ZOIDBERG_SSH=deploy@load-generator-host}"
+: "${GENERATOR_SSH:?Set GENERATOR_SSH to the load generator SSH target, e.g. GENERATOR_SSH=deploy@load-generator-host}"
 
 mkdir -p "$(dirname "${OUTPUT_FILE}")"
 
-ssh "${ZOIDBERG_SSH}" bash <<'EOF' >"${OUTPUT_FILE}" 2>&1
+ssh "${GENERATOR_SSH}" bash <<'EOF' >"${OUTPUT_FILE}" 2>&1
 echo "== label: LABEL_PLACEHOLDER =="
 echo "== timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ") =="
 
@@ -48,4 +48,4 @@ cat /proc/net/dev
 EOF
 sed -i.bak "s/LABEL_PLACEHOLDER/${LABEL}/" "${OUTPUT_FILE}" && rm -f "${OUTPUT_FILE}.bak"
 
-echo "Saved Zoidberg snapshot (${LABEL}) to ${OUTPUT_FILE}"
+echo "Saved load-generator snapshot (${LABEL}) to ${OUTPUT_FILE}"
