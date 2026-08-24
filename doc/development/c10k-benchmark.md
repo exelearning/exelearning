@@ -17,12 +17,12 @@ each), and to identify the first component that limits that capacity.
 
 ## Methodology
 
-- **Three dedicated machines**: Bender (macOS, controller: source, Docker builds, orchestration, analysis),
-  Zoidberg (Ubuntu, load generator: k6), Gordobot (Ubuntu, system under test: the `exenew` Docker deployment).
+- **Three dedicated machines, identified by role**: the orchestrator (macOS — source, Docker builds, orchestration,
+  analysis), the client (Ubuntu — runs k6), and the SUT (Ubuntu — runs the `exenew` Docker deployment).
 - **LAN-direct, not the public domain.** The test deployment is also reachable at
-  `https://exenew.miquistiquis.com/`, which resolves to Cloudflare and would add uncontrolled WAN/CDN latency and
-  limits that have nothing to do with the server under test. All load is instead sent directly to Gordobot's
-  Traefik over the LAN (`http://192.168.4.5:8080`) with an explicit `Host: exenew.miquistiquis.com` header, which
+  `https://benchmark.example.com/`, which resolves to Cloudflare and would add uncontrolled WAN/CDN latency and
+  limits that have nothing to do with the server under test. All load is instead sent directly to the SUT's
+  Traefik over the LAN (`http://192.168.4.5:8080`) with an explicit `Host: benchmark.example.com` header, which
   Traefik uses for routing. Verified to work for both plain HTTP and the WebSocket upgrade request.
 - **One variable at a time.** Every comparison changes exactly one thing (an image build, an Nginx config, an
   instance count) and repeats the same scenario before drawing a conclusion.
@@ -35,36 +35,36 @@ each), and to identify the first component that limits that capacity.
 
 ## Hardware and software
 
-| Machine | Role | CPU | RAM | NIC | OS / kernel |
-|---|---|---|---|---|---|
-| Bender | Controller | Apple Silicon (macOS) | — | — | macOS (Darwin 25.4.0) |
-| Zoidberg | Load generator | Intel Core i7-4650U, 4 threads | 7.2 GiB | Wi-Fi only (`wlp3s0`), no Ethernet | Ubuntu 25.10, kernel 6.17 |
-| Gordobot | System under test | Intel Core i5-8250U, 8 threads | 31 GiB | Gigabit Ethernet (`enp58s0f1`) | Ubuntu 24.04.4 LTS, kernel 6.8 |
+| Role | CPU | RAM | NIC | OS / kernel |
+|---|---|---|---|---|
+| Orchestrator | Apple Silicon (macOS) | — | — | macOS (Darwin 25.4.0) |
+| Client (load generator) | Intel Core i7-4650U, 4 threads | 7.2 GiB | Wi-Fi only (`wlp3s0`), no Ethernet | Ubuntu 25.10, kernel 6.17 |
+| SUT (system under test) | Intel Core i5-8250U, 8 threads | 31 GiB | Gigabit Ethernet (`enp58s0f1`) | Ubuntu 24.04.4 LTS, kernel 6.8 |
 
-Both Zoidberg and Gordobot are repurposed laptops, not server-class hardware — capacity numbers below must be read
+Both the client and the SUT are repurposed laptops, not server-class hardware — capacity numbers below must be read
 against this ceiling, not extrapolated to production server hardware without re-measuring.
 
-**Important caveat: Gordobot is not a dedicated benchmark host.** At the time of testing it was concurrently
+**Important caveat: the SUT is not a dedicated benchmark host.** At the time of testing it was concurrently
 running ~29 unrelated Docker containers for other projects (n8n, Moodle, Odoo, Keycloak, HedgeDoc, other
 eXeLearning builds, etc.), with a baseline host load average around 1.6-2.9 on 8 threads even at rest. This is a
 real confound: absolute latency/CPU numbers include noise from unrelated workloads, and are not directly comparable
 to a clean dedicated host. Where a finding depends on isolating this noise, it is called out explicitly.
 
-Zoidberg's load-generating NIC is Wi-Fi only. A raw `iperf3` throughput check (Zoidberg → Gordobot, 8s, TCP) measured
-**~130 Mbps sustained, 0 retransmits** — well under Gordobot's 1 Gbps Ethernet, and a ceiling to watch for
+The client's load-generating NIC is Wi-Fi only. A raw `iperf3` throughput check (client → SUT, 8s, TCP) measured
+**~130 Mbps sustained, 0 retransmits** — well under the SUT's 1 Gbps Ethernet, and a ceiling to watch for
 bandwidth-heavy scenarios, though not a factor for connection-count/message-rate-bound WebSocket tests at the
 scale tested so far.
 
 | Software | Version |
 |---|---|
 | k6 (load generator) | v0.55.0 (static binary, no root required) |
-| Docker (Gordobot) | 27.4.1 |
-| Docker Compose (Gordobot) | v2.32.1 |
+| Docker (SUT) | 27.4.1 |
+| Docker Compose (SUT) | v2.32.1 |
 | eXeLearning image | `ghcr.io/exelearning/exelearning:exenew` |
 
 ## Topology
 
-Single-instance baseline: Gordobot's existing `/home/ernesto/exenew` deployment — one `exenew` container, MariaDB,
+Single-instance baseline: the SUT's existing `/home/ernesto/exenew` deployment — one `exenew` container, MariaDB,
 fronted by Traefik (reached LAN-direct, bypassing Cloudflare as above). `APP_ENV=dev` (the deployment's existing
 setting; see [Modifications tested](#modifications-tested) for why this was not changed for the WebSocket-capacity
 runs).
@@ -75,13 +75,13 @@ and adapts [`doc/deploy/docker-compose.redis.yml`](../deploy/docker-compose.redi
 
 ```mermaid
 flowchart LR
-    subgraph Bender["Bender (macOS) — controller"]
+    subgraph Orchestrator["Orchestrator (macOS) — controller"]
         K6B["k6 (load, larger share)"]
     end
-    subgraph Zoidberg["Zoidberg (Ubuntu) — load generator"]
+    subgraph Client["Client (Ubuntu) — load generator"]
         K6Z["k6 (load, smaller share)"]
     end
-    subgraph Gordobot["Gordobot (Ubuntu) — system under test"]
+    subgraph SUT["SUT (Ubuntu) — system under test"]
         direction TB
         Traefik["Traefik (public domain,\nsingle-instance only)"]
         subgraph Single["Single-instance topology"]
@@ -97,8 +97,8 @@ flowchart LR
         end
     end
 
-    K6B -- "LAN-direct, bypasses WAN" --> Gordobot
-    K6Z -- "LAN-direct, bypasses WAN" --> Gordobot
+    K6B -- "LAN-direct, bypasses WAN" --> SUT
+    K6Z -- "LAN-direct, bypasses WAN" --> SUT
     Traefik -.->|"real-browser validation only"| App1
     App1 --> MariaDB
     Nginx --> AppHA1
@@ -167,7 +167,7 @@ Fix: commit `19ae39ed8` on branch `2255-c10k-load-testing`.
 
 ### 2. WebSocket room connections leaked forever on every close (fixed)
 
-**Observation.** After the 10000-VU attempt (Zoidberg OOM-killed leg + Bender's 7000-VU leg, see below), a
+**Observation.** After the 10000-VU attempt (client OOM-killed leg + orchestrator's 7000-VU leg, see below), a
 `GET /api/websocket/info` check — made with **no test running and no active traffic** — reported **16,947 "connected"
 sockets across 9,948 rooms**. That total is suspiciously close to the sum of every WebSocket connection opened
 across the *entire benchmark session up to that point* (roughly 17,000). A follow-up isolated 5-VU smoke test,
@@ -215,7 +215,7 @@ Fixes: commits `32c268257` and `5c9d27ca9` on branch `2255-c10k-load-testing`.
 
 ## Single-instance results (final)
 
-Deployment: Gordobot, `/home/ernesto/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
+Deployment: the SUT, `/home/ernesto/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645` (includes both the login fix and both
 WebSocket connection-leak fixes above). Every run below was confirmed leak-free via
 `GET /api/websocket/info` returning `totalConnections: 0` after completion.
@@ -226,15 +226,15 @@ WebSocket connection-leak fixes above). Every run below was confirmed leak-free 
 | E2255-SINGLE-IDLE-0100-003 | 100 | 20s | 120s | **100%** | 257ms / 269ms | negligible | ~248 MiB | PASS |
 | E2255-SINGLE-IDLE-0500-003 | 500 | 60s | 180s | **100%** | 271ms / 307ms | 2.6% | 237 MiB | PASS |
 | E2255-SINGLE-IDLE-1000-002 | 1000 | 120s | 180s | **100%** | 274ms / 327ms | 1.5% | 241 MiB | PASS |
-| E2255-SINGLE-IDLE-2500-003 (split 1000 Zoidberg + 1500 Bender) | 2500 | 100s/150s | **600s** | **100%** | 293ms / 407ms | 5.3% | 261 MiB | PASS |
+| E2255-SINGLE-IDLE-2500-003 (split 1000 client + 1500 orchestrator) | 2500 | 100s/150s | **600s** | **100%** | 293ms / 407ms | 5.3% | 261 MiB | PASS |
 
-**Zoidberg's safe single-generator ceiling is ≤2000 VUs, not 2500.** A same-parameter repeat of the 2500-VU
+**The client's safe single-generator ceiling is ≤2000 VUs, not 2500.** A same-parameter repeat of the 2500-VU
 single-generator run OOM-killed at 6.06 GiB anon-rss (vs. 5.4 GiB survived on the first attempt) — 2500 sits right
 at the edge and isn't a reliable pass/fail boundary on this hardware. From this tier onward, every run splits load
-across Zoidberg (capped at a comfortably safe 1000-2000) and Bender.
+across the client (capped at a comfortably safe 1000-2000) and the orchestrator.
 
-| E2255-SINGLE-IDLE-5000-003 (split 500 Zoidberg + 4500 Bender) | 5000 | 100s/450s | **600s** | **100%** | 291-301ms / 348-380ms | 1.7% | 298 MiB | PASS |
-| E2255-SINGLE-IDLE-10000-003 (Bender only) | 10000 | 1000s | **600s** | 99.92%⁴ | 8.06s / 31.27s⁵ | 1.15% | 257 MiB | **PASS** |
+| E2255-SINGLE-IDLE-5000-003 (split 500 client + 4500 orchestrator) | 5000 | 100s/450s | **600s** | **100%** | 291-301ms / 348-380ms | 1.7% | 298 MiB | PASS |
+| E2255-SINGLE-IDLE-10000-003 (orchestrator only) | 10000 | 1000s | **600s** | 99.92%⁴ | 8.06s / 31.27s⁵ | 1.15% | 257 MiB | **PASS** |
 
 ⁴ 22 failed checks out of 28,102 (0.078%) — well under the 1% threshold. `bench_ws_connect_failure` was 0; every
 established WebSocket connection succeeded and held for the full 10 minutes.
@@ -247,14 +247,14 @@ responsive throughout (CPU 1.15%, RAM 257 MiB), and 0 WebSocket connections fail
 a full 10-minute hold with a 99.92% success rate, at 1.15% CPU and 257 MiB RAM.** The only observed friction was
 elevated login latency under the sustained ~10 logins/s arrival rate driving the ramp — not a WebSocket-capacity
 limit, and not present at all in the 100-2500 VU tiers where the same total login count is spread over more time.
-This run required splitting nothing: Bender (10-core Apple Silicon, 24 GiB RAM) drove all 10,000 VUs alone at a
-peak of ~8 GiB RSS. Zoidberg's role in this benchmark is capped at ~500-1000 VUs for the higher tiers (see
+This run required splitting nothing: the orchestrator (10-core Apple Silicon, 24 GiB RAM) drove all 10,000 VUs alone at a
+peak of ~8 GiB RSS. The client's role in this benchmark is capped at ~500-1000 VUs for the higher tiers (see
 [Load-generator capacity](#load-generator-capacity)) and multi-generator splitting is used mainly to keep it
-participating at all, not because Bender needs the help.
+participating at all, not because the orchestrator needs the help.
 
 ## Single-instance results — pre-leak-fix (superseded, kept for the record)
 
-Deployment: Gordobot, `/home/ernesto/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
+Deployment: the SUT, `/home/ernesto/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
 `sha256:489cdc8d177f69584971d3aa11728f0a9536e1b21df995183977d749d32157dd` (includes the login fix, not yet the
 WebSocket connection-leak fix). **These numbers are retained as the evidence trail for finding the leak (see
 above) but are superseded by the [clean re-run](#single-instance-results-final) below**, since every room the
@@ -276,50 +276,50 @@ runs by adding a short plateau stage (see `test/load/k6/idle-websocket.mjs`).
 catastrophic; motivated the dedicated login-burst investigation above.
 
 At 2500 concurrent idle WebSockets, the single instance itself is barely loaded (1.3% CPU, RAM up only ~28 MiB
-from the 1000-VU tier) — the constraint so far has been the load generator, not the server: **Zoidberg alone hit
+from the 1000-VU tier) — the constraint so far has been the load generator, not the server: **the client alone hit
 71% RAM usage and heavy zram compression driving this same 2500-VU run** (see
 [Load-generator capacity](#load-generator-capacity) below), even though the run itself completed cleanly. Higher
-tiers (5000, 10000) are split across Zoidberg and Bender — see `test/load/README.md`'s multi-generator section.
+tiers (5000, 10000) are split across the client and the orchestrator — see `test/load/README.md`'s multi-generator section.
 
-| E2255-SINGLE-IDLE-5000-001 (split 2000 Zoidberg + 3000 Bender) | 5000 | 5000 | 200s/300s | **600s** | **100%** | 500-613ms / 1.4-1.9s³ | 1.4% | 363 MiB | PASS |
+| E2255-SINGLE-IDLE-5000-001 (split 2000 client + 3000 orchestrator) | 5000 | 5000 | 200s/300s | **600s** | **100%** | 500-613ms / 1.4-1.9s³ | 1.4% | 363 MiB | PASS |
 
 ³ Login latency rose compared to the 2500-VU single-generator tier (278ms/319ms) even though both generators paced
 at ~10 logins/s individually — the *combined* arrival rate at the server (~20/s from two machines converging on
 the same auth endpoint) is the more relevant number. Still 0 failures; treated as expected graceful degradation
 under combined load, not a regression, pending confirmation at the 10000-VU tier.
 
-**10000-VU attempt #1 (E2255-SINGLE-IDLE-10000-001, Zoidberg 3000 + Bender 7000): Zoidberg OOM-killed.** ~3 minutes
-into ramp-up, the Linux OOM killer terminated Zoidberg's k6 process (`anon-rss: 5.98 GiB` at kill time, confirmed via
-`journalctl -k`), invalidating this run's Zoidberg leg. This refines the load-generator ceiling found at the 2500-VU
-tier: **2000 VUs on Zoidberg is safe (31% RAM observed), 3000 is not** — evidently connection-holding state adds
-enough per-VU memory on top of k6's base JS-VM cost to cross the line between those two points. Bender's 7000-VU
+**10000-VU attempt #1 (E2255-SINGLE-IDLE-10000-001, client 3000 + orchestrator 7000): the client OOM-killed.** ~3 minutes
+into ramp-up, the Linux OOM killer terminated the client's k6 process (`anon-rss: 5.98 GiB` at kill time, confirmed via
+`journalctl -k`), invalidating this run's client leg. This refines the load-generator ceiling found at the 2500-VU
+tier: **2000 VUs on the client is safe (31% RAM observed), 3000 is not** — evidently connection-holding state adds
+enough per-VU memory on top of k6's base JS-VM cost to cross the line between those two points. The orchestrator's 7000-VU
 leg was unaffected (it runs as a separate OS process on separate hardware) and continued to a clean pass — see
-below. The corrected split for the official combined 10000-VU run is Zoidberg 2000 / Bender 8000.
+below. The corrected split for the official combined 10000-VU run is client 2000 / orchestrator 8000.
 
 *(10000-VU combined result, HA results, collaboration fan-out, and browser validation to follow as they complete.)*
 
 ### Load-generator capacity
 
 k6's classic executor allocates one JS VM per virtual user, which is memory-expensive at a few thousand VUs.
-Zoidberg (Intel i7-4650U, 4 threads, 7.2 GiB RAM) turned out to have a narrow, **unreliable** safe ceiling rather
+The client (Intel i7-4650U, 4 threads, 7.2 GiB RAM) turned out to have a narrow, **unreliable** safe ceiling rather
 than a clean cutoff: 2000 VUs ran comfortably (31% RAM) in one attempt, but a same-parameter repeat of 2500 VUs
 OOM-killed at 6.06 GiB anon-rss after an earlier 2500-VU attempt had survived at 5.4 GiB — and a later attempt at
 2000 VUs alone also OOM-killed. 2000-2500 VUs sits right at the edge on this hardware and is not dependable
 run-to-run (compounded, we suspect, by Ubuntu's `apport` crash-report pipeline consuming CPU/memory in response to
 each OOM kill, adding noise to subsequent runs in the same session). **Practical rule adopted for this benchmark:
-cap Zoidberg's share at ≤1000-1500 VUs for any tier at or above 2500**, and let Bender (10-core Apple Silicon,
+cap the client's share at ≤1000-1500 VUs for any tier at or above 2500**, and let the orchestrator (10-core Apple Silicon,
 24 GiB RAM) carry the rest.
 
-Bender, by contrast, drove the entire 10000-VU tier alone with no issues (~8 GiB peak RSS, sub-linear growth per
+The orchestrator, by contrast, drove the entire 10000-VU tier alone with no issues (~8 GiB peak RSS, sub-linear growth per
 VU — memory per additional VU decreased as the pool grew, unlike a naive linear projection from the first few
-thousand). For every split tier (2500 and 5000), Zoidberg's small, conservative share completed cleanly; only the
-attempts that gave Zoidberg 2000+ VUs were unreliable. Multi-generator splitting in this benchmark therefore
-served to keep Zoidberg meaningfully participating, not because Bender needed the help — Bender alone would
+thousand). For every split tier (2500 and 5000), the client's small, conservative share completed cleanly; only the
+attempts that gave the client 2000+ VUs were unreliable. Multi-generator splitting in this benchmark therefore
+served to keep the client meaningfully participating, not because the orchestrator needed the help — the orchestrator alone would
 comfortably have driven every tier reported here.
 
 ## HA results
 
-Deployment: Gordobot, `/home/ernesto/exenew-ha` — 2 `exenew` instances (image digest
+Deployment: the SUT, `/home/ernesto/exenew-ha` — 2 `exenew` instances (image digest
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645`), PostgreSQL 18, Redis, Nginx LB (see
 [`test/load/deploy/`](../../test/load/deploy/)). `APP_ENV=prod`. The single-instance stack was stopped (not
 removed — data preserved) to free CPU/RAM for this phase, so the two topologies were never measured concurrently.
@@ -351,7 +351,7 @@ of which valid account is used.
 
 ### `ip_hash` vs `least_conn` — the issue's specific concern, confirmed
 
-100 concurrent WebSocket connections (100 independent projects) were driven from a single machine (Bender — one
+100 concurrent WebSocket connections (100 independent projects) were driven from a single machine (the orchestrator — one
 source IP, exactly the load-generator topology this benchmark uses) against each Nginx config in turn, checking
 `GET /api/websocket/info` on both instances mid-hold:
 
@@ -361,7 +361,7 @@ source IP, exactly the load-generator topology this benchmark uses) against each
 | `nginx-tuned-least-conn.conf` | **50** | **50** |
 
 **Confirmed, not just plausible: `ip_hash` routes (effectively) 100% of connections from a single-IP load
-generator to one backend instance**, exactly the skew the issue raised as a concern — Zoidberg/Bender each being
+generator to one backend instance**, exactly the skew the issue raised as a concern — the client/orchestrator each being
 one source IP would make any `ip_hash`-balanced benchmark measure "one instance plus one idle instance," not real
 2-instance capacity. `least_conn` produced a clean 50/50 split under the identical test. Since Redis already
 synchronizes Yjs state across instances (confirmed above), `least_conn` loses no correctness by not pinning a
@@ -370,8 +370,8 @@ client to one backend — **recommendation: use `least_conn` for the WebSocket u
 
 ### Traefik routing (added for inspection, not used for load)
 
-`test/load/deploy/docker-compose.ha.yml` also connects the LB to Gordobot's Traefik
-(`https://exenew-ha.miquistiquis.com/`) for manual browsing — k6 load always hits the LB directly over the LAN
+`test/load/deploy/docker-compose.ha.yml` also connects the LB to the SUT's Traefik
+(`https://benchmark-ha.example.com/`) for manual browsing — k6 load always hits the LB directly over the LAN
 (`http://192.168.4.5:8090`), per this benchmark's WAN-bypass methodology; nothing in the numbers above went
 through Traefik or Cloudflare. Getting this working also surfaced an environment quirk: the Nginx container's
 Docker `HEALTHCHECK` (`wget` via `docker exec`) hung indefinitely on this host even though the service itself
@@ -472,7 +472,7 @@ scenario in this benchmark, not just collaboration.
 ## Browser validation
 
 While a 300-VU `normal-editing` k6 run drove background load against the single instance, a real Chrome session
-(via Bender) went through the **public domain** (`https://exenew.miquistiquis.com/`, through Cloudflare and
+(via the orchestrator) went through the **public domain** (`https://benchmark.example.com/`, through Cloudflare and
 Traefik — deliberately *not* the LAN-direct path k6 uses, since a real user's traffic does go through both) and:
 logged in, waited for the workarea to finish loading, edited the project title, clicked Save, and received the
 expected "Proyecto guardado" confirmation. No console errors were observed. This is a small, qualitative check
@@ -491,7 +491,7 @@ real user while the server handled 300 concurrent simulated editors.
 
 ## Limitations
 
-- Gordobot hosts ~29 unrelated containers for other projects; absolute CPU/latency figures include contention from
+- The SUT hosts ~29 unrelated containers for other projects; absolute CPU/latency figures include contention from
   that unrelated load and are not representative of a dedicated host. Relative comparisons (before/after a single
   changed variable) remain valid since the unrelated load was constant across each pair of runs. Host load average
   was observed to drift upward over the course of the session (baseline ~1.6-2.9 at the start, transient spikes
@@ -499,7 +499,7 @@ real user while the server handled 300 concurrent simulated editors.
   near-idle within seconds of each test ending, but a reminder this was never a dedicated, isolated bench host.
 - Both benchmark machines are consumer laptops (2013-2017 era), not server hardware; the capacity ceilings measured
   here are specific to this hardware and should not be read as eXeLearning's absolute limit.
-- Zoidberg's load-generating NIC is Wi-Fi (measured ~130 Mbps), a ceiling to watch for bandwidth-heavy scenarios.
+- The client's load-generating NIC is Wi-Fi (measured ~130 Mbps), a ceiling to watch for bandwidth-heavy scenarios.
 - The 500-VU login-burst "before" comparison used a separately tagged image
   (`ghcr.io/exelearning/exelearning:exenew-before-authfix`, digest `sha256:2897af5996f92dcd183b76e27c6db5573c338e88ab63456af2ae013145dc2f04`)
   built from commit `0bc68d55e` (the commit immediately before the fix on this same branch) — not a different
@@ -529,7 +529,7 @@ unless noted. "—" means not measured for that scenario. Full detail and RUN ID
 | Idle WS | 1000 | 1 | 305s | 100% | 0% | 1.5% | — | PASS |
 | Idle WS | 2500 | 1 | 855s | 100% | 0% | 5.3% | — | PASS |
 | Idle WS | 5000 | 1 (split gen.) | 655s | 100% | 0% | 1.7% | — | PASS |
-| Idle WS | 10000 | 1 (Bender only) | 1605s | 99.92% | 0.078% | 1.15% | — | PASS |
+| Idle WS | 10000 | 1 (orchestrator only) | 1605s | 99.92% | 0.078% | 1.15% | — | PASS |
 | Normal editing (1-10 users/project) | 40 | 1 | 130s | 100% | 0% | 1.3% | — | PASS |
 | Login burst | 500 | 1 | 23-60s | 100%¹ | 0%¹ | — | — | PASS¹ |
 | HA smoke | 10 | 2 | 5s | 100% | 0% | — | — | PASS |

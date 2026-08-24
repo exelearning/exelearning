@@ -15,12 +15,12 @@ independientes, con 1-10 colaboradores cada uno), e identificar el primer compon
 
 ## Metodología
 
-- **Tres máquinas dedicadas**: Bender (macOS, controlador: código fuente, builds de Docker, orquestación, análisis),
-  Zoidberg (Ubuntu, generador de carga: k6), Gordobot (Ubuntu, sistema bajo prueba: el despliegue Docker `exenew`).
+- **Tres máquinas dedicadas, identificadas por su rol**: el orquestador (macOS — código fuente, builds de Docker,
+  orquestación, análisis), el cliente (Ubuntu — ejecuta k6) y el SUT (Ubuntu — ejecuta el despliegue Docker `exenew`).
 - **LAN directa, no el dominio público.** El despliegue de pruebas también es accesible en
-  `https://exenew.miquistiquis.com/`, que resuelve a Cloudflare y añadiría latencia y límites de WAN/CDN no
-  controlados, ajenos al servidor bajo prueba. En su lugar, toda la carga se envía directamente al Traefik de
-  Gordobot por la LAN (`http://192.168.4.5:8080`) con una cabecera explícita `Host: exenew.miquistiquis.com`, que
+  `https://benchmark.example.com/`, que resuelve a Cloudflare y añadiría latencia y límites de WAN/CDN no
+  controlados, ajenos al servidor bajo prueba. En su lugar, toda la carga se envía directamente al Traefik del
+  SUT por la LAN (`http://192.168.4.5:8080`) con una cabecera explícita `Host: benchmark.example.com`, que
   Traefik usa para enrutar. Verificado tanto para HTTP normal como para la petición de upgrade a WebSocket.
 - **Una variable cada vez.** Cada comparación cambia exactamente una cosa (un build de imagen, una configuración de
   Nginx, un número de instancias) y repite el mismo escenario antes de sacar una conclusión.
@@ -33,36 +33,36 @@ independientes, con 1-10 colaboradores cada uno), e identificar el primer compon
 
 ## Hardware y software
 
-| Máquina | Rol | CPU | RAM | Red | SO / kernel |
-|---|---|---|---|---|---|
-| Bender | Controlador | Apple Silicon (macOS) | — | — | macOS (Darwin 25.4.0) |
-| Zoidberg | Generador de carga | Intel Core i7-4650U, 4 hilos | 7.2 GiB | solo Wi-Fi (`wlp3s0`), sin Ethernet | Ubuntu 25.10, kernel 6.17 |
-| Gordobot | Sistema bajo prueba | Intel Core i5-8250U, 8 hilos | 31 GiB | Ethernet Gigabit (`enp58s0f1`) | Ubuntu 24.04.4 LTS, kernel 6.8 |
+| Rol | CPU | RAM | Red | SO / kernel |
+|---|---|---|---|---|
+| Orquestador | Apple Silicon (macOS) | — | — | macOS (Darwin 25.4.0) |
+| Cliente (generador de carga) | Intel Core i7-4650U, 4 hilos | 7.2 GiB | solo Wi-Fi (`wlp3s0`), sin Ethernet | Ubuntu 25.10, kernel 6.17 |
+| SUT (sistema bajo prueba) | Intel Core i5-8250U, 8 hilos | 31 GiB | Ethernet Gigabit (`enp58s0f1`) | Ubuntu 24.04.4 LTS, kernel 6.8 |
 
-Tanto Zoidberg como Gordobot son portátiles reutilizados, no hardware de servidor — las cifras de capacidad de abajo
+Tanto el cliente como el SUT son portátiles reutilizados, no hardware de servidor — las cifras de capacidad de abajo
 deben leerse contra este techo, no extrapolarse a hardware de producción sin volver a medir.
 
-**Advertencia importante: Gordobot no es un host de benchmark dedicado.** Durante las pruebas seguía ejecutando en
+**Advertencia importante: el SUT no es un host de benchmark dedicado.** Durante las pruebas seguía ejecutando en
 paralelo ~29 contenedores Docker de otros proyectos (n8n, Moodle, Odoo, Keycloak, HedgeDoc, otros builds de
 eXeLearning, etc.), con una carga base del host en torno a 1.6-2.9 sobre 8 hilos incluso en reposo. Esto es una
 interferencia real: las cifras absolutas de latencia/CPU incluyen ruido de cargas ajenas y no son directamente
 comparables a un host limpio y dedicado. Donde un hallazgo depende de aislar este ruido, se indica explícitamente.
 
-La NIC de carga de Zoidberg es solo Wi-Fi. Una prueba de throughput en crudo con `iperf3` (Zoidberg → Gordobot, 8s,
-TCP) midió **~130 Mbps sostenidos, 0 retransmisiones** — muy por debajo del Ethernet de 1 Gbps de Gordobot, y un
+La NIC de carga del cliente es solo Wi-Fi. Una prueba de throughput en crudo con `iperf3` (cliente → SUT, 8s,
+TCP) midió **~130 Mbps sostenidos, 0 retransmisiones** — muy por debajo del Ethernet de 1 Gbps del SUT, y un
 techo a vigilar en escenarios intensivos en ancho de banda, aunque no es un factor limitante en las pruebas de
 WebSocket (acotadas por número de conexiones/tasa de mensajes) a la escala probada hasta ahora.
 
 | Software | Versión |
 |---|---|
 | k6 (generador de carga) | v0.55.0 (binario estático, sin root) |
-| Docker (Gordobot) | 27.4.1 |
-| Docker Compose (Gordobot) | v2.32.1 |
+| Docker (SUT) | 27.4.1 |
+| Docker Compose (SUT) | v2.32.1 |
 | Imagen de eXeLearning | `ghcr.io/exelearning/exelearning:exenew` |
 
 ## Topología
 
-Línea base de instancia única: el despliegue existente de Gordobot en `/home/ernesto/exenew` — un contenedor
+Línea base de instancia única: el despliegue existente del SUT en `/home/ernesto/exenew` — un contenedor
 `exenew`, MariaDB, expuesto por Traefik (accedido en LAN directa, sin pasar por Cloudflare como se explicó arriba).
 `APP_ENV=dev` (el valor ya configurado en el despliegue; ver [Modificaciones probadas](#modificaciones-probadas)
 sobre por qué no se cambió para las pruebas de capacidad WebSocket).
@@ -74,13 +74,13 @@ La topología HA (Redis + PostgreSQL + N instancias + Nginx) está definida en
 
 ```mermaid
 flowchart LR
-    subgraph Bender["Bender (macOS) — controlador"]
+    subgraph Orquestador["Orquestador (macOS) — controlador"]
         K6B["k6 (carga, parte mayor)"]
     end
-    subgraph Zoidberg["Zoidberg (Ubuntu) — generador de carga"]
+    subgraph Cliente["Cliente (Ubuntu) — generador de carga"]
         K6Z["k6 (carga, parte menor)"]
     end
-    subgraph Gordobot["Gordobot (Ubuntu) — sistema bajo prueba"]
+    subgraph SUT["SUT (Ubuntu) — sistema bajo prueba"]
         direction TB
         Traefik["Traefik (dominio público,\nsolo instancia única)"]
         subgraph Single["Topología de instancia única"]
@@ -96,8 +96,8 @@ flowchart LR
         end
     end
 
-    K6B -- "LAN directa, evita la WAN" --> Gordobot
-    K6Z -- "LAN directa, evita la WAN" --> Gordobot
+    K6B -- "LAN directa, evita la WAN" --> SUT
+    K6Z -- "LAN directa, evita la WAN" --> SUT
     Traefik -.->|"solo validación con navegador real"| App1
     App1 --> MariaDB
     Nginx --> AppHA1
@@ -171,7 +171,7 @@ Corrección: commit `19ae39ed8` en la rama `2255-c10k-load-testing`.
 
 ### 2. Las conexiones WebSocket de sala se quedaban filtradas para siempre en cada cierre (corregido)
 
-**Observación.** Tras el intento de 10000 VUs (la parte de Zoidberg murió por OOM, la parte de Bender llegó a 7000,
+**Observación.** Tras el intento de 10000 VUs (la parte del cliente murió por OOM, la parte del orquestador llegó a 7000,
 ver abajo), una comprobación de `GET /api/websocket/info` — hecha **sin ninguna prueba en marcha y sin tráfico
 activo** — informó de **16.947 sockets "conectados" repartidos en 9.948 salas**. Ese total está sospechosamente
 cerca de la suma de todas las conexiones WebSocket abiertas durante *toda la sesión de benchmark hasta ese punto*
@@ -224,7 +224,7 @@ Correcciones: commits `32c268257` y `5c9d27ca9` en la rama `2255-c10k-load-testi
 
 ## Resultados de instancia única (definitivos)
 
-Despliegue: Gordobot, `/home/ernesto/exenew` (una instancia `exenew` + MariaDB), `APP_ENV=dev`, digest de imagen
+Despliegue: el SUT, `/home/ernesto/exenew` (una instancia `exenew` + MariaDB), `APP_ENV=dev`, digest de imagen
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645` (incluye tanto la corrección de login como
 las dos correcciones de la fuga de conexiones WebSocket). Cada ejecución de abajo se confirmó libre de fugas
 mediante `GET /api/websocket/info` devolviendo `totalConnections: 0` al terminar.
@@ -235,16 +235,16 @@ mediante `GET /api/websocket/info` devolviendo `totalConnections: 0` al terminar
 | E2255-SINGLE-IDLE-0100-003 | 100 | 20s | 120s | **100%** | 257ms / 269ms | insignificante | 248 MiB | PASA |
 | E2255-SINGLE-IDLE-0500-003 | 500 | 60s | 180s | **100%** | 271ms / 307ms | 2.6% | 237 MiB | PASA |
 | E2255-SINGLE-IDLE-1000-002 | 1000 | 120s | 180s | **100%** | 274ms / 327ms | 1.5% | 241 MiB | PASA |
-| E2255-SINGLE-IDLE-2500-003 (dividido: 1000 Zoidberg + 1500 Bender) | 2500 | 100s/150s | **600s** | **100%** | 293ms / 407ms | 5.3% | 261 MiB | PASA |
+| E2255-SINGLE-IDLE-2500-003 (dividido: 1000 cliente + 1500 orquestador) | 2500 | 100s/150s | **600s** | **100%** | 293ms / 407ms | 5.3% | 261 MiB | PASA |
 
-**El techo seguro de Zoidberg como generador único es ≤2000 VUs, no 2500.** Repetir con los mismos parámetros la
+**El techo seguro del cliente como generador único es ≤2000 VUs, no 2500.** Repetir con los mismos parámetros la
 prueba de 2500 VUs desde un solo generador terminó en un OOM kill a 6.06 GiB de anon-rss (frente a los 5.4 GiB que
 había sobrevivido en el primer intento) — 2500 está justo al filo y no es un límite fiable de pasa/no-pasa en este
-hardware. A partir de este nivel, cada ejecución reparte la carga entre Zoidberg (limitado a un margen cómodamente
-seguro de 1000-2000) y Bender.
+hardware. A partir de este nivel, cada ejecución reparte la carga entre el cliente (limitado a un margen cómodamente
+seguro de 1000-2000) y el orquestador.
 
-| E2255-SINGLE-IDLE-5000-003 (dividido: 500 Zoidberg + 4500 Bender) | 5000 | 100s/450s | **600s** | **100%** | 291-301ms / 348-380ms | 1.7% | 298 MiB | PASA |
-| E2255-SINGLE-IDLE-10000-003 (solo Bender) | 10000 | 1000s | **600s** | 99.92%⁴ | 8.06s / 31.27s⁵ | 1.15% | 257 MiB | **PASA** |
+| E2255-SINGLE-IDLE-5000-003 (dividido: 500 cliente + 4500 orquestador) | 5000 | 100s/450s | **600s** | **100%** | 291-301ms / 348-380ms | 1.7% | 298 MiB | PASA |
+| E2255-SINGLE-IDLE-10000-003 (solo orquestador) | 10000 | 1000s | **600s** | 99.92%⁴ | 8.06s / 31.27s⁵ | 1.15% | 257 MiB | **PASA** |
 
 ⁴ 22 comprobaciones fallidas de 28.102 (0.078%) — muy por debajo del umbral del 1%. `bench_ws_connect_failure` fue
 0; toda conexión WebSocket que llegó a establecerse tuvo éxito y se mantuvo abierta los 10 minutos completos.
@@ -259,15 +259,15 @@ cayeron.
 concurrentes durante 10 minutos completos con una tasa de éxito del 99.92%, con un 1.15% de CPU y 257 MiB de RAM.**
 La única fricción observada fue una latencia de login elevada bajo la tasa de llegada sostenida de ~10 logins/s que
 impulsaba la rampa — no un límite de capacidad WebSocket, y ni siquiera presente en los niveles de 100-2500 VUs
-donde el mismo número total de logins se reparte en más tiempo. Esta ejecución no requirió dividir nada: Bender
+donde el mismo número total de logins se reparte en más tiempo. Esta ejecución no requirió dividir nada: el orquestador
 (Apple Silicon de 10 núcleos, 24 GiB de RAM) condujo por sí solo los 10.000 VUs con un pico de ~8 GiB de RSS. El
-papel de Zoidberg en este benchmark se limita a ~500-1000 VUs en los niveles más altos (ver
+papel del cliente en este benchmark se limita a ~500-1000 VUs en los niveles más altos (ver
 [Capacidad del generador de carga](#capacidad-del-generador-de-carga)) y la división entre varios generadores sirve
-sobre todo para mantenerlo participando, no porque Bender necesite ayuda.
+sobre todo para mantenerlo participando, no porque el orquestador necesite ayuda.
 
 ## Resultados de instancia única — previos a la corrección de la fuga (superados, se conservan como registro)
 
-Despliegue: Gordobot, `/home/ernesto/exenew` (una instancia `exenew` + MariaDB), `APP_ENV=dev`, digest de imagen
+Despliegue: el SUT, `/home/ernesto/exenew` (una instancia `exenew` + MariaDB), `APP_ENV=dev`, digest de imagen
 `sha256:489cdc8d177f69584971d3aa11728f0a9536e1b21df995183977d749d32157dd` (incluye la corrección de login, todavía
 no la de la fuga de WebSocket). **Estas cifras se conservan como rastro de evidencia para encontrar la fuga (ver
 arriba), pero quedan superadas por la [repetición limpia](#resultados-de-instancia-única-definitivos) de arriba**,
@@ -292,12 +292,12 @@ login — elevada pero aún no catastrófica; motivó la investigación dedicada
 
 Con 2500 WebSockets inactivos concurrentes, la instancia en sí apenas está cargada (1.3% CPU, RAM solo ~28 MiB por
 encima del nivel de 1000 VUs) — la limitación hasta ese punto era el generador de carga, no el servidor:
-**Zoidberg por sí solo llegó al 71% de uso de RAM y a compresión zram intensiva** en esta misma ejecución de 2500
+**El cliente por sí solo llegó al 71% de uso de RAM y a compresión zram intensiva** en esta misma ejecución de 2500
 VUs (ver [Capacidad del generador de carga](#capacidad-del-generador-de-carga) abajo), aunque la propia ejecución
-terminó limpiamente. Los niveles superiores (5000, 10000) se reparten entre Zoidberg y Bender — ver la sección de
+terminó limpiamente. Los niveles superiores (5000, 10000) se reparten entre el cliente y el orquestador — ver la sección de
 múltiples generadores en `test/load/README.md`.
 
-| E2255-SINGLE-IDLE-5000-001 (dividido: 2000 Zoidberg + 3000 Bender) | 5000 | 5000 | 200s/300s | **600s** | **100%** | 500-613ms / 1.4-1.9s³ | 1.4% | 363 MiB | PASA |
+| E2255-SINGLE-IDLE-5000-001 (dividido: 2000 cliente + 3000 orquestador) | 5000 | 5000 | 200s/300s | **600s** | **100%** | 500-613ms / 1.4-1.9s³ | 1.4% | 363 MiB | PASA |
 
 ³ La latencia de login subió respecto al nivel de 2500 VUs con un solo generador (278ms/319ms) aunque ambos
 generadores mantenían individualmente un ritmo de ~10 logins/s — el número relevante es la tasa de llegada
@@ -305,39 +305,39 @@ generadores mantenían individualmente un ritmo de ~10 logins/s — el número r
 fallos; se trató como degradación gradual esperada bajo carga combinada, no una regresión, pendiente de confirmar
 en el nivel de 10000 VUs.
 
-**Intento #1 de 10000 VUs (E2255-SINGLE-IDLE-10000-001, Zoidberg 3000 + Bender 7000): Zoidberg murió por OOM.** A
-~3 minutos de la rampa, el OOM killer de Linux terminó el proceso k6 de Zoidberg (`anon-rss: 5.98 GiB` en el
-momento del kill, confirmado vía `journalctl -k`), invalidando la parte de Zoidberg de esta ejecución. Esto afina
-el techo del generador de carga encontrado en el nivel de 2500 VUs: **2000 VUs en Zoidberg es seguro (31% de RAM
+**Intento #1 de 10000 VUs (E2255-SINGLE-IDLE-10000-001, cliente 3000 + orquestador 7000): el cliente murió por OOM.** A
+~3 minutos de la rampa, el OOM killer de Linux terminó el proceso k6 del cliente (`anon-rss: 5.98 GiB` en el
+momento del kill, confirmado vía `journalctl -k`), invalidando la parte del cliente de esta ejecución. Esto afina
+el techo del generador de carga encontrado en el nivel de 2500 VUs: **2000 VUs en el cliente es seguro (31% de RAM
 observado), 3000 no lo es** — al parecer mantener conexiones abiertas añade suficiente memoria por VU, encima del
-coste base de la VM JS de k6, como para cruzar la línea entre esos dos puntos. La parte de Bender con 7000 VUs no
+coste base de la VM JS de k6, como para cruzar la línea entre esos dos puntos. La parte del orquestador con 7000 VUs no
 se vio afectada (corre como un proceso de SO separado en hardware separado) y llegó a un resultado limpio — ver
-abajo. La división corregida para la ejecución oficial combinada de 10000 VUs es Zoidberg 2000 / Bender 8000.
+abajo. La división corregida para la ejecución oficial combinada de 10000 VUs es cliente 2000 / orquestador 8000.
 
 ### Capacidad del generador de carga
 
 El executor clásico de k6 asigna una VM JS por usuario virtual, lo cual es costoso en memoria a partir de unos
-pocos miles de VUs. Zoidberg (Intel i7-4650U, 4 hilos, 7.2 GiB de RAM) resultó tener un techo seguro estrecho y
+pocos miles de VUs. El cliente (Intel i7-4650U, 4 hilos, 7.2 GiB de RAM) resultó tener un techo seguro estrecho y
 **poco fiable**, en vez de un corte limpio: 2000 VUs corrieron cómodamente (31% de RAM) en un intento, pero repetir
 con los mismos parámetros 2500 VUs terminó en OOM a 6.06 GiB de anon-rss después de que un intento anterior con
 2500 hubiera sobrevivido a 5.4 GiB — y un intento posterior con solo 2000 VUs también murió por OOM. El rango
 2000-2500 VUs está justo al filo en este hardware y no es fiable de una ejecución a otra (agravado, sospechamos,
 por el pipeline de informes de fallos `apport` de Ubuntu, que consume CPU/memoria en respuesta a cada OOM kill,
 añadiendo ruido a las ejecuciones siguientes de la misma sesión). **Regla práctica adoptada para este benchmark:
-limitar la parte de Zoidberg a ≤1000-1500 VUs en cualquier nivel igual o superior a 2500**, y dejar que Bender
+limitar la parte del cliente a ≤1000-1500 VUs en cualquier nivel igual o superior a 2500**, y dejar que el orquestador
 (Apple Silicon de 10 núcleos, 24 GiB de RAM) lleve el resto.
 
-Bender, en cambio, condujo por sí solo todo el nivel de 10000 VUs sin problemas (~8 GiB de RSS pico, crecimiento
+El orquestador, en cambio, condujo por sí solo todo el nivel de 10000 VUs sin problemas (~8 GiB de RSS pico, crecimiento
 sublineal por VU — la memoria por VU adicional disminuía a medida que crecía el conjunto, al contrario de una
 proyección lineal ingenua desde los primeros miles). En cada nivel dividido (2500 y 5000), la parte pequeña y
-conservadora de Zoidberg se completó limpiamente; solo los intentos que le daban a Zoidberg 2000+ VUs fueron poco
-fiables. Dividir entre varios generadores en este benchmark sirvió por tanto para mantener a Zoidberg participando
-de forma significativa, no porque Bender necesitara ayuda — Bender solo habría llevado cómodamente cada nivel
+conservadora del cliente se completó limpiamente; solo los intentos que le daban al cliente 2000+ VUs fueron poco
+fiables. Dividir entre varios generadores en este benchmark sirvió por tanto para mantener al cliente participando
+de forma significativa, no porque el orquestador necesitara ayuda — el orquestador solo habría llevado cómodamente cada nivel
 reportado aquí.
 
 ## Resultados HA
 
-Despliegue: Gordobot, `/home/ernesto/exenew-ha` — 2 instancias `exenew` (digest de imagen
+Despliegue: el SUT, `/home/ernesto/exenew-ha` — 2 instancias `exenew` (digest de imagen
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645`), PostgreSQL 18, Redis, LB Nginx (ver
 [`test/load/deploy/`](../../test/load/deploy/)). `APP_ENV=prod`. El stack de instancia única se detuvo (no se
 eliminó — los datos se conservaron) para liberar CPU/RAM para esta fase, así que las dos topologías nunca se
@@ -372,7 +372,7 @@ acceso es el mismo sea cual sea la cuenta válida usada.
 
 ### `ip_hash` frente a `least_conn` — la preocupación específica de la issue, confirmada
 
-Se dirigieron 100 conexiones WebSocket concurrentes (100 proyectos independientes) desde una sola máquina (Bender —
+Se dirigieron 100 conexiones WebSocket concurrentes (100 proyectos independientes) desde una sola máquina (el orquestador —
 una única IP de origen, exactamente la topología de generador de carga que usa este benchmark) contra cada
 configuración de Nginx por turno, comprobando `GET /api/websocket/info` en ambas instancias a mitad de la espera:
 
@@ -383,7 +383,7 @@ configuración de Nginx por turno, comprobando `GET /api/websocket/info` en amba
 
 **Confirmado, no solo plausible: `ip_hash` enruta (efectivamente) el 100% de las conexiones de un generador de
 carga de IP única hacia una sola instancia**, exactamente el desequilibrio que planteaba la issue como
-preocupación — Zoidberg/Bender siendo cada uno una única IP de origen haría que cualquier benchmark balanceado con
+preocupación — el cliente/orquestador siendo cada uno una única IP de origen haría que cualquier benchmark balanceado con
 `ip_hash` midiera "una instancia más una instancia ociosa", no la capacidad real de 2 instancias. `least_conn`
 produjo un reparto limpio de 50/50 bajo la prueba idéntica. Dado que Redis ya sincroniza el estado Yjs entre
 instancias (confirmado arriba), `least_conn` no pierde ninguna corrección por no fijar un cliente a un backend
@@ -392,8 +392,8 @@ concreto — **recomendación: usar `least_conn` para el upstream WebSocket en `
 
 ### Enrutado con Traefik (añadido para inspección, no usado para la carga)
 
-`test/load/deploy/docker-compose.ha.yml` también conecta el LB al Traefik de Gordobot
-(`https://exenew-ha.miquistiquis.com/`) para navegación manual — la carga de k6 siempre golpea el LB directamente
+`test/load/deploy/docker-compose.ha.yml` también conecta el LB al Traefik del SUT
+(`https://benchmark-ha.example.com/`) para navegación manual — la carga de k6 siempre golpea el LB directamente
 por la LAN (`http://192.168.4.5:8090`), según la metodología de este benchmark de evitar la WAN; nada de las cifras
 de arriba pasó por Traefik ni por Cloudflare. Al montarlo apareció además una peculiaridad del entorno: el
 `HEALTHCHECK` de Docker del contenedor Nginx (`wget` vía `docker exec`) se quedaba colgado indefinidamente en este
@@ -501,8 +501,8 @@ escenario basado en `ramping-vus` de este benchmark, no solo a colaboración.
 ## Validación con navegador
 
 Mientras una ejecución de k6 de `normal-editing` con 300 VUs generaba carga de fondo contra la instancia única, una
-sesión real de Chrome (desde Bender) pasó por el **dominio público**
-(`https://exenew.miquistiquis.com/`, a través de Cloudflare y Traefik — deliberadamente *no* la ruta LAN directa
+sesión real de Chrome (desde el orquestador) pasó por el **dominio público**
+(`https://benchmark.example.com/`, a través de Cloudflare y Traefik — deliberadamente *no* la ruta LAN directa
 que usa k6, ya que el tráfico de un usuario real sí pasa por ambos) e hizo lo siguiente: inició sesión, esperó a que
 el área de trabajo terminara de cargar, editó el título del proyecto, pulsó Guardar, y recibió la confirmación
 esperada "Proyecto guardado". No se observaron errores en consola. Esta es una comprobación pequeña y cualitativa
@@ -522,7 +522,7 @@ funcionalmente correcta para un usuario real mientras el servidor gestionaba 300
 
 ## Limitaciones
 
-- Gordobot aloja ~29 contenedores ajenos a otros proyectos; las cifras absolutas de CPU/latencia incluyen
+- El SUT aloja ~29 contenedores ajenos a otros proyectos; las cifras absolutas de CPU/latencia incluyen
   interferencia de esa carga ajena y no son representativas de un host dedicado. Las comparaciones relativas
   (antes/después de cambiar una sola variable) siguen siendo válidas porque la carga ajena era constante en cada
   par de ejecuciones. Se observó que la carga media del host tendía a subir a lo largo de la sesión (línea base
@@ -533,7 +533,7 @@ funcionalmente correcta para un usuario real mientras el servidor gestionaba 300
 - Ambas máquinas de benchmark son portátiles de consumo (de la generación 2013-2017), no hardware de servidor; los
   techos de capacidad medidos aquí son específicos de este hardware y no deben leerse como el límite absoluto de
   eXeLearning.
-- La NIC de carga de Zoidberg es Wi-Fi (medida en ~130 Mbps), un techo a vigilar en escenarios intensivos en ancho
+- La NIC de carga del cliente es Wi-Fi (medida en ~130 Mbps), un techo a vigilar en escenarios intensivos en ancho
   de banda.
 - La comparación "antes" de login-burst con 500 VUs usó una imagen etiquetada aparte
   (`ghcr.io/exelearning/exelearning:exenew-before-authfix`, digest
@@ -567,7 +567,7 @@ significa que no se midió para ese escenario. El detalle completo y los RUN IDs
 | WS inactivo | 1000 | 1 | 305s | 100% | 0% | 1.5% | — | PASA |
 | WS inactivo | 2500 | 1 | 855s | 100% | 0% | 5.3% | — | PASA |
 | WS inactivo | 5000 | 1 (gen. dividido) | 655s | 100% | 0% | 1.7% | — | PASA |
-| WS inactivo | 10000 | 1 (solo Bender) | 1605s | 99.92% | 0.078% | 1.15% | — | PASA |
+| WS inactivo | 10000 | 1 (solo orquestador) | 1605s | 99.92% | 0.078% | 1.15% | — | PASA |
 | Edición normal (1-10 usuarios/proyecto) | 40 | 1 | 130s | 100% | 0% | 1.3% | — | PASA |
 | Ráfaga de login | 500 | 1 | 23-60s | 100%¹ | 0%¹ | — | — | PASA¹ |
 | Humo HA | 10 | 2 | 5s | 100% | 0% | — | — | PASA |
