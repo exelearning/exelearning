@@ -9,6 +9,7 @@
 //   test/load/scripts/run.sh idle-websocket <RUN_ID> -- \
 //       -e TARGET_VUS=1000 -e HOLD_DURATION_S=600 -e RAMP_UP_S=60
 import ws from 'k6/ws';
+import { sleep } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
 import { getConfig, globalVuIndex } from './lib/config.mjs';
 import { login, accountForVu } from './lib/auth.mjs';
@@ -51,7 +52,18 @@ export const options = {
 export default function () {
     const account = accountForVu(config, globalVuIndex());
     const token = login(config, account);
-    if (!token) return;
+    if (!token) {
+        // `ramping-vus` immediately recycles a VU whose iteration returns
+        // into a brand-new iteration if the scenario is still ramping —
+        // without this, a fast-failing login (e.g. the server refusing
+        // connections under overload) creates a self-inflicted retry storm
+        // that can generate orders of magnitude more login attempts than
+        // the nominal ramp rate, swamping the very server we're measuring
+        // and making the real capacity ceiling impossible to see. Sleep
+        // out the rest of this VU's would-be session instead of retrying.
+        sleep(config.holdDurationS);
+        return;
+    }
 
     const project = pickProject(projects, globalVuIndex(), usersPerProject);
     const url = wsUrl(config, project.uuid, token);
@@ -88,6 +100,8 @@ export default function () {
 
     if (!sawOpen) {
         wsConnectFailure.add(1);
+        // Same retry-storm guard as the login-failure path above.
+        sleep(config.holdDurationS);
     } else if (!heldFullDuration) {
         wsUnexpectedClose.add(1);
     }

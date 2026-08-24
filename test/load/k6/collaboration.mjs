@@ -9,6 +9,7 @@
 //   test/load/scripts/run.sh collaboration <RUN_ID> -- \
 //       -e COLLABORATORS=50 -e PROJECT_COUNT=1 -e HOLD_DURATION_S=300
 import ws from 'k6/ws';
+import { sleep } from 'k6';
 import { Counter } from 'k6/metrics';
 import { getConfig, randomBetween, globalVuIndex } from './lib/config.mjs';
 import { login } from './lib/auth.mjs';
@@ -61,7 +62,14 @@ export default function () {
     // test, so one shared identity across all collaborators is correct:
     // the access-check code path costs the same either way.
     const token = login(config, { email: project.ownerEmail, password: config.password });
-    if (!token) return;
+    if (!token) {
+        // See idle-websocket.mjs for why this sleeps instead of returning
+        // immediately: ramping-vus recycles a fast-failing VU into a new
+        // iteration right away, which turns any real server slowdown into
+        // a self-inflicted retry storm.
+        sleep(config.holdDurationS);
+        return;
+    }
 
     const url = wsUrl(config, project.uuid, token);
     let sawOpen = false;
@@ -105,6 +113,7 @@ export default function () {
 
     if (!sawOpen) {
         wsConnectFailure.add(1);
+        sleep(config.holdDurationS);
     } else if (!closedCleanly) {
         wsUnexpectedClose.add(1);
     } else if (heldFullDuration) {

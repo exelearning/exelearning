@@ -12,7 +12,7 @@
 //       -e TARGET_VUS=40 -e USERS_PER_PROJECT=4 -e HOLD_DURATION_S=600
 import http from 'k6/http';
 import ws from 'k6/ws';
-import { check } from 'k6';
+import { check, sleep } from 'k6';
 import { Counter, Trend } from 'k6/metrics';
 import { getConfig, authHeaders, randomBetween, globalVuIndex } from './lib/config.mjs';
 import { login, accountForVu } from './lib/auth.mjs';
@@ -75,7 +75,14 @@ function pollMetadata(token, projectUuid) {
 export default function () {
     const account = accountForVu(config, globalVuIndex());
     const token = login(config, account);
-    if (!token) return;
+    if (!token) {
+        // See idle-websocket.mjs for why this sleeps instead of returning
+        // immediately: ramping-vus recycles a fast-failing VU into a new
+        // iteration right away, which turns any real server slowdown into
+        // a self-inflicted retry storm.
+        sleep(config.holdDurationS);
+        return;
+    }
 
     const project = pickProject(projects, globalVuIndex(), usersPerProject);
     const url = wsUrl(config, project.uuid, token);
@@ -120,6 +127,7 @@ export default function () {
 
     if (!sawOpen) {
         wsConnectFailure.add(1);
+        sleep(config.holdDurationS);
     } else if (!closedCleanly) {
         wsUnexpectedClose.add(1);
     }

@@ -35,7 +35,14 @@ export const options = {
 export default function () {
     const account = accountForVu(config, globalVuIndex());
     const token = login(config, account);
-    if (!token) return;
+    if (!token) {
+        // Without this, a fast-failing login (e.g. the server refusing
+        // connections under overload) iterates far faster than a
+        // successful pass would (which sleeps a think-time below),
+        // turning any real slowdown into a self-inflicted retry storm.
+        sleep(randomBetween(config.thinkTimeMinS, config.thinkTimeMaxS));
+        return;
+    }
 
     const project = pickProject(projects, globalVuIndex(), 1);
     const headers = authHeaders(config, token);
