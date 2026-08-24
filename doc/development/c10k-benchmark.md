@@ -401,7 +401,37 @@ not completed in this session — see [Limitations](#limitations).
 
 ## Collaboration fan-out results
 
-*(Pending.)*
+Deployment: the 2-instance HA stack (`least_conn`, 2 CPUs/instance), same fixed image. All collaborators join a
+single project; `least_conn` spreads them across both instances (confirmed under
+[HA results](#cross-instance-yjs-sync-redis--confirmed-working)), so every number below already includes real
+cross-instance Redis relay cost, not just one instance's local fan-out.
+
+| RUN ID | Collaborators | WS held full duration | Fan-out messages | Fan-out bytes | Instance CPU (each) | Redis CPU |
+|---|---|---|---|---|---|---|
+| E2255-HA2-COLLAB-020-002 | 20 | 20/20 | 3,453 | 799 KB | — | — |
+| E2255-HA2-COLLAB-050-001 | 50 | 50/50 | 28,370 | 6.7 MB | <1% | 5.2% |
+| E2255-HA2-COLLAB-100-001 | 100 | 100/100 | 107,351 | 26 MB | <1% | 0.35%¹ |
+| E2255-HA2-COLLAB-500-001 | 500 | **495/500 (99%)** | 2,861,611 | 700 MB | 13-14% | 6.0% |
+
+¹ Sampled after the burst of activity had already drained; not indicative of sustained load — treat the 50- and
+500-collaborator Redis samples as more representative.
+
+**Result: 500 simultaneous real-time collaborators on a single project — an extreme scenario by the issue's own
+framing (normal is 2-4, "uncommon/extreme" above 10) — worked essentially cleanly** (99% of connections held the
+full session; 5 of 500 dropped, consistent with the known `ramping-vus` last-VU-of-ramp edge case documented under
+the single-instance results, not a fan-out failure) at only 13-14% CPU per instance and 6% on Redis. The
+message-fan-out cost scales roughly with collaborators², as expected for a broadcast room (500 collaborators
+produced ~2.86M relayed messages against ~500×N update sends) — this is the workload shape to watch if collaborator
+counts were ever expected to grow far past what the issue characterizes as already extreme; at 500 it remains well
+within this hardware's headroom.
+
+**Methodology note — a real bug was found and fixed in the test script** (see
+[HA results](#cross-instance-yjs-sync-redis--confirmed-working) for the full account-ownership explanation):
+early runs authenticated collaborators independently of project ownership, causing silent, fast `ACCESS_DENIED`
+cycling that a 100%-technical-success summary did not surface. Fixed by deriving the login account from the
+target project's owner (commit `93137426b`) and, separately, by preventing k6's `ramping-vus` executor from
+retry-storming on any early/failed close (commit `01da221a5`) — both fixes apply to every `ramping-vus`-based
+scenario in this benchmark, not just collaboration.
 
 ## Browser validation
 
