@@ -275,6 +275,20 @@ export async function handleWebSocketOpen(
         return { success: false, error: { code: 4003, reason: access.reason || 'Access denied' } };
     }
 
+    // The token/access checks above both await (JWT verification, a DB
+    // lookup), and Bun does not wait for this async `open` handler before
+    // considering the socket live: the `close` handler can run concurrently
+    // during those awaits. If it did, `ws.data.docName` was still unset at
+    // that point, so `handleWebSocketClose` treated it as 'unknown' and
+    // skipped `roomManager.removeConnection` — no future `close` event will
+    // fire to clean up otherwise, so registering this now-dead socket would
+    // leak it in the room forever (issue #2255 C10k benchmark: this was
+    // measured accumulating thousands of permanently "connected" ghost
+    // entries under concurrent load).
+    if (ws.readyState !== 1) {
+        return { success: false };
+    }
+
     const userId = user.sub;
     const clientId = generateClientId();
 
