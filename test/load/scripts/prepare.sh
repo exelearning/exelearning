@@ -9,13 +9,14 @@
 # Usage:
 #   test/load/scripts/prepare.sh [NUM_PROJECTS] [NUM_USERS]
 #
-# Environment variables (all optional, defaults match the exenew deployment):
-#   BASE_URL              e.g. http://192.168.4.5:8080 (LAN-direct, bypasses Cloudflare)
-#   HOST_HEADER           e.g. exenew.miquistiquis.com
-#   GORDOBOT_SSH          e.g. ernesto@192.168.4.5
-#   GORDOBOT_COMPOSE_DIR  e.g. /home/ernesto/exenew
-#   GORDOBOT_COMPOSE_FILE e.g. docker-compose.yml
-#   GORDOBOT_SERVICE      e.g. exenew
+# Environment variables (BASE_URL/HOST_HEADER/GORDOBOT_SSH/GORDOBOT_COMPOSE_DIR
+# are required — they're specific to your own deployment, no personal default):
+#   BASE_URL              e.g. http://sut-host:8080 (LAN-direct, bypasses any CDN/proxy)
+#   HOST_HEADER           virtual host routed by your reverse proxy, e.g. bench.example.com
+#   GORDOBOT_SSH          e.g. deploy@sut-host
+#   GORDOBOT_COMPOSE_DIR  e.g. /home/deploy/exenew
+#   GORDOBOT_COMPOSE_FILE default: docker-compose.yml
+#   GORDOBOT_SERVICE      default: exenew
 #   BENCH_USER_PREFIX     default: bench-user-
 #   BENCH_USER_DOMAIN     default: exelearning.net
 #   BENCH_PASSWORD        default: Bench1234!
@@ -26,10 +27,10 @@ set -euo pipefail
 NUM_PROJECTS="${1:-20}"
 NUM_USERS="${2:-2}"
 
-BASE_URL="${BASE_URL:-http://192.168.4.5:8080}"
-HOST_HEADER="${HOST_HEADER:-exenew.miquistiquis.com}"
-GORDOBOT_SSH="${GORDOBOT_SSH:-ernesto@192.168.4.5}"
-GORDOBOT_COMPOSE_DIR="${GORDOBOT_COMPOSE_DIR:-/home/ernesto/exenew}"
+: "${BASE_URL:?Set BASE_URL to the target deployment LAN-direct entry point, e.g. BASE_URL=http://sut-host:8080}"
+: "${HOST_HEADER:?Set HOST_HEADER to the virtual host your reverse proxy routes, e.g. HOST_HEADER=bench.example.com}"
+: "${GORDOBOT_SSH:?Set GORDOBOT_SSH to the system-under-test SSH target, e.g. GORDOBOT_SSH=deploy@sut-host}"
+: "${GORDOBOT_COMPOSE_DIR:?Set GORDOBOT_COMPOSE_DIR to the deployment compose directory on that host}"
 GORDOBOT_COMPOSE_FILE="${GORDOBOT_COMPOSE_FILE:-docker-compose.yml}"
 GORDOBOT_SERVICE="${GORDOBOT_SERVICE:-exenew}"
 BENCH_USER_PREFIX="${BENCH_USER_PREFIX:-bench-user-}"

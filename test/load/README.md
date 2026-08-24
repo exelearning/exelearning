@@ -12,7 +12,7 @@ This tooling assumes the three-machine setup used for the benchmark:
 |---|---|---|
 | Controller (source, orchestration, analysis) | Bender (macOS) | this repo |
 | Load generator | Zoidberg (Ubuntu) | runs k6, must not become the bottleneck |
-| System under test | Gordobot (Ubuntu) | runs the eXeLearning deployment under `/home/ernesto/exenew` |
+| System under test | Gordobot (Ubuntu) | runs the eXeLearning deployment under `/home/deploy/exenew` |
 
 Adapt hostnames/IPs via environment variables if you run this elsewhere.
 
@@ -55,11 +55,11 @@ mv /tmp/k6-extracted/k6-v0.55.0-macos-arm64/k6 ~/bin/k6 && chmod +x ~/bin/k6
 ## Methodology notes (read before running)
 
 - **Bypass Cloudflare/WAN.** The test deployment is also reachable at
-  `https://exenew.miquistiquis.com/`, which resolves to Cloudflare and adds
+  `https://bench.example.com/`, which resolves to Cloudflare and adds
   uncontrolled internet latency/limits that have nothing to do with the
   server under test. All scripts instead talk to Gordobot's Traefik
-  **directly over the LAN** (`http://192.168.4.5:8080`) with an explicit
-  `Host: exenew.miquistiquis.com` header, which Traefik uses for routing.
+  **directly over the LAN** (`http://sut-host:8080`) with an explicit
+  `Host: bench.example.com` header, which Traefik uses for routing.
   This works for both plain HTTP and the WebSocket upgrade request. Do not
   point load tests at the public domain.
 - **Many projects, few collaborators.** Per the issue, the primary
@@ -86,7 +86,7 @@ mv /tmp/k6-extracted/k6-v0.55.0-macos-arm64/k6 ~/bin/k6 && chmod +x ~/bin/k6
   required), `curl`, `python3` (already present). `iperf3`/`sysstat` were
   installed via `apt` for one-off network/CPU sanity checks.
 - **Gordobot**: Docker + Docker Compose (already present), the `exenew`
-  deployment under `/home/ernesto/exenew`.
+  deployment under `/home/deploy/exenew`.
 - **Bender**: `ssh` access to both machines, `rsync` (or `scp`) to push this
   directory to Zoidberg before each run, since k6 reads scripts from local
   disk.
@@ -94,7 +94,7 @@ mv /tmp/k6-extracted/k6-v0.55.0-macos-arm64/k6 ~/bin/k6 && chmod +x ~/bin/k6
 Sync the tooling to the load generator whenever scripts change:
 
 ```bash
-rsync -a --delete test/load/ ernesto@192.168.4.8:~/exelearning-load/test/load/
+rsync -a --delete test/load/ deploy@load-gen-host:~/exelearning-load/test/load/
 ```
 
 ## Directory layout
@@ -131,8 +131,8 @@ so the same code runs against any topology. The most common ones:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `BASE_URL` | `http://192.168.4.5:8080` | LAN-direct entry point (Traefik on Gordobot) |
-| `HOST_HEADER` | `exenew.miquistiquis.com` | Virtual host routed by Traefik |
+| `BASE_URL` | `http://sut-host:8080` | LAN-direct entry point (Traefik on Gordobot) |
+| `HOST_HEADER` | `bench.example.com` | Virtual host routed by Traefik |
 | `WS_BASE_URL` | derived from `BASE_URL` | Override if the WS entry point differs (e.g. through the Nginx LB in HA mode) |
 | `BENCH_USER_COUNT` | `2` | Size of the login account pool |
 | `BENCH_PASSWORD` | `Bench1234!` | Password for bench accounts created by `prepare.sh` |
@@ -158,9 +158,9 @@ top up without recreating existing projects.
 ### 2. Smoke test (always run this first)
 
 ```bash
-ssh ernesto@192.168.4.8 '
+ssh deploy@load-gen-host '
   cd ~/exelearning-load &&
-  K6_BIN=~/bin/k6 BASE_URL=http://192.168.4.5:8080 HOST_HEADER=exenew.miquistiquis.com \
+  K6_BIN=~/bin/k6 BASE_URL=http://sut-host:8080 HOST_HEADER=bench.example.com \
   GIT_COMMIT='"$(git rev-parse HEAD)"' GIT_BRANCH='"$(git rev-parse --abbrev-ref HEAD)"' \
   bash test/load/scripts/run.sh smoke E2255-SMOKE-001 -- -e SMOKE_VUS=10
 '
@@ -210,7 +210,7 @@ traffic mixed in:
 bash test/load/scripts/run.sh login-burst E2255-LOGIN-0500-001 -- -e TARGET_VUS=500
 ```
 
-All commands above are run **on Zoidberg** (`ssh ernesto@192.168.4.8` then
+All commands above are run **on Zoidberg** (`ssh deploy@load-gen-host` then
 `cd ~/exelearning-load`), after syncing this directory there. `run.sh`
 stores `run-info.txt` (git commit/branch, k6 version, timestamps),
 `summary.json` (k6's end-of-test summary), `k6.log` (full console output),
@@ -245,7 +245,7 @@ Every reset is appended to `test/load/results/reset-log.txt`.
 
 ## Testing single-instance vs. HA
 
-- **Single instance**: use Gordobot's existing `/home/ernesto/exenew/docker-compose.yml`
+- **Single instance**: use Gordobot's existing `/home/deploy/exenew/docker-compose.yml`
   as-is (one `exenew` service + MariaDB). This is the phase-1 baseline.
 - **HA**: adapt `doc/deploy/docker-compose.redis.yml` + `doc/deploy/nginx-ha.conf`
   (the project's documented HA reference architecture) for the `exenew`

@@ -11,12 +11,12 @@
 #   test/load/scripts/probe-responsiveness.sh <output-file> <duration-s> [interval-s] [path]
 #
 # Environment variables:
-#   BASE_URL      default: http://192.168.4.5:8080
-#   HOST_HEADER   default: exenew.miquistiquis.com
+#   BASE_URL      default: http://localhost:8080
+#   HOST_HEADER   default: derived from BASE_URL's hostname
 #
-# Intended to run on Zoidberg (GNU coreutils/date), alongside the other k6
-# scripts. `date`'s %3N (milliseconds) is a GNU extension and will not work
-# under macOS/BSD date.
+# Intended to run on the load-generator host (GNU coreutils/date), alongside
+# the other k6 scripts. `date`'s %3N (milliseconds) is a GNU extension and
+# will not work under macOS/BSD date.
 
 set -euo pipefail
 
@@ -25,8 +25,8 @@ DURATION_S="$2"
 INTERVAL_S="${3:-0.2}"
 PROBE_PATH="${4:-/healthcheck}"
 
-BASE_URL="${BASE_URL:-http://192.168.4.5:8080}"
-HOST_HEADER="${HOST_HEADER:-exenew.miquistiquis.com}"
+BASE_URL="${BASE_URL:-http://localhost:8080}"
+HOST_HEADER="${HOST_HEADER:-$(printf '%s' "${BASE_URL}" | sed -E 's#^https?://##; s#[:/].*##')}"
 
 mkdir -p "$(dirname "${OUTPUT_FILE}")"
 echo "timestamp_utc,http_code,time_total_s" >"${OUTPUT_FILE}"

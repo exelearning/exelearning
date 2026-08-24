@@ -6,13 +6,13 @@
 #   test/load/scripts/collect-zoidberg.sh <output-file> [label]
 #
 # Environment variables:
-#   ZOIDBERG_SSH  default: ernesto@192.168.4.8
+#   ZOIDBERG_SSH  e.g. deploy@load-generator-host
 
 set -euo pipefail
 
 OUTPUT_FILE="$1"
 LABEL="${2:-snapshot}"
-ZOIDBERG_SSH="${ZOIDBERG_SSH:-ernesto@192.168.4.8}"
+: "${ZOIDBERG_SSH:?Set ZOIDBERG_SSH to the load generator SSH target, e.g. ZOIDBERG_SSH=deploy@load-generator-host}"
 
 mkdir -p "$(dirname "${OUTPUT_FILE}")"
 

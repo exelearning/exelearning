@@ -2,12 +2,14 @@
 
 `docker-compose.ha.yml` is an adaptation of
 [`doc/deploy/docker-compose.redis.yml`](../../../doc/deploy/docker-compose.redis.yml)
-for running the horizontal-scaling phase of the benchmark on Gordobot. It
-differs from the canonical HA reference doc in ways specific to being a
-throwaway benchmark stack rather than a production example:
+for running the horizontal-scaling phase of the benchmark on the
+system-under-test host. It differs from the canonical HA reference doc in
+ways specific to being a throwaway benchmark stack rather than a production
+example:
 
 - Uses the prebuilt `ghcr.io/exelearning/exelearning:exenew` image only (no
-  `build:` context — Gordobot does not have this repository checked out).
+  `build:` context — the system-under-test host does not have this
+  repository checked out).
 - Exposes the Nginx load balancer directly on a host port (`8090` by
   default) instead of routing through Traefik — there is no public domain
   involved in this internal comparison, so Traefik adds nothing but
@@ -20,14 +22,14 @@ throwaway benchmark stack rather than a production example:
 - `APP_ENV=prod` / `APP_DEBUG=0` (the single-instance baseline should be
   tested the same way — see the top-level `test/load/README.md`).
 
-## Deploying on Gordobot
+## Deploying on the system-under-test host
 
 ```bash
-# from Bender:
-rsync -a test/load/deploy/ ernesto@192.168.4.5:/home/ernesto/exenew-ha/
+# from the controller machine:
+rsync -a test/load/deploy/ deploy@sut-host:/home/deploy/exenew-ha/
 
-# from Gordobot:
-cd /home/ernesto/exenew-ha
+# on the system-under-test host:
+cd /home/deploy/exenew-ha
 docker compose -f docker-compose.ha.yml up -d              # 2 instances
 docker compose -f docker-compose.ha.yml --profile ha4 up -d # 4 instances
 docker compose -f docker-compose.ha.yml down -v             # full reset
@@ -36,11 +38,11 @@ docker compose -f docker-compose.ha.yml down -v             # full reset
 Then seed data against it (adjust the compose file/service name):
 
 ```bash
-GORDOBOT_COMPOSE_DIR=/home/ernesto/exenew-ha \
+GORDOBOT_COMPOSE_DIR=/home/deploy/exenew-ha \
 GORDOBOT_COMPOSE_FILE=docker-compose.ha.yml \
 GORDOBOT_SERVICE=exelearning-1 \
-BASE_URL=http://192.168.4.5:8090 \
-HOST_HEADER=exenew.miquistiquis.com \
+BASE_URL=http://sut-host:8090 \
+HOST_HEADER=bench.example.com \
 ../scripts/prepare.sh 200 2
 ```
 

@@ -6,9 +6,9 @@
 # Usage:
 #   test/load/scripts/collect-gordobot.sh <output-file> [label]
 #
-# Environment variables:
-#   GORDOBOT_SSH          default: ernesto@192.168.4.5
-#   GORDOBOT_COMPOSE_DIR  default: /home/ernesto/exenew
+# Environment variables (all required except GORDOBOT_COMPOSE_FILE):
+#   GORDOBOT_SSH          e.g. deploy@sut-host
+#   GORDOBOT_COMPOSE_DIR  e.g. /home/deploy/exenew
 #   GORDOBOT_COMPOSE_FILE default: docker-compose.yml
 
 set -euo pipefail
@@ -16,8 +16,8 @@ set -euo pipefail
 OUTPUT_FILE="$1"
 LABEL="${2:-snapshot}"
 
-GORDOBOT_SSH="${GORDOBOT_SSH:-ernesto@192.168.4.5}"
-GORDOBOT_COMPOSE_DIR="${GORDOBOT_COMPOSE_DIR:-/home/ernesto/exenew}"
+: "${GORDOBOT_SSH:?Set GORDOBOT_SSH to the system-under-test SSH target, e.g. GORDOBOT_SSH=deploy@sut-host}"
+: "${GORDOBOT_COMPOSE_DIR:?Set GORDOBOT_COMPOSE_DIR to the deployment compose directory on that host}"
 GORDOBOT_COMPOSE_FILE="${GORDOBOT_COMPOSE_FILE:-docker-compose.yml}"
 
 mkdir -p "$(dirname "${OUTPUT_FILE}")"

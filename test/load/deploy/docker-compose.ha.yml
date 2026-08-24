@@ -5,8 +5,8 @@
 # internal benchmark stack), and keeps resource limits explicit so every run
 # records exactly what each instance was allowed to use.
 #
-# Deploy alongside/instead of the single-instance docker-compose.yml on
-# Gordobot under /home/ernesto/exenew. See test/load/deploy/README.md.
+# Deploy alongside/instead of the single-instance docker-compose.yml on the
+# system-under-test host. See test/load/deploy/README.md.
 #
 # Usage:
 #   docker compose -f docker-compose.ha.yml up -d                 # 2 instances (default)
@@ -86,7 +86,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik_default"
-      - "traefik.http.routers.exenew-ha.rule=Host(`exenew-ha.miquistiquis.com`)"
+      - "traefik.http.routers.exenew-ha.rule=Host(`${TRAEFIK_HOST:-exenew-ha.localhost}`)"
       - "traefik.http.services.exenew-ha.loadbalancer.server.port=80"
 
   exelearning-1:

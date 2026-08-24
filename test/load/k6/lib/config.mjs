@@ -13,9 +13,15 @@ function envStr(name, fallback) {
     return raw === undefined || raw === '' ? fallback : raw;
 }
 
+// Extracts the hostname (no protocol, no port) from a BASE_URL, used as the
+// HOST_HEADER fallback so config.mjs never needs a hardcoded personal domain.
+function hostnameFromUrl(url) {
+    return url.replace(/^https?:\/\//, '').split(/[/:]/)[0];
+}
+
 export function getConfig() {
-    const baseUrl = envStr('BASE_URL', 'http://192.168.4.5:8080');
-    const hostHeader = envStr('HOST_HEADER', 'exenew.miquistiquis.com');
+    const baseUrl = envStr('BASE_URL', 'http://localhost:8080');
+    const hostHeader = envStr('HOST_HEADER', hostnameFromUrl(baseUrl));
     const wsBaseUrl = envStr('WS_BASE_URL', baseUrl.replace(/^http/, 'ws'));
 
     return {

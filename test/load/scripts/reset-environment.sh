@@ -11,8 +11,8 @@
 #   test/load/scripts/reset-environment.sh --yes "<reason>"
 #
 # Environment variables:
-#   GORDOBOT_SSH          default: ernesto@192.168.4.5
-#   GORDOBOT_COMPOSE_DIR  default: /home/ernesto/exenew
+#   GORDOBOT_SSH          e.g. deploy@sut-host
+#   GORDOBOT_COMPOSE_DIR  e.g. /home/deploy/exenew
 #   GORDOBOT_COMPOSE_FILE default: docker-compose.yml
 
 set -euo pipefail
@@ -24,8 +24,8 @@ if [[ "${1:-}" != "--yes" ]]; then
 fi
 REASON="${2:?A reason is required, e.g. 'switching from single-instance to HA topology'}"
 
-GORDOBOT_SSH="${GORDOBOT_SSH:-ernesto@192.168.4.5}"
-GORDOBOT_COMPOSE_DIR="${GORDOBOT_COMPOSE_DIR:-/home/ernesto/exenew}"
+: "${GORDOBOT_SSH:?Set GORDOBOT_SSH to the system-under-test SSH target, e.g. GORDOBOT_SSH=deploy@sut-host}"
+: "${GORDOBOT_COMPOSE_DIR:?Set GORDOBOT_COMPOSE_DIR to the deployment compose directory on that host}"
 GORDOBOT_COMPOSE_FILE="${GORDOBOT_COMPOSE_FILE:-docker-compose.yml}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
