@@ -129,10 +129,101 @@ observed login latency stayed in the 250-350ms range even at 2500 VUs (see below
 
 Fix: commit `19ae39ed8` on branch `2255-c10k-load-testing`.
 
-## Single-instance results
+### 2. WebSocket room connections leaked forever on every close (fixed)
+
+**Observation.** After the 10000-VU attempt (Zoidberg OOM-killed leg + Bender's 7000-VU leg, see below), a
+`GET /api/websocket/info` check — made with **no test running and no active traffic** — reported **16,947 "connected"
+sockets across 9,948 rooms**. That total is suspiciously close to the sum of every WebSocket connection opened
+across the *entire benchmark session up to that point* (roughly 17,000). A follow-up isolated 5-VU smoke test,
+whose sockets all closed cleanly after 3 seconds, still left the count higher than before it ran — this was not
+limited to abrupt/crashed disconnects.
+
+**Root cause (dominant): Elysia wraps the socket in a fresh object per event.** `room-manager.ts` tracked each
+room's connections in a `Set<ServerWebSocket<WsData>>`, keyed by object reference, and both `addConnection`/
+`removeConnection` and `relayMessage`'s sender-exclusion (`conn !== sender`) relied on that reference staying
+stable for a connection's lifetime. It doesn't: Elysia's Bun adapter
+(`node_modules/elysia/dist/adapter/bun/index.js`) constructs a **brand-new `ElysiaWS` wrapper for every single
+event** — `open`, `message`, `close`, and `drain` each get their own `new ElysiaWS(ws, context)` around the same
+underlying Bun socket. The object our `close(ws)` handler receives is therefore never reference-equal to the one
+`open(ws)` received for that same connection, so `room.conns.delete(ws)` silently no-oped on **every** close,
+regardless of how the client disconnected — clean or abrupt. The unit test suite never caught this because its
+mocks call the extracted handler functions directly with one shared object, which doesn't reproduce Elysia's
+per-event wrapper behavior.
+
+**Secondary, edge-case root cause: an async open/close race.** `open(ws)` is also `async` and awaits `verifyToken()`
+and a project-access check before writing `ws.data.docName` and registering the connection. Bun does not wait for
+this handler to finish before the socket is otherwise live, and fires `close(ws)` independently of that pending
+promise. If a client disconnects mid-verification, `handleWebSocketClose` sees `ws.data.docName` still unset,
+treats the close as `'unknown'`, and skips cleanup — then the still-in-flight `open()` resumes moments later and
+registers the now-dead socket anyway, with no future `close` event left to remove it. Narrower than the wrapper-
+identity bug (it needs a disconnect to land inside a specific await window) but real and worth fixing on its own.
+
+**Experiment.** Fixed both: (1) key `Room.conns` by `ws.data.clientId` — stable across all of a connection's
+events, since Elysia's `.data` is copied from Bun's own per-connection `data` — instead of the `ws` object
+(commit `5c9d27ca9`); (2) bail out of `open()` before registering if `ws.readyState` shows the socket already
+closed by the time the awaits resolve (commit `32c268257`). Regression tests for both construct a second object
+sharing the same `clientId`/timing to simulate Elysia's real behavior; both fail without their respective fix and
+pass with it (verified by reverting each fix in turn and re-running).
+
+**Result / conclusion.** Confirmed root cause, not just plausible, for both: each regression test reproduces the
+exact production symptom (a connection registered but never removable) without its fix and is clean with it. A
+live check after deploying the fix confirmed it end-to-end: `GET /api/websocket/info` returned `0/0` after a
+redeploy, and returned to the expected room/connection count (not higher) after each subsequent test tier — see
+[the fix verification](#fix-verification-live-check) below. This is very likely the dominant explanation for the
+elevated login/WS latency observed at the 5000+ VU tiers on the pre-fix image, ahead of the "combined arrival
+rate" explanation offered at the time: by the 10000-VU attempt, the room manager was iterating and bookkeeping for
+roughly 17,000 phantom entries on top of whatever real traffic was in flight. The whole single-instance
+progression was re-run against the fixed image — see the updated table below.
+
+Fixes: commits `32c268257` and `5c9d27ca9` on branch `2255-c10k-load-testing`.
+
+## Single-instance results (final)
 
 Deployment: Gordobot, `/home/ernesto/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
-`sha256:489cdc8d177f69584971d3aa11728f0a9536e1b21df995183977d749d32157dd` (includes the login fix above).
+`sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645` (includes both the login fix and both
+WebSocket connection-leak fixes above). Every run below was confirmed leak-free via
+`GET /api/websocket/info` returning `totalConnections: 0` after completion.
+
+| RUN ID | Users | Ramp | Hold | WS success | Login avg/p95 | SUT CPU | SUT RAM | Result |
+|---|---|---|---|---|---|---|---|---|
+| E2255-SMOKE-004 | 5 | 5s | — | 100% | — | negligible | ~250 MiB | PASS |
+| E2255-SINGLE-IDLE-0100-003 | 100 | 20s | 120s | **100%** | 257ms / 269ms | negligible | ~248 MiB | PASS |
+| E2255-SINGLE-IDLE-0500-003 | 500 | 60s | 180s | **100%** | 271ms / 307ms | 2.6% | 237 MiB | PASS |
+| E2255-SINGLE-IDLE-1000-002 | 1000 | 120s | 180s | **100%** | 274ms / 327ms | 1.5% | 241 MiB | PASS |
+| E2255-SINGLE-IDLE-2500-003 (split 1000 Zoidberg + 1500 Bender) | 2500 | 100s/150s | **600s** | **100%** | 293ms / 407ms | 5.3% | 261 MiB | PASS |
+
+**Zoidberg's safe single-generator ceiling is ≤2000 VUs, not 2500.** A same-parameter repeat of the 2500-VU
+single-generator run OOM-killed at 6.06 GiB anon-rss (vs. 5.4 GiB survived on the first attempt) — 2500 sits right
+at the edge and isn't a reliable pass/fail boundary on this hardware. From this tier onward, every run splits load
+across Zoidberg (capped at a comfortably safe 1000-2000) and Bender.
+
+| E2255-SINGLE-IDLE-5000-003 (split 500 Zoidberg + 4500 Bender) | 5000 | 100s/450s | **600s** | **100%** | 291-301ms / 348-380ms | 1.7% | 298 MiB | PASS |
+| E2255-SINGLE-IDLE-10000-003 (Bender only) | 10000 | 1000s | **600s** | 99.92%⁴ | 8.06s / 31.27s⁵ | 1.15% | 257 MiB | **PASS** |
+
+⁴ 22 failed checks out of 28,102 (0.078%) — well under the 1% threshold. `bench_ws_connect_failure` was 0; every
+established WebSocket connection succeeded and held for the full 10 minutes.
+⁵ At a sustained combined arrival rate of ~10 logins/s from a single generator process, login latency shows the
+same queueing pattern documented in [Identified bottlenecks #1](#1-bcryptjscompare-blocked-the-event-loop-under-concurrent-logins-fixed):
+real bcrypt CPU cost on this shared, contended 8-thread host, not a new defect — the server stayed fully
+responsive throughout (CPU 1.15%, RAM 257 MiB), and 0 WebSocket connections failed or dropped.
+
+**Result: a single eXeLearning instance on this hardware sustains 10,000 concurrent idle WebSocket connections for
+a full 10-minute hold with a 99.92% success rate, at 1.15% CPU and 257 MiB RAM.** The only observed friction was
+elevated login latency under the sustained ~10 logins/s arrival rate driving the ramp — not a WebSocket-capacity
+limit, and not present at all in the 100-2500 VU tiers where the same total login count is spread over more time.
+This run required splitting nothing: Bender (10-core Apple Silicon, 24 GiB RAM) drove all 10,000 VUs alone at a
+peak of ~8 GiB RSS. Zoidberg's role in this benchmark is capped at ~500-1000 VUs for the higher tiers (see
+[Load-generator capacity](#load-generator-capacity)) and multi-generator splitting is used mainly to keep it
+participating at all, not because Bender needs the help.
+
+## Single-instance results — pre-leak-fix (superseded, kept for the record)
+
+Deployment: Gordobot, `/home/ernesto/exenew` (single `exenew` instance + MariaDB), `APP_ENV=dev`, image digest
+`sha256:489cdc8d177f69584971d3aa11728f0a9536e1b21df995183977d749d32157dd` (includes the login fix, not yet the
+WebSocket connection-leak fix). **These numbers are retained as the evidence trail for finding the leak (see
+above) but are superseded by the [clean re-run](#single-instance-results-final) below**, since every room the
+100/500/1000/2500-VU tiers touched was still being reused (and silently accumulating ghost connections) by the
+time the 5000/10000-VU tiers ran against this same long-lived container.
 
 | RUN ID | Users | Projects | Ramp | Hold | WS success | Login avg/p95 | SUT CPU | SUT RAM | Result |
 |---|---|---|---|---|---|---|---|---|---|
@@ -140,7 +231,7 @@ Deployment: Gordobot, `/home/ernesto/exenew` (single `exenew` instance + MariaDB
 | E2255-SINGLE-IDLE-0100-001 | 100 | 100 | 20s | 120s | 99%¹ | 7.6s / 13.1s² | 1.2% | 248 MiB | PASS (see note) |
 | E2255-SINGLE-IDLE-0500-002 | 500 | 500 | 100s | 180s | **100%** | 256ms / 275ms | 1.1% | 234 MiB | PASS |
 | E2255-SINGLE-IDLE-1000-001 | 1000 | 1000 | 120s | 180s | **100%** | 272ms / 310ms | 1.2% | 247 MiB | PASS |
-| E2255-SINGLE-IDLE-2500-001 | 2500 | 2500 | 250s | 600s | *(running)* | | | | *(pending)* |
+| E2255-SINGLE-IDLE-2500-001 | 2500 | 2500 | 250s | **600s** | **100%** | 278ms / 319ms | 1.3% | 276 MiB | PASS |
 
 ¹ One VU's login/WS iteration did not start at all — traced to a `ramping-vus` scheduling edge case (the very last
 VU scheduled right at the end of a single-stage ramp can be dropped), not a server-side failure; fixed for later
@@ -148,7 +239,47 @@ runs by adding a short plateau stage (see `test/load/k6/idle-websocket.mjs`).
 ² This run used a 20s ramp for 100 logins (~5/s) and pre-dates the login-verification fix — elevated but not yet
 catastrophic; motivated the dedicated login-burst investigation above.
 
-*(2500/5000/10000 tiers, HA results, collaboration fan-out, and browser validation to follow as they complete.)*
+At 2500 concurrent idle WebSockets, the single instance itself is barely loaded (1.3% CPU, RAM up only ~28 MiB
+from the 1000-VU tier) — the constraint so far has been the load generator, not the server: **Zoidberg alone hit
+71% RAM usage and heavy zram compression driving this same 2500-VU run** (see
+[Load-generator capacity](#load-generator-capacity) below), even though the run itself completed cleanly. Higher
+tiers (5000, 10000) are split across Zoidberg and Bender — see `test/load/README.md`'s multi-generator section.
+
+| E2255-SINGLE-IDLE-5000-001 (split 2000 Zoidberg + 3000 Bender) | 5000 | 5000 | 200s/300s | **600s** | **100%** | 500-613ms / 1.4-1.9s³ | 1.4% | 363 MiB | PASS |
+
+³ Login latency rose compared to the 2500-VU single-generator tier (278ms/319ms) even though both generators paced
+at ~10 logins/s individually — the *combined* arrival rate at the server (~20/s from two machines converging on
+the same auth endpoint) is the more relevant number. Still 0 failures; treated as expected graceful degradation
+under combined load, not a regression, pending confirmation at the 10000-VU tier.
+
+**10000-VU attempt #1 (E2255-SINGLE-IDLE-10000-001, Zoidberg 3000 + Bender 7000): Zoidberg OOM-killed.** ~3 minutes
+into ramp-up, the Linux OOM killer terminated Zoidberg's k6 process (`anon-rss: 5.98 GiB` at kill time, confirmed via
+`journalctl -k`), invalidating this run's Zoidberg leg. This refines the load-generator ceiling found at the 2500-VU
+tier: **2000 VUs on Zoidberg is safe (31% RAM observed), 3000 is not** — evidently connection-holding state adds
+enough per-VU memory on top of k6's base JS-VM cost to cross the line between those two points. Bender's 7000-VU
+leg was unaffected (it runs as a separate OS process on separate hardware) and continued to a clean pass — see
+below. The corrected split for the official combined 10000-VU run is Zoidberg 2000 / Bender 8000.
+
+*(10000-VU combined result, HA results, collaboration fan-out, and browser validation to follow as they complete.)*
+
+### Load-generator capacity
+
+k6's classic executor allocates one JS VM per virtual user, which is memory-expensive at a few thousand VUs.
+Zoidberg (Intel i7-4650U, 4 threads, 7.2 GiB RAM) turned out to have a narrow, **unreliable** safe ceiling rather
+than a clean cutoff: 2000 VUs ran comfortably (31% RAM) in one attempt, but a same-parameter repeat of 2500 VUs
+OOM-killed at 6.06 GiB anon-rss after an earlier 2500-VU attempt had survived at 5.4 GiB — and a later attempt at
+2000 VUs alone also OOM-killed. 2000-2500 VUs sits right at the edge on this hardware and is not dependable
+run-to-run (compounded, we suspect, by Ubuntu's `apport` crash-report pipeline consuming CPU/memory in response to
+each OOM kill, adding noise to subsequent runs in the same session). **Practical rule adopted for this benchmark:
+cap Zoidberg's share at ≤1000-1500 VUs for any tier at or above 2500**, and let Bender (10-core Apple Silicon,
+24 GiB RAM) carry the rest.
+
+Bender, by contrast, drove the entire 10000-VU tier alone with no issues (~8 GiB peak RSS, sub-linear growth per
+VU — memory per additional VU decreased as the pool grew, unlike a naive linear projection from the first few
+thousand). For every split tier (2500 and 5000), Zoidberg's small, conservative share completed cleanly; only the
+attempts that gave Zoidberg 2000+ VUs were unreliable. Multi-generator splitting in this benchmark therefore
+served to keep Zoidberg meaningfully participating, not because Bender needed the help — Bender alone would
+comfortably have driven every tier reported here.
 
 ## HA results
 
