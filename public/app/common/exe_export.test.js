@@ -1262,8 +1262,15 @@ describe('exe_export.js', () => {
         iDevice: {
           gamification: {
             scorm: {
+              readActivityState: () => lmsData,
               parseSuspendData: () => lmsData,
               getFinalScore: () => finalScore,
+              // Same rule as the real helper: only states 1 and 2 come from a learner action.
+              hasAttemptedActivity: (data) =>
+                Object.keys(data || lmsData).some((key) => {
+                  const state = (data || lmsData)[key].state;
+                  return state === 1 || state === 2;
+                }),
             },
           },
         },
@@ -1291,6 +1298,58 @@ describe('exe_export.js', () => {
       );
     });
 
+    // A page with nothing to do on it is completed the moment the learner opens it, so the record
+    // does not depend on the browser delivering pagehide. The decision waits for the page to settle
+    // because scored iDevices register asynchronously. (#1831)
+    describe('completeContentOnlyPageOnEntry', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+            window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => '') };
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('completes a content-only page shortly after it loads', () => {
+            stubScormHelpers({}, 0);
+
+            window.$exeExport.completeContentOnlyPageOnEntry(false);
+            vi.advanceTimersByTime(window.$exeExport.delayCompleteContentPage + 10);
+
+            expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'completed');
+            expect(window.scorm.save).toHaveBeenCalled();
+        });
+
+        it('writes nothing while the grace period has not elapsed', () => {
+            stubScormHelpers({}, 0);
+
+            window.$exeExport.completeContentOnlyPageOnEntry(false);
+            vi.advanceTimersByTime(window.$exeExport.delayCompleteContentPage - 10);
+
+            expect(window.scorm.set).not.toHaveBeenCalled();
+        });
+
+        // The signal that matters: a scored iDevice that registered late must cancel the write.
+        it('does not complete a page whose iDevice registered during the grace period', () => {
+            stubScormHelpers({ 1: { state: 0 } }, 0);
+
+            window.$exeExport.completeContentOnlyPageOnEntry(false);
+            vi.advanceTimersByTime(window.$exeExport.delayCompleteContentPage + 10);
+
+            expect(window.scorm.set).not.toHaveBeenCalled();
+        });
+
+        it('never touches a page the DOM scan already knows is scored', () => {
+            stubScormHelpers({}, 0);
+
+            window.$exeExport.completeContentOnlyPageOnEntry(true);
+            vi.advanceTimersByTime(window.$exeExport.delayCompleteContentPage + 10);
+
+            expect(window.scorm.set).not.toHaveBeenCalled();
+        });
+    });
+
     describe('updateScormPageStatus (page status computation)', () => {
       it('completes a content-only page (no evaluable iDevices)', () => {
         window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => '') };
@@ -1304,13 +1363,26 @@ describe('exe_export.js', () => {
         expect(window.scorm.save).toHaveBeenCalled();
       });
 
-      it('marks an evaluable page with no finished entry as incomplete', () => {
+      // "incomplete" now means one thing only: the learner never started an activity here. (#1831)
+      it('marks an evaluable page the learner never started as incomplete', () => {
         window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => '') };
-        stubScormHelpers({}, 0);
+        stubScormHelpers({ 1: { state: 0 } }, 0);
 
         window.$exeExport.updateScormPageStatus(true);
 
         expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+      });
+
+      // Starting is already a verdict: the running score is 0, which is under the threshold.
+      it('fails a page the learner has just started, before any answer', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+        stubScormHelpers({ 1: { state: 1 } }, 0);
+
+        window.$exeExport.updateScormPageStatus(true);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.score.raw', 0);
+        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
       });
 
       it('passes a SCORM 1.2 page when every iDevice is finished and the average passes', () => {
@@ -1344,30 +1416,33 @@ describe('exe_export.js', () => {
         expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
       });
 
-      it('keeps the page incomplete when an iDevice is unfinished in suspend_data', () => {
+      // The verdict does not wait for every iDevice to finish: it reports the score as it stands.
+      it('passes a page whose average already clears the threshold with an iDevice still unfinished', () => {
         window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
         stubScormHelpers({ 1: { state: 2 }, 2: { state: 1 } }, 90);
 
         window.$exeExport.updateScormPageStatus(true);
 
-        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
-        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
       });
 
       it('derives status from suspend_data even when isSCORM is false', () => {
         window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
         stubScormHelpers({ 1: { state: 1 } }, 0);
 
-        // suspend_data already holds an entry, so the page must NOT be auto-completed.
+        // suspend_data already holds a started entry, so the page must NOT be auto-completed; it
+        // carries the verdict its score implies.
         window.$exeExport.updateScormPageStatus(false);
 
-        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'completed');
       });
     });
 
-    it('updateScormPageStatus applies the SAME rule on exit (called by unloadPage)', () => {
-      // unloadPage calls window.$exeExport.updateScormPageStatus(isSCORM) on leave; verify the
-      // shared function preserves a finished/passed page and downgrades an unfinished one.
+    it('updateScormPageStatus applies the SAME rule whoever calls it', () => {
+      // The verdict depends on the score alone, so a finished page and a half-finished one with
+      // the same average get the same status. Only "never started" is treated differently.
       window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
       stubScormHelpers({ 1: { state: 2 }, 2: { state: 2 } }, 80);
       window.$exeExport.updateScormPageStatus(true);
@@ -1375,6 +1450,11 @@ describe('exe_export.js', () => {
 
       window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
       stubScormHelpers({ 1: { state: 2 }, 2: { state: 1 } }, 80);
+      window.$exeExport.updateScormPageStatus(true);
+      expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+
+      window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+      stubScormHelpers({ 1: { state: 0 }, 2: { state: 0 } }, 0);
       window.$exeExport.updateScormPageStatus(true);
       expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
     });

@@ -629,36 +629,94 @@ function loadPage() {
 }
 
 function commitScormProgress() {
+  // A page the learner never started an activity in has nothing to persist, and committing would
+  // create LMS tracking for it mid-visit. It is recorded once, on the way out, by unloadPage.
+  if (pageHasEvaluableIdevices(scormLifecycleState.isSCORM) && !hasAttemptedActivity()) {
+    return;
+  }
   computeTime();
   scorm.save();
 }
 
-function unloadPage(isSCORM) {
-  if (!exitPageStatus) {
-    exitPageStatus = true;
-    scormLifecycleState.finalized = true;
-    // Content-only page: mark completed only if no evaluable entries and status is not terminal.
-    // Pages with iDevice activities (isSCORM === true) are NEVER touched here — writing
-    // page status around their lifecycle breaks live in-game score commits (see commit 0d60db11).
-    if (isSCORM !== true) {
-      var suspendData = scorm.get("cmi.suspend_data") || "";
-      var status = scorm.get("cmi.core.lesson_status") || "";
-      var isTerminal = status === "passed" || status === "failed" || status === "completed";
-      if ((!suspendData || suspendData.trim() === "") && !isTerminal) {
-        scorm.set("cmi.core.lesson_status", "completed");
-      }
-    }
+// Has the learner interacted with any evaluable iDevice? Each entry in cmi.suspend_data ends with
+// "Estado: N" — 0 registered but untouched, 1 started, 2 finished. The canonical format and parser
+// live in common.js (convertToLineFormat / parseSuspendData); this minimal fallback only needs the
+// yes/no answer. Legacy suspend_data predating that field carries no state, and it can only exist
+// because the learner played, so it counts as attempted.
+function hasAttemptedActivity() {
+  var suspendData = scorm.get("cmi.suspend_data") || "";
+  if (suspendData.trim() === "") {
+    return false;
+  }
+  if (suspendData.indexOf("Estado:") === -1) {
+    return true;
+  }
+  return /Estado:\\s*[12]/.test(suspendData);
+}
 
-    // Leaving a page must NOT change the status: the iDevice owns it and only changes it
-    // through learner interaction. Read the status (read-only) to pick the resume mode, then
-    // close the session. A finished SCO exits "" (no resume); anything else stays resumable.
+// Any tracking data at all means this is not a content-only page.
+function pageHasEvaluableIdevices(isSCORM) {
+  var suspendData = scorm.get("cmi.suspend_data") || "";
+  return isSCORM === true || suspendData.trim() !== "";
+}
+
+// Every evaluable iDevice finished? A content-only page counts as finished; an entry still at
+// "Estado: 0" (registered) or "Estado: 1" (started) means the learner has work left.
+function isPageFinished(isSCORM) {
+  if (!pageHasEvaluableIdevices(isSCORM)) {
+    return true;
+  }
+  var suspendData = scorm.get("cmi.suspend_data") || "";
+  if (suspendData.indexOf("Estado:") === -1) {
+    // Legacy suspend_data with no state field: fall back to the status.
     var status = scorm.get("cmi.core.lesson_status");
-    var isTerminal = status === "passed" || status === "failed" || status === "completed";
-    scorm.set("cmi.core.exit", isTerminal ? "" : "suspend");
-    commitScormProgress();
+    return status === "passed" || status === "failed" || status === "completed";
+  }
+  return !/Estado:\\s*[01]/.test(suspendData);
+}
+
+// Leaving a page NEVER writes its status: completion is owned by the learner's interaction with
+// the SCORM iDevices. See SCOFunctions.js for the full rationale of the three cases below.
+function unloadPage(isSCORM) {
+  if (exitPageStatus) {
+    return;
+  }
+
+  exitPageStatus = true;
+  scormLifecycleState.finalized = true;
+
+  // A page with SCORM iDevices the learner never touched is recorded as incomplete on the way
+  // out. The session MUST still be closed: leaving it open makes the next SCO's LMSInitialize
+  // fail with error 101, after which every LMSSetValue/LMSCommit is silently dropped and the
+  // package stops saving. Writing "incomplete" first stops Moodle from promoting a SCO still in
+  // "not attempted" to "completed" inside LMSFinish.
+  if (pageHasEvaluableIdevices(isSCORM) && !hasAttemptedActivity()) {
+    scorm.set("cmi.core.lesson_status", "incomplete");
+    scorm.set("cmi.core.exit", "suspend");
+    computeTime();
+    scorm.save();
     scorm.quit();
     pageLoaded = false;
+    return;
   }
+
+  // Content-only page: completed on the way out, so a course of content pages can still complete.
+  if (!pageHasEvaluableIdevices(isSCORM)) {
+    var status = scorm.get("cmi.core.lesson_status") || "";
+    if (status !== "passed" && status !== "failed" && status !== "completed") {
+      scorm.set("cmi.core.lesson_status", "completed");
+    }
+  }
+
+  // Pick the resume mode, then close the session. A finished SCO exits "" (no resume); anything
+  // else stays resumable. Resumability follows whether the ACTIVITY is finished, never the
+  // pass/fail verdict: the status reports the score as it stands, so a page reads "passed" from
+  // the first good answer, and closing it as "normal" there would end the attempt while the
+  // learner is still working. An entry still at "Estado: 0" or "Estado: 1" means unfinished.
+  scorm.set("cmi.core.exit", isPageFinished(isSCORM) ? "" : "suspend");
+  commitScormProgress();
+  scorm.quit();
+  pageLoaded = false;
 }
 
 function computeTime() {
@@ -675,16 +733,6 @@ function computeTime() {
     var sessionTime = hours + ":" + mins + ":" + secs;
     scorm.set("cmi.core.session_time", sessionTime);
   }
-}
-
-function setComplete() {
-  scorm.set("cmi.core.lesson_status", "completed");
-  scorm.save();
-}
-
-function setIncomplete() {
-  scorm.set("cmi.core.lesson_status", "incomplete");
-  scorm.save();
 }
 
 function setScore(score, maxScore, minScore) {

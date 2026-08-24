@@ -1209,6 +1209,46 @@ var $exeDevices = {
                     return 1;
                 },
 
+                // Has the learner interacted with ANY evaluable iDevice on this page?
+                //
+                // "There are entries in suspend_data" is NOT the same question: registerActivity
+                // inscribes every evaluable iDevice with state 0 on page load, so a page the learner
+                // merely opened already has entries. Only states 1 (started) and 2 (finished) are
+                // written by a learner action, so those are what this looks at.
+                //
+                // This is the line between the two halves of the status model: a page the learner
+                // started carries the verdict its score implies (passed/failed), and a page they
+                // never started is the only one that reads "incomplete". It also gates the
+                // lifecycle commits, so visibilitychange/freeze on an untouched page create no LMS
+                // tracking. Lives here, next to parseSuspendData and getActivityState, because this
+                // file owns the suspend_data format. (#1831)
+                //
+                // @param {Object} [lmsData] parsed suspend_data; read from the LMS when omitted.
+                hasAttemptedActivity: function (lmsData) {
+                    if (lmsData == null) {
+                        lmsData = $exeDevices.iDevice.gamification.scorm.readActivityState();
+                    }
+                    if (!lmsData || typeof lmsData !== 'object') return false;
+
+                    return Object.keys(lmsData).some(key => {
+                        const entry = lmsData[key] || {};
+                        const state = entry.state != null ? entry.state : 0;
+                        return state === 1 || state === 2;
+                    });
+                },
+
+                // Read and parse the per-iDevice state held in cmi.suspend_data. Returns an empty
+                // object when SCORM is unavailable or the data cannot be read, so every caller can
+                // treat the result as "no evaluable iDevices".
+                readActivityState: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM
+                        || typeof pipwerks.SCORM.get !== 'function') {
+                        return {};
+                    }
+                    const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+                    return $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                },
+
                 // Auto-only iDevices (complete, trueorfalse, form, beforeafter,
                 // scrambled-list, rubric, trivial) have no manual save button: they always
                 // save automatically. They must never run in manual mode (2), so legacy data
@@ -1454,11 +1494,21 @@ var $exeDevices = {
 
                 },
 
-                // Restarting a COMPLETED iDevice drops it (and its page) back to incomplete. Called
-                // ONLY from each iDevice's restart/start CLICK handler (a user action), never on page
-                // load: the auto-start/restore paths bypass the click handler. It only acts when this
-                // iDevice is currently completed (stored state === 2), so it is a no-op on a first play
-                // or a plain reopen, which makes it safe to call from the shared "start" button too.
+                // The learner has STARTED this iDevice: its entry moves to state 1 with score 0, and
+                // the page picks up the verdict that score implies — "failed" with 0 until the answers
+                // lift the weighted average to 50 or more. Starting is precisely what takes a page out
+                // of "incomplete", which is reserved for an activity the learner never began. (#1831)
+                //
+                // CALLER CONTRACT: only from a genuine learner action (a start/restart click). An
+                // activity that starts by itself on page load must NOT call this — that would mark the
+                // page as begun without the learner doing anything, which is precisely what #1831
+                // fixes. iDevices with an auto-start path pass a flag to skip it; see
+                // select-media-files' startGame(instance, auto).
+                //
+                // It acts on a first play (stored state 0) and on restarting a finished activity
+                // (stored state 2); it is a no-op when the activity is already in progress (state 1),
+                // so re-entering a half-played activity does not wipe its score.
+                //
                 // It rewrites this iDevice's suspend_data entry to state 1 / score 0 and recomputes the
                 // SCO (page) status immediately, reusing the single status writer from exe_export.js.
                 restartActivity: function (game) {
@@ -1469,16 +1519,16 @@ var $exeDevices = {
                         return;
                     }
 
-                    const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                    const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                    const lmsData = $exeDevices.iDevice.gamification.scorm.readActivityState();
                     const previous = lmsData[game.ideviceNumber];
-                    if (!previous || previous.state !== 2) {
+                    if (!previous || previous.state === 1) {
                         return;
                     }
 
                     lmsData[game.ideviceNumber] = {
                         title: previous.title || game.title,
-                        // A restart clears the previous result: the activity starts over from zero.
+                        // Starting (or starting over) clears any previous result: the activity begins
+                        // from zero. On a first play the stored score is already 0.
                         score: 0,
                         weighted: previous.weighted != null ? previous.weighted : game.weighted,
                         state: 1
@@ -1512,8 +1562,7 @@ var $exeDevices = {
                     }
 
                     if (!lmsData || typeof lmsData !== 'object') {
-                        const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                        lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                        lmsData = $exeDevices.iDevice.gamification.scorm.readActivityState();
                     }
 
                     const newFinalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
@@ -1521,17 +1570,31 @@ var $exeDevices = {
 
                     // Status is owned by learner interaction. On a plain reopen neither flag is set, so we
                     // do NOT touch the LMS data model: the stored status/score are preserved and the page
-                    // only displays them. Once the learner interacts (gameStarted/gameOver) the SCO's
-                    // completion reflects the AGGREGATED state of every evaluable iDevice on the page
-                    // (getActivityState): 0 -> not attempted, 1 -> incomplete (some started, not all
-                    // finished), 2 -> completed (all finished). The pass/fail result (score >= 50 passes)
-                    // is only reported once the page is completed; while it is incomplete the result stays
-                    // "unknown" (2004) / the single lesson_status reads "incomplete" (1.2), so both SCORM
-                    // profiles behave identically.
+                    // only displays them.
+                    //
+                    // Once the learner has started, the status tracks the SCORE, not whether the activity
+                    // is finished: the page reads "failed" while the weighted average is under 50 and
+                    // flips to "passed" as soon as the answers lift it to 50 or more, on every save. The
+                    // only state that means "unfinished" is "incomplete", and it is reserved for a page
+                    // the learner never started (written on exit by unloadPage). SCORM 2004 mirrors 1.2
+                    // exactly: 1.2 has a single cmi.core.lesson_status, where writing passed/failed
+                    // replaces any notion of progress, so 2004 marks completion_status "completed"
+                    // alongside the success_status verdict rather than keeping a separate progress
+                    // notion the 1.2 profile cannot express. (#1831)
                     const sessionActive = game.gameStarted || game.gameOver;
 
                     if (sessionActive) {
                         const pageState = $exeDevices.iDevice.gamification.scorm.getActivityState(lmsData);
+                        // State 0 means no iDevice on the page has been started, which is NOT ours to
+                        // write: "not attempted" is the absence of a write (Moodle rejects it outright
+                        // with error 405, mod/scorm/datamodels/scorm_12.js:73). The caller has just
+                        // moved an iDevice to state 1 or 2, so this only guards against a stale or
+                        // corrupted read -- and the right answer there is to leave the LMS alone.
+                        if (pageState === 0) {
+                            $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
+                            return;
+                        }
+                        const verdict = passed ? "passed" : "failed";
                         // SCORM 1.2 stores everything under cmi.core.* and combines completion+success
                         // in cmi.core.lesson_status; SCORM 2004 splits them and uses cmi.* (no .core.),
                         // plus a normalized cmi.score.scaled. Branching on pipwerks.SCORM.version keeps
@@ -1541,13 +1604,11 @@ var $exeDevices = {
                             pipwerks.SCORM.set("cmi.score.min", 0);
                             pipwerks.SCORM.set("cmi.score.max", 100);
                             pipwerks.SCORM.set("cmi.score.scaled", newFinalScore / 100);
-                            pipwerks.SCORM.set("cmi.completion_status", pageState === 2 ? "completed" : pageState === 1 ? "incomplete" : "not attempted");
-                            pipwerks.SCORM.set("cmi.success_status", pageState === 2 ? (passed ? "passed" : "failed") : "unknown");
+                            pipwerks.SCORM.set("cmi.completion_status", "completed");
+                            pipwerks.SCORM.set("cmi.success_status", verdict);
                         } else {
-                            // SCORM 1.2 folds completion+success into a single cmi.core.lesson_status:
-                            // a completed page reads "passed"/"failed"; otherwise "incomplete"/"not attempted".
                             pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-                            pipwerks.SCORM.set("cmi.core.lesson_status", pageState === 2 ? (passed ? "passed" : "failed") : pageState === 1 ? "incomplete" : "not attempted");
+                            pipwerks.SCORM.set("cmi.core.lesson_status", verdict);
                         }
                         // Single source of truth for the resume/exit token: route every exit write through
                         // pipwerks.SCORM.SetExit — the one function that maps the intent to the version-correct

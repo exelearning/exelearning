@@ -86,6 +86,79 @@ function _markScormFinalized(win) {
   }
 }
 
+// Reach the shared suspend_data helpers in common.js, which owns that format (parseSuspendData /
+// getActivityState / hasAttemptedActivity). Returns null when common.js is not loaded, and every
+// caller then falls back to the pre-existing behaviour rather than reimplementing the parser here.
+function _scormActivityHelpers(win) {
+  win = win || (typeof window !== "undefined" ? window : undefined);
+  var devices = win ? win.$exeDevices : undefined;
+  if (!devices || !devices.iDevice || !devices.iDevice.gamification) {
+    return null;
+  }
+  return devices.iDevice.gamification.scorm || null;
+}
+
+// Per-iDevice state stored in cmi.suspend_data, or {} when it cannot be read.
+function _readActivityState(win) {
+  var helpers = _scormActivityHelpers(win);
+  if (!helpers || typeof helpers.readActivityState != "function") {
+    return {};
+  }
+  return helpers.readActivityState() || {};
+}
+
+// Has the learner interacted with any evaluable iDevice on this page? Falls back to true (today's
+// behaviour: finalize the session) when the helper is unavailable, so a missing common.js can never
+// silently strand an attempt the learner did make.
+function _hasAttemptedActivity(lmsData, win) {
+  var helpers = _scormActivityHelpers(win);
+  if (!helpers || typeof helpers.hasAttemptedActivity != "function") {
+    return true;
+  }
+  return helpers.hasAttemptedActivity(lmsData) === true;
+}
+
+// Does the page carry evaluable SCORM iDevices? Three independent signals, because getting this
+// wrong writes a page status that the learner never earned:
+//   - isSCORM: the DOM scan in exe_export.js. It runs on a timer, so it can still be false when
+//     the learner leaves quickly.
+//   - parsed suspend_data entries: registerActivity inscribes every evaluable iDevice on load.
+//   - raw suspend_data: the pre-existing signal, kept as the answer when common.js (and with it
+//     the parser) is not loaded. Any tracking data at all means this is not a content-only page.
+function _pageHasEvaluableIdevices(isSCORM, lmsData) {
+  if (isSCORM === true) {
+    return true;
+  }
+  if (lmsData && Object.keys(lmsData).length > 0) {
+    return true;
+  }
+  var suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+  return suspendData.trim() !== "";
+}
+
+// Has every evaluable iDevice on the page been finished? This is what decides whether the SCO
+// closes as resumable, and it must be read from the per-iDevice states rather than from the SCO
+// status, which now carries a live pass/fail verdict and says nothing about progress. Falls back
+// to the status only when common.js is unavailable and there is nothing better to go on.
+function _isPageFinished(lmsData, win) {
+  var helpers = _scormActivityHelpers(win);
+  if (helpers && typeof helpers.getActivityState == "function") {
+    return helpers.getActivityState(lmsData) === 2;
+  }
+  var completionStatus = scorm.GetCompletionStatus();
+  var successStatus = scorm.GetSuccessStatus();
+  if (scorm.version == "2004") {
+    return completionStatus == "completed";
+  }
+  return successStatus == "passed" || successStatus == "failed" || successStatus == "completed";
+}
+
+// isSCORM as recorded by registerScormLifecycleHandlers, for callers that pass no argument.
+function _getRegisteredIsScorm(win) {
+  win = win || (typeof window !== "undefined" ? window : undefined);
+  return !!(win && win.__exeScormLifecycleState && win.__exeScormLifecycleState.isSCORM);
+}
+
 /**
  * Pin the SCORM version the package was exported for, before any API discovery.
  *
@@ -176,41 +249,6 @@ function doBack() {
 
 /**
  *
- * @param {*} status
- */
-function doContinue(status) {
-  // Reinitialize Exit to blank
-  scorm.SetExit("");
-
-  var mode = scorm.GetMode();
-
-  if (mode != "review" && mode != "browse") {
-    scorm.SetCompletionStatus(status);
-    var sucess_status;
-    switch (status) {
-      case "completed":
-        sucess_status = "passed";
-      case "incomplete":
-        sucess_status = "failed"
-      default:
-        sucess_status = status
-    }
-    scorm.SetSuccessStatus(sucess_status);
-  }
-
-  computeTime();
-  exitPageStatus = true;
-
-  var result = scorm.save();
-  // NOTE: LMSFinish will unload the current SCO.  All processing
-  //       relative to the current page must be performed prior to calling LMSFinish.
-  result = scorm.quit();
-  pageLoaded = false;
-  _markScormFinalized();
-}
-
-/**
- *
  */
 function doQuit(exitStatus) {
   if (typeof exitStatus == "undefined") {
@@ -240,48 +278,72 @@ function doQuit(exitStatus) {
 ** unloaded through use of some other mechanism... most likely the back
 ** button on the browser.  We'll handle this situation the same way we
 ** would handle a "quit" - as in the user pressing the SCO's quit button.
-** eXe team: we've added this doLMSSetValue here to get tracking working with Moodle
-** cmi.core.lesson_status is now set to 'completed' whenever a sco is unloaded.
-** brent simpson. July 7, 2005. exe@auckland.ac.nz
 **
+** New eXeLearning: LEAVING A PAGE NEVER WRITES ITS STATUS. Completion and success
+** are owned by the learner's interaction with the SCORM iDevices; this function only
+** decides how (and whether) to close the session. Three cases:
 **
-** New eXeLearning: we add a new parameter (isScorm) with a default value (false)
-** In 'normal' pages, the status is set to completed but
-** if the page has a SCORM Quizz and the quizz has not been answered,
-** the status is set to incomplete.
-** José Miguel Andonegi November 17
+**   1. Content-only page (no evaluable iDevice): marked "completed" on the way out, so
+**      a course made of content pages can still complete. This is the one status write
+**      left here and it is deliberate.
+**   2. Page with SCORM iDevices the learner never touched: the session is still closed,
+**      but "incomplete" is written first. THE SESSION MUST ALWAYS BE CLOSED: SCORM
+**      requires a SCO to terminate before the next one initializes, and leaving it open
+**      makes the next SCO's LMSInitialize fail with error 101. After that the wrapper
+**      never sets connection.isActive, so every LMSSetValue/LMSGetValue/LMSCommit is
+**      silently dropped and the WHOLE package stops saving from that page on. And since
+**      LMSFinish makes Moodle promote a SCO still in "not attempted" to "completed"
+**      (mod/scorm/datamodels/scorm_12.js:621-634), writing "incomplete" on the way out is
+**      what stops a page the learner never did from being reported as done. It is the one
+**      status write left for scored pages, it happens only on exit and only when there was
+**      no interaction at all — entering a page still writes nothing.
+**   3. Page with SCORM iDevices the learner did touch: closed as before, reading the
+**      status the iDevice already wrote (read-only) to pick the resume mode.
 **
+** @param {boolean} [isSCORM] - true when the page carries evaluable SCORM iDevices.
+**                              Omitted (pipwerks.nav.goBack/goForward), it is read back
+**                              from the registered lifecycle state.
+** @param {Window} [win] - window holding the shared helpers (defaults to window). The lifecycle
+**                         handlers pass the window they were registered against.
 *******************************************************************************/
-function unloadPage(isSCORM) {
-  if (typeof isSCORM == "undefined") {
-    isSCORM = false;
+function unloadPage(isSCORM, win) {
+  if (typeof isSCORM != "boolean") {
+    isSCORM = _getRegisteredIsScorm(win);
   }
-  if (exitPageStatus != true) {
-    // Content-only page: mark completed only if no evaluable entries and status is not terminal.
-    // Pages with evaluable iDevices (isSCORM === true) are NEVER touched here — writing page
-    // status around their lifecycle breaks live in-game score commits (see commit 0d60db11).
-    if (isSCORM !== true) {
-      var suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-      var status = pipwerks.SCORM.get("cmi.core.lesson_status") || "";
-      var isTerminal = status === "passed" || status === "failed" || status === "completed";
-      if ((!suspendData || suspendData.trim() === "") && !isTerminal) {
-        pipwerks.SCORM.SetCompletionStatus("completed");
-      }
-    }
+  if (exitPageStatus == true) {
+    return;
+  }
 
-    // Leaving a page must NOT change completion/success: those are owned by the
-    // iDevice and only change through learner interaction. Here we only read the
-    // status the iDevice already set (read-only) to pick the resume mode, then
-    // close the session. A finished SCO exits "normal" (no resume); anything else
-    // stays resumable ("suspend"). In SCORM12 completion+success share lesson_status.
-    var completionStatus = scorm.GetCompletionStatus();
-    var successStatus = scorm.GetSuccessStatus();
-    var isScorm2004 = scorm.version == "2004";
-    var isCompleted = isScorm2004
-      ? completionStatus == "completed"
-      : successStatus == "passed" || successStatus == "failed" || successStatus == "completed";
-    doQuit(isCompleted ? "normal" : "suspend");
+  var lmsData = _readActivityState(win);
+
+  if (!_pageHasEvaluableIdevices(isSCORM, lmsData)) {
+    // Read through GetCompletionStatus, which maps to cmi.core.lesson_status in 1.2 and
+    // cmi.completion_status in 2004. Reading the 1.2 key directly made this guard always miss
+    // on 2004 and rewrite a page that was already finished.
+    var status = scorm.GetCompletionStatus();
+    var isTerminal = status === "passed" || status === "failed" || status === "completed";
+    if (!isTerminal) {
+      pipwerks.SCORM.SetCompletionStatus("completed");
+    }
+    doQuit("normal");
+    return;
   }
+
+  if (!_hasAttemptedActivity(lmsData, win)) {
+    pipwerks.SCORM.SetCompletionStatus("incomplete");
+    doQuit("suspend");
+    return;
+  }
+
+  // A finished SCO exits "normal" (no resume); anything else stays resumable ("suspend").
+  //
+  // Resumability must follow whether the ACTIVITY is finished, never the pass/fail verdict. The
+  // status reports the score as it stands, so a page reads "passed" from the first good answer;
+  // deriving resumability from it closed the attempt as "normal" while the learner was still
+  // working, and on re-entry the LMS starts from scratch instead of resuming — the stored
+  // progress is lost. The per-iDevice states in suspend_data are the only honest answer: the page
+  // is finished when every evaluable iDevice reached state 2. (#1831)
+  doQuit(_isPageFinished(lmsData, win) ? "normal" : "suspend");
   // NOTE: don't return anything that resembles a javascript
   //       string from this function or IE will take the liberty of displaying a confirm message box.
 }
@@ -345,6 +407,14 @@ function registerScormLifecycleHandlers(isSCORM, win, doc) {
     if (state.finalized) {
       return;
     }
+    // Nothing to persist on a page the learner never started an activity in: switching tabs or
+    // letting the browser freeze the page is not an interaction, and committing would create LMS
+    // tracking for it mid-visit. Such a page is recorded once, on the way out, by unloadPage.
+    // Content-only pages are exempt from this gate and keep committing their session time.
+    var lmsData = _readActivityState(win);
+    if (_pageHasEvaluableIdevices(state.isSCORM, lmsData) && !_hasAttemptedActivity(lmsData, win)) {
+      return;
+    }
     computeTime();
     if (typeof scorm.save == "function") {
       scorm.save();
@@ -360,7 +430,7 @@ function registerScormLifecycleHandlers(isSCORM, win, doc) {
       return;
     }
     state.finalized = true;
-    unloadPage(state.isSCORM);
+    unloadPage(state.isSCORM, win);
   }
 
   win.addEventListener("pagehide", finalizeOnce, false);
@@ -401,7 +471,6 @@ if (typeof module !== 'undefined' && module.exports) {
         startTimer,
         computeTime,
         doBack,
-        doContinue,
         doQuit,
         unloadPage,
         pinScormVersionFromPage,

@@ -1935,6 +1935,55 @@ describe('common.js $exeDevices', () => {
       expect(scorm.getActivityState({ 1: {} })).toBe(0);
     });
 
+    // The line between the two halves of the status model: a started page carries the verdict its
+    // score implies, a never-started one is the only thing that reads "incomplete". (#1831)
+    it('hasAttemptedActivity distinguishes a registered iDevice from a played one', () => {
+      const scorm = getScorm();
+      // registerActivity inscribes every evaluable iDevice with state 0 on load, so entries
+      // existing is NOT interaction.
+      expect(scorm.hasAttemptedActivity({ 1: { state: 0 }, 2: { state: 0 } })).toBe(false);
+      // Started or finished are both learner actions.
+      expect(scorm.hasAttemptedActivity({ 1: { state: 1 }, 2: { state: 0 } })).toBe(true);
+      expect(scorm.hasAttemptedActivity({ 1: { state: 0 }, 2: { state: 2 } })).toBe(true);
+      // Nothing registered, missing state, or unusable input.
+      expect(scorm.hasAttemptedActivity({})).toBe(false);
+      expect(scorm.hasAttemptedActivity({ 1: {} })).toBe(false);
+      expect(scorm.hasAttemptedActivity('nope')).toBe(false);
+    });
+
+    it('hasAttemptedActivity reads suspend_data from the LMS when given nothing', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const msgs = { msgScore: 'Score', msgWeight: 'Weight' };
+
+      try {
+        const suspendData = scorm.convertToLineFormat(
+          { 1: { title: 'Quiz', score: 0, weighted: 100, state: 0 } },
+          { msgs },
+        );
+        global.pipwerks = { SCORM: { version: '1.2', get: () => suspendData } };
+        expect(scorm.hasAttemptedActivity()).toBe(false);
+
+        const played = scorm.convertToLineFormat(
+          { 1: { title: 'Quiz', score: 80, weighted: 100, state: 1 } },
+          { msgs },
+        );
+        global.pipwerks = { SCORM: { version: '1.2', get: () => played } };
+        expect(scorm.hasAttemptedActivity()).toBe(true);
+
+        // No SCORM at all: nothing was attempted.
+        delete global.pipwerks;
+        expect(scorm.readActivityState()).toEqual({});
+        expect(scorm.hasAttemptedActivity()).toBe(false);
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
     it('marks the SCO passed once three iDevices are completed in sequence (full suspend_data round-trip)', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
@@ -2370,7 +2419,7 @@ describe('common.js $exeDevices', () => {
       }
     });
 
-    it('marks a SCORM 2004 page incomplete while an iDevice is started but not finished', () => {
+    it('fails a SCORM 2004 page whose running score is under the threshold, without waiting for it to finish', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
       global.pipwerks = {
@@ -2406,12 +2455,14 @@ describe('common.js $exeDevices', () => {
           {},
         );
 
-        // The only iDevice is started but not finished (state 1) -> the page aggregates to
-        // "incomplete". The pass/fail result is only reported once completed, so while the page
-        // is incomplete success_status stays "unknown" (same as SCORM 1.2 not showing passed/failed).
+        // The status follows the score, not whether the activity is finished: 0 is under 50, so the
+        // verdict is "failed" already. SCORM 2004 mirrors 1.2, where writing a verdict to the single
+        // lesson_status leaves no separate progress notion, so completion_status goes to "completed"
+        // rather than keeping "incomplete". (#1831)
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0);
-        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'incomplete');
-        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'unknown');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'failed');
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.success_status', 'unknown');
         expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
       } finally {
         if (typeof originalPipwerks === 'undefined') {
@@ -2422,7 +2473,7 @@ describe('common.js $exeDevices', () => {
       }
     });
 
-    it('marks a SCORM 1.2 page incomplete while an iDevice is started but not finished', () => {
+    it('passes a SCORM 1.2 page whose running score already clears the threshold, without waiting for it to finish', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
       global.pipwerks = {
@@ -2458,12 +2509,11 @@ describe('common.js $exeDevices', () => {
           {},
         );
 
-        // The only iDevice is started but not finished (state 1) -> the page is "incomplete".
-        // In SCORM 1.2 the single lesson_status reads "incomplete" (not "passed") until the page
-        // is fully completed, even though the running score would pass.
+        // The iDevice is started but not finished, and the running score is 85. The verdict does
+        // not wait for the activity to finish: the page already reads "passed". (#1831)
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 85);
-        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
-        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
         // An in-progress page stays resumable so the learner can continue where they left off. (#1831)
         expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
         expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('normal');
@@ -2560,7 +2610,7 @@ describe('common.js $exeDevices', () => {
       }
     });
 
-    it('showFinalScore marks the SCO incomplete when a restarted iDevice is no longer finished', () => {
+    it('showFinalScore keeps a restarted page resumable while still reporting its running verdict', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
       global.pipwerks = {
@@ -2580,8 +2630,8 @@ describe('common.js $exeDevices', () => {
 
       try {
         // iDevice 1 was restarted (state 1, not finished); iDevice 2 is still completed (state 2).
-        // The page aggregates to "incomplete"; the pass/fail result is withheld until the page is
-        // completed, so success_status is "unknown" even though the running score would pass.
+        // The verdict follows the running score (80 across both, so "passed"), while cmi.exit still
+        // tracks whether the page is finished — it is not, so it stays resumable. (#1831)
         scorm.showFinalScore(
           {
             1: { title: 'A', score: 80, weighted: 100, state: 1 },
@@ -2597,8 +2647,8 @@ describe('common.js $exeDevices', () => {
           },
         );
 
-        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'incomplete');
-        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'unknown');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'passed');
         // The page is no longer finished, so it must stay resumable ("suspend"), not "normal". (#1831)
         expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
         expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('normal');
@@ -2719,7 +2769,116 @@ describe('common.js $exeDevices', () => {
       }
     });
 
-    it('restartActivity leaves a not-yet-completed or unknown iDevice untouched', () => {
+    it('showFinalScore reads suspend_data from the LMS when the caller passes none', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const msgs = { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' };
+      const store = {
+        'cmi.suspend_data': scorm.convertToLineFormat(
+          { 1: { title: 'A', score: 80, weighted: 100, state: 2 } },
+          { msgs },
+        ),
+      };
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: (k, v) => {
+            store[k] = String(v);
+            return true;
+          },
+          SetExit: () => {},
+        },
+      };
+      document.body.innerHTML = '<span id="eXeScoreNodeScore"></span>';
+
+      try {
+        scorm.showFinalScore(null, {
+          main: '#game',
+          ideviceNumber: 1,
+          title: 'A',
+          gameStarted: false,
+          gameOver: true,
+          msgs,
+        });
+
+        // The stored 80/100 was recovered from cmi.suspend_data, so the SCO passes.
+        expect(store['cmi.core.lesson_status']).toBe('passed');
+        expect(store['cmi.core.score.raw']).toBe('80');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+      }
+    });
+
+    // "not attempted" is the absence of a write, never a value we send: Moodle rejects it
+    // outright on cmi.core.lesson_status with error 405. (#1831)
+    it('showFinalScore writes nothing when the page still aggregates to not attempted', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const store = {};
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: vi.fn((k, v) => {
+            store[k] = String(v);
+            return true;
+          }),
+          SetExit: vi.fn(),
+        },
+      };
+      document.body.innerHTML = '<span id="eXeScoreNodeScore"></span>';
+
+      try {
+        scorm.showFinalScore(
+          { 1: { title: 'A', score: 0, weighted: 100, state: 0 } },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'A',
+            gameStarted: true,
+            gameOver: false,
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalled();
+        // The on-page score display is still refreshed.
+        expect(document.getElementById('eXeScoreNodeScore').textContent).toContain('0/100');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+      }
+    });
+
+    // The learner pressing "start" is what moves the page off "not attempted". Entering the page
+    // never reaches here, which is what keeps an untouched page untouched. (#1831)
+    it('restartActivity moves a freshly registered iDevice (and the page) to incomplete on first start', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const game = { ideviceNumber: 1, title: 'A', weighted: 100, msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+      // As registerActivity leaves it on load: inscribed, never played.
+      const registered = scorm.convertToLineFormat({ 1: { title: 'A', score: 0, weighted: 100, state: 0 } }, game);
+      const updateScormPageStatus = vi.fn();
+      const previousExeExport = window.$exeExport;
+      global.pipwerks = { SCORM: { get: vi.fn(() => registered), set: vi.fn(), save: vi.fn() } };
+      window.$exeExport = { updateScormPageStatus };
+      try {
+        scorm.restartActivity(game);
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 1'));
+        expect(updateScormPageStatus).toHaveBeenCalledWith(true);
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        window.$exeExport = previousExeExport;
+      }
+    });
+
+    it('restartActivity leaves an in-progress or unknown iDevice untouched', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
       const game = { ideviceNumber: 1, title: 'A', weighted: 100, msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
@@ -2728,7 +2887,8 @@ describe('common.js $exeDevices', () => {
       const previousExeExport = window.$exeExport;
       window.$exeExport = { updateScormPageStatus };
       try {
-        // Started but not finished (state 1) -> no change.
+        // Started but not finished (state 1) -> no change: re-entering a half-played activity
+        // must not wipe the score the learner has already earned.
         global.pipwerks = { SCORM: { get: vi.fn(() => started), set: vi.fn(), save: vi.fn() } };
         scorm.restartActivity(game);
         expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();

@@ -19,7 +19,15 @@ pipwerks.debug = { isActive: true };  //Enable (true) or disable (false) for deb
 
 pipwerks.SCORM = { //Define the SCORM object
   version: null, //Store SCORM version.
-  handleCompletionStatus: true, //Whether or not the wrapper should automatically handle the initial completion status
+  // Whether or not the wrapper should automatically handle the initial completion status.
+  // pipwerks ships this ON: connection.initialize() rewrites "not attempted" -> "incomplete" right
+  // after LMSInitialize, so merely OPENING a page marked it as started in the LMS even when the
+  // learner never touched an activity. eXeLearning gives that ownership to the learner instead:
+  // the SCO status only changes through interaction with a SCORM iDevice.
+  // The switch lives here and not in the callers because SEVEN places open the session -- loadPage,
+  // initGame and the window.scorm.init() of adaptative-quiz, form, trueorfalse, interactive-video
+  // and scrambled-list -- so a per-caller opt-out would be six chances to miss one.
+  handleCompletionStatus: false,
   handleExitMode: true, //Whether or not the wrapper should automatically handle the exit mode
   API: {
     handle: null,
@@ -1037,8 +1045,20 @@ pipwerks.SCORM.SetCompletionStatus = function (status) {
     switch (status) {
       case "completed": break;
       case "incomplete": break;
-      case "not attempted": break;
-      case "unknown": if (scorm.version == "1.2") { status = "not attempted"; } break; // "unknown" is only valid for 2004
+      // "not attempted" and "unknown" belong to cmi.completion_status (SCORM 2004 only). SCORM 1.2
+      // splits its vocabulary in two: cmi.core.lesson_status can be READ as "not attempted" but can
+      // only be WRITTEN as passed|completed|failed|incomplete|browsed (RTE §3.4.4). Sending either
+      // one to a 1.2 LMS is refused -- Moodle answers error 405 and drops the write
+      // (mod/scorm/datamodels/scorm_12.js:38-39, L73). "unknown" used to be silently rewritten to
+      // "not attempted" here, which turned a caller's harmless "I don't know" into a value the LMS
+      // rejects outright. In 1.2 the way to express "not attempted" is to write nothing at all.
+      case "not attempted":
+      case "unknown":
+        if (scorm.version != "2004") {
+          trace("pipwerks.SCORM.SetCompletionStatus failed: '" + status + "' is only valid for SCORM 2004.");
+          return;
+        }
+        break;
       case "browsed": if (scorm.version == "2004") { status = "incomplete"; } break; // "browsed" is only valid for 1.2
       // "passed"/"failed" are part of the SCORM 1.2 cmi.core.lesson_status
       // vocabulary (RTE §3.4.4). They used to fall through to the default

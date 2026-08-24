@@ -4,6 +4,13 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 const pipwerks = require('./SCORM_API_wrapper.js');
 globalThis.pipwerks = pipwerks;
 
+// Captured before any beforeEach can overwrite them: these are the values a shipped SCORM
+// package actually runs with.
+const SHIPPED_DEFAULTS = {
+  handleCompletionStatus: pipwerks.SCORM.handleCompletionStatus,
+  handleExitMode: pipwerks.SCORM.handleExitMode,
+};
+
 describe('SCORM_API_wrapper.js', () => {
   let mockAPI12;
   let mockAPI2004;
@@ -458,6 +465,30 @@ describe('SCORM_API_wrapper.js', () => {
 
       // Should not set status
       expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
+    });
+
+    // The two tests above prove the pipwerks mechanism still works both ways. What a shipped
+    // package actually does depends on the DEFAULT, and eXeLearning ships it off: opening a page
+    // must not mark it as started. Status belongs to the learner's interaction with the
+    // iDevices. (#1831)
+    it('ships with automatic completion handling OFF, so opening a page writes no status', () => {
+      expect(SHIPPED_DEFAULTS.handleCompletionStatus).toBe(false);
+
+      pipwerks.SCORM.version = '1.2';
+      pipwerks.SCORM.handleCompletionStatus = SHIPPED_DEFAULTS.handleCompletionStatus;
+      mockAPI12.LMSGetValue.mockReturnValue('not attempted');
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
+
+      expect(pipwerks.SCORM.connection.initialize()).toBe(true);
+
+      expect(mockAPI12.LMSInitialize).toHaveBeenCalledWith('');
+      expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
+    });
+
+    it('still ships with automatic exit handling ON', () => {
+      // Only completion handling was turned off; terminate() must keep stamping cmi.core.exit
+      // for content that never expressed one.
+      expect(SHIPPED_DEFAULTS.handleExitMode).toBe(true);
     });
 
     it('returns false when error code is non-zero after init', () => {
@@ -1012,13 +1043,27 @@ describe('SCORM_API_wrapper.js', () => {
         expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.completion_status', 'completed');
       });
 
-      it('converts unknown to not attempted for SCORM 1.2', () => {
+      // SCORM 1.2 can only be WRITTEN passed|completed|failed|incomplete|browsed. "not attempted"
+      // and "unknown" belong to the 2004 completion vocabulary, and a 1.2 LMS refuses them --
+      // Moodle answers 405 and drops the write. Neither may leave this function on 1.2, and
+      // "unknown" must not be quietly rewritten into the one value that is guaranteed to bounce.
+      // In 1.2, "not attempted" is expressed by writing nothing at all. (#1831)
+      it.each(['not attempted', 'unknown'])('refuses to write %s on SCORM 1.2', (status) => {
         pipwerks.SCORM.version = '1.2';
         vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
 
-        pipwerks.SCORM.SetCompletionStatus('unknown');
+        pipwerks.SCORM.SetCompletionStatus(status);
 
-        expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.lesson_status', 'not attempted');
+        expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
+      });
+
+      it.each(['not attempted', 'unknown'])('writes %s on SCORM 2004, where it is valid', (status) => {
+        pipwerks.SCORM.version = '2004';
+        vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+        pipwerks.SCORM.SetCompletionStatus(status);
+
+        expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.completion_status', status);
       });
 
       it('converts browsed to incomplete for SCORM 2004', () => {

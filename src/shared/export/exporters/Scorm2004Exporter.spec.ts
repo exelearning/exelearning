@@ -531,12 +531,18 @@ describe('Scorm2004Exporter', () => {
             expect(scoFunctions).toContain('unloadPage');
             expect(scoFunctions).toContain('commitScormProgress');
             expect(scoFunctions).toContain('registerScormLifecycleHandlers');
-            expect(scoFunctions).toContain('setComplete');
+            expect(scoFunctions).toContain('hasAttemptedActivity');
             expect(scoFunctions).toContain('setScore');
+            // setComplete/setIncomplete were unreachable helpers that wrote the status behind
+            // the learner's back; completion belongs to the iDevices. (#1831)
+            expect(scoFunctions).not.toContain('function setComplete');
+            expect(scoFunctions).not.toContain('function setIncomplete');
             // SCORM 2004 uses cmi.completion_status instead of cmi.core.lesson_status
             expect(scoFunctions).toContain('cmi.completion_status');
-            expect(scoFunctions).toContain('cmi.success_status');
             expect(scoFunctions).toContain('cmi.score.scaled');
+            // The pass/fail verdict is written by the iDevice from the learner's score, never by
+            // the page lifecycle, so the SCO template has no reason to touch success_status.
+            expect(scoFunctions).not.toContain('cmi.success_status');
         });
 
         it('should register lifecycle handlers without the deprecated unload event (issue #1831)', () => {
@@ -549,14 +555,31 @@ describe('Scorm2004Exporter', () => {
             expect(scoFunctions).not.toMatch(/addEventListener\(\s*["']unload["']/);
         });
 
-        it('should suspend cmi.exit only when the SCO leaves in a non-terminal state', () => {
-            const scoFunctions = exporter.getSco2004Functions();
+        // Resumability follows whether the ACTIVITY is finished, never the pass/fail verdict: the
+        // status reports the score as it stands, so a page is marked completed from the first good
+        // answer. Closing it as "normal" there would end the attempt while the learner is still
+        // working, and the LMS would start from scratch on re-entry instead of resuming. (#1831)
+        it('keeps a half-finished SCO resumable even once it already reports completed', () => {
+            const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
+            sandbox.store['cmi.suspend_data'] = '1. "Quiz"; Score: 75%; Weight: 100%; Estado: 1';
+            sandbox.store['cmi.completion_status'] = 'completed';
+            sandbox.api.registerScormLifecycleHandlers(true);
 
-            // The exit value depends on cmi.completion_status being "completed".
-            expect(scoFunctions).toContain('scormLifecycleState.finalized = true');
-            expect(scoFunctions).toMatch(
-                /cmi\.exit["']\s*,\s*completionStatus\s*===\s*["']completed["']\s*\?\s*["']normal["']\s*:\s*["']suspend["']/,
-            );
+            sandbox.listeners['win:pagehide']({ persisted: false });
+
+            expect(sandbox.sets).toContainEqual(['cmi.exit', 'suspend']);
+            expect(sandbox.counters.quit).toBe(1);
+        });
+
+        it('closes a finished SCO as non-resumable', () => {
+            const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
+            sandbox.store['cmi.suspend_data'] = '1. "Quiz"; Score: 75%; Weight: 100%; Estado: 2';
+            sandbox.store['cmi.completion_status'] = 'completed';
+            sandbox.api.registerScormLifecycleHandlers(true);
+
+            sandbox.listeners['win:pagehide']({ persisted: false });
+
+            expect(sandbox.sets).toContainEqual(['cmi.exit', 'normal']);
         });
 
         describe('SCO template runtime behaviour', () => {
@@ -598,8 +621,13 @@ describe('Scorm2004Exporter', () => {
                 expect(sandbox.counters.quit).toBe(0);
             });
 
+            // suspend_data as common.js writes it: one line per evaluable iDevice, the trailing
+            // "Estado" being 0 (registered on load, never played), 1 (started) or 2 (finished).
+            const suspendEntry = (state: number) => `1. "Quiz"; Score: 75%; Weight: 100%; Estado: ${state}`;
+
             it('does not change completion/success on exit without the exe_export bundle', () => {
-                const { api, listeners, sets } = instantiateScoTemplate(exporter.getSco2004Functions());
+                const { api, listeners, sets, store } = instantiateScoTemplate(exporter.getSco2004Functions());
+                store['cmi.suspend_data'] = suspendEntry(1); // the learner started the activity
                 api.registerScormLifecycleHandlers(true); // page carries a scored iDevice
 
                 listeners['win:pagehide']({ persisted: false });
@@ -614,6 +642,7 @@ describe('Scorm2004Exporter', () => {
             it('does NOT recompute the page status on exit even with the exe_export bundle', () => {
                 const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
                 const recomputed: boolean[] = [];
+                sandbox.store['cmi.suspend_data'] = suspendEntry(1);
                 // Leaving a page must NOT write a page-level status: that interferes with the LMS
                 // per-attempt score tracking. The iDevice owns the status; exit only reads it.
                 (sandbox.win as any).$exeExport = {
@@ -630,6 +659,7 @@ describe('Scorm2004Exporter', () => {
             it('exits normally when the iDevice already completed the SCO', () => {
                 const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
                 sandbox.store['cmi.completion_status'] = 'completed'; // already set by the iDevice
+                sandbox.store['cmi.suspend_data'] = suspendEntry(2);
                 sandbox.api.registerScormLifecycleHandlers(true); // isSCORM=true: page has a scored iDevice
 
                 sandbox.listeners['win:pagehide']({ persisted: false });
@@ -653,7 +683,9 @@ describe('Scorm2004Exporter', () => {
 
             it('does NOT mark completed if the page has iDevice results in suspend_data (SCORM 2004)', () => {
                 const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
-                sandbox.store['cmi.suspend_data'] = '1. "Quiz"; Score: 75%;'; // has entries
+                // Legacy suspend_data, written before the state field existed: it can only exist
+                // because the learner played, so the session is still closed normally.
+                sandbox.store['cmi.suspend_data'] = '1. "Quiz"; Score: 75%;';
                 sandbox.api.registerScormLifecycleHandlers(false);
 
                 sandbox.listeners['win:pagehide']({ persisted: false });
@@ -661,6 +693,33 @@ describe('Scorm2004Exporter', () => {
                 // A page with iDevice results should NOT be forcibly marked completed.
                 expect(sandbox.sets.some(([key]) => key === 'cmi.completion_status')).toBe(false);
                 expect(sandbox.counters.quit).toBe(1);
+            });
+
+            // A page whose iDevices the learner never started is recorded as incomplete, never as
+            // completed. The session is closed all the same — leaving it open makes the next SCO's
+            // Initialize fail and the whole package stops saving. (#1831)
+            it('records an untouched SCORM page as incomplete and still closes the session', () => {
+                const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
+                sandbox.store['cmi.suspend_data'] = suspendEntry(0); // registered, never played
+                sandbox.api.registerScormLifecycleHandlers(true);
+
+                sandbox.listeners['win:pagehide']({ persisted: false });
+
+                expect(sandbox.sets).toContainEqual(['cmi.completion_status', 'incomplete']);
+                expect(sandbox.sets).not.toContainEqual(['cmi.completion_status', 'completed']);
+                expect(sandbox.counters.quit).toBe(1);
+            });
+
+            it('does not commit an untouched SCORM page when the tab becomes hidden', () => {
+                const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
+                sandbox.store['cmi.suspend_data'] = suspendEntry(0);
+                sandbox.api.registerScormLifecycleHandlers(true);
+                sandbox.doc.visibilityState = 'hidden';
+
+                sandbox.listeners['doc:visibilitychange']();
+
+                expect(sandbox.counters.save).toBe(0);
+                expect(sandbox.sets).toEqual([]);
             });
         });
 

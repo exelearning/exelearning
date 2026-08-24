@@ -915,7 +915,9 @@ var $eXeSeleccionaMedias = {
         $('#slcmpGameButtons-' + instance).hide();
 
         if (mOptions.time == 0 && !mOptions.itinerary.showCodeAccess) {
-            $eXeSeleccionaMedias.startGame(instance);
+            // Untimed and unlocked: the game is playable straight away, so it starts itself on
+            // load. That is not a learner action -- see startGame's `auto` flag.
+            $eXeSeleccionaMedias.startGame(instance, true);
         }
 
         $('#slcmpCheck-' + instance).on('click', function (e) {
@@ -1180,10 +1182,16 @@ var $eXeSeleccionaMedias = {
         }
     },
 
-    startGame: function (instance) {
+    // @param {boolean} [auto] - true when the game starts by itself on page load (untimed, no
+    //   access code), which is NOT a learner action. Mirrors the `auto` flag of sendScoreNew.
+    startGame: function (instance, auto) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
-        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
-        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
+        // SCORM: the learner starting (or restarting) the activity drops it (and the page) back to
+        // incomplete. An auto-start must not: the page stays "not attempted" until the learner
+        // answers, which moves it to incomplete through sendScore.
+        if (!auto) {
+            $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
+        }
 
         if (mOptions.gameStarted) return;
 
