@@ -11,7 +11,7 @@
 import ws from 'k6/ws';
 import { Counter } from 'k6/metrics';
 import { getConfig, randomBetween, globalVuIndex } from './lib/config.mjs';
-import { login, accountForVu } from './lib/auth.mjs';
+import { login } from './lib/auth.mjs';
 import { loadProjects, pickProject } from './lib/projects.mjs';
 import { wsUrl, fakeYjsUpdate } from './lib/ws.mjs';
 
@@ -24,6 +24,7 @@ const targetVus = collaborators * projectCount;
 export const wsConnectSuccess = new Counter('bench_ws_connect_success');
 export const wsConnectFailure = new Counter('bench_ws_connect_failure');
 export const wsUnexpectedClose = new Counter('bench_ws_unexpected_close');
+export const wsHeldOpenFullDuration = new Counter('bench_ws_held_open_full_duration');
 export const editsSent = new Counter('bench_edits_sent');
 export const messagesReceived = new Counter('bench_ws_fanout_messages_received');
 export const bytesReceived = new Counter('bench_ws_fanout_bytes_received');
@@ -48,16 +49,24 @@ export const options = {
 };
 
 export default function () {
-    const account = accountForVu(config, globalVuIndex());
-    const token = login(config, account);
-    if (!token) return;
-
     // Restrict to the first `projectCount` projects so `collaborators` VUs
     // pile up on each one, instead of spreading across the whole pool.
     const project = pickProject(projects.slice(0, projectCount), globalVuIndex(), collaborators);
+
+    // New projects default to 'private' visibility (no sharing set up by
+    // prepare.sh), so every collaborator must authenticate as the
+    // project's own owner — cycling through the generic account pool here
+    // would get most VUs an ACCESS_DENIED close right after the WS
+    // handshake. This is a fan-out/relay load test, not an authorization
+    // test, so one shared identity across all collaborators is correct:
+    // the access-check code path costs the same either way.
+    const token = login(config, { email: project.ownerEmail, password: config.password });
+    if (!token) return;
+
     const url = wsUrl(config, project.uuid, token);
     let sawOpen = false;
     let closedCleanly = false;
+    let heldFullDuration = false;
 
     ws.connect(url, { headers: { Host: config.hostHeader } }, socket => {
         socket.on('open', () => {
@@ -89,6 +98,7 @@ export default function () {
         });
 
         socket.setTimeout(() => {
+            heldFullDuration = true;
             socket.close();
         }, config.holdDurationS * 1000);
     });
@@ -97,5 +107,13 @@ export default function () {
         wsConnectFailure.add(1);
     } else if (!closedCleanly) {
         wsUnexpectedClose.add(1);
+    } else if (heldFullDuration) {
+        wsHeldOpenFullDuration.add(1);
     }
+    // else: the socket opened and closed cleanly, but before our own
+    // holdDurationS timer fired — e.g. the server closed it (an
+    // application-level close code such as ACCESS_DENIED). Not counted as
+    // "unexpected" (the close handshake was clean) but also not a full,
+    // useful session — a gap between bench_ws_connect_success and
+    // bench_ws_held_open_full_duration is the signal to look for.
 }
