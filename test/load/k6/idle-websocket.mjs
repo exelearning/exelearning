@@ -50,7 +50,18 @@ export const options = {
 };
 
 export default function () {
-    const account = accountForVu(config, globalVuIndex());
+    const project = pickProject(projects, globalVuIndex(), usersPerProject);
+
+    // New projects default to 'private' visibility (no sharing set up by
+    // prepare.sh), so every VU sharing a project (USERS_PER_PROJECT > 1)
+    // must authenticate as that project's actual owner — accountForVu()
+    // picks independently of which project was chosen and would get most
+    // VUs an ACCESS_DENIED close right after the WS handshake (see
+    // collaboration.mjs for the same issue and fuller explanation).
+    const account =
+        usersPerProject > 1
+            ? { email: project.ownerEmail, password: config.password }
+            : accountForVu(config, globalVuIndex());
     const token = login(config, account);
     if (!token) {
         // `ramping-vus` immediately recycles a VU whose iteration returns
@@ -65,7 +76,6 @@ export default function () {
         return;
     }
 
-    const project = pickProject(projects, globalVuIndex(), usersPerProject);
     const url = wsUrl(config, project.uuid, token);
     const connectStart = Date.now();
     let sawOpen = false;
@@ -104,5 +114,6 @@ export default function () {
         sleep(config.holdDurationS);
     } else if (!heldFullDuration) {
         wsUnexpectedClose.add(1);
+        sleep(config.holdDurationS);
     }
 }

@@ -27,6 +27,7 @@ const usersPerProject = Number(__ENV.USERS_PER_PROJECT) || 1;
 export const wsConnectSuccess = new Counter('bench_ws_connect_success');
 export const wsConnectFailure = new Counter('bench_ws_connect_failure');
 export const wsUnexpectedClose = new Counter('bench_ws_unexpected_close');
+export const wsHeldOpenFullDuration = new Counter('bench_ws_held_open_full_duration');
 export const editsSent = new Counter('bench_edits_sent');
 export const autosaveDuration = new Trend('bench_autosave_duration_ms', true);
 export const metadataPollDuration = new Trend('bench_metadata_poll_duration_ms', true);
@@ -73,7 +74,18 @@ function pollMetadata(token, projectUuid) {
 }
 
 export default function () {
-    const account = accountForVu(config, globalVuIndex());
+    const project = pickProject(projects, globalVuIndex(), usersPerProject);
+
+    // New projects default to 'private' visibility (no sharing set up by
+    // prepare.sh), so every VU sharing a project (USERS_PER_PROJECT > 1)
+    // must authenticate as that project's actual owner — accountForVu()
+    // picks independently of which project was chosen and would get most
+    // VUs an ACCESS_DENIED close right after the WS handshake (see
+    // collaboration.mjs for the same issue and fuller explanation).
+    const account =
+        usersPerProject > 1
+            ? { email: project.ownerEmail, password: config.password }
+            : accountForVu(config, globalVuIndex());
     const token = login(config, account);
     if (!token) {
         // See idle-websocket.mjs for why this sleeps instead of returning
@@ -84,10 +96,10 @@ export default function () {
         return;
     }
 
-    const project = pickProject(projects, globalVuIndex(), usersPerProject);
     const url = wsUrl(config, project.uuid, token);
     let sawOpen = false;
     let closedCleanly = false;
+    let heldFullDuration = false;
 
     ws.connect(url, { headers: { Host: config.hostHeader } }, socket => {
         socket.on('open', () => {
@@ -121,6 +133,7 @@ export default function () {
         });
 
         socket.setTimeout(() => {
+            heldFullDuration = true;
             socket.close();
         }, config.holdDurationS * 1000);
     });
@@ -130,5 +143,13 @@ export default function () {
         sleep(config.holdDurationS);
     } else if (!closedCleanly) {
         wsUnexpectedClose.add(1);
+    } else if (heldFullDuration) {
+        wsHeldOpenFullDuration.add(1);
+    } else {
+        // Opened and closed cleanly, but before our own holdDurationS timer
+        // fired — e.g. an application-level close code. Guard against a
+        // retry storm the same way a real failure does; see
+        // idle-websocket.mjs.
+        sleep(config.holdDurationS);
     }
 }

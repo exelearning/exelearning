@@ -118,11 +118,14 @@ export default function () {
         wsUnexpectedClose.add(1);
     } else if (heldFullDuration) {
         wsHeldOpenFullDuration.add(1);
+    } else {
+        // The socket opened and closed cleanly, but before our own
+        // holdDurationS timer fired — e.g. the server closed it (an
+        // application-level close code such as ACCESS_DENIED). Not counted
+        // as "unexpected" (the close handshake was clean) but also not a
+        // full, useful session — a gap between bench_ws_connect_success and
+        // bench_ws_held_open_full_duration is the signal to look for. Sleep
+        // to guard against a retry storm the same way a real failure does.
+        sleep(config.holdDurationS);
     }
-    // else: the socket opened and closed cleanly, but before our own
-    // holdDurationS timer fired — e.g. the server closed it (an
-    // application-level close code such as ACCESS_DENIED). Not counted as
-    // "unexpected" (the close handshake was clean) but also not a full,
-    // useful session — a gap between bench_ws_connect_success and
-    // bench_ws_held_open_full_duration is the signal to look for.
 }
