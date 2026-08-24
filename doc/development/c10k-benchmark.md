@@ -343,8 +343,38 @@ responded correctly to real HTTP requests — and since Traefik excludes contain
 route silently never appeared. Removed the healthcheck (commit `ff3851d40`); nothing in the compose file depends
 on Nginx's own health.
 
-*(Nginx `worker_connections` default-vs-tuned comparison, HA capacity progression, and 4-instance scaling to
-follow.)*
+### `worker_connections` default vs tuned — confirmed, after correcting a confound
+
+**First attempt was confounded, and the confound is itself a useful finding.** The first try at this comparison
+ran 5000 VUs against `nginx-baseline-default.conf` (`worker_connections 1024`) and saw a catastrophic 99.94%
+failure rate. Re-running the *identical* load against `nginx-tuned-ip-hash.conf` (same `ip_hash` algorithm, only
+`worker_connections`/`worker_rlimit_nofile` raised) produced an equally catastrophic 99.98% failure — proof the
+first result wasn't about Nginx at all. `docker stats` showed both `exelearning` instances pegged at their
+container CPU limit (203%/202% of a 2-CPU cap) throughout. The real cause, found by checking the raw request log:
+k6's `ramping-vus` executor immediately recycles a VU whose iteration returns early into a **brand-new iteration**
+if the scenario is still ramping. Once the CPU-limited instances started failing logins under the bcrypt cost
+documented in [bottleneck #1](#1-bcryptjscompare-blocked-the-event-loop-under-concurrent-logins-fixed), every
+failed VU retried near-instantly — one run generated **255,431 failed login attempts at ~1000/s** against a
+nominal ~10-20/s ramp, a self-inflicted retry storm that swamped the very ceiling being measured. Fixed by making
+every scenario using `ramping-vus` sleep out its session on failure instead of returning immediately (commit
+`01da221a5`, `test/load/k6/{idle-websocket,normal-editing,collaboration,api}.mjs`).
+
+**Clean re-run, one variable changed (same 1000 VUs, same 2-CPU-per-instance limit, same `ip_hash` algorithm, only
+`worker_connections`/`worker_rlimit_nofile` differ):**
+
+| Config | Login success | WS held full duration | Instance CPU (post-run) |
+|---|---|---|---|
+| `nginx-baseline-default.conf` (`worker_connections 1024`) | 58.4% (584/1000) | 537/1000 | — |
+| `nginx-tuned-ip-hash.conf` (`worker_connections 32768`, `worker_rlimit_nofile 200000`) | **100% (1000/1000)** | **1000/1000** | 14.6% / 9.2% |
+
+**Confirmed, not just plausible: the default `worker_connections 1024` is a real, reachable bottleneck** — at
+1000 concurrent WebSocket connections behind a 2-instance HA deployment, it caused 42% of connections to fail
+outright, while the tuned value handled the identical load with 0 failures and left the backend instances at
+under 15% CPU (nowhere near their own limit — Nginx's own connection ceiling was the sole constraint). This
+directly validates the issue's own suggested tuned values.
+
+*(HA capacity progression and 4-instance scaling not completed in this session — see
+[Limitations](#limitations).)*
 
 ## Collaboration fan-out results
 
