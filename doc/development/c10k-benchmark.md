@@ -376,6 +376,29 @@ directly validates the issue's own suggested tuned values.
 *(HA capacity progression and 4-instance scaling not completed in this session — see
 [Limitations](#limitations).)*
 
+## Realistic editing workload results
+
+Deployment: single instance, same fixed image as the [final single-instance results](#single-instance-results-final).
+40 VUs, randomized 5-20s update interval alternating Yjs updates (60%), metadata polls (25%), and autosaves (15%),
+across the issue's suggested users-per-project ratios. **Test-script bug found and fixed along the way**: with
+`USERS_PER_PROJECT > 1`, the account-selection logic picked independently of which project was assigned, so most
+VUs sharing a project got an `ACCESS_DENIED` close instead of a real session — invisible in the first run's 0%
+technical failure rate (748 WS "successes" for a 40-VU target, only surfaced by comparing against
+`bench_ws_held_open_full_duration`). Fixed the same way as `collaboration.mjs` (commit `1d2f4d573`):
+authenticate as the project's actual owner whenever multiple VUs share it.
+
+| Users/project | Projects | WS held full duration | Edits sent | Autosave avg/p95 | Metadata poll avg/p95 |
+|---|---|---|---|---|---|
+| 1 | 40 | 40/40 | 179 | 22ms / 40ms | 10ms / 14ms |
+| 2 | 20 | 40/40 | 160 | 16ms / 22ms | 7ms / 9ms |
+| 4 | 10 | 40/40 | 146 | — | — |
+| 10 | 4 | 40/40 | 164 | — | — |
+
+All four ratios: 100% checks, 0 failures, SUT at 1.3% CPU / 239 MiB RAM throughout — this workload shape (small
+periodic messages + occasional REST calls) is far cheaper than raw idle-connection count at this scale, and
+nowhere near stressing the instance. A larger-scale run (hundreds to thousands of VUs at these same ratios) was
+not completed in this session — see [Limitations](#limitations).
+
 ## Collaboration fan-out results
 
 *(Pending.)*
