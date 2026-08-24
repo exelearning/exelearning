@@ -354,6 +354,7 @@ describe('electrical-circuits iDevice export', () => {
         function setupShow(slides) {
             document.body.innerHTML = `
                 <div id="elcpGameContainer-0"></div>
+                <div id="elcpTikzPreview-0"></div>
                 <button id="elcpShowPrev-0"></button>
                 <button id="elcpShowNext-0"></button>
             `;
@@ -369,10 +370,48 @@ describe('electrical-circuits iDevice export', () => {
             vi.spyOn($eXeEC, 'saveEvaluation').mockImplementation(() => {});
         }
 
-        it('completes immediately when there is a single circuit (all slides visited)', () => {
+        // A single circuit has no "next" to reach, so it completes on the learner's first use of
+        // the viewer -- never on load, which would report work nobody did and close the attempt as
+        // non-resumable. (#1831)
+        it('does not complete a single-circuit activity on load', () => {
             setupShow(1);
             $eXeEC.initShowMode(0);
+            expect($eXeEC.options[0].gameOver).toBeFalsy();
+            expect($eXeEC.sendScore).not.toHaveBeenCalled();
+        });
+
+        it('completes a single-circuit activity once the learner uses the viewer', () => {
+            setupShow(1);
+            $eXeEC.options[0].isScorm = 1;
+            $eXeEC.initShowMode(0);
+
+            $('#elcpTikzPreview-0').trigger('pointerdown');
+
             expect($eXeEC.options[0].gameOver).toBe(true);
+            expect($eXeEC.sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+        it('completes a single-circuit activity from the keyboard too, and only once', () => {
+            setupShow(1);
+            $eXeEC.options[0].isScorm = 1;
+            $eXeEC.initShowMode(0);
+
+            $('#elcpTikzPreview-0').trigger('keydown');
+            $('#elcpTikzPreview-0').trigger('pointerdown');
+
+            expect($eXeEC.sendScore).toHaveBeenCalledTimes(1);
+        });
+
+        // It used to rewrite the score on every visit when the stored one was below the minimum,
+        // which pushed up a mark the learner had not earned. (#1831)
+        it('never writes a score on load, even with a low previous one stored', () => {
+            setupShow(2);
+            $eXeEC.options[0].isScorm = 1;
+            $eXeEC.previousScore = '1';
+
+            $eXeEC.initShowMode(0);
+
+            expect($eXeEC.sendScore).not.toHaveBeenCalled();
         });
 
         it('stays incomplete until the last circuit is reached', () => {

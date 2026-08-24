@@ -674,25 +674,21 @@ var $eXeEC = {
         // Show first circuit
         $eXeEC.showCircuitAtIndex(0, instance);
 
-        // With a single circuit, showing it means every slide has been visited, so the
-        // exploration is already complete (SCORM state -> completed).
+        // With a single circuit there is no "next" to reach, so the exploration completes as soon
+        // as the learner uses the viewer. It must NOT complete on load: the SCO status belongs to
+        // the learner's interaction, and marking the page completed for merely opening it reports
+        // work nobody did — and closes the attempt as non-resumable on the way out. Waiting for the
+        // first pointer or key press on the viewer keeps the meaning ("seeing it is doing it")
+        // without inventing the interaction. (#1831)
         if (mOptions.selectsGame.length <= 1) {
-            mOptions.gameOver = true;
-            if (mOptions.isScorm > 0) {
-                $eXeEC.sendScore(true, instance);
-            }
-            $eXeEC.saveEvaluation(instance);
-        }
-
-        // Save initial score only if previous > 0 and below minimum
-        const previous = parseFloat($eXeEC.previousScore) || 0;
-        const minScore = (1 * 10) / mOptions.selectsGame.length;
-        if (previous > 0 && previous < minScore) {
-            mOptions.scorerp = minScore;
-            if (mOptions.isScorm > 0) {
-                $eXeEC.sendScore(true, instance);
-            }
-            $eXeEC.saveEvaluation(instance);
+            $(`#elcpTikzPreview-${instance}`).one('pointerdown keydown', () => {
+                if (mOptions.gameOver) return;
+                mOptions.gameOver = true;
+                if (mOptions.isScorm > 0) {
+                    $eXeEC.sendScore(true, instance);
+                }
+                $eXeEC.saveEvaluation(instance);
+            });
         }
 
         // Navigation events

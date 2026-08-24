@@ -400,6 +400,7 @@ describe('3dmol iDevice export', () => {
         function setupShow(slides) {
             document.body.innerHTML = `
                 <div id="dmolpGameContainer-0"></div>
+                <div id="dmolpModelPreview-0" tabindex="0"></div>
                 <button id="dmolpShowPrev-0"></button>
                 <button id="dmolpShowNext-0"></button>
             `;
@@ -416,10 +417,48 @@ describe('3dmol iDevice export', () => {
             vi.spyOn(dmol, 'saveEvaluation').mockImplementation(() => {});
         }
 
-        it('completes immediately when there is a single model (all slides visited)', () => {
+        // A single model has no "next" to reach, so it completes on the learner's first use of the
+        // viewer -- never on load, which would report work nobody did and close the attempt as
+        // non-resumable. (#1831)
+        it('does not complete a single-model activity on load', () => {
             setupShow(1);
             dmol.initShowMode(0);
+            expect(dmol.options[0].gameOver).toBeFalsy();
+            expect(dmol.sendScore).not.toHaveBeenCalled();
+        });
+
+        it('completes a single-model activity once the learner uses the viewer', () => {
+            setupShow(1);
+            dmol.options[0].isScorm = 1;
+            dmol.initShowMode(0);
+
+            $('#dmolpModelPreview-0').trigger('pointerdown');
+
             expect(dmol.options[0].gameOver).toBe(true);
+            expect(dmol.sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+        it('completes a single-model activity from the keyboard too, and only once', () => {
+            setupShow(1);
+            dmol.options[0].isScorm = 1;
+            dmol.initShowMode(0);
+
+            $('#dmolpModelPreview-0').trigger('keydown');
+            $('#dmolpModelPreview-0').trigger('pointerdown');
+
+            expect(dmol.sendScore).toHaveBeenCalledTimes(1);
+        });
+
+        // It used to rewrite the score on every visit when the stored one was below the minimum,
+        // which pushed up a mark the learner had not earned. (#1831)
+        it('never writes a score on load, even with a low previous one stored', () => {
+            setupShow(2);
+            dmol.options[0].isScorm = 1;
+            dmol.previousScore = '1';
+
+            dmol.initShowMode(0);
+
+            expect(dmol.sendScore).not.toHaveBeenCalled();
         });
 
         it('stays incomplete until the last model is reached', () => {

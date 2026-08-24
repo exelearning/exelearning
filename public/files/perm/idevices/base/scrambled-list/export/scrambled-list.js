@@ -201,6 +201,13 @@ var $scrambledlist = {
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
 
+        // updateConfig flags the new-format data as gameStarted; reset it BEFORE registering so the
+        // shared SCORM helper does not treat page load as an active session. registerActivity ends
+        // in showFinalScore, which writes the SCO status whenever gameStarted or gameOver is set —
+        // so leaving the flag on made merely opening the page write a status. sendScore sets the
+        // flags itself when the learner presses Comprobar. (#1831)
+        ldata.gameStarted = false;
+
         if (
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0

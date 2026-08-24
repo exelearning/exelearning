@@ -278,6 +278,30 @@ describe('scrambled-list iDevice export', () => {
       expect($scrambledlist.initScormData).toBeUndefined();
       expect($scrambledlist.endScorm).toBeUndefined();
     });
+
+    // updateConfig flags the data as gameStarted, and registerActivity ends in showFinalScore,
+    // which writes the SCO status whenever gameStarted or gameOver is set. Registering with the
+    // flag still on made merely opening the page write a status. (#1831)
+    it('registers with gameStarted cleared so opening the page writes no status', () => {
+      const scormHelpers = $exeDevices.iDevice.gamification.scorm;
+      const prevRegister = scormHelpers.registerActivity;
+      const registerActivity = vi.fn();
+      scormHelpers.registerActivity = registerActivity;
+      document.body.innerHTML = '<div class="idevice_node" id="sl-2"></div>';
+
+      try {
+        // updateConfig sets it; renderBehaviour must clear it before registering.
+        expect($scrambledlist.updateConfig({ id: 'sl-2', isScorm: 1, options: [] }, 'sl-2').gameStarted).toBe(true);
+
+        $scrambledlist.renderBehaviour({ id: 'sl-2', isScorm: 1, options: [] }, 0, 'sl-2');
+
+        expect(registerActivity).toHaveBeenCalled();
+        expect(registerActivity.mock.calls[0][0].gameStarted).toBe(false);
+      } finally {
+        scormHelpers.registerActivity = prevRegister;
+        document.body.innerHTML = '';
+      }
+    });
   });
 
   describe('check finalizes the SCORM activity on Comprobar', () => {

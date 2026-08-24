@@ -696,7 +696,6 @@ var $form = {
 
                 data.counter--;
                 $form.updateTime(data.counter, data.id);
-                gameStarted = false;
                 if (data.counter <= 0) {
                     $form.gameOver(data);
                 }
