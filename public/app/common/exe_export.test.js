@@ -1981,6 +1981,53 @@ describe('exe_export.js', () => {
       window.$ = originalJQuery;
     });
 
+    it('click handler keeps the deep-link fragment and other params', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML =
+        '<li><a href="html/page.html#block-7">A</a></li>' +
+        '<li><a href="html/page.html?exe-teacher=1#block-7">B</a></li>' +
+        '<li><a href="html/page.html?nav=false#block-7">C</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        if (selector === '#siteNav') result.is = vi.fn(() => false);
+        return result;
+      });
+
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      const links = [...wrapper.querySelectorAll('a')];
+      links.forEach((link) => clickHandler.call(link));
+
+      expect(links.map((l) => l.getAttribute('href'))).toEqual([
+        'html/page.html?nav=false#block-7',
+        'html/page.html?exe-teacher=1&nav=false#block-7',
+        'html/page.html?nav=false#block-7',
+      ]);
+
+      window.$ = originalJQuery;
+    });
+
     it('click handler does not add nav=false when siteNav is visible', () => {
       const wrapper = document.createElement('div');
       wrapper.id = 'exe-client-search-results-list';

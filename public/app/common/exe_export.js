@@ -770,9 +770,9 @@ $exeExport.searchBar = {
         }
         $("#exe-client-search-results-list a").on("click", function(){
             if (!$("#siteNav").is(":visible")) {
-                // Use & if URL already has parameters, otherwise use ?
-                var separator = this.href.indexOf('?') !== -1 ? '&' : '?';
-                this.href += separator + 'nav=false';
+                // Search hits are deep links (html/page.html#block-id), so the
+                // parameter has to go before the fragment, not after it.
+                this.setAttribute('href', $exeExport.setUrlParam(this.getAttribute('href'), 'nav', 'false'));
             }
             // Close search box and restore page content
             $("main > header, main div.page-content").show();
