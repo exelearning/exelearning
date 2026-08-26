@@ -29,6 +29,7 @@ import type { Kysely } from 'kysely';
 import { withJwtAuth, enforceProjectAccess } from '../utils/route-auth';
 
 import {
+    getFilesDir as getFilesDirDefault,
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     resolveAssetStoragePath as resolveAssetStoragePathDefault,
     tryResolveAssetStoragePath as tryResolveAssetStoragePathDefault,
@@ -76,6 +77,7 @@ export interface AssetsQueries {
  * File helper dependencies for assets routes
  */
 export interface AssetsFileHelperDeps {
+    getFilesDir: typeof getFilesDirDefault;
     getOdeSessionTempDir: typeof getOdeSessionTempDirDefault;
     resolveAssetStoragePath: typeof resolveAssetStoragePathDefault;
     tryResolveAssetStoragePath: typeof tryResolveAssetStoragePathDefault;
@@ -118,6 +120,7 @@ export interface AssetsDependencies {
  * Default file helper dependencies
  */
 const defaultFileHelper: AssetsFileHelperDeps = {
+    getFilesDir: getFilesDirDefault,
     getOdeSessionTempDir: getOdeSessionTempDirDefault,
     resolveAssetStoragePath: resolveAssetStoragePathDefault,
     tryResolveAssetStoragePath: tryResolveAssetStoragePathDefault,
@@ -294,6 +297,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
     // Variable shadowing for file-helper functions
     const {
+        getFilesDir,
         getOdeSessionTempDir: _getOdeSessionTempDir, // Kept for DI interface, unused for asset storage
         resolveAssetStoragePath,
         tryResolveAssetStoragePath,
@@ -573,7 +577,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     // BEFORE any async operation, otherwise multiple chunks enter the if block
                     // and overwrite each other's uploadedChunks Set
                     if (!chunkUploads.has(uploadKey)) {
-                        const chunksRoot = path.join(process.cwd(), 'data', 'chunks');
+                        // Chunks are staged under the configured files directory so they
+                        // stay on the persistent data volume (#2283).
+                        const chunksRoot = path.join(getFilesDir(), 'chunks');
                         const chunkDir = safeJoin(chunksRoot, projectId, identifier);
                         chunkUploads.set(uploadKey, {
                             projectId,
