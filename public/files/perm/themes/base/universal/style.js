@@ -15,6 +15,7 @@
 var eXeUniversalStyle = {
     breadcrumbs : true,
     dropdownNavigation : true,
+    darkModeWebSiteOnly : true,
     init: function () {
         // Common functions
         var togglers = '';
@@ -31,6 +32,11 @@ var eXeUniversalStyle = {
             ';
         }
         if (!$('body').hasClass('exe-web-site')) {
+            // The stored choice is restored at parse time, before the format is known
+            if (this.darkModeWebSiteOnly) {
+                $('html').removeClass('exe-dark-mode');
+                return;
+            }
             $('.package-header').prepend(togglers);
             // Dark mode
             eXeUniversalStyle.darkMode.init();

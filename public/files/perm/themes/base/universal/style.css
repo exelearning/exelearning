@@ -117,11 +117,12 @@ body#tinymce {
 
 /* Customize the color of the Effects */
 .exe-content .exe-accordion {
-    border: 1px solid #e3e3e3;
+    border: 1px solid #d0d0d0;
 }
 .exe-content .fx-accordion-title {
     background: #fff;
-    border-color: #e3e3e3;
+    /* exe_effects.js writes border-color inline on every title */
+    border-color: #d0d0d0 !important;
     position: relative;
 }
 .exe-content .fx-accordion-title:after {
@@ -171,6 +172,9 @@ body:has(#teacher-mode-toggler-wrapper) .package-title {
 }
 #teacher-mode-toggler-wrapper {
     float: right;
+    /* In-flow content hit-tests above a float and would swallow the clicks */
+    position: relative;
+    z-index: 1;
 }
 body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     margin-right: 45px;
@@ -219,8 +223,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     position: absolute;
     top: 55px;
     right: 40px;
-    background: #0d70c7;
-    color: #ffffff;
+    color: #002a56;
     font-size: 0.9em;
     z-index: 99;
 }
@@ -337,6 +340,10 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 #siteFooter a {
     color: #000000;
     text-decoration: underline;
+}
+#siteFooter a:hover,
+#siteFooter a:focus {
+    color: #0d70c7;
 }
 #siteFooter #packageLicense p {
     margin-top: 0;
@@ -528,14 +535,14 @@ html.js #siteNav .other-section {
 }
 /* Special links */
 #siteNav a.highlighted-link {
-    background: #ffffe0;
+    background: #fff6c4;
     color: #5f4a1f;
-    box-shadow: inset 0 0 2px #f2e090;
+    box-shadow: inset 0 0 0 1px #dfb733;
 }
 #siteNav a.highlighted-link:hover,
 #siteNav a.highlighted-link:focus {
-    background: #fffed1;
-    box-shadow: none;
+    background: #fffbe4;
+    box-shadow: inset 0 0 0 1px #dfb733;
     color: #5f4a1f;
 }
 #siteNav ul ul {
@@ -795,7 +802,8 @@ body:not(.exe-web-site) #darkModeToggler {
     top: 0;
     right: 180px;
     z-index: 100;
-    background: none;
+    /* The only format where the counter sits on the top bar */
+    color: #ffffff;
 }
 body.exe-web-site {
     padding-top: 50px; /* .nav-buttons (top navigation bar) height */
@@ -1175,19 +1183,27 @@ body.exe-web-site {
     }
     /* Special links */
     html.exe-dark-mode #siteNav a.highlighted-link {
-        background: #000000;
-        color: #ffffff;
-        box-shadow: inset 0 0 2px #d2d2d5;
+        background: #3a2c00;
+        color: #ffe89a;
+        box-shadow: inset 0 0 0 1px #a37800;
     }
     html.exe-dark-mode #siteNav a.highlighted-link:hover,
     html.exe-dark-mode #siteNav a.highlighted-link:focus {
-        background: #131313;
-        box-shadow: inset 0 0 2px #96bee9;
-        color: #ffffff;
+        background: #453200;
+        box-shadow: inset 0 0 0 1px #b88800;
+        color: #fff4c9;
     }
     /* iDevices */
     html.exe-dark-mode .exe-content .box {
         box-shadow: none;
+    }
+    /* Accordion */
+    html.exe-dark-mode .exe-content .exe-accordion {
+        border-color: #c0c0c0;
+    }
+    html.exe-dark-mode .exe-content .fx-accordion-title {
+        /* exe_effects.js writes border-color inline on every title */
+        border-color: #c0c0c0 !important;
     }
     /* Boxes with no UDL family */
     html.exe-dark-mode
