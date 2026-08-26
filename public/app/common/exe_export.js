@@ -93,14 +93,10 @@ window.$exeExport = {
         window.eXe.app.init();
     },
 
-    /**
-     * Set (or remove, with value === null) one query parameter on an href,
-     * preserving every other parameter and the fragment.
-     */
+    // Set one query param on an href (null removes it), keeping the rest and the fragment.
     setUrlParam : function (href, name, value) {
         if (!href || !name) return href;
-        // A fragment-only href points at the current document; adding a query
-        // would turn an in-page jump into a page load.
+        // A query would turn a fragment-only jump into a page load.
         if (href.charAt(0) === '#') return href;
         var hash = '';
         var i = href.indexOf('#');
@@ -769,11 +765,13 @@ $exeExport.searchBar = {
             spans.remove();
         }
         $("#exe-client-search-results-list a").on("click", function(){
+            // Hits come from the search index, so they inherit no params.
+            var href = $exeExport.teacherMode.withTeacherParams(this.getAttribute('href'));
             if (!$("#siteNav").is(":visible")) {
-                // Search hits are deep links (html/page.html#block-id), so the
-                // parameter has to go before the fragment, not after it.
-                this.setAttribute('href', $exeExport.setUrlParam(this.getAttribute('href'), 'nav', 'false'));
+                // Deep links: the param goes before the fragment.
+                href = $exeExport.setUrlParam(href, 'nav', 'false');
             }
+            this.setAttribute('href', href);
             // Close search box and restore page content
             $("main > header, main div.page-content").show();
             $("#exe-client-search-reset").removeClass("visible");
@@ -850,21 +848,7 @@ $exeExport.searchBar = {
     // Add search parameter to a link
     addSearchParam : function(lnk) {
         if (!this.query) return lnk;
-        var searchParam = encodeURIComponent(this.query);
-        // Handle hash
-        var hashIndex = lnk.indexOf('#');
-        var hash = '';
-        if (hashIndex !== -1) {
-            hash = lnk.substring(hashIndex);
-            lnk = lnk.substring(0, hashIndex);
-        }
-        // Add parameter
-        if (lnk.indexOf('?') !== -1) {
-            lnk += '&q=' + searchParam;
-        } else {
-            lnk += '?q=' + searchParam;
-        }
-        return lnk + hash;
+        return $exeExport.setUrlParam(lnk, 'q', encodeURIComponent(this.query));
     },
 
     // Check URL for search parameter and highlight matches
