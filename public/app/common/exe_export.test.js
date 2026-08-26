@@ -980,6 +980,92 @@ describe('exe_export.js', () => {
       });
     });
 
+    describe('setUrlParam', () => {
+      // The seven hrefs the styles' nav=false handling has to survive.
+      const HREFS = [
+        'page.html',
+        'page.html#sec3',
+        'page.html?exe-teacher=1',
+        'page.html?exe-teacher=1#sec3',
+        'page.html?nav=false',
+        'page.html?nav=false#sec3',
+        'page.html?a=1&b=2',
+      ];
+
+      it('adds nav=false without losing other params or the fragment', () => {
+        const set = (h) => window.$exeExport.setUrlParam(h, 'nav', 'false');
+        expect(HREFS.map(set)).toEqual([
+          'page.html?nav=false',
+          'page.html?nav=false#sec3',
+          'page.html?exe-teacher=1&nav=false',
+          'page.html?exe-teacher=1&nav=false#sec3',
+          'page.html?nav=false',
+          'page.html?nav=false#sec3',
+          'page.html?a=1&b=2&nav=false',
+        ]);
+      });
+
+      it('removes only nav, keeping other params and the fragment', () => {
+        const del = (h) => window.$exeExport.setUrlParam(h, 'nav', null);
+        expect(HREFS.map(del)).toEqual([
+          'page.html',
+          'page.html#sec3',
+          'page.html?exe-teacher=1',
+          'page.html?exe-teacher=1#sec3',
+          'page.html',
+          'page.html#sec3',
+          'page.html?a=1&b=2',
+        ]);
+      });
+
+      it('is idempotent when applied twice', () => {
+        const set = (h) => window.$exeExport.setUrlParam(h, 'nav', 'false');
+        expect(HREFS.map((h) => set(set(h)))).toEqual(HREFS.map(set));
+      });
+
+      it('matches the key, not a substring of the pair', () => {
+        const set = window.$exeExport.setUrlParam;
+        // Keys that merely contain "nav" are preserved.
+        expect(set('page.html?xnav=false', 'nav', 'false')).toBe('page.html?xnav=false&nav=false');
+        // Any value of nav is replaced, not just the literal nav=false.
+        expect(set('page.html?nav=FALSE', 'nav', null)).toBe('page.html');
+        expect(set('page.html?nav=falsey', 'nav', null)).toBe('page.html');
+        expect(set('page.html?nav=false&nav=false', 'nav', 'false')).toBe('page.html?nav=false');
+        // A nav=false hidden inside another param's value is left alone.
+        expect(set('page.html?q=nav%3Dfalse', 'nav', null)).toBe('page.html?q=nav%3Dfalse');
+      });
+
+      it('never drops or reorders the fragment', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('page.html#a?b=1', 'nav', 'false')).toBe('page.html?nav=false#a?b=1');
+        expect(set('page.html#a&b', 'nav', 'false')).toBe('page.html?nav=false#a&b');
+        expect(set('page.html#nav=false', 'nav', null)).toBe('page.html#nav=false');
+        expect(set('page.html#', 'nav', 'false')).toBe('page.html?nav=false#');
+        expect(set('html/a.html?q=x#t%C3%ADtulo', 'nav', null)).toBe('html/a.html?q=x#t%C3%ADtulo');
+      });
+
+      it('leaves a fragment-only href alone, so an in-page jump stays one', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('#anchor', 'nav', 'false')).toBe('#anchor');
+        expect(set('#anchor', 'nav', null)).toBe('#anchor');
+      });
+
+      it('keeps relative hrefs relative and preserves parameter order', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('../index.html', 'nav', 'false')).toBe('../index.html?nav=false');
+        expect(set('html/a.html?endpoint=x&auth=y&actor=z', 'nav', 'false')).toBe(
+            'html/a.html?endpoint=x&auth=y&actor=z&nav=false'
+        );
+      });
+
+      it('returns falsy or nameless input unchanged', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('', 'nav', 'false')).toBe('');
+        expect(set(null, 'nav', 'false')).toBe(null);
+        expect(set('page.html', '', 'false')).toBe('page.html');
+      });
+    });
+
     describe('withTeacherParams', () => {
       it('appends the active params to a relative same-package link', () => {
         const tm = window.$exeExport.teacherMode;

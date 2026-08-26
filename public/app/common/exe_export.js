@@ -92,7 +92,37 @@ window.$exeExport = {
     initExe: function () {
         window.eXe.app.init();
     },
-    
+
+    /**
+     * Set (or remove, with value === null) one query parameter on an href,
+     * preserving every other parameter and the fragment.
+     */
+    setUrlParam : function (href, name, value) {
+        if (!href || !name) return href;
+        // A fragment-only href points at the current document; adding a query
+        // would turn an in-page jump into a page load.
+        if (href.charAt(0) === '#') return href;
+        var hash = '';
+        var i = href.indexOf('#');
+        if (i !== -1) {
+            hash = href.slice(i);
+            href = href.slice(0, i);
+        }
+        var query = '';
+        i = href.indexOf('?');
+        if (i !== -1) {
+            query = href.slice(i + 1);
+            href = href.slice(0, i);
+        }
+        var parts = query ? query.split('&') : [];
+        var kept = [];
+        for (i = 0; i < parts.length; i++) {
+            if (parts[i] && parts[i].split('=')[0] !== name) kept.push(parts[i]);
+        }
+        if (value !== null && value !== undefined) kept.push(name + '=' + value);
+        return href + (kept.length ? '?' + kept.join('&') : '') + hash;
+    },
+
     /**
      * Teacher Mode
      *
@@ -152,11 +182,10 @@ window.$exeExport = {
             if (!href || !this._navParams) return href;
             if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
             if (href.indexOf('exe-teacher') !== -1) return href;
-            var hashIdx = href.indexOf('#');
-            var hash = hashIdx >= 0 ? href.slice(hashIdx) : '';
-            var base = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
-            var sep = base.indexOf('?') !== -1 ? '&' : '?';
-            return base + sep + this._navParams + hash;
+            var eq = this._navParams.indexOf('=');
+            var name = eq === -1 ? this._navParams : this._navParams.slice(0, eq);
+            var value = eq === -1 ? '' : this._navParams.slice(eq + 1);
+            return $exeExport.setUrlParam(href, name, value);
         },
         /** Rewrite the menu and prev/next links so navigation keeps the teacher view. */
         propagateNavParams : function(){
