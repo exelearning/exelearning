@@ -181,8 +181,7 @@ var myTheme = {
             });
         });
     },
-    // Toggle `nav=false` on the nav-button hrefs. $exeExport.setUrlParam()
-    // keeps every other parameter and the fragment.
+    // Toggle nav=false on the nav-button hrefs, keeping the rest of the URL.
     params: function (act) {
         var value = act == 'add' ? 'false' : null;
         $('.nav-buttons a').each(function () {
