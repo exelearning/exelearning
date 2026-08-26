@@ -2,12 +2,14 @@
 <theme>
     <name>base</name>
     <title>Default</title>
-    <version>2025</version>
-    <compatibility>3.0</compatibility>
+    <version>20260814</version>
+    <compatibility>4.0</compatibility>
     <author>eXeLearning.net</author>
     <license>Creative Commons by-sa</license>
-    <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
-    <description>Minimally-styled, feature rich responsive style for eXe.
+    <license-url>http://creativecommons.org/licenses/by-sa/4.0/</license-url>
+    <description>Minimally-styled, feature rich responsive style for eXe. Its colours and typography meet WCAG 2.2 level AA.
 
-iDevice icons by Francisco Javier Pulido Cuadrado.</description>
+iDevice icons by Francisco Javier Pulido Cuadrado, under the same license as this style (Creative Commons BY-SA 4.0, http://creativecommons.org/licenses/by-sa/4.0/).
+
+Creative Commons license badges (img/licenses.gif) are trademarks of Creative Commons (https://creativecommons.org) and are used under their trademark policy (https://creativecommons.org/policies/). They are not covered by this style's CC BY-SA license.</description>
 </theme>
