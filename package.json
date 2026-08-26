@@ -15,6 +15,7 @@
     "build:standalone": "bun scripts/build-standalone.js",
     "build:all": "bun run build && bun run --parallel css:node bundle:resources bundle:i18n bundle:app bundle:importers bundle:exporters bundle:slide-editor",
     "bundle:i18n": "bun scripts/build-i18n-bundles.js",
+    "generate:truefalse-messages": "bun scripts/generate-truefalse-messages.ts",
     "build:static": "bun run build:all && bun scripts/build-static-bundle.ts",
     "css:node": "bun x sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map",
     "sass:watch": "bun x sass --watch assets/styles/main.scss:public/style/workarea/main.css --style=expanded --embed-source-map",
