@@ -2028,6 +2028,96 @@ describe('exe_export.js', () => {
       window.$ = originalJQuery;
     });
 
+    it('click handler carries exe-teacher=1 onto search hits', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML =
+        '<li><a href="html/page.html?q=foo">A</a></li>' +
+        '<li><a href="html/page.html?q=foo#block-3">B</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        // siteNav visible, so only the teacher param should be added.
+        if (selector === '#siteNav') result.is = vi.fn(() => true);
+        return result;
+      });
+
+      window.$exeExport.teacherMode._navParams = 'exe-teacher=1';
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      const links = [...wrapper.querySelectorAll('a')];
+      links.forEach((link) => clickHandler.call(link));
+
+      expect(links.map((l) => l.getAttribute('href'))).toEqual([
+        'html/page.html?q=foo&exe-teacher=1',
+        'html/page.html?q=foo&exe-teacher=1#block-3',
+      ]);
+
+      window.$exeExport.teacherMode._navParams = '';
+      window.$ = originalJQuery;
+    });
+
+    it('click handler combines teacher mode and nav=false on a deep link', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML = '<li><a href="html/page.html?q=foo#block-3">A</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        if (selector === '#siteNav') result.is = vi.fn(() => false);
+        return result;
+      });
+
+      window.$exeExport.teacherMode._navParams = 'exe-teacher=1';
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      const link = wrapper.querySelector('a');
+      clickHandler.call(link);
+
+      expect(link.getAttribute('href')).toBe('html/page.html?q=foo&exe-teacher=1&nav=false#block-3');
+
+      window.$exeExport.teacherMode._navParams = '';
+      window.$ = originalJQuery;
+    });
+
     it('click handler does not add nav=false when siteNav is visible', () => {
       const wrapper = document.createElement('div');
       wrapper.id = 'exe-client-search-results-list';
