@@ -51,16 +51,42 @@ var $quickquestionsmultiplechoice = {
     sendScore: function (auto, instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
 
-        mOptions.scorerp =
-            mOptions.order == 2
-                ? mOptions.score / 10
-                : (mOptions.scoreGame * 10) / mOptions.scoreTotal;
+        mOptions.scorerp = $quickquestionsmultiplechoice.getScoreRP(instance);
         mOptions.previousScore = $quickquestionsmultiplechoice.previousScore;
         mOptions.userName = $quickquestionsmultiplechoice.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $quickquestionsmultiplechoice.previousScore = mOptions.previousScore;
+    },
+
+    getScoreRP: function (instance) {
+        const mOptions = $quickquestionsmultiplechoice.options[instance];
+        if (mOptions.order == 2) {
+            return Number(mOptions.score || 0) / 10;
+        }
+
+        const total = Number(mOptions.scoreTotal);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (mOptions.scoreGame * 10) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $quickquestionsmultiplechoice.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        // Per-instance guard (see gameOver): a shared static used to block other instances.
+        if (!mOptions.repeatActivity && mOptions.initialScore) {
+            return;
+        }
+
+        const score = $quickquestionsmultiplechoice
+            .getScoreRP(instance)
+            .toFixed(2);
+        $quickquestionsmultiplechoice.sendScore(true, instance);
+        $(`#seleccionaRepeatActivity-${instance}`).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 
     loadGame: function () {
@@ -788,7 +814,6 @@ var $quickquestionsmultiplechoice = {
     onPlayerError: function () {},
 
     removeEvents: function (instance) {
-        $(window).off('unload.exeSelecciona beforeunload.exeSelecciona');
         $(`#seleccionaLinkMaximize-${instance}`).off('click touchstart');
         $(`#seleccionaLinkMinimize-${instance}`).off('click touchstart');
         $('#seleccionaMainContainer-' + instance)
@@ -820,11 +845,6 @@ var $quickquestionsmultiplechoice = {
         mOptions.respuesta = '';
 
         $quickquestionsmultiplechoice.removeEvents(instance);
-        $(window).on('unload.exeSelecciona beforeunload.exeSelecciona', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $quickquestionsmultiplechoice.mScorm
-            );
-        });
 
         mOptions.localPlayer = document.getElementById(
             `seleccionaVideoLocal-${instance}`
@@ -1371,6 +1391,8 @@ var $quickquestionsmultiplechoice = {
     startGame: function (instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
         if (mOptions.gameStarted) return;
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         mOptions.scoreGame = 0;
         mOptions.obtainedClue = false;
@@ -1467,6 +1489,7 @@ var $quickquestionsmultiplechoice = {
         $(`#seleccionaPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        $quickquestionsmultiplechoice.saveScormScore(instance);
         $quickquestionsmultiplechoice.newQuestion(instance, false, true);
     },
 
@@ -1525,10 +1548,10 @@ var $quickquestionsmultiplechoice = {
         mOptions.gameOver = true;
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsmultiplechoice.initialScore === ''
-            ) {
+            // initialScore is PER-INSTANCE: a shared static used to stop other
+            // quick-questions-multiple-choice instances on the page from updating their state
+            // ("the timer expired but the state didn't change") once any one of them finished.
+            if (mOptions.repeatActivity || !mOptions.initialScore) {
                 const score = (
                     (mOptions.scoreGame * 10) /
                     mOptions.scoreTotal
@@ -1537,7 +1560,7 @@ var $quickquestionsmultiplechoice = {
                 $(`#seleccionaRepeatActivity-${instance}`).text(
                     `${mOptions.msgs.msgYouScore}: ${score}`
                 );
-                $quickquestionsmultiplechoice.initialScore = score;
+                mOptions.initialScore = score;
             }
         }
         $quickquestionsmultiplechoice.saveEvaluation(instance);
@@ -1787,22 +1810,6 @@ var $quickquestionsmultiplechoice = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsmultiplechoice.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestionsmultiplechoice.sendScore(true, instance);
-                $(`#seleccionaRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
         if (q.audio.length > 4 && q.type !== 2 && !mOptions.audioFeedBach) {
             $(`#seleccionaLinkAudio-${instance}`).show();
         }
@@ -1980,6 +1987,13 @@ var $quickquestionsmultiplechoice = {
         } else {
             $quickquestionsmultiplechoice.updateScoreThree(correct, instance);
         }
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $quickquestionsmultiplechoice.saveScormScore(instance);
 
         if (
             mOptions.showSolution &&
@@ -2052,6 +2066,13 @@ var $quickquestionsmultiplechoice = {
         } else {
             $quickquestionsmultiplechoice.updateScoreThree(value, instance);
         }
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $quickquestionsmultiplechoice.saveScormScore(instance);
 
         if (
             mOptions.showSolution &&

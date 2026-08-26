@@ -1545,6 +1545,8 @@ var $eXeCrucigrama = {
 
     repeatActivity: function (instance) {
         const mOptions = $eXeCrucigrama.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         mOptions.wordsGame =
             $exeDevices.iDevice.gamification.helpers.shuffleAds(
@@ -2068,7 +2070,8 @@ var $eXeCrucigrama = {
         $mainContainer.off('click touchend', '.CCGMP-Number');
         $mainContainer.off('keydown', '.CCGMP-InputWord, .CCGMP-InputWordDef');
         $mainContainer.off('input', '.CCGMP-InputWordDef, .CCGMP-InputWord');
-        $(window).off('unload.eXeCrucigrama beforeunload.eXeCrucigrama');
+        $(window).off('pagehide.eXeCrucigrama');
+        $(document).off('visibilitychange.eXeCrucigrama');
     },
 
     addEvents: function (instance) {
@@ -2181,17 +2184,20 @@ var $eXeCrucigrama = {
 
         $('#ccgmPNumber-' + instance).text(mOptions.numberQuestions);
 
-        $(window).on(
-            'unload.eXeCrucigrama beforeunload.eXeCrucigrama',
-            function () {
-                $exeDevices.iDevice.gamification.media.stopSound();
-                if ($eXeCrucigrama.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeCrucigrama.mScorm
-                    );
-                }
+        // Stop any playing sound when the page is hidden or unloaded. Uses
+        // pagehide + visibilitychange (Page Lifecycle API) instead of the
+        // deprecated unload/beforeunload, so it keeps working under bfcache, on
+        // mobile and inside LMS iframes that block unload (see issue #1831).
+        // This only stops local audio playback; it is unrelated to SCORM.
+        const stopSoundOnHide = function () {
+            $exeDevices.iDevice.gamification.media.stopSound();
+        };
+        $(window).on('pagehide.eXeCrucigrama', stopSoundOnHide);
+        $(document).on('visibilitychange.eXeCrucigrama', function () {
+            if (document.visibilityState === 'hidden') {
+                stopSoundOnHide();
             }
-        );
+        });
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);

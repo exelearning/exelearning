@@ -145,6 +145,8 @@ describe('exe_export.js', () => {
     delete window.$exe_i18n;
     delete window.$;
     delete window.$exeExport;
+    delete window.registerScormLifecycleHandlers;
+    delete window.$exeDevices;
     delete window.localStorage;
     vi.useRealTimers();
   });
@@ -343,10 +345,11 @@ describe('exe_export.js', () => {
     intervalSpy.mockRestore();
   });
 
-  it('detects scorm data in idevices and wires unload handler', () => {
+  it('detects scorm data in idevices and registers lifecycle handlers', () => {
     window.scorm = {};
     window.loadPage = vi.fn();
     window.unloadPage = vi.fn();
+    window.registerScormLifecycleHandlers = vi.fn();
 
     window.$testidevice = {
       options: [{ isScorm: true }],
@@ -369,10 +372,64 @@ describe('exe_export.js', () => {
     document.body.append(jsNode, jsonNode);
 
     window.$exeExport.initScorm();
-    window.dispatchEvent(new Event('unload'));
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
-    expect(window.unloadPage).toHaveBeenCalledWith(true);
+    expect(window.registerScormLifecycleHandlers).toHaveBeenCalledWith(true);
+    expect(window.unloadPage).not.toHaveBeenCalled();
+  });
+
+  it('mirrors the full lifecycle (pagehide/freeze/visibilitychange) when registerScormLifecycleHandlers is missing', () => {
+    // Backward-compat path: an older SCO bundle without registerScormLifecycleHandlers.
+    const save = vi.fn();
+    window.scorm = { save };
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
+    // Intentionally no window.registerScormLifecycleHandlers defined.
+
+    const winSpy = vi.spyOn(window, 'addEventListener');
+    const docSpy = vi.spyOn(document, 'addEventListener');
+
+    window.$exeExport.initScorm();
+
+    expect(window.loadPage).toHaveBeenCalledTimes(1);
+    const pagehide = winSpy.mock.calls.find((call) => call[0] === 'pagehide')?.[1];
+    const freeze = winSpy.mock.calls.find((call) => call[0] === 'freeze')?.[1];
+    const visibilitychange = docSpy.mock.calls.find((call) => call[0] === 'visibilitychange')?.[1];
+
+    // The fallback must mirror registerScormLifecycleHandlers, not only pagehide.
+    expect(pagehide).toBeDefined();
+    expect(freeze).toBeDefined();
+    expect(visibilitychange).toBeDefined();
+
+    // Bfcache entry commits progress without terminating the session.
+    pagehide({ persisted: true });
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(window.unloadPage).not.toHaveBeenCalled();
+
+    // Freeze commits progress only.
+    freeze();
+    expect(save).toHaveBeenCalledTimes(2);
+
+    // Tab hidden commits progress; tab visible is a no-op.
+    const visibilityDescriptor = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    visibilitychange();
+    expect(save).toHaveBeenCalledTimes(2);
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    visibilitychange();
+    expect(save).toHaveBeenCalledTimes(3);
+    if (visibilityDescriptor) {
+      Object.defineProperty(document, 'visibilityState', visibilityDescriptor);
+    }
+
+    // A real pagehide finalizes exactly once; later commits are then no-ops.
+    pagehide({ persisted: false });
+    expect(window.unloadPage).toHaveBeenCalledWith(false);
+    freeze();
+    expect(save).toHaveBeenCalledTimes(3);
+
+    winSpy.mockRestore();
+    docSpy.mockRestore();
   });
 
   it('detects scorm data in JSON idevices that store isScorm directly', () => {
@@ -389,7 +446,10 @@ describe('exe_export.js', () => {
     document.body.appendChild(jsonNode);
 
     window.$exeExport.initScorm();
-    window.dispatchEvent(new Event('unload'));
+    // Issue #1831: the SCO finalizes on pagehide (the deprecated unload event was
+    // dropped). With no registerScormLifecycleHandlers present, initScorm falls
+    // back to a pagehide listener, which must still detect isScorm from the JSON.
+    window.dispatchEvent(new Event('pagehide'));
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
     expect(window.unloadPage).toHaveBeenCalledWith(true);
@@ -1118,6 +1178,7 @@ describe('exe_export.js', () => {
       window.scorm = {};
       window.loadPage = vi.fn();
       window.unloadPage = vi.fn();
+      window.registerScormLifecycleHandlers = vi.fn();
 
       const jsonNode = document.createElement('div');
       jsonNode.className = 'idevice_node';
@@ -1135,6 +1196,7 @@ describe('exe_export.js', () => {
       window.scorm = {};
       window.loadPage = vi.fn();
       window.unloadPage = vi.fn();
+      window.registerScormLifecycleHandlers = vi.fn();
 
       const jsonNode = document.createElement('div');
       jsonNode.className = 'idevice_node';
@@ -1144,15 +1206,16 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsonNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
 
-      expect(window.unloadPage).toHaveBeenCalledWith(false);
+      expect(window.registerScormLifecycleHandlers).toHaveBeenCalledWith(false);
+      expect(window.unloadPage).not.toHaveBeenCalled();
     });
 
     it('handles js component without options', () => {
       window.scorm = {};
       window.loadPage = vi.fn();
       window.unloadPage = vi.fn();
+      window.registerScormLifecycleHandlers = vi.fn();
       window.$testidevice = {}; // No options property
 
       const jsNode = document.createElement('div');
@@ -1162,15 +1225,16 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
 
-      expect(window.unloadPage).toHaveBeenCalledWith(false);
+      expect(window.registerScormLifecycleHandlers).toHaveBeenCalledWith(false);
+      expect(window.unloadPage).not.toHaveBeenCalled();
     });
 
     it('handles js component with non-scorm options', () => {
       window.scorm = {};
       window.loadPage = vi.fn();
       window.unloadPage = vi.fn();
+      window.registerScormLifecycleHandlers = vi.fn();
       window.$testidevice = { options: [{ isScorm: false }] };
 
       const jsNode = document.createElement('div');
@@ -1180,9 +1244,288 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
 
-      expect(window.unloadPage).toHaveBeenCalledWith(false);
+      expect(window.registerScormLifecycleHandlers).toHaveBeenCalledWith(false);
+      expect(window.unloadPage).not.toHaveBeenCalled();
+    });
+
+    function appendTestIdeviceNode() {
+      const jsNode = document.createElement('div');
+      jsNode.className = 'idevice_node';
+      jsNode.setAttribute('data-idevice-component-type', 'js');
+      jsNode.setAttribute('data-idevice-type', 'test-idevice');
+      document.body.appendChild(jsNode);
+    }
+
+    function stubScormHelpers(lmsData, finalScore) {
+      window.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: {
+              readActivityState: () => lmsData,
+              parseSuspendData: () => lmsData,
+              getFinalScore: () => finalScore,
+              // Same rule as the real helper: only states 1 and 2 come from a learner action.
+              hasAttemptedActivity: (data) =>
+                Object.keys(data || lmsData).some((key) => {
+                  const state = (data || lmsData)[key].state;
+                  return state === 1 || state === 2;
+                }),
+            },
+          },
+        },
+      };
+    }
+
+    it('opens the session without writing the SCO status on entry', () => {
+      // Entering must NOT write the page status: the iDevice owns it and only changes it
+      // through learner interaction (sendScore -> showFinalScore). Writing a page-level status
+      // on load interfered with the LMS per-attempt tracking and stopped in-game scores from
+      // being recorded in Moodle. initScorm only opens the session and registers the lifecycle.
+      window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => '') };
+      window.loadPage = vi.fn();
+      window.registerScormLifecycleHandlers = vi.fn();
+      window.$testidevice = { options: [{ isScorm: true }] };
+      appendTestIdeviceNode();
+
+      window.$exeExport.initScorm();
+
+      expect(window.loadPage).toHaveBeenCalled();
+      expect(window.registerScormLifecycleHandlers).toHaveBeenCalledWith(true);
+      expect(window.scorm.set).not.toHaveBeenCalledWith(
+        'cmi.core.lesson_status',
+        expect.anything(),
+      );
+    });
+
+    // A page with nothing to do on it is completed the moment the learner opens it, so the record
+    // does not depend on the browser delivering pagehide. The decision waits for the page to settle
+    // because scored iDevices register asynchronously. (#1831)
+    describe('completeContentOnlyPageOnEntry', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+            window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => '') };
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('completes a content-only page shortly after it loads', () => {
+            stubScormHelpers({}, 0);
+
+            window.$exeExport.completeContentOnlyPageOnEntry(false);
+            vi.advanceTimersByTime(window.$exeExport.delayCompleteContentPage + 10);
+
+            expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'completed');
+            expect(window.scorm.save).toHaveBeenCalled();
+        });
+
+        it('writes nothing while the grace period has not elapsed', () => {
+            stubScormHelpers({}, 0);
+
+            window.$exeExport.completeContentOnlyPageOnEntry(false);
+            vi.advanceTimersByTime(window.$exeExport.delayCompleteContentPage - 10);
+
+            expect(window.scorm.set).not.toHaveBeenCalled();
+        });
+
+        // The signal that matters: a scored iDevice that registered late must cancel the write.
+        it('does not complete a page whose iDevice registered during the grace period', () => {
+            stubScormHelpers({ 1: { state: 0 } }, 0);
+
+            window.$exeExport.completeContentOnlyPageOnEntry(false);
+            vi.advanceTimersByTime(window.$exeExport.delayCompleteContentPage + 10);
+
+            expect(window.scorm.set).not.toHaveBeenCalled();
+        });
+
+        it('never touches a page the DOM scan already knows is scored', () => {
+            stubScormHelpers({}, 0);
+
+            window.$exeExport.completeContentOnlyPageOnEntry(true);
+            vi.advanceTimersByTime(window.$exeExport.delayCompleteContentPage + 10);
+
+            expect(window.scorm.set).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('updateScormPageStatus (page status computation)', () => {
+      it('completes a content-only page (no evaluable iDevices)', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => '') };
+        stubScormHelpers({}, 0);
+
+        window.$exeExport.updateScormPageStatus(false);
+
+        // No evaluable SCORM iDevice -> completed (no score).
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'completed');
+        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.score.raw', expect.anything());
+        expect(window.scorm.save).toHaveBeenCalled();
+      });
+
+      // "incomplete" now means one thing only: the learner never started an activity here. (#1831)
+      it('marks an evaluable page the learner never started as incomplete', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => '') };
+        stubScormHelpers({ 1: { state: 0 } }, 0);
+
+        window.$exeExport.updateScormPageStatus(true);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+      });
+
+      // Starting is already a verdict: the running score is 0, which is under the threshold.
+      it('fails a page the learner has just started, before any answer', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+        stubScormHelpers({ 1: { state: 1 } }, 0);
+
+        window.$exeExport.updateScormPageStatus(true);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.score.raw', 0);
+        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+      });
+
+      it('passes a SCORM 1.2 page when every iDevice is finished and the average passes', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+        stubScormHelpers({ 1: { state: 2 }, 2: { state: 2 } }, 80);
+
+        window.$exeExport.updateScormPageStatus(true);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.score.raw', 80);
+      });
+
+      it('fails a SCORM 1.2 page when every iDevice is finished but the average fails', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+        stubScormHelpers({ 1: { state: 2 } }, 30);
+
+        window.$exeExport.updateScormPageStatus(true);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+      });
+
+      it('splits completion + success + scaled score on SCORM 2004', () => {
+        window.scorm = { version: '2004', set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+        stubScormHelpers({ 1: { state: 2 }, 2: { state: 2 } }, 80);
+
+        window.$exeExport.updateScormPageStatus(true);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.success_status', 'passed');
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.score.scaled', 0.8);
+        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
+      });
+
+      // The verdict does not wait for every iDevice to finish: it reports the score as it stands.
+      it('passes a page whose average already clears the threshold with an iDevice still unfinished', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+        stubScormHelpers({ 1: { state: 2 }, 2: { state: 1 } }, 90);
+
+        window.$exeExport.updateScormPageStatus(true);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+      });
+
+      it('derives status from suspend_data even when isSCORM is false', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+        stubScormHelpers({ 1: { state: 1 } }, 0);
+
+        // suspend_data already holds a started entry, so the page must NOT be auto-completed; it
+        // carries the verdict its score implies.
+        window.$exeExport.updateScormPageStatus(false);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'completed');
+      });
+    });
+
+    it('updateScormPageStatus applies the SAME rule whoever calls it', () => {
+      // The verdict depends on the score alone, so a finished page and a half-finished one with
+      // the same average get the same status. Only "never started" is treated differently.
+      window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+      stubScormHelpers({ 1: { state: 2 }, 2: { state: 2 } }, 80);
+      window.$exeExport.updateScormPageStatus(true);
+      expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+
+      window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+      stubScormHelpers({ 1: { state: 2 }, 2: { state: 1 } }, 80);
+      window.$exeExport.updateScormPageStatus(true);
+      expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+
+      window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+      stubScormHelpers({ 1: { state: 0 }, 2: { state: 0 } }, 0);
+      window.$exeExport.updateScormPageStatus(true);
+      expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+    });
+  });
+
+  describe('setScormStatus and SCORM read helpers', () => {
+    let prevScorm;
+    let prevDevices;
+
+    beforeEach(() => {
+      prevScorm = window.scorm;
+      prevDevices = window.$exeDevices;
+    });
+
+    afterEach(() => {
+      window.scorm = prevScorm;
+      window.$exeDevices = prevDevices;
+    });
+
+    it('does nothing when there is no usable SCORM API', () => {
+      window.scorm = {}; // no set() function
+      expect(() =>
+        window.$exeExport.setScormStatus('passed', 50),
+      ).not.toThrow();
+    });
+
+    it('writes the SCORM 2004 incomplete status (completion + success)', () => {
+      window.scorm = { version: '2004', set: vi.fn(), save: vi.fn() };
+      window.$exeExport.setScormStatus('incomplete', null);
+      expect(window.scorm.set).toHaveBeenCalledWith(
+        'cmi.completion_status',
+        'incomplete',
+      );
+      expect(window.scorm.set).toHaveBeenCalledWith(
+        'cmi.success_status',
+        'unknown',
+      );
+    });
+
+    it('writes the SCORM 2004 content-only completed status (no pass/fail verdict)', () => {
+      window.scorm = { version: '2004', set: vi.fn(), save: vi.fn() };
+      window.$exeExport.setScormStatus('completed', null);
+      expect(window.scorm.set).toHaveBeenCalledWith(
+        'cmi.completion_status',
+        'completed',
+      );
+      expect(window.scorm.set).toHaveBeenCalledWith(
+        'cmi.success_status',
+        'unknown',
+      );
+    });
+
+    it('readScormFinalScore returns 0 when the shared helper is unavailable', () => {
+      window.$exeDevices = undefined;
+      expect(window.$exeExport.readScormFinalScore('sd')).toBe(0);
+    });
+
+    it('readScormActivityState returns {} when the parser throws', () => {
+      window.scorm = { get: vi.fn(() => 'sd') };
+      window.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: {
+              parseSuspendData: () => {
+                throw new Error('boom');
+              },
+            },
+          },
+        },
+      };
+      expect(window.$exeExport.readScormActivityState()).toEqual({});
     });
   });
 

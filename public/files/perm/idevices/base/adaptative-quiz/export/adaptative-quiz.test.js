@@ -1102,14 +1102,20 @@ describe('adaptative-quiz export', () => {
 
     describe('setupScorm', () => {
         let registerActivitySpy;
+        let initSessionSpy;
         let originalExe;
 
         beforeEach(() => {
             registerActivitySpy = vi.fn();
+            initSessionSpy = vi.fn();
             global.$exeDevices = {
                 iDevice: {
                     gamification: {
-                        scorm: { registerActivity: registerActivitySpy, getUserName: () => 'Ada' },
+                        scorm: {
+                            registerActivity: registerActivitySpy,
+                            getUserName: () => 'Ada',
+                            initSession: initSessionSpy,
+                        },
                     },
                 },
             };
@@ -1137,14 +1143,28 @@ describe('adaptative-quiz export', () => {
             const id = 'scorm-ready';
             adq.options[id] = { id, isScorm: 1 };
             document.body.classList.add('exe-scorm');
-            const setMax = vi.fn();
-            const setMin = vi.fn();
-            window.scorm = { init: () => true, SetScoreMax: setMax, SetScoreMin: setMin };
+            window.scorm = { init: () => true, SetScoreMax: vi.fn(), SetScoreMin: vi.fn() };
 
             adq.setupScorm(id);
 
-            expect(setMax).toHaveBeenCalledWith(100);
-            expect(setMin).toHaveBeenCalledWith(0);
+            // The session binding (learner name, score bounds) is delegated to the shared helper.
+            expect(initSessionSpy).toHaveBeenCalledWith(adq);
+            expect(registerActivitySpy).toHaveBeenCalledWith(adq.options[id]);
+        });
+
+        it('binds and registers even when init() returns false (session already active)', () => {
+            const id = 'scorm-active';
+            adq.options[id] = { id, isScorm: 1 };
+            document.body.classList.add('exe-scorm');
+            // init() returns false because the SCO session is already open; the setup must NOT
+            // be skipped (the old gate wrongly fell through to reloading the wrapper).
+            const init = vi.fn(() => false);
+            window.scorm = { init };
+
+            adq.setupScorm(id);
+
+            expect(init).toHaveBeenCalled();
+            expect(initSessionSpy).toHaveBeenCalledWith(adq);
             expect(registerActivitySpy).toHaveBeenCalledWith(adq.options[id]);
         });
 
@@ -1411,9 +1431,12 @@ describe('adaptative-quiz export', () => {
             adq.saveProgress(id);
             expect(parseFloat(store['cmi.core.score.raw'])).toBe(50);
 
-            // Second correct answer -> 2/2 -> 100/100.
+            // Second correct answer -> 2/2 -> 100/100. This is the final round, so
+            // the game is over: only then does the terminal status become "passed"
+            // (the in-progress saves above stay "incomplete").
             adq.options[id].hits = 2;
             adq.options[id].roundCount = 2;
+            adq.options[id].gameOver = true;
             adq.saveProgress(id);
             expect(parseFloat(store['cmi.core.score.raw'])).toBe(100);
             expect(store['cmi.core.lesson_status']).toBe('passed');

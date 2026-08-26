@@ -905,13 +905,6 @@ var $eXeMathProblems = {
         });
 
         $('#mthpPNumber-' + instance).text(mOptions.numberQuestions);
-        $(window).on('unload', function () {
-            if (typeof $eXeMathProblems.mScorm != 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeMathProblems.mScorm
-                );
-            }
-        });
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -974,6 +967,8 @@ var $eXeMathProblems = {
 
     startGame: function (instance) {
         const mOptions = $eXeMathProblems.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.gameStarted) return;
 
@@ -1058,16 +1053,6 @@ var $eXeMathProblems = {
             $mthpPNumber.text(mOptions.numberQuestions - mActiveQuestion);
         }
 
-        if (mOptions.scorm.isScorm == 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
-                $eXeMathProblems.sendScore(true, instance);
-            }
-        }
-
-        $eXeMathProblems.saveEvaluation(instance);
     },
 
     updateNumberQuestion: function (numq, instance) {
@@ -1095,16 +1080,16 @@ var $eXeMathProblems = {
 
         $eXeMathProblems.uptateTime(0, instance);
         if (mOptions.scorm.isScorm == 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
+            // initialScore is PER-INSTANCE: it was a shared static ($eXeMathProblems.initialScore),
+            // so once any mathproblems instance on the page finished, this guard blocked the
+            // others' gameOver send → "the game over state is never generated".
+            if (mOptions.scorm.repeatActivity || !mOptions.initialScore) {
                 const score = (
                     (mOptions.hits * 10) /
                     mOptions.numberQuestions
                 ).toFixed(2);
                 $eXeMathProblems.sendScore(true, instance);
-                $eXeMathProblems.initialScore = score;
+                mOptions.initialScore = score;
             }
         }
 
@@ -1199,11 +1184,17 @@ var $eXeMathProblems = {
         message = $eXeMathProblems.getMessageAnswer(correctAnswer, instance);
         mOptions.score = (mOptions.hits / mOptions.numberQuestions) * 10;
 
+        // No questions pending means this answer (or timed-out question) finishes
+        // the activity. Mark it completed BEFORE sending so the score recorded for
+        // this final question is state 2; the gameOver() that runs after the
+        // timeShowSolution delay would otherwise leave this send as
+        // "incomplete". (#1831)
+        if (mOptions.numberQuestions - mOptions.hits - mOptions.errors <= 0) {
+            mOptions.gameOver = true;
+        }
+
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
+            if (mOptions.scorm.repeatActivity || !mOptions.initialScore) {
                 $eXeMathProblems.sendScore(true, instance);
             }
         }

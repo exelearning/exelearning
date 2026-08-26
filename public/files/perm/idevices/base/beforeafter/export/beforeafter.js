@@ -129,17 +129,24 @@ var $eXeBeforeAfter = {
 
         mOptions.numberCards = mOptions.cardsGame.length;
         mOptions.fullscreen = false;
+        mOptions.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(mOptions.isScorm);
         return mOptions;
     },
 
     startGame: function (instance) {
         let mOptions = $eXeBeforeAfter.options[instance];
         if (mOptions.gameStarted) return;
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         mOptions.gameStarted = true;
         mOptions.hits = 0;
         mOptions.score = 0;
         mOptions.gameOver = false;
         mOptions.obtainedClue = false;
+        // Completion is derived from the visited slides at save/send time (see
+        // allSlidesVisited). A single-image activity already has every slide
+        // visited, so the sendScore/saveEvaluation calls below finalize it.
         $('#bfafCubierta-' + instance).hide();
         $('#bfafStartGame-' + instance).hide();
         if (mOptions.isScorm > 0) {
@@ -237,6 +244,14 @@ var $eXeBeforeAfter = {
         mOptions.active = number;
         mOptions.visiteds =
             mOptions.visiteds < number ? number : mOptions.visiteds;
+
+        // Visiting every slide means the comparison is complete (SCORM state ->
+        // completed). visiteds never decreases, so this stays true after
+        // navigating back. Guarded by gameStarted so edition/preview renders do
+        // not finalize.
+        if (mOptions.gameStarted && $eXeBeforeAfter.allSlidesVisited(mOptions)) {
+            mOptions.gameOver = true;
+        }
 
         const isVertical = mOptions.cardsGame[number].vertical;
 
@@ -517,7 +532,6 @@ var $eXeBeforeAfter = {
         $(`#bfafLinkMinimize-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessButton-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessE-${instance}`).off('keydown');
-        $(window).off('unload.eXeBeforeAfter beforeunload.eXeBeforeAfter');
     },
 
     addEvents: function (instance) {
@@ -578,17 +592,6 @@ var $eXeBeforeAfter = {
                 value = Math.max(0, Math.min(value, 100));
                 this.value = value;
             });
-
-        $(window).on(
-            'unload.eXeBeforeAfter beforeunload.eXeBeforeAfter',
-            function () {
-                if ($eXeBeforeAfter.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeBeforeAfter.mScorm
-                    );
-                }
-            }
-        );
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $('#bfafAuthorGame-' + instance).html(
@@ -732,9 +735,20 @@ var $eXeBeforeAfter = {
             .show();
     },
 
+    // Single source of truth for completion: the activity is finished once the
+    // learner has visited every slide. visiteds tracks the furthest slide reached
+    // (set in showImage) and never decreases, so completion does not depend on the
+    // slide the learner is on when the score is sent.
+    allSlidesVisited: function (mOptions) {
+        return mOptions.visiteds >= mOptions.cardsGame.length - 1;
+    },
+
     saveEvaluation: function (instance) {
         const mOptions = $eXeBeforeAfter.options[instance];
 
+        if (mOptions.gameStarted && $eXeBeforeAfter.allSlidesVisited(mOptions)) {
+            mOptions.gameOver = true;
+        }
         mOptions.scorerp =
             ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
@@ -746,6 +760,12 @@ var $eXeBeforeAfter = {
     sendScore: function (auto, instance) {
         const mOptions = $eXeBeforeAfter.options[instance];
 
+        // Finalize from the visited slides regardless of the current position, so
+        // the completed state is sent even when the last slide was reached on the
+        // same gesture that started the game (event-bubbling order).
+        if (mOptions.gameStarted && $eXeBeforeAfter.allSlidesVisited(mOptions)) {
+            mOptions.gameOver = true;
+        }
         mOptions.scorerp =
             ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
         mOptions.previousScore = $eXeBeforeAfter.previousScore;

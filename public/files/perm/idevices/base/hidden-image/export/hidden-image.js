@@ -426,12 +426,6 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance];
         $eXeHiddenImage.removeEvents(instance);
 
-        $(window).on('unload.eXehiP beforeunload.eXehiP', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeHiddenImage.mScorm
-            );
-        });
-
         $('#hiPLinkMaximize-' + instance).on('click touchstart', (e) => {
             e.preventDefault();
             $('#hiPGameContainer-' + instance).show();
@@ -601,8 +595,6 @@ var $eXeHiddenImage = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXehiP beforeunload.eXehiP');
-
         $('#hiPLinkMaximize-' + instance).off('click touchstart');
         $('#hiPLinkMinimize-' + instance).off('click touchstart');
         $('#hiPMainContainer-' + instance)
@@ -662,6 +654,8 @@ var $eXeHiddenImage = {
 
     startGame: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.gameStarted) return;
 
@@ -780,10 +774,6 @@ var $eXeHiddenImage = {
             mOptions.attempts
         );
         $eXeHiddenImage.showMessage(0, message, instance);
-
-        if (mOptions.isScorm > 0) {
-            $eXeHiddenImage.sendScore(true, instance);
-        }
 
         $eXeHiddenImage.showImageNeo(mQuestion.url, instance);
 
@@ -1138,7 +1128,18 @@ var $eXeHiddenImage = {
         if (mOptions.showSolution) {
             $eXeHiddenImage.drawSolution(instance);
         }
+        // The activity finishes on the last question. Mark it completed BEFORE
+        // saving/sending so this final answer records state 2 immediately, instead
+        // of waiting for the delayed reveal + newQuestion -> gameOver (which runs
+        // only after the timeShowSolution delay). The delayed gameOver still runs
+        // for the end-of-game UI. (#1831)
+        if (mOptions.activeQuestion >= mOptions.numberQuestions - 1) {
+            mOptions.gameOver = true;
+        }
         $eXeHiddenImage.saveEvaluation(instance);
+        if (mOptions.isScorm > 0) {
+            $eXeHiddenImage.sendScore(true, instance);
+        }
 
         $eXeHiddenImage.hideSquares(instance, $eXeHiddenImage.startNewQuestion);
     },

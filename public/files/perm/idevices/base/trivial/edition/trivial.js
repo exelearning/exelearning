@@ -1340,7 +1340,7 @@ var $exeDevice = {
                         ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                     ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
                     ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                     <p class="exe-block-warning exe-block-dismissible" style="position:relative">
                         ${_('This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.')}
@@ -1684,7 +1684,7 @@ var $exeDevice = {
         $('#trivialEGlobalTimes').val(game.globalTime);
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
-            game.isScorm,
+            game.isScorm === 2 ? 1 : game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
@@ -2495,7 +2495,8 @@ var $exeDevice = {
             temas.push(tema);
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
+            isScorm = scorm.isScorm === 2 ? 1 : scorm.isScorm;
 
         return {
             asignatura: '',
@@ -2518,7 +2519,7 @@ var $exeDevice = {
             numeroTemas: numeroTemas,
             nombresTemas: nombresTemas,
             temas: temas,
-            isScorm: scorm.isScorm,
+            isScorm: isScorm,
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted ?? 100,
@@ -2705,7 +2706,7 @@ var $exeDevice = {
         $('#trivialETimeSilence').on('keyup', function () {
             let v = this.value;
             v = v.replace(/\D/g, '');
-            v = v.substring(0, 1);
+            v = v.substring(0, 3);
             this.value = v;
         });
 

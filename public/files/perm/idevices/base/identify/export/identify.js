@@ -68,7 +68,6 @@ var $eXeIdentifica = {
                 ),
                 msg = mOption.msgs.msgPlayStart;
 
-            mOption.scorerp = 0;
             mOption.idevicePath = $eXeIdentifica.idevicePath;
             mOption.main = 'idfMainContainer-' + i;
             mOption.idevice = 'identifica-IDevice';
@@ -344,6 +343,7 @@ var $eXeIdentifica = {
         mOptions.scoreGame = 0;
         mOptions.scoreTotal = 0;
         mOptions.score = 0;
+        delete mOptions.scorerp;
         mOptions.playerAudio = '';
         mOptions.evaluation =
             typeof mOptions.evaluation == 'undefined'
@@ -420,15 +420,6 @@ var $eXeIdentifica = {
             $useClue = $(`#idfUseClue-${instance}`),
             $messageClue = $(`#idfMessageClue-${instance}`),
             $startGameButton = $(`#idfStartGame-${instance}`);
-
-        $(window).on(
-            'unload.eXeIdentifica beforeunload.eXeIdentifica',
-            function () {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeIdentifica.mScorm
-                );
-            }
-        );
 
         $linkMaximize.on('click touchstart', function (e) {
             e.preventDefault();
@@ -530,7 +521,6 @@ var $eXeIdentifica = {
             $pulsados.each(function () {
                 $(this).attr('title', message);
             });
-            mOptions.initGame = true;
             $messageClue
                 .html(message)
                 .fadeOut(400)
@@ -556,7 +546,6 @@ var $eXeIdentifica = {
                 return;
             }
             const correct = $eXeIdentifica.checkWord(solution, answer);
-            mOptions.initGame = true;
             $eXeIdentifica.answerWord(correct, instance);
         });
 
@@ -610,8 +599,6 @@ var $eXeIdentifica = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXeIdentifica beforeunload.eXeIdentifica');
-
         $(`#idfLinkMaximize-${instance}`).off('click touchstart');
         $(`#idfLinkMinimize-${instance}`).off('click touchstart');
         $('#idfMainContainer-' + instance)
@@ -787,6 +774,12 @@ var $eXeIdentifica = {
 
         if (mOptions.isScorm === 1) {
             const score = mOptions.score.toFixed(2);
+            // Answering the last question completes the activity. Mark it synchronized
+            // so the score sent by sendScore records state 2, and an unload during the
+            // delay still finalizes the SCO as completed. (#1831)
+            if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+                mOptions.gameOver = true;
+            }
             $eXeIdentifica.sendScore(true, instance);
             $(`#idfRepeatActivity-${instance}`).text(
                 `${mOptions.msgs.msgYouScore}: ${score}`
@@ -954,6 +947,7 @@ var $eXeIdentifica = {
     gameOver: function (instance) {
         let mOptions = $eXeIdentifica.options[instance];
         mOptions.gameStarted = false;
+        mOptions.gameOver = true;
         $eXeIdentifica.showCluesLinks(0, instance);
         $('#idfLinkAudio-' + instance).hide();
         $exeDevices.iDevice.gamification.media.stopSound();
@@ -1091,14 +1085,6 @@ var $eXeIdentifica = {
         $(`#idfAttempts-${instance}`).text(q.attempts);
         $(`#idfPoints-${instance}`).text(mOptions.pointsClue.toFixed(2));
         $(`#idfUseClue-${instance}`).text(mOptions.msgs.msgShowClue);
-
-        if (mOptions.isScorm === 1 && mOptions.initGame) {
-            const score = mOptions.score.toFixed(2);
-            $eXeIdentifica.sendScore(true, instance);
-            $(`#idfRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`
-            );
-        }
 
         $exeDevices.iDevice.gamification.media.stopSound();
         const hasAudio = q.audio && q.audio.trim().length > 4;
@@ -1305,6 +1291,9 @@ var $eXeIdentifica = {
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeIdentifica.options[instance];
+
+        if (!mOptions) return;
+
         mOptions.scorerp = mOptions.score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,

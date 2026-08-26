@@ -1,29 +1,26 @@
-/**
- * Unit tests for the select-media-files iDevice (export/runtime).
- *
- * Regression coverage for the "first statement audio autoplays on load and the
- * speaker icon is missing" bug:
- *   - showPhrase must reveal the speaker icon whenever the statement has audio,
- *     for every question (including the first / num === 0).
- *   - showPhrase must only auto-play on navigation to a later question
- *     (num > 0); the first question stays silent until the icon is clicked.
- *   - startGame must never auto-play the statement audio (the game auto-starts
- *     on load when there is no timer / access code).
- *
- * The export declares `var $eXeSeleccionaMedias`; it is rewired to a global and
- * the auto-init call is stripped so importing has no side effects. Real jQuery
- * + happy-dom (from vitest.setup.js) back the DOM, and a media spy stands in
- * for the shared gamification audio helper.
- */
+import '../../../../../../../public/vitest.setup.js';
 
-/* eslint-disable no-undef */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+function loadExportIdevice(code) {
+    const modifiedCode = code
+        .replace(
+            /var\s+\$eXeSeleccionaMedias\s*=/,
+            'global.$eXeSeleccionaMedias ='
+        )
+        .replace(
+            /\$\(function\s*\(\)\s*\{\s*\$eXeSeleccionaMedias\.init\(\);\s*\}\);?/g,
+            ''
+        );
+    // eslint-disable-next-line no-eval
+    (0, eval)(modifiedCode);
+    return global.$eXeSeleccionaMedias;
+}
 
 function loadExport() {
     const code = readFileSync(join(__dirname, 'select-media-files.js'), 'utf-8');
@@ -37,14 +34,287 @@ function loadExport() {
     return global.$eXeSeleccionaMedias;
 }
 
-describe('select-media-files iDevice export', () => {
+describe('select-media-files iDevice export — SCORM score', () => {
+    let $eXeSeleccionaMedias;
+    let originalMedia;
+    let originalReport;
+    let originalSendScoreNew;
+
+    beforeEach(() => {
+        // checkQuestion/gameOver defer a setTimeout(gameOver, ...) callback that
+        // bare-references $eXeSeleccionaMedias; fake timers keep it from leaking
+        // past teardown (where the audio suite deletes the global).
+        vi.useFakeTimers();
+        global.$eXeSeleccionaMedias = undefined;
+        const code = readFileSync(join(__dirname, 'select-media-files.js'), 'utf-8');
+        $eXeSeleccionaMedias = loadExportIdevice(code);
+
+        originalMedia = global.$exeDevices.iDevice.gamification.media;
+        originalReport = global.$exeDevices.iDevice.gamification.report;
+        originalSendScoreNew =
+            global.$exeDevices.iDevice.gamification.scorm.sendScoreNew;
+        global.$exeDevices.iDevice.gamification.media = {
+            stopSound: vi.fn(),
+        };
+        global.$exeDevices.iDevice.gamification.report = {
+            saveEvaluation: vi.fn(),
+            updateEvaluationIcon: vi.fn(),
+        };
+        global.$exeDevices.iDevice.gamification.scorm.sendScoreNew = vi.fn();
+    });
+
+    afterEach(() => {
+        global.$exeDevices.iDevice.gamification.media = originalMedia;
+        global.$exeDevices.iDevice.gamification.report = originalReport;
+        global.$exeDevices.iDevice.gamification.scorm.sendScoreNew =
+            originalSendScoreNew;
+        document.body.innerHTML = '';
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    it('does not register its own unload or beforeunload SCORM handlers', () => {
+        const code = readFileSync(
+            join(__dirname, 'select-media-files.js'),
+            'utf-8'
+        );
+
+        expect(code).not.toMatch(
+            /beforeunload|unload\.eXeSeleccionaMedias|endScorm/
+        );
+    });
+
+    it('does not initialize scorerp to zero on load', () => {
+        const code = readFileSync(
+            join(__dirname, 'select-media-files.js'),
+            'utf-8'
+        );
+
+        expect(code).not.toContain('mOption.scorerp = 0');
+    });
+
+    it('does not save score while updating an intermediate wrong answer', () => {
+        const instance = 0;
+        document.body.innerHTML = `
+            <div id="slcmpPNumber-${instance}"></div>
+            <div id="slcmpPErrors-${instance}"></div>
+            <div id="slcmpPScore-${instance}"></div>
+            <div id="slcmpPHits-${instance}"></div>
+            <div id="slcmpMultimedia-${instance}"></div>
+        `;
+        $eXeSeleccionaMedias.options[instance] = {
+            errors: 0,
+            hits: 0,
+            isScorm: 1,
+            itinerary: { percentageClue: 80 },
+            numberQuestions: 2,
+            phrasesGame: [{}, {}],
+            score: 0,
+            showSolution: false,
+        };
+        vi.spyOn($eXeSeleccionaMedias, 'nextPhrase').mockImplementation(() => {});
+
+        $eXeSeleccionaMedias.updateScore(false, instance);
+
+        expect(global.$exeDevices.iDevice.gamification.scorm.sendScoreNew).not.toHaveBeenCalled();
+        expect(global.$exeDevices.iDevice.gamification.report.saveEvaluation).not.toHaveBeenCalled();
+        expect($eXeSeleccionaMedias.nextPhrase).toHaveBeenCalledWith(instance);
+    });
+
+    it('saves score when the player answers correctly', () => {
+        const instance = 0;
+        document.body.innerHTML = `
+            <div id="slcmpCheck-${instance}"></div>
+            <div id="slcmpMultimedia-${instance}">
+                <div class="SLCMP-GridItem SLCMP-Select"></div>
+            </div>
+            <div id="slcmpMessage-${instance}"></div>
+            <div id="slcmpPNumber-${instance}"></div>
+            <div id="slcmpPErrors-${instance}"></div>
+            <div id="slcmpPScore-${instance}"></div>
+            <div id="slcmpPHits-${instance}"></div>
+        `;
+        $(`#slcmpMultimedia-${instance} .SLCMP-GridItem`).data('state', true);
+        $eXeSeleccionaMedias.options[instance] = {
+            active: 0,
+            customMessages: false,
+            errors: 0,
+            hits: 0,
+            isScorm: 1,
+            itinerary: { percentageClue: 80 },
+            msgs: {
+                msgAllOK: 'Correct',
+            },
+            numberQuestions: 1,
+            phrasesGame: [{}],
+            repeatActivity: true,
+            score: 0,
+            showSolution: false,
+        };
+
+        $eXeSeleccionaMedias.checkQuestion(instance);
+
+        expect(global.$exeDevices.iDevice.gamification.scorm.sendScoreNew).toHaveBeenCalledWith(
+            true,
+            expect.objectContaining({
+                scorerp: 10,
+            })
+        );
+    });
+
+    it('saves score when the player exhausts attempts', () => {
+        const instance = 0;
+        document.body.innerHTML = `
+            <div id="slcmpCheck-${instance}"></div>
+            <div id="slcmpMultimedia-${instance}">
+                <div class="SLCMP-GridItem"></div>
+            </div>
+            <div id="slcmpMessage-${instance}"></div>
+            <div id="slcmpReboot-${instance}"></div>
+            <div id="slcmpPNumber-${instance}"></div>
+            <div id="slcmpPErrors-${instance}"></div>
+            <div id="slcmpPScore-${instance}"></div>
+            <div id="slcmpPHits-${instance}"></div>
+        `;
+        $(`#slcmpMultimedia-${instance} .SLCMP-GridItem`).data('state', true);
+        $eXeSeleccionaMedias.options[instance] = {
+            active: 0,
+            customMessages: false,
+            errors: 0,
+            hits: 0,
+            intentos: 1,
+            isScorm: 1,
+            itinerary: { percentageClue: 80 },
+            msgs: {
+                msgAgain: 'Try again',
+                msgFailures: 'Wrong',
+            },
+            numberQuestions: 1,
+            phrasesGame: [{}],
+            repeatActivity: true,
+            score: 0,
+            showSolution: false,
+        };
+        vi.spyOn($eXeSeleccionaMedias, 'getRetroFeedMessages').mockReturnValue('Wrong');
+
+        $eXeSeleccionaMedias.checkQuestion(instance);
+
+        expect(global.$exeDevices.iDevice.gamification.scorm.sendScoreNew).toHaveBeenCalledWith(
+            true,
+            expect.objectContaining({
+                scorerp: 0,
+            })
+        );
+    });
+
+    it('non-repeat scoring is per-instance (a finished instance does not block another)', () => {
+        const instance = 1;
+        document.body.innerHTML = `
+            <div id="slcmpCheck-${instance}"></div>
+            <div id="slcmpMultimedia-${instance}">
+                <div class="SLCMP-GridItem SLCMP-Select"></div>
+            </div>
+            <div id="slcmpMessage-${instance}"></div>
+            <div id="slcmpPNumber-${instance}"></div>
+            <div id="slcmpPErrors-${instance}"></div>
+            <div id="slcmpPScore-${instance}"></div>
+            <div id="slcmpPHits-${instance}"></div>
+        `;
+        $(`#slcmpMultimedia-${instance} .SLCMP-GridItem`).data('state', true);
+        // A DIFFERENT, already-finished instance must not lock this one:
+        // the old shared static guard is now replaced by a per-instance flag.
+        $eXeSeleccionaMedias.initialScore = '10.00';
+        $eXeSeleccionaMedias.options[instance] = {
+            active: 0,
+            customMessages: false,
+            errors: 0,
+            hits: 0,
+            isScorm: 1,
+            itinerary: { percentageClue: 80 },
+            msgs: { msgAllOK: 'Correct' },
+            numberQuestions: 1,
+            phrasesGame: [{}],
+            repeatActivity: false,
+            score: 0,
+            showSolution: false,
+        };
+
+        $eXeSeleccionaMedias.checkQuestion(instance);
+
+        // This (fresh) instance has its own empty score, so it must still send.
+        expect(
+            global.$exeDevices.iDevice.gamification.scorm.sendScoreNew
+        ).toHaveBeenCalledWith(true, expect.objectContaining({ scorerp: 10 }));
+        expect($eXeSeleccionaMedias.options[instance].initialScore).toBe('10.00');
+    });
+
+    it('saves score when the game finishes', () => {
+        const instance = 0;
+        document.body.innerHTML = `
+            <div id="slcmpCubierta-${instance}"></div>
+            <div id="slcmpCodeAccessDiv-${instance}"></div>
+        `;
+        $eXeSeleccionaMedias.options[instance] = {
+            errors: 0,
+            feedBack: false,
+            gameStarted: true,
+            hits: 1,
+            isScorm: 1,
+            msgs: {
+                msgYouScore: 'Your score',
+            },
+            numberQuestions: 2,
+            phrasesGame: [{}, {}],
+            score: 5,
+        };
+        vi.spyOn($eXeSeleccionaMedias, 'desactivateHover').mockImplementation(() => {});
+        vi.spyOn($eXeSeleccionaMedias, 'showScoreGame').mockImplementation(() => {});
+        vi.spyOn($eXeSeleccionaMedias, 'showFeedBack').mockImplementation(() => {});
+
+        $eXeSeleccionaMedias.gameOver(1, instance);
+
+        expect(global.$exeDevices.iDevice.gamification.scorm.sendScoreNew).toHaveBeenCalledWith(
+            true,
+            expect.objectContaining({
+                gameOver: true,
+                gameStarted: false,
+                scorerp: 5,
+            })
+        );
+    });
+
+    describe('getScore', () => {
+        it('computes (hits * 10) / numberQuestions on a 0-10 scale', () => {
+            $eXeSeleccionaMedias.options[0] = { hits: 3, numberQuestions: 4 };
+            expect($eXeSeleccionaMedias.getScore(0)).toBe(7.5);
+        });
+
+        it('returns 0 when numberQuestions is zero (no division by zero)', () => {
+            $eXeSeleccionaMedias.options[0] = { hits: 3, numberQuestions: 0 };
+            expect($eXeSeleccionaMedias.getScore(0)).toBe(0);
+        });
+
+        it('returns 0 when numberQuestions is missing or not numeric', () => {
+            $eXeSeleccionaMedias.options[0] = { hits: 3 };
+            expect($eXeSeleccionaMedias.getScore(0)).toBe(0);
+        });
+
+        it('treats a missing hits count as 0', () => {
+            $eXeSeleccionaMedias.options[0] = { numberQuestions: 4 };
+            expect($eXeSeleccionaMedias.getScore(0)).toBe(0);
+        });
+    });
+});
+
+describe('select-media-files iDevice export — audio icon + autoplay gating', () => {
     let media;
     let dmedia;
 
     beforeEach(() => {
         global.$eXeSeleccionaMedias = undefined;
         media = { playSound: vi.fn(), stopSound: vi.fn() };
-        global.$exeDevices = { iDevice: { gamification: { media } } };
+        global.$exeDevices = { iDevice: { gamification: { media, scorm: { restartActivity: () => {} } } } };
         dmedia = loadExport();
         document.body.innerHTML = '';
     });
@@ -122,5 +392,108 @@ describe('select-media-files iDevice export', () => {
             expect(media.playSound).not.toHaveBeenCalled();
             expect(dmedia.options[instance].gameStarted).toBe(true);
         });
+    });
+});
+
+describe('select-media-files iDevice export — Masonry guard', () => {
+    let dmedia;
+    let hadMasonry;
+    let originalMasonry;
+
+    beforeEach(() => {
+        // initializeMasonry retries via setTimeout; fake timers keep it deterministic.
+        vi.useFakeTimers();
+        global.$eXeSeleccionaMedias = undefined;
+        dmedia = loadExport();
+        // Masonry is an optional dependency not present in the test runtime.
+        // Snapshot whatever (if anything) is on $.fn so we can restore it cleanly.
+        hadMasonry = Object.prototype.hasOwnProperty.call($.fn, 'masonry');
+        originalMasonry = $.fn.masonry;
+        delete $.fn.masonry;
+        document.body.innerHTML = '';
+    });
+
+    afterEach(() => {
+        if (hadMasonry) {
+            $.fn.masonry = originalMasonry;
+        } else {
+            delete $.fn.masonry;
+        }
+        document.body.innerHTML = '';
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        delete global.$eXeSeleccionaMedias;
+    });
+
+    function gridMarkup(instance) {
+        document.body.innerHTML = `
+            <div id="slcmpMainContainer-${instance}">
+                <div class="SLCMP-Multimedia">
+                    <div class="SLCMP-GridItem"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    it('isMasonryReady reflects whether the plugin is registered on jQuery', () => {
+        expect(dmedia.isMasonryReady()).toBe(false);
+        $.fn.masonry = vi.fn();
+        expect(dmedia.isMasonryReady()).toBe(true);
+    });
+
+    it('does not throw when the masonry plugin is missing on first layout', () => {
+        gridMarkup(0);
+        expect(() => dmedia.initializeMasonry(0)).not.toThrow();
+    });
+
+    it('initializes masonry with grid options when the plugin is available', () => {
+        gridMarkup(0);
+        const masonry = vi.fn();
+        $.fn.masonry = masonry;
+
+        dmedia.initializeMasonry(0);
+
+        expect(masonry).toHaveBeenCalledWith({
+            itemSelector: '.SLCMP-GridItem',
+            columnWidth: '.SLCMP-GridItem',
+            gutter: 10,
+        });
+        expect(masonry).toHaveBeenCalledWith('reloadItems');
+        expect(masonry).toHaveBeenCalledWith('layout');
+    });
+
+    it('retries until the plugin becomes available, then initializes', () => {
+        gridMarkup(0);
+        dmedia.initializeMasonry(0); // plugin missing -> schedules a retry
+        const masonry = vi.fn();
+        $.fn.masonry = masonry;
+        vi.advanceTimersByTime(200); // retry fires; plugin is now present
+        expect(masonry).toHaveBeenCalled();
+    });
+
+    it('falls back to table mode when the plugin never loads', () => {
+        gridMarkup(0);
+        dmedia.initializeMasonry(0, 1); // one retry left
+        vi.advanceTimersByTime(200); // retry exhausts the budget -> fallback
+        const $grid = $('#slcmpMainContainer-0').find('.SLCMP-Multimedia');
+        expect($grid.hasClass('SLCMP-ModeTable')).toBe(true);
+    });
+
+    it('returns early without scheduling a retry when the grid is absent', () => {
+        expect(() => dmedia.initializeMasonry(99)).not.toThrow();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('destroyMasonry is a no-op when the plugin is missing', () => {
+        gridMarkup(0);
+        expect(() => dmedia.destroyMasonry()).not.toThrow();
+    });
+
+    it('destroyMasonry calls masonry("destroy") when the plugin is available', () => {
+        gridMarkup(0);
+        const masonry = vi.fn();
+        $.fn.masonry = masonry;
+        dmedia.destroyMasonry();
+        expect(masonry).toHaveBeenCalledWith('destroy');
     });
 });

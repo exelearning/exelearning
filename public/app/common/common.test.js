@@ -1265,6 +1265,21 @@ describe('common.js $exeDevices', () => {
       // All 5 activities are found (no guard that only checks first)
       expect(mockGame.activities.length).toBe(5);
     });
+
+    it('opens the session and delegates to initSession without gating on init()', () => {
+      // Contract: the old buggy gate (`... && scorm.init()`) is gone, so the session setup is
+      // no longer skipped when init() returns false (session already active). initGame now opens
+      // the session and delegates to the shared initSession helper (whose no-gate binding is
+      // covered by the gamification.scorm > initSession tests above).
+      const fs = require('fs');
+      const path = require('path');
+      const code = fs.readFileSync(path.join(__dirname, 'common.js'), 'utf-8');
+
+      expect(code).not.toMatch(/typeof scorm !== "undefined" && scorm\.init\(\)/);
+      expect(code).toMatch(
+        /scorm\.init\(\);\s*\$exeDevices\.iDevice\.gamification\.scorm\.initSession\(\$game\)/,
+      );
+    });
   });
 
   describe('gamification.helpers', () => {
@@ -1638,6 +1653,55 @@ describe('common.js $exeDevices', () => {
       expect(scorm.getPreviousScore(mockScorm)).toBe('85');
     });
 
+    describe('initSession', () => {
+      let prevWinScorm;
+
+      beforeEach(() => {
+        prevWinScorm = global.window.scorm;
+      });
+
+      afterEach(() => {
+        global.window.scorm = prevWinScorm;
+      });
+
+      it('binds learner name, previous score and score bounds (no gating on init())', () => {
+        const scormMock = {
+          GetLearnerName: () => 'Ada',
+          GetScoreRaw: () => '42',
+          SetScoreMax: vi.fn(),
+          SetScoreMin: vi.fn(),
+        };
+        global.window.scorm = scormMock;
+        const game = {};
+
+        getScorm().initSession(game);
+
+        expect(game.mScorm).toBe(scormMock);
+        expect(game.userName).toBe('Ada');
+        expect(game.previousScore).toBe('42');
+        expect(scormMock.SetScoreMax).toHaveBeenCalledWith(100);
+        expect(scormMock.SetScoreMin).toHaveBeenCalledWith(0);
+      });
+
+      it('falls back to cmi.core.score.max/min when SetScoreMax is absent', () => {
+        const set = vi.fn();
+        global.window.scorm = { set };
+        const game = {};
+
+        getScorm().initSession(game);
+
+        expect(set).toHaveBeenCalledWith('cmi.core.score.max', '100');
+        expect(set).toHaveBeenCalledWith('cmi.core.score.min', '0');
+      });
+
+      it('is a no-op when window.scorm is undefined', () => {
+        global.window.scorm = undefined;
+        const game = {};
+        expect(() => getScorm().initSession(game)).not.toThrow();
+        expect(game.mScorm).toBeUndefined();
+      });
+    });
+
     it('parseJSONSafe returns empty object for invalid JSON', () => {
       const scorm = getScorm();
       expect(scorm.parseJSONSafe('invalid')).toEqual({});
@@ -1664,13 +1728,42 @@ describe('common.js $exeDevices', () => {
       expect(result).toBeGreaterThan(0);
     });
 
+    // The mark must not depend on the order the author placed the iDevices in. The weights used to
+    // be normalised to integers summing 100 by flooring each one and handing the leftover points to
+    // the largest fractions; with equal weights every fraction ties, so the spare point always went
+    // to the FIRST entry. Three equal activities scoring 100/50/0 came out 50.5 (passed) and the
+    // same three scoring 0/50/100 came out 49.5 (failed) — same work, opposite verdict. (#1831)
+    it('getFinalScore gives the same mark whatever the order of the activities', () => {
+      const scorm = getScorm();
+      const equalWeights = (scores) =>
+        Object.fromEntries(scores.map((score, i) => [i + 1, { score, weighted: 100 }]));
+
+      // True weighted average of 100, 50 and 0 is exactly 50: the pass boundary.
+      expect(scorm.getFinalScore(equalWeights([100, 50, 0]))).toBe(50);
+      expect(scorm.getFinalScore(equalWeights([0, 50, 100]))).toBe(50);
+      expect(scorm.getFinalScore(equalWeights([50, 0, 100]))).toBe(50);
+
+      // And finishing one of three scores the same wherever that one sits.
+      expect(scorm.getFinalScore(equalWeights([100, 0, 0]))).toBe(33.33);
+      expect(scorm.getFinalScore(equalWeights([0, 0, 100]))).toBe(33.33);
+    });
+
+    it('getFinalScore respects the weights, including when they do not add up to 100', () => {
+      const scorm = getScorm();
+
+      // 100 at weight 25 against 0 at weight 75.
+      expect(scorm.getFinalScore({ 1: { score: 100, weighted: 25 }, 2: { score: 0, weighted: 75 } })).toBe(25);
+      // Weights summing 60: the average is over the real total, not over 100.
+      expect(scorm.getFinalScore({ 1: { score: 100, weighted: 30 }, 2: { score: 0, weighted: 30 } })).toBe(50);
+    });
+
     it('parseSuspendData returns empty object for empty data', () => {
       const scorm = getScorm();
       expect(scorm.parseSuspendData(null)).toEqual({});
       expect(scorm.parseSuspendData('')).toEqual({});
     });
 
-    it('parseActivity parses valid activity line', () => {
+    it('parseActivity parses a legacy line without state (defaults state to 0)', () => {
       const scorm = getScorm();
       const line = '1. "Test Activity"; Score: 85%; Weight: 50%.';
       const result = scorm.parseActivity(line);
@@ -1679,6 +1772,20 @@ describe('common.js $exeDevices', () => {
         title: 'Test Activity',
         score: 85,
         weighted: 50,
+        state: 0,
+      });
+    });
+
+    it('parseActivity parses the per-iDevice state when present', () => {
+      const scorm = getScorm();
+      const line = '2. "Quiz"; Score: 70%; Weight: 100%; Estado: 2';
+      const result = scorm.parseActivity(line);
+      expect(result).toEqual({
+        index: 2,
+        title: 'Quiz',
+        score: 70,
+        weighted: 100,
+        state: 2,
       });
     });
 
@@ -1687,15 +1794,1152 @@ describe('common.js $exeDevices', () => {
       expect(scorm.parseActivity('invalid line')).toBeNull();
     });
 
-    it('convertToLineFormat converts object to line format', () => {
+    it('convertToLineFormat converts object to line format including the state', () => {
       const scorm = getScorm();
       const obj = {
-        1: { title: 'Test', score: 80, weighted: 50 },
+        1: { title: 'Test', score: 80, weighted: 50, state: 1 },
       };
       const game = { msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
       const result = scorm.convertToLineFormat(obj, game);
       expect(result).toContain('Test');
       expect(result).toContain('80%');
+      expect(result).toContain('Estado: 1');
+    });
+
+    it('convertToLineFormat <-> parseSuspendData round-trips the state per iDevice', () => {
+      const scorm = getScorm();
+      const obj = {
+        1: { title: 'A', score: 80, weighted: 100, state: 2 },
+        2: { title: 'B', score: 0, weighted: 100, state: 0 },
+        3: { title: 'C', score: 40, weighted: 100, state: 1 },
+      };
+      const game = { msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+
+      const parsed = scorm.parseSuspendData(scorm.convertToLineFormat(obj, game));
+
+      expect(parsed[1].state).toBe(2);
+      expect(parsed[2].state).toBe(0);
+      expect(parsed[3].state).toBe(1);
+    });
+
+    it('parseSuspendData drops a phantom entry with an invalid index 0', () => {
+      const scorm = getScorm();
+      // index 0 means the iDevice node could not be resolved at registration
+      // (ideviceNumber is 1-based). Such an empty-title/state-0 phantom must be
+      // dropped so it cannot block the SCO page from completing.
+      const data =
+        '0. ""; Puntuación: 0%; Peso: 100%; Estado: 0.\t' +
+        '1. "Real"; Puntuación: 100%; Peso: 100%; Estado: 2';
+      const parsed = scorm.parseSuspendData(data);
+
+      expect(parsed[0]).toBeUndefined();
+      expect(parsed[1]).toEqual({
+        title: 'Real',
+        score: 100,
+        weighted: 100,
+        state: 2,
+      });
+    });
+
+    it('a phantom index-0 entry does not block completion and is self-healed on the next save', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+
+      const store = {};
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: (k, v) => {
+            store[k] = String(v);
+            return true;
+          },
+          save: () => true,
+        },
+      };
+      document.body.innerHTML = '<span id="eXeScoreNodeScore"></span>';
+      const msgs = { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' };
+
+      try {
+        // Reproduce the reported corrupted suspend_data: a phantom "0" entry plus
+        // three real iDevices already completed (state 2).
+        global.pipwerks.SCORM.set(
+          'cmi.suspend_data',
+          '0. ""; Puntuación: 0%; Peso: 100%; Estado: 0.\t' +
+            '1. "Imagen oculta"; Puntuación: 100%; Peso: 100%; Estado: 2.\t' +
+            '2. "Verdadero o falso"; Puntuación: 0%; Peso: 100%; Estado: 2.\t' +
+            '3. "Lista desordenada"; Puntuación: 25%; Peso: 100%; Estado: 2',
+        );
+
+        // The parser drops the phantom, so the page aggregates to completed (2).
+        const lmsData = scorm.parseSuspendData(
+          global.pipwerks.SCORM.get('cmi.suspend_data'),
+        );
+        expect(lmsData[0]).toBeUndefined();
+        expect(scorm.getActivityState(lmsData)).toBe(2);
+
+        // Re-completing any iDevice writes the page status AND re-serializes
+        // suspend_data without the phantom (self-heal).
+        scorm.updateActivity(
+          {
+            main: '#g',
+            ideviceNumber: 3,
+            title: 'Lista desordenada',
+            scorerp: '2.5',
+            weighted: 100,
+            gameStarted: true,
+            gameOver: true,
+            msgs,
+          },
+          lmsData,
+        );
+
+        // Every real iDevice is finished, so the page reaches a TERMINAL status
+        // instead of staying "incomplete". With these scores (avg ~42 < 50) that
+        // terminal status is "failed" — which is exactly what the learner expects
+        // after completing all three activities (passed OR failed, not incomplete).
+        expect(store['cmi.core.lesson_status']).toBe('failed');
+        expect(store['cmi.core.lesson_status']).not.toBe('incomplete');
+        expect(store['cmi.suspend_data']).not.toContain('0. ""');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('registerActivity writes no phantom entry when the iDevice node cannot be resolved', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+
+      const store = { 'cmi.suspend_data': '' };
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: (k, v) => {
+            store[k] = String(v);
+            return true;
+          },
+          save: () => true,
+        },
+      };
+      document.body.innerHTML = ''; // no .idevice_node matches the game's main
+
+      try {
+        // The main container is not in the DOM -> ideviceNumber resolves to 0.
+        // registerActivity must bail out instead of writing a "0" phantom entry.
+        expect(() =>
+          scorm.registerActivity({
+            main: 'missing-container',
+            weighted: 100,
+            msgs: { msgYouScore: 'Score', msgScore: 'Score', msgWeight: 'Weight' },
+          }),
+        ).not.toThrow();
+
+        expect(store['cmi.suspend_data']).toBe('');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('getActivityState aggregates the per-iDevice states into the page state', () => {
+      const scorm = getScorm();
+      // All unattempted -> 0
+      expect(scorm.getActivityState({ 1: { state: 0 }, 2: { state: 0 }, 3: { state: 0 } })).toBe(0);
+      // All completed -> 2
+      expect(scorm.getActivityState({ 1: { state: 2 }, 2: { state: 2 }, 3: { state: 2 } })).toBe(2);
+      // Only one of three finished -> incomplete (1)
+      expect(scorm.getActivityState({ 1: { state: 2 }, 2: { state: 0 }, 3: { state: 0 } })).toBe(1);
+      // A started-but-unfinished iDevice -> incomplete (1)
+      expect(scorm.getActivityState({ 1: { state: 1 }, 2: { state: 2 } })).toBe(1);
+      // No entries / missing state default to unattempted
+      expect(scorm.getActivityState({})).toBe(0);
+      expect(scorm.getActivityState({ 1: {} })).toBe(0);
+    });
+
+    // The line between the two halves of the status model: a started page carries the verdict its
+    // score implies, a never-started one is the only thing that reads "incomplete". (#1831)
+    it('hasAttemptedActivity distinguishes a registered iDevice from a played one', () => {
+      const scorm = getScorm();
+      // registerActivity inscribes every evaluable iDevice with state 0 on load, so entries
+      // existing is NOT interaction.
+      expect(scorm.hasAttemptedActivity({ 1: { state: 0 }, 2: { state: 0 } })).toBe(false);
+      // Started or finished are both learner actions.
+      expect(scorm.hasAttemptedActivity({ 1: { state: 1 }, 2: { state: 0 } })).toBe(true);
+      expect(scorm.hasAttemptedActivity({ 1: { state: 0 }, 2: { state: 2 } })).toBe(true);
+      // Nothing registered, missing state, or unusable input.
+      expect(scorm.hasAttemptedActivity({})).toBe(false);
+      expect(scorm.hasAttemptedActivity({ 1: {} })).toBe(false);
+      expect(scorm.hasAttemptedActivity('nope')).toBe(false);
+    });
+
+    it('hasAttemptedActivity reads suspend_data from the LMS when given nothing', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const msgs = { msgScore: 'Score', msgWeight: 'Weight' };
+
+      try {
+        const suspendData = scorm.convertToLineFormat(
+          { 1: { title: 'Quiz', score: 0, weighted: 100, state: 0 } },
+          { msgs },
+        );
+        global.pipwerks = { SCORM: { version: '1.2', get: () => suspendData } };
+        expect(scorm.hasAttemptedActivity()).toBe(false);
+
+        const played = scorm.convertToLineFormat(
+          { 1: { title: 'Quiz', score: 80, weighted: 100, state: 1 } },
+          { msgs },
+        );
+        global.pipwerks = { SCORM: { version: '1.2', get: () => played } };
+        expect(scorm.hasAttemptedActivity()).toBe(true);
+
+        // No SCORM at all: nothing was attempted.
+        delete global.pipwerks;
+        expect(scorm.readActivityState()).toEqual({});
+        expect(scorm.hasAttemptedActivity()).toBe(false);
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('marks the SCO passed once three iDevices are completed in sequence (full suspend_data round-trip)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+
+      // Stateful pipwerks mock: really stores CMI values, so cmi.suspend_data
+      // round-trips through convertToLineFormat/parseSuspendData exactly like a
+      // real LMS would between each iDevice save.
+      const store = {};
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: (k, v) => {
+            store[k] = String(v);
+            return true;
+          },
+          save: () => true,
+        },
+      };
+      document.body.innerHTML = '<span id="eXeScoreNodeScore"></span>';
+      const msgs = { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' };
+
+      try {
+        // On load every evaluable iDevice registers with state 0.
+        const initial = scorm.convertToLineFormat(
+          {
+            1: { title: 'HiddenImage', score: 0, weighted: 100, state: 0 },
+            2: { title: 'Scrambled', score: 0, weighted: 100, state: 0 },
+            3: { title: 'TrueFalse', score: 0, weighted: 100, state: 0 },
+          },
+          { msgs },
+        );
+        global.pipwerks.SCORM.set('cmi.suspend_data', initial);
+
+        // Each completion reads the current suspend_data, parses it and saves,
+        // exactly like sendScoreNew -> updateActivity does at runtime.
+        const complete = (ideviceNumber, title, scorerp) => {
+          const lmsData = scorm.parseSuspendData(
+            global.pipwerks.SCORM.get('cmi.suspend_data'),
+          );
+          scorm.updateActivity(
+            {
+              main: '#g',
+              ideviceNumber,
+              title,
+              scorerp,
+              weighted: 100,
+              gameStarted: true,
+              gameOver: true,
+              msgs,
+            },
+            lmsData,
+          );
+        };
+
+        complete(1, 'HiddenImage', 8);
+        complete(2, 'Scrambled', 9);
+        complete(3, 'TrueFalse', 10);
+
+        const finalData = scorm.parseSuspendData(
+          global.pipwerks.SCORM.get('cmi.suspend_data'),
+        );
+        expect(scorm.getActivityState(finalData)).toBe(2);
+        expect(store['cmi.core.lesson_status']).toBe('passed');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('normalizeMode coerces legacy manual mode (2) to automatic (1)', () => {
+      const scorm = getScorm();
+      // Auto-only iDevices must never run in manual mode (2).
+      expect(scorm.normalizeMode(2)).toBe(1);
+      expect(scorm.normalizeMode('2')).toBe(1);
+      // Other modes are preserved.
+      expect(scorm.normalizeMode(0)).toBe(0);
+      expect(scorm.normalizeMode(1)).toBe(1);
+      // Missing / invalid values fall back to "no SCORM" (0).
+      expect(scorm.normalizeMode(undefined)).toBe(0);
+      expect(scorm.normalizeMode('nan')).toBe(0);
+    });
+
+    it('sendScoreNew ignores automatic saves in manual SCORM mode (isScorm 2)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node"><div id="game"></div></article>
+      `;
+      try {
+        scorm.sendScoreNew(true, {
+          main: 'game',
+          ideviceNumber: 1,
+          isScorm: 2,
+          gameStarted: true,
+          gameOver: true,
+          scorerp: '8.50',
+          weighted: 100,
+          title: 'Activity',
+          userName: '',
+          msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score', msgEndGameScore: 'End' },
+        });
+        // Manual mode persists ONLY on a button press, so an automatic save
+        // must not touch the LMS.
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.suspend_data', expect.anything());
+        expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+      }
+    });
+
+    it('sendScoreNew persists a manual button press in manual SCORM mode (isScorm 2)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const originalAlert = global.alert;
+      global.alert = vi.fn();
+      if (typeof window !== 'undefined') window.alert = global.alert;
+      global.pipwerks = {
+        SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node"><div id="game"></div></article>
+      `;
+      try {
+        scorm.sendScoreNew(false, {
+          main: 'game',
+          ideviceNumber: 1,
+          isScorm: 2,
+          gameStarted: true,
+          gameOver: true,
+          scorerp: '8.50',
+          weighted: 100,
+          title: 'Activity',
+          userName: '',
+          msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score', msgOnlySaveScore: 'Only', msgEndGameScore: 'End' },
+        });
+        // A button press (auto === false) is the only way manual mode saves; a
+        // finished game records state 2 (completed) for the iDevice.
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 2'));
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        global.alert = originalAlert;
+        if (typeof window !== 'undefined') window.alert = originalAlert;
+      }
+    });
+
+    it('sendScoreNew does not save a manual button press before the game starts', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const originalAlert = global.alert;
+      global.alert = vi.fn();
+      if (typeof window !== 'undefined') window.alert = global.alert;
+      global.pipwerks = {
+        SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node"><div id="game"></div></article>
+      `;
+      try {
+        scorm.sendScoreNew(false, {
+          main: 'game',
+          ideviceNumber: 1,
+          isScorm: 2,
+          gameStarted: false,
+          gameOver: false,
+          scorerp: '0',
+          weighted: 100,
+          title: 'Activity',
+          userName: '',
+          msgs: { msgEndGameScore: 'Play first' },
+        });
+        // Pressing the button without playing is NOT an attempt: nothing is
+        // persisted and the iDevice stays "not attempted".
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.suspend_data', expect.anything());
+        expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        global.alert = originalAlert;
+        if (typeof window !== 'undefined') window.alert = originalAlert;
+      }
+    });
+
+    it('sendScoreNew still persists automatic saves in automatic mode (isScorm 1)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node"><div id="game"></div></article>
+      `;
+      try {
+        scorm.sendScoreNew(true, {
+          main: 'game',
+          ideviceNumber: 1,
+          isScorm: 1,
+          gameStarted: true,
+          gameOver: true,
+          scorerp: '8.50',
+          weighted: 100,
+          title: 'Activity',
+          userName: '',
+          msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score', msgEndGameScore: 'End' },
+        });
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 2'));
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+      }
+    });
+
+    it('updateActivity commits score changes to the LMS', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '8.50',
+            weighted: 100,
+            gameOver: true,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Activity'));
+        // A finished iDevice persists its per-iDevice state code (2 = completed) in suspend_data.
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 2'));
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 85);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('updateActivity marks a SCORM 1.2 SCO as failed below the passing threshold', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn(),
+          SetExit: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '3.00',
+            weighted: 100,
+            gameOver: true,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 30);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+        // A finished page (even when failed) exits with the "normal" intent. showFinalScore routes
+        // every exit write through the single SetExit writer, which normalizes "normal" -> "" for
+        // SCORM 1.2 (asserted in SCORM_API_wrapper.test.js) so Moodle stops resuming the SCO. (#1831)
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('suspend');
+        // showFinalScore no longer writes the exit CMI element directly (SetExit owns the key).
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.exit', expect.anything());
+        // SCORM 2004-only keys must NOT leak into a 1.2 package.
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.success_status', expect.anything());
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.score.scaled', expect.anything());
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('updateActivity uses SCORM 2004 CMI keys when the LMS reports version 2004', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          SetExit: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '8.50',
+            weighted: 100,
+            gameOver: true,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        // SCORM 2004 keys live under cmi.* (no .core.) and split completion/success.
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.raw', 85);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.min', 0);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.max', 100);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0.85);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'passed');
+        // A finished 2004 page exits with the "normal" intent, routed through the single SetExit
+        // writer (which targets cmi.exit under 2004). (#1831)
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('suspend');
+        // The SCORM 1.2-only keys must NOT leak into a 2004 package.
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.score.raw', expect.anything());
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.exit', expect.anything());
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('updateActivity marks SCORM 2004 success_status as failed below the passing threshold', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '3.00',
+            weighted: 100,
+            gameOver: true,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0.3);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'failed');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('fails a SCORM 2004 page whose running score is under the threshold, without waiting for it to finish', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '0.00',
+            weighted: 100,
+            gameStarted: true,
+            gameOver: false,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        // The status follows the score, not whether the activity is finished: 0 is under 50, so the
+        // verdict is "failed" already. SCORM 2004 mirrors 1.2, where writing a verdict to the single
+        // lesson_status leaves no separate progress notion, so completion_status goes to "completed"
+        // rather than keeping "incomplete". (#1831)
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.score.scaled', 0);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'failed');
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.success_status', 'unknown');
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('passes a SCORM 1.2 page whose running score already clears the threshold, without waiting for it to finish', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn(),
+          SetExit: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.updateActivity(
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            scorerp: '8.50',
+            weighted: 100,
+            gameStarted: true,
+            gameOver: false,
+            msgs: {
+              msgScore: 'Score',
+              msgWeight: 'Weight',
+              msgYouScore: 'Score',
+            },
+          },
+          {},
+        );
+
+        // The iDevice is started but not finished, and the running score is 85. The verdict does
+        // not wait for the activity to finish: the page already reads "passed". (#1831)
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 85);
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+        // The page now has a result, so the attempt exits "normal" even with an iDevice left.
+        // Moodle draws its index icon from the exit token: leaving it as "suspend" shows the SCO
+        // as suspended and hides the verdict from the teacher until the whole page is done. (#1831)
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('suspend');
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('showFinalScore does not downgrade an already-completed SCORM 2004 SCO on a review-only reopen', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        // Reopen scenario: the game has not been restarted (no gameStarted) nor finished
+        // (no gameOver), but suspend_data still holds a passing score from a prior attempt.
+        scorm.showFinalScore(
+          { 1: { title: 'Activity', score: 80, weighted: 100 } },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        // The previous score is still shown to the learner...
+        expect(document.querySelector('#eXeScoreNodeScore').textContent).toBe('Score: 80/100');
+        // ...but the LMS data model must be left untouched so the persisted
+        // "completed/passed" is preserved while the learner only reviews.
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('showFinalScore does not downgrade an already-completed SCORM 1.2 SCO on a review-only reopen', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.showFinalScore(
+          { 1: { title: 'Activity', score: 80, weighted: 100 } },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Activity',
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        expect(document.querySelector('#eXeScoreNodeScore').textContent).toBe('Score: 80/100');
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.score.raw', expect.anything());
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('showFinalScore closes the attempt as soon as the page carries a verdict', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: {
+          version: '2004',
+          set: vi.fn(),
+          SetExit: vi.fn(),
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        // iDevice 1 was restarted (state 1, not finished); iDevice 2 is still completed (state 2).
+        // The verdict follows the running score (80 across both, so "passed"), and the exit token
+        // follows the verdict rather than "every iDevice finished": Moodle draws its index icon
+        // from that token, so leaving it as "suspend" would hide a result the SCO already has.
+        scorm.showFinalScore(
+          {
+            1: { title: 'A', score: 80, weighted: 100, state: 1 },
+            2: { title: 'B', score: 80, weighted: 100, state: 2 },
+          },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'A',
+            gameStarted: true,
+            gameOver: false,
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'passed');
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('suspend');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('showFinalScore clears the resumable exit to normal once every iDevice is completed (timed SCO no longer re-opens as suspended)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+
+      // Reproduce the Moodle report from #1831: a timed Sort SCO finalized with
+      // lesson_status "failed" (25% < 50%) and Estado 2 in suspend_data, yet
+      // cmi.core.exit stayed "suspend" (Moodle's in-progress default), so Moodle
+      // resumed and re-opened the SCO as incomplete/suspended on the next visit.
+      const store = { 'cmi.core.exit': 'suspend' };
+      global.pipwerks = {
+        SCORM: {
+          set: vi.fn((k, v) => {
+            store[k] = String(v);
+            return true;
+          }),
+          // Mirror pipwerks.SCORM.SetExit under SCORM 1.2: the "normal" intent collapses to ""
+          // (out-of-vocabulary in 1.2) and lands in cmi.core.exit. This exercises the same single
+          // exit writer production now uses, end to end. (#1831)
+          SetExit: (exit) => {
+            store['cmi.core.exit'] = exit === 'normal' ? '' : String(exit);
+          },
+          save: vi.fn(),
+        },
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="game"></div>
+          <span id="eXeScoreNodeScore"></span>
+        </article>
+      `;
+
+      try {
+        scorm.showFinalScore(
+          { 1: { title: 'Ordena tarjetas', score: 25, weighted: 100, state: 2 } },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'Ordena tarjetas',
+            // Timer expiry finalizes the activity: gameStarted false, gameOver true.
+            gameStarted: false,
+            gameOver: true,
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        // The failed status is written (correct) AND showFinalScore's "normal" exit intent, routed
+        // through SetExit, clears the resumable exit to "" for SCORM 1.2 so Moodle records a finished
+        // attempt instead of resuming it.
+        expect(store['cmi.core.lesson_status']).toBe('failed');
+        expect(store['cmi.core.exit']).toBe('');
+        expect(store['cmi.core.exit']).not.toBe('suspend');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') {
+          delete global.pipwerks;
+        } else {
+          global.pipwerks = originalPipwerks;
+        }
+      }
+    });
+
+    it('restartActivity drops a completed iDevice (and the page) back to incomplete', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const game = { ideviceNumber: 1, title: 'A', weighted: 100, msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+      const completed = scorm.convertToLineFormat({ 1: { title: 'A', score: 80, weighted: 100, state: 2 } }, game);
+      const updateScormPageStatus = vi.fn();
+      const previousExeExport = window.$exeExport;
+      global.pipwerks = { SCORM: { get: vi.fn(() => completed), set: vi.fn(), save: vi.fn() } };
+      window.$exeExport = { updateScormPageStatus };
+      try {
+        scorm.restartActivity(game);
+        // The iDevice entry is rewritten to state 1 ...
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 1'));
+        // ... and the page is recomputed immediately (it becomes incomplete).
+        expect(updateScormPageStatus).toHaveBeenCalledWith(true);
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        window.$exeExport = previousExeExport;
+      }
+    });
+
+    it('restartActivity nudges Moodle to redraw the TOC (deferred retry commit)', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const game = { ideviceNumber: 1, title: 'A', weighted: 100, msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+      const completed = scorm.convertToLineFormat({ 1: { title: 'A', score: 80, weighted: 100, state: 2 } }, game);
+      const previousExeExport = window.$exeExport;
+      global.pipwerks = { SCORM: { get: vi.fn(() => completed), set: vi.fn(), save: vi.fn() } };
+      window.$exeExport = { updateScormPageStatus: vi.fn() };
+      vi.useFakeTimers();
+      try {
+        scorm.restartActivity(game);
+        // The synchronous commit is the guarantee.
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+        // triggerMoodleDetection schedules a deferred retry commit so Moodle redraws
+        // the SCO status in its TOC, just like the completion path does.
+        vi.advanceTimersByTime(50);
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(2);
+      } finally {
+        vi.useRealTimers();
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        window.$exeExport = previousExeExport;
+      }
+    });
+
+    it('showFinalScore reads suspend_data from the LMS when the caller passes none', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const msgs = { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' };
+      const store = {
+        'cmi.suspend_data': scorm.convertToLineFormat(
+          { 1: { title: 'A', score: 80, weighted: 100, state: 2 } },
+          { msgs },
+        ),
+      };
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: (k, v) => {
+            store[k] = String(v);
+            return true;
+          },
+          SetExit: () => {},
+        },
+      };
+      document.body.innerHTML = '<span id="eXeScoreNodeScore"></span>';
+
+      try {
+        scorm.showFinalScore(null, {
+          main: '#game',
+          ideviceNumber: 1,
+          title: 'A',
+          gameStarted: false,
+          gameOver: true,
+          msgs,
+        });
+
+        // The stored 80/100 was recovered from cmi.suspend_data, so the SCO passes.
+        expect(store['cmi.core.lesson_status']).toBe('passed');
+        expect(store['cmi.core.score.raw']).toBe('80');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+      }
+    });
+
+    // "not attempted" is the absence of a write, never a value we send: Moodle rejects it
+    // outright on cmi.core.lesson_status with error 405. (#1831)
+    it('showFinalScore writes nothing when the page still aggregates to not attempted', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const store = {};
+      global.pipwerks = {
+        SCORM: {
+          version: '1.2',
+          get: (k) => (k in store ? store[k] : ''),
+          set: vi.fn((k, v) => {
+            store[k] = String(v);
+            return true;
+          }),
+          SetExit: vi.fn(),
+        },
+      };
+      document.body.innerHTML = '<span id="eXeScoreNodeScore"></span>';
+
+      try {
+        scorm.showFinalScore(
+          { 1: { title: 'A', score: 0, weighted: 100, state: 0 } },
+          {
+            main: '#game',
+            ideviceNumber: 1,
+            title: 'A',
+            gameStarted: true,
+            gameOver: false,
+            msgs: { msgScore: 'Score', msgWeight: 'Weight', msgYouScore: 'Score' },
+          },
+        );
+
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalled();
+        // The on-page score display is still refreshed.
+        expect(document.getElementById('eXeScoreNodeScore').textContent).toContain('0/100');
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+      }
+    });
+
+    // The learner pressing "start" is what moves the page off "not attempted". Entering the page
+    // never reaches here, which is what keeps an untouched page untouched. (#1831)
+    it('restartActivity moves a freshly registered iDevice (and the page) to incomplete on first start', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const game = { ideviceNumber: 1, title: 'A', weighted: 100, msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+      // As registerActivity leaves it on load: inscribed, never played.
+      const registered = scorm.convertToLineFormat({ 1: { title: 'A', score: 0, weighted: 100, state: 0 } }, game);
+      const updateScormPageStatus = vi.fn();
+      const previousExeExport = window.$exeExport;
+      global.pipwerks = { SCORM: { get: vi.fn(() => registered), set: vi.fn(), save: vi.fn() } };
+      window.$exeExport = { updateScormPageStatus };
+      try {
+        scorm.restartActivity(game);
+
+        expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.suspend_data', expect.stringContaining('Estado: 1'));
+        expect(updateScormPageStatus).toHaveBeenCalledWith(true);
+        expect(global.pipwerks.SCORM.save).toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        window.$exeExport = previousExeExport;
+      }
+    });
+
+    it('restartActivity leaves an in-progress or unknown iDevice untouched', () => {
+      const scorm = getScorm();
+      const originalPipwerks = global.pipwerks;
+      const game = { ideviceNumber: 1, title: 'A', weighted: 100, msgs: { msgScore: 'Score', msgWeight: 'Weight' } };
+      const started = scorm.convertToLineFormat({ 1: { title: 'A', score: 0, weighted: 100, state: 1 } }, game);
+      const updateScormPageStatus = vi.fn();
+      const previousExeExport = window.$exeExport;
+      window.$exeExport = { updateScormPageStatus };
+      try {
+        // Started but not finished (state 1) -> no change: re-entering a half-played activity
+        // must not wipe the score the learner has already earned.
+        global.pipwerks = { SCORM: { get: vi.fn(() => started), set: vi.fn(), save: vi.fn() } };
+        scorm.restartActivity(game);
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+        expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
+        expect(updateScormPageStatus).not.toHaveBeenCalled();
+
+        // No stored entry for this iDevice yet -> no change.
+        global.pipwerks = { SCORM: { get: vi.fn(() => ''), set: vi.fn(), save: vi.fn() } };
+        scorm.restartActivity(game);
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+
+        // Missing ideviceNumber -> no change.
+        global.pipwerks = { SCORM: { get: vi.fn(() => started), set: vi.fn(), save: vi.fn() } };
+        scorm.restartActivity({ title: 'A', weighted: 100, msgs: game.msgs });
+        expect(global.pipwerks.SCORM.set).not.toHaveBeenCalled();
+      } finally {
+        if (typeof originalPipwerks === 'undefined') delete global.pipwerks;
+        else global.pipwerks = originalPipwerks;
+        window.$exeExport = previousExeExport;
+      }
     });
 
     it('endScorm does not throw', () => {
@@ -3344,6 +4588,82 @@ describe('common.js $exeDevices', () => {
         value: originalAppName,
         configurable: true,
       });
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.scorm.triggerMoodleDetection', () => {
+    const getTriggerMoodleDetection = () => global.$exeDevices.iDevice.gamification.scorm.triggerMoodleDetection;
+
+    let originalPipwerks;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      originalPipwerks = global.pipwerks;
+      global.pipwerks = {
+        SCORM: { save: vi.fn() },
+      };
+      document.body.innerHTML = '';
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      global.pipwerks = originalPipwerks;
+      document.body.innerHTML = '';
+    });
+
+    it('schedules a single deferred retry commit (LMSCommit) at 50ms', () => {
+      const fn = getTriggerMoodleDetection();
+
+      fn();
+      // Nothing synchronous: the synchronous commit already happened in updateActivity.
+      expect(global.pipwerks.SCORM.save).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(50);
+
+      expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not touch the DOM (Moodle reacts to LMSCommit, not to SCO DOM changes)', () => {
+      const fn = getTriggerMoodleDetection();
+      document.body.innerHTML = '<div id="test-container"></div>';
+      const container = document.getElementById('test-container');
+
+      fn();
+      vi.advanceTimersByTime(50);
+
+      // The old reflow/CSS "mechanisms" were cargo-cult: the container is untouched.
+      expect(container.style.opacity).toBe('');
+      expect(container.style.transform).toBe('');
+    });
+
+    it('returns early when pipwerks.SCORM.save is unavailable (no timer scheduled)', () => {
+      const fn = getTriggerMoodleDetection();
+      global.pipwerks = { SCORM: {} };
+
+      expect(() => fn()).not.toThrow();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('returns early when pipwerks is not globally available', () => {
+      const fn = getTriggerMoodleDetection();
+      delete global.pipwerks;
+
+      expect(() => {
+        fn();
+        vi.advanceTimersByTime(50);
+      }).not.toThrow();
+    });
+
+    it('silently fails when the deferred pipwerks.SCORM.save throws', () => {
+      const fn = getTriggerMoodleDetection();
+      global.pipwerks.SCORM.save = vi.fn(() => {
+        throw new Error('SCORM not available');
+      });
+
+      expect(() => {
+        fn();
+        vi.advanceTimersByTime(50);
+      }).not.toThrow();
     });
   });
 });

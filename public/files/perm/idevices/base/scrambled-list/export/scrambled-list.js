@@ -140,6 +140,8 @@ var $scrambledlist = {
         data.isScorm =
             data.escapedData && data.exportScorm.saveScore ? 1 : data.isScorm;
         data.isScorm = data.isScorm ?? 0;
+        data.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(data.isScorm);
 
         data.weighted = data.weighted ?? 100;
 
@@ -199,13 +201,21 @@ var $scrambledlist = {
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
 
+        // updateConfig flags the new-format data as gameStarted; reset it BEFORE registering so the
+        // shared SCORM helper does not treat page load as an active session. registerActivity ends
+        // in showFinalScore, which writes the SCO status whenever gameStarted or gameOver is set —
+        // so leaving the flag on made merely opening the page write a status. sendScore sets the
+        // flags itself when the learner presses Comprobar. (#1831)
+        ldata.gameStarted = false;
+
         if (
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0
         ) {
-            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
-                this.initScormData(ldata);
+            if (typeof window.scorm !== 'undefined') {
+                this.initSCORM(ldata);
             } else {
+                // The SCORM wrapper is not loaded yet: fetch it, then initSCORM runs.
                 this.loadSCORM_API_wrapper(ldata);
             }
         } else if (ldata.isScorm > 0) {
@@ -240,32 +250,6 @@ var $scrambledlist = {
         }
     },
 
-    initScormData: function (ldata) {
-        $scrambledlist.mScorm = window.scorm;
-        $scrambledlist.userName =
-            $exeDevices.iDevice.gamification.scorm.getUserName(
-                $scrambledlist.mScorm
-            );
-        $scrambledlist.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $scrambledlist.mScorm
-            );
-
-        if (typeof $scrambledlist.mScorm.SetScoreMax === 'function') {
-            $scrambledlist.mScorm.SetScoreMax(100);
-        } else {
-            $scrambledlist.mScorm.SetScoreMax(100);
-        }
-
-        if (typeof $scrambledlist.mScorm.SetScoreMin === 'function') {
-            $scrambledlist.mScorm.SetScoreMin(0);
-        } else {
-            $scrambledlist.mScorm.SetScoreMin(0);
-        }
-        $scrambledlist.initialScore = $scrambledlist.previousScore;
-        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
-    },
-
     escapeForCallback: function (obj) {
         let json = JSON.stringify(obj);
         json = json.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -287,11 +271,14 @@ var $scrambledlist = {
     },
 
     initSCORM: function (ldata) {
-        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
-        $scrambledlist.mScorm = window.scorm;
-        if ($scrambledlist.mScorm.init()) {
-            this.initScormData(parsedData);
-        }
+        const parsedData =
+            typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
+        // Open the session (no-op if already active) and bind it via the shared helper, then
+        // register this instance. initSession sets userName / previousScore / score bounds
+        // without gating on init()'s return value.
+        window.scorm.init();
+        $exeDevices.iDevice.gamification.scorm.initSession($scrambledlist);
+        $exeDevices.iDevice.gamification.scorm.registerActivity(parsedData);
     },
 
     /**
@@ -502,6 +489,13 @@ var $scrambledlist = {
 
         this.saveEvaluation(nRightAnswers, userList[0].children.length, data);
 
+        // Pressing Comprobar finalizes the activity for SCORM: send the score and
+        // mark it completed now, regardless of whether a retry is offered next.
+        // Each retry's Comprobar updates the score but the activity stays completed.
+        if (data.isScorm > 0) {
+            this.sendScore(nRightAnswers, userList[0].children.length, data);
+        }
+
         const errors = userList[0].children.length - nRightAnswers;
         if (!right && data.pendingAttempts > 0) {
             const retryQuestion = this.getRetryMessage(data, errors);
@@ -520,9 +514,7 @@ var $scrambledlist = {
                         feedback,
                         right,
                         rightAnswers,
-                        data,
-                        nRightAnswers,
-                        userList[0].children.length
+                        data
                     );
                 }
             );
@@ -534,9 +526,7 @@ var $scrambledlist = {
             feedback,
             right,
             rightAnswers,
-            data,
-            nRightAnswers,
-            userList[0].children.length
+            data
         );
         const listHtml = $('#sl' + data.id).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(listHtml)) {
@@ -544,17 +534,10 @@ var $scrambledlist = {
         }
     },
 
-    showResultFeedback: function (
-        activity,
-        feedback,
-        right,
-        rightAnswers,
-        data,
-        nRightAnswers,
-        totalOptions
-    ) {
-        if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
-            this.sendScore(nRightAnswers, totalOptions, data);
+    showResultFeedback: function (activity, feedback, right, rightAnswers, data) {
+        // SCORM finalization (score + completed) happens in check() on every
+        // Comprobar; SCORM exports show no inline feedback panel here.
+        if (data.isScorm > 0) {
             return;
         }
 
@@ -860,21 +843,14 @@ var $scrambledlist = {
     /**
      *
      */
-    endScorm: function () {
-        if (
-            $scrambledlist.mScorm &&
-            typeof $scrambledlist.mScorm.quit == 'function'
-        ) {
-            //$scrambledlist.mScorm.quit();
-        }
-    },
-
-    /**
-     *
-     */
     sendScore: function (rightAnswers, totalOptions, data) {
         data.scorerp = (rightAnswers * 10) / totalOptions;
-        data.gameStarted = true;
+        // Pressing Comprobar finalizes the activity: mark it completed so the
+        // shared SCORM helper writes lesson_status passed/failed instead of
+        // "incomplete" (#1831). Called on every Comprobar (see check), even when a
+        // retry is still offered; later retries update the score but keep it done.
+        data.gameStarted = false;
+        data.gameOver = true;
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
     },
     /**

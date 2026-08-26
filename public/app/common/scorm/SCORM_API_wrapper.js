@@ -19,7 +19,15 @@ pipwerks.debug = { isActive: true };  //Enable (true) or disable (false) for deb
 
 pipwerks.SCORM = { //Define the SCORM object
   version: null, //Store SCORM version.
-  handleCompletionStatus: true, //Whether or not the wrapper should automatically handle the initial completion status
+  // Whether or not the wrapper should automatically handle the initial completion status.
+  // pipwerks ships this ON: connection.initialize() rewrites "not attempted" -> "incomplete" right
+  // after LMSInitialize, so merely OPENING a page marked it as started in the LMS even when the
+  // learner never touched an activity. eXeLearning gives that ownership to the learner instead:
+  // the SCO status only changes through interaction with a SCORM iDevice.
+  // The switch lives here and not in the callers because SEVEN places open the session -- loadPage,
+  // initGame and the window.scorm.init() of adaptative-quiz, form, trueorfalse, interactive-video
+  // and scrambled-list -- so a per-caller opt-out would be six chances to miss one.
+  handleCompletionStatus: false,
   handleExitMode: true, //Whether or not the wrapper should automatically handle the exit mode
   API: {
     handle: null,
@@ -305,7 +313,11 @@ pipwerks.SCORM.connection.terminate = function () {
 
     if (API) {
 
-      if (scorm.handleExitMode && !exitStatus) {
+      // Only auto-handle the exit mode when the content never expressed one. The test
+      // must be "still unset" (null), not "falsy": a finished SCORM 1.2 page exits with
+      // "" -- SetExit maps "normal" to "" because 1.2 has no "normal" -- and "" is falsy,
+      // so a !exitStatus guard would still overwrite the very value the content chose.
+      if (scorm.handleExitMode && exitStatus === null) {
 
         if (completionStatus !== "completed" && completionStatus !== "passed") {
 
@@ -471,6 +483,19 @@ pipwerks.SCORM.data.set = function (parameter, value) {
         if (parameter === "cmi.core.lesson_status" || parameter === "cmi.completion_status") {
 
           scorm.data.completionStatus = value;
+
+        }
+
+        // Mirror the exit value the same way completionStatus is mirrored. Without this,
+        // data.exitStatus stayed at its initial null -- it is only ever assigned in
+        // data.get, and nothing in eXeLearning reads cmi.core.exit -- so the
+        // `handleExitMode && !exitStatus` guard in connection.terminate always fired and
+        // overwrote whatever SetExit had just written. A finished-but-failed page was
+        // rewritten to "suspend" right after being committed, and Moodle resumed a SCO
+        // the learner had already completed. See exelearning/exelearning#1831.
+        if (parameter === "cmi.core.exit" || parameter === "cmi.exit") {
+
+          scorm.data.exitStatus = value;
 
         }
 
@@ -818,7 +843,12 @@ pipwerks.UTILS.convertTotalMiliSecondsSCORM12 = function (intTotalMilliseconds, 
   strCMITimeSpan = pipwerks.UTILS.ZeroPad(intHours, 4) + ":" + pipwerks.UTILS.ZeroPad(intMinutes, 2) + ":" + pipwerks.UTILS.ZeroPad(intSeconds, 2);
 
   if (blnIncludeFraction) {
-    strCMITimeSpan += "." + intHundredths;
+    // Zero-pad the fraction: CMITimespan reads the digits after the decimal
+    // point positionally, so 4 hundredths written as ".4" is parsed as four
+    // TENTHS. Every session whose hundredths were below 10 reported a duration
+    // inflated tenfold (30.04s stored as 30.4s). The string was grammatically
+    // valid, so no LMS rejected it.
+    strCMITimeSpan += "." + pipwerks.UTILS.ZeroPad(intHundredths, 2);
   }
 
   //check for case where total milliseconds is greater than max supported by strCMITimeSpan
@@ -1015,9 +1045,33 @@ pipwerks.SCORM.SetCompletionStatus = function (status) {
     switch (status) {
       case "completed": break;
       case "incomplete": break;
-      case "not attempted": break;
-      case "unknown": if (scorm.version == "1.2") { status = "not attempted"; } break; // "unknown" is only valid for 2004
+      // "not attempted" and "unknown" belong to cmi.completion_status (SCORM 2004 only). SCORM 1.2
+      // splits its vocabulary in two: cmi.core.lesson_status can be READ as "not attempted" but can
+      // only be WRITTEN as passed|completed|failed|incomplete|browsed (RTE §3.4.4). Sending either
+      // one to a 1.2 LMS is refused -- Moodle answers error 405 and drops the write
+      // (mod/scorm/datamodels/scorm_12.js:38-39, L73). "unknown" used to be silently rewritten to
+      // "not attempted" here, which turned a caller's harmless "I don't know" into a value the LMS
+      // rejects outright. In 1.2 the way to express "not attempted" is to write nothing at all.
+      case "not attempted":
+      case "unknown":
+        if (scorm.version != "2004") {
+          trace("pipwerks.SCORM.SetCompletionStatus failed: '" + status + "' is only valid for SCORM 2004.");
+          return;
+        }
+        break;
       case "browsed": if (scorm.version == "2004") { status = "incomplete"; } break; // "browsed" is only valid for 1.2
+      // "passed"/"failed" are part of the SCORM 1.2 cmi.core.lesson_status
+      // vocabulary (RTE §3.4.4). They used to fall through to the default
+      // branch and be dropped without ever reaching the LMS, so pass/fail could
+      // not be recorded through this channel at all. In 2004 they belong to
+      // cmi.success_status, not completion_status, so they stay rejected there.
+      case "passed":
+      case "failed":
+        if (scorm.version != "1.2") {
+          trace("pipwerks.SCORM.SetCompletionStatus failed: '" + status + "' is only valid for SCORM 1.2.");
+          return;
+        }
+        break;
       default: trace("pipwerks.SCORM.SetCompletionStatus failed: status value is not valid."); return;
     }
     switch (scorm.version) {

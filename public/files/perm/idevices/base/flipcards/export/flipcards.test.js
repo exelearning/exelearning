@@ -157,4 +157,184 @@ describe('flipcards iDevice export', () => {
       expect($eXeFlipCards.idevicePath).toBe('');
     });
   });
+
+  describe('SCORM persistence in browsing modes', () => {
+    it('saves visited cards only when a mode 0 or 1 card is flipped open', () => {
+      const selection = {
+        data: () => undefined,
+        eq: () => selection,
+        show: vi.fn(),
+      };
+      const card = {
+        data: (key) => (key === 'number' ? 2 : undefined),
+        find: () => selection,
+      };
+      const options = {
+        isScorm: 1,
+        type: 1,
+        visiteds: [],
+      };
+
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            media: {
+              stopSound: vi.fn(),
+            },
+          },
+        },
+      };
+      $eXeFlipCards.options[0] = options;
+      $eXeFlipCards.sendScore = vi.fn();
+      $eXeFlipCards.saveEvaluation = vi.fn();
+      $eXeFlipCards.showClue = vi.fn();
+
+      $eXeFlipCards.handleCardFlip(card, true, options, 0);
+
+      expect(options.visiteds).toEqual([2]);
+      expect($eXeFlipCards.sendScore).toHaveBeenCalledWith(true, 0);
+      expect($eXeFlipCards.saveEvaluation).toHaveBeenCalledWith(0);
+
+      $eXeFlipCards.sendScore.mockClear();
+      $eXeFlipCards.saveEvaluation.mockClear();
+
+      $eXeFlipCards.handleCardFlip(card, false, options, 0);
+
+      expect(options.visiteds).toEqual([2]);
+      expect($eXeFlipCards.sendScore).not.toHaveBeenCalled();
+      expect($eXeFlipCards.saveEvaluation).not.toHaveBeenCalled();
+    });
+
+    it('does not send scores from previous or next card handlers', () => {
+      const source = readFileSync(join(__dirname, 'flipcards.js'), 'utf-8');
+      const nextStart = source.indexOf("$('#flcdsNextCard-' + instance).on('click'");
+      const previousStart = source.indexOf("$('#flcdsPreviousCard-' + instance).on('click'");
+      const startGameStart = source.indexOf("$('#flcdsStartGame-' + instance).on('click'");
+
+      expect(nextStart).toBeGreaterThan(-1);
+      expect(previousStart).toBeGreaterThan(nextStart);
+      expect(startGameStart).toBeGreaterThan(previousStart);
+
+      const nextHandler = source.slice(nextStart, previousStart);
+      const previousHandler = source.slice(previousStart, startGameStart);
+
+      expect(nextHandler).not.toContain('sendScore');
+      expect(previousHandler).not.toContain('sendScore');
+    });
+  });
+
+  describe('completion in show/navigation modes (type < 2)', () => {
+    function makeSelection() {
+      const selection = {
+        data: () => undefined,
+        eq: () => selection,
+        show: vi.fn(),
+      };
+      return selection;
+    }
+    function makeCard(number) {
+      const selection = makeSelection();
+      return {
+        data: (key) => (key === 'number' ? number : undefined),
+        find: () => selection,
+      };
+    }
+
+    beforeEach(() => {
+      global.$exeDevices = {
+        iDevice: { gamification: { media: { stopSound: vi.fn() } } },
+      };
+      $eXeFlipCards.sendScore = vi.fn();
+      $eXeFlipCards.saveEvaluation = vi.fn();
+      $eXeFlipCards.showClue = vi.fn();
+    });
+
+    it('allCardsVisited is true only once every card has been flipped', () => {
+      expect($eXeFlipCards.allCardsVisited({ visiteds: [0], realNumberCards: 2 })).toBe(false);
+      expect($eXeFlipCards.allCardsVisited({ visiteds: [0, 1], realNumberCards: 2 })).toBe(true);
+      // Duplicate flips of the same card do not inflate the count.
+      expect($eXeFlipCards.allCardsVisited({ visiteds: [0, 0], realNumberCards: 2 })).toBe(false);
+    });
+
+    it('marks complete when the last card is flipped, mid-activity', () => {
+      const options = { isScorm: 1, type: 1, visiteds: [], realNumberCards: 2, gameOver: false };
+      $eXeFlipCards.options[0] = options;
+
+      $eXeFlipCards.handleCardFlip(makeCard(0), true, options, 0);
+      expect(options.gameOver).toBe(false);
+
+      $eXeFlipCards.handleCardFlip(makeCard(1), true, options, 0);
+      expect(options.gameOver).toBe(true);
+      expect($eXeFlipCards.sendScore).toHaveBeenLastCalledWith(true, 0);
+    });
+
+    it('stays complete and keeps sending as the learner keeps flipping', () => {
+      const options = { isScorm: 1, type: 0, visiteds: [0, 1], realNumberCards: 2, gameOver: true };
+      $eXeFlipCards.options[0] = options;
+
+      // Re-flipping an already-seen card must not un-complete the activity.
+      $eXeFlipCards.handleCardFlip(makeCard(0), true, options, 0);
+      expect(options.gameOver).toBe(true);
+      expect($eXeFlipCards.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+  });
+
+  describe('memory mode completion (type 3)', () => {
+    beforeEach(() => {
+      global.$exeDevices = {
+        iDevice: { gamification: { media: { stopSound: vi.fn() } } },
+      };
+      vi.spyOn($eXeFlipCards, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeFlipCards, 'getMessageAnswerMemory').mockReturnValue('');
+      vi.spyOn($eXeFlipCards, 'gameOverMemory').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('marks complete as soon as the last pair is matched, before the delayed gameOverMemory', () => {
+      vi.useFakeTimers();
+      const options = {
+        hits: 1,
+        realNumberCards: 2,
+        score: 5,
+        gameOver: false,
+        gameActived: true,
+        msgs: {},
+      };
+      $eXeFlipCards.options[0] = options;
+
+      // Matching the last pair: hits 1 -> 2 == realNumberCards.
+      $eXeFlipCards.updateScoreMemory(true, 0);
+
+      expect(options.gameOver).toBe(true);
+      expect(options.gameActived).toBe(false);
+      // gameOverMemory is only scheduled (celebration delay), not run yet.
+      expect($eXeFlipCards.gameOverMemory).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(2000);
+      expect($eXeFlipCards.gameOverMemory).toHaveBeenCalledWith(0, 0);
+
+      vi.useRealTimers();
+    });
+
+    it('stays incomplete while pairs remain', () => {
+      const options = {
+        hits: 0,
+        realNumberCards: 2,
+        score: 0,
+        gameOver: false,
+        gameActived: true,
+        msgs: {},
+      };
+      $eXeFlipCards.options[0] = options;
+
+      // Matching one pair of two: hits 0 -> 1 < realNumberCards.
+      $eXeFlipCards.updateScoreMemory(true, 0);
+
+      expect(options.gameOver).toBe(false);
+      expect(options.gameActived).toBe(true);
+    });
+  });
 });

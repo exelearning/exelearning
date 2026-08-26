@@ -491,4 +491,26 @@ describe('crossword iDevice export', () => {
       expect(mOptions.wordsGame).toHaveLength(0);
     });
   });
+
+  describe('page lifecycle (sound cleanup)', () => {
+    it('stops sound on hide via pagehide + visibilitychange, not unload', () => {
+      const code = readFileSync(join(__dirname, 'crossword.js'), 'utf-8');
+
+      // The deprecated unload/beforeunload bindings (blocked under bfcache and
+      // inside LMS iframes) are gone, both on attach and detach.
+      expect(code).not.toContain('unload.eXeCrucigrama');
+      expect(code).not.toContain('beforeunload.eXeCrucigrama');
+      expect(code).toContain("$(window).on('pagehide.eXeCrucigrama'");
+      expect(code).toContain("$(document).on('visibilitychange.eXeCrucigrama'");
+      expect(code).toContain("$(window).off('pagehide.eXeCrucigrama')");
+      expect(code).toContain("$(document).off('visibilitychange.eXeCrucigrama')");
+
+      // The handler still stops local audio playback (functionality preserved).
+      const handler = code.slice(
+        code.indexOf('const stopSoundOnHide'),
+        code.indexOf("$(window).on('pagehide.eXeCrucigrama'")
+      );
+      expect(handler).toContain('$exeDevices.iDevice.gamification.media.stopSound();');
+    });
+  });
 });

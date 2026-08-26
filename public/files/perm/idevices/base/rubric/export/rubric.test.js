@@ -977,7 +977,7 @@ describe('rubric iDevice SCORM integration', () => {
       const game = $rubric.buildScormGame(data);
 
       expect(game.main).toBe('rubric-node-42');
-      expect(game.isScorm).toBe(2);
+      expect(game.isScorm).toBe(1);
       expect(game.textButtonScorm).toBe('Guardar');
       expect(game.repeatActivity).toBe(false);
       expect(game.weighted).toBe(75);
@@ -1060,7 +1060,7 @@ describe('rubric iDevice SCORM integration', () => {
       expect(registerSpy).not.toHaveBeenCalled();
     });
 
-    it('initScorm registers activity and adds save button for isScorm=2', () => {
+    it('initScorm treats legacy isScorm=2 as automatic mode', () => {
       const scope = $('<div class="idevice_node rubric" id="init-node"><div class="rubric"></div></div>');
       document.body.append(scope);
 
@@ -1087,7 +1087,8 @@ describe('rubric iDevice SCORM integration', () => {
 
       expect(registerSpy).toHaveBeenCalledTimes(1);
       expect(data.scormGame).toBeDefined();
-      expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(1);
+      expect(data.isScorm).toBe(1);
+      expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(0);
     });
 
     it('initScorm does not add save button when isScorm=1', () => {
@@ -1148,7 +1149,35 @@ describe('rubric iDevice SCORM integration', () => {
       expect(sendSpy.mock.calls[0][0]).toBe(false);
       expect(sendSpy.mock.calls[0][1].scorerp).toBe(10);
       expect(sendSpy.mock.calls[0][1].gameStarted).toBe(true);
-      expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
+      // Completed, not merely started: gameOver=false stored state 1 and left every page
+      // holding a rubric stuck at "incomplete" in the LMS.
+      expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+    });
+
+    it('ticking a score cell finalizes the rubric so the SCO page can complete', () => {
+      const table = buildScoredTable();
+      document.body.append(table);
+
+      const sendSpy = vi.fn();
+      globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+      const game = { scorerp: 0, gameStarted: false, gameOver: false };
+      const previousOptions = $rubric.options;
+      $rubric.options = [{ table: table.get(0), isScorm: 1, scormGame: game }];
+
+      try {
+        $rubric.addCheckboxEvents(table);
+        // The learner ticks a score cell: this is the trigger the whole fix is about.
+        table.find('input[value="4"]').prop('checked', true).trigger('change');
+
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(sendSpy.mock.calls[0][0]).toBe(true); // automatic save
+        expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+        expect(sendSpy.mock.calls[0][1].gameStarted).toBe(true);
+      } finally {
+        $rubric.options = previousOptions;
+        table.remove();
+      }
     });
 
     it('sendRubricScore is a no-op when data has no scormGame', () => {
@@ -1161,17 +1190,20 @@ describe('rubric iDevice SCORM integration', () => {
       expect(sendSpy).not.toHaveBeenCalled();
     });
 
-    it('resetScormScore zeroes the score and flags gameOver', () => {
+    it('resetScormScore zeroes the score and returns the rubric to incomplete', () => {
       const sendSpy = vi.fn();
       globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
 
-      const game = { scorerp: 7, gameStarted: true, gameOver: false };
+      const game = { scorerp: 7, gameStarted: true, gameOver: true };
       $rubric.resetScormScore({ isScorm: 1, scormGame: game });
 
       expect(sendSpy).toHaveBeenCalledTimes(1);
       expect(sendSpy.mock.calls[0][0]).toBe(true);
       expect(sendSpy.mock.calls[0][1].scorerp).toBe(0);
-      expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+      // Started but not finished -> updateActivity stores state 1 (incomplete), instead of
+      // leaving the rubric flagged as completed with a zero.
+      expect(sendSpy.mock.calls[0][1].gameStarted).toBe(true);
+      expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
     });
 
     it('resetScormScore is a no-op when isScorm is 0', () => {
@@ -1205,7 +1237,7 @@ describe('rubric iDevice SCORM integration', () => {
 
       const data = $rubric.getGameData($('#rubric-scorm'), 0);
 
-      expect(data.isScorm).toBe(2);
+      expect(data.isScorm).toBe(1);
       expect(data.textButtonScorm).toBe('Submit');
       expect(data.repeatActivity).toBe(false);
       expect(data.weighted).toBe(80);

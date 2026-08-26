@@ -53,6 +53,7 @@ var $eXeEC = {
     getShowScoreRP: function (instance) {
         const mOptions = $eXeEC.options[instance];
         const total = mOptions.selectsGame.length;
+        if (total <= 0) return 0;
         return Math.min(((mOptions.visiteds + 1) * 10) / total, 10);
     },
 
@@ -63,7 +64,22 @@ var $eXeEC = {
             return $eXeEC.getShowScoreRP(instance);
         }
 
-        return (mOptions.scoreGame * 10) / mOptions.scoreTotal;
+        const total = Number(mOptions.scoreTotal);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (mOptions.scoreGame * 10) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $eXeEC.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        if (!mOptions.repeatActivity && $eXeEC.initialScore !== '') return;
+
+        const score = $eXeEC.getScoreRP(instance).toFixed(2);
+        $eXeEC.sendScore(true, instance);
+        $(`#elcpRepeatActivity-${instance}`).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 
     loadGame: function () {
@@ -390,7 +406,6 @@ var $eXeEC = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.exeEC beforeunload.exeEC');
         $(`#elcpLinkMaximize-${instance}`).off('click touchstart');
         $(`#elcpLinkMinimize-${instance}`).off('click touchstart');
         $('#elcpMainContainer-' + instance)
@@ -428,11 +443,6 @@ var $eXeEC = {
         mOptions.respuesta = '';
 
         $eXeEC.removeEvents(instance);
-        $(window).on('unload.exeEC beforeunload.exeEC', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeEC.mScorm
-            );
-        });
 
         $(`#elcpGamerOver-${instance}`).css('display', 'flex');
 
@@ -664,15 +674,21 @@ var $eXeEC = {
         // Show first circuit
         $eXeEC.showCircuitAtIndex(0, instance);
 
-        // Save initial score only if previous > 0 and below minimum
-        const previous = parseFloat($eXeEC.previousScore) || 0;
-        const minScore = (1 * 10) / mOptions.selectsGame.length;
-        if (previous > 0 && previous < minScore) {
-            mOptions.scorerp = minScore;
-            if (mOptions.isScorm > 0) {
-                $eXeEC.sendScore(true, instance);
-            }
-            $eXeEC.saveEvaluation(instance);
+        // With a single circuit there is no "next" to reach, so the exploration completes as soon
+        // as the learner uses the viewer. It must NOT complete on load: the SCO status belongs to
+        // the learner's interaction, and marking the page completed for merely opening it reports
+        // work nobody did — and closes the attempt as non-resumable on the way out. Waiting for the
+        // first pointer or key press on the viewer keeps the meaning ("seeing it is doing it")
+        // without inventing the interaction. (#1831)
+        if (mOptions.selectsGame.length <= 1) {
+            $(`#elcpTikzPreview-${instance}`).one('pointerdown keydown', () => {
+                if (mOptions.gameOver) return;
+                mOptions.gameOver = true;
+                if (mOptions.isScorm > 0) {
+                    $eXeEC.sendScore(true, instance);
+                }
+                $eXeEC.saveEvaluation(instance);
+            });
         }
 
         // Navigation events
@@ -689,6 +705,12 @@ var $eXeEC = {
             if (mOptions.showCurrentIndex < mOptions.selectsGame.length - 1) {
                 mOptions.showCurrentIndex++;
                 mOptions.visiteds++;
+                // Reaching the last circuit means all slides have been visited: the show-mode
+                // exploration is complete (SCORM state -> completed). Until then it stays
+                // incomplete (gameStarted without gameOver).
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 $eXeEC.showCircuitAtIndex(mOptions.showCurrentIndex, instance);
                 if (mOptions.isScorm > 0) {
                     $eXeEC.sendScore(true, instance);
@@ -995,6 +1017,8 @@ var $eXeEC = {
     startGame: function (instance) {
         const mOptions = $eXeEC.options[instance];
         if (mOptions.gameStarted) return;
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (mOptions.questionsRandom) {
             mOptions.selectsGame =
@@ -1090,6 +1114,9 @@ var $eXeEC = {
         $(`#elcpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        if (mOptions.activityMode !== 'show') {
+            $eXeEC.saveScormScore(instance);
+        }
         $eXeEC.newQuestion(instance);
     },
 
@@ -1314,23 +1341,6 @@ var $eXeEC = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeEC.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXeEC.sendScore(true, instance);
-                $(`#elcpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
-
         $eXeEC.saveEvaluation(instance);
     },
 
@@ -1464,6 +1474,13 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(correct, instance);
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if ((mOptions.activeQuestion + 1 >= mOptions.numberQuestions) || (mOptions.useLives && mOptions.livesLeft <= 0)) {
+            mOptions.gameOver = true;
+        }
+        $eXeEC.saveScormScore(instance);
 
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -1529,6 +1546,13 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(value, instance);
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if ((mOptions.activeQuestion + 1 >= mOptions.numberQuestions) || (mOptions.useLives && mOptions.livesLeft <= 0)) {
+            mOptions.gameOver = true;
+        }
+        $eXeEC.saveScormScore(instance);
 
          let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000

@@ -478,7 +478,9 @@ export class Scorm12Exporter extends Html5Exporter {
             bodyClass: bodyClass,
             extraHeadScripts: this.getScormHeadScripts(basePath),
             onLoadScript: 'loadPage()',
-            onUnloadScript: 'unloadPage()',
+            // Issue #1831: no onunload/onbeforeunload attributes. The SCO finalizes through
+            // the pagehide lifecycle registered in SCOFunctions.js (registerScormLifecycleHandlers),
+            // because Chrome deprecates `unload` and Moodle blocks it via Permissions-Policy.
             // Hide navigation elements - LMS handles navigation in SCORM
             hideNavigation: true,
             hideNavButtons: true,
@@ -603,25 +605,113 @@ var scorm = pipwerks.SCORM;
 
 var startTimeStamp = null;
 var exitPageStatus = false;
+var pageLoaded = false;
+var scormLifecycleState = {
+  finalized: false,
+  isSCORM: false,
+  registered: false
+};
 
 function loadPage() {
+  if (pageLoaded) {
+    return true;
+  }
+
   startTimeStamp = new Date();
   var result = scorm.init();
   if (result) {
-    var status = scorm.get("cmi.core.lesson_status");
-    if (status === "not attempted" || status === "") {
-      scorm.set("cmi.core.lesson_status", "incomplete");
-    }
+    // Entering the page must NOT change cmi.core.lesson_status: the iDevice owns
+    // it and only changes it through learner interaction. loadPage only opens the
+    // session.
+    pageLoaded = true;
   }
   return result;
 }
 
-function unloadPage() {
-  if (!exitPageStatus) {
-    exitPageStatus = true;
-    computeTime();
-    scorm.quit();
+function commitScormProgress() {
+  // A page the learner never started an activity in has nothing to persist, and committing would
+  // create LMS tracking for it mid-visit. It is recorded once, on the way out, by unloadPage.
+  if (pageHasEvaluableIdevices(scormLifecycleState.isSCORM) && !hasAttemptedActivity()) {
+    return;
   }
+  computeTime();
+  scorm.save();
+}
+
+// Has the learner interacted with any evaluable iDevice? Each entry in cmi.suspend_data ends with
+// "Estado: N" — 0 registered but untouched, 1 started, 2 finished. The canonical format and parser
+// live in common.js (convertToLineFormat / parseSuspendData); this minimal fallback only needs the
+// yes/no answer. Legacy suspend_data predating that field carries no state, and it can only exist
+// because the learner played, so it counts as attempted.
+function hasAttemptedActivity() {
+  var suspendData = scorm.get("cmi.suspend_data") || "";
+  if (suspendData.trim() === "") {
+    return false;
+  }
+  if (suspendData.indexOf("Estado:") === -1) {
+    return true;
+  }
+  return /Estado:\\s*[12]/.test(suspendData);
+}
+
+// Any tracking data at all means this is not a content-only page.
+function pageHasEvaluableIdevices(isSCORM) {
+  var suspendData = scorm.get("cmi.suspend_data") || "";
+  return isSCORM === true || suspendData.trim() !== "";
+}
+
+// Every evaluable iDevice finished? A content-only page counts as finished; an entry still at
+// "Estado: 0" (registered) or "Estado: 1" (started) means the learner has work left.
+// Does the SCO already carry a verdict? Moodle drives its index icon from cmi.core.exit, so a
+// page left as "suspend" is drawn as suspended even when the stored status is already passed.
+// The verdict is what the index has to reflect, so the verdict decides the exit.
+function hasTerminalStatus() {
+  var status = scorm.get("cmi.core.lesson_status");
+  return status === "passed" || status === "failed" || status === "completed";
+}
+
+// Leaving a page NEVER writes its status: completion is owned by the learner's interaction with
+// the SCORM iDevices. See SCOFunctions.js for the full rationale of the three cases below.
+function unloadPage(isSCORM) {
+  if (exitPageStatus) {
+    return;
+  }
+
+  exitPageStatus = true;
+  scormLifecycleState.finalized = true;
+
+  // A page with SCORM iDevices the learner never touched is recorded as incomplete on the way
+  // out. The session MUST still be closed: leaving it open makes the next SCO's LMSInitialize
+  // fail with error 101, after which every LMSSetValue/LMSCommit is silently dropped and the
+  // package stops saving. Writing "incomplete" first stops Moodle from promoting a SCO still in
+  // "not attempted" to "completed" inside LMSFinish.
+  if (pageHasEvaluableIdevices(isSCORM) && !hasAttemptedActivity()) {
+    scorm.set("cmi.core.lesson_status", "incomplete");
+    scorm.set("cmi.core.exit", "suspend");
+    computeTime();
+    scorm.save();
+    scorm.quit();
+    pageLoaded = false;
+    return;
+  }
+
+  // Content-only page: completed on the way out, so a course of content pages can still complete.
+  if (!pageHasEvaluableIdevices(isSCORM)) {
+    var status = scorm.get("cmi.core.lesson_status") || "";
+    if (status !== "passed" && status !== "failed" && status !== "completed") {
+      scorm.set("cmi.core.lesson_status", "completed");
+    }
+  }
+
+  // Pick the resume mode, then close the session. A finished SCO exits "" (no resume); anything
+  // else stays resumable. Resumability follows whether the ACTIVITY is finished, never the
+  // pass/fail verdict: the status reports the score as it stands, so a page reads "passed" from
+  // the first good answer, and closing it as "normal" there would end the attempt while the
+  // learner is still working. An entry still at "Estado: 0" or "Estado: 1" means unfinished.
+  scorm.set("cmi.core.exit", hasTerminalStatus() ? "" : "suspend");
+  commitScormProgress();
+  scorm.quit();
+  pageLoaded = false;
 }
 
 function computeTime() {
@@ -640,22 +730,52 @@ function computeTime() {
   }
 }
 
-function setComplete() {
-  scorm.set("cmi.core.lesson_status", "completed");
-  scorm.save();
-}
-
-function setIncomplete() {
-  scorm.set("cmi.core.lesson_status", "incomplete");
-  scorm.save();
-}
-
 function setScore(score, maxScore, minScore) {
   scorm.set("cmi.core.score.raw", score);
   if (maxScore !== undefined) scorm.set("cmi.core.score.max", maxScore);
   if (minScore !== undefined) scorm.set("cmi.core.score.min", minScore);
   scorm.save();
 }
+
+// Issue #1831: finalize via pagehide instead of the deprecated unload event,
+// which Chrome blocks under a Permissions Policy (e.g. Moodle iframes), losing SCORM scores.
+function registerScormLifecycleHandlers(isSCORM) {
+  if (typeof isSCORM === "boolean") {
+    scormLifecycleState.isSCORM = isSCORM;
+  }
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
+    return;
+  }
+  if (scormLifecycleState.registered) {
+    return;
+  }
+  scormLifecycleState.registered = true;
+  function commitIfOpen() {
+    if (!scormLifecycleState.finalized) {
+      commitScormProgress();
+    }
+  }
+  function finalizeOnce(event) {
+    if (event && event.persisted) {
+      commitIfOpen();
+      return;
+    }
+    if (scormLifecycleState.finalized) return;
+    scormLifecycleState.finalized = true;
+    unloadPage(scormLifecycleState.isSCORM);
+  }
+  window.addEventListener("pagehide", finalizeOnce, false);
+  window.addEventListener("freeze", commitIfOpen, false);
+  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") {
+        commitIfOpen();
+      }
+    }, false);
+  }
+}
+
+registerScormLifecycleHandlers();
 `;
     }
 

@@ -154,6 +154,8 @@ var $eXeCompleta = {
                 : mOptions.authorBackImage;
         mOptions.fontColor =
             typeof mOptions.fontColor === 'undefined' ? '' : mOptions.fontColor;
+        mOptions.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(mOptions.isScorm);
 
         return mOptions;
     },
@@ -259,8 +261,6 @@ var $eXeCompleta = {
 
         $(document).off('mousemove.eXeCompleta');
         $(document).off('mouseup.eXeCompleta');
-        $(window).off('unload.eXeCompleta beforeunload.eXeCompleta');
-
         const gameContainer = document.querySelector(
             `#cmptGameContainer-${instance}`
         );
@@ -427,17 +427,6 @@ var $eXeCompleta = {
 
         $(`#cmptLinkMaximize-${instance}`).focus();
         $(`#cmptPShowClue-${instance}`).hide();
-
-        $(window).on(
-            'unload.eXeCompleta beforeunload.eXeCompleta',
-            function () {
-                if (typeof $eXeCompleta.mScorm !== 'undefined') {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeCompleta.mScorm
-                    );
-                }
-            }
-        );
 
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
@@ -615,6 +604,10 @@ var $eXeCompleta = {
                 mOptions.counter--;
                 $eXeCompleta.updateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
+                    // Time is up: the activity is finished. Mark completed before
+                    // checkPhrase so the score it sends records state 2 (not
+                    // "incomplete") even if attempts still remained. (#1831)
+                    mOptions.gameOver = true;
                     $eXeCompleta.checkPhrase(instance);
                     $eXeCompleta.gameOver(2, instance);
                 }
@@ -680,6 +673,8 @@ var $eXeCompleta = {
 
     reloadGame: function (instance) {
         let mOptions = $eXeCompleta.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         $('#cmptReloadPhrase-' + instance).hide();
 
@@ -801,6 +796,17 @@ var $eXeCompleta = {
         mOptions.attempsNumber--;
         const score = ((mOptions.hits * 10) / mOptions.number).toFixed(2);
 
+        // The activity is finished when the learner runs out of attempts or gets
+        // every gap right. Mark it completed BEFORE sending the score: sendScore
+        // runs here while gameStarted is still true and the later gameOver() call
+        // does not re-send, so without this the SCO records state 1 ("incomplete")
+        // even at 100%. (#1831)
+        const isComplete =
+            mOptions.attempsNumber <= 0 || mOptions.hits === mOptions.number;
+        if (isComplete) {
+            mOptions.gameOver = true;
+        }
+
         if (mOptions.isScorm === 1) {
             $eXeCompleta.sendScore(true, instance);
             $('#cmptRepeatActivity-' + instance).text(
@@ -827,7 +833,7 @@ var $eXeCompleta = {
 
         $eXeCompleta.saveEvaluation(instance);
 
-        if (mOptions.attempsNumber <= 0 || mOptions.hits === mOptions.number) {
+        if (isComplete) {
             $eXeCompleta.gameOver(1, instance);
             return;
         }

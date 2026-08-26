@@ -1120,6 +1120,8 @@ var $eXeMapa = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeMapa.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
@@ -1666,17 +1668,6 @@ var $eXeMapa = {
             $('#mapaEdAnswer-' + instance).val('');
         }
 
-        if (mOptions.evaluationG == 4 && mOptions.isScorm === 1) {
-            let score = (
-                (mOptions.hits * 10) /
-                mOptions.numberQuestions
-            ).toFixed(2);
-            $eXeMapa.sendScore(true, instance);
-            $('#mapaRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score
-            );
-        }
-        $eXeMapa.saveEvaluation(instance);
     },
 
     showTPQuestion: function (instance) {
@@ -2454,7 +2445,15 @@ var $eXeMapa = {
         $('#mapaWordDiv-' + instance).hide();
 
         if (mOptions.isScorm > 0) {
+            // Modes 0/4/6 set gameStarted=true at setup so they are immediately
+            // playable. Register with it temporarily false so the shared SCORM
+            // helper does not treat page load as an active session and send a
+            // 0/incomplete score before the learner interacts; restore it right
+            // after so intermediate progress is still tracked. (#1831)
+            const wasStarted = mOptions.gameStarted;
+            mOptions.gameStarted = false;
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
+            mOptions.gameStarted = wasStarted;
         }
         if (mOptions.hideAreas) {
             $('#mapaLinkAreas-' + instance).hide();
@@ -2534,14 +2533,6 @@ var $eXeMapa = {
                 return false;
             }
             return true;
-        });
-
-        $(window).on('unload.eXeMapa beforeunload.eXeMapa', function () {
-            if ($eXeMapa.mScorm && typeof $eXeMapa.mScorm != 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeMapa.mScorm
-                );
-            }
         });
 
         $('#mapaMultimedia-' + instance).on(
@@ -2860,6 +2851,11 @@ var $eXeMapa = {
             .closest('.idevice_node')
             .on('click', '.Games-SendScore', function (e) {
                 e.preventDefault();
+                if (
+                    mOptions.evaluationG == 4 ||
+                    (mOptions.evaluationG == 5 && !mOptions.gameOver)
+                )
+                    return true;
                 $eXeMapa.sendScore(false, instance);
                 $eXeMapa.saveEvaluation(instance);
                 return true;
@@ -3126,8 +3122,6 @@ var $eXeMapa = {
         $('#mapaCodeAccessButton-' + instance).off('click');
         $('#mapaCodeAccessE-' + instance).off('click');
 
-        $(window).off('unload.eXeMapa beforeunload.eXeMapa');
-
         $multimedia.off('click');
 
         $('#mapaLinkAudio-' + instance).off('click');
@@ -3332,9 +3326,12 @@ var $eXeMapa = {
             $eXeMapa.showMessageModal(instance, q.title, 1, 0, num);
         }
         mOptions.visiteds.push(q.id);
+        // Mode 0 (free exploration): complete once every point has been visited. (#1831)
+        $eXeMapa.checkFreeExplorationComplete(mOptions);
         if (
             mOptions.isScorm == 1 &&
             mOptions.evaluationG != 4 &&
+            mOptions.evaluationG != 5 &&
             mOptions.evaluationG > -1
         ) {
             const score =
@@ -3346,7 +3343,9 @@ var $eXeMapa = {
                 mOptions.msgs.msgYouScore + ': ' + score
             );
         }
-        $eXeMapa.saveEvaluation(instance);
+        if (mOptions.evaluationG != 4 && mOptions.evaluationG != 5) {
+            $eXeMapa.saveEvaluation(instance);
+        }
         $eXeMapa.messageAllVisited(instance);
     },
 
@@ -4112,6 +4111,12 @@ var $eXeMapa = {
                 (mOptions.hits * 10) /
                 mOptions.numberQuestions
             ).toFixed(2);
+            // Answering the last question finishes the questionnaire; mark it complete
+            // synchronously so this send already records SCORM state 2, and an unload
+            // during the timeShowSolution delay still finalizes as completed. (#1831)
+            if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+                mOptions.gameOver = true;
+            }
             $eXeMapa.sendScore(true, instance);
             $('#mapaRepeatActivity-' + instance).text(
                 mOptions.msgs.msgYouScore + ': ' + score
@@ -4412,12 +4417,17 @@ var $eXeMapa = {
                 mOptions.evaluationG == 4) &&
             mOptions.isScorm === 1
         ) {
+            // Questionnaire mode (4) only sent per-question scores (SCORM state 1);
+            // sending here with gameOver === true is what records the terminal
+            // "completed" state (state 2) when the questionnaire finishes. (#1831)
             let score = ((mOptions.hits * 10) / numq).toFixed(2);
             $eXeMapa.sendScore(true, instance);
             $eXeMapa.initialScore = score;
         }
 
-        $eXeMapa.saveEvaluation(instance);
+        if (mOptions.evaluationG != 4) {
+            $eXeMapa.saveEvaluation(instance);
+        }
         $eXeMapa.hideCover(instance);
 
         $('#mapaFMessageOver-' + instance).show();
@@ -4674,14 +4684,24 @@ var $eXeMapa = {
             .eq(0);
 
         $activ.attr('title', solution);
+
+        if (mOptions.activeMap.pts.length - mOptions.hits - mOptions.errors <= 0) {
+            // The last point has just been resolved. Mark complete synchronously so
+            // this shared per-answer sendScore already records SCORM state 2; the
+            // setTimeout branches still run gameOver() for the UI unchanged. (#1831)
+            mOptions.gameOver = true;
+        }
         if (
             mOptions.isScorm == 1 &&
             mOptions.evaluationG != 4 &&
+            mOptions.evaluationG != 5 &&
             mOptions.evaluationG > -1
         ) {
             $eXeMapa.sendScore(true, instance);
         }
-        $eXeMapa.saveEvaluation(instance);
+        if (mOptions.evaluationG != 4 && mOptions.evaluationG != 5) {
+            $eXeMapa.saveEvaluation(instance);
+        }
     },
 
     answerFind: function (num, id, instance) {
@@ -4776,6 +4796,18 @@ var $eXeMapa = {
                 $eXeMapa.hideCover(instance);
                 mOptions.showData = false;
             }, mOptions.timeShowSolution * 1000);
+        }
+
+        const willComplete =
+            (mOptions.evaluationG == 2 &&
+                mOptions.activeTitle + 1 >= mOptions.numberQuestions) ||
+            (mOptions.evaluationG == 3 && mOptions.hits >= mOptions.numberQuestions);
+        if (willComplete) {
+            // The interaction that just finished is the one that ends the sequential
+            // (mode 2) or guided (mode 3) search. Mark complete synchronously; the
+            // later setTimeout/closePoint/closeToolTip paths run gameOver() for the
+            // UI unchanged. (#1831)
+            mOptions.gameOver = true;
         }
 
         if (
@@ -4938,14 +4970,20 @@ var $eXeMapa = {
             $exeDevices.iDevice.gamification.media.playSound(q.audio);
         }
 
+        // Mode 0 (free exploration): complete once every point has been visited. (#1831)
+        $eXeMapa.checkFreeExplorationComplete(mOptions);
+
         if (
             mOptions.isScorm == 1 &&
             mOptions.evaluationG != 4 &&
+            mOptions.evaluationG != 5 &&
             mOptions.evaluationG > -1
         ) {
             $eXeMapa.sendScore(true, instance);
         }
-        $eXeMapa.saveEvaluation(instance);
+        if (mOptions.evaluationG != 4 && mOptions.evaluationG != 5) {
+            $eXeMapa.saveEvaluation(instance);
+        }
         let html = $('#mapaFDetails-' + instance).html(),
             latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
@@ -5000,6 +5038,19 @@ var $eXeMapa = {
             if (visiteds.indexOf(visiteds[i]) !== i) visiteds.splice(i, 1);
         }
         return visiteds.length;
+    },
+
+    checkFreeExplorationComplete: function (mOptions) {
+        // Mode 0 (free exploration): complete once every point has been visited.
+        // Shared by showPointNone (type 4) and showPoint (all other types) so
+        // evaluationG==0 completes correctly regardless of point type. (#1831)
+        if (
+            mOptions.evaluationG == 0 &&
+            mOptions.numberQuestions > 0 &&
+            $eXeMapa.getNumberVisited(mOptions.visiteds) >= mOptions.numberQuestions
+        ) {
+            mOptions.gameOver = true;
+        }
     },
 
     messageAllVisited: function (instance) {

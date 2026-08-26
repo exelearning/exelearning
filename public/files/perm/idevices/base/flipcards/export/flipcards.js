@@ -378,6 +378,11 @@ var $eXeFlipCards = {
         $eXeFlipCards.showMessage(type, message, instance, false);
         if (mOptions.hits >= mOptions.realNumberCards) {
             mOptions.gameActived = false;
+            // All pairs matched: mark completed NOW so the score sent for this
+            // last match (correctPairMemory) records state 2, and any unload
+            // during the 2s celebration before gameOverMemory still finalizes the
+            // SCO as completed instead of "incomplete". (#1831)
+            mOptions.gameOver = true;
             setTimeout(function () {
                 $eXeFlipCards.gameOverMemory(0, instance);
             }, 2000);
@@ -601,6 +606,8 @@ var $eXeFlipCards = {
 
     rebootGameMemory: function (instance) {
         const mOptions = $eXeFlipCards.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         mOptions.gameActived = false;
         mOptions.gameStarted = false;
@@ -1013,15 +1020,21 @@ var $eXeFlipCards = {
 
         if (isFlipped) {
             mOptions.visiteds.push($card.data('number'));
+            // Show/navigation modes (type < 2) are complete once every card has
+            // been flipped. visiteds never shrinks, so it stays complete even if
+            // the learner keeps flipping without leaving the activity. (#1831)
+            if (mOptions.type < 2 && $eXeFlipCards.allCardsVisited(mOptions)) {
+                mOptions.gameOver = true;
+            }
         }
 
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        if (mOptions.isScorm === 1 && mOptions.type < 2) {
+        if (isFlipped && mOptions.isScorm === 1 && mOptions.type < 2) {
             $eXeFlipCards.sendScore(true, instance);
         }
 
-        if (mOptions.type < 2) {
+        if (isFlipped && mOptions.type < 2) {
             $eXeFlipCards.saveEvaluation(instance);
         }
 
@@ -1296,6 +1309,8 @@ var $eXeFlipCards = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeFlipCards.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         $('#flcdsMultimedia-' + instance)
             .find('.FLCDSP-FlipCardInner')
@@ -1563,13 +1578,6 @@ var $eXeFlipCards = {
 
         $('#flcdsPNumber-' + instance).text(mOptions.realNumberCards);
 
-        $(window).on('unload.eXeFlipCards', () => {
-            if ($eXeFlipCards.mScorm)
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeFlipCards.mScorm
-                );
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1601,17 +1609,11 @@ var $eXeFlipCards = {
         $('#flcdsNextCard-' + instance).on('click', (e) => {
             e.preventDefault();
             $eXeFlipCards.nextCard(instance);
-            if (mOptions.isScorm == 1) {
-                $eXeFlipCards.sendScore(true, instance);
-            }
         });
 
         $('#flcdsPreviousCard-' + instance).on('click', (e) => {
             e.preventDefault();
             $eXeFlipCards.previousCard(instance);
-            if (mOptions.isScorm == 1) {
-                $eXeFlipCards.sendScore(true, instance);
-            }
         });
 
         $('#flcdsStartGame-' + instance).on('click', (e) => {
@@ -1706,7 +1708,6 @@ var $eXeFlipCards = {
         $('#flcdsMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
-        $(window).off('unload.eXeFlipcard');
         $('#flcdsClueButton-' + instance).off('click');
         $('#flcdsNextCard-' + instance).off('click');
         $('#flcdsPreviousCard-' + instance).off('click');
@@ -1830,6 +1831,12 @@ var $eXeFlipCards = {
         $eXeFlipCards.showMessage(type, message, instance);
 
         if (mOptions.isScorm == 1) {
+            // Answering the last question completes the activity. Mark it synchronized
+            // so the score sent by sendScore records state 2, and an unload during the
+            // delay still finalizes the SCO as completed. (#1831)
+            if (mOptions.active >= mOptions.cardsGame.length - 1) {
+                mOptions.gameOver = true;
+            }
             $eXeFlipCards.sendScore(true, instance);
         }
 
@@ -1908,6 +1915,16 @@ var $eXeFlipCards = {
         });
 
         return lvisiteds.length;
+    },
+
+    // Show/navigation modes (type < 2) finish once every card has been flipped
+    // at least once. Single source of truth for that rule, reused by the flip
+    // handler (and safe to call repeatedly as the learner keeps flipping).
+    allCardsVisited: function (mOptions) {
+        return (
+            $eXeFlipCards.getNumberVisited(mOptions.visiteds) >=
+            mOptions.realNumberCards
+        );
     },
 
     getColors: function (number) {

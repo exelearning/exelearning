@@ -418,12 +418,20 @@ var $eXeDesafio = {
 
         $eXeDesafio.removeEvents(instance);
 
-        $(window).on('unload.eXeChallenger beforeunload.eXeChallenger', () => {
+        // Persist the in-progress game locally when the page is being hidden or
+        // unloaded. Uses pagehide + visibilitychange (Page Lifecycle API) instead
+        // of the deprecated unload/beforeunload, so it keeps working under bfcache,
+        // on mobile and inside LMS iframes that block unload (see issue #1831).
+        // The save is local (localStorage) and idempotent; it is unrelated to SCORM.
+        const persistOnHide = () => {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeDesafio.saveDataStorage(instance);
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeDesafio.mScorm
-                );
+            }
+        };
+        $(window).on('pagehide.eXeChallenger', persistOnHide);
+        $(document).on('visibilitychange.eXeChallenger', () => {
+            if (document.visibilityState === 'hidden') {
+                persistOnHide();
             }
         });
         $(`#desafioSolutionDiv-${instance}`).hide();
@@ -589,7 +597,8 @@ var $eXeDesafio = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXeChallenger beforeunload.eXeChallenger');
+        $(window).off('pagehide.eXeChallenger');
+        $(document).off('visibilitychange.eXeChallenger');
         $(`#desafioLinkMaximize-${instance}`).off('click touchstart');
         $(`#desafioLinkMinimize-${instance}`).off('click touchstart');
         $(`#desafioSolution-${instance}`).off('keydown');
@@ -608,6 +617,8 @@ var $eXeDesafio = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeDesafio.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         clearInterval(mOptions.counterClock);
 
@@ -983,6 +994,7 @@ var $eXeDesafio = {
                 mOptions.counter--;
                 $eXeDesafio.updateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
+                    $eXeDesafio.saveEvaluation(instance);
                     $eXeDesafio.gameOver(1, instance);
                 }
                 if (mOptions.typeQuestion === 1) {
@@ -1051,6 +1063,13 @@ var $eXeDesafio = {
         $eXeDesafio.showScoreGame(type, instance);
         mOptions.gameOver = true;
         mOptions.endGame = true;
+        // Persist the COMPLETED state (state 2) to the LMS when the game ends, on solve AND on
+        // time-out. Previously gameOver only updated the UI (showScoreGame); the last SCORM send
+        // happened in saveDataStorage while gameOver was still false (state 1), so the page
+        // stayed "incomplete" after finishing / when the time ran out.
+        if (mOptions.isScorm === 1) {
+            $eXeDesafio.sendScore(true, instance);
+        }
     },
 
     getRetroFeedMessages: function (iHit, instance) {

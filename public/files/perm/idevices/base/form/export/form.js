@@ -69,7 +69,7 @@ var $form = {
     renderView: function (data, accesibility, template, ideviceId) {
         const ldata = this.updateConfig(data, ideviceId);
         let display = $('body').hasClass('exe-export') ? 'none' : '';
-        if ($('body').hasClass('exe-scorm') && ldata.isScorm > 0) {
+        if (ldata.isScorm > 0) {
             ldata.msgs.msgCheck = ldata.textButtonScorm;
         }
 
@@ -297,9 +297,10 @@ var $form = {
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0
         ) {
-            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
-                $form.initScormData(ldata);
+            if (typeof window.scorm !== 'undefined') {
+                this.initSCORM(ldata);
             } else {
+                // The SCORM wrapper is not loaded yet: fetch it, then initSCORM runs.
                 this.loadSCORM_API_wrapper(ldata);
             }
         } else if (ldata.isScorm > 0) {
@@ -636,31 +637,6 @@ var $form = {
         }
     },
 
-    initScormData: function (ldata) {
-        $form.mScorm = window.scorm;
-        $form.userName = $exeDevices.iDevice.gamification.scorm.getUserName(
-            $form.mScorm
-        );
-        $form.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $form.mScorm
-            );
-        if (typeof $form.mScorm.SetScoreMax === 'function') {
-            $form.mScorm.SetScoreMax(100);
-        } else {
-            $form.mScorm.SetScoreMax(100);
-        }
-
-        if (typeof $form.mScorm.SetScoreMin === 'function') {
-            $form.mScorm.SetScoreMin(0);
-        } else {
-            $form.mScorm.SetScoreMin(0);
-        }
-
-        $form.initialScore = $form.previousScore;
-        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
-    },
-
     init: function (data, accesibility) {},
 
     updateTime: function (time, ideviceid) {
@@ -720,7 +696,6 @@ var $form = {
 
                 data.counter--;
                 $form.updateTime(data.counter, data.id);
-                gameStarted = false;
                 if (data.counter <= 0) {
                     $form.gameOver(data);
                 }
@@ -754,7 +729,7 @@ var $form = {
         data.gameOver = true;
         $form.checkAllQuestions(data);
         $form.showScore(50, data);
-        if ($('body').hasClass('exe-scorm') && data.isScorm > 0) {
+        if ( data.isScorm > 0) {
             $form.sendScore(data);
         }
 
@@ -1811,14 +1786,13 @@ var $form = {
         }
     },
     initSCORM: function (ldata) {
-        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
-        $form.mScorm = scorm;
-        if ($form.mScorm.init()) {
-            $form.initScormData(parsedData);
-        }
-    },
-    endScorm: function () {
-        if ($form.mScorm && typeof $form.mScorm.quit == 'function') {
-        }
+        const parsedData =
+            typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
+        // Open the session (no-op if already active) and bind it via the shared helper, then
+        // register this instance. initSession sets $form.userName / previousScore / score bounds
+        // without gating on init()'s return value.
+        window.scorm.init();
+        $exeDevices.iDevice.gamification.scorm.initSession($form);
+        $exeDevices.iDevice.gamification.scorm.registerActivity(parsedData);
     },
 };

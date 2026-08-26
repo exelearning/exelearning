@@ -40,6 +40,14 @@ describe('padlock iDevice export', () => {
     $padlock = loadExportIdevice(code);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    $(window).off('pagehide.eXeCandado');
+    $(document).off('visibilitychange.eXeCandado');
+    document.body.innerHTML = '';
+  });
+
   describe('addZero', () => {
     it('adds zero to single digit numbers', () => {
       expect($padlock.addZero(0)).toBe('00');
@@ -128,6 +136,213 @@ describe('padlock iDevice export', () => {
   describe('options', () => {
     it('is defined', () => {
       expect($padlock.options).toBeDefined();
+    });
+  });
+
+  describe('progress report save', () => {
+    it('uses the current activity score when saving results', () => {
+      const saveEvaluation = vi.fn();
+      global.$exeDevices.iDevice.gamification.report = { saveEvaluation };
+      $padlock.options[0] = { score: 0 };
+
+      $padlock.saveEvaluation(0);
+
+      expect($padlock.options[0].scorerp).toBe(0);
+      expect(saveEvaluation).toHaveBeenCalledWith($padlock.options[0], false);
+    });
+
+    it('saves results when the manual score button is clicked', () => {
+      vi.useFakeTimers();
+      const updateEvaluationIcon = vi.fn();
+      global.$exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon,
+      };
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="candadoMainContainer-0">
+            <button class="Games-SendScore">Save</button>
+          </div>
+        </article>`;
+      $padlock.options[0] = {
+        candadoReboot: false,
+        candadoShowMinimize: true,
+        candadoTime: 1,
+        id: 'padlock-test',
+        isScorm: 0,
+        score: 4,
+      };
+      $padlock.sendScore = vi.fn();
+      $padlock.saveEvaluation = vi.fn();
+      $padlock.getCandadoData = vi.fn(() => false);
+
+      $padlock.addEvents(0);
+      $('.Games-SendScore').trigger('click');
+      vi.runOnlyPendingTimers();
+
+      expect($padlock.sendScore).toHaveBeenCalledWith(false, 0);
+      expect($padlock.saveEvaluation).toHaveBeenCalledWith(0);
+      expect(updateEvaluationIcon).toHaveBeenCalledWith($padlock.options[0], $padlock.isInExe);
+    });
+
+    it('persists the padlock locally on pagehide and when the page is hidden', () => {
+      vi.useFakeTimers();
+      global.$exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon: vi.fn(),
+      };
+      $padlock.options[0] = {
+        candadoShowMinimize: true,
+        candadoStarted: true,
+        candadoTime: 1,
+        id: 'padlock-test',
+        isScorm: 0,
+        score: 4,
+      };
+      $padlock.saveCandadoData = vi.fn();
+      $padlock.getCandadoData = vi.fn(() => false);
+
+      $padlock.addEvents(0);
+      vi.runOnlyPendingTimers();
+
+      // pagehide replaces the deprecated unload/beforeunload save.
+      $(window).trigger('pagehide');
+      expect($padlock.saveCandadoData).toHaveBeenCalledWith(0);
+
+      // Becoming hidden also persists (covers the visibilitychange branch).
+      $padlock.saveCandadoData.mockClear();
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+      try {
+        $(document).trigger('visibilitychange');
+        expect($padlock.saveCandadoData).toHaveBeenCalledWith(0);
+      } finally {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      }
+    });
+
+    it('does not persist on pagehide when the padlock has not started', () => {
+      vi.useFakeTimers();
+      global.$exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon: vi.fn(),
+      };
+      $padlock.options[0] = {
+        candadoShowMinimize: true,
+        candadoStarted: false,
+        candadoTime: 1,
+        id: 'padlock-test',
+        isScorm: 0,
+      };
+      $padlock.saveCandadoData = vi.fn();
+      $padlock.getCandadoData = vi.fn(() => false);
+
+      $padlock.addEvents(0);
+      vi.runOnlyPendingTimers();
+
+      $(window).trigger('pagehide');
+      expect($padlock.saveCandadoData).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('does not send a score on page load', () => {
+    it('registers with gameStarted=false (before startGame) and sends nothing on load', () => {
+      vi.useFakeTimers();
+      global.$exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon: vi.fn(),
+      };
+      let gameStartedAtRegister;
+      global.$exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn(
+        (opts) => {
+          gameStartedAtRegister = opts.gameStarted;
+        },
+      );
+      document.body.innerHTML =
+        '<article class="idevice_node"><div id="candadoMainContainer-0"></div></article>';
+      $padlock.options[0] = {
+        candadoReboot: false,
+        candadoShowMinimize: false, // startGame runs on load
+        candadoTime: 0, // untimed: the reported bug case
+        id: 'padlock-test',
+        isScorm: 1,
+        score: 0,
+        gameStarted: false,
+        gameOver: false,
+        msgs: {},
+      };
+      $padlock.sendScore = vi.fn();
+      $padlock.getCandadoData = vi.fn(() => false);
+
+      $padlock.addEvents(0);
+      vi.runOnlyPendingTimers();
+
+      // registerActivity runs before startGame, so page load is not an active
+      // session and no score is sent.
+      expect(gameStartedAtRegister).toBe(false);
+      expect($padlock.sendScore).not.toHaveBeenCalled();
+      // startGame still enables play afterwards.
+      expect($padlock.options[0].gameStarted).toBe(true);
+    });
+  });
+
+  describe('answerActivity', () => {
+    it('marks the game over and sends the SCORM score when the correct solution is checked', () => {
+      document.body.innerHTML = `
+        <input id="candadoSolution-0">
+        <p id="candadoPInformation-0"></p>`;
+      const sendScoreNew = vi.fn();
+      global.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      global.$exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      $padlock.options[0] = {
+        candadoSolution: 'OPENME',
+        isScorm: 1,
+        main: 'candadoMainContainer-0',
+        msgs: { msgYouScore: 'Score' },
+        previousScore: '',
+        score: 0,
+      };
+      // showFeedback performs heavy DOM/LaTeX work; keep just the SCORM path.
+      vi.spyOn($padlock, 'showFeedback').mockImplementation((i) => {
+        $padlock.sendScore(true, i);
+      });
+      $('#candadoSolution-0').val('openme');
+
+      $padlock.answerActivity(0);
+
+      expect($padlock.options[0].gameOver).toBe(true);
+      expect($padlock.options[0].gameStarted).toBe(false);
+      expect(sendScoreNew).toHaveBeenCalledWith(
+        true,
+        expect.objectContaining({
+          gameOver: true,
+          gameStarted: false,
+          scorerp: 10,
+        }),
+      );
+    });
+
+    it('does not flag the game over for a wrong solution', () => {
+      document.body.innerHTML = `
+        <input id="candadoSolution-0">
+        <p id="candadoPInformation-0"></p>`;
+      const sendScoreNew = vi.fn();
+      global.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      $padlock.options[0] = {
+        candadoAttemps: 0,
+        candadoErrorMessage: '',
+        candadoErrors: 0,
+        candadoSolution: 'OPENME',
+        isScorm: 1,
+        main: 'candadoMainContainer-0',
+        msgs: { msgErrorCode: 'Wrong', msgFailures: 'try' },
+        score: 0,
+      };
+      $('#candadoSolution-0').val('nope');
+
+      $padlock.answerActivity(0);
+
+      expect($padlock.options[0].gameOver).toBeUndefined();
+      expect(sendScoreNew).not.toHaveBeenCalled();
     });
   });
 

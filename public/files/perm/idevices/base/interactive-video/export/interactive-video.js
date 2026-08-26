@@ -135,34 +135,46 @@ var $interactivevideo = {
     },
 
     initSCORM: function () {
-        $interactivevideo.mScorm = scorm;
-        const callSucceeded = $interactivevideo.mScorm.init();
-        if (!callSucceeded) {
-            this.enable();
+        // Open the session (no-op if already active) and bind it via the shared helper. Do NOT
+        // gate on init()'s return value: it is false when the session is already active (opened
+        // by the page's loadPage), and gating used to skip the learner name / score bounds setup.
+        window.scorm.init();
+        $exeDevices.iDevice.gamification.scorm.initSession($interactivevideo);
+        this.enable();
+        this.registerScormActivity();
+    },
+
+    /**
+     * Inscribe this activity in cmi.suspend_data on page LOAD, the way every other scored iDevice
+     * does from its own addEvents/initSCORM.
+     *
+     * This used to happen only in cover.hide(), i.e. when the learner pressed "start", which made
+     * this the one iDevice missing from the page's tracking until it was played. Two things broke:
+     * the page's weighted average was computed over the iDevices that happened to be registered, so
+     * solving another activity first scored it over the wrong denominator; and a page whose only
+     * scored iDevice is a video looked like a content-only page on entry and was marked completed
+     * with no score. Registering here fixes both at the source. (#1831)
+     *
+     * Runs after enable() so the shared markup (.Games-SendScore) that registerActivity looks up
+     * already exists. Safe to run again from cover.hide(): createScoreScormHtml updates the score
+     * node instead of duplicating it, and registerActivity only writes the initial entry when
+     * suspend_data has none.
+     */
+    registerScormActivity: function () {
+        if (
+            !InteractiveVideo ||
+            !InteractiveVideo.scorm ||
+            !(InteractiveVideo.scorm.isScorm > 0)
+        ) {
             return;
         }
-
-        $interactivevideo.userName =
-            $exeDevices.iDevice.gamification.scorm.getUserName(
-                $interactivevideo.mScorm
-            );
-        $interactivevideo.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $interactivevideo.mScorm
-            );
-
-        if (typeof $interactivevideo.mScorm.SetScoreMax === 'function') {
-            $interactivevideo.mScorm.SetScoreMax(100);
-        } else {
-            $interactivevideo.mScorm.set('cmi.core.score.max', '100');
+        if (!$interactivevideo.mOptions) {
+            $interactivevideo.mOptions =
+                $interactivevideo.getOptions(InteractiveVideo);
         }
-        if (typeof $interactivevideo.mScorm.SetScoreMin === 'function') {
-            $interactivevideo.mScorm.SetScoreMin(0);
-        } else {
-            $interactivevideo.mScorm.set('cmi.core.score.min', '0');
-        }
-
-        this.enable();
+        $exeDevices.iDevice.gamification.scorm.registerActivity(
+            $interactivevideo.mOptions
+        );
     },
 
     enable: function () {
@@ -507,6 +519,13 @@ var $interactivevideo = {
         return false;
     },
 
+    // Root element that holds the shared SCORM markup. addButtonScoreNew (common.js)
+    // renders `.Games-SendScore` and `.Games-RepeatActivity` INSIDE this container, and
+    // gives them classes, never ids -- so they must be reached by class from here.
+    getIdeviceRoot: function () {
+        return $('.exe-interactive-video').eq(0);
+    },
+
     sendScore: function (auto) {
         let options = $interactivevideo.mOptions;
         options.scorerp =
@@ -516,6 +535,21 @@ var $interactivevideo = {
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, options);
         $interactivevideo.previousScore = options.previousScore;
+    },
+
+    finalizeScorm: function () {
+        const scorm = InteractiveVideo.scorm;
+        if (!scorm || !(scorm.isScorm > 0) || !$interactivevideo.mOptions) {
+            return;
+        }
+        // The activity is finished (every question answered). Flag it terminal
+        // so the shared SCORM helper records completed/passed instead of leaving
+        // lesson_status "incomplete" (#1831). Auto mode (isScorm == 1) re-commits
+        // now; manual mode (isScorm == 2) carries the flag on the next send.
+        $interactivevideo.mOptions.gameOver = true;
+        if (scorm.isScorm == 1) {
+            $interactivevideo.sendScore(true);
+        }
     },
 
     updateScore: function (question, result) {
@@ -544,10 +578,11 @@ var $interactivevideo = {
                 ($interactivevideo.score * 10) /
                 $interactivevideo.numSlides
             ).toFixed(2);
-            $('#interactiveRepeatActivity').text(
-                InteractiveVideo.i18n.msgYouScore + ': ' + scoref
-            );
-            $('#interactiveRepeatActivity').show();
+            $interactivevideo
+                .getIdeviceRoot()
+                .find('.Games-RepeatActivity')
+                .text(InteractiveVideo.i18n.msgYouScore + ': ' + scoref)
+                .show();
             $interactivevideo.sendScore(true);
         }
         $interactivevideo.saveEvaluation();
@@ -581,19 +616,21 @@ var $interactivevideo = {
                         $interactivevideo.isInExe
                     );
                 }
-                if (
-                    InteractiveVideo &&
-                    InteractiveVideo.scorm &&
-                    InteractiveVideo.scorm.isScorm > 0
-                ) {
-                    let goptions =
-                        $interactivevideo.getOptions(InteractiveVideo);
-                    $exeDevices.iDevice.gamification.scorm.registerActivity(
-                        goptions
-                    );
-                }
+                // Normally a no-op: initSCORM already registered on page load. Kept so the
+                // activity is still tracked if that path did not run, and because it is what
+                // guarantees mOptions is the very object the saves use — registerActivity
+                // resolves ideviceNumber, ideviceId, mainElement and the title from the DOM and
+                // writes them onto whatever it is handed, so a throwaway copy would leave
+                // sendScore working off a different, unregistered object.
+                $interactivevideo.registerScormActivity();
 
                 var activeSlide = 0;
+                // Rebuild from scratch: cover.hide() runs again on every restart
+                // (cover.show('restart') leads back to the start link), and appending
+                // without clearing duplicated every slide. numSlides then doubled and,
+                // since the score is (score * 10) / numSlides, the mark stored in the LMS
+                // was halved on each restart.
+                $interactivevideo.scoreSlides = [];
                 for (var i = 0; i < InteractiveVideo.slides.length; i++) {
                     var sr = {
                         type: InteractiveVideo.slides[i].type,
@@ -615,12 +652,23 @@ var $interactivevideo = {
                     ? $interactivevideo.scoreSlides.length
                     : activeSlide;
                 $interactivevideo.gameStarted = true;
-                $('#interactiveSendScore').off('click');
-                $('#interactiveSendScore').on('click', function (e) {
-                    e.preventDefault();
-                    $interactivevideo.sendScore(false);
-                    $interactivevideo.saveEvaluation();
-                });
+                // Delegate on the container by CLASS. The button is the shared
+                // `.Games-SendScore` rendered by addButtonScoreNew (common.js); binding it
+                // by id matched nothing, so in manual mode (isScorm == 2) pressing "save
+                // score" did nothing at all and the result never reached the LMS.
+                // Delegation also survives the innerHTML rebuild done in enable().
+                $interactivevideo
+                    .getIdeviceRoot()
+                    .off('click.interactivevideo', '.Games-SendScore')
+                    .on(
+                        'click.interactivevideo',
+                        '.Games-SendScore',
+                        function (e) {
+                            e.preventDefault();
+                            $interactivevideo.sendScore(false);
+                            $interactivevideo.saveEvaluation();
+                        }
+                    );
             }
             if (play) $interactivevideo.controls.play();
         },
@@ -1263,6 +1311,7 @@ var $interactivevideo = {
                         '%</span>'
                 );
                 $('BODY').addClass('activity-completed');
+                $interactivevideo.finalizeScorm();
             }
         },
         toggle: function (e) {

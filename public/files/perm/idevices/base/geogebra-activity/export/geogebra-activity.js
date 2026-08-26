@@ -532,8 +532,11 @@ var $geogebraactivity = {
         const SCORE_RAW = 'SCORMRawScore';
         const SCORE_MIN = 'SCORMMinScore';
         const SCORE_MAX = 'SCORMMaxScore';
-        let score = ggbApplet.getValue(SCORE_RAW);
-        score = score.toFixed(2);
+        // Read the score only after confirming the construction defines the SCORM
+        // variables: on a material without them getValue() can return undefined and the
+        // immediate toFixed() threw, aborting the progress-report save that the same
+        // click handler runs right after the SCORM save.
+        let score = 0;
         if (
             ggbApplet.exists(SCORE_RAW) &&
             ggbApplet.exists(SCORE_MIN) &&
@@ -560,6 +563,17 @@ var $geogebraactivity = {
         }
         const mOptions = JSON.parse(JSON.stringify(options));
         mOptions.gameStarted = true;
+        // Pressing "save score" submits the construction, so the activity is complete and
+        // STAYS complete: every save keeps the terminal state and only refreshes the score.
+        //
+        // Do NOT try to express "already finalized" by passing gameOver=false on later
+        // saves. updateActivity derives the stored state solely from these two flags —
+        // `state: game.gameOver ? 2 : (game.gameStarted ? 1 : 0)` (common.js) — so
+        // gameOver=false does not preserve the terminal state, it downgrades it from
+        // 2 (completed) to 1 (incomplete). Because the SCO page only completes when every
+        // iDevice is at 2 (getActivityState), a learner who saved a second time used to
+        // un-complete the whole page. Writing state 2 again is idempotent and safe.
+        mOptions.gameOver = true;
         pipwerks.SCORM.SetScoreMax('100');
         pipwerks.SCORM.SetScoreMin('0');
         const SCORE_RAW = 'SCORMRawScore';

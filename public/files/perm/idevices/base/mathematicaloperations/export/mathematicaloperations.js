@@ -129,6 +129,15 @@ var $eXeMathOperations = {
         options.solution =
             typeof options.solution == 'undefined' ? true : options.solution;
         options.mode = typeof options.mode == 'undefined' ? 0 : options.mode;
+        // Coerce to a real boolean. The editor stores a boolean, but legacy and imported
+        // activities can carry the string "false"/"0", which is truthy in JS and made
+        // showFeedBack pop the feedback panel open on an activity whose author never
+        // enabled it.
+        options.feedBack =
+            options.feedBack === true ||
+            options.feedBack === 1 ||
+            options.feedBack === 'true' ||
+            options.feedBack === '1';
         options.negativeFractions =
             typeof options.negativeFractions == 'undefined'
                 ? false
@@ -163,6 +172,8 @@ var $eXeMathOperations = {
 
     reloadGame: function (instance) {
         let options = $eXeMathOperations.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(options);
         options.hits = 0;
         options.errors = 0;
         options.score = 0;
@@ -546,8 +557,10 @@ var $eXeMathOperations = {
                 $('#mthoCodeAccessDiv-' + instance).show();
                 break;
             case 1:
+                // `.identifica-feedback-game` was a leftover from the identify iDevice and
+                // matched nothing here; this iDevice's content is `.mathoperations-feedback-game`.
                 $('#mthoDivFeedBack-' + instance)
-                    .find('.identifica-feedback-game')
+                    .find('.mathoperations-feedback-game')
                     .show();
                 $('#mthoDivFeedBack-' + instance).css('display', 'flex');
                 $('#mthoDivFeedBack-' + instance).show();
@@ -1602,13 +1615,6 @@ var $eXeMathOperations = {
         });
 
         $('#mthoPNumber-' + instance).text(mOptions.number);
-        $(window).on('unload', function () {
-            if (typeof $eXeMathOperations.mScorm != 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeMathOperations.mScorm
-                );
-            }
-        });
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -1786,9 +1792,16 @@ var $eXeMathOperations = {
             puntos = (mOptions.hits * 100) / parseInt(mOptions.number);
         if (mOptions.feedBack) {
             if (puntos >= mOptions.percentajeFB) {
-                $('#mthoDivFeedBack-' + instance)
-                    .find('.mathoperations-feedback-game')
-                    .show();
+                const $feedback = $('#mthoDivFeedBack-' + instance).find(
+                    '.mathoperations-feedback-game'
+                );
+                // The panel is always in the exported markup, whether or not the author
+                // wrote any feedback, so revealing it unconditionally showed an empty box
+                // over the activity. Nothing to say means nothing to show.
+                if ($.trim($feedback.html() || '') === '') {
+                    return;
+                }
+                $feedback.show();
                 $eXeMathOperations.showCubiertaOptions(1, instance);
             } else {
                 $eXeMathOperations.showMessage(

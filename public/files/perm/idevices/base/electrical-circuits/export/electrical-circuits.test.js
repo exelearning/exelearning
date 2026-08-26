@@ -27,7 +27,7 @@ function configureGamificationGlobals() {
                     isJsonString: (value) => JSON.parse(value),
                     getQuestions: (questions) => questions,
                 },
-                scorm: {},
+                scorm: { restartActivity: () => {} },
                 math: {
                     updateLatex: vi.fn(),
                 },
@@ -261,5 +261,171 @@ describe('electrical-circuits iDevice export', () => {
 
         expect(loaded.selectsGame[0].tikzSvg).toBe('<svg viewBox="0 0 10 10"></svg>');
         expect(loaded.selectsGame[0]).not.toHaveProperty('tikzSvgHash');
+    });
+
+    describe('SCORM score persistence', () => {
+        beforeEach(() => {
+            document.body.innerHTML = '<span id="elcpRepeatActivity-0"></span>';
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        it('returns zero when the score denominator is not available', () => {
+            $eXeEC.options[0] = {
+                activityMode: 'game',
+                scoreGame: 1,
+                scoreTotal: 0,
+            };
+
+            expect($eXeEC.getScoreRP(0)).toBe(0);
+        });
+
+        it('saves the SCORM score and updates the visible score text', () => {
+            const sendScore = vi.spyOn($eXeEC, 'sendScore').mockImplementation(() => {});
+            $eXeEC.initialScore = '';
+            $eXeEC.options[0] = {
+                isScorm: 1,
+                repeatActivity: true,
+                activityMode: 'game',
+                scoreGame: 3,
+                scoreTotal: 6,
+                msgs: { msgYouScore: 'Score' },
+            };
+
+            $eXeEC.saveScormScore(0);
+
+            expect(sendScore).toHaveBeenCalledWith(true, 0);
+            expect($('#elcpRepeatActivity-0').text()).toBe('Score: 5.00');
+        });
+
+        it('saves the initial SCORM score when the test game starts', () => {
+            vi.useFakeTimers();
+            const saveScormScore = vi.spyOn($eXeEC, 'saveScormScore').mockImplementation(() => {});
+            vi.spyOn($eXeEC, 'updateLives').mockImplementation(() => {});
+            vi.spyOn($eXeEC, 'updateTime').mockImplementation(() => {});
+            vi.spyOn($eXeEC, 'newQuestion').mockImplementation(() => {});
+            $eXeEC.options[0] = {
+                activityMode: 'test',
+                gameStarted: false,
+                numberQuestions: 1,
+                numberLives: 1,
+                selectsGame: [{}],
+            };
+
+            $eXeEC.startGame(0);
+
+            expect(saveScormScore).toHaveBeenCalledWith(0);
+            expect($eXeEC.newQuestion).toHaveBeenCalledWith(0);
+        });
+
+        it('saves the SCORM score after answering a board question', () => {
+            const saveScormScore = vi.spyOn($eXeEC, 'saveScormScore').mockImplementation(() => {});
+            vi.spyOn($eXeEC, 'updateScore').mockImplementation(() => {});
+            $eXeEC.options[0] = {
+                gameActived: true,
+                activeQuestion: 0,
+                activeCounter: true,
+                selectsGame: [{}],
+                showSolution: false,
+                timeShowSolution: 0,
+                numberQuestions: 1,
+                hits: 1,
+                errors: 0,
+                itinerary: { showClue: false },
+            };
+
+            $eXeEC.answerQuestionBoard(true, 0);
+
+            expect($eXeEC.updateScore).toHaveBeenCalledWith(true, 0);
+            expect(saveScormScore).toHaveBeenCalledWith(0);
+        });
+    });
+
+    describe('show mode completion (SCORM state)', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        function setupShow(slides) {
+            document.body.innerHTML = `
+                <div id="elcpGameContainer-0"></div>
+                <div id="elcpTikzPreview-0"></div>
+                <button id="elcpShowPrev-0"></button>
+                <button id="elcpShowNext-0"></button>
+            `;
+            $eXeEC.options[0] = {
+                selectsGame: Array.from({ length: slides }, () => ({})),
+                isScorm: 0,
+                feedBack: false,
+                itinerary: { showClue: false },
+                msgs: {},
+            };
+            vi.spyOn($eXeEC, 'showCircuitAtIndex').mockImplementation(() => {});
+            vi.spyOn($eXeEC, 'sendScore').mockImplementation(() => {});
+            vi.spyOn($eXeEC, 'saveEvaluation').mockImplementation(() => {});
+        }
+
+        // A single circuit has no "next" to reach, so it completes on the learner's first use of
+        // the viewer -- never on load, which would report work nobody did and close the attempt as
+        // non-resumable. (#1831)
+        it('does not complete a single-circuit activity on load', () => {
+            setupShow(1);
+            $eXeEC.initShowMode(0);
+            expect($eXeEC.options[0].gameOver).toBeFalsy();
+            expect($eXeEC.sendScore).not.toHaveBeenCalled();
+        });
+
+        it('completes a single-circuit activity once the learner uses the viewer', () => {
+            setupShow(1);
+            $eXeEC.options[0].isScorm = 1;
+            $eXeEC.initShowMode(0);
+
+            $('#elcpTikzPreview-0').trigger('pointerdown');
+
+            expect($eXeEC.options[0].gameOver).toBe(true);
+            expect($eXeEC.sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+        it('completes a single-circuit activity from the keyboard too, and only once', () => {
+            setupShow(1);
+            $eXeEC.options[0].isScorm = 1;
+            $eXeEC.initShowMode(0);
+
+            $('#elcpTikzPreview-0').trigger('keydown');
+            $('#elcpTikzPreview-0').trigger('pointerdown');
+
+            expect($eXeEC.sendScore).toHaveBeenCalledTimes(1);
+        });
+
+        // It used to rewrite the score on every visit when the stored one was below the minimum,
+        // which pushed up a mark the learner had not earned. (#1831)
+        it('never writes a score on load, even with a low previous one stored', () => {
+            setupShow(2);
+            $eXeEC.options[0].isScorm = 1;
+            $eXeEC.previousScore = '1';
+
+            $eXeEC.initShowMode(0);
+
+            expect($eXeEC.sendScore).not.toHaveBeenCalled();
+        });
+
+        it('stays incomplete until the last circuit is reached', () => {
+            setupShow(3);
+            $eXeEC.initShowMode(0);
+            expect($eXeEC.options[0].gameOver).toBeFalsy();
+
+            $('#elcpShowNext-0').trigger('click');
+            expect($eXeEC.options[0].showCurrentIndex).toBe(1);
+            expect($eXeEC.options[0].gameOver).toBeFalsy();
+
+            $('#elcpShowNext-0').trigger('click');
+            expect($eXeEC.options[0].showCurrentIndex).toBe(2);
+            expect($eXeEC.options[0].gameOver).toBe(true);
+        });
     });
 });

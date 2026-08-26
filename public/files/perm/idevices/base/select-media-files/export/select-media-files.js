@@ -84,7 +84,6 @@ var $eXeSeleccionaMedias = {
             if (dl.length === 0) return; // Skip already initialized activities
             const mOption = $eXeSeleccionaMedias.loadDataGame(dl, this);
 
-            mOption.scorerp = 0;
             mOption.idevicePath = $eXeSeleccionaMedias.idevicePath;
             mOption.main = 'slcmpMainContainer-' + i;
             mOption.idevice = 'seleccionamedias-IDevice';
@@ -262,6 +261,7 @@ var $eXeSeleccionaMedias = {
         mOptions.numberQuestions = mOptions.phrasesGame.length;
         mOptions.fullscreen = false;
         mOptions.hits = 0;
+        delete mOptions.scorerp;
 
         mOptions.phrasesGame.forEach((phrase) => {
             phrase.cards = $eXeSeleccionaMedias.getCardsPart(
@@ -513,7 +513,7 @@ var $eXeSeleccionaMedias = {
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
+        mOptions.scorerp = $eXeSeleccionaMedias.getScore(instance);
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $eXeSeleccionaMedias.isInExe
@@ -523,13 +523,22 @@ var $eXeSeleccionaMedias = {
     sendScore: function (auto, instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
+        mOptions.scorerp = $eXeSeleccionaMedias.getScore(instance);
         mOptions.previousScore = $eXeSeleccionaMedias.previousScore;
         mOptions.userName = $eXeSeleccionaMedias.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $eXeSeleccionaMedias.previousScore = mOptions.previousScore;
+    },
+
+    getScore: function (instance) {
+        const mOptions = $eXeSeleccionaMedias.options[instance],
+            total = Number(mOptions.numberQuestions) || 0;
+
+        if (total <= 0) return 0;
+
+        return ((Number(mOptions.hits) || 0) * 10) / total;
     },
 
     addCards(cardsGame, instance) {
@@ -698,15 +707,18 @@ var $eXeSeleccionaMedias = {
 
             if (
                 mOptions.isScorm === 1 &&
-                (mOptions.repeatActivity ||
-                    $eXeSeleccionaMedias.initialScore === '')
+                (mOptions.repeatActivity || !mOptions.initialScore)
             ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.phrasesGame.length
-                ).toFixed(2);
+                // Answering the last question completes the activity. Mark it synchronized
+                // so the score sent by sendScore records state 2, and an unload during the
+                // delay still finalizes the SCO as completed. (#1831)
+                if (mOptions.active >= mOptions.phrasesGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 $eXeSeleccionaMedias.sendScore(true, instance);
-                $eXeSeleccionaMedias.initialScore = score;
+                mOptions.initialScore = $eXeSeleccionaMedias
+                    .getScore(instance)
+                    .toFixed(2);
             }
         } else {
             let msg = $eXeSeleccionaMedias.getMessageErrorAnswer(instance);
@@ -731,15 +743,18 @@ var $eXeSeleccionaMedias = {
                 $eXeSeleccionaMedias.updateScore(false, instance);
                 if (
                     mOptions.isScorm === 1 &&
-                    (mOptions.repeatActivity ||
-                        $eXeSeleccionaMedias.initialScore === '')
+                    (mOptions.repeatActivity || !mOptions.initialScore)
                 ) {
-                    const score = (
-                        (mOptions.hits * 10) /
-                        mOptions.phrasesGame.length
-                    ).toFixed(2);
+                    // Answering the last question completes the activity. Mark it synchronized
+                    // so the score sent by sendScore records state 2, and an unload during the
+                    // delay still finalizes the SCO as completed. (#1831)
+                    if (mOptions.active >= mOptions.phrasesGame.length - 1) {
+                        mOptions.gameOver = true;
+                    }
                     $eXeSeleccionaMedias.sendScore(true, instance);
-                    $eXeSeleccionaMedias.initialScore = score;
+                    mOptions.initialScore = $eXeSeleccionaMedias
+                        .getScore(instance)
+                        .toFixed(2);
                 }
             }
         }
@@ -850,17 +865,6 @@ var $eXeSeleccionaMedias = {
 
         $('#slcmpPNumber-' + instance).text(mOptions.numberQuestions);
 
-        $(window).on(
-            'unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias',
-            function () {
-                if (typeof $eXeSeleccionaMedias.mScorm != 'undefined') {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeSeleccionaMedias.mScorm
-                    );
-                }
-            }
-        );
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -911,7 +915,9 @@ var $eXeSeleccionaMedias = {
         $('#slcmpGameButtons-' + instance).hide();
 
         if (mOptions.time == 0 && !mOptions.itinerary.showCodeAccess) {
-            $eXeSeleccionaMedias.startGame(instance);
+            // Untimed and unlocked: the game is playable straight away, so it starts itself on
+            // load. That is not a learner action -- see startGame's `auto` flag.
+            $eXeSeleccionaMedias.startGame(instance, true);
         }
 
         $('#slcmpCheck-' + instance).on('click', function (e) {
@@ -1023,9 +1029,6 @@ var $eXeSeleccionaMedias = {
         $('#slcmpFeedBackClose-' + instance).off('click');
         $('#slcmpCodeAccessButton-' + instance).off('click touchstart');
         $('#slcmpCodeAccessE-' + instance).off('keydown');
-        $(window).off(
-            'unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias'
-        );
         $('#slcmpMainContainer-' + instance)
             .closest('.seleccionamedias-IDevice')
             .off('click', '.Games-SendScore');
@@ -1082,10 +1085,37 @@ var $eXeSeleccionaMedias = {
         }
     },
 
-    initializeMasonry: function (instance) {
+    // Masonry ships as an optional jQuery plugin (mansory-jq.js). It may not be
+    // registered on jQuery yet when the grid is first laid out (slow/late
+    // dependency load, preview service worker, CSP-blocked script…). Calling
+    // `$grid.masonry(...)` blindly in that window throws
+    // "$grid.masonry is not a function" and aborts the rest of the iDevice
+    // setup. Mirror the image-gallery/SimpleLightbox guard: only call the plugin
+    // when it exists. See issue: masonry runtime TypeError.
+    isMasonryReady: function () {
+        return typeof $.fn !== 'undefined' && typeof $.fn.masonry === 'function';
+    },
+
+    initializeMasonry: function (instance, retries) {
         const $grid = $('#slcmpMainContainer-' + instance).find(
             '.SLCMP-Multimedia'
         );
+        if (!$grid.length) return;
+
+        if (!$eXeSeleccionaMedias.isMasonryReady()) {
+            const remaining = typeof retries === 'number' ? retries : 25;
+            if (remaining <= 0) {
+                // Masonry never loaded: leave the grid in its default flow
+                // layout (table mode) so items render without overlapping.
+                $grid.addClass('SLCMP-ModeTable');
+                return;
+            }
+            setTimeout(function () {
+                $eXeSeleccionaMedias.initializeMasonry(instance, remaining - 1);
+            }, 200);
+            return;
+        }
+
         $grid.masonry({
             itemSelector: '.SLCMP-GridItem',
             columnWidth: '.SLCMP-GridItem',
@@ -1096,6 +1126,7 @@ var $eXeSeleccionaMedias = {
     },
 
     destroyMasonry: function () {
+        if (!$eXeSeleccionaMedias.isMasonryReady()) return;
         const $grid = $('.SLCMP-Multimedia');
         $grid.masonry('destroy');
     },
@@ -1151,14 +1182,23 @@ var $eXeSeleccionaMedias = {
         }
     },
 
-    startGame: function (instance) {
+    // @param {boolean} [auto] - true when the game starts by itself on page load (untimed, no
+    //   access code), which is NOT a learner action. Mirrors the `auto` flag of sendScoreNew.
+    startGame: function (instance, auto) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
+        // SCORM: the learner starting (or restarting) the activity drops it (and the page) back to
+        // incomplete. An auto-start must not: the page stays "not attempted" until the learner
+        // answers, which moves it to incomplete through sendScore.
+        if (!auto) {
+            $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
+        }
 
         if (mOptions.gameStarted) return;
 
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
+        mOptions.initialScore = '';
         mOptions.gameActived = true;
         mOptions.counter = mOptions.time * 60;
         mOptions.gameOver = false;
@@ -1245,12 +1285,10 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.showScoreGame(type, instance);
         $eXeSeleccionaMedias.saveEvaluation(instance);
         if (mOptions.isScorm == 1) {
-            const score = (
-                (mOptions.hits * 10) /
-                mOptions.phrasesGame.length
-            ).toFixed(2);
             $eXeSeleccionaMedias.sendScore(true, instance);
-            $eXeSeleccionaMedias.initialScore = score;
+            mOptions.initialScore = $eXeSeleccionaMedias
+                .getScore(instance)
+                .toFixed(2);
         }
         $eXeSeleccionaMedias.showFeedBack(instance);
         $('#slcmpCodeAccessDiv-' + instance).hide();
@@ -1462,8 +1500,6 @@ var $eXeSeleccionaMedias = {
                     }
                 });
         }
-
-        $eXeSeleccionaMedias.saveEvaluation(instance);
 
         if (mOptions.numberQuestions - mOptions.hits - mOptions.errors <= 0) {
             mOptions.gameActived = false;

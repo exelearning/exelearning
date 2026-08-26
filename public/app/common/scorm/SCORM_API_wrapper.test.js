@@ -4,6 +4,13 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 const pipwerks = require('./SCORM_API_wrapper.js');
 globalThis.pipwerks = pipwerks;
 
+// Captured before any beforeEach can overwrite them: these are the values a shipped SCORM
+// package actually runs with.
+const SHIPPED_DEFAULTS = {
+  handleCompletionStatus: pipwerks.SCORM.handleCompletionStatus,
+  handleExitMode: pipwerks.SCORM.handleExitMode,
+};
+
 describe('SCORM_API_wrapper.js', () => {
   let mockAPI12;
   let mockAPI2004;
@@ -149,7 +156,14 @@ describe('SCORM_API_wrapper.js', () => {
     });
 
     it('handles zero time', () => {
-      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(0, true)).toBe('0000:00:00.0');
+      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(0, true)).toBe('0000:00:00.00');
+    });
+
+    it('zero-pads a fraction below ten hundredths', () => {
+      // CMITimespan reads the digits after the point positionally: ".4" means four
+      // TENTHS, so 30.04s used to be reported to the LMS as 30.4s.
+      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(30040, true)).toBe('0000:00:30.04');
+      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(1010, true)).toBe('0000:00:01.01');
     });
 
     it('defaults to include fraction when not specified', () => {
@@ -159,13 +173,50 @@ describe('SCORM_API_wrapper.js', () => {
     it('handles very large times (over 9999 hours)', () => {
       const hugeTime = 36000000000; // More than 9999 hours
       // The function handles the 10000 hour edge case but caps at 9999:60:00
-      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(hugeTime, true)).toBe('9999:60:00.0');
+      expect(pipwerks.UTILS.convertTotalMiliSecondsSCORM12(hugeTime, true)).toBe('9999:60:00.00');
     });
 
     it('handles 10000 hours edge case', () => {
       const time10000Hours = 10000 * 3600000;
       const result = pipwerks.UTILS.convertTotalMiliSecondsSCORM12(time10000Hours, true);
       expect(result).toContain('9999:');
+    });
+  });
+
+  describe('pipwerks.SCORM.SetCompletionStatus', () => {
+    beforeEach(() => {
+      pipwerks.SCORM.connection.isActive = true;
+    });
+
+    it('forwards passed/failed to lesson_status in SCORM 1.2', () => {
+      // Both are part of the 1.2 lesson_status vocabulary, but they used to fall
+      // into the default branch and be dropped without reaching the LMS at all.
+      pipwerks.SCORM.version = '1.2';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
+
+      pipwerks.SCORM.SetCompletionStatus('passed');
+      pipwerks.SCORM.SetCompletionStatus('failed');
+
+      expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+      expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.lesson_status', 'failed');
+    });
+
+    it('rejects passed/failed in SCORM 2004, where they belong to success_status', () => {
+      pipwerks.SCORM.version = '2004';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+      pipwerks.SCORM.SetCompletionStatus('passed');
+
+      expect(mockAPI2004.SetValue).not.toHaveBeenCalled();
+    });
+
+    it('still forwards the shared vocabulary', () => {
+      pipwerks.SCORM.version = '1.2';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
+
+      pipwerks.SCORM.SetCompletionStatus('incomplete');
+
+      expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
     });
   });
 
@@ -416,6 +467,30 @@ describe('SCORM_API_wrapper.js', () => {
       expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
     });
 
+    // The two tests above prove the pipwerks mechanism still works both ways. What a shipped
+    // package actually does depends on the DEFAULT, and eXeLearning ships it off: opening a page
+    // must not mark it as started. Status belongs to the learner's interaction with the
+    // iDevices. (#1831)
+    it('ships with automatic completion handling OFF, so opening a page writes no status', () => {
+      expect(SHIPPED_DEFAULTS.handleCompletionStatus).toBe(false);
+
+      pipwerks.SCORM.version = '1.2';
+      pipwerks.SCORM.handleCompletionStatus = SHIPPED_DEFAULTS.handleCompletionStatus;
+      mockAPI12.LMSGetValue.mockReturnValue('not attempted');
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
+
+      expect(pipwerks.SCORM.connection.initialize()).toBe(true);
+
+      expect(mockAPI12.LMSInitialize).toHaveBeenCalledWith('');
+      expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
+    });
+
+    it('still ships with automatic exit handling ON', () => {
+      // Only completion handling was turned off; terminate() must keep stamping cmi.core.exit
+      // for content that never expressed one.
+      expect(SHIPPED_DEFAULTS.handleExitMode).toBe(true);
+    });
+
     it('returns false when error code is non-zero after init', () => {
       pipwerks.SCORM.version = '1.2';
       mockAPI12.LMSInitialize.mockReturnValue('true');
@@ -515,6 +590,45 @@ describe('SCORM_API_wrapper.js', () => {
 
       // Should only call LMSFinish
       expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
+    });
+
+    it('keeps the exit written by SetExit instead of overwriting it (SCORM 1.2)', () => {
+      // Regression for #1831. data.exitStatus is only assigned inside data.get, and
+      // nothing in eXeLearning ever reads cmi.core.exit, so it stayed null and the
+      // handleExitMode guard overwrote the value SetExit had just written: a finished
+      // page that the learner failed was rewritten to "suspend" and Moodle resumed it.
+      pipwerks.SCORM.version = '1.2';
+      pipwerks.SCORM.data.completionStatus = 'failed';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
+
+      // A finished page exits "normal", which SetExit maps to "" for SCORM 1.2.
+      pipwerks.SCORM.SetExit('normal');
+      expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.exit', '');
+      mockAPI12.LMSSetValue.mockClear();
+
+      pipwerks.SCORM.connection.terminate();
+
+      expect(mockAPI12.LMSSetValue).not.toHaveBeenCalledWith(
+        'cmi.core.exit',
+        'suspend',
+      );
+      expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
+      expect(mockAPI12.LMSFinish).toHaveBeenCalledWith('');
+    });
+
+    it('keeps the exit written by SetExit instead of overwriting it (SCORM 2004)', () => {
+      pipwerks.SCORM.version = '2004';
+      pipwerks.SCORM.data.completionStatus = 'incomplete';
+      vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+      pipwerks.SCORM.SetExit('normal');
+      expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.exit', 'normal');
+      mockAPI2004.SetValue.mockClear();
+
+      pipwerks.SCORM.connection.terminate();
+
+      expect(mockAPI2004.SetValue).not.toHaveBeenCalled();
+      expect(mockAPI2004.Terminate).toHaveBeenCalledWith('');
     });
 
     it('returns false when API is null', () => {
@@ -929,13 +1043,27 @@ describe('SCORM_API_wrapper.js', () => {
         expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.completion_status', 'completed');
       });
 
-      it('converts unknown to not attempted for SCORM 1.2', () => {
+      // SCORM 1.2 can only be WRITTEN passed|completed|failed|incomplete|browsed. "not attempted"
+      // and "unknown" belong to the 2004 completion vocabulary, and a 1.2 LMS refuses them --
+      // Moodle answers 405 and drops the write. Neither may leave this function on 1.2, and
+      // "unknown" must not be quietly rewritten into the one value that is guaranteed to bounce.
+      // In 1.2, "not attempted" is expressed by writing nothing at all. (#1831)
+      it.each(['not attempted', 'unknown'])('refuses to write %s on SCORM 1.2', (status) => {
         pipwerks.SCORM.version = '1.2';
         vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI12);
 
-        pipwerks.SCORM.SetCompletionStatus('unknown');
+        pipwerks.SCORM.SetCompletionStatus(status);
 
-        expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.lesson_status', 'not attempted');
+        expect(mockAPI12.LMSSetValue).not.toHaveBeenCalled();
+      });
+
+      it.each(['not attempted', 'unknown'])('writes %s on SCORM 2004, where it is valid', (status) => {
+        pipwerks.SCORM.version = '2004';
+        vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+        pipwerks.SCORM.SetCompletionStatus(status);
+
+        expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.completion_status', status);
       });
 
       it('converts browsed to incomplete for SCORM 2004', () => {
@@ -1014,6 +1142,24 @@ describe('SCORM_API_wrapper.js', () => {
         pipwerks.SCORM.SetExit('normal');
 
         expect(mockAPI12.LMSSetValue).toHaveBeenCalledWith('cmi.core.exit', '');
+      });
+
+      it('keeps normal for SCORM 2004', () => {
+        pipwerks.SCORM.version = '2004';
+        vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+        pipwerks.SCORM.SetExit('normal');
+
+        expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.exit', 'normal');
+      });
+
+      it('sets suspend for SCORM 2004', () => {
+        pipwerks.SCORM.version = '2004';
+        vi.spyOn(pipwerks.SCORM.API, 'getHandle').mockReturnValue(mockAPI2004);
+
+        pipwerks.SCORM.SetExit('suspend');
+
+        expect(mockAPI2004.SetValue).toHaveBeenCalledWith('cmi.exit', 'suspend');
       });
 
       it('does nothing for invalid exit', () => {

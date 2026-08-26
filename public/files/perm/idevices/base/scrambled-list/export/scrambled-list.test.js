@@ -190,6 +190,201 @@ describe('scrambled-list iDevice export', () => {
         eXe.app.isInExe = previousIsInExe;
       }
     });
+
+    it('coerces legacy manual SCORM mode (2) to automatic (1)', () => {
+      const previousIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = vi.fn(() => false);
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Scrambled list</h1></header>
+          <div id="scrambled-1" class="idevice_node scrambled-list" data-idevice-path="/idevices/scrambled-list/"></div>
+        </article>
+      `;
+
+      try {
+        // scrambled-list is auto-only (no manual save button): legacy data stored
+        // as manual mode (2) must load as automatic (1).
+        const result = $scrambledlist.updateConfig(
+          {
+            id: 'scrambled-1',
+            isScorm: 2,
+            msgs: $scrambledlist.getMessages(),
+          },
+          'scrambled-1',
+        );
+
+        expect(result.isScorm).toBe(1);
+      } finally {
+        eXe.app.isInExe = previousIsInExe;
+      }
+    });
+  });
+
+  describe('sendScore', () => {
+    it('marks the activity finished and sends the terminal SCORM score', () => {
+      const previousSendScoreNew = $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+
+      const data = { id: 'scrambled-1' };
+
+      try {
+        $scrambledlist.sendScore(3, 4, data);
+      } finally {
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew = previousSendScoreNew;
+      }
+
+      expect(data.gameOver).toBe(true);
+      expect(data.gameStarted).toBe(false);
+      expect(data.scorerp).toBe(7.5);
+      expect(sendScoreNew).toHaveBeenCalledWith(
+        true,
+        expect.objectContaining({ gameOver: true, scorerp: 7.5 }),
+      );
+    });
+  });
+
+  describe('SCORM setup (delegates to shared initSession)', () => {
+    it('binds the session and registers even when scorm.init() returns false', () => {
+      const scormHelpers = $exeDevices.iDevice.gamification.scorm;
+      const prevRegister = scormHelpers.registerActivity;
+      const prevInitSession = scormHelpers.initSession;
+      const prevWinScorm = window.scorm;
+
+      const registerActivity = vi.fn();
+      const initSession = vi.fn();
+      scormHelpers.registerActivity = registerActivity;
+      scormHelpers.initSession = initSession;
+      // init() returns FALSE on purpose: the SCORM session is already open (e.g. the page's
+      // loadPage opened it). Binding + registration must NOT be skipped in that case.
+      const scormMock = { init: vi.fn(() => false) };
+      window.scorm = scormMock;
+
+      try {
+        const data = { id: 'sl-1', isScorm: 1, weighted: 100 };
+        $scrambledlist.initSCORM(data);
+
+        expect(scormMock.init).toHaveBeenCalled();
+        expect(initSession).toHaveBeenCalledWith($scrambledlist);
+        expect(registerActivity).toHaveBeenCalledWith(data);
+      } finally {
+        scormHelpers.registerActivity = prevRegister;
+        scormHelpers.initSession = prevInitSession;
+        window.scorm = prevWinScorm;
+      }
+    });
+
+    it('drops the bespoke bootstrap now provided by the shared helper', () => {
+      expect($scrambledlist.initScormData).toBeUndefined();
+      expect($scrambledlist.endScorm).toBeUndefined();
+    });
+
+    // updateConfig flags the data as gameStarted, and registerActivity ends in showFinalScore,
+    // which writes the SCO status whenever gameStarted or gameOver is set. Registering with the
+    // flag still on made merely opening the page write a status. (#1831)
+    it('registers with gameStarted cleared so opening the page writes no status', () => {
+      const scormHelpers = $exeDevices.iDevice.gamification.scorm;
+      const prevRegister = scormHelpers.registerActivity;
+      const registerActivity = vi.fn();
+      scormHelpers.registerActivity = registerActivity;
+      document.body.innerHTML = '<div class="idevice_node" id="sl-2"></div>';
+
+      try {
+        // updateConfig sets it; renderBehaviour must clear it before registering.
+        expect($scrambledlist.updateConfig({ id: 'sl-2', isScorm: 1, options: [] }, 'sl-2').gameStarted).toBe(true);
+
+        $scrambledlist.renderBehaviour({ id: 'sl-2', isScorm: 1, options: [] }, 0, 'sl-2');
+
+        expect(registerActivity).toHaveBeenCalled();
+        expect(registerActivity.mock.calls[0][0].gameStarted).toBe(false);
+      } finally {
+        scormHelpers.registerActivity = prevRegister;
+        document.body.innerHTML = '';
+      }
+    });
+  });
+
+  describe('check finalizes the SCORM activity on Comprobar', () => {
+    beforeEach(() => {
+      document.body.classList.add('exe-scorm');
+      // The HTML5 Sortable plugin is not loaded in unit tests; stub the method
+      // so check()'s list.sortable('destroy') call does not throw.
+      $.fn.sortable = vi.fn().mockReturnThis();
+    });
+
+    afterEach(() => {
+      document.body.classList.remove('exe-scorm');
+      delete $.fn.sortable;
+      document.body.innerHTML = '';
+    });
+
+    function setupDom(jsonData) {
+      document.body.innerHTML = `
+        <div class="idevice_node">
+          <div class="exe-sortableList">
+            <p id="exe-sortableListButton-0"><input class="check" type="button"></p>
+            <ul id="exe-sortableList-0">
+              <li data-orig-index="1">B</li>
+              <li data-orig-index="0">A</li>
+            </ul>
+            <ul id="exe-sortableListResults-0"></ul>
+            <div id="exe-sortableList-0-feedback"></div>
+            <div id="exe-sortableList-0-retry"></div>
+          </div>
+        </div>`;
+      document
+        .querySelector('.idevice_node')
+        .setAttribute('data-idevice-json-data', JSON.stringify(jsonData));
+      return document.querySelector('.check');
+    }
+
+    it('sends the score (marks completed) even when a retry is still available', () => {
+      // Wrong order (orig indices [1,0]) with attempts remaining -> a retry is
+      // offered, but the activity must already be finalized for SCORM.
+      const e = setupDom({
+        id: '0',
+        isScorm: 1,
+        attemptsNumber: 3,
+        pendingAttempts: 3,
+        showSolutions: false,
+      });
+      const sendScore = vi
+        .spyOn($scrambledlist, 'sendScore')
+        .mockImplementation(() => {});
+      const showRetry = vi
+        .spyOn($scrambledlist, 'showRetryPrompt')
+        .mockImplementation(() => {});
+      vi.spyOn($scrambledlist, 'saveEvaluation').mockImplementation(() => {});
+
+      $scrambledlist.check(e, 0);
+
+      expect(sendScore).toHaveBeenCalledWith(0, 2, expect.any(Object));
+      expect(showRetry).toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
+
+    it('does not send the SCORM score outside SCORM mode', () => {
+      document.body.classList.remove('exe-scorm');
+      const e = setupDom({
+        id: '0',
+        isScorm: 0,
+        attemptsNumber: 1,
+        pendingAttempts: 1,
+        showSolutions: false,
+      });
+      const sendScore = vi
+        .spyOn($scrambledlist, 'sendScore')
+        .mockImplementation(() => {});
+      vi.spyOn($scrambledlist, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($scrambledlist, 'showResultFeedback').mockImplementation(() => {});
+
+      $scrambledlist.check(e, 0);
+
+      expect(sendScore).not.toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
   });
 
   describe('setupTouchDrag', () => {

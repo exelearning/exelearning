@@ -650,6 +650,23 @@ var $eXeOrdena = {
         return positions;
     },
 
+    /**
+     * Number of cards/words reported as correctly placed after a check.
+     *
+     * Every check function (checkPhrase, checkPhraseColumns, checkPhraseText)
+     * already returns in `valids` only the entries that sit in a correct
+     * position — in column mode the fixed header row is excluded at source
+     * (it is never pushed to `valids`). The reported figure is therefore just
+     * the count of valid entries; subtracting the header columns here would
+     * undercount it by `gameColumns`.
+     *
+     * @param {{valids?: Array}} response result of a checkPhrase* function
+     * @returns {number} count of correctly placed entries (never negative)
+     */
+    getCorrectPositionsCount: function (response) {
+        return Array.isArray(response?.valids) ? response.valids.length : 0;
+    },
+
     createInterfaceOrdena: function (instance) {
         const path = $eXeOrdena.idevicePath,
             msgs = $eXeOrdena.options[instance].msgs,
@@ -1085,10 +1102,6 @@ var $eXeOrdena = {
 
         $(`#ordenaPNumber-${instance}`).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeOrdena beforeunload.eXeOrdena', function () {
-            $exeDevices.iDevice.gamification.scorm.endScorm($eXeOrdena.mScorm);
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1111,6 +1124,9 @@ var $eXeOrdena = {
 
         $(`#ordenaStartGameEnd-${instance}`).on('click', function (e) {
             e.preventDefault();
+            // SCORM: "play again" (user action) drops a completed activity (and the page) back to incomplete.
+            // Hooked here (not in startGame, which auto-starts on load when startAutomatically/time is 0).
+            $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
             mOptions.phrasesGame =
                 $exeDevices.iDevice.gamification.helpers.shuffleAds(
                     mOptions.phrasesGame
@@ -1164,10 +1180,7 @@ var $eXeOrdena = {
                         ? $eXeOrdena.checkPhraseColumns(instance)
                         : $eXeOrdena.checkPhrase(instance);
             }
-            const valids =
-                mOptions.type > 0 && mOptions.orderedColumns
-                    ? response.valids.length - mOptions.gameColumns
-                    : response.valids.length;
+            const valids = $eXeOrdena.getCorrectPositionsCount(response);
             let msg = `${$eXeOrdena.updateScore(response.correct, instance)} ${mOptions.msgs.msgPositions}: ${valids}. `;
             let color = $eXeOrdena.borderColors.red;
             if (response.correct) {
@@ -1247,8 +1260,6 @@ var $eXeOrdena = {
         $(`#ordenaStartGameEnd-${instance}`).off('click');
         $(`#ordenaClueButton-${instance}`).off('click');
         $(`#ordenaValidatePhrase-${instance}`).off('click');
-
-        $(window).off('unload.eXeOrdena beforeunload.eXeOrdena');
 
         $eXeOrdena.removeTouchDragAndDrop(instance);
         $eXeOrdena.removeTouchPhraseDragAndDrop(instance);
@@ -1438,6 +1449,13 @@ var $eXeOrdena = {
     nextPhrase: function (instance) {
         const mOptions = $eXeOrdena.options[instance];
         $exeDevices.iDevice.gamification.media.stopSound();
+        // Advancing past the last phrase finishes the activity. Mark it completed
+        // synchronously (the real gameOver runs after the timeShowSolution delay)
+        // so the score sent by the validate handler records state 2, and an unload
+        // during that delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.active >= mOptions.phrasesGame.length - 1) {
+            mOptions.gameOver = true;
+        }
         setTimeout(() => {
             const $histsGame = $(`#ordenaHistsGame-${instance}`);
             $histsGame.html('');

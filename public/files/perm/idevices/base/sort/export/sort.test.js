@@ -524,6 +524,55 @@ describe('sort iDevice export', () => {
             expect(result.valids).toEqual([2, 3]);
         });
 
+        it('reports the full count of correct cards in ordered-column mode (no double header subtraction)', () => {
+            // Regression: checkPhraseColumns already excludes the fixed header
+            // row from `valids`, so the reported count must NOT subtract
+            // gameColumns again. A 2-column activity with both body cards
+            // correct must report 2, not 0.
+            const instance = 24;
+            $eXeOrdena.options[instance] = {
+                gameColumns: 2,
+                type: 1,
+                orderedColumns: true,
+                phrase: {
+                    cards: [
+                        { order: 0, url: 'img/avanza.png', eText: '', audio: '' },
+                        { order: 1, url: 'img/para.png', eText: '', audio: '' },
+                        { order: 2, url: 'img/avanza.png', eText: '', audio: '' },
+                        { order: 3, url: 'img/para.png', eText: '', audio: '' },
+                    ],
+                },
+            };
+
+            document.body.innerHTML = `
+                <div id="ordenaMultimedia-${instance}">
+                    ${createCardDrawHtml(0, 'img/avanza.png')}
+                    ${createCardDrawHtml(1, 'img/para.png')}
+                    ${createCardDrawHtml(2, 'img/avanza.png')}
+                    ${createCardDrawHtml(3, 'img/para.png')}
+                </div>
+            `;
+
+            const result = $eXeOrdena.checkPhraseColumns(instance);
+            expect(result.valids).toEqual([2, 3]);
+            expect($eXeOrdena.getCorrectPositionsCount(result)).toBe(2);
+        });
+
+        it('getCorrectPositionsCount returns the number of valid entries', () => {
+            expect(
+                $eXeOrdena.getCorrectPositionsCount({ valids: [2, 3, 4] })
+            ).toBe(3);
+        });
+
+        it('getCorrectPositionsCount is 0 when there are no valids', () => {
+            expect($eXeOrdena.getCorrectPositionsCount({ valids: [] })).toBe(0);
+        });
+
+        it('getCorrectPositionsCount is 0 when valids is missing', () => {
+            expect($eXeOrdena.getCorrectPositionsCount({})).toBe(0);
+            expect($eXeOrdena.getCorrectPositionsCount(undefined)).toBe(0);
+        });
+
         it('checkPhraseColumns does not accept duplicated occurrences beyond expected count', () => {
             const instance = 23;
             $eXeOrdena.options[instance] = {
@@ -591,6 +640,63 @@ describe('sort iDevice export', () => {
                 0
             );
             expect(result).toBe(false);
+        });
+    });
+
+    describe('nextPhrase completion (all questions answered)', () => {
+        beforeEach(() => {
+            global.$exeDevices.iDevice.gamification.media = {
+                stopSound: vi.fn(),
+            };
+        });
+
+        it('marks complete synchronously when advancing past the last phrase', () => {
+            vi.useFakeTimers();
+            const options = {
+                active: 1, // last index of a 2-phrase activity
+                phrasesGame: [{}, {}],
+                gameOver: false,
+                timeShowSolution: 0,
+            };
+            $eXeOrdena.options[0] = options;
+            vi.spyOn($eXeOrdena, 'gameOver').mockImplementation(() => {});
+
+            $eXeOrdena.nextPhrase(0);
+
+            // The flag is set immediately, before the delayed gameOver() runs, so
+            // the validate handler's sendScore records state 2.
+            expect(options.gameOver).toBe(true);
+            expect($eXeOrdena.gameOver).not.toHaveBeenCalled();
+
+            vi.runAllTimers();
+            expect($eXeOrdena.gameOver).toHaveBeenCalledWith(0, 0);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('does not complete while phrases remain', () => {
+            vi.useFakeTimers();
+            const options = {
+                active: 0, // not the last phrase
+                phrasesGame: [{}, {}],
+                gameOver: false,
+                timeShowSolution: 0,
+            };
+            $eXeOrdena.options[0] = options;
+            vi.spyOn($eXeOrdena, 'showPhrase').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'showPhraseText').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'gameOver').mockImplementation(() => {});
+
+            $eXeOrdena.nextPhrase(0);
+
+            expect(options.gameOver).toBe(false);
+
+            vi.runAllTimers(); // advance to next phrase, no gameOver
+            expect($eXeOrdena.gameOver).not.toHaveBeenCalled();
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
         });
     });
 });

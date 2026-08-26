@@ -11,7 +11,7 @@
  */
 
 /* eslint-disable no-undef */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -27,7 +27,7 @@ function loadExportIdevice() {
                     borderColors: { black: '#000', white: '#fff', red: '#f00', green: '#0f0', yellow: '#ff0' },
                     backColor: { black: '#000', white: '#fff' },
                 },
-                scorm: { addButtonScoreNew: () => '' },
+                scorm: { addButtonScoreNew: () => '', restartActivity: () => {} },
             },
         },
     };
@@ -305,6 +305,174 @@ describe('3dmol iDevice export', () => {
             const css = readFileSync(join(__dirname, '3dmol.css'), 'utf-8');
             const rule = css.match(/\.DMOLP-ModelAuthor\s*\{[\s\S]*?\}/)?.[0] || '';
             expect(rule).toContain('text-align: center;');
+        });
+    });
+
+    describe('SCORM score persistence', () => {
+        beforeEach(() => {
+            document.body.innerHTML = '<span id="dmolpRepeatActivity-0"></span>';
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        it('returns zero when the score denominator is not available', () => {
+            dmol.options[0] = {
+                activityMode: 'game',
+                scoreGame: 1,
+                scoreTotal: 0,
+            };
+
+            expect(dmol.getScoreRP(0)).toBe(0);
+        });
+
+        it('saves the SCORM score and updates the visible score text', () => {
+            const sendScore = vi.spyOn(dmol, 'sendScore').mockImplementation(() => {});
+            dmol.initialScore = '';
+            dmol.options[0] = {
+                isScorm: 1,
+                repeatActivity: true,
+                activityMode: 'game',
+                scoreGame: 2,
+                scoreTotal: 4,
+                msgs: { msgYouScore: 'Score' },
+            };
+
+            dmol.saveScormScore(0);
+
+            expect(sendScore).toHaveBeenCalledWith(true, 0);
+            expect($('#dmolpRepeatActivity-0').text()).toBe('Score: 5.00');
+        });
+
+        it('saves the initial SCORM score when the test game starts', () => {
+            vi.useFakeTimers();
+            const saveScormScore = vi.spyOn(dmol, 'saveScormScore').mockImplementation(() => {});
+            vi.spyOn(dmol, 'setModelStyleControlVisibility').mockImplementation(() => {});
+            vi.spyOn(dmol, 'updateLives').mockImplementation(() => {});
+            vi.spyOn(dmol, 'updateTime').mockImplementation(() => {});
+            vi.spyOn(dmol, 'newQuestion').mockImplementation(() => {});
+            dmol.options[0] = {
+                activityMode: 'test',
+                gameStarted: false,
+                numberQuestions: 1,
+                numberLives: 1,
+                selectsGame: [{}],
+            };
+
+            dmol.startGame(0);
+
+            expect(saveScormScore).toHaveBeenCalledWith(0);
+            expect(dmol.newQuestion).toHaveBeenCalledWith(0);
+        });
+
+        it('saves the SCORM score after answering a board question', () => {
+            const saveScormScore = vi.spyOn(dmol, 'saveScormScore').mockImplementation(() => {});
+            vi.spyOn(dmol, 'updateScore').mockImplementation(() => {});
+            dmol.options[0] = {
+                gameActived: true,
+                activeQuestion: 0,
+                activeCounter: true,
+                selectsGame: [{}],
+                showSolution: false,
+                timeShowSolution: 0,
+                numberQuestions: 1,
+                hits: 1,
+                errors: 0,
+                itinerary: { showClue: false },
+            };
+
+            dmol.answerQuestionBoard(true, 0);
+
+            expect(dmol.updateScore).toHaveBeenCalledWith(true, 0);
+            expect(saveScormScore).toHaveBeenCalledWith(0);
+        });
+    });
+
+    describe('show mode completion (SCORM state)', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        function setupShow(slides) {
+            document.body.innerHTML = `
+                <div id="dmolpGameContainer-0"></div>
+                <div id="dmolpModelPreview-0" tabindex="0"></div>
+                <button id="dmolpShowPrev-0"></button>
+                <button id="dmolpShowNext-0"></button>
+            `;
+            dmol.options[0] = {
+                selectsGame: Array.from({ length: slides }, () => ({})),
+                isScorm: 0,
+                feedBack: false,
+                itinerary: { showClue: false },
+                msgs: {},
+            };
+            vi.spyOn(dmol, 'showModelAtIndex').mockImplementation(() => {});
+            vi.spyOn(dmol, 'setModelStyleControlVisibility').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sendScore').mockImplementation(() => {});
+            vi.spyOn(dmol, 'saveEvaluation').mockImplementation(() => {});
+        }
+
+        // A single model has no "next" to reach, so it completes on the learner's first use of the
+        // viewer -- never on load, which would report work nobody did and close the attempt as
+        // non-resumable. (#1831)
+        it('does not complete a single-model activity on load', () => {
+            setupShow(1);
+            dmol.initShowMode(0);
+            expect(dmol.options[0].gameOver).toBeFalsy();
+            expect(dmol.sendScore).not.toHaveBeenCalled();
+        });
+
+        it('completes a single-model activity once the learner uses the viewer', () => {
+            setupShow(1);
+            dmol.options[0].isScorm = 1;
+            dmol.initShowMode(0);
+
+            $('#dmolpModelPreview-0').trigger('pointerdown');
+
+            expect(dmol.options[0].gameOver).toBe(true);
+            expect(dmol.sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+        it('completes a single-model activity from the keyboard too, and only once', () => {
+            setupShow(1);
+            dmol.options[0].isScorm = 1;
+            dmol.initShowMode(0);
+
+            $('#dmolpModelPreview-0').trigger('keydown');
+            $('#dmolpModelPreview-0').trigger('pointerdown');
+
+            expect(dmol.sendScore).toHaveBeenCalledTimes(1);
+        });
+
+        // It used to rewrite the score on every visit when the stored one was below the minimum,
+        // which pushed up a mark the learner had not earned. (#1831)
+        it('never writes a score on load, even with a low previous one stored', () => {
+            setupShow(2);
+            dmol.options[0].isScorm = 1;
+            dmol.previousScore = '1';
+
+            dmol.initShowMode(0);
+
+            expect(dmol.sendScore).not.toHaveBeenCalled();
+        });
+
+        it('stays incomplete until the last model is reached', () => {
+            setupShow(3);
+            dmol.initShowMode(0);
+            expect(dmol.options[0].gameOver).toBeFalsy();
+
+            $('#dmolpShowNext-0').trigger('click');
+            expect(dmol.options[0].showCurrentIndex).toBe(1);
+            expect(dmol.options[0].gameOver).toBeFalsy();
+
+            $('#dmolpShowNext-0').trigger('click');
+            expect(dmol.options[0].showCurrentIndex).toBe(2);
+            expect(dmol.options[0].gameOver).toBe(true);
         });
     });
 });

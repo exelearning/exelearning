@@ -461,7 +461,9 @@ export class Scorm2004Exporter extends Html5Exporter {
             bodyClass: bodyClass,
             extraHeadScripts: this.getScorm2004HeadScripts(basePath),
             onLoadScript: 'loadPage()',
-            onUnloadScript: 'unloadPage()',
+            // Issue #1831: no onunload/onbeforeunload attributes. The SCO finalizes through
+            // the pagehide lifecycle registered in SCOFunctions.js (registerScormLifecycleHandlers),
+            // because Chrome deprecates `unload` and Moodle blocks it via Permissions-Policy.
             hideNavigation: true,
             hideNavButtons: true,
             themeFiles: themeFiles || [],
@@ -589,27 +591,109 @@ var scorm = pipwerks.SCORM;
 
 var startTimeStamp = null;
 var exitPageStatus = false;
+var pageLoaded = false;
+var scormLifecycleState = {
+  finalized: false,
+  isSCORM: false,
+  registered: false
+};
 
 function loadPage() {
+  if (pageLoaded) {
+    return true;
+  }
+
   startTimeStamp = new Date();
   var result = scorm.init();
   if (result) {
-    var status = scorm.get("cmi.completion_status");
-    if (status === "not attempted" || status === "unknown" || status === "") {
-      scorm.set("cmi.completion_status", "incomplete");
-    }
+    // Entering the page must NOT change cmi.completion_status: the iDevice owns it
+    // and only changes it through learner interaction. loadPage only opens the
+    // session.
+    pageLoaded = true;
   }
   return result;
 }
 
-function unloadPage() {
-  if (!exitPageStatus) {
-    exitPageStatus = true;
-    computeTime();
+function commitScormProgress() {
+  // A page the learner never started an activity in has nothing to persist, and committing would
+  // create LMS tracking for it mid-visit. It is recorded once, on the way out, by unloadPage.
+  if (pageHasEvaluableIdevices(scormLifecycleState.isSCORM) && !hasAttemptedActivity()) {
+    return;
+  }
+  computeTime();
+  scorm.save();
+}
+
+// Has the learner interacted with any evaluable iDevice? Each entry in cmi.suspend_data ends with
+// "Estado: N" — 0 registered but untouched, 1 started, 2 finished. The canonical format and parser
+// live in common.js (convertToLineFormat / parseSuspendData); this minimal fallback only needs the
+// yes/no answer. Legacy suspend_data predating that field carries no state, and it can only exist
+// because the learner played, so it counts as attempted.
+function hasAttemptedActivity() {
+  var suspendData = scorm.get("cmi.suspend_data") || "";
+  if (suspendData.trim() === "") {
+    return false;
+  }
+  if (suspendData.indexOf("Estado:") === -1) {
+    return true;
+  }
+  return /Estado:\\s*[12]/.test(suspendData);
+}
+
+// Any tracking data at all means this is not a content-only page.
+function pageHasEvaluableIdevices(isSCORM) {
+  var suspendData = scorm.get("cmi.suspend_data") || "";
+  return isSCORM === true || suspendData.trim() !== "";
+}
+
+// Every evaluable iDevice finished? A content-only page counts as finished; an entry still at
+// "Estado: 0" (registered) or "Estado: 1" (started) means the learner has work left.
+// Does the SCO already carry a verdict? The LMS index is drawn from the exit token, so a page
+// left as "suspend" reads as suspended even when the stored status is already completed. The
+// verdict is what the index has to reflect, so the verdict decides the exit.
+function hasTerminalStatus() {
+  return scorm.get("cmi.completion_status") === "completed";
+}
+
+// Leaving a page NEVER writes completion/success: they are owned by the learner's interaction with
+// the SCORM iDevices. See SCOFunctions.js for the full rationale of the three cases below.
+function unloadPage(isSCORM) {
+  if (exitPageStatus) {
+    return;
+  }
+
+  exitPageStatus = true;
+  scormLifecycleState.finalized = true;
+
+  // A page with SCORM iDevices the learner never touched is recorded as incomplete on the way
+  // out. The session MUST still be closed: leaving it open makes the next SCO's Initialize fail,
+  // after which every SetValue/Commit is silently dropped and the package stops saving.
+  if (pageHasEvaluableIdevices(isSCORM) && !hasAttemptedActivity()) {
+    scorm.set("cmi.completion_status", "incomplete");
     scorm.set("cmi.exit", "suspend");
+    computeTime();
     scorm.save();
     scorm.quit();
+    pageLoaded = false;
+    return;
   }
+
+  // Content-only page: completed on the way out, so a course of content pages can still complete.
+  if (!pageHasEvaluableIdevices(isSCORM)) {
+    var status = scorm.get("cmi.completion_status") || "";
+    if (status !== "completed") {
+      scorm.set("cmi.completion_status", "completed");
+    }
+  }
+
+  // Pick the resume mode, then close the session. Resumability follows whether the ACTIVITY is
+  // finished, never the pass/fail verdict: the status reports the score as it stands, so a page
+  // is marked completed from the first good answer, and closing it as "normal" there would end
+  // the attempt while the learner is still working.
+  scorm.set("cmi.exit", hasTerminalStatus() ? "normal" : "suspend");
+  commitScormProgress();
+  scorm.quit();
+  pageLoaded = false;
 }
 
 function computeTime() {
@@ -627,17 +711,6 @@ function computeTime() {
   }
 }
 
-function setComplete() {
-  scorm.set("cmi.completion_status", "completed");
-  scorm.set("cmi.success_status", "passed");
-  scorm.save();
-}
-
-function setIncomplete() {
-  scorm.set("cmi.completion_status", "incomplete");
-  scorm.save();
-}
-
 function setScore(score, maxScore, minScore) {
   // SCORM 2004 score must be between 0 and 1
   var scaledScore = maxScore ? score / maxScore : score / 100;
@@ -647,6 +720,46 @@ function setScore(score, maxScore, minScore) {
   if (minScore !== undefined) scorm.set("cmi.score.min", minScore);
   scorm.save();
 }
+
+// Issue #1831: finalize via pagehide instead of the deprecated unload event,
+// which Chrome blocks under a Permissions Policy (e.g. Moodle iframes), losing SCORM scores.
+function registerScormLifecycleHandlers(isSCORM) {
+  if (typeof isSCORM === "boolean") {
+    scormLifecycleState.isSCORM = isSCORM;
+  }
+  if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
+    return;
+  }
+  if (scormLifecycleState.registered) {
+    return;
+  }
+  scormLifecycleState.registered = true;
+  function commitIfOpen() {
+    if (!scormLifecycleState.finalized) {
+      commitScormProgress();
+    }
+  }
+  function finalizeOnce(event) {
+    if (event && event.persisted) {
+      commitIfOpen();
+      return;
+    }
+    if (scormLifecycleState.finalized) return;
+    scormLifecycleState.finalized = true;
+    unloadPage(scormLifecycleState.isSCORM);
+  }
+  window.addEventListener("pagehide", finalizeOnce, false);
+  window.addEventListener("freeze", commitIfOpen, false);
+  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") {
+        commitIfOpen();
+      }
+    }, false);
+  }
+}
+
+registerScormLifecycleHandlers();
 `;
     }
 

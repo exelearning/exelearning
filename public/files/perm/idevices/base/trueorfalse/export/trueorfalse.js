@@ -75,13 +75,20 @@ var $trueorfalse = {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
+        // updateConfig flags the new-format data as gameStarted; reset it BEFORE
+        // registering so the shared SCORM helper does not treat page load as an
+        // active session and write a 0/incomplete score before the learner
+        // interacts. addEvents() resets it again below. (#1831)
+        ldata.gameStarted = false;
+
         if (
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0
         ) {
-            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
-                this.initScormData(ldata);
+            if (typeof window.scorm !== 'undefined') {
+                this.initSCORM(ldata);
             } else {
+                // The SCORM wrapper is not loaded yet: fetch it, then initSCORM runs.
                 this.loadSCORM_API_wrapper(ldata);
             }
         } else if (ldata.isScorm > 0) {
@@ -116,32 +123,6 @@ var $trueorfalse = {
         }
     },
 
-    initScormData: function (ldata) {
-        $trueorfalse.mScorm = window.scorm;
-        $trueorfalse.userName =
-            $exeDevices.iDevice.gamification.scorm.getUserName(
-                $trueorfalse.mScorm
-            );
-        $trueorfalse.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $trueorfalse.mScorm
-            );
-
-        if (typeof $trueorfalse.mScorm.SetScoreMax === 'function') {
-            $trueorfalse.mScorm.SetScoreMax(100);
-        } else {
-            $trueorfalse.mScorm.SetScoreMax(100);
-        }
-
-        if (typeof $trueorfalse.mScorm.SetScoreMin === 'function') {
-            $trueorfalse.mScorm.SetScoreMin(0);
-        } else {
-            $trueorfalse.mScorm.SetScoreMin(0);
-        }
-        $trueorfalse.initialScore = $trueorfalse.previousScore;
-        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
-    },
-
     updateConfig: function (odata, ideviceId) {
         const data = JSON.parse(JSON.stringify(odata || {}));
 
@@ -163,11 +144,22 @@ var $trueorfalse = {
         }
         data.repeatActivity = true;
         data.isScorm = data.isScorm ?? 0;
+        data.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(data.isScorm);
 
         const $idevices = $('.idevice_node');
         data.ideviceNumber = $idevices.index($('#' + data.id)) + 1;
 
         data.isTest = typeof data.isTest === 'undefined' ? false : data.isTest;
+
+        // Number of attempts (retries) in test mode. Backward-compatible: packages
+        // exported before this field default to 1. The activity is still marked
+        // completed on the first Comprobar regardless of remaining attempts; this
+        // only limits how many times the learner can retry to improve the score.
+        data.attemptsNumber =
+            typeof data.attemptsNumber === 'undefined'
+                ? 1
+                : parseInt(data.attemptsNumber, 10) || 1;
 
         data.hits = 0;
         data.errors = 0;
@@ -316,12 +308,14 @@ var $trueorfalse = {
     },
 
     initSCORM: function (ldata) {
-        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
-        $trueorfalse.mScorm = scorm;
-        if ($trueorfalse.mScorm.init());
-        {
-            $trueorfalse.initScormData(parsedData);
-        }
+        const parsedData =
+            typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
+        // Open the session (no-op if already active) and bind it via the shared helper.
+        window.scorm.init();
+        $exeDevices.iDevice.gamification.scorm.initSession($trueorfalse);
+        // Seed the non-repeat "already scored" lock from the restored LMS score.
+        $trueorfalse.initialScore = $trueorfalse.previousScore;
+        $exeDevices.iDevice.gamification.scorm.registerActivity(parsedData);
     },
 
     escapeForCallback: function (obj) {
@@ -332,7 +326,7 @@ var $trueorfalse = {
 
     saveEvaluation: function (data) {
         const mOptions = data;
-        const score = (10 * mOptions.hits) / mOptions.numberQuestions;
+        const score = $trueorfalse.getScore(mOptions.hits, mOptions.numberQuestions);
         mOptions.scorerp = score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
@@ -342,7 +336,10 @@ var $trueorfalse = {
 
     sendScore: function (auto, data) {
         const mOptions = data;
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.questionsGame.length;
+        mOptions.scorerp = $trueorfalse.getScore(
+            mOptions.hits,
+            mOptions.questionsGame.length
+        );
         mOptions.previousScore = $trueorfalse.previousScore;
         mOptions.userName = $trueorfalse.userName;
         mOptions.repeatActivity = true;
@@ -350,6 +347,14 @@ var $trueorfalse = {
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $trueorfalse.previousScore = mOptions.previousScore;
+    },
+
+    getScore: function (hits, numberQuestions) {
+        const total = Number(numberQuestions);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        const correctAnswers = Number(hits);
+        return (10 * (Number.isFinite(correctAnswers) ? correctAnswers : 0)) / total;
     },
 
     createInterfaceTrueOrFalse: function (data) {
@@ -517,7 +522,6 @@ var $trueorfalse = {
 
     removeEvents: function (data) {
         const instance = data.id;
-        $(window).off('unload.eXeTOF beforeunload.eXeTOF');
 
         $(`#tofPSendScore-${instance}`).off('click');
         $(`#tofPStartGame-${instance}`).off('click');
@@ -666,17 +670,12 @@ var $trueorfalse = {
         const msgs = mOptions.msgs;
         $trueorfalse.removeEvents(data);
 
-        $(window).on('unload.eXeTOF beforeunload.eXeTOF', () => {
-            if (mOptions.gameStarted || mOptions.gameOver) {
-                $trueorfalse.sendScore(true, mOptions);
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $trueorfalse.mScorm
-                );
-            }
-        });
-
         mOptions.gameOver = false;
         mOptions.gameStarted = false;
+        // Remaining retries for this play. Consumed on each Comprobar (gameOver);
+        // the "Try again" button is only shown while there are attempts left. Not
+        // reset on reboot, so the attempts run down across retries.
+        mOptions.pendingAttempts = mOptions.attemptsNumber;
         mOptions.counter = parseInt(mOptions.tofPTime) * 60;
         mOptions.active = 0;
         mOptions.scorep = 0;
@@ -722,8 +721,18 @@ var $trueorfalse = {
                             ? ''
                             : $trueorfalse.initialScore;
                     $trueorfalse.updateScoreData(mOptions);
+                    // In practice mode the activity has no "Comprobar" button:
+                    // it is finished once every question has been answered.
+                    // updateScoreData counts hits + errors = answered questions,
+                    // so mark it gameOver here to persist state 2 (completed).
+                    // Otherwise it stays state 1 and the SCO page never
+                    // aggregates to passed/failed. (#1831)
+                    const answered = mOptions.hits + mOptions.errors;
+                    if (answered >= mOptions.questionsGame.length) {
+                        mOptions.gameOver = true;
+                    }
                     $trueorfalse.sendScore(true, mOptions);
-                    $trueorfalse.initialScore = score;
+                    $trueorfalse.initialScore = mOptions.scorerp;
                 }
             }
         );
@@ -822,6 +831,13 @@ var $trueorfalse = {
         mOptions.gameStarted = false;
         mOptions.gameOver = true;
 
+        // Pressing Comprobar (or running out of time) consumes one attempt. The
+        // activity is already completed (gameOver=true); attempts only gate the
+        // "Try again" button shown at the end of gameOver.
+        if (typeof mOptions.pendingAttempts === 'number') {
+            mOptions.pendingAttempts -= 1;
+        }
+
         $('#tofPCheckTest-' + instance).hide();
         $trueorfalse.stopCounter(mOptions);
         let hits = 0;
@@ -870,23 +886,37 @@ var $trueorfalse = {
             });
 
         mOptions.hits = hits;
-        mOptions.errors = hits;
-        score = (mOptions.hist * 10) / mOptions.numberQuestions;
+        mOptions.errors = errors;
+        const score = $trueorfalse.getScore(
+            mOptions.hits,
+            mOptions.numberQuestions
+        );
 
         $('#tofPMultimedia').data('score', score);
         $('#tofPMultimedia').data('isscorm', mOptions.isScorm);
         $('#tofPMultimedia').data('evaluation', mOptions.evaluation);
         $('#tofPMultimedia').data('evaluationID', mOptions.evaluationID);
 
-        mOptions.scorep = (10 * mOptions.hits) / mOptions.numberQuestions;
+        mOptions.scorep = score;
         const message =
             mOptions.msgs.msgYouScore + ': ' + mOptions.scorep.toFixed(2);
         const type = mOptions.scorep < 5 ? 1 : 2;
 
         $trueorfalse.showMessage(type, message, instance);
         $trueorfalse.saveEvaluation(mOptions);
-        $('#tofRebootTest-' + instance).show();
-        if (mOptions.isScorm == 1) {
+        // Offer a retry only while attempts remain (default 1 -> no retry after
+        // the first Comprobar). The activity is completed regardless.
+        if (mOptions.pendingAttempts > 0) {
+            $('#tofRebootTest-' + instance).show();
+        } else {
+            $('#tofRebootTest-' + instance).hide();
+        }
+        // gameOver is the terminal action in test mode (Comprobar button or
+        // timer expiry), so persist the score for every SCORM mode (1 = auto,
+        // 2 = test/manual). It used to be gated to isScorm == 1, relying on the
+        // removed unload handler to commit the test-mode (isScorm == 2) score;
+        // without that handler the score would otherwise be lost (issue #1831).
+        if (mOptions.isScorm > 0) {
             $trueorfalse.initialScore =
                 typeof $trueorfalse.initialScore === 'undefined'
                     ? ''
@@ -910,7 +940,7 @@ var $trueorfalse = {
                 const $selectedInput = $questionDiv.find(
                     '.TOFP-Answer:checked'
                 );
-                const solution = questions[index].solution;
+                const solution = Number(questions[index].solution);
                 if ($selectedInput.length) {
                     const selectedValue = parseInt($selectedInput.val(), 10);
                     if (selectedValue === solution) {

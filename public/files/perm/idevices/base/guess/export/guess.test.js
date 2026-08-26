@@ -148,4 +148,44 @@ describe('guess iDevice export', () => {
       expect($guess.idevicePath).toBe('');
     });
   });
+
+  describe('SCORM score saving', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('saves the current score and updates the score text', () => {
+      const sendScore = vi.spyOn($guess, 'sendScore').mockImplementation(() => {});
+      document.body.innerHTML = '<span id="adivinaRepeatActivity-0"></span>';
+      $guess.options[0] = {
+        isScorm: 1,
+        hits: 2,
+        numberQuestions: 4,
+        msgs: { msgYouScore: 'Score' },
+      };
+
+      $guess.saveScormScore(0);
+
+      expect(sendScore).toHaveBeenCalledWith(true, 0);
+      expect($('#adivinaRepeatActivity-0').text()).toBe('Score: 5.00');
+    });
+  });
+
+  describe('getScoreRP', () => {
+    it('returns the score on a 0-10 scale from hits/numberQuestions', () => {
+      $guess.options[0] = { hits: 3, numberQuestions: 4 };
+      expect($guess.getScoreRP(0)).toBe(7.5);
+    });
+
+    it('returns 0 when numberQuestions is zero (no division by zero)', () => {
+      $guess.options[0] = { hits: 2, numberQuestions: 0 };
+      expect($guess.getScoreRP(0)).toBe(0);
+    });
+
+    it('returns 0 when numberQuestions is not a finite number', () => {
+      $guess.options[0] = { hits: 2, numberQuestions: 'x' };
+      expect($guess.getScoreRP(0)).toBe(0);
+    });
+  });
 });

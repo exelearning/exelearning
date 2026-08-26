@@ -355,7 +355,6 @@ var $periodicTable = {
             .off('click', '.Games-SendScore');
         $('#ptStartGame-' + instance).off('click');
         $('#ptStartGameMobile-' + instance).off('click');
-        $(window).off('unload.PeriodicTable beforeunload.PeriodicTable');
     },
 
     addEvents: function (instance) {
@@ -428,17 +427,6 @@ var $periodicTable = {
         });
 
         $('#ptPNumber-' + instance).text(mOptions.number);
-
-        $(window).on(
-            'unload.PeriodicTable beforeunload.PeriodicTable',
-            function () {
-                if ($periodicTable.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $periodicTable.mScorm
-                    );
-                }
-            }
-        );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -984,6 +972,15 @@ var $periodicTable = {
             $number.prop('disabled', true);
             $name.prop('disabled', true);
             $symbol.prop('disabled', true);
+            // Answering the last question completes the activity. Mark it synchronized
+            // so the score sent by sendScore records state 2, and an unload during the
+            // delay still finalizes the SCO as completed. (#1831)
+            if (mOptions.active >= mOptions.number) {
+                mOptions.gameOver = true;
+                if (mOptions.isScorm == 1) {
+                    $periodicTable.sendScore(true, instance);
+                }
+            }
             setTimeout(function () {
                 if (mOptions.active >= mOptions.number) {
                     $periodicTable.gameMobileOver(instance);
@@ -1013,6 +1010,15 @@ var $periodicTable = {
                 $number.prop('disabled', true);
                 $name.prop('disabled', true);
                 $symbol.prop('disabled', true);
+                // Answering the last question completes the activity. Mark it synchronized
+                // so the score sent by sendScore records state 2, and an unload during the
+                // delay still finalizes the SCO as completed. (#1831)
+                if (mOptions.active >= mOptions.number) {
+                    mOptions.gameOver = true;
+                    if (mOptions.isScorm == 1) {
+                        $periodicTable.sendScore(true, instance);
+                    }
+                }
                 setTimeout(function () {
                     if (mOptions.active >= mOptions.number) {
                         $periodicTable.gameMobileOver(instance);
@@ -1084,6 +1090,13 @@ var $periodicTable = {
             mOptions.active++;
             $periodicTable.showMessage(2, mOptions.msgs.msgIsOKEQ, instance);
             if (mOptions.active >= mOptions.number) {
+                // Answering the last question completes the activity. Mark it synchronized
+                // so the score sent by sendScore records state 2, and an unload during the
+                // delay still finalizes the SCO as completed. (#1831)
+                mOptions.gameOver = true;
+                if (mOptions.isScorm == 1) {
+                    $periodicTable.sendScore(true, instance);
+                }
                 setTimeout(function () {
                     $periodicTable.gameOver(instance);
                 }, 3000);
@@ -1155,6 +1168,13 @@ var $periodicTable = {
                         dataclicked
                     );
                     $periodicTable.showMessage(1, msg3);
+                    // Answering the last question completes the activity. Mark it synchronized
+                    // so the score sent by sendScore records state 2, and an unload during the
+                    // delay still finalizes the SCO as completed. (#1831)
+                    mOptions.gameOver = true;
+                    if (mOptions.isScorm == 1) {
+                        $periodicTable.sendScore(true, instance);
+                    }
                     setTimeout(function () {
                         $periodicTable.gameOver(instance);
                     }, 3000);
@@ -1577,7 +1597,11 @@ var $periodicTable = {
                     $periodicTable.updateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
                         clearInterval(mOptions.counterClock);
-                        $periodicTable.checkAnswers(instance);
+                        // Time is up: finish the activity. checkAnswers() does not
+                        // exist (it threw a TypeError and the SCO never completed);
+                        // gameOver is the shared end path used by every other
+                        // terminal branch and sends the completed score. (#1831)
+                        $periodicTable.gameOver(instance);
                         return;
                     }
                 }

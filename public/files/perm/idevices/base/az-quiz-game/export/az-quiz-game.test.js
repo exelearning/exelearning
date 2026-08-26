@@ -187,4 +187,44 @@ describe('az-quiz-game iDevice export', () => {
       expect(result.gameOver).toBe(false);
     });
   });
+
+  describe('SCORM score saving', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('saves the current score and updates the score text', () => {
+      const sendScore = vi.spyOn($azquizgame, 'sendScore').mockImplementation(() => {});
+      document.body.innerHTML = '<span id="roscoRepeatActivity-0"></span>';
+      $azquizgame.options[0] = {
+        isScorm: 1,
+        hits: 3,
+        validWords: 6,
+        msgs: { msgYouScore: 'Score' },
+      };
+
+      $azquizgame.saveScormScore(0);
+
+      expect(sendScore).toHaveBeenCalledWith(true, 0);
+      expect($('#roscoRepeatActivity-0').text()).toBe('Score: 5.00');
+    });
+  });
+
+  describe('getScoreRP', () => {
+    it('returns the score on a 0-10 scale from hits/validWords', () => {
+      $azquizgame.options[0] = { hits: 3, validWords: 6 };
+      expect($azquizgame.getScoreRP(0)).toBe(5);
+    });
+
+    it('returns 0 when validWords is zero (no division by zero)', () => {
+      $azquizgame.options[0] = { hits: 3, validWords: 0 };
+      expect($azquizgame.getScoreRP(0)).toBe(0);
+    });
+
+    it('returns 0 when validWords is not a finite number', () => {
+      $azquizgame.options[0] = { hits: 3, validWords: undefined };
+      expect($azquizgame.getScoreRP(0)).toBe(0);
+    });
+  });
 });

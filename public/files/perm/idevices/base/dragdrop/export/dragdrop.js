@@ -765,6 +765,8 @@ var $eXeDragDrop = {
 
     reboot: function (instance) {
         const mOptions = $eXeDragDrop.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
@@ -850,7 +852,6 @@ var $eXeDragDrop = {
         $('#dadPLinkMinimize-' + instance).off('click');
         $('#dadPCodeAccessButton-' + instance).off('click');
         $('#dadPCodeAccessE-' + instance).off('keydown');
-        $(window).off('unload.eXeDragDrop beforeunload.eXeDragDrop');
         $('#dadPMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
@@ -916,17 +917,6 @@ var $eXeDragDrop = {
         });
 
         $('#dadPPNumber-' + instance).text(mOptions.realNumberCards);
-
-        $(window).on(
-            'unload.eXeDragDrop beforeunload.eXeDragDrop',
-            function () {
-                if ($eXeDragDrop.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeDragDrop.mScorm
-                    );
-                }
-            }
-        );
 
         $('#dadPMainContainer-' + instance)
             .closest('.idevice_node')

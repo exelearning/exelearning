@@ -31,6 +31,10 @@ window.$exeExport = {
     delayLoadingPageTime: 200,
     delayLoadingIdevicesJson: 50,
     delayLoadScorm: 50,
+    // Grace period after the load event before a page with no registered iDevice is accepted as
+    // content-only. Every scored iDevice registers during its own async init; this is the margin
+    // for the slowest of them to announce itself before the page is written off as content.
+    delayCompleteContentPage: 1500,
     scormAPIwrapper: 'SCORM_API_wrapper.js',
     scormFunctions: 'SCOFunctions.js',
 
@@ -271,8 +275,227 @@ window.$exeExport = {
                     }
                 }
             })
-            window.loadPage()
-            window.addEventListener('unload', () => window.unloadPage(isSCORM));
+            window.loadPage();
+            // Entering a page must NOT write the SCO status: the iDevice owns it and only
+            // changes it through learner interaction (sendScore -> showFinalScore). Writing a
+            // page-level status on load interferes with the LMS per-attempt tracking and stops
+            // the in-game scores from being recorded in Moodle. loadPage only opens the session.
+            if (typeof window.registerScormLifecycleHandlers == 'function') {
+                window.registerScormLifecycleHandlers(isSCORM);
+            } else if (typeof window.addEventListener == 'function') {
+                // Legacy SCO bundles without registerScormLifecycleHandlers: mirror its
+                // behaviour so progress is not lost on browsers that withhold `pagehide`
+                // when a tab is discarded (issue #1831). Commit on freeze / tab-hidden,
+                // finalize once on a real pagehide, and keep the session open on bfcache.
+                let finalized = false;
+                const commitProgress = () => {
+                    if (finalized) return;
+                    if (window.scorm && typeof window.scorm.save == 'function') {
+                        window.scorm.save();
+                    }
+                };
+                window.addEventListener('pagehide', event => {
+                    if (event && event.persisted) {
+                        commitProgress();
+                        return;
+                    }
+                    if (finalized) return;
+                    finalized = true;
+                    window.unloadPage(isSCORM);
+                });
+                window.addEventListener('freeze', commitProgress);
+                if (typeof document != 'undefined' && typeof document.addEventListener == 'function') {
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState == 'hidden') commitProgress();
+                    });
+                }
+            }
+            this.completeContentOnlyPageOnEntry(isSCORM);
+        }
+    },
+
+    /**
+     * A page with no evaluable iDevices is completed as soon as the learner opens it. There is
+     * nothing to do on such a page, so waiting for them to leave only risks losing the record
+     * when the browser never delivers pagehide (a killed tab, a crash, a lost connection).
+     *
+     * The decision is DEFERRED until the page has settled, because it cannot be made on load:
+     * every scored iDevice announces itself by registering an entry in cmi.suspend_data during
+     * its own initialisation, which happens asynchronously. Deciding "content-only" while one is
+     * still starting up would mark a page completed that the learner has not done, so the check
+     * waits for the load event plus a grace period and only then reads the entries.
+     *
+     * unloadPage applies the same rule on the way out. That is not a second writer competing with
+     * this one: its terminal guard skips the write when the status is already set, so it only acts
+     * for a page closed before this check could run.
+     *
+     * @param {boolean} isSCORM - true when the DOM scan already found evaluable iDevices.
+     */
+    completeContentOnlyPageOnEntry: function (isSCORM) {
+        if (isSCORM === true) {
+            return;
+        }
+        let check = () => {
+            setTimeout(() => {
+                if (Object.keys(this.readScormActivityState()).length > 0) {
+                    // An iDevice registered after all: the page is scored, and its status belongs
+                    // to the learner's interaction with it.
+                    return;
+                }
+                this.setScormStatus('completed', null);
+            }, this.delayCompleteContentPage);
+        };
+        if (document.readyState == 'complete') {
+            check();
+        } else {
+            window.addEventListener('load', check, { once: true });
+        }
+    },
+
+    /**
+     * Compute and write the SCO (page) status from the score the learner has right now.
+     * @param {boolean} isSCORM - true when the page carries evaluable SCORM iDevices.
+     *
+     * The status tracks the SCORE, not whether the activity is finished. As soon as the learner
+     * starts, the page carries a verdict that moves with the weighted average (0-100): >= 50
+     * passes, below fails. Starting an activity therefore shows "failed" with 0 until the answers
+     * lift the average over the threshold. "incomplete" means one thing only: the learner has not
+     * started the activity. (#1831)
+     *
+     * A page is treated as having evaluable iDevices when isSCORM is true OR suspend_data
+     * already holds per-iDevice entries (so a revisit is never mis-read as content-only even
+     * if the runtime iDevice options were not ready when isSCORM was computed).
+     * A page with no evaluable iDevices is completed (no score).
+     */
+    updateScormPageStatus: function (isSCORM) {
+        if (!window.scorm || typeof window.scorm.set != 'function') {
+            return;
+        }
+        let lmsData = this.readScormActivityState();
+        let keys = lmsData ? Object.keys(lmsData) : [];
+        let hasEvaluable = isSCORM || keys.length > 0;
+
+        if (!hasEvaluable) {
+            // Content-only page: completed, no score / no pass-fail verdict.
+            this.setScormStatus('completed', null);
+            return;
+        }
+        if (!this.hasAttemptedScormActivity(lmsData)) {
+            // Registered but never started: the only case that stays incomplete.
+            this.setScormStatus('incomplete', null);
+            return;
+        }
+        // Started: the verdict follows the weighted average, and keeps following it on every
+        // later save. >= 50 (i.e. >= 5 out of 10) passes; below fails.
+        let score = this.readScormFinalScore(lmsData);
+        this.setScormStatus(score >= 50 ? 'passed' : 'failed', score);
+    },
+
+    /**
+     * Has the learner started any evaluable iDevice on this page? Delegates to the shared helper
+     * in common.js, which owns the suspend_data format. Defaults to "not started" when it is
+     * unavailable, which keeps an untouched page out of a pass/fail verdict.
+     */
+    hasAttemptedScormActivity: function (lmsData) {
+        try {
+            let scormHelpers = window.$exeDevices
+                && window.$exeDevices.iDevice
+                && window.$exeDevices.iDevice.gamification
+                && window.$exeDevices.iDevice.gamification.scorm;
+            if (!scormHelpers || typeof scormHelpers.hasAttemptedActivity != 'function') {
+                return false;
+            }
+            return scormHelpers.hasAttemptedActivity(lmsData) === true;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    /**
+     * Write a SCO status (and optional 0-100 score) to the right CMI keys for each profile:
+     * SCORM 1.2 folds completion+success into cmi.core.lesson_status; SCORM 2004 splits them
+     * into cmi.completion_status + cmi.success_status and adds the normalized cmi.score.scaled.
+     */
+    setScormStatus: function (status, score) {
+        let scorm = window.scorm;
+        if (!scorm || typeof scorm.set != 'function') {
+            return;
+        }
+        let is2004 = scorm.version == '2004';
+        if (status === 'passed' || status === 'failed') {
+            if (is2004) {
+                scorm.set('cmi.completion_status', 'completed');
+                scorm.set('cmi.success_status', status);
+            } else {
+                scorm.set('cmi.core.lesson_status', status);
+            }
+        } else if (status === 'incomplete') {
+            if (is2004) {
+                scorm.set('cmi.completion_status', 'incomplete');
+                scorm.set('cmi.success_status', 'unknown');
+            } else {
+                scorm.set('cmi.core.lesson_status', 'incomplete');
+            }
+        } else {
+            // 'completed' (content-only page): completed with no pass/fail verdict.
+            if (is2004) {
+                scorm.set('cmi.completion_status', 'completed');
+                scorm.set('cmi.success_status', 'unknown');
+            } else {
+                scorm.set('cmi.core.lesson_status', 'completed');
+            }
+        }
+        if (score != null) {
+            if (is2004) {
+                scorm.set('cmi.score.raw', score);
+                scorm.set('cmi.score.min', 0);
+                scorm.set('cmi.score.max', 100);
+                scorm.set('cmi.score.scaled', score / 100);
+            } else {
+                scorm.set('cmi.core.score.raw', score);
+            }
+        }
+        if (typeof scorm.save == 'function') {
+            scorm.save();
+        }
+    },
+
+    /**
+     * Weighted final score (0-100) for the page, reusing getFinalScore from common.js
+     * ($exeDevices.iDevice.gamification.scorm.getFinalScore). Returns 0 when unavailable.
+     */
+    readScormFinalScore: function (lmsData) {
+        try {
+            let scormHelpers = window.$exeDevices
+                && window.$exeDevices.iDevice
+                && window.$exeDevices.iDevice.gamification
+                && window.$exeDevices.iDevice.gamification.scorm;
+            if (scormHelpers && typeof scormHelpers.getFinalScore == 'function') {
+                return scormHelpers.getFinalScore(lmsData) || 0;
+            }
+        } catch (e) {
+            // ignore
+        }
+        return 0;
+    },
+
+    /**
+     * Read and parse the per-iDevice state stored in cmi.suspend_data, reusing the shared reader
+     * in common.js ($exeDevices.iDevice.gamification.scorm.readActivityState), which owns that
+     * format. Returns an empty object when SCORM, the helper or the data are unavailable.
+     */
+    readScormActivityState: function () {
+        try {
+            let scormHelpers = window.$exeDevices
+                && window.$exeDevices.iDevice
+                && window.$exeDevices.iDevice.gamification
+                && window.$exeDevices.iDevice.gamification.scorm;
+            if (!scormHelpers || typeof scormHelpers.readActivityState != 'function') {
+                return {};
+            }
+            return scormHelpers.readActivityState() || {};
+        } catch (e) {
+            return {};
         }
     },
 

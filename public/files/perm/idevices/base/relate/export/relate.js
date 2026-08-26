@@ -631,6 +631,8 @@ var $eXeRelaciona = {
 
     reboot: function (instance) {
         const mOptions = $eXeRelaciona.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
@@ -732,8 +734,6 @@ var $eXeRelaciona = {
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
 
-        $(window).off('unload.eXeRelaciona beforeunload.eXeRelaciona');
-
         $(document).off('mousemove.eXeRlc' + instance);
         $(document).off('mouseup.eXeRlc' + instance);
 
@@ -804,17 +804,6 @@ var $eXeRelaciona = {
         });
 
         $('#rlcPNumber-' + instance).text(mOptions.realNumberCards);
-
-        $(window).on(
-            'unload.eXeRelaciona beforeunload.eXeRelaciona',
-            function () {
-                if ($eXeRelaciona.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeRelaciona.mScorm
-                    );
-                }
-            }
-        );
 
         $('#rlcSendScore-' + instance).click(function (e) {
             e.preventDefault();

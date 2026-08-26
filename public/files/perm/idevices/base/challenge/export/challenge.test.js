@@ -41,6 +41,13 @@ describe('challenge iDevice export', () => {
     $eXeDesafio = loadExportIdevice(code);
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    $(window).off('pagehide.eXeChallenger');
+    $(document).off('visibilitychange.eXeChallenger');
+    document.body.innerHTML = '';
+  });
+
   describe('createArrayStateChallenges', () => {
     it('creates array with correct length', () => {
       const result = $eXeDesafio.createArrayStateChallenges(0, 5);
@@ -314,6 +321,125 @@ describe('challenge iDevice export', () => {
       const result = $eXeDesafio.createArrayStateChallenges(0, 3);
       // First challenge is always active (red)
       expect(result[0].state).toBe(3);
+    });
+  });
+
+  describe('timeout handling', () => {
+    it('saves results before ending the activity by time', () => {
+      vi.useFakeTimers();
+      document.body.innerHTML = '<div id="desafioMainContainer-0"></div>';
+      $eXeDesafio.options[0] = {
+        activeChallenge: 0,
+        challengesGame: [{ clueTimes: [] }],
+        counter: 1,
+        gameStarted: false,
+        msgs: {
+          msgChallengesAllCompleted: 'All challenges completed',
+          msgReadTime: 'Read the challenge',
+        },
+        solvedsChallenges: [],
+        timesShow: [0],
+        typeQuestion: 0,
+      };
+      $eXeDesafio.gameOver = vi.fn();
+      $eXeDesafio.saveDataStorage = vi.fn();
+      $eXeDesafio.saveEvaluation = vi.fn();
+      $eXeDesafio.showDesafio = vi.fn();
+      $eXeDesafio.showMessage = vi.fn();
+      $eXeDesafio.updateTime = vi.fn();
+
+      $eXeDesafio.startGame(0, 0, 0);
+      vi.advanceTimersByTime(1000);
+      clearInterval($eXeDesafio.options[0].counterClock);
+
+      expect($eXeDesafio.saveEvaluation).toHaveBeenCalledWith(0);
+      expect($eXeDesafio.gameOver).toHaveBeenCalledWith(1, 0);
+    });
+  });
+
+  describe('gameOver persists the completed SCORM state', () => {
+    it('sends the score with the completed flag when the game ends (e.g. time-out)', () => {
+      const scormHelpers = $exeDevices.iDevice.gamification.scorm;
+      const prevSend = scormHelpers.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      scormHelpers.sendScoreNew = sendScoreNew;
+
+      $eXeDesafio.options[0] = {
+        isScorm: 1,
+        desafioSolved: false,
+        solvedsChallenges: [1, 2],
+        challengesGame: [1, 2, 3],
+        msgs: {},
+        gameStarted: true,
+        gameOver: false,
+      };
+
+      try {
+        $eXeDesafio.gameOver(1, 0); // type 1 = time-out
+
+        // The game is flagged completed so updateActivity records state 2...
+        expect($eXeDesafio.options[0].gameOver).toBe(true);
+        // ...and the score is sent on game end (it was only sent mid-play before).
+        expect(sendScoreNew).toHaveBeenCalledTimes(1);
+        const [auto, game] = sendScoreNew.mock.calls[0];
+        expect(auto).toBe(true);
+        expect(game.gameOver).toBe(true);
+      } finally {
+        scormHelpers.sendScoreNew = prevSend;
+      }
+    });
+  });
+
+  describe('page lifecycle persistence', () => {
+    function lifecycleOptions(overrides = {}) {
+      return {
+        author: '',
+        challengesGame: [],
+        desafioType: 0,
+        gameStarted: true,
+        instructions: '',
+        isScorm: 0,
+        msgs: { msgDesafioReboot: 'Reboot', msgPlayStart: 'Start' },
+        numberQuestions: 0,
+        title: '',
+        typeQuestion: 0,
+        ...overrides,
+      };
+    }
+
+    it('saves local progress on pagehide and when hidden, without unload events', () => {
+      vi.useFakeTimers();
+      $eXeDesafio.options[0] = lifecycleOptions();
+      $eXeDesafio.changeImageButtonState = vi.fn();
+      $eXeDesafio.saveDataStorage = vi.fn();
+
+      $eXeDesafio.addEvents(0);
+
+      // pagehide replaces the deprecated unload/beforeunload save.
+      $(window).trigger('pagehide');
+      expect($eXeDesafio.saveDataStorage).toHaveBeenCalledWith(0);
+
+      // Becoming hidden also persists (covers the visibilitychange branch).
+      $eXeDesafio.saveDataStorage.mockClear();
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+      try {
+        $(document).trigger('visibilitychange');
+        expect($eXeDesafio.saveDataStorage).toHaveBeenCalledWith(0);
+      } finally {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+      }
+    });
+
+    it('does not save on pagehide before the game has started', () => {
+      vi.useFakeTimers();
+      $eXeDesafio.options[0] = lifecycleOptions({ gameStarted: false });
+      $eXeDesafio.changeImageButtonState = vi.fn();
+      $eXeDesafio.saveDataStorage = vi.fn();
+
+      $eXeDesafio.addEvents(0);
+      $(window).trigger('pagehide');
+
+      expect($eXeDesafio.saveDataStorage).not.toHaveBeenCalled();
     });
   });
 });

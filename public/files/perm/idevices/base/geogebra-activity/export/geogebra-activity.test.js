@@ -390,4 +390,93 @@ describe('geogebra-activity iDevice (export)', () => {
       $exeDevices.iDevice.gamification.report = previousReport;
     }
   });
+
+  it('finalizes the activity (gameOver) when the manual save button triggers sendScore', () => {
+    const originalPipwerks = global.pipwerks;
+    const originalGgb = global.ggbApplet;
+    const originalScorm = $exeDevices.iDevice.gamification.scorm;
+    const sendScoreNew = vi.fn();
+    $exeDevices.iDevice.gamification.scorm = { sendScoreNew };
+    global.pipwerks = { SCORM: { SetScoreMax: vi.fn(), SetScoreMin: vi.fn() } };
+    global.ggbApplet = { exists: () => false, getValue: () => 0 };
+
+    try {
+      $geogebraactivity.sendScore({ main: '#x', ideviceNumber: 1, weighted: 100, msgs: {} });
+
+      // Pressing the save button finalizes the activity on the first save.
+      expect(sendScoreNew).toHaveBeenCalledWith(
+        false,
+        expect.objectContaining({ gameStarted: true, gameOver: true }),
+      );
+    } finally {
+      global.pipwerks = originalPipwerks;
+      global.ggbApplet = originalGgb;
+      $exeDevices.iDevice.gamification.scorm = originalScorm;
+    }
+  });
+
+  it('keeps the activity completed on every save, so a second save cannot un-complete the page', () => {
+    const originalPipwerks = global.pipwerks;
+    const originalGgb = global.ggbApplet;
+    const originalScorm = $exeDevices.iDevice.gamification.scorm;
+    const sendScoreNew = vi.fn();
+    $exeDevices.iDevice.gamification.scorm = { sendScoreNew };
+    global.pipwerks = { SCORM: { SetScoreMax: vi.fn(), SetScoreMin: vi.fn() } };
+    global.ggbApplet = { exists: () => false, getValue: () => 0 };
+
+    try {
+      const options = { main: '#x', ideviceNumber: 1, weighted: 100, msgs: {} };
+      $geogebraactivity.sendScore(options);
+      // Saving again after improving the construction must refresh the score without
+      // dropping the activity back to "incomplete".
+      $geogebraactivity.sendScore(options);
+
+      expect(sendScoreNew).toHaveBeenCalledTimes(2);
+
+      // Both saves are manual (auto === false) and both keep the terminal state. Passing
+      // gameOver=false here would make updateActivity store state 1 instead of 2, which
+      // pins the whole SCO page at "incomplete" (getActivityState requires every entry
+      // to be 2).
+      for (const call of sendScoreNew.mock.calls) {
+        expect(call[0]).toBe(false);
+        expect(call[1]).toEqual(
+          expect.objectContaining({ gameStarted: true, gameOver: true }),
+        );
+      }
+    } finally {
+      global.pipwerks = originalPipwerks;
+      global.ggbApplet = originalGgb;
+      $exeDevices.iDevice.gamification.scorm = originalScorm;
+    }
+  });
+
+  it('finalizes every activity independently when a page holds more than one', () => {
+    const originalPipwerks = global.pipwerks;
+    const originalGgb = global.ggbApplet;
+    const originalScorm = $exeDevices.iDevice.gamification.scorm;
+    const sendScoreNew = vi.fn();
+    $exeDevices.iDevice.gamification.scorm = { sendScoreNew };
+    global.pipwerks = { SCORM: { SetScoreMax: vi.fn(), SetScoreMin: vi.fn() } };
+    global.ggbApplet = { exists: () => false, getValue: () => 0 };
+
+    try {
+      // Completion state used to live in a module-level flag, so once the first activity
+      // on the page had been saved the second could never reach state 2 and the SCO page
+      // stayed "incomplete" forever.
+      $geogebraactivity.sendScore({ main: '#a', ideviceNumber: 1, weighted: 50, msgs: {} });
+      $geogebraactivity.sendScore({ main: '#b', ideviceNumber: 2, weighted: 50, msgs: {} });
+
+      expect(sendScoreNew).toHaveBeenCalledTimes(2);
+      expect(sendScoreNew.mock.calls[0][1]).toEqual(
+        expect.objectContaining({ ideviceNumber: 1, gameOver: true }),
+      );
+      expect(sendScoreNew.mock.calls[1][1]).toEqual(
+        expect.objectContaining({ ideviceNumber: 2, gameOver: true }),
+      );
+    } finally {
+      global.pipwerks = originalPipwerks;
+      global.ggbApplet = originalGgb;
+      $exeDevices.iDevice.gamification.scorm = originalScorm;
+    }
+  });
 });

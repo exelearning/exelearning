@@ -102,6 +102,47 @@ describe('trueorfalse iDevice', () => {
     });
   });
 
+  describe('attempts (Number of attempts)', () => {
+    it('transformObject sets attemptsNumber default 1 when converting the new format', () => {
+      // Restore rather than delete: vitest.setup.js installs a shared
+      // $exeDevicesEdition that the rest of the suite relies on.
+      const previousEdition = global.$exeDevicesEdition;
+      global.$exeDevicesEdition = {
+        iDevice: {
+          gamification: {
+            scorm: {
+              getValues: () => ({
+                isScorm: 0,
+                weighted: 100,
+                textButtonScorm: '',
+                repeatActivity: true,
+              }),
+            },
+          },
+        },
+      };
+      $exeDevice.id = 'tof-1';
+      $exeDevice.msgs = {};
+
+      try {
+        const result = $exeDevice.transformObject({ questionsData: [] });
+        expect(result.attemptsNumber).toBe(1);
+      } finally {
+        global.$exeDevicesEdition = previousEdition;
+      }
+    });
+
+    it('wires the attempts field and persists it (reusing the existing label)', () => {
+      const src = readFileSync(join(__dirname, 'trueorfalse.js'), 'utf-8');
+
+      // Reuses the existing translation string (no new msgid).
+      expect(src).toContain("_('Number of attempts')");
+      expect(src).toContain('id="tofEAttemptsNumber"');
+      // Persisted by validateData.
+      expect(src).toMatch(/attemptsNumber:\s*attemptsNumber/);
+    });
+  });
+
   /**
    * A stored activity can reach the editor without a usable question list:
    * `transformObject` returns an already-migrated payload untouched, so a

@@ -89,6 +89,7 @@ var $eXe3Dmol = {
     getShowScoreRP: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
         const total = mOptions.selectsGame.length;
+        if (total <= 0) return 0;
         return Math.min(((mOptions.visiteds + 1) * 10) / total, 10);
     },
 
@@ -99,7 +100,22 @@ var $eXe3Dmol = {
             return $eXe3Dmol.getShowScoreRP(instance);
         }
 
-        return (mOptions.scoreGame * 10) / mOptions.scoreTotal;
+        const total = Number(mOptions.scoreTotal);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (mOptions.scoreGame * 10) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $eXe3Dmol.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        if (!mOptions.repeatActivity && $eXe3Dmol.initialScore !== '') return;
+
+        const score = $eXe3Dmol.getScoreRP(instance).toFixed(2);
+        $eXe3Dmol.sendScore(true, instance);
+        $(`#dmolpRepeatActivity-${instance}`).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 
     loadGame: function () {
@@ -513,7 +529,6 @@ var $eXe3Dmol = {
 
     removeEvents: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
-        $(window).off('unload.exeEC beforeunload.exeEC');
         $(document).off(`fullscreenchange.dmolp${instance}`);
         $(document).off(`webkitfullscreenchange.dmolp${instance}`);
         $(document).off(`mozfullscreenchange.dmolp${instance}`);
@@ -571,11 +586,6 @@ var $eXe3Dmol = {
             });
 
         $eXe3Dmol.removeEvents(instance);
-        $(window).on('unload.exeEC beforeunload.exeEC', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXe3Dmol.mScorm
-            );
-        });
 
         $(`#dmolpGamerOver-${instance}`).css('display', 'flex');
 
@@ -893,15 +903,21 @@ var $eXe3Dmol = {
         // Show first model and question
         $eXe3Dmol.showModelAtIndex(0, instance);
 
-        // Save initial score only if previous > 0 and below minimum
-        const previous = parseFloat($eXe3Dmol.previousScore) || 0;
-        const minScore = (1 * 10) / mOptions.selectsGame.length;
-        if (previous > 0 && previous < minScore) {
-            mOptions.scorerp = minScore;
-            if (mOptions.isScorm > 0) {
-                $eXe3Dmol.sendScore(true, instance);
-            }
-            $eXe3Dmol.saveEvaluation(instance);
+        // With a single model there is no "next" to reach, so the exploration completes as soon as
+        // the learner uses the viewer. It must NOT complete on load: the SCO status belongs to the
+        // learner's interaction, and marking the page completed for merely opening it reports work
+        // nobody did — and closes the attempt as non-resumable on the way out. Waiting for the
+        // first pointer or key press on the viewer keeps the meaning ("seeing it is doing it")
+        // without inventing the interaction. (#1831)
+        if (mOptions.selectsGame.length <= 1) {
+            $(`#dmolpModelPreview-${instance}`).one('pointerdown keydown', () => {
+                if (mOptions.gameOver) return;
+                mOptions.gameOver = true;
+                if (mOptions.isScorm > 0) {
+                    $eXe3Dmol.sendScore(true, instance);
+                }
+                $eXe3Dmol.saveEvaluation(instance);
+            });
         }
 
         // Navigation events
@@ -937,6 +953,12 @@ var $eXe3Dmol = {
                             .show();
                         $(`#dmolpDivFeedBack-${instance}`).show();
                     }
+                }
+                // Reaching the last model means all slides have been visited: the show-mode
+                // exploration is complete (SCORM state -> completed). Until then it stays
+                // incomplete (gameStarted without gameOver).
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
                 }
                 $eXe3Dmol.showModelAtIndex(mOptions.showCurrentIndex, instance);
                 if (mOptions.isScorm > 0) {
@@ -1585,6 +1607,8 @@ var $eXe3Dmol = {
 
     startGame: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
         if (mOptions.gameStarted) return;
         $eXe3Dmol.setModelStyleControlVisibility(instance, true);
         // Per-question disableCamera is applied in renderModel per question
@@ -1684,6 +1708,9 @@ var $eXe3Dmol = {
         $(`#dmolpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        if (mOptions.activityMode !== 'show') {
+            $eXe3Dmol.saveScormScore(instance);
+        }
         $eXe3Dmol.newQuestion(instance);
     },
 
@@ -1911,23 +1938,6 @@ var $eXe3Dmol = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXe3Dmol.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXe3Dmol.sendScore(true, instance);
-                $(`#dmolpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
-
         $eXe3Dmol.saveEvaluation(instance);
     },
 
@@ -2061,6 +2071,13 @@ var $eXe3Dmol = {
         }
 
         $eXe3Dmol.updateScore(correct, instance);
+        // Responding to the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $eXe3Dmol.saveScormScore(instance);
 
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -2126,6 +2143,13 @@ var $eXe3Dmol = {
         }
 
         $eXe3Dmol.updateScore(value, instance);
+        // Responding to the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $eXe3Dmol.saveScormScore(instance);
 
          let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000

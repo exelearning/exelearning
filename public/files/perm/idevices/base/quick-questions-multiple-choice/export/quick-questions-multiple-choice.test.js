@@ -114,6 +114,52 @@ describe('quick-questions-multiple-choice export', () => {
         expect(updateLatexSpy).toHaveBeenCalledWith('#seleccionaWordDiv-0');
     });
 
+    it('saves the current SCORM score and updates the score text', () => {
+        const sendScore = vi
+            .spyOn($quickquestionsmultiplechoice, 'sendScore')
+            .mockImplementation(() => {});
+        document.body.innerHTML = '<span id="seleccionaRepeatActivity-0"></span>';
+        $quickquestionsmultiplechoice.options[0] = {
+            isScorm: 1,
+            repeatActivity: true,
+            order: 0,
+            scoreGame: 5,
+            scoreTotal: 10,
+            msgs: { msgYouScore: 'Score' },
+        };
+
+        $quickquestionsmultiplechoice.saveScormScore(0);
+
+        expect(sendScore).toHaveBeenCalledWith(true, 0);
+        expect($('#seleccionaRepeatActivity-0').text()).toBe('Score: 5.00');
+    });
+
+    it('non-repeat scoring is per-instance (a finished instance does not block others)', () => {
+        const sendScore = vi
+            .spyOn($quickquestionsmultiplechoice, 'sendScore')
+            .mockImplementation(() => {});
+        document.body.innerHTML = '<span id="seleccionaRepeatActivity-1"></span>';
+        // A DIFFERENT instance has finished: the old shared static must be ignored now.
+        $quickquestionsmultiplechoice.initialScore = '7.50';
+        $quickquestionsmultiplechoice.options[1] = {
+            isScorm: 1,
+            repeatActivity: false,
+            scoreGame: 2,
+            scoreTotal: 4,
+            msgs: { msgYouScore: 'Score' },
+        };
+
+        // This instance has not been scored yet, so it must still send on timer end / answer.
+        $quickquestionsmultiplechoice.saveScormScore(1);
+        expect(sendScore).toHaveBeenCalledWith(true, 1);
+
+        // Once THIS instance has its own score, non-repeat mode locks it (per-instance).
+        sendScore.mockClear();
+        $quickquestionsmultiplechoice.options[1].initialScore = '5.00';
+        $quickquestionsmultiplechoice.saveScormScore(1);
+        expect(sendScore).not.toHaveBeenCalled();
+    });
+
     describe('ramdonOptions', () => {
         // Deterministic permutation so we can assert the remapped solution:
         // every shuffle reverses the option order.
@@ -170,6 +216,43 @@ describe('quick-questions-multiple-choice export', () => {
             ).not.toHaveBeenCalled();
             expect(question.options).toEqual(['', '', '', '']);
             expect(question.solution).toBe('');
+        });
+    });
+
+    describe('getScoreRP', () => {
+        it('computes (scoreGame * 10) / scoreTotal in the default mode', () => {
+            $quickquestionsmultiplechoice.options[0] = {
+                order: 0,
+                scoreGame: 3,
+                scoreTotal: 4,
+            };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(7.5);
+        });
+
+        it('uses score / 10 when order == 2', () => {
+            $quickquestionsmultiplechoice.options[0] = { order: 2, score: 75 };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(7.5);
+        });
+
+        it('treats a missing score as 0 when order == 2', () => {
+            $quickquestionsmultiplechoice.options[0] = { order: 2 };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(0);
+        });
+
+        it('returns 0 when scoreTotal is zero or not finite (no division by zero)', () => {
+            $quickquestionsmultiplechoice.options[0] = {
+                order: 0,
+                scoreGame: 3,
+                scoreTotal: 0,
+            };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(0);
+
+            $quickquestionsmultiplechoice.options[0] = {
+                order: 0,
+                scoreGame: 3,
+                scoreTotal: undefined,
+            };
+            expect($quickquestionsmultiplechoice.getScoreRP(0)).toBe(0);
         });
     });
 });

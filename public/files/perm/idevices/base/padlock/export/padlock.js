@@ -282,28 +282,42 @@ var $padlock = {
                     : 0;
             }
         }
-        $(window).on('unload.eXeCandado beforeunload.eXeCandado', function () {
+        // Persist the in-progress padlock locally when the page is being hidden or
+        // unloaded. Uses pagehide + visibilitychange (Page Lifecycle API) instead
+        // of the deprecated unload/beforeunload, so it keeps working under bfcache,
+        // on mobile and inside LMS iframes that block unload (see issue #1831).
+        // The save is local (localStorage) and idempotent; it is unrelated to SCORM.
+        const persistOnHide = function () {
             const mOptions = $padlock.options[instance];
             if (mOptions.candadoStarted) {
                 $padlock.saveCandadoData(instance);
+            }
+        };
+        $(window).on('pagehide.eXeCandado', persistOnHide);
+        $(document).on('visibilitychange.eXeCandado', function () {
+            if (document.visibilityState === 'hidden') {
+                persistOnHide();
             }
         });
 
         $('#candadoMainContainer-' + instance)
             .closest('.idevice_node')
-            .on('click', '.Games-SendScore', function () {
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
                 $padlock.sendScore(false, instance);
+                $padlock.saveEvaluation(instance);
             });
 
-        if (mOptions.isScorm === 1) {
-            $padlock.sendScore(true, instance);
+        // Register BEFORE startGame so page load is NOT treated as an active
+        // session. The score must only be sent when the learner presses the check
+        // button (answerActivity -> showFeedback on a correct answer) or the time
+        // runs out, never on load. (#1831)
+        if (mOptions.isScorm > 0) {
+            $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
 
         if (!mOptions.candadoShowMinimize) {
             $padlock.startGame(instance);
-        }
-        if (mOptions.isScorm > 0) {
-            $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
 
         setTimeout(() => {
@@ -323,7 +337,8 @@ var $padlock = {
         $(`#candadoShowRetro-${instance}`).off('click');
         $(`#candadoSendScore`).off('click');
 
-        $(window).off('unload.eXeCandado beforeunload.eXeCandado');
+        $(window).off('pagehide.eXeCandado');
+        $(document).off('visibilitychange.eXeCandado');
     },
 
     startGame: function (instance) {
@@ -334,6 +349,14 @@ var $padlock = {
             $padlock.showFeedback(instance);
             return;
         }
+
+        // Flag the activity as an active attempt. The shared SCORM helper
+        // (sendScoreNew/showFinalScore in common.js) only persists the score
+        // when gameStarted or gameOver is set; without this the padlock score
+        // is never written to the LMS. A plain review reopen returns above, so
+        // it keeps both flags untouched and never downgrades a completed SCO.
+        mOptions.gameStarted = true;
+        mOptions.gameOver = false;
 
         if (mOptions.candadoTime === 0) {
             return;
@@ -356,6 +379,8 @@ var $padlock = {
             $padlock.uptateTime(mOptions.counter, instance);
             if (mOptions.counter <= 0 || mOptions.candadoSolved) {
                 clearInterval(mOptions.counterClock);
+                mOptions.gameStarted = false;
+                mOptions.gameOver = true;
                 $padlock.showFeedback(instance);
             }
         }, 1000);
@@ -426,6 +451,8 @@ var $padlock = {
 
         if ($padlock.checkWord(answord, mOptions.candadoSolution)) {
             mOptions.score = 10;
+            mOptions.gameStarted = false;
+            mOptions.gameOver = true;
             $padlock.saveEvaluation(instance);
             $padlock.showFeedback(instance);
         } else {
@@ -495,7 +522,7 @@ var $padlock = {
 
     saveEvaluation: function (instance) {
         const mOptions = $padlock.options[instance];
-        mOptions.scorerp = 10;
+        mOptions.scorerp = mOptions.score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $padlock.isInExe

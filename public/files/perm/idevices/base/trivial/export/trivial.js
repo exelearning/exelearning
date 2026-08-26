@@ -541,15 +541,7 @@ var $eXeTrivial = {
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        mOptions.scorerp = 10;
-        let points = mOptions.gamers[0].score;
-        if (mOptions.gamers[0].quesos.length < mOptions.numeroTemas) {
-            score =
-                (points * 10) /
-                (mOptions.numeroTemas * 10 + mOptions.numeroTemas);
-            score = score > 10 ? 10.0 : score;
-        }
-        mOptions.scorerp = score;
+        mOptions.scorerp = $eXeTrivial.getScore(mOptions);
         if (mOptions.numeroJugadores === 1) {
             $exeDevices.iDevice.gamification.report.saveEvaluation(
                 mOptions,
@@ -560,15 +552,7 @@ var $eXeTrivial = {
 
     sendScore: function (auto, instance) {
         let mOptions = $eXeTrivial.options[instance],
-            score = 10,
-            points = mOptions.gamers[0].score;
-
-        if (mOptions.gamers[0].quesos.length < mOptions.numeroTemas) {
-            score =
-                (points * 10) /
-                (mOptions.numeroTemas * 10 + mOptions.numeroTemas);
-            score = score > 10 ? 10 : score;
-        }
+            score = $eXeTrivial.getScore(mOptions);
 
         mOptions.scorerp = score;
         mOptions.previousScore = $eXeTrivial.previousScore;
@@ -577,6 +561,28 @@ var $eXeTrivial = {
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $eXeTrivial.previousScore = mOptions.previousScore;
+    },
+
+    getScore: function (mOptions) {
+        const points = mOptions.gamers[0].score;
+        let score = 10;
+
+        if (mOptions.gamers[0].quesos.length < mOptions.numeroTemas) {
+            score =
+                (points * 10) /
+                (mOptions.numeroTemas * 10 + mOptions.numeroTemas);
+        }
+
+        return score > 10 ? 10 : score;
+    },
+
+    saveQuestionScore: function (instance) {
+        const mOptions = $eXeTrivial.options[instance];
+
+        if (mOptions.isScorm == 1 && !mOptions.gameOver) {
+            $eXeTrivial.sendScore(true, instance);
+        }
+        $eXeTrivial.saveEvaluation(instance);
     },
 
     isVideoQuestion: function (temas) {
@@ -706,6 +712,9 @@ var $eXeTrivial = {
         mOptions.gameStarted = false;
         mOptions.activePlayer = 0;
         mOptions.gameOver = false;
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        // Placed after the reset above: rebootGame's earlier sendScore() still saw gameOver=true.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         for (let i = 0; i < mOptions.numeroJugadores; i++) {
             mOptions.gamers[i].casilla = mOptions.pT.length - 1;
@@ -930,7 +939,7 @@ var $eXeTrivial = {
         }
 
         $exeDevices.iDevice.gamification.media.stopSound();
-        $eXeTrivial.saveEvaluation(instance);
+        $eXeTrivial.saveQuestionScore(instance);
         $eXeTrivial.saveDataStorage(instance);
     },
 
@@ -1019,7 +1028,6 @@ var $eXeTrivial = {
                 $eXeTrivial.loadGameBoard(instance);
             }, 3000);
         }
-        $eXeTrivial.sendScore(true, instance);
     },
 
     cheesePositions: function (numasi) {
@@ -1534,6 +1542,8 @@ var $eXeTrivial = {
             typeof mOptions.modeBoard == 'undefined'
                 ? false
                 : mOptions.modeBoard;
+        mOptions.isScorm =
+            $exeDevices.iDevice.gamification.scorm.normalizeMode(mOptions.isScorm);
 
         // Default messages for legacy imports
         if (typeof mOptions.msgs === 'undefined') {
@@ -2065,11 +2075,6 @@ var $eXeTrivial = {
 
         mOptions.respuesta = '';
 
-        $(window).on('unload.eXeTrivial beforeunload.eXeTrivial', function () {
-            $eXeTrivial.sendScore(true, instance);
-            $exeDevices.iDevice.gamification.scorm.endScorm($eXeTrivial.mScorm);
-        });
-
         $('#trivialClickDado-' + instance).on('click touchstart', function (e) {
             e.preventDefault();
             $(this).hide();
@@ -2442,9 +2447,20 @@ var $eXeTrivial = {
             .find('input')
             .eq(0)
             .focus();
-        $(window).on('unload.eXeTrivial beforeunload.eXeTrivial', function () {
+        // Persist the in-progress game locally when the page is being hidden or
+        // unloaded. Uses pagehide + visibilitychange (Page Lifecycle API) instead
+        // of the deprecated unload/beforeunload, so it keeps working under bfcache,
+        // on mobile and inside LMS iframes that block unload (see issue #1831).
+        // The save is local (localStorage) and idempotent; it is unrelated to SCORM.
+        const persistOnHide = function () {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeTrivial.saveDataStorage(instance);
+            }
+        };
+        $(window).on('pagehide.eXeTrivial', persistOnHide);
+        $(document).on('visibilitychange.eXeTrivial', function () {
+            if (document.visibilityState === 'hidden') {
+                persistOnHide();
             }
         });
     },

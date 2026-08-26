@@ -884,7 +884,6 @@ var $eXeDescubre = {
             'click.eXeDescubre touchstart.eXeDescubre'
         );
         $('#descubreCodeAccessE-' + instance).off('keydown.eXeDescubre');
-        $(window).off('unload.eXeDescubre beforeunload.eXeDescubre');
         $mainContainer.off('click.eXeDescubre', '.Games-SendScore');
         $('#descubreStartGame0-' + instance).off('click.eXeDescubre');
         $('#descubreStartGame1-' + instance).off('click.eXeDescubre');
@@ -988,16 +987,6 @@ var $eXeDescubre = {
         });
 
         $('#descubrePNumber-' + instance).text(mOptions.numberQuestions);
-        $(window).on(
-            'unload.eXeDescubre beforeunload.eXeDescubre',
-            function () {
-                if (typeof $eXeDescubre.mScorm != 'undefined') {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeDescubre.mScorm
-                    );
-                }
-            }
-        );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -1349,6 +1338,13 @@ var $eXeDescubre = {
         mOptions.selecteds = [];
         $eXeDescubre.updateCovers(instance, true);
         $eXeDescubre.updateScore(true, instance);
+        // All groups (pairs/trios/quartets) discovered: mark completed NOW so the
+        // score sent just below records state 2, and any unload during the
+        // timeShowSolution celebration before gameOver still finalizes the SCO as
+        // completed instead of "incomplete". (#1831)
+        if (mOptions.hits >= mOptions.wordsGame.length) {
+            mOptions.gameOver = true;
+        }
         const percentageHits =
             (mOptions.hits / mOptions.wordsGame.length) * 100;
         if (
@@ -1827,6 +1823,8 @@ var $eXeDescubre = {
 
     rebootGame: function (instance) {
         const mOptions = $eXeDescubre.options[instance];
+        // SCORM: restarting a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity(mOptions);
 
         if (!mOptions.gameStarted) return;
 

@@ -469,13 +469,32 @@ var $guess = {
     sendScore: function (auto, instance) {
         const mOptions = $guess.options[instance];
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
+        mOptions.scorerp = $guess.getScoreRP(instance);
         mOptions.previousScore = $guess.previousScore;
         mOptions.userName = $guess.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $guess.previousScore = mOptions.previousScore;
+    },
+
+    getScoreRP: function (instance) {
+        const mOptions = $guess.options[instance];
+        const total = Number(mOptions.numberQuestions);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        return (mOptions.hits * 10) / total;
+    },
+
+    saveScormScore: function (instance) {
+        const mOptions = $guess.options[instance];
+        if (mOptions.isScorm !== 1) return;
+
+        const score = $guess.getScoreRP(instance).toFixed(2);
+        $guess.sendScore(true, instance);
+        $(`#adivinaRepeatActivity-${instance}`).text(
+            `${mOptions.msgs.msgYouScore}: ${score}`
+        );
     },
 
     drawPhrase: function (
@@ -727,12 +746,6 @@ var $guess = {
 
         $pNumber.text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeAdivina beforeunload.eXeAdivina', function () {
-            if (typeof $guess.mScorm !== 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm($guess.mScorm);
-            }
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -791,8 +804,6 @@ var $guess = {
         $(`#adivinaModeBoardOK-${instance}`).off('click');
         $(`#adivinaModeBoardKO-${instance}`).off('click');
         $(`#adivinaModeBoardMoveOn-${instance}`).off('click');
-
-        $(window).off('unload.eXeAdivina beforeunload.eXeAdivina');
     },
 
     enterCodeAccess: function (instance) {
@@ -817,6 +828,8 @@ var $guess = {
     },
 
     startGame: function (instance) {
+        // SCORM: starting again a completed activity (user action) drops it (and the page) back to incomplete.
+        $exeDevices.iDevice.gamification.scorm.restartActivity($guess.options[instance]);
         const mOptions = $guess.options[instance],
             $divReply = $(`#adivinaDivReply-${instance}`),
             $divInstructions = $(`#adivinaDivInstructions-${instance}`),
@@ -914,6 +927,7 @@ var $guess = {
 
         $guess.updateTime(mOptions.counter, instance);
         mOptions.gameStarted = true;
+        $guess.saveScormScore(instance);
 
         $definition.show();
         $btnReply.show();
@@ -1206,10 +1220,6 @@ var $guess = {
         $('#adivinaEdAnswer-' + instance).prop('disabled', false);
         $('#adivinaEdAnswer-' + instance).val('');
 
-        if (q.isScorm === 1) {
-            $guess.sendScore(true, instance);
-        }
-
         if (mOptions.modeBoard) {
             $('#adivinaDivModeBoard-' + instance).css('display', 'flex');
             $('#adivinaDivModeBoard-' + instance).fadeIn();
@@ -1487,16 +1497,6 @@ var $guess = {
             $adivinaPNumber.text(mOptions.numberQuestions - mActiveQuestion);
         }
 
-        if (mOptions.isScorm === 1) {
-            const score = (
-                (mOptions.hits * 10) /
-                mOptions.numberQuestions
-            ).toFixed(2);
-            $guess.sendScore(true, instance);
-            $(`#adivinaRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`
-            );
-        }
         $guess.saveEvaluation(instance);
     },
 
@@ -1547,6 +1547,13 @@ var $guess = {
             isCorrect = userAnswer === correctSolution,
             type = $guess.updateScore(isCorrect, instance),
             percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $guess.saveScormScore(instance);
 
         mOptions.activeCounter = false;
         let timeShowSolution = 1000;
@@ -1596,6 +1603,13 @@ var $guess = {
 
         const type = $guess.updateScore(value, instance),
             percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
+        // Answering the last question completes the activity. Mark it synchronized
+        // so the score sent by saveScormScore records state 2, and an unload during the
+        // delay still finalizes the SCO as completed. (#1831)
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $guess.saveScormScore(instance);
 
         mOptions.activeCounter = false;
         let timeShowSolution = 1000;
