@@ -559,7 +559,7 @@ describe('Scorm2004Exporter', () => {
         // status reports the score as it stands, so a page is marked completed from the first good
         // answer. Closing it as "normal" there would end the attempt while the learner is still
         // working, and the LMS would start from scratch on re-entry instead of resuming. (#1831)
-        it('keeps a half-finished SCO resumable even once it already reports completed', () => {
+        it('closes the attempt as soon as the SCO reports completed, with work still left', () => {
             const sandbox = instantiateScoTemplate(exporter.getSco2004Functions());
             sandbox.store['cmi.suspend_data'] = '1. "Quiz"; Score: 75%; Weight: 100%; Estado: 1';
             sandbox.store['cmi.completion_status'] = 'completed';
@@ -567,7 +567,7 @@ describe('Scorm2004Exporter', () => {
 
             sandbox.listeners['win:pagehide']({ persisted: false });
 
-            expect(sandbox.sets).toContainEqual(['cmi.exit', 'suspend']);
+            expect(sandbox.sets).toContainEqual(['cmi.exit', 'normal']);
             expect(sandbox.counters.quit).toBe(1);
         });
 

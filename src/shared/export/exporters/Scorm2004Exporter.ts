@@ -648,16 +648,11 @@ function pageHasEvaluableIdevices(isSCORM) {
 
 // Every evaluable iDevice finished? A content-only page counts as finished; an entry still at
 // "Estado: 0" (registered) or "Estado: 1" (started) means the learner has work left.
-function isPageFinished(isSCORM) {
-  if (!pageHasEvaluableIdevices(isSCORM)) {
-    return true;
-  }
-  var suspendData = scorm.get("cmi.suspend_data") || "";
-  if (suspendData.indexOf("Estado:") === -1) {
-    // Legacy suspend_data with no state field: fall back to the status.
-    return scorm.get("cmi.completion_status") === "completed";
-  }
-  return !/Estado:\\s*[01]/.test(suspendData);
+// Does the SCO already carry a verdict? The LMS index is drawn from the exit token, so a page
+// left as "suspend" reads as suspended even when the stored status is already completed. The
+// verdict is what the index has to reflect, so the verdict decides the exit.
+function hasTerminalStatus() {
+  return scorm.get("cmi.completion_status") === "completed";
 }
 
 // Leaving a page NEVER writes completion/success: they are owned by the learner's interaction with
@@ -695,7 +690,7 @@ function unloadPage(isSCORM) {
   // finished, never the pass/fail verdict: the status reports the score as it stands, so a page
   // is marked completed from the first good answer, and closing it as "normal" there would end
   // the attempt while the learner is still working.
-  scorm.set("cmi.exit", isPageFinished(isSCORM) ? "normal" : "suspend");
+  scorm.set("cmi.exit", hasTerminalStatus() ? "normal" : "suspend");
   commitScormProgress();
   scorm.quit();
   pageLoaded = false;

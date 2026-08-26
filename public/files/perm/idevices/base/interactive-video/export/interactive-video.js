@@ -141,6 +141,40 @@ var $interactivevideo = {
         window.scorm.init();
         $exeDevices.iDevice.gamification.scorm.initSession($interactivevideo);
         this.enable();
+        this.registerScormActivity();
+    },
+
+    /**
+     * Inscribe this activity in cmi.suspend_data on page LOAD, the way every other scored iDevice
+     * does from its own addEvents/initSCORM.
+     *
+     * This used to happen only in cover.hide(), i.e. when the learner pressed "start", which made
+     * this the one iDevice missing from the page's tracking until it was played. Two things broke:
+     * the page's weighted average was computed over the iDevices that happened to be registered, so
+     * solving another activity first scored it over the wrong denominator; and a page whose only
+     * scored iDevice is a video looked like a content-only page on entry and was marked completed
+     * with no score. Registering here fixes both at the source. (#1831)
+     *
+     * Runs after enable() so the shared markup (.Games-SendScore) that registerActivity looks up
+     * already exists. Safe to run again from cover.hide(): createScoreScormHtml updates the score
+     * node instead of duplicating it, and registerActivity only writes the initial entry when
+     * suspend_data has none.
+     */
+    registerScormActivity: function () {
+        if (
+            !InteractiveVideo ||
+            !InteractiveVideo.scorm ||
+            !(InteractiveVideo.scorm.isScorm > 0)
+        ) {
+            return;
+        }
+        if (!$interactivevideo.mOptions) {
+            $interactivevideo.mOptions =
+                $interactivevideo.getOptions(InteractiveVideo);
+        }
+        $exeDevices.iDevice.gamification.scorm.registerActivity(
+            $interactivevideo.mOptions
+        );
     },
 
     enable: function () {
@@ -582,23 +616,13 @@ var $interactivevideo = {
                         $interactivevideo.isInExe
                     );
                 }
-                if (
-                    InteractiveVideo &&
-                    InteractiveVideo.scorm &&
-                    InteractiveVideo.scorm.isScorm > 0
-                ) {
-                    // Register the very object the saves use. registerActivity resolves
-                    // ideviceNumber, ideviceId, mainElement and the title from the DOM and
-                    // writes them onto whatever it is handed; passing a throwaway copy
-                    // meant sendScore kept working off a different, unregistered object.
-                    if (!$interactivevideo.mOptions) {
-                        $interactivevideo.mOptions =
-                            $interactivevideo.getOptions(InteractiveVideo);
-                    }
-                    $exeDevices.iDevice.gamification.scorm.registerActivity(
-                        $interactivevideo.mOptions
-                    );
-                }
+                // Normally a no-op: initSCORM already registered on page load. Kept so the
+                // activity is still tracked if that path did not run, and because it is what
+                // guarantees mOptions is the very object the saves use — registerActivity
+                // resolves ideviceNumber, ideviceId, mainElement and the title from the DOM and
+                // writes them onto whatever it is handed, so a throwaway copy would leave
+                // sendScore working off a different, unregistered object.
+                $interactivevideo.registerScormActivity();
 
                 var activeSlide = 0;
                 // Rebuild from scratch: cover.hide() runs again on every restart

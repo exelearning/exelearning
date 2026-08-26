@@ -136,20 +136,21 @@ function _pageHasEvaluableIdevices(isSCORM, lmsData) {
   return suspendData.trim() !== "";
 }
 
-// Has every evaluable iDevice on the page been finished? This is what decides whether the SCO
-// closes as resumable, and it must be read from the per-iDevice states rather than from the SCO
-// status, which now carries a live pass/fail verdict and says nothing about progress. Falls back
-// to the status only when common.js is unavailable and there is nothing better to go on.
-function _isPageFinished(lmsData, win) {
-  var helpers = _scormActivityHelpers(win);
-  if (helpers && typeof helpers.getActivityState == "function") {
-    return helpers.getActivityState(lmsData) === 2;
-  }
-  var completionStatus = scorm.GetCompletionStatus();
-  var successStatus = scorm.GetSuccessStatus();
+// Does the SCO already carry a verdict? This decides how the session closes: a SCO with a result
+// exits "normal" (the attempt is over), one without it stays resumable ("suspend").
+//
+// It reads the STATUS, deliberately, and not whether every iDevice on the page is finished.
+// Tying it to "all finished" is tidier in principle — a learner with work left keeps a resumable
+// attempt — but it hides the result: Moodle drives its index icon from cmi.core.exit, so a page
+// left as "suspend" is drawn as suspended even when the stored status is already passed, and the
+// teacher sees no result until the whole page is done. Verified against a live Moodle: writing
+// cmi.core.exit = "" on a page reporting passed flips the index icon to passed immediately.
+// The index has to reflect the verdict, so the verdict is what decides the exit. (#1831)
+function _hasTerminalStatus() {
   if (scorm.version == "2004") {
-    return completionStatus == "completed";
+    return scorm.GetCompletionStatus() == "completed";
   }
+  var successStatus = scorm.GetSuccessStatus();
   return successStatus == "passed" || successStatus == "failed" || successStatus == "completed";
 }
 
@@ -335,15 +336,8 @@ function unloadPage(isSCORM, win) {
     return;
   }
 
-  // A finished SCO exits "normal" (no resume); anything else stays resumable ("suspend").
-  //
-  // Resumability must follow whether the ACTIVITY is finished, never the pass/fail verdict. The
-  // status reports the score as it stands, so a page reads "passed" from the first good answer;
-  // deriving resumability from it closed the attempt as "normal" while the learner was still
-  // working, and on re-entry the LMS starts from scratch instead of resuming — the stored
-  // progress is lost. The per-iDevice states in suspend_data are the only honest answer: the page
-  // is finished when every evaluable iDevice reached state 2. (#1831)
-  doQuit(_isPageFinished(lmsData, win) ? "normal" : "suspend");
+  // A SCO with a verdict exits "normal" (the attempt is over); one without it stays resumable.
+  doQuit(_hasTerminalStatus() ? "normal" : "suspend");
   // NOTE: don't return anything that resembles a javascript
   //       string from this function or IE will take the liberty of displaying a confirm message box.
 }

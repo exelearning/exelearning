@@ -1597,13 +1597,17 @@ var $exeDevices = {
                         // Single source of truth for the resume/exit token: route every exit write through
                         // pipwerks.SCORM.SetExit — the one function that maps the intent to the version-correct
                         // CMI element (cmi.exit in 2004, cmi.core.exit in 1.2) and normalizes "normal" -> ""
-                        // for SCORM 1.2, whose exit vocabulary has no "normal". A finished page (pageState 2)
-                        // exits "normal" so the LMS records a closed attempt instead of resuming it as
-                        // suspended/incomplete on re-entry (the #1831 Moodle report); an in-progress page stays
-                        // resumable ("suspend"). doQuit/doBack/doContinue already funnel through SetExit, so
-                        // showFinalScore must not bypass it and duplicate that per-version mapping. (#1831)
+                        // for SCORM 1.2, whose exit vocabulary has no "normal". doQuit/doBack already funnel
+                        // through SetExit, so showFinalScore must not bypass it and duplicate that mapping.
+                        //
+                        // The page has just been given a verdict, so the exit says "normal": the attempt has
+                        // a result. It does NOT wait for every iDevice to be finished, because Moodle draws
+                        // its index icon from this token — a page left as "suspend" is shown as suspended
+                        // even when the stored status is already passed, and the teacher sees no result
+                        // until the whole page is done. Verified on a live Moodle: writing an empty
+                        // cmi.core.exit on a page reporting passed flips the index icon immediately. (#1831)
                         if (typeof pipwerks.SCORM.SetExit === "function") {
-                            pipwerks.SCORM.SetExit(pageState === 2 ? "normal" : "suspend");
+                            pipwerks.SCORM.SetExit("normal");
                         }
                     }
 

@@ -346,7 +346,11 @@ describe('SCORM 1.2 learner journey against a Moodle-like LMS', () => {
     // Resumability follows whether the activity is finished, never the verdict. Deriving it from
     // the status closed the attempt as "normal" the moment the running score passed, so a learner
     // who left mid-activity came back to a fresh attempt with their progress gone. (#1831)
-    it('leaves a half-finished page resumable even though it already reports passed', () => {
+    // The exit token follows the VERDICT, not "every iDevice finished". Moodle draws its index
+    // icon from it, so a page left as "suspend" is shown as suspended even when the stored status
+    // is already passed, and the teacher sees no result until the whole page is done. Verified on
+    // a live Moodle: writing an empty cmi.core.exit flips the index icon straight to passed.
+    it('closes the attempt as soon as the page carries a verdict, with an iDevice still unfinished', () => {
         window.loadPage();
         const game = createGame();
         scorm.registerActivity(game);
@@ -359,8 +363,8 @@ describe('SCORM 1.2 learner journey against a Moodle-like LMS', () => {
 
         window.unloadPage(true);
 
-        // SCORM 1.2 has no "normal"; SetExit maps it to "". The attempt must NOT end that way.
-        expect(api.persisted['cmi.core.exit']).toBe('suspend');
+        // SCORM 1.2 has no "normal": SetExit maps it to "".
+        expect(api.persisted['cmi.core.exit']).toBe('');
         expect(api.persisted['cmi.suspend_data']).toContain('Estado: 1');
     });
 

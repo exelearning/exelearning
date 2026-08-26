@@ -705,6 +705,61 @@ describe('interactive-video iDevice export', () => {
       expect(registerActivity.mock.calls[0][0]).toBe($interactivevideo.mOptions);
     });
 
+    // Every other scored iDevice registers from its own addEvents/initSCORM, i.e. on page load.
+    // This one used to register only from cover.hide(), when the learner pressed "start", so it
+    // was missing from the page's tracking until it was played: the weighted average was computed
+    // over whichever iDevices happened to be registered, and a page whose only scored activity was
+    // a video looked content-only on entry and got marked completed with no score. (#1831)
+    describe('registering on page load', () => {
+      let enable;
+
+      beforeEach(() => {
+        global.window.scorm = { init: vi.fn() };
+        global.$exeDevices.iDevice.gamification.scorm.initSession = vi.fn();
+        enable = vi
+          .spyOn($interactivevideo, 'enable')
+          .mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        enable.mockRestore();
+        delete global.window.scorm;
+      });
+
+      it('registers the activity from initSCORM, without waiting for the learner to start', () => {
+        global.InteractiveVideo.scorm.isScorm = 1;
+
+        $interactivevideo.initSCORM();
+
+        expect(registerActivity).toHaveBeenCalledTimes(1);
+        expect(registerActivity.mock.calls[0][0]).toBe($interactivevideo.mOptions);
+      });
+
+      it('does not register an activity whose SCORM option is off', () => {
+        global.InteractiveVideo.scorm.isScorm = 0;
+
+        $interactivevideo.initSCORM();
+
+        expect(registerActivity).not.toHaveBeenCalled();
+      });
+
+      // cover.hide() still registers, as a safety net for the case where initSCORM never ran.
+      // Doing it twice must keep handing over the SAME options object, because registerActivity
+      // writes ideviceNumber and the DOM identity onto whatever it is given and the saves read
+      // them back from mOptions.
+      it('keeps the same options object when the learner then presses start', () => {
+        global.InteractiveVideo.scorm.isScorm = 1;
+
+        $interactivevideo.initSCORM();
+        const registeredOnLoad = $interactivevideo.mOptions;
+        $interactivevideo.cover.hide(false);
+
+        expect(registerActivity).toHaveBeenCalledTimes(2);
+        expect(registerActivity.mock.calls[1][0]).toBe(registeredOnLoad);
+        expect($interactivevideo.mOptions).toBe(registeredOnLoad);
+      });
+    });
+
     it('rebuilds scoreSlides on restart instead of duplicating them', () => {
       $interactivevideo.cover.hide(false);
       expect($interactivevideo.scoreSlides).toHaveLength(3);

@@ -662,17 +662,12 @@ function pageHasEvaluableIdevices(isSCORM) {
 
 // Every evaluable iDevice finished? A content-only page counts as finished; an entry still at
 // "Estado: 0" (registered) or "Estado: 1" (started) means the learner has work left.
-function isPageFinished(isSCORM) {
-  if (!pageHasEvaluableIdevices(isSCORM)) {
-    return true;
-  }
-  var suspendData = scorm.get("cmi.suspend_data") || "";
-  if (suspendData.indexOf("Estado:") === -1) {
-    // Legacy suspend_data with no state field: fall back to the status.
-    var status = scorm.get("cmi.core.lesson_status");
-    return status === "passed" || status === "failed" || status === "completed";
-  }
-  return !/Estado:\\s*[01]/.test(suspendData);
+// Does the SCO already carry a verdict? Moodle drives its index icon from cmi.core.exit, so a
+// page left as "suspend" is drawn as suspended even when the stored status is already passed.
+// The verdict is what the index has to reflect, so the verdict decides the exit.
+function hasTerminalStatus() {
+  var status = scorm.get("cmi.core.lesson_status");
+  return status === "passed" || status === "failed" || status === "completed";
 }
 
 // Leaving a page NEVER writes its status: completion is owned by the learner's interaction with
@@ -713,7 +708,7 @@ function unloadPage(isSCORM) {
   // pass/fail verdict: the status reports the score as it stands, so a page reads "passed" from
   // the first good answer, and closing it as "normal" there would end the attempt while the
   // learner is still working. An entry still at "Estado: 0" or "Estado: 1" means unfinished.
-  scorm.set("cmi.core.exit", isPageFinished(isSCORM) ? "" : "suspend");
+  scorm.set("cmi.core.exit", hasTerminalStatus() ? "" : "suspend");
   commitScormProgress();
   scorm.quit();
   pageLoaded = false;

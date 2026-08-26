@@ -2543,9 +2543,11 @@ describe('common.js $exeDevices', () => {
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.score.raw', 85);
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
         expect(global.pipwerks.SCORM.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
-        // An in-progress page stays resumable so the learner can continue where they left off. (#1831)
-        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
-        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('normal');
+        // The page now has a result, so the attempt exits "normal" even with an iDevice left.
+        // Moodle draws its index icon from the exit token: leaving it as "suspend" shows the SCO
+        // as suspended and hides the verdict from the teacher until the whole page is done. (#1831)
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('suspend');
         expect(global.pipwerks.SCORM.save).toHaveBeenCalledTimes(1);
       } finally {
         if (typeof originalPipwerks === 'undefined') {
@@ -2639,7 +2641,7 @@ describe('common.js $exeDevices', () => {
       }
     });
 
-    it('showFinalScore keeps a restarted page resumable while still reporting its running verdict', () => {
+    it('showFinalScore closes the attempt as soon as the page carries a verdict', () => {
       const scorm = getScorm();
       const originalPipwerks = global.pipwerks;
       global.pipwerks = {
@@ -2659,8 +2661,9 @@ describe('common.js $exeDevices', () => {
 
       try {
         // iDevice 1 was restarted (state 1, not finished); iDevice 2 is still completed (state 2).
-        // The verdict follows the running score (80 across both, so "passed"), while cmi.exit still
-        // tracks whether the page is finished — it is not, so it stays resumable. (#1831)
+        // The verdict follows the running score (80 across both, so "passed"), and the exit token
+        // follows the verdict rather than "every iDevice finished": Moodle draws its index icon
+        // from that token, so leaving it as "suspend" would hide a result the SCO already has.
         scorm.showFinalScore(
           {
             1: { title: 'A', score: 80, weighted: 100, state: 1 },
@@ -2678,9 +2681,8 @@ describe('common.js $exeDevices', () => {
 
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.completion_status', 'completed');
         expect(global.pipwerks.SCORM.set).toHaveBeenCalledWith('cmi.success_status', 'passed');
-        // The page is no longer finished, so it must stay resumable ("suspend"), not "normal". (#1831)
-        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('suspend');
-        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('normal');
+        expect(global.pipwerks.SCORM.SetExit).toHaveBeenCalledWith('normal');
+        expect(global.pipwerks.SCORM.SetExit).not.toHaveBeenCalledWith('suspend');
       } finally {
         if (typeof originalPipwerks === 'undefined') {
           delete global.pipwerks;
