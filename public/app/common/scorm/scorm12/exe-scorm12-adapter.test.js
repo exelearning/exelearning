@@ -170,6 +170,105 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
 
             expect(pageWindow.exeScorm12.session.open({ ownsLifecycle: false })).toBe(false);
         });
+
+        describe('lifecycle ownership is decided by the first successful open', () => {
+            function lifecycleListenerCount() {
+                return (
+                    (fakeWindow.listeners.pagehide ?? []).length +
+                    (fakeWindow.listeners.pageshow ?? []).length +
+                    (fakeDocument.listeners.visibilitychange ?? []).length
+                );
+            }
+
+            it('a host that declined ownership is not overridden by a later loadPage()', () => {
+                // The Moodle plugin opens the session as the host of an embedded page and
+                // declines the SCO lifecycle; a SCORM 1.2 package it embeds still carries
+                // <body onload="loadPage()">, which asks for it. The first caller wins:
+                // nothing is installed, nothing is initialized or decided twice.
+                useLms({});
+
+                expect(pageWindow.exeScorm12.session.open({ ownsLifecycle: false })).toBe(true);
+                pageWindow.loadPage();
+                expect(pageWindow.exeScorm12.session.open({ ownsLifecycle: true })).toBe(true);
+
+                expect(api.callNames().filter(name => name === 'LMSInitialize')).toHaveLength(1);
+                expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.lesson_status')).toEqual([
+                    ['cmi.core.lesson_status', 'incomplete'],
+                ]);
+                expect(api.callsFor('LMSGetValue').filter(call => call[0] === 'cmi.suspend_data')).toHaveLength(1);
+                expect(lifecycleListenerCount()).toBe(0);
+                // The page is left alone on the way out: the host ends the session.
+                fakeWindow.fire('pagehide', { persisted: false });
+                expect(api.callNames()).not.toContain('LMSFinish');
+            });
+
+            it('a host opening after the SCO already owns the lifecycle does not remove it', () => {
+                useLms({});
+                pageWindow.loadPage();
+
+                expect(pageWindow.exeScorm12.session.open({ ownsLifecycle: false })).toBe(true);
+
+                expect(api.callNames().filter(name => name === 'LMSInitialize')).toHaveLength(1);
+                expect(fakeWindow.listeners.pagehide).toHaveLength(1);
+                expect(fakeWindow.listeners.pageshow).toHaveLength(1);
+                expect(fakeDocument.listeners.visibilitychange).toHaveLength(1);
+                fakeWindow.fire('pagehide', { persisted: false });
+                expect(api.callNames().filter(name => name === 'LMSFinish')).toHaveLength(1);
+            });
+
+            it('runs the entry policy once across repeated opens', () => {
+                useLms({
+                    'cmi.core.lesson_status': 'incomplete',
+                    'cmi.core.score.raw': '80',
+                    'cmi.suspend_data': 'exe12/1|quiz;7;0;0;80;1;0;100',
+                });
+
+                pageWindow.exeScorm12.session.open({ ownsLifecycle: false });
+                pageWindow.exeScorm12.session.open({ ownsLifecycle: false });
+                pageWindow.loadPage();
+
+                expect(api.callsFor('LMSGetValue').filter(call => call[0] === 'cmi.suspend_data')).toHaveLength(1);
+                expect(api.callsFor('LMSSetValue')).toEqual([
+                    ['cmi.core.score.raw', '80'],
+                    ['cmi.core.score.min', '0'],
+                    ['cmi.core.score.max', '100'],
+                ]);
+            });
+
+            it('a failed open decides nothing: the next successful caller owns the lifecycle', () => {
+                const failures = { LMSInitialize: { result: 'false', errorCode: 101 } };
+                useLms({}, { failures });
+                expect(pageWindow.exeScorm12.session.open({ ownsLifecycle: false })).toBe(false);
+                expect(lifecycleListenerCount()).toBe(0);
+
+                delete failures.LMSInitialize;
+                pageWindow.loadPage();
+
+                // The refused attempt and the successful one.
+                expect(api.callNames().filter(name => name === 'LMSInitialize')).toHaveLength(2);
+                expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.lesson_status')).toEqual([
+                    ['cmi.core.lesson_status', 'incomplete'],
+                ]);
+                expect(lifecycleListenerCount()).toBe(3);
+            });
+
+            it('starts afresh after the test reset', () => {
+                useLms({});
+                pageWindow.exeScorm12.session.open({ ownsLifecycle: false });
+
+                pageWindow.exeScorm12.resetAdapterForTests();
+                lifecycle.resetDependencies();
+                lifecycle.configure({
+                    getClient: () => client,
+                    getPolicy: () => policy,
+                    getWindow: () => fakeWindow,
+                    getDocument: () => fakeDocument,
+                });
+                pageWindow.exeScorm12.session.open({ ownsLifecycle: true });
+
+                expect(fakeWindow.listeners.pagehide).toHaveLength(1);
+            });
+        });
     });
 
     describe('loadPage', () => {

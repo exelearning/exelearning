@@ -12,6 +12,7 @@ const { createFakeScorm12Api, createFakeWindowTree, resetPipwerks } = require('.
 describe('exe-scorm12-policy', () => {
     let api;
     let warnSpy;
+    let clientWarnSpy;
 
     function startSession(initialData, options = {}) {
         api = createFakeScorm12Api(Object.assign({ data: initialData }, options));
@@ -22,9 +23,10 @@ describe('exe-scorm12-policy', () => {
 
     beforeEach(() => {
         warnSpy = vi.fn();
+        clientWarnSpy = vi.fn();
         resetPipwerks(pipwerks);
         client.resetDependencies();
-        client.configure({ getPipwerks: () => pipwerks, now: () => 1000, error: vi.fn(), warn: vi.fn() });
+        client.configure({ getPipwerks: () => pipwerks, now: () => 1000, error: vi.fn(), warn: clientWarnSpy });
         activities.resetDependencies();
         activities.configure({ warn: vi.fn() });
         policy.resetDependencies();
@@ -179,6 +181,71 @@ describe('exe-scorm12-policy', () => {
             policy.applyEntryPolicy();
 
             expect(policy.hasAppliedEntry()).toBe(true);
+        });
+
+        it('is idempotent: a second call re-reads nothing and writes nothing', () => {
+            // session.open() can run more than once on a page — a host that opened the
+            // session and the SCO's own loadPage() both call it — and the entry
+            // decision is taken once. A repeated status write, a re-read of
+            // suspend_data or a republished score is traffic the LMS must not see.
+            startSession({
+                'cmi.core.lesson_status': '',
+                'cmi.core.score.raw': '80',
+                'cmi.suspend_data': 'exe12/1|quiz;7;0;0;80;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+            const firstPass = api.callSignatures();
+            policy.applyEntryPolicy();
+
+            expect(api.callSignatures()).toEqual(firstPass);
+            const sets = api.callsFor('LMSSetValue');
+            expect(sets.filter(call => call[0] === 'cmi.core.lesson_status')).toEqual([
+                ['cmi.core.lesson_status', 'incomplete'],
+            ]);
+            expect(sets.filter(call => call[0] === 'cmi.core.score.min')).toEqual([['cmi.core.score.min', '0']]);
+            expect(sets.filter(call => call[0] === 'cmi.core.score.max')).toEqual([['cmi.core.score.max', '100']]);
+            expect(sets.filter(call => call[0] === 'cmi.core.score.raw')).toEqual([['cmi.core.score.raw', '80']]);
+            expect(api.callsFor('LMSGetValue').map(call => call[0])).toEqual([
+                'cmi.core.lesson_status',
+                'cmi.student_data.mastery_score',
+                'cmi.suspend_data',
+            ]);
+        });
+
+        it('a repeated call never merges the stored records back over live progress', () => {
+            // load() lets a restored record overwrite the progress of a live one, which
+            // is right on entry and wrong afterwards: a second pass after the learner
+            // answered would roll the registry back to the previous attempt.
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.suspend_data': 'exe12/1|quiz;7;0;0;80;1;0;100',
+            });
+            policy.applyEntryPolicy();
+            activities.register('quiz', { evaluable: true, completionRequired: true, completed: true, score: 100 });
+
+            policy.applyEntryPolicy();
+
+            expect(activities.get('quiz')).toMatchObject({ completed: true, score: 100 });
+        });
+
+        it('does nothing, and does not latch, without an open session', () => {
+            // Nothing was read from the LMS, so nothing was applied: the real entry
+            // must still run once the session opens.
+            api = createFakeScorm12Api({ data: { 'cmi.core.lesson_status': '' } });
+            vi.stubGlobal('window', createFakeWindowTree('self', api));
+
+            policy.applyEntryPolicy();
+
+            expect(policy.hasAppliedEntry()).toBe(false);
+            expect(api.calls).toEqual([]);
+            expect(clientWarnSpy).not.toHaveBeenCalled();
+
+            expect(client.initialize()).toBe(true);
+            policy.applyEntryPolicy();
+
+            expect(policy.hasAppliedEntry()).toBe(true);
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
         });
 
         it('adopts the LMS mastery score as the success threshold', () => {
@@ -695,6 +762,33 @@ describe('exe-scorm12-policy', () => {
             // Never writes a transient passed/failed verdict from a
             // registration event: only pending work is reconciled.
             expect(api.calls).toEqual([]);
+        });
+
+        it('is inert before the session opens: no LMS traffic and no rejection warnings', () => {
+            // iDevices register on jQuery ready, before loadPage() opens the session,
+            // and common.js reconciles after every registration. There is nothing to
+            // reconcile against yet — every read and write would be refused and logged
+            // — and the entry policy sees the pending registrations when it runs.
+            api = createFakeScorm12Api({ data: { 'cmi.core.lesson_status': '' } });
+            vi.stubGlobal('window', createFakeWindowTree('self', api));
+            register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+
+            expect(policy.reconcilePendingActivities()).toBeNull();
+
+            expect(api.calls).toEqual([]);
+            expect(clientWarnSpy).not.toHaveBeenCalled();
+        });
+
+        it('reconciles as soon as the session is open', () => {
+            api = createFakeScorm12Api({ data: { 'cmi.core.lesson_status': '' } });
+            vi.stubGlobal('window', createFakeWindowTree('self', api));
+            register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+            expect(policy.reconcilePendingActivities()).toBeNull();
+
+            expect(client.initialize()).toBe(true);
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({ status: 'incomplete', written: true });
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
         });
 
         it('never touches a restored terminal status', () => {

@@ -278,9 +278,22 @@
          * the SCO now); preserve every other stored status. Restores the
          * activity registry from cmi.suspend_data and adopts the LMS mastery
          * score as the success threshold when the LMS publishes one.
+         *
+         * Idempotent: the entry decision is taken once per session. A second
+         * call — a host that opened the session and the SCO's own loadPage()
+         * both go through session.open() — reads and writes nothing, and never
+         * merges the stored records back over progress the learner has made
+         * since. Without an open session nothing is read, so nothing is
+         * applied and the next call after the session opens still runs it.
          */
         applyEntryPolicy: function () {
+            if (state.entryApplied) {
+                return;
+            }
             var client = deps.getClient();
+            if (!client.isActive()) {
+                return;
+            }
             var status = client.getValue(LESSON_STATUS);
             if (status === '' || status === STATUS.NOT_ATTEMPTED) {
                 writeStatus(STATUS.INCOMPLETE);
@@ -443,6 +456,13 @@
          * no required activity was pending.
          */
         reconcilePendingActivities: function () {
+            // Before the session opens there is nothing to reconcile against:
+            // every read and write would be refused (and logged) by the
+            // client. iDevices register on jQuery ready, before loadPage(),
+            // and the entry policy sees those registrations when it runs.
+            if (!deps.getClient().isActive()) {
+                return null;
+            }
             if (policy.decideStatus().reason !== 'required-activities-pending') {
                 return null;
             }

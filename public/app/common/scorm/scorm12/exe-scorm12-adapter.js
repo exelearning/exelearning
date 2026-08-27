@@ -83,6 +83,10 @@
 
     var state = {
         loadPageRan: false,
+        // Who owns the page lifecycle, decided by the first successful
+        // session.open(): null until then, true when this runtime does (a
+        // SCO), false when the host declined it and ends the session itself.
+        ownsLifecycle: null,
     };
 
     function warn(message) {
@@ -96,6 +100,7 @@
      */
     exeScorm12.resetAdapterForTests = function () {
         state.loadPageRan = false;
+        state.ownsLifecycle = null;
     };
 
     /**
@@ -133,6 +138,14 @@
      * which is silent from outside: the registry holds the score, the entry policy
      * reports as applied, and `cmi.core.score.raw` stays empty.
      *
+     * Ownership rule: the first successful open decides who owns the lifecycle, and
+     * later calls cannot change it. A host that declined ownership keeps the page's
+     * own loadPage() (a SCORM 1.2 package embedded by the host still carries its
+     * `<body onload>`) from installing the SCO lifecycle behind its back; a host
+     * opening after the SCO already owns the lifecycle does not remove it. The entry
+     * policy is applied once per session whichever caller comes first — a failed open
+     * decides nothing, so the next successful caller takes the decision.
+     *
      * @param {object} [options] - Session options.
      * @param {boolean} [options.ownsLifecycle=true] - False when the host owns the page
      * and its end-of-session handling, so the SCO lifecycle must not be installed.
@@ -144,8 +157,11 @@
             if (!client.initialize()) {
                 return false;
             }
+            if (state.ownsLifecycle === null) {
+                state.ownsLifecycle = ownsLifecycle;
+            }
             policy.applyEntryPolicy();
-            if (ownsLifecycle) {
+            if (state.ownsLifecycle) {
                 lifecycle.install();
             }
             return true;
