@@ -14,7 +14,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { unzipSync } from '../../../../src/shared/export';
-import { applyIdevicePatch, ideviceNodeIds, type BuiltPackage } from './moodle-serving-model';
+import { applyIdevicePatch, ideviceNodeIds, sha256Hex, type BuiltPackage } from './moodle-serving-model';
 
 /**
  * Load an exported HTML5 zip from disk as a servable package.
@@ -23,7 +23,8 @@ import { applyIdevicePatch, ideviceNodeIds, type BuiltPackage } from './moodle-s
  * @returns the package in the shape `installMoodleServing()` expects
  */
 export function loadHtml5PackageFromZip(zipPath: string): BuiltPackage {
-    const raw = unzipSync(new Uint8Array(fs.readFileSync(zipPath))) as unknown as Record<string, Uint8Array>;
+    const zipBytes = new Uint8Array(fs.readFileSync(zipPath));
+    const raw = unzipSync(zipBytes) as unknown as Record<string, Uint8Array>;
 
     const files: Record<string, Uint8Array> = {};
     const patchedFiles: string[] = [];
@@ -61,6 +62,7 @@ export function loadHtml5PackageFromZip(zipPath: string): BuiltPackage {
 
     return {
         files,
+        zipSha256: sha256Hex(zipBytes),
         pages,
         xapiConfig: cfgMatch ? (JSON.parse(cfgMatch[1]) as Record<string, unknown>) : {},
         patchedFiles,

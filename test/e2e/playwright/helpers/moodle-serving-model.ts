@@ -25,10 +25,14 @@
  *     its `cmi` map survive it, which is what makes the cross-page
  *     `cmi.suspend_data` behaviour observable.
  *
- * The recorded traffic is written to a trace file per the frozen trace contract
- * (TRACE-CONTRACT.md v1) and replayed by the plugin-side lanes.
+ * The recorded traffic is written to a trace file per the trace contract
+ * (test/fixtures/grading/TRACE-CONTRACT.md, v2), which is what a plugin-side replay
+ * reads. A v2 trace names the bytes that produced it: the sha256 of the exported zip
+ * ({@link BuiltPackage.zipSha256}) and of the served runtime plus its version stamp
+ * ({@link ServedRuntime}).
  */
 
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
@@ -86,6 +90,27 @@ export function resolvePluginScormAssets(assetsDir: string | undefined): string 
         }
     }
     return assetsDir;
+}
+
+/** Hex SHA-256 of some bytes — how a trace names the package and runtime it was recorded from. */
+export function sha256Hex(bytes: Uint8Array): string {
+    return createHash('sha256').update(bytes).digest('hex');
+}
+
+/**
+ * Header line the SCORM 1.2 exporter stamps into an assembled `SCOFunctions.js`
+ * (`SCORM12_RUNTIME_VERSION_TAG` in src/shared/export/utils/Scorm12Runtime.ts). Kept
+ * greppable there on purpose, so this stays a text scan rather than a JS evaluation.
+ */
+export const RUNTIME_VERSION_TAG = 'eXeLearning-SCORM12-Runtime';
+
+/**
+ * The version stamp of a served `SCOFunctions.js`, or null when it carries none —
+ * the legacy pair predates the stamp, and that absence is itself provenance.
+ */
+export function runtimeVersionStamp(source: string): string | null {
+    const match = new RegExp(`${RUNTIME_VERSION_TAG}:\\s*(\\S+)`).exec(source);
+    return match ? match[1] : null;
 }
 
 /** The exact marker `scorm_injector.php` writes, used verbatim (and as its idempotence guard). */
@@ -231,6 +256,8 @@ export interface ServedPage {
 export interface BuiltPackage {
     /** Raw export entries, keyed by package-relative path. */
     files: Record<string, Uint8Array>;
+    /** Hex SHA-256 of the exported zip these entries came from, before any serve-time patch. */
+    zipSha256: string;
     /** Pages in navigation order (index.html first). */
     pages: ServedPage[];
     /** The `window.exeXapi` config parsed out of index.html (`{}` when absent). */
@@ -353,7 +380,9 @@ export async function buildHtml5Package(
         throw new Error(`Html5Exporter failed: ${result.error ?? 'unknown error'}`);
     }
 
-    const files = unzipSync(result.data) as unknown as Record<string, Uint8Array>;
+    const zipBytes = result.data as unknown as Uint8Array;
+    const zipSha256 = sha256Hex(zipBytes);
+    const files = unzipSync(zipBytes) as unknown as Record<string, Uint8Array>;
     const decode = (name: string) => new TextDecoder().decode(files[name]);
 
     // Apply the plugin's iDevice patch ONCE, to the stored bytes, exactly like
@@ -383,7 +412,7 @@ export async function buildHtml5Package(
     const cfgMatch = /window\.exeXapi=(\{.*?\});/.exec(decode('index.html'));
     const xapiConfig = cfgMatch ? (JSON.parse(cfgMatch[1]) as Record<string, unknown>) : {};
 
-    return { files, pages, xapiConfig, patchedFiles };
+    return { files, zipSha256, pages, xapiConfig, patchedFiles };
 }
 
 /**
@@ -484,19 +513,42 @@ window.__trace = { scorm: [], xapi: [], page: 0 };
 </html>`;
 }
 
+/** What was served alongside the package — the provenance a v2 trace records. */
+export interface ServedRuntime {
+    /** Which `scorm_injector.php` rewrote the pages. */
+    injector: InjectorVariant;
+    /** The plugin commit that snippet was copied from. */
+    injectorSource: (typeof INJECTOR_SOURCES)[InjectorVariant];
+    /** Hex SHA-256 of the served `libs/SCORM_API_wrapper.js`. */
+    wrapperSha256: string;
+    /** Hex SHA-256 of the served `libs/SCOFunctions.js`. */
+    runtimeSha256: string;
+    /** Its `eXeLearning-SCORM12-Runtime` stamp; null for the legacy pair. */
+    runtimeVersion: string | null;
+}
+
 /**
  * Install the plugin serving model on `page` for one built package.
+ *
+ * @returns what was served with it, for the trace's provenance fields
  */
 export async function installMoodleServing(
     page: Page,
     pkg: BuiltPackage,
     origin: string,
     options: ServingOptions = {},
-): Promise<void> {
+): Promise<ServedRuntime> {
     const injector = options.injector ?? DEFAULT_INJECTOR;
     const assetsDir = resolvePluginScormAssets(options.assetsDir ?? pluginScormAssetsFromEnv());
     const wrapper = fs.readFileSync(path.join(assetsDir, 'SCORM_API_wrapper.js'));
     const scoFunctions = fs.readFileSync(path.join(assetsDir, 'SCOFunctions.js'));
+    const served: ServedRuntime = {
+        injector,
+        injectorSource: INJECTOR_SOURCES[injector],
+        wrapperSha256: sha256Hex(wrapper),
+        runtimeSha256: sha256Hex(scoFunctions),
+        runtimeVersion: runtimeVersionStamp(scoFunctions.toString('utf8')),
+    };
 
     await page.route(`${origin}/**`, async route => {
         const url = new URL(route.request().url());
@@ -537,6 +589,8 @@ export async function installMoodleServing(
 
         await route.fulfill({ status: 200, contentType: exportContentType(key), body: Buffer.from(bytes) });
     });
+
+    return served;
 }
 
 /** Open the parent page (which loads page 0 into the iframe). */

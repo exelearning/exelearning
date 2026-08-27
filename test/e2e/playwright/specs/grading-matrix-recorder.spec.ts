@@ -5,8 +5,13 @@
  * real browser under the `mod_exelearning` serving model
  * (see helpers/moodle-serving-model.ts, which reproduces scorm_injector.php AND
  * idevice_patch.php) and writes the observed SCORM 1.2 + xAPI traffic to
- * `<TRACE_DIR>/<scenario>.trace.json` per the frozen contract
- * (TRACE-CONTRACT.md v1).
+ * `<TRACE_DIR>/<scenario>.<engine>.trace.json` per the trace contract
+ * (test/fixtures/grading/TRACE-CONTRACT.md, v2): every trace names the engine it was
+ * recorded in, the sha256 of the exported zip, the sha256 and version stamp of the
+ * runtime pair that was served, and which injector served it.
+ *
+ * It needs the plugin's runtime pair (`MOD_EXELEARNING_SCORM_ASSETS`) and skips
+ * without it. It fails when it records nothing — see {@link assertRecorded}.
  *
  * Every iDevice is answered through its OWN UI controls: radio clicks for
  * `trueorfalse` and `form`, a real jQuery-UI mouse drag for `dragdrop`, the runtime's
@@ -57,7 +62,20 @@ import {
     type FixtureRepairs,
     type InjectorVariant,
     type RecordedTrace,
+    type ServedRuntime,
 } from '../helpers/moodle-serving-model';
+
+/** `traceVersion` of what this recorder writes (TRACE-CONTRACT.md). */
+const TRACE_VERSION = 2;
+
+/**
+ * The oracle policy every `expected` block below follows: the overall is the
+ * weight-normalised mean over ALL gradable iDevices, Σ(score·weight) / Σ(weight), and
+ * every iDevice of every scenario is answered, so the rule for an unanswered iDevice
+ * (counted as 0, or excluded as ungraded — still a product decision, see the contract)
+ * is never exercised here: `expected.ungraded` is always empty.
+ */
+const ORACLE_POLICY_ID = 'weighted-mean-v1';
 
 /**
  * Where the recorded traces are written. Defaults inside the repo's own gitignored
@@ -103,19 +121,66 @@ function attributePages<T extends { page: number; href: string }>(pkg: BuiltPack
     });
 }
 
-function writeTrace(scenario: string, body: Record<string, unknown>): string {
-    fs.mkdirSync(TRACE_DIR, { recursive: true });
-    const file = path.join(TRACE_DIR, `${scenario}.trace.json`);
-    fs.writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`);
-    return file;
-}
-
 /** The hand-authored oracle of one scenario, as written into its trace. */
 interface ExpectedOutcome {
+    policyId: string;
     perItem: Record<string, number>;
     weights: Record<string, number>;
     overall: number;
+    /** iDevices deliberately left unanswered — none in this matrix. */
+    ungraded: string[];
     note: string;
+}
+
+/** Everything one scenario observed, plus its oracle. */
+interface Recording {
+    interactions: Record<string, unknown>[];
+    trace: RecordedTrace;
+    cmi: Record<string, string>;
+    consoleErrors: string[];
+    expected: ExpectedOutcome;
+}
+
+/**
+ * Write one v2 trace. The file name carries the engine, so a Firefox run sits next to
+ * the Chromium one instead of overwriting it.
+ */
+function writeTrace(
+    scenario: string,
+    engine: string,
+    pkg: BuiltPackage,
+    runtime: ServedRuntime,
+    recording: Recording,
+): string {
+    const body = {
+        traceVersion: TRACE_VERSION,
+        scenario,
+        engine,
+        recordedFrom: { repo: 'exelearning', ref: CORE_REF, exportFormat: 'html5' },
+        package: { odeId: pkg.xapiConfig.odeId ?? '', pageCount: pkg.pages.length, sha256: pkg.zipSha256 },
+        runtime: {
+            sha256: runtime.runtimeSha256,
+            version: runtime.runtimeVersion,
+            wrapperSha256: runtime.wrapperSha256,
+        },
+        servingModel: {
+            injector: runtime.injector,
+            injectorSource: runtime.injectorSource,
+            idevicePatch: pkg.patchedFiles,
+        },
+        fixtureRepairs: REPAIRS,
+        pages: pkg.pages,
+        interactions: recording.interactions,
+        scorm: attributePages(pkg, recording.trace.scorm),
+        xapi: attributePages(pkg, recording.trace.xapi),
+        finalCmi: recording.cmi,
+        consoleErrors: recording.consoleErrors,
+        expected: recording.expected,
+    };
+    fs.mkdirSync(TRACE_DIR, { recursive: true });
+    const file = path.join(TRACE_DIR, `${scenario}.${engine}.trace.json`);
+    fs.writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`);
+    return file;
 }
 
 /**
@@ -147,12 +212,16 @@ function assertRecorded(
     ).toBe(expected.overall);
 }
 
-async function setup(spec: ProjectSpec, origin: string, page: import('@playwright/test').Page): Promise<BuiltPackage> {
+async function setup(
+    spec: ProjectSpec,
+    origin: string,
+    page: import('@playwright/test').Page,
+): Promise<{ pkg: BuiltPackage; runtime: ServedRuntime }> {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'grading-matrix-'));
     const pkg = await buildHtml5Package(spec, tmpDir, REPAIRS);
-    await installMoodleServing(page, pkg, origin, { injector: INJECTOR });
+    const runtime = await installMoodleServing(page, pkg, origin, { injector: INJECTOR });
     await openPackage(page, origin);
-    return pkg;
+    return { pkg, runtime };
 }
 
 /** Scroll the PARENT window so an element inside the iframe is near the top. */
@@ -263,7 +332,7 @@ test.describe('grading matrix recorder', () => {
     test.describe.configure({ mode: 'serial' });
     test.use({ viewport: { width: 1400, height: 1000 } });
 
-    test('M2 single page, four types, weights 10/20/30/40', async ({ page }) => {
+    test('M2 single page, four types, weights 10/20/30/40', async ({ page, browserName }) => {
         test.setTimeout(300000);
         const consoleErrors: string[] = [];
         page.on('console', m => {
@@ -272,7 +341,7 @@ test.describe('grading matrix recorder', () => {
         page.on('pageerror', e => consoleErrors.push(`pageerror: ${e.message}`));
 
         const origin = 'http://exe-matrix-m2.local';
-        const pkg = await setup(M2_SPEC, origin, page);
+        const { pkg, runtime } = await setup(M2_SPEC, origin, page);
         expect(pkg.pages.length).toBe(1);
         expect(pkg.pages[0].ideviceNodes).toEqual(['m2-tof', 'm2-dnd', 'm2-sl', 'm2-frm']);
         console.log(`[M2] patched files: ${JSON.stringify(pkg.patchedFiles)}`);
@@ -347,27 +416,21 @@ test.describe('grading matrix recorder', () => {
         const cmi = await readCmi(page);
 
         const expected: ExpectedOutcome = {
+            policyId: ORACLE_POLICY_ID,
             perItem: { 'm2-tof': 100, 'm2-dnd': 100, 'm2-sl': 0, 'm2-frm': 0 },
             weights: { 'm2-tof': 10, 'm2-dnd': 20, 'm2-sl': 30, 'm2-frm': 40 },
             overall: 30,
+            ungraded: [],
             note:
                 'By hand: tof 4/4 = 100, dnd 4/4 cards on their own target = 100, sl a derangement ' +
                 '(0 of 4 in position) = 0, form 4 wrong answers = 0. Weights sum to 100 already: ' +
                 '(100*10 + 100*20 + 0*30 + 0*40)/100 = 30.',
         };
 
-        const file = writeTrace('m2-four-types-single-page', {
-            traceVersion: 1,
-            scenario: 'm2-four-types-single-page',
-            recordedFrom: { repo: 'exelearning', ref: CORE_REF, exportFormat: 'html5' },
-            fixtureRepairs: REPAIRS,
-            servingModel: { scormInjector: true, idevicePatch: pkg.patchedFiles },
-            package: { odeId: pkg.xapiConfig.odeId ?? '', pageCount: pkg.pages.length },
-            pages: pkg.pages,
+        const file = writeTrace('m2-four-types-single-page', browserName, pkg, runtime, {
             interactions,
-            scorm: attributePages(pkg, trace.scorm),
-            xapi: attributePages(pkg, trace.xapi),
-            finalCmi: cmi,
+            trace,
+            cmi,
             consoleErrors,
             expected,
         });
@@ -381,7 +444,7 @@ test.describe('grading matrix recorder', () => {
         assertRecorded('M2', trace, cmi, consoleErrors, expected);
     });
 
-    test('M4 two pages, one gradable each, weights 25/75', async ({ page }) => {
+    test('M4 two pages, one gradable each, weights 25/75', async ({ page, browserName }) => {
         test.setTimeout(300000);
         const consoleErrors: string[] = [];
         page.on('console', m => {
@@ -390,7 +453,7 @@ test.describe('grading matrix recorder', () => {
         page.on('pageerror', e => consoleErrors.push(`pageerror: ${e.message}`));
 
         const origin = 'http://exe-matrix-m4.local';
-        const pkg = await setup(M4_SPEC, origin, page);
+        const { pkg, runtime } = await setup(M4_SPEC, origin, page);
         expect(pkg.pages.length).toBe(2);
         console.log(`[M4] pages: ${JSON.stringify(pkg.pages)}`);
 
@@ -421,24 +484,18 @@ test.describe('grading matrix recorder', () => {
         const cmi = await readCmi(page);
 
         const expected: ExpectedOutcome = {
+            policyId: ORACLE_POLICY_ID,
             perItem: { 'm4-p1': 100, 'm4-p2': 0 },
             weights: { 'm4-p1': 25, 'm4-p2': 75 },
             overall: 25,
+            ungraded: [],
             note: 'By hand: page 1 tof 4/4 = 100, page 2 form 0/4 = 0. (100*25 + 0*75)/100 = 25.',
         };
 
-        const file = writeTrace('m4-multipage-weighted-25-75', {
-            traceVersion: 1,
-            scenario: 'm4-multipage-weighted-25-75',
-            recordedFrom: { repo: 'exelearning', ref: CORE_REF, exportFormat: 'html5' },
-            fixtureRepairs: REPAIRS,
-            servingModel: { scormInjector: true, idevicePatch: pkg.patchedFiles },
-            package: { odeId: pkg.xapiConfig.odeId ?? '', pageCount: pkg.pages.length },
-            pages: pkg.pages,
+        const file = writeTrace('m4-multipage-weighted-25-75', browserName, pkg, runtime, {
             interactions,
-            scorm: attributePages(pkg, trace.scorm),
-            xapi: attributePages(pkg, trace.xapi),
-            finalCmi: cmi,
+            trace,
+            cmi,
             consoleErrors,
             expected,
         });
@@ -452,7 +509,7 @@ test.describe('grading matrix recorder', () => {
         assertRecorded('M4', trace, cmi, consoleErrors, expected);
     });
 
-    test('M3 two pages, two gradable each, mixed scores', async ({ page }) => {
+    test('M3 two pages, two gradable each, mixed scores', async ({ page, browserName }) => {
         test.setTimeout(300000);
         const consoleErrors: string[] = [];
         page.on('console', m => {
@@ -461,7 +518,7 @@ test.describe('grading matrix recorder', () => {
         page.on('pageerror', e => consoleErrors.push(`pageerror: ${e.message}`));
 
         const origin = 'http://exe-matrix-m3.local';
-        const pkg = await setup(M3_SPEC, origin, page);
+        const { pkg, runtime } = await setup(M3_SPEC, origin, page);
         expect(pkg.pages.length).toBe(2);
         console.log(`[M3] pages: ${JSON.stringify(pkg.pages)}`);
 
@@ -536,27 +593,21 @@ test.describe('grading matrix recorder', () => {
         const cmi = await readCmi(page);
 
         const expected: ExpectedOutcome = {
+            policyId: ORACLE_POLICY_ID,
             perItem: { 'm3-p1-tof': 75, 'm3-p1-sl': 50, 'm3-p2-dnd': 25, 'm3-p2-frm': 50 },
             weights: { 'm3-p1-tof': 100, 'm3-p1-sl': 100, 'm3-p2-dnd': 100, 'm3-p2-frm': 100 },
             overall: 50,
+            ungraded: [],
             note:
                 'By hand: tof 3/4 = 75, scrambled-list [0,1,3,2] keeps 2 of 4 in position = 50, ' +
                 'dragdrop 1 of 4 cards on its own target = 25, form 2/4 = 50. All weights 100, so ' +
                 'the overall is the plain mean: (75 + 50 + 25 + 50)/4 = 50.',
         };
 
-        const file = writeTrace('m3-two-pages-two-gradable', {
-            traceVersion: 1,
-            scenario: 'm3-two-pages-two-gradable',
-            recordedFrom: { repo: 'exelearning', ref: CORE_REF, exportFormat: 'html5' },
-            fixtureRepairs: REPAIRS,
-            servingModel: { scormInjector: true, idevicePatch: pkg.patchedFiles },
-            package: { odeId: pkg.xapiConfig.odeId ?? '', pageCount: pkg.pages.length },
-            pages: pkg.pages,
+        const file = writeTrace('m3-two-pages-two-gradable', browserName, pkg, runtime, {
             interactions,
-            scorm: attributePages(pkg, trace.scorm),
-            xapi: attributePages(pkg, trace.xapi),
-            finalCmi: cmi,
+            trace,
+            cmi,
             consoleErrors,
             expected,
         });
@@ -579,7 +630,7 @@ test.describe('grading matrix recorder', () => {
      * instead makes the very same write visible. Recorded to prove the mechanism
      * rather than assert it.
      */
-    test('M3-control same package, page-2 form scores 75 instead of 50', async ({ page }) => {
+    test('M3-control same package, page-2 form scores 75 instead of 50', async ({ page, browserName }) => {
         test.setTimeout(300000);
         const consoleErrors: string[] = [];
         page.on('console', m => {
@@ -588,7 +639,7 @@ test.describe('grading matrix recorder', () => {
         page.on('pageerror', e => consoleErrors.push(`pageerror: ${e.message}`));
 
         const origin = 'http://exe-matrix-m3c.local';
-        const pkg = await setup(M3_SPEC, origin, page);
+        const { pkg, runtime } = await setup(M3_SPEC, origin, page);
         const interactions: Record<string, unknown>[] = [];
 
         await waitForScormActive(page, INJECTOR);
@@ -652,26 +703,20 @@ test.describe('grading matrix recorder', () => {
         const cmi = await readCmi(page);
 
         const expected: ExpectedOutcome = {
+            policyId: ORACLE_POLICY_ID,
             perItem: { 'm3-p1-tof': 75, 'm3-p1-sl': 50, 'm3-p2-dnd': 25, 'm3-p2-frm': 75 },
             weights: { 'm3-p1-tof': 100, 'm3-p1-sl': 100, 'm3-p2-dnd': 100, 'm3-p2-frm': 100 },
             overall: 56.25,
+            ungraded: [],
             note:
                 'By hand: tof 3/4 = 75, scrambled-list 2 of 4 in position = 50, dragdrop 1 of 4 = 25, ' +
                 'form 3/4 = 75. All weights 100: (75 + 50 + 25 + 75)/4 = 56.25.',
         };
 
-        const file = writeTrace('m3-control-form-75', {
-            traceVersion: 1,
-            scenario: 'm3-control-form-75',
-            recordedFrom: { repo: 'exelearning', ref: CORE_REF, exportFormat: 'html5' },
-            fixtureRepairs: REPAIRS,
-            servingModel: { scormInjector: true, idevicePatch: pkg.patchedFiles },
-            package: { odeId: pkg.xapiConfig.odeId ?? '', pageCount: pkg.pages.length },
-            pages: pkg.pages,
+        const file = writeTrace('m3-control-form-75', browserName, pkg, runtime, {
             interactions,
-            scorm: attributePages(pkg, trace.scorm),
-            xapi: attributePages(pkg, trace.xapi),
-            finalCmi: cmi,
+            trace,
+            cmi,
             consoleErrors,
             expected,
         });
