@@ -411,10 +411,13 @@
             pipwerks.SCORM.handleCompletionStatus = false;
             pipwerks.SCORM.handleExitMode = false;
             // Adopt a connection another party already opened (contract §4). A host
-            // can legitimately initialize before the content does — the Moodle plugin
+            // can legitimately initialize before the content does — the Moodle plugin's
             // injector force-calls pipwerks.SCORM.init() on a poller and usually wins
-            // the race — and upstream pipwerks connection.initialize() returns FALSE
-            // on an already-active connection, which would fail the iDevices'
+            // the race (plugin releases before mod_exelearning #105; #105 opens through
+            // exeScorm12.session.open({ ownsLifecycle: false }) and keeps that call only
+            // as its two-second fallback for a package whose runtime predates it) — and
+            // upstream pipwerks connection.initialize() returns FALSE on an
+            // already-active connection, which would fail the iDevices'
             // `scorm.init()` gate and silently break manual score saves.
             if (pipwerks.SCORM.connection && pipwerks.SCORM.connection.isActive === true) {
                 state.status = STATE.ACTIVE;

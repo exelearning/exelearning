@@ -311,8 +311,8 @@ handler; nothing is deferred.
     `SetScoreMax`) publishes them and later score writes only re-send a bound
     whose value actually changed (`policy.sentBounds`; an earlier revision of
     this rewrite re-sent them on every score change, corrected in commit
-    `3d9451c16`). The values never vary (`0` and `100`), so the traffic on the
-    wire matches the legacy runtime's;
+    `3d9451c16` (this PR)). The values never vary (`0` and `100`), so the
+    traffic on the wire matches the legacy runtime's;
   - `cmi.student_data.mastery_score` is read once per launch and adopted as
     the success threshold when the LMS publishes one, falling back to the eXe
     default of 50. `Scorm12Exporter` emits no `adlcp:masteryscore`, so an eXe
