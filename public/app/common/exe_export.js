@@ -177,7 +177,6 @@ window.$exeExport = {
         withTeacherParams : function(href){
             if (!href || !this._navParams) return href;
             if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
-            if (href.indexOf('exe-teacher') !== -1) return href;
             var eq = this._navParams.indexOf('=');
             var name = eq === -1 ? this._navParams : this._navParams.slice(0, eq);
             var value = eq === -1 ? '' : this._navParams.slice(eq + 1);

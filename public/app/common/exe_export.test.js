@@ -1094,6 +1094,17 @@ describe('exe_export.js', () => {
         const tm = window.$exeExport.teacherMode;
         tm._navParams = 'exe-teacher=1';
         expect(tm.withTeacherParams('page.html?exe-teacher=1')).toBe('page.html?exe-teacher=1');
+        expect(tm.withTeacherParams('page.html?exe-teacher=0')).toBe('page.html?exe-teacher=1');
+      });
+
+      it('matches the exact key, not any occurrence of the name in the href', () => {
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = 'exe-teacher=1';
+        expect(tm.withTeacherParams('exe-teacher-guide.html')).toBe('exe-teacher-guide.html?exe-teacher=1');
+        expect(tm.withTeacherParams('page.html?q=exe-teacher')).toBe('page.html?q=exe-teacher&exe-teacher=1');
+        expect(tm.withTeacherParams('page.html?exe-teacher-toggler=1')).toBe(
+          'page.html?exe-teacher-toggler=1&exe-teacher=1'
+        );
       });
 
       it('returns the href unchanged when there are no active params', () => {
