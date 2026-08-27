@@ -55,6 +55,7 @@ import {
     PLUGIN_SCORM_ASSETS_ENV,
     type BuiltPackage,
     type FixtureRepairs,
+    type InjectorVariant,
 } from '../helpers/moodle-serving-model';
 
 /**
@@ -66,6 +67,14 @@ const TRACE_DIR = process.env.GRADING_TRACE_DIR ?? path.join(process.cwd(), 'tes
 
 /** trueorfalse cannot score with the fixture's authored isTest:false (see docblock). */
 const REPAIRS: FixtureRepairs = { isTest: true };
+
+/**
+ * The plugin revision whose serving model is recorded: #105, which opens the session
+ * through `exeScorm12.session.open({ ownsLifecycle: false })`. Under plugin main's
+ * `pipwerks.SCORM.init()` the rewritten runtime opens the pipwerks connection but keeps
+ * its own client idle, refuses every write with 301 and records nothing.
+ */
+const INJECTOR: InjectorVariant = '105';
 
 const CORE_REF = (() => {
     try {
@@ -103,7 +112,7 @@ function writeTrace(scenario: string, body: Record<string, unknown>): string {
 async function setup(spec: ProjectSpec, origin: string, page: import('@playwright/test').Page): Promise<BuiltPackage> {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'grading-matrix-'));
     const pkg = await buildHtml5Package(spec, tmpDir, REPAIRS);
-    await installMoodleServing(page, pkg, origin);
+    await installMoodleServing(page, pkg, origin, { injector: INJECTOR });
     await openPackage(page, origin);
     return pkg;
 }
@@ -230,7 +239,7 @@ test.describe('grading matrix recorder', () => {
         expect(pkg.pages[0].ideviceNodes).toEqual(['m2-tof', 'm2-dnd', 'm2-sl', 'm2-frm']);
         console.log(`[M2] patched files: ${JSON.stringify(pkg.patchedFiles)}`);
 
-        await waitForScormActive(page);
+        await waitForScormActive(page, INJECTOR);
         await waitForInFrame(page, '#tofPGameContainer-m2-tof .TOFP-Answer');
         await waitForInFrame(page, '#frmMainContainer-m2-frm li.FormView_question');
         await waitForInFrame(page, '[id^="dadPGameContainer-"] .DADP-DS');
@@ -346,7 +355,7 @@ test.describe('grading matrix recorder', () => {
         const interactions: Record<string, unknown>[] = [];
 
         // --- page 1: trueorfalse, all correct -> 100 ------------------------
-        await waitForScormActive(page);
+        await waitForScormActive(page, INJECTOR);
         await waitForInFrame(page, '#tofPGameContainer-m4-p1 .TOFP-Answer');
         const tofKey = tofSolutions(M4_SPEC, 'm4-p1');
         for (let q = 0; q < 4; q++) await answerTrueOrFalse(page, 'm4-p1', q, tofKey[q]);
@@ -356,7 +365,7 @@ test.describe('grading matrix recorder', () => {
 
         // --- page 2: form, all wrong -> 0 -----------------------------------
         await navigateIframe(page, origin, pkg, 1);
-        await waitForScormActive(page);
+        await waitForScormActive(page, INJECTOR);
         await waitForInFrame(page, '#frmMainContainer-m4-p2 li.FormView_question');
         await waitForFormBound(page, 'm4-p2');
         const frmKey = formAnswers(M4_SPEC, 'm4-p2');
@@ -413,7 +422,7 @@ test.describe('grading matrix recorder', () => {
         const interactions: Record<string, unknown>[] = [];
 
         // --- page 1 --------------------------------------------------------
-        await waitForScormActive(page);
+        await waitForScormActive(page, INJECTOR);
         await waitForInFrame(page, '#tofPGameContainer-m3-p1-tof .TOFP-Answer');
         await waitForInFrame(page, 'ul[id^="exe-sortableList-"] > li');
 
@@ -447,7 +456,7 @@ test.describe('grading matrix recorder', () => {
 
         // --- page 2 --------------------------------------------------------
         await navigateIframe(page, origin, pkg, 1);
-        await waitForScormActive(page);
+        await waitForScormActive(page, INJECTOR);
         await waitForInFrame(page, '[id^="dadPGameContainer-"] .DADP-DS');
         await waitForInFrame(page, '#frmMainContainer-m3-p2-frm li.FormView_question');
 
@@ -532,7 +541,7 @@ test.describe('grading matrix recorder', () => {
         const pkg = await setup(M3_SPEC, origin, page);
         const interactions: Record<string, unknown>[] = [];
 
-        await waitForScormActive(page);
+        await waitForScormActive(page, INJECTOR);
         await waitForInFrame(page, '#tofPGameContainer-m3-p1-tof .TOFP-Answer');
         await waitForInFrame(page, 'ul[id^="exe-sortableList-"] > li');
 
@@ -561,7 +570,7 @@ test.describe('grading matrix recorder', () => {
         });
 
         await navigateIframe(page, origin, pkg, 1);
-        await waitForScormActive(page);
+        await waitForScormActive(page, INJECTOR);
         await waitForInFrame(page, '[id^="dadPGameContainer-"] .DADP-DS');
         await waitForInFrame(page, '#frmMainContainer-m3-p2-frm li.FormView_question');
 

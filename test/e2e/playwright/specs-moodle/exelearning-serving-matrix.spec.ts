@@ -24,6 +24,7 @@ import * as path from 'path';
 
 import { gradingAnswerKey, type ProjectSpec } from '../../../helpers/grading-fixtures';
 import {
+    DEFAULT_INJECTOR,
     installMoodleServing,
     navigateIframe,
     openPackage,
@@ -31,6 +32,7 @@ import {
     readTrace,
     waitForScormActive,
     type BuiltPackage,
+    type InjectorVariant,
 } from '../helpers/moodle-serving-model';
 import { auditPackagePath, loadHtml5PackageFromZip } from '../helpers/prebuilt-package';
 import { createIdeviceDriver } from '../helpers/idevice-drivers';
@@ -52,6 +54,13 @@ const RUNTIMES: Record<string, string> = {
     R1: process.env.AUDIT_RUNTIME_R1 ?? '',
     R2: process.env.AUDIT_RUNTIME_R2 ?? '',
 };
+
+/**
+ * Which `scorm_injector.php` serves each runtime pair — the one of the plugin revision
+ * that ships it. Plugin main's `pipwerks.SCORM.init()` bootstrap cannot open a session
+ * in the rewritten runtime, so R1/R2 are only meaningful under #105's.
+ */
+const INJECTORS: Record<string, InjectorVariant> = { R0: 'main', R1: '105', R2: '105' };
 
 const PRODUCERS = (process.env.AUDIT_PRODUCERS ?? 'main,2209').split(',').filter(Boolean);
 const RUNTIME_KEYS = (process.env.AUDIT_RUNTIMES ?? 'R0,R1').split(',').filter(Boolean);
@@ -191,18 +200,19 @@ test.describe('mod_exelearning serving matrix', () => {
                 const cell = `${scenario.id}-${producer}-${runtimeKey}`;
 
                 test(cell, async ({ page }) => {
-                    process.env.MOD_EXELEARNING_SCORM_ASSETS = RUNTIMES[runtimeKey];
+                    const assetsDir = RUNTIMES[runtimeKey];
+                    if (!assetsDir) {
+                        throw new Error(`${cell}: AUDIT_RUNTIME_${runtimeKey} is not set — the runtime pair to serve`);
+                    }
+                    const injector = INJECTORS[runtimeKey] ?? DEFAULT_INJECTOR;
 
                     const origin = `http://exe-${cell.toLowerCase()}.local`;
                     const zip = auditPackagePath(AUDIT_ROOT, producer, scenario.id, 'html5');
                     const pkg: BuiltPackage = loadHtml5PackageFromZip(zip);
 
-                    // The serving model reads the runtime pair at install time, so the
-                    // env var above has to be set before this call, not after.
-                    const { installMoodleServing: install } = await import('../helpers/moodle-serving-model');
-                    await install(page, pkg, origin);
+                    await installMoodleServing(page, pkg, origin, { assetsDir, injector });
                     await openPackage(page, origin);
-                    await waitForScormActive(page);
+                    await waitForScormActive(page, injector);
 
                     const interactions: Record<string, unknown>[] = [];
                     const seen = new Set<string>();
@@ -214,7 +224,7 @@ test.describe('mod_exelearning serving matrix', () => {
 
                         if (visit > 0 || pageIndex !== 0) {
                             await navigateIframe(page, origin, pkg, pageIndex);
-                            await waitForScormActive(page);
+                            await waitForScormActive(page, injector);
                         }
 
                         const isRevisit = seen.has(pageId);
@@ -248,7 +258,12 @@ test.describe('mod_exelearning serving matrix', () => {
                             scenario: scenario.id,
                             cell,
                             recordedFrom: { repo: 'exelearning', ref: producer, exportFormat: 'html5' },
-                            servingModel: { scormInjector: true, runtime: runtimeKey, idevicePatch: pkg.patchedFiles },
+                            servingModel: {
+                                scormInjector: true,
+                                injector,
+                                runtime: runtimeKey,
+                                idevicePatch: pkg.patchedFiles,
+                            },
                             package: { odeId: scenario.spec.odeId ?? '', pageCount: pkg.pages.length },
                             pages: pkg.pages,
                             interactions,

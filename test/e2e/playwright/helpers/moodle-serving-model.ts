@@ -9,9 +9,10 @@
  *     worker, no caching).
  *  2. Every `*.htm` / `*.html` entry is rewritten exactly like
  *     `classes/local/scorm/scorm_injector.php`: the two wrapper <script> tags plus
- *     the 50 ms `setInterval` that forces `window.pipwerks.SCORM.init()` are
- *     inserted before the first `</head>`, with `libs/...` at the package root and
- *     `../libs/...` under `html/`.
+ *     the 50 ms `setInterval` bootstrap are inserted before the first `</head>`, with
+ *     `libs/...` at the package root and `../libs/...` under `html/`. Two revisions of
+ *     that bootstrap exist and both are reproduced verbatim — see {@link InjectorVariant}.
+ *     The default is the one the plugin will ship (#105).
  *  3. `libs/SCORM_API_wrapper.js` and `libs/SCOFunctions.js` are served from the
  *     PLUGIN's own copies (`<mod_exelearning>/assets/scorm/`, named by the
  *     `MOD_EXELEARNING_SCORM_ASSETS` variable) — an HTML5 export ships neither.
@@ -90,30 +91,101 @@ export function resolvePluginScormAssets(assetsDir: string | undefined): string 
 /** The exact marker `scorm_injector.php` writes, used verbatim (and as its idempotence guard). */
 const INJECT_MARKER = '<!-- mod_exelearning:scorm-loader -->';
 
-/** The exact init script `scorm_injector.php` builds, byte for byte. */
-const INIT_SCRIPT =
-    '\n    <script>\n' +
-    '      (function(){\n' +
-    '        var t = setInterval(function(){\n' +
-    '          if (window.pipwerks && window.pipwerks.SCORM) {\n' +
-    '            clearInterval(t);\n' +
-    '            try { window.pipwerks.SCORM.init(); } catch(e){}\n' +
-    '          }\n' +
-    '        }, 50);\n' +
-    '      })();\n' +
-    '    </script>\n';
+/**
+ * Which revision of the plugin's `scorm_injector.php` to reproduce.
+ *
+ * The two differ in how the SCORM session is opened, and that difference decides
+ * whether anything is recorded at all:
+ *
+ *  - `main` forces `pipwerks.SCORM.init()`. With the legacy runtime pair that opens the
+ *    connection and every write reaches `window.API`. With the rewritten runtime
+ *    (exelearning#2209, which the plugin ships from #105 on) the pipwerks connection
+ *    opens but the runtime's own client stays idle, so it refuses every write locally
+ *    with 301: `finalCmi` stays empty and nothing says so.
+ *  - `105` waits for `exeScorm12.session.open({ ownsLifecycle: false })`, the runtime's
+ *    entry point for a host that owns the page, and falls back to `init()` after two
+ *    seconds for a package whose runtime predates it.
+ */
+export type InjectorVariant = 'main' | '105';
 
-const TAGS_ROOT =
-    INJECT_MARKER +
-    '\n    <script src="libs/SCORM_API_wrapper.js"></script>' +
-    '\n    <script src="libs/SCOFunctions.js"></script>' +
-    INIT_SCRIPT;
+/** The runtime the plugin will ship; `main` stays available to reproduce legacy traffic. */
+export const DEFAULT_INJECTOR: InjectorVariant = '105';
 
-const TAGS_SUBDIR =
-    INJECT_MARKER +
-    '\n    <script src="../libs/SCORM_API_wrapper.js"></script>' +
-    '\n    <script src="../libs/SCOFunctions.js"></script>' +
-    INIT_SCRIPT;
+/**
+ * Where each snippet below was copied from. test/helpers/moodle-serving-model.spec.ts
+ * keeps a second, independent transcription of the same PHP strings and diffs the two,
+ * so an update to one side without the other is caught.
+ */
+export const INJECTOR_SOURCES: Record<InjectorVariant, { repo: string; ref: string; commit: string; file: string }> = {
+    main: {
+        repo: 'exelearning/moodle-mod_exelearning',
+        ref: 'main',
+        commit: '3b6a7cd45ca9b762189d5e7ebc8f953c4d939023',
+        file: 'classes/local/scorm/scorm_injector.php',
+    },
+    '105': {
+        repo: 'exelearning/moodle-mod_exelearning',
+        ref: 'pull/105',
+        commit: '09b3f4ce77cbf9bffccc66b7f1630c1d3be5f66d',
+        file: 'classes/local/scorm/scorm_injector.php',
+    },
+};
+
+/** The exact `$initscript` each revision of `scorm_injector.php` builds, byte for byte. */
+const INIT_SCRIPTS: Record<InjectorVariant, string> = {
+    main:
+        '\n    <script>\n' +
+        '      (function(){\n' +
+        '        var t = setInterval(function(){\n' +
+        '          if (window.pipwerks && window.pipwerks.SCORM) {\n' +
+        '            clearInterval(t);\n' +
+        '            try { window.pipwerks.SCORM.init(); } catch(e){}\n' +
+        '          }\n' +
+        '        }, 50);\n' +
+        '      })();\n' +
+        '    </script>\n',
+    '105':
+        '\n    <script>\n' +
+        '      (function(){\n' +
+        '        var opened = false, ticks = 0;\n' +
+        '        var t = setInterval(function(){\n' +
+        '          ticks++;\n' +
+        '          var ns = window.exeScorm12;\n' +
+        "          if (!opened && ns && ns.session && typeof ns.session.open === 'function') {\n" +
+        '            try { opened = ns.session.open({ ownsLifecycle: false }) === true; } catch(e){}\n' +
+        '          } else if (!opened && ticks > 40 && window.pipwerks && window.pipwerks.SCORM) {\n' +
+        '            try { window.pipwerks.SCORM.init(); opened = true; } catch(e){}\n' +
+        '          }\n' +
+        '          if (opened || ticks > 200) { clearInterval(t); }\n' +
+        '        }, 50);\n' +
+        '      })();\n' +
+        '    </script>\n',
+};
+
+/**
+ * #105's dedupe: the package's own `<script>` tags for the runtime pair are dropped
+ * before the plugin's are inserted, so the runtime is parsed and executed exactly once
+ * (`preg_replace` in `scorm_injector.php::inject`, same commit). Plugin main has no
+ * such step. An HTML5 export carries neither tag, so for it this is a no-op.
+ */
+const PACKAGE_RUNTIME_TAGS =
+    /[ \t]*<script\b[^>]*\bsrc\s*=\s*"[^"]*(?:SCORM_API_wrapper|SCOFunctions)\.js"[^>]*>\s*<\/script>[ \t]*\r?\n?/gi;
+
+/**
+ * The exact `$tags` (`atRoot`) / `$tagshtml` payload one injector revision inserts.
+ *
+ * @param injector which `scorm_injector.php` to reproduce
+ * @param atRoot   true for `index.html` (`libs/...`), false for `html/*` (`../libs/...`)
+ */
+export function injectorPayload(injector: InjectorVariant, atRoot: boolean): string {
+    const prefix = atRoot ? '' : '../';
+    return (
+        INJECT_MARKER +
+        `\n    <script src="${prefix}libs/SCORM_API_wrapper.js"></script>` +
+        `\n    <script src="${prefix}libs/SCOFunctions.js"></script>` +
+        INIT_SCRIPTS[injector]
+    );
+}
 
 /**
  * The plugin's serve-time iDevice patch (`idevice_patch.php::patch`), verbatim.
@@ -317,14 +389,27 @@ export async function buildHtml5Package(
 /**
  * The plugin's HTML mutation, reproduced exactly (`scorm_injector.php::inject`).
  *
- * @param html   the served page bytes
- * @param atRoot true for `index.html` (`libs/...`), false for `html/*` (`../libs/...`)
+ * @param html     the served page bytes
+ * @param atRoot   true for `index.html` (`libs/...`), false for `html/*` (`../libs/...`)
+ * @param injector which revision of the injector to reproduce
  */
-export function injectScormLoader(html: string, atRoot: boolean): string {
+export function injectScormLoader(html: string, atRoot: boolean, injector: InjectorVariant = DEFAULT_INJECTOR): string {
     if (html === '' || html.indexOf(INJECT_MARKER) !== -1) return html;
-    const payload = atRoot ? TAGS_ROOT : TAGS_SUBDIR;
+    const payload = injectorPayload(injector, atRoot);
+    const source = injector === '105' ? html.replace(PACKAGE_RUNTIME_TAGS, '') : html;
     // preg_replace('~</head>~i', $payload . '</head>', $html, 1)
-    return html.replace(/<\/head>/i, `${payload}</head>`);
+    return source.replace(/<\/head>/i, `${payload}</head>`);
+}
+
+/** How {@link installMoodleServing} serves one package. */
+export interface ServingOptions {
+    /** Which `scorm_injector.php` to reproduce. Defaults to {@link DEFAULT_INJECTOR}. */
+    injector?: InjectorVariant;
+    /**
+     * Directory holding the plugin's runtime pair. Defaults to the
+     * {@link PLUGIN_SCORM_ASSETS_ENV} variable; one of the two is required.
+     */
+    assetsDir?: string;
 }
 
 /** The parent page: recording SCORM 1.2 window.API + the package iframe. */
@@ -402,8 +487,14 @@ window.__trace = { scorm: [], xapi: [], page: 0 };
 /**
  * Install the plugin serving model on `page` for one built package.
  */
-export async function installMoodleServing(page: Page, pkg: BuiltPackage, origin: string): Promise<void> {
-    const assetsDir = resolvePluginScormAssets(pluginScormAssetsFromEnv());
+export async function installMoodleServing(
+    page: Page,
+    pkg: BuiltPackage,
+    origin: string,
+    options: ServingOptions = {},
+): Promise<void> {
+    const injector = options.injector ?? DEFAULT_INJECTOR;
+    const assetsDir = resolvePluginScormAssets(options.assetsDir ?? pluginScormAssetsFromEnv());
     const wrapper = fs.readFileSync(path.join(assetsDir, 'SCORM_API_wrapper.js'));
     const scoFunctions = fs.readFileSync(path.join(assetsDir, 'SCOFunctions.js'));
 
@@ -439,7 +530,7 @@ export async function installMoodleServing(page: Page, pkg: BuiltPackage, origin
 
         if (/\.html?$/i.test(key)) {
             const atRoot = !key.includes('/');
-            const html = injectScormLoader(new TextDecoder().decode(bytes), atRoot);
+            const html = injectScormLoader(new TextDecoder().decode(bytes), atRoot, injector);
             await route.fulfill({ status: 200, contentType: exportContentType(key), body: html });
             return;
         }
@@ -479,17 +570,35 @@ export async function navigateIframe(page: Page, origin: string, pkg: BuiltPacka
 }
 
 /**
- * Wait until the injected `pipwerks.SCORM.init()` has connected — before that,
- * `pipwerks.SCORM.set()` is a documented no-op and nothing would reach `window.API`.
+ * Wait until the injected bootstrap has opened the SCORM session in the iframe.
+ *
+ * Which state counts depends on the injector, and the distinction is the whole point:
+ *
+ *  - `main`: `pipwerks.SCORM.connection.isActive` — before `init()` has connected,
+ *    `pipwerks.SCORM.set()` is a documented no-op and nothing would reach `window.API`.
+ *  - `105`: the runtime's OWN client state, `exeScorm12.client.isActive()`. The pipwerks
+ *    connection shares the same object and turns active either way, so gating on it
+ *    would also pass in the failure mode #105 exists to avoid — connection open, client
+ *    idle, every write refused with 301. A page served with the `105` injector but a
+ *    runtime that never defines `exeScorm12` (the legacy pair) times out here, on
+ *    purpose: that pairing does not exist in the plugin, which always ships its own pair.
  */
-export async function waitForScormActive(page: Page): Promise<void> {
+export async function waitForScormActive(page: Page, injector: InjectorVariant = DEFAULT_INJECTOR): Promise<void> {
     await page.waitForFunction(
-        () => {
+        variant => {
             const f = document.getElementById('exelearningobject') as HTMLIFrameElement;
-            const w = f.contentWindow as unknown as { pipwerks?: { SCORM?: { connection?: { isActive?: boolean } } } };
-            return !!w && !!w.pipwerks && !!w.pipwerks.SCORM && w.pipwerks.SCORM.connection?.isActive === true;
+            const w = f.contentWindow as unknown as {
+                pipwerks?: { SCORM?: { connection?: { isActive?: boolean } } };
+                exeScorm12?: { client?: { isActive?: () => boolean } };
+            } | null;
+            if (!w) return false;
+            if (variant === '105') {
+                const client = w.exeScorm12?.client;
+                return typeof client?.isActive === 'function' && client.isActive() === true;
+            }
+            return w.pipwerks?.SCORM?.connection?.isActive === true;
         },
-        undefined,
+        injector,
         { timeout: 30000 },
     );
 }
