@@ -252,8 +252,12 @@ handler; nothing is deferred.
 
 - Clean provenance: AGPL-3.0 project code + one MIT-vendored file with a
   recorded upstream hash (THIRD-PARTY-NOTICES.md); the exporter test asserts
-  the shipped package is byte-identical to the repository copy. No ADL/CTC or
-  CC-attributed code in the 1.2 package.
+  the shipped package is byte-identical to the repository copy. The SCORM 1.2
+  package no longer carries the legacy `SCOFunctions.js` (CTC-derived, grant
+  removed in 2013) nor the locally modified wrapper with its Rustici CC BY 3.0
+  fragments; the vendored pipwerks wrapper's own header still acknowledges that
+  its API-finder functions derive from ADL/Rustici code, under pipwerks' MIT
+  grant. The legacy pair remains in the repository for SCORM 2004.
 - The defects above are fixed, each covered by regression tests against a
   **strict** fake LMS that validates SCORM 1.2 access rules, vocabularies,
   ranges, array indices and error codes, and that can be configured to

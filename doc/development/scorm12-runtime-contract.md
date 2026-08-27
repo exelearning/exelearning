@@ -144,7 +144,7 @@ implementation).
 
 | Global | Signature | Called by | Effect on the SCORM 1.2 session |
 |---|---|---|---|
-| `loadPage()` | `() => void` | `<body onload>`, `exe_export.js` `initScorm()` | `LMSInitialize("")`; then the entry policy (§6). Starts the session clock and installs the lifecycle listeners. Idempotent. |
+| `loadPage()` | `() => void` | `<body onload>`, `exe_export.js` `initScorm()` | Opens the session as a SCO through `exeScorm12.session.open({ ownsLifecycle: true })`: `LMSInitialize("")`, then the entry policy (§6), the session clock and the lifecycle listeners. Idempotent. **The first successful open decides who owns the page lifecycle**: when a host opened the session first declining ownership (`session.open({ ownsLifecycle: false })`, the Moodle plugin), a later `loadPage()` installs no lifecycle and re-runs nothing; when the SCO opened first, a later host open does not uninstall it. |
 | `unloadPage(isSCORM)` | `(boolean?) => void` | legacy `pagehide` bridge in old packages; kept callable | Ends the session once, applying the completion rule (§7). No-op if the session already ended. |
 | `doQuit()` | `() => void` | legacy content | Ends the session once (exit policy + session time + commit + finish), without applying the completion rule. |
 | `doBack()` | `() => void` | legacy content | Same observable effect as `doQuit()`. |
@@ -256,7 +256,10 @@ names, responses, scores or suspend data.
 
 ## 6. Entry policy
 
-Applied once, immediately after `LMSInitialize`:
+Applied once, immediately after `LMSInitialize`. It is idempotent: a second
+call — a host opening the session after `loadPage()`, or the reverse — reads and
+writes nothing, and a call without an open session applies nothing and does not
+count as applied.
 
 1. Read `cmi.core.lesson_status`. `""` or `"not attempted"` → write
    `"incomplete"`; any other value is preserved — a status is never downgraded
