@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 require('./common.js');
 
@@ -2198,6 +2198,304 @@ describe('common.js $exeDevices', () => {
 
       expect(set).toHaveBeenCalledWith('cmi.core.score.raw', 90);
       expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+    });
+  });
+
+  // The bridge tests above stand in for the runtime with hand-written policy
+  // and registry objects. These run the REAL assembled SCORM 1.2 runtime — the
+  // vendored wrapper, client, registry, policy, lifecycle and adapter, in the
+  // order libs/SCOFunctions.js loads them — against the fake LMS, so the gates
+  // common.js applies are checked end to end: nothing reaches the LMS before
+  // the session opens, an unanswered page publishes no score, and a partial
+  // runtime keeps scoring.
+  describe('gamification.scorm through the assembled SCORM 1.2 runtime', () => {
+    const getScorm = () => global.$exeDevices.iDevice.gamification.scorm;
+    const runtimeDir = './scorm/scorm12';
+    const pageGlobals = [
+      'loadPage',
+      'unloadPage',
+      'doQuit',
+      'doBack',
+      'doContinue',
+      'startTimer',
+      'computeTime',
+      'goBack',
+      'goForward',
+      'setComplete',
+      'setIncomplete',
+      'setScore',
+      'scorm',
+    ];
+    let pipwerks;
+    let client;
+    let activities;
+    let policy;
+    let lifecycle;
+    let runtime;
+    let createFakeScorm12Api;
+    let resetPipwerks;
+    let api;
+    let fakeWindow;
+    let fakeDocument;
+
+    /** Minimal event target capturing listeners so tests can fire them. */
+    function createFakeEventTarget() {
+      const listeners = {};
+      return {
+        listeners,
+        addEventListener(type, handler) {
+          listeners[type] = listeners[type] || [];
+          listeners[type].push(handler);
+        },
+        removeEventListener(type, handler) {
+          listeners[type] = (listeners[type] || []).filter(entry => entry !== handler);
+        },
+        fire(type, event) {
+          for (const handler of listeners[type] || []) {
+            handler(Object.assign({ type }, event));
+          }
+        },
+      };
+    }
+
+    /** A game iDevice options object as the export runtimes build it. */
+    function game(overrides) {
+      return Object.assign(
+        {
+          ideviceId: 'quiz-1',
+          ideviceNumber: 1,
+          isScorm: 1,
+          weighted: 1,
+          scorerp: 9,
+          title: 'Quiz',
+          msgs: { msgYouScore: 'You scored', msgScore: 'Score', msgWeight: 'Weight' },
+        },
+        overrides
+      );
+    }
+
+    /**
+     * A second, pristine instance of the vendored wrapper: what a SCORM 2004
+     * package or a package exported before the rewrite ships, with no runtime
+     * layer wrapping it. The module-cached instance is the one the adapter
+     * augmented, so the file is evaluated again through its CommonJS branch.
+     */
+    function loadLegacyWrapper() {
+      const fs = require('node:fs');
+      const path = require('node:path');
+      const source = fs.readFileSync(path.join(__dirname, runtimeDir, 'vendor/pipwerks/SCORM_API_wrapper.js'), 'utf8');
+      const legacyModule = { exports: {} };
+      new Function('module', 'exports', 'window', source)(legacyModule, legacyModule.exports, window);
+      const legacyPipwerks = legacyModule.exports;
+      legacyPipwerks.debug.isActive = false;
+      return legacyPipwerks;
+    }
+
+    /**
+     * The real policy with some capabilities removed: a host that ships an
+     * older runtime exposes `policy` without the newer methods.
+     */
+    function policyWithout(...missing) {
+      const partial = Object.assign({}, policy);
+      for (const name of missing) delete partial[name];
+      return partial;
+    }
+
+    beforeAll(() => {
+      pipwerks = require(`${runtimeDir}/vendor/pipwerks/SCORM_API_wrapper.js`);
+      window.pipwerks = pipwerks;
+      client = require(`${runtimeDir}/exe-scorm12-client.js`);
+      activities = require(`${runtimeDir}/exe-scorm12-activities.js`);
+      policy = require(`${runtimeDir}/exe-scorm12-policy.js`);
+      lifecycle = require(`${runtimeDir}/exe-scorm12-lifecycle.js`);
+      require(`${runtimeDir}/exe-scorm12-adapter.js`);
+      ({ createFakeScorm12Api, resetPipwerks } = require(`${runtimeDir}/fake-scorm12-api.test-util.js`));
+      runtime = window.exeScorm12;
+    });
+
+    afterAll(() => {
+      // Leave no trace: the other describes feature-detect the runtime and
+      // must keep seeing a page without it.
+      delete window.exeScorm12;
+      delete window.pipwerks;
+      for (const name of pageGlobals) delete window[name];
+    });
+
+    beforeEach(() => {
+      api = createFakeScorm12Api({ data: { 'cmi.core.lesson_status': '' } });
+      // The wrapper discovers the API on the page window itself (jsdom's
+      // window is its own parent and top).
+      window.API = api;
+      window.pipwerks = pipwerks;
+      window.exeScorm12 = runtime;
+      resetPipwerks(pipwerks);
+      client.resetDependencies();
+      activities.resetDependencies();
+      policy.resetDependencies();
+      fakeWindow = createFakeEventTarget();
+      fakeDocument = createFakeEventTarget();
+      fakeDocument.visibilityState = 'visible';
+      lifecycle.resetDependencies();
+      lifecycle.configure({
+        getClient: () => client,
+        getPolicy: () => policy,
+        getWindow: () => fakeWindow,
+        getDocument: () => fakeDocument,
+      });
+      runtime.resetAdapterForTests();
+      getScorm()._activityNumbersById = {};
+    });
+
+    afterEach(() => {
+      lifecycle.resetDependencies();
+      policy.resetDependencies();
+      activities.resetDependencies();
+      client.resetDependencies();
+      delete window.API;
+    });
+
+    it('registering before the session opens is silent, and reconciles once it is open', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // jQuery ready: the iDevice announces itself before loadPage().
+      getScorm().reportActivity(game(), { total: 4 });
+
+      expect(api.calls).toEqual([]);
+      expect(warn).not.toHaveBeenCalled();
+
+      // Body onload (exe_export.js): the page scan flag, then the session.
+      runtime.setPageHasScoredActivities(true);
+      window.loadPage();
+      expect(client.isActive()).toBe(true);
+      expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+
+      // The learner passes the quiz…
+      getScorm().updateActivity(game(), {}, true);
+      expect(api.data['cmi.core.score.raw']).toBe('90');
+      expect(api.data['cmi.core.lesson_status']).toBe('passed');
+
+      // …and a second required activity announces itself late: the
+      // reconciliation that was inert before the session now corrects the
+      // policy's own verdict.
+      getScorm().reportActivity(game({ ideviceId: 'quiz-2', ideviceNumber: 2 }), { total: 4 });
+      expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('publishes no score for an evaluable activity that has not scored, and a genuine zero once it has', () => {
+      getScorm().reportActivity(game(), { total: 4 });
+      runtime.setPageHasScoredActivities(true);
+      window.loadPage();
+      api.resetCalls();
+
+      // The iDevice's bootstrap refreshes the score display before any answer.
+      getScorm().showFinalScore(getScorm().buildLmsDataFromRegistry(), game());
+
+      expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.score.raw')).toEqual([]);
+      expect(api.data['cmi.core.score.raw']).toBe('');
+      expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+
+      getScorm().updateActivity(game({ scorerp: 0 }), {}, true);
+
+      expect(api.data['cmi.core.score.raw']).toBe('0');
+      expect(api.data['cmi.core.lesson_status']).toBe('failed');
+    });
+
+    it('leaving an unanswered page records a resumable attempt and no score', () => {
+      getScorm().reportActivity(game(), { total: 4 });
+      runtime.setPageHasScoredActivities(true);
+      window.loadPage();
+      // No lmsData view: rebuilt from the registry.
+      getScorm().showFinalScore(null, game());
+
+      fakeWindow.fire('pagehide', { persisted: false });
+
+      expect(api.callNames()).toContain('LMSFinish');
+      expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+      expect(api.data['cmi.core.exit']).toBe('suspend');
+      expect(api.data['cmi.core.score.raw']).toBe('');
+    });
+
+    it('showFinalScore treats a policy without hasAppliedEntry as ready and keeps scoring', () => {
+      window.exeScorm12 = Object.assign({}, runtime, { policy: policyWithout('hasAppliedEntry') });
+      runtime.session.open({ ownsLifecycle: false });
+      getScorm().reportActivity(game(), { completed: true, score: 70 });
+
+      getScorm().showFinalScore(getScorm().buildLmsDataFromRegistry(), game());
+
+      expect(api.data['cmi.core.score.raw']).toBe('70');
+      expect(api.data['cmi.core.lesson_status']).toBe('passed');
+    });
+
+    it('showFinalScore without recordActivityOutcome publishes the score and leaves the status alone', () => {
+      window.exeScorm12 = Object.assign({}, runtime, { policy: policyWithout('recordActivityOutcome') });
+      runtime.session.open({ ownsLifecycle: false });
+      getScorm().reportActivity(game(), { completed: true, score: 70 });
+
+      getScorm().showFinalScore(getScorm().buildLmsDataFromRegistry(), game());
+
+      expect(api.data['cmi.core.score.raw']).toBe('70');
+      expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+    });
+
+    it('updateActivity without persistActivities still reports and scores', () => {
+      window.exeScorm12 = Object.assign({}, runtime, { policy: policyWithout('persistActivities') });
+      runtime.session.open({ ownsLifecycle: false });
+
+      getScorm().updateActivity(game(), {}, true);
+
+      expect(activities.get('quiz-1')).toMatchObject({ completed: true, score: 90 });
+      expect(api.data['cmi.core.score.raw']).toBe('90');
+      expect(api.data['cmi.suspend_data']).toBe('');
+    });
+
+    it('reportActivity without reconcilePendingActivities still registers', () => {
+      window.exeScorm12 = Object.assign({}, runtime, { policy: policyWithout('reconcilePendingActivities') });
+
+      expect(getScorm().reportActivity(game(), { total: 4 })).not.toBeNull();
+
+      expect(activities.get('quiz-1')).toMatchObject({ evaluable: true, completionRequired: true, total: 4 });
+    });
+
+    it('updateActivity and showFinalScore keep the legacy writers on a page without a registry', () => {
+      // SCORM 2004 packages and packages exported before the rewrite: the
+      // legacy line format in cmi.suspend_data and a direct status verdict.
+      delete window.exeScorm12;
+      window.pipwerks = loadLegacyWrapper();
+      expect(window.pipwerks.SCORM.init()).toBe(true);
+      const lmsData = {};
+
+      getScorm().updateActivity(game(), lmsData, true);
+
+      expect(lmsData[1]).toEqual({ title: 'Quiz', score: 90, weighted: 1 });
+      expect(api.data['cmi.suspend_data']).toBe('1. "Quiz"; Score: 90%; Weight: 1%');
+      expect(api.data['cmi.core.score.raw']).toBe('90');
+      expect(api.data['cmi.core.lesson_status']).toBe('passed');
+    });
+
+    it('showFinalScore parses the legacy cmi.suspend_data when given no lmsData and there is no registry', () => {
+      api.data['cmi.suspend_data'] = '1. "Quiz"; Score: 40%; Weight: 1%';
+      delete window.exeScorm12;
+      window.pipwerks = loadLegacyWrapper();
+      expect(window.pipwerks.SCORM.init()).toBe(true);
+
+      getScorm().showFinalScore(null, game());
+
+      expect(api.data['cmi.core.score.raw']).toBe('40');
+      expect(api.data['cmi.core.lesson_status']).toBe('failed');
+    });
+
+    it('updateActivity and showFinalScore are no-ops without the wrapper or a game', () => {
+      delete window.pipwerks;
+      expect(() => getScorm().updateActivity(game(), {}, true)).not.toThrow();
+      expect(() => getScorm().showFinalScore({}, game())).not.toThrow();
+
+      window.pipwerks = pipwerks;
+      expect(client.initialize()).toBe(true);
+      expect(() => getScorm().updateActivity(null, {}, true)).not.toThrow();
+      expect(() => getScorm().showFinalScore({}, null)).not.toThrow();
+
+      expect(api.callsFor('LMSSetValue')).toEqual([]);
     });
   });
 
