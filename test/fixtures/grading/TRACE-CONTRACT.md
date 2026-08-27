@@ -155,6 +155,17 @@ without it. Record against a tree whose i18n bundles are built (`bun run bundle:
 an export with an empty `libs/common_i18n.js` throws `$exe_i18n is not defined` in every
 page and fails the `pageerror` check.
 
+**TODO — one v2 writer.** The core recorder
+(`test/e2e/playwright/specs/grading-matrix-recorder.spec.ts`) writes v2. The secondary
+serving evidence lane (`specs-moodle/exelearning-serving-matrix.spec.ts`) still emits its
+own `traceVersion: 1` shape from an inline `fs.writeJson`, missing `engine`,
+`package.sha256`, the `runtime` digests and `expected`. It already holds the inputs a v2
+trace needs — a `BuiltPackage` from `loadHtml5PackageFromZip()` (with `zipSha256`) and a
+`ServedRuntime` from `installMoodleServing()` — so the fix is to extract the recorder's
+`writeTrace()` into a shared writer in `helpers/moodle-serving-model.ts` and have both
+lanes call it. Deferred here to keep the change to the shared catalogue; not done as part
+of N-13.
+
 ## Committed traces
 
 The seven `<scenario>.trace.json` files in this directory are **v1 snapshots**, kept as
