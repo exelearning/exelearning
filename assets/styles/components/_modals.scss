@@ -50,8 +50,12 @@
             display: flex;
             align-items: center;
             gap: var(--margin-s);
-            margin-top: var(--margin-xs);
-            padding-bottom: var(--margin-xs);
+            // Separates the title from the previous section, its own rule, and the
+            // first row of icons. The grid gap adds 4px more above and below.
+            // Tuned by eye, so no margin token matches.
+            margin-top: 19px;
+            padding-bottom: var(--margin-m);
+            margin-bottom: var(--margin-m);
             border-bottom: 1px solid var(--gray-border-light);
             font-size: .75rem;
             font-weight: 600;
