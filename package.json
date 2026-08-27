@@ -118,7 +118,7 @@
     "happy-dom": "^20.11.6",
     "http-proxy-middleware": "^4.2.0",
     "kill-port": "^2.0.1",
-    "sass": "^1.103.0",
+    "sass": "^1.103.1",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11",
