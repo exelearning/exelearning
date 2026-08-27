@@ -76,6 +76,67 @@ iDevice icons by…</description>
 
 ---
 
+## Block Icons: Style Icons and General Icons
+
+The icon picker offers two groups. **Style icons** are the artwork your `icons/`
+folder ships. **General icons** are Google Material Symbols, bundled with the
+application and shared by every style.
+
+A General icon is not an `<img>`. It is a `<span class="exe-material-icon">` whose
+glyph is applied as a CSS mask and painted with `currentColor`:
+
+```html
+<span class="exe-material-icon" style="--exe-material-icon-url:url('data:image/svg+xml;utf8,…');"></span>
+```
+
+**Your style does not have to do anything for these icons to work.** The application
+ships a default rule — `content/css/base.css` in exports, the workarea stylesheet in
+the editor — that sizes the span to 40×40 and applies the mask. It loads before
+`theme/style.css`, so you only override what you want to change.
+
+### Matching them to your own artwork
+
+Set `--exe-icon-color` so General icons take the same colour as your Style icons.
+Without it the tint falls back to the computed text colour of the block header, which
+may not match your artwork at all:
+
+```css
+.exe-content {
+    --exe-icon-color: #d86e41;
+}
+
+.exe-content .box-head .box-icon {
+    color: var(--exe-icon-color, #d86e41);
+}
+```
+
+To change the size, redefine the span. Keep `transform: scale(1.2)`: Material Symbols
+are drawn inside a 20px live area on a 24px grid, so without it the glyph renders
+about 17% smaller than edge-to-edge Style icons.
+
+```css
+.exe-content .box-icon .exe-material-icon {
+    width: 50px;
+    height: 50px;
+    transform: scale(1.2);
+}
+```
+
+### Two things that will break your icons
+
+- **Dark mode by global inversion.** If your style does
+  `html.exe-dark-mode { filter: invert(…) }` and then counter-inverts the media with
+  `:is(img, video, iframe)`, name the span too — it is not an `<img>`, so otherwise
+  your General icons invert while your Style icons do not. Only do this when your
+  Style icons are light artwork; if `--exe-icon-color` is already a dark colour meant
+  to invert to a light one, leave the span out of that list.
+- **Filtering the icon picker.** If your style restyles
+  `#change-block-icon-modal-content .option-block-icon`, scope the rule to `img` and
+  `svg` inside the chip. The chip itself has a background, so a `filter` on it paints
+  a solid block over the icon.
+
+---
+
 ## Optional Files and Folders
 
 You can add other useful folders such as:
