@@ -212,6 +212,32 @@ body:has(#teacher-mode-toggler-wrapper) .package-title {
     height: auto;
 }
 
+/* General icons (Material Symbols) */
+.exe-content {
+    --exe-icon-color: #fff;
+}
+
+.exe-content .box-head .box-icon {
+    color: var(--exe-icon-color, #fff);
+}
+
+.exe-content .box-icon .exe-material-icon {
+    display: block;
+    width: 50px;
+    height: 50px;
+    background-color: currentColor;
+    -webkit-mask-image: var(--exe-material-icon-url);
+    mask-image: var(--exe-material-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons */
+    transform: scale(1.2);
+}
+
 .exe-content .box-title {
     padding-top: 15px;
 }
@@ -730,9 +756,19 @@ body[installation-type] .small-icon.dots-menu-vertical-icon,
     opacity: 1;
 }
 
-.modal #change-block-icon-modal-content .option-block-icon.exe-icon {
+/* Both icon groups are white for the blue box head, so darken them for the white
+   chip in the icon picker: Style icons are <img> artwork, General icons are inline
+   sprite <svg> filled with currentColor. Scoped to the icon: inverting the chip
+   blackens it. */
+.modal #change-block-icon-modal-content .option-block-icon.exe-icon img,
+.modal #change-block-icon-modal-content .option-block-icon.exe-icon svg {
     filter: invert(1);
     opacity: 0.7;
+}
+
+/* Same reason, but this button also carries a text label, so tint it instead. */
+.modal #change-block-icon-modal-content .icon-picker-custom-button {
+    color: #0d77d1;
 }
 
 /* Dark mode toggler */
@@ -771,7 +807,7 @@ html.exe-dark-mode {
 }
 
 /* Revert filter */
-html.exe-dark-mode :is(img, video, iframe):not(.exe-icon img),
+html.exe-dark-mode :is(img, video, iframe, .exe-material-icon):not(.exe-icon img),
 html.exe-dark-mode #packageLicense,
 html.exe-dark-mode .nav-button,
 html.exe-dark-mode .siteNav-off .nav-buttons,
@@ -881,7 +917,7 @@ html.exe-dark-mode #eXeAtoolsSet {
 /* Never print the dark mode */
 @media print {
     html.exe-dark-mode,
-    html.exe-dark-mode :is(img, video, iframe):not(.exe-icon img),
+    html.exe-dark-mode :is(img, video, iframe, .exe-material-icon):not(.exe-icon img),
     html.exe-dark-mode #packageLicense,
     html.exe-dark-mode .nav-button,
     html.exe-dark-mode .siteNav-off .nav-buttons,

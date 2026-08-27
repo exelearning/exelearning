@@ -1740,6 +1740,8 @@ describe('IdeviceBlockNode', () => {
                 // Multicolor themes keep the theme accent (cannot match a single hue).
                 neo: '#e3ac3b',
                 universal: '#0d2953',
+                // White artwork, sits on the blue box head.
+                educablue: '#fff',
             };
             for (const [id, color] of Object.entries(expectedByTheme)) {
                 eXeLearning.app.themes.selected = { id };

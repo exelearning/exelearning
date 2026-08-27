@@ -32,6 +32,7 @@ const THEME_ICON_COLOR_MAP = {
     neo: '#e3ac3b',
     zen: '#d40055',
     universal: '#0d2953',
+    educablue: '#fff', // white artwork, sits on the blue box head
 };
 
 const localBlockIconRuntime = {
