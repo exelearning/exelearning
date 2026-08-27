@@ -2065,11 +2065,6 @@ var $eXeTrivial = {
 
         mOptions.respuesta = '';
 
-        $(window).on('pagehide.eXeTrivial', function () {
-            $eXeTrivial.sendScore(true, instance);
-            $exeDevices.iDevice.gamification.scorm.endScorm($eXeTrivial.mScorm);
-        });
-
         $('#trivialClickDado-' + instance).on('click touchstart', function (e) {
             e.preventDefault();
             $(this).hide();

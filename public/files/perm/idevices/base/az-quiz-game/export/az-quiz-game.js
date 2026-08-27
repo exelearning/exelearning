@@ -405,8 +405,6 @@ var $azquizgame = {
         $('#roscoShowErrors-' + instance).off('click');
         $('#roscoShowUnanswered-' + instance).off('click');
         $('#roscoCubierta-' + instance).off('click', '.rosco-audioicon');
-
-        $(window).off('pagehide.eXeRosco');
     },
 
     addEvents: function (instance) {
@@ -592,15 +590,6 @@ var $azquizgame = {
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
-
-        $(window).on('pagehide.eXeRosco', function () {
-            if (typeof $azquizgame.mScorm !== 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $azquizgame.mScorm
-                );
-                $azquizgame.gameOver(1, instance);
-            }
-        });
 
         $roscoTypeGame.show();
 
