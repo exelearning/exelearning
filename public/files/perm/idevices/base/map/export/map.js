@@ -2545,14 +2545,6 @@ var $eXeMapa = {
             return true;
         });
 
-        $(window).on('pagehide.eXeMapa', function () {
-            if ($eXeMapa.mScorm && typeof $eXeMapa.mScorm != 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeMapa.mScorm
-                );
-            }
-        });
-
         $('#mapaMultimedia-' + instance).on(
             'mouseenter',
             '.MQP-Point',
@@ -3134,8 +3126,6 @@ var $eXeMapa = {
 
         $('#mapaCodeAccessButton-' + instance).off('click');
         $('#mapaCodeAccessE-' + instance).off('click');
-
-        $(window).off('pagehide.eXeMapa');
 
         $multimedia.off('click');
 

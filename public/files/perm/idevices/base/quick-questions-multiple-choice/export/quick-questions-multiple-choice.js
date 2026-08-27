@@ -788,7 +788,6 @@ var $quickquestionsmultiplechoice = {
     onPlayerError: function () {},
 
     removeEvents: function (instance) {
-        $(window).off('pagehide.exeSelecciona');
         $(`#seleccionaLinkMaximize-${instance}`).off('click touchstart');
         $(`#seleccionaLinkMinimize-${instance}`).off('click touchstart');
         $('#seleccionaMainContainer-' + instance)
@@ -820,11 +819,6 @@ var $quickquestionsmultiplechoice = {
         mOptions.respuesta = '';
 
         $quickquestionsmultiplechoice.removeEvents(instance);
-        $(window).on('pagehide.exeSelecciona', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $quickquestionsmultiplechoice.mScorm
-            );
-        });
 
         mOptions.localPlayer = document.getElementById(
             `seleccionaVideoLocal-${instance}`

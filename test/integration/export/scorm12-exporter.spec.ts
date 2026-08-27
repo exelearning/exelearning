@@ -559,7 +559,19 @@ describe('Scorm12Exporter Integration', () => {
                     .filter(file => file.endsWith('.js'))
                     .some(file => fs.readFileSync(path.join(exportDir, file), 'utf8').includes('pagehide'));
             });
-            expect(folders.length).toBeGreaterThan(20);
+            // Only the runtimes that persist state or clean up on page hide
+            // still bind `pagehide`; they anchor the fixture so that the
+            // filter can never go trivially empty.
+            expect(folders).toEqual(
+                expect.arrayContaining([
+                    'challenge',
+                    'crossword',
+                    'padlock',
+                    'trivial',
+                    'three-d-viewer',
+                    'three-sixty-viewer',
+                ]),
+            );
 
             const structure: ParsedOdeStructure = {
                 meta: { title: 'iDevice matrix', author: '', language: 'en', theme: 'base' },

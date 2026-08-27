@@ -355,7 +355,6 @@ var $periodicTable = {
             .off('click', '.Games-SendScore');
         $('#ptStartGame-' + instance).off('click');
         $('#ptStartGameMobile-' + instance).off('click');
-        $(window).off('pagehide.PeriodicTable');
     },
 
     addEvents: function (instance) {
@@ -428,17 +427,6 @@ var $periodicTable = {
         });
 
         $('#ptPNumber-' + instance).text(mOptions.number);
-
-        $(window).on(
-            'pagehide.PeriodicTable',
-            function () {
-                if ($periodicTable.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $periodicTable.mScorm
-                    );
-                }
-            }
-        );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);

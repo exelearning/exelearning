@@ -421,15 +421,6 @@ var $eXeIdentifica = {
             $messageClue = $(`#idfMessageClue-${instance}`),
             $startGameButton = $(`#idfStartGame-${instance}`);
 
-        $(window).on(
-            'pagehide.eXeIdentifica',
-            function () {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeIdentifica.mScorm
-                );
-            }
-        );
-
         $linkMaximize.on('click touchstart', function (e) {
             e.preventDefault();
             $gameContainer.show();
@@ -610,8 +601,6 @@ var $eXeIdentifica = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('pagehide.eXeIdentifica');
-
         $(`#idfLinkMaximize-${instance}`).off('click touchstart');
         $(`#idfLinkMinimize-${instance}`).off('click touchstart');
         $('#idfMainContainer-' + instance)

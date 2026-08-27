@@ -1085,10 +1085,6 @@ var $eXeOrdena = {
 
         $(`#ordenaPNumber-${instance}`).text(mOptions.numberQuestions);
 
-        $(window).on('pagehide.eXeOrdena', function () {
-            $exeDevices.iDevice.gamification.scorm.endScorm($eXeOrdena.mScorm);
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1247,8 +1243,6 @@ var $eXeOrdena = {
         $(`#ordenaStartGameEnd-${instance}`).off('click');
         $(`#ordenaClueButton-${instance}`).off('click');
         $(`#ordenaValidatePhrase-${instance}`).off('click');
-
-        $(window).off('pagehide.eXeOrdena');
 
         $eXeOrdena.removeTouchDragAndDrop(instance);
         $eXeOrdena.removeTouchPhraseDragAndDrop(instance);

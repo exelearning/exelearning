@@ -665,14 +665,6 @@ var $quickquestionsvideo = {
     addEvents: function (instance) {
         const mOptions = $quickquestionsvideo.options[instance];
         $quickquestionsvideo.removeEvents(instance);
-        $(window).on(
-            'pagehide.eXeVideoQuext',
-            function () {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $quickquestionsvideo.mScorm
-                );
-            }
-        );
 
         $(`videovquextGamerOver-${instance}`).css('display', 'flex');
 
@@ -1017,7 +1009,6 @@ var $quickquestionsvideo = {
         $(`#vquextModeBoardOK-${instance}, #vquextModeBoardKO-${instance}`).off(
             'click'
         );
-        $(window).off('pagehide.eXeVideoQuext');
     },
 
     goEnd: function (instance, time) {

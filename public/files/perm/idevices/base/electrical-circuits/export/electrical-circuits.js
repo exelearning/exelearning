@@ -390,7 +390,6 @@ var $eXeEC = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('pagehide.exeEC');
         $(`#elcpLinkMaximize-${instance}`).off('click touchstart');
         $(`#elcpLinkMinimize-${instance}`).off('click touchstart');
         $('#elcpMainContainer-' + instance)
@@ -428,11 +427,6 @@ var $eXeEC = {
         mOptions.respuesta = '';
 
         $eXeEC.removeEvents(instance);
-        $(window).on('pagehide.exeEC', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeEC.mScorm
-            );
-        });
 
         $(`#elcpGamerOver-${instance}`).css('display', 'flex');
 

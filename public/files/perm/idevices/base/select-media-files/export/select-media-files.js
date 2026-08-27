@@ -850,17 +850,6 @@ var $eXeSeleccionaMedias = {
 
         $('#slcmpPNumber-' + instance).text(mOptions.numberQuestions);
 
-        $(window).on(
-            'pagehide.eXeSeleccionaMedias',
-            function () {
-                if (typeof $eXeSeleccionaMedias.mScorm != 'undefined') {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeSeleccionaMedias.mScorm
-                    );
-                }
-            }
-        );
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1023,7 +1012,6 @@ var $eXeSeleccionaMedias = {
         $('#slcmpFeedBackClose-' + instance).off('click');
         $('#slcmpCodeAccessButton-' + instance).off('click touchstart');
         $('#slcmpCodeAccessE-' + instance).off('keydown');
-        $(window).off('pagehide.eXeSeleccionaMedias');
         $('#slcmpMainContainer-' + instance)
             .closest('.seleccionamedias-IDevice')
             .off('click', '.Games-SendScore');
