@@ -137,6 +137,9 @@
         .option-block-icon {
             &.empty-block-icon.exe-icon {
                 background-color: var(--main-background-color);
+                // "No icon" removes the icon rather than picking one, so it stays red
+                // whether or not it is the current selection.
+                color: var(--remove);
             }
 
             &.theme-block-icon img {
@@ -163,16 +166,19 @@
                     background-color: var(--main-background-color);
                     border: 2px solid var(--modal-icon-color, var(--icon-primary));
                 }
+
+                // Same treatment for "no icon": the filled accent would bury its red,
+                // so mark the selection with the border instead.
+                &.empty-block-icon {
+                    background-color: var(--main-background-color);
+                    border: 2px solid var(--modal-icon-color, var(--icon-primary));
+                }
             }
 
             &.original-icon-selection:not([selected="true"]) {
                 outline: 2px solid var(--gray-400);
                 outline-offset: 2px;
             }
-        }
-
-        .empty-block-icon[selected="true"] {
-            color: var(--remove);
         }
     }
 
