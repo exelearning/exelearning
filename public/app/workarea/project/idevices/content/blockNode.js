@@ -32,7 +32,7 @@ const THEME_ICON_COLOR_MAP = {
     neo: '#e3ac3b',
     zen: '#d40055',
     universal: '#0d2953',
-    educablue: '#fff', // white artwork, sits on the blue box head
+    educablue: '#0d77d1', // picker accent; the box head icon itself is white
 };
 
 const localBlockIconRuntime = {
@@ -411,7 +411,10 @@ export default class IdeviceBlockNode {
         for (const colorSource of colorCandidates) {
             if (!window.getComputedStyle) break;
             const styles = window.getComputedStyle(colorSource);
-            const customColor = styles.getPropertyValue('--exe-icon-color').trim()
+            // The picker chips sit on a light background, so a style whose header needs
+            // a light --exe-icon-color declares a readable picker accent separately.
+            const customColor = styles.getPropertyValue('--exe-icon-picker-color').trim()
+                || styles.getPropertyValue('--exe-icon-color').trim()
                 || styles.getPropertyValue('--icon-primary').trim();
             if (customColor) {
                 return customColor;

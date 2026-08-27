@@ -1709,6 +1709,18 @@ describe('IdeviceBlockNode', () => {
             titles.forEach((title) => expect(title.style.display).toBe(''));
         });
 
+        it('prefers the picker accent over the box head icon color', () => {
+            block.headElement = document.createElement('div');
+            document.body.appendChild(block.headElement);
+            block.headElement.style.setProperty('--exe-icon-color', '#fff');
+            block.headElement.style.setProperty('--exe-icon-picker-color', '#0d77d1');
+            // The head needs white on its blue background; the white picker chip does not.
+            expect(block.getCurrentThemeIconColor()).toBe('#0d77d1');
+
+            block.headElement.style.removeProperty('--exe-icon-picker-color');
+            expect(block.getCurrentThemeIconColor()).toBe('#fff');
+        });
+
         it('prefers theme css variables and known theme colors when resolving modal icon color', () => {
             block.headElement = document.createElement('div');
             document.body.appendChild(block.headElement);
@@ -1740,8 +1752,8 @@ describe('IdeviceBlockNode', () => {
                 // Multicolor themes keep the theme accent (cannot match a single hue).
                 neo: '#e3ac3b',
                 universal: '#0d2953',
-                // White artwork, sits on the blue box head.
-                educablue: '#fff',
+                // Picker accent: the box head icon itself is white.
+                educablue: '#0d77d1',
             };
             for (const [id, color] of Object.entries(expectedByTheme)) {
                 eXeLearning.app.themes.selected = { id };
