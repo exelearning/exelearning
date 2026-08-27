@@ -130,7 +130,7 @@ article.box.idevice-element-in-content[mode="export"] .idevice_node {
     font-size: 1.5rem;
 }
 
-/* Material Icons: tint colour, applied through currentColor to the icon mask */
+/* General icons (Material Symbols) */
 .exe-content {
     --exe-icon-color: #d86e41;
 }
@@ -430,7 +430,7 @@ button.toggler:focus {
     height: auto;
 }
 
-/* Material Icons: the sprite glyph is painted as a CSS mask tinted with currentColor */
+/* General icons (Material Symbols) */
 .exe-export .box-icon .exe-material-icon {
     display: block;
     float: left;
@@ -446,10 +446,7 @@ button.toggler:focus {
     mask-position: center;
     -webkit-mask-size: contain;
     mask-size: contain;
-    /* Material Symbols are drawn inside a 20px live area on a 24px grid, so with
-       mask-size: contain the glyph ink fills only 20/24 = 83.3% of the box and
-       renders smaller than the edge-to-edge Style icons. Scale by 24/20 = 1.2 so
-       the glyph ink matches the Style icon exactly. */
+    /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons */
     transform: scale(1.2);
 }
 

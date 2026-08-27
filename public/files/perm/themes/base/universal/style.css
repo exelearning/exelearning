@@ -109,6 +109,7 @@ body#tinymce {
     outline-offset: 2px;
 }
 
+/* General icons (Material Symbols) */
 .exe-content {
     --exe-icon-color: #0d2953;
 }
@@ -264,6 +265,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     height: auto;
     scale: 0.9;
 }
+/* General icons (Material Symbols) */
 .exe-content .box-icon .exe-material-icon {
     width: 50px;
     height: 50px;
@@ -286,6 +288,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     scale: 1;
     margin-right: -10px;
 }
+/* General icons (Material Symbols) */
 #node-content-container.exe-content .box-head .exe-icon .exe-material-icon {
     width: 45px;
     height: 45px;
@@ -301,16 +304,14 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     -webkit-mask-size: contain;
     mask-size: contain;
 }
+/* General icons (Material Symbols) */
 .exe-export .box-icon .exe-material-icon {
     display: block;
     float: left;
     width: 40px;
     height: 40px;
     margin-right: 10px;
-    /* Material Symbols are drawn inside a 20px live area on a 24px grid, so with
-       mask-size: contain the glyph ink fills only 20/24 = 83.3% of the box and
-       renders smaller than the edge-to-edge Style icons. Scale by 24/20 = 1.2 so
-       the glyph ink matches the Style icon exactly. */
+    /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons */
     transform: scale(1.2);
     background-color: currentColor;
     -webkit-mask-image: var(--exe-material-icon-url);
