@@ -169,6 +169,20 @@ var $trueorfalse = {
 
         data.isTest = typeof data.isTest === 'undefined' ? false : data.isTest;
 
+        // Saving a SCORM score needs quiz mode: outside it `startGame()` is
+        // unreachable (createInterfaceTrueOrFalse hides both the start and the
+        // check controls), so `gameStarted` never becomes true and the shared
+        // gamification layer refuses every score. The edition form rejects this
+        // pair on save, but content written straight through the REST API can
+        // still carry it, and the activity then looks fine while silently never
+        // reporting. Say so rather than failing mutely.
+        if (data.isScorm > 0 && !data.isTest) {
+            console.warn(
+                `[trueorfalse] "${data.id}" asks for a SCORM score with quiz mode off; ` +
+                    'no score can ever be saved. Enable quiz mode (isTest) or turn the SCORM option off.'
+            );
+        }
+
         data.hits = 0;
         data.errors = 0;
         data.scorerp = 0;
@@ -723,7 +737,6 @@ var $trueorfalse = {
                             : $trueorfalse.initialScore;
                     $trueorfalse.updateScoreData(mOptions);
                     $trueorfalse.sendScore(true, mOptions);
-                    $trueorfalse.initialScore = score;
                 }
             }
         );
@@ -870,15 +883,14 @@ var $trueorfalse = {
             });
 
         mOptions.hits = hits;
-        mOptions.errors = hits;
-        score = (mOptions.hist * 10) / mOptions.numberQuestions;
+        mOptions.errors = errors;
+        mOptions.scorep = (10 * mOptions.hits) / mOptions.numberQuestions;
 
-        $('#tofPMultimedia').data('score', score);
+        $('#tofPMultimedia').data('score', mOptions.scorep);
         $('#tofPMultimedia').data('isscorm', mOptions.isScorm);
         $('#tofPMultimedia').data('evaluation', mOptions.evaluation);
         $('#tofPMultimedia').data('evaluationID', mOptions.evaluationID);
 
-        mOptions.scorep = (10 * mOptions.hits) / mOptions.numberQuestions;
         const message =
             mOptions.msgs.msgYouScore + ': ' + mOptions.scorep.toFixed(2);
         const type = mOptions.scorep < 5 ? 1 : 2;
@@ -892,7 +904,6 @@ var $trueorfalse = {
                     ? ''
                     : $trueorfalse.initialScore;
             $trueorfalse.sendScore(true, data);
-            $trueorfalse.initialScore = score;
         }
     },
 

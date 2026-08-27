@@ -1800,9 +1800,10 @@ var $eXeMapa = {
     },
 
     createInterfaceMapa: function (instance) {
+        const mOptions = $eXeMapa.options[instance];
+        if (!mOptions) return '';
         const path = $eXeMapa.idevicePath,
-            msgs = $eXeMapa.options[instance].msgs,
-            mOptions = $eXeMapa.options[instance],
+            msgs = mOptions.msgs,
             html = `
             <div class="MQP-MainContainer" id="mapaMainContainer-${instance}">
                 <div class="MQP-GameMinimize" id="mapaGameMinimize-${instance}">
@@ -4126,9 +4127,13 @@ var $eXeMapa = {
     },
 
     answerTPQuestion: function (instance) {
-        const mOptions = $eXeMapa.options[instance],
-            p = mOptions.activeMap.pts[mOptions.activeMap.active],
-            q = p.tests[p.activeTest];
+        const mOptions = $eXeMapa.options[instance];
+        if (!mOptions || !mOptions.activeMap || !mOptions.activeMap.pts)
+            return;
+        const p = mOptions.activeMap.pts[mOptions.activeMap.active];
+        if (!p || !p.tests) return;
+        const q = p.tests[p.activeTest];
+        if (!q) return;
 
         $exeDevices.iDevice.gamification.media.stopSound();
 

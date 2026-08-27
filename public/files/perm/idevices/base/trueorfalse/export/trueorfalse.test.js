@@ -285,6 +285,57 @@ describe('trueorfalse iDevice export', () => {
     });
   });
 
+  describe('source hygiene', () => {
+    const source = () =>
+      readFileSync(join(__dirname, 'trueorfalse.js'), 'utf-8');
+
+    /**
+     * `score` was assigned without a declaration, so it leaked as an implicit
+     * global — and it read `mOptions.hist`, a typo for `hits`, so the value was
+     * NaN. The only two consumers were an assignment to a field nothing reads
+     * and a `$('#tofPMultimedia')` selector that matches nothing (the rendered
+     * id carries an instance suffix). `mOptions.scorep`, computed two lines
+     * below, is the real score.
+     */
+    it('declares every variable it assigns', () => {
+      expect(source()).not.toMatch(/^\s*score\s*=/m);
+    });
+
+    it('does not read the misspelled mOptions.hist', () => {
+      expect(source()).not.toContain('mOptions.hist');
+      expect(source()).toContain('mOptions.hits');
+    });
+  });
+
+  describe('updateConfig SCORM invariant', () => {
+    let warn;
+
+    beforeEach(() => {
+      warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warn.mockRestore();
+    });
+
+    it('warns when a SCORM score is requested with quiz mode off', () => {
+      $trueorfalse.updateConfig({ ideviceId: 'tof-1', isScorm: 1, isTest: false });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toContain('tof-1');
+      expect(warn.mock.calls[0][0]).toContain('no score can ever be saved');
+    });
+
+    it.each([
+      ['quiz mode on', { isScorm: 1, isTest: true }],
+      ['SCORM off', { isScorm: 0, isTest: false }],
+    ])('stays quiet for a valid combination: %s', (_label, flags) => {
+      $trueorfalse.updateConfig({ ideviceId: 'tof-1', ...flags });
+
+      expect(warn).not.toHaveBeenCalled();
+    });
+  });
+
   describe('createInterfaceTrueOrFalse', () => {
     const options = () => ({
       id: 'tof-1',

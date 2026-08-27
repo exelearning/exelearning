@@ -252,4 +252,48 @@ describe('dragdrop iDevice export', () => {
       expect(() => touchEndHandler({ changedTouches: [{ clientX: 10, clientY: 10 }] })).not.toThrow();
     });
   });
+
+  describe('initializeDragAndDrop guards (#2272)', () => {
+    const instance = 0;
+
+    afterEach(() => {
+      delete $.ui;
+      delete $.fn.draggable;
+      delete $.fn.droppable;
+      vi.useRealTimers();
+    });
+
+    it('returns early without throwing when options[instance] is gone', () => {
+      expect(() => $eXeDragDrop.initializeDragAndDrop(instance)).not.toThrow();
+    });
+
+    it('survives a stale 200ms retry that fires after teardown removed the options', () => {
+      vi.useFakeTimers();
+      // jQuery UI is not loaded, so the first call schedules a retry.
+      $eXeDragDrop.options[instance] = {};
+      $eXeDragDrop.initializeDragAndDrop(instance);
+      expect($eXeDragDrop.options[instance]._initRetries).toBe(1);
+      // Teardown wipes the options before the retry fires.
+      $eXeDragDrop.options = [];
+      expect(() => vi.advanceTimersByTime(200)).not.toThrow();
+    });
+
+    it('wires drag and drop when options, DOM and jQuery UI are present (positive path)', () => {
+      $.ui = { draggable: {}, droppable: {} };
+      $.fn.draggable = vi.fn(function () {
+        return this;
+      });
+      $.fn.droppable = vi.fn(function () {
+        return this;
+      });
+      document.body.innerHTML = `<div id="dadPGameContainer-${instance}"></div>`;
+      $eXeDragDrop.options[instance] = { _initRetries: 3 };
+
+      expect(() => $eXeDragDrop.initializeDragAndDrop(instance)).not.toThrow();
+
+      expect($eXeDragDrop.options[instance]._initRetries).toBe(0);
+      expect($.fn.draggable).toHaveBeenCalled();
+      expect($.fn.droppable).toHaveBeenCalled();
+    });
+  });
 });
