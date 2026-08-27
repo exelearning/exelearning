@@ -37,6 +37,9 @@
   mask-position: center;
   -webkit-mask-size: contain;
   mask-size: contain;
+  /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons.
+     Kept in step with the editor rule in assets/styles/layout/_execontent.scss. */
+  transform: scale(1.2);
 }
 
 .exe-content a{
