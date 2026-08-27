@@ -1221,6 +1221,33 @@ var $exeDevices = {
                     });
                 },
 
+                // Has the learner started EVERY evaluable iDevice on this page? This is the gate for
+                // the page's verdict: while any of them is still untouched (state 0) the page stays
+                // "incomplete", however well the learner did on the ones already opened.
+                //
+                // Started, not finished: state 1 is enough. The learner has to have opened them all,
+                // but need not have answered every question of each.
+                //
+                // The score is NOT gated by this — it keeps being written and shown on every save,
+                // so the mark climbs in the LMS while the status is still incomplete. (#1831)
+                //
+                // @param {Object} [lmsData] parsed suspend_data; read from the LMS when omitted.
+                hasEveryActivityStarted: function (lmsData) {
+                    if (lmsData == null) {
+                        lmsData = $exeDevices.iDevice.gamification.scorm.readActivityState();
+                    }
+                    if (!lmsData || typeof lmsData !== 'object') return false;
+
+                    const keys = Object.keys(lmsData);
+                    if (keys.length === 0) return false;
+
+                    return keys.every(key => {
+                        const entry = lmsData[key] || {};
+                        const state = entry.state != null ? entry.state : 0;
+                        return state === 1 || state === 2;
+                    });
+                },
+
                 // Read and parse the per-iDevice state held in cmi.suspend_data. Returns an empty
                 // object when SCORM is unavailable or the data cannot be read, so every caller can
                 // treat the result as "no evaluable iDevices".
@@ -1578,6 +1605,15 @@ var $exeDevices = {
                             $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
                             return;
                         }
+                        // The verdict waits until the learner has STARTED every evaluable iDevice on
+                        // the page. Until then the page reads "incomplete", however well they did on
+                        // the ones already opened: a page is not resolved while part of it has never
+                        // been touched. Started is enough — the questions of each need not be finished.
+                        //
+                        // The SCORE is not held back: it is written on every save regardless, so the
+                        // mark climbs in the LMS while the status is still incomplete. (#1831)
+                        const everyStarted =
+                            $exeDevices.iDevice.gamification.scorm.hasEveryActivityStarted(lmsData);
                         const verdict = passed ? "passed" : "failed";
                         // SCORM 1.2 stores everything under cmi.core.* and combines completion+success
                         // in cmi.core.lesson_status; SCORM 2004 splits them and uses cmi.* (no .core.),
@@ -1588,11 +1624,11 @@ var $exeDevices = {
                             pipwerks.SCORM.set("cmi.score.min", 0);
                             pipwerks.SCORM.set("cmi.score.max", 100);
                             pipwerks.SCORM.set("cmi.score.scaled", newFinalScore / 100);
-                            pipwerks.SCORM.set("cmi.completion_status", "completed");
-                            pipwerks.SCORM.set("cmi.success_status", verdict);
+                            pipwerks.SCORM.set("cmi.completion_status", everyStarted ? "completed" : "incomplete");
+                            pipwerks.SCORM.set("cmi.success_status", everyStarted ? verdict : "unknown");
                         } else {
                             pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-                            pipwerks.SCORM.set("cmi.core.lesson_status", verdict);
+                            pipwerks.SCORM.set("cmi.core.lesson_status", everyStarted ? verdict : "incomplete");
                         }
                         // Single source of truth for the resume/exit token: route every exit write through
                         // pipwerks.SCORM.SetExit — the one function that maps the intent to the version-correct
@@ -1600,14 +1636,14 @@ var $exeDevices = {
                         // for SCORM 1.2, whose exit vocabulary has no "normal". doQuit/doBack already funnel
                         // through SetExit, so showFinalScore must not bypass it and duplicate that mapping.
                         //
-                        // The page has just been given a verdict, so the exit says "normal": the attempt has
-                        // a result. It does NOT wait for every iDevice to be finished, because Moodle draws
-                        // its index icon from this token — a page left as "suspend" is shown as suspended
-                        // even when the stored status is already passed, and the teacher sees no result
-                        // until the whole page is done. Verified on a live Moodle: writing an empty
-                        // cmi.core.exit on a page reporting passed flips the index icon immediately. (#1831)
+                        // The exit follows the verdict: a page that has one exits "normal" because the
+                        // attempt has a result, and a page still short of it stays resumable. Moodle
+                        // draws its index icon from this token, so the two have to agree — leaving a
+                        // resolved page as "suspend" shows it as suspended and hides the result.
+                        // Verified on a live Moodle: writing an empty cmi.core.exit on a page reporting
+                        // passed flips the index icon immediately. (#1831)
                         if (typeof pipwerks.SCORM.SetExit === "function") {
-                            pipwerks.SCORM.SetExit("normal");
+                            pipwerks.SCORM.SetExit(everyStarted ? "normal" : "suspend");
                         }
                     }
 

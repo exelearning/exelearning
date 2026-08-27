@@ -1271,6 +1271,14 @@ describe('exe_export.js', () => {
                   const state = (data || lmsData)[key].state;
                   return state === 1 || state === 2;
                 }),
+              hasEveryActivityStarted: (data) => {
+                const entries = data || lmsData;
+                const keys = Object.keys(entries);
+                return (
+                  keys.length > 0 &&
+                  keys.every((key) => entries[key].state === 1 || entries[key].state === 2)
+                );
+              },
             },
           },
         },
@@ -1414,6 +1422,31 @@ describe('exe_export.js', () => {
         expect(window.scorm.set).toHaveBeenCalledWith('cmi.success_status', 'passed');
         expect(window.scorm.set).toHaveBeenCalledWith('cmi.score.scaled', 0.8);
         expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', expect.anything());
+      });
+
+      // The verdict waits until every iDevice has been STARTED. While one is still untouched the
+      // page stays incomplete, however well the learner did on the others — but the score is
+      // reported all the same, so the mark climbs in the LMS meanwhile. (#1831)
+      it('holds the page incomplete while an iDevice is still untouched, and reports the score anyway', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+        stubScormHelpers({ 1: { state: 2 }, 2: { state: 0 } }, 90);
+
+        window.$exeExport.updateScormPageStatus(true);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'incomplete');
+        expect(window.scorm.set).not.toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
+        // The mark is still published while the page is incomplete.
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.score.raw', 90);
+      });
+
+      // Started is enough: the learner need not have answered every question of each iDevice.
+      it('gives the verdict once every iDevice is started, even with none of them finished', () => {
+        window.scorm = { set: vi.fn(), save: vi.fn(), get: vi.fn(() => 'sd') };
+        stubScormHelpers({ 1: { state: 1 }, 2: { state: 1 } }, 60);
+
+        window.$exeExport.updateScormPageStatus(true);
+
+        expect(window.scorm.set).toHaveBeenCalledWith('cmi.core.lesson_status', 'passed');
       });
 
       // The verdict does not wait for every iDevice to finish: it reports the score as it stands.

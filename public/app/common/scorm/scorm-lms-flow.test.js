@@ -368,6 +368,62 @@ describe('SCORM 1.2 learner journey against a Moodle-like LMS', () => {
         expect(api.persisted['cmi.suspend_data']).toContain('Estado: 1');
     });
 
+    // On a page with several scored iDevices the verdict waits until the learner has STARTED
+    // them all: a page is not resolved while part of it has never been touched. The score is
+    // reported throughout, so the mark climbs in the LMS while the status is still incomplete,
+    // and the attempt stays resumable because there is no result yet. (#1831)
+    it('holds a multi-iDevice page incomplete while one is untouched, still reporting the score', () => {
+        window.loadPage();
+        const first = createGame({ ideviceNumber: 1, title: 'Quiz 1', weighted: 50 });
+        const second = createGame({ ideviceNumber: 2, title: 'Quiz 2', weighted: 50 });
+        document.body.insertAdjacentHTML(
+            'beforeend',
+            '<div class="idevice_node" id="idevice-2"><article><header><span class="box-title">Quiz 2</span></header><div id="game2"></div></article></div>',
+        );
+        second.main = 'game2';
+        scorm.registerActivity(first);
+        scorm.registerActivity(second);
+
+        // Only the first one is played, and perfectly.
+        first.gameStarted = true;
+        first.gameOver = true;
+        first.scorerp = 10;
+        scorm.sendScoreNew(true, first);
+
+        expect(api.persisted['cmi.core.lesson_status']).toBe('incomplete');
+        expect(api.persisted['cmi.core.score.raw']).toBe('50');
+
+        window.unloadPage(true);
+        expect(api.persisted['cmi.core.exit']).toBe('suspend');
+    });
+
+    // Started is enough: the second iDevice need not be finished for the page to be resolved.
+    it('gives the verdict once the learner has started every iDevice', () => {
+        window.loadPage();
+        const first = createGame({ ideviceNumber: 1, title: 'Quiz 1', weighted: 50 });
+        const second = createGame({ ideviceNumber: 2, title: 'Quiz 2', weighted: 50 });
+        document.body.insertAdjacentHTML(
+            'beforeend',
+            '<div class="idevice_node" id="idevice-2"><article><header><span class="box-title">Quiz 2</span></header><div id="game2"></div></article></div>',
+        );
+        second.main = 'game2';
+        scorm.registerActivity(first);
+        scorm.registerActivity(second);
+
+        first.gameStarted = true;
+        first.gameOver = true;
+        first.scorerp = 10;
+        scorm.sendScoreNew(true, first);
+        expect(api.persisted['cmi.core.lesson_status']).toBe('incomplete');
+
+        // Merely starting the second one resolves the page: 100 and 0 over equal weights is 50.
+        second.gameStarted = true;
+        scorm.restartActivity(second);
+
+        expect(api.persisted['cmi.core.lesson_status']).toBe('passed');
+        expect(api.persisted['cmi.suspend_data']).toContain('Estado: 1');
+    });
+
     it('closes a finished page as non-resumable', () => {
         window.loadPage();
         const game = createGame();

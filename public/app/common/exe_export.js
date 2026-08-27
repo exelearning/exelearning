@@ -381,14 +381,41 @@ window.$exeExport = {
             return;
         }
         if (!this.hasAttemptedScormActivity(lmsData)) {
-            // Registered but never started: the only case that stays incomplete.
+            // Registered but never started: nothing done, and no score to report either.
             this.setScormStatus('incomplete', null);
             return;
         }
-        // Started: the verdict follows the weighted average, and keeps following it on every
-        // later save. >= 50 (i.e. >= 5 out of 10) passes; below fails.
         let score = this.readScormFinalScore(lmsData);
+        if (!this.hasEveryScormActivityStarted(lmsData)) {
+            // Some iDevice on the page has still not been opened, so the page is not resolved:
+            // it stays incomplete however well the learner did on the others. The score is
+            // reported all the same, so the mark climbs in the LMS meanwhile.
+            this.setScormStatus('incomplete', score);
+            return;
+        }
+        // Every iDevice has been started: the verdict follows the weighted average, and keeps
+        // following it on every later save. >= 50 (i.e. >= 5 out of 10) passes; below fails.
         this.setScormStatus(score >= 50 ? 'passed' : 'failed', score);
+    },
+
+    /**
+     * Has the learner started every evaluable iDevice on this page? Delegates to the shared helper
+     * in common.js, which owns the suspend_data format. Defaults to "not all started" when it is
+     * unavailable, which keeps the page out of a verdict it may not have earned.
+     */
+    hasEveryScormActivityStarted: function (lmsData) {
+        try {
+            let scormHelpers = window.$exeDevices
+                && window.$exeDevices.iDevice
+                && window.$exeDevices.iDevice.gamification
+                && window.$exeDevices.iDevice.gamification.scorm;
+            if (!scormHelpers || typeof scormHelpers.hasEveryActivityStarted != 'function') {
+                return false;
+            }
+            return scormHelpers.hasEveryActivityStarted(lmsData) === true;
+        } catch (e) {
+            return false;
+        }
     },
 
     /**
