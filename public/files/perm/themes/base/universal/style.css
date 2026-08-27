@@ -308,8 +308,6 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 .exe-export .box-icon .exe-material-icon {
     display: block;
     float: left;
-    width: 40px;
-    height: 40px;
     margin-right: 10px;
     /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons */
     transform: scale(1.2);
