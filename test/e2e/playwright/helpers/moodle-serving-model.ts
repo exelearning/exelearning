@@ -13,7 +13,8 @@
  *     inserted before the first `</head>`, with `libs/...` at the package root and
  *     `../libs/...` under `html/`.
  *  3. `libs/SCORM_API_wrapper.js` and `libs/SCOFunctions.js` are served from the
- *     PLUGIN's own copies (`mod-eval/assets/scorm/`) — an HTML5 export ships neither.
+ *     PLUGIN's own copies (`<mod_exelearning>/assets/scorm/`, named by the
+ *     `MOD_EXELEARNING_SCORM_ASSETS` variable) — an HTML5 export ships neither.
  *  4. Every served `form.js` / `scrambled-list.js` gets the plugin's iDevice patch
  *     (`classes/local/scorm/idevice_patch.php`): the `body.exe-scorm` half of their
  *     save guard is stripped. Without it neither type can score in a web package.
@@ -41,9 +42,50 @@ import {
 import { createGradingDocumentWithYDoc, type ProjectSpec } from '../../../helpers/grading-fixtures';
 import type * as Y from 'yjs';
 
-/** Where the PLUGIN keeps the two wrapper files it injects (not core's copies). */
-export const PLUGIN_SCORM_ASSETS =
-    process.env.MOD_EXELEARNING_SCORM_ASSETS ?? '/Users/ernesto/Downloads/git/xapi-eval/mod-eval/assets/scorm';
+/**
+ * Environment variable naming the directory where the PLUGIN keeps the two wrapper
+ * files it injects (`<mod_exelearning>/assets/scorm`, not core's copies).
+ *
+ * The pair is not part of this repository and there is no default: a checkout without
+ * the plugin cannot serve a package the way the plugin does, and pretending otherwise
+ * with a path from someone's disk turns every CI machine red with ENOENT. The variable
+ * is only read when a package is actually installed on a page, so a spec can be listed
+ * and can skip itself cleanly when it is unset.
+ */
+export const PLUGIN_SCORM_ASSETS_ENV = 'MOD_EXELEARNING_SCORM_ASSETS';
+
+/** The two files `scorm_injector.php` references and `package_manager.php` supplies. */
+export const PLUGIN_RUNTIME_FILES = ['SCORM_API_wrapper.js', 'SCOFunctions.js'] as const;
+
+/** The plugin assets directory named by {@link PLUGIN_SCORM_ASSETS_ENV}, if any. */
+export function pluginScormAssetsFromEnv(): string | undefined {
+    return process.env[PLUGIN_SCORM_ASSETS_ENV] || undefined;
+}
+
+/**
+ * Check that `assetsDir` holds the plugin's runtime pair, or say exactly what to do.
+ *
+ * @param assetsDir the configured directory (an option, or the environment variable)
+ * @returns the same directory, once both files are known to exist
+ */
+export function resolvePluginScormAssets(assetsDir: string | undefined): string {
+    if (!assetsDir) {
+        throw new Error(
+            `${PLUGIN_SCORM_ASSETS_ENV} is not set. Point it at the mod_exelearning checkout's assets/scorm ` +
+                `directory (the ${PLUGIN_RUNTIME_FILES.join(' + ')} pair the plugin injects) to run this lane.`,
+        );
+    }
+    for (const name of PLUGIN_RUNTIME_FILES) {
+        const file = path.join(assetsDir, name);
+        if (!fs.existsSync(file)) {
+            throw new Error(
+                `plugin runtime file not found: ${file} (${PLUGIN_SCORM_ASSETS_ENV}=${assetsDir}). ` +
+                    'It must name a directory holding both SCORM_API_wrapper.js and SCOFunctions.js.',
+            );
+        }
+    }
+    return assetsDir;
+}
 
 /** The exact marker `scorm_injector.php` writes, used verbatim (and as its idempotence guard). */
 const INJECT_MARKER = '<!-- mod_exelearning:scorm-loader -->';
@@ -361,8 +403,9 @@ window.__trace = { scorm: [], xapi: [], page: 0 };
  * Install the plugin serving model on `page` for one built package.
  */
 export async function installMoodleServing(page: Page, pkg: BuiltPackage, origin: string): Promise<void> {
-    const wrapper = fs.readFileSync(path.join(PLUGIN_SCORM_ASSETS, 'SCORM_API_wrapper.js'));
-    const scoFunctions = fs.readFileSync(path.join(PLUGIN_SCORM_ASSETS, 'SCOFunctions.js'));
+    const assetsDir = resolvePluginScormAssets(pluginScormAssetsFromEnv());
+    const wrapper = fs.readFileSync(path.join(assetsDir, 'SCORM_API_wrapper.js'));
+    const scoFunctions = fs.readFileSync(path.join(assetsDir, 'SCOFunctions.js'));
 
     await page.route(`${origin}/**`, async route => {
         const url = new URL(route.request().url());

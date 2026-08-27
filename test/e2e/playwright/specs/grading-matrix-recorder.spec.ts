@@ -51,6 +51,8 @@ import {
     readTrace,
     readCmi,
     settle,
+    pluginScormAssetsFromEnv,
+    PLUGIN_SCORM_ASSETS_ENV,
     type BuiltPackage,
     type FixtureRepairs,
 } from '../helpers/moodle-serving-model';
@@ -202,6 +204,15 @@ function dndPairs(spec: ProjectSpec, id: string): number[] {
 const flip = (v: 0 | 1): 0 | 1 => (v === 1 ? 0 : 1);
 
 test.describe('grading matrix recorder', () => {
+    // This file sits in the default Playwright testDir, so every project (chromium,
+    // firefox, static) collects it. It needs the plugin's own runtime pair, which no
+    // checkout of this repository carries: without the variable the whole group skips —
+    // visibly, with the reason — instead of failing at the first file read.
+    test.skip(
+        !pluginScormAssetsFromEnv(),
+        `${PLUGIN_SCORM_ASSETS_ENV} is not set — the recorder serves the mod_exelearning runtime pair from ` +
+            'that directory (<mod_exelearning>/assets/scorm); see helpers/moodle-serving-model.ts',
+    );
     test.describe.configure({ mode: 'serial' });
     test.use({ viewport: { width: 1400, height: 1000 } });
 
