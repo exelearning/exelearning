@@ -116,11 +116,37 @@ function setupLocalStorageStub() {
   };
 }
 
+// jsdom keeps one `window` for the whole file, so a listener a test leaves
+// behind (the legacy `pagehide` bridge, for one) would fire in every later
+// test and make call counts meaningless. Record what each test registers on
+// `window` and take it down again afterwards.
+const windowListeners = [];
+let nativeWindowAddEventListener = null;
+
+function trackWindowListeners() {
+  nativeWindowAddEventListener = window.addEventListener;
+  window.addEventListener = function (type, listener, options) {
+    windowListeners.push([type, listener, options]);
+    return nativeWindowAddEventListener.call(window, type, listener, options);
+  };
+}
+
+function releaseWindowListeners() {
+  for (const [type, listener, options] of windowListeners.splice(0)) {
+    window.removeEventListener(type, listener, options);
+  }
+  if (nativeWindowAddEventListener) {
+    window.addEventListener = nativeWindowAddEventListener;
+    nativeWindowAddEventListener = null;
+  }
+}
+
 describe('exe_export.js', () => {
   beforeEach(async () => {
     vi.resetModules();
     readyCallbacks.length = 0;
     document.body.innerHTML = '';
+    trackWindowListeners();
 
     window.$exe = { init: vi.fn(), clearHistory: vi.fn(), _confirmResponses: new Map() };
     window.$exe_i18n = {
@@ -140,6 +166,7 @@ describe('exe_export.js', () => {
   });
 
   afterEach(() => {
+    releaseWindowListeners();
     delete window.$exe;
     delete window.eXe;
     delete window.$exe_i18n;
@@ -347,6 +374,9 @@ describe('exe_export.js', () => {
     window.scorm = {};
     window.loadPage = vi.fn();
     window.unloadPage = vi.fn();
+    // A SCORM 2004 package ships the legacy runtime: no `window.exeScorm12`,
+    // so exe_export.js has to bridge `pagehide` to unloadPage() itself.
+    expect(window.exeScorm12).toBeUndefined();
 
     window.$testidevice = {
       options: [{ isScorm: true }],
@@ -372,6 +402,8 @@ describe('exe_export.js', () => {
     window.dispatchEvent(new Event('pagehide'));
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
+    // One teardown, one end-of-session call, carrying the scored flag.
+    expect(window.unloadPage).toHaveBeenCalledTimes(1);
     expect(window.unloadPage).toHaveBeenCalledWith(true);
   });
 
@@ -379,11 +411,14 @@ describe('exe_export.js', () => {
     window.scorm = {};
     window.loadPage = vi.fn();
     window.unloadPage = vi.fn();
+    expect(window.exeScorm12).toBeUndefined();
 
+    // The scan only trusts a node whose iDevice object exists on the page.
+    window.$adaptativequiz = {};
     const jsonNode = document.createElement('div');
-    jsonNode.className = 'idevice_node';
+    jsonNode.className = 'idevice_node adaptative-quiz';
     jsonNode.setAttribute('data-idevice-component-type', 'json');
-    jsonNode.setAttribute('data-idevice-type', 'json-idevice');
+    jsonNode.setAttribute('data-idevice-type', 'adaptative-quiz');
     jsonNode.setAttribute('data-idevice-json-data', JSON.stringify({ isScorm: 1 }));
     document.body.appendChild(jsonNode);
 
@@ -396,8 +431,9 @@ describe('exe_export.js', () => {
     window.dispatchEvent(frozen);
     expect(window.unloadPage).not.toHaveBeenCalled();
 
-    // A real teardown still ends it.
+    // A real teardown still ends it, exactly once.
     window.dispatchEvent(new Event('pagehide'));
+    expect(window.unloadPage).toHaveBeenCalledTimes(1);
     expect(window.unloadPage).toHaveBeenCalledWith(true);
   });
 
@@ -440,13 +476,48 @@ describe('exe_export.js', () => {
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
     expect(window.exeScorm12.setPageHasScoredActivities).toHaveBeenCalledWith(true);
+    // The flag must be in place before loadPage() runs the entry policy,
+    // which reads it to tell a scored page from a content-only one.
+    expect(window.exeScorm12.setPageHasScoredActivities.mock.invocationCallOrder[0]).toBeLessThan(
+      window.loadPage.mock.invocationCallOrder[0],
+    );
     // The new runtime owns end-of-session handling: exe_export.js wires
     // neither the legacy pagehide bridge nor any unload-family listener.
     expect(addEventListenerSpy).not.toHaveBeenCalledWith('unload', expect.any(Function));
     expect(addEventListenerSpy).not.toHaveBeenCalledWith('beforeunload', expect.any(Function));
     expect(addEventListenerSpy).not.toHaveBeenCalledWith('pagehide', expect.any(Function));
+    // …so a real teardown reaches the runtime's lifecycle, not unloadPage().
+    window.dispatchEvent(new Event('pagehide'));
+    expect(window.unloadPage).not.toHaveBeenCalled();
 
     addEventListenerSpy.mockRestore();
+    delete window.exeScorm12;
+  });
+
+  it('falls back to the legacy pagehide bridge when the runtime lacks the scored-flag setter', () => {
+    window.scorm = {};
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
+    // A partial runtime object (an older SCOFunctions.js build) does not
+    // expose setPageHasScoredActivities: the page is treated as legacy.
+    window.exeScorm12 = {};
+
+    // The scan only trusts a node whose iDevice object exists on the page.
+    window.$adaptativequiz = {};
+    const jsonNode = document.createElement('div');
+    jsonNode.className = 'idevice_node adaptative-quiz';
+    jsonNode.setAttribute('data-idevice-component-type', 'json');
+    jsonNode.setAttribute('data-idevice-type', 'adaptative-quiz');
+    jsonNode.setAttribute('data-idevice-json-data', JSON.stringify({ isScorm: 1 }));
+    document.body.appendChild(jsonNode);
+
+    window.$exeExport.initScorm();
+    window.dispatchEvent(new Event('pagehide'));
+
+    expect(window.loadPage).toHaveBeenCalledTimes(1);
+    expect(window.unloadPage).toHaveBeenCalledTimes(1);
+    expect(window.unloadPage).toHaveBeenCalledWith(true);
+
     delete window.exeScorm12;
   });
 
