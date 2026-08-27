@@ -457,10 +457,17 @@ describe('Scorm12Exporter Integration', () => {
             const unzipped = await exportPackage();
 
             const scoFunctions = new TextDecoder().decode(unzipped['libs/SCOFunctions.js']);
-            // The assembled AGPL runtime layers…
+            // The assembled AGPL runtime: every layer under its section marker…
             expect(scoFunctions).toContain('SPDX-License-Identifier: AGPL-3.0-or-later');
-            expect(scoFunctions).toContain('exe-scorm12-client.js');
-            expect(scoFunctions).toContain('exe-scorm12-adapter.js');
+            for (const layer of [
+                'exe-scorm12-client.js',
+                'exe-scorm12-activities.js',
+                'exe-scorm12-policy.js',
+                'exe-scorm12-lifecycle.js',
+                'exe-scorm12-adapter.js',
+            ]) {
+                expect(scoFunctions).toContain(`/* ==== ${layer} ==== */`);
+            }
             // …and none of the legacy ADL/CTC-derived file.
             expect(scoFunctions).not.toContain('ADL Technical Team');
             expect(scoFunctions).not.toContain('convertTotalMiliSeconds');

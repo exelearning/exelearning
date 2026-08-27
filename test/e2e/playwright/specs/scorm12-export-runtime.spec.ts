@@ -6,7 +6,7 @@
  *   1. `libs/SCORM_API_wrapper.js` is the vendored upstream pipwerks wrapper,
  *      byte-identical to the repository copy (MIT header included), and
  *   2. `libs/SCOFunctions.js` is the assembled project-owned runtime (AGPL
- *      SPDX banner, all four layers, no legacy ADL/CTC-derived code), and
+ *      SPDX banner, all five layers, no legacy ADL/CTC-derived code), and
  *   3. no page carries `onunload`/`onbeforeunload` attributes (the runtime
  *      owns end-of-session handling via pagehide/visibilitychange).
  *
@@ -76,8 +76,10 @@ test.describe('SCORM 1.2 export runtime', () => {
         expect(scoFunctionsEntry).toBeDefined();
         const scoFunctions = strFromU8(scoFunctionsEntry);
         expect(scoFunctions).toContain('SPDX-License-Identifier: AGPL-3.0-or-later');
+        // Every layer Scorm12Runtime.ts concatenates, each under its section marker.
         for (const layer of [
             'exe-scorm12-client.js',
+            'exe-scorm12-activities.js',
             'exe-scorm12-policy.js',
             'exe-scorm12-lifecycle.js',
             'exe-scorm12-adapter.js',
