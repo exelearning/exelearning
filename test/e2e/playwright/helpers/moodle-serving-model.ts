@@ -298,15 +298,14 @@ export function exportContentType(p: string): string {
 /** Overrides applied to the fixture's Y.Doc before export. */
 export interface FixtureRepairs {
     /**
-     * `isTest` for every gradable iDevice that carries jsonProperties.
+     * Override `isTest` on every `trueorfalse` component after the generator ran.
      *
-     * Only `trueorfalse` reads it. The fixture authors `isTest: false`, and with it
-     * `startGame()` is never invoked (it is only called from the start / reboot button
-     * click handlers), so `gameStarted` stays false, `gameOver` stays false, and
-     * `sendScoreNew()` takes its `else` branch: it shows
-     * "Por favor, empieza el juego antes de guardar tu puntuación" and writes NOTHING.
-     * `true` with `time: 0` shows the questions immediately plus the "Comprobar"
-     * button, whose `gameOver()` sets `gameOver = true` and does report the score.
+     * The generator now authors `isTest: true` (the only value that can score — see
+     * `GradableSpec.isTest`), so this is no longer needed to record a scoring run. It
+     * stays for the control recording: `false` leaves `startGame()` unreachable, so
+     * `gameStarted`/`gameOver` never turn true and `sendScoreNew()` takes its `else`
+     * branch — "Por favor, empieza el juego antes de guardar tu puntuación" — and
+     * writes NOTHING.
      */
     isTest?: boolean;
     /**
@@ -662,7 +661,7 @@ export async function waitForInFrame(page: Page, selector: string, timeout = 300
     await page.waitForFunction(
         sel => {
             const f = document.getElementById('exelearningobject') as HTMLIFrameElement;
-            const d = f && f.contentDocument;
+            const d = f?.contentDocument;
             return !!d && !!d.querySelector(sel);
         },
         selector,
@@ -705,7 +704,7 @@ export async function dragDropInstance(page: Page, ideviceId: string): Promise<n
         const f = document.getElementById('exelearningobject') as HTMLIFrameElement;
         const d = f.contentDocument as Document;
         const node = d.getElementById(id);
-        const main = node && node.querySelector('[id^="dadPMainContainer-"]');
+        const main = node?.querySelector('[id^="dadPMainContainer-"]');
         if (!main) throw new Error(`no dragdrop board inside #${id}`);
         return parseInt(main.id.replace('dadPMainContainer-', ''), 10);
     }, ideviceId)) as number;
@@ -775,7 +774,7 @@ export async function scrambledListOrderIndex(page: Page, ideviceId: string): Pr
         const f = document.getElementById('exelearningobject') as HTMLIFrameElement;
         const d = f.contentDocument as Document;
         const node = d.getElementById(id);
-        const ul = node && node.querySelector('ul[id^="exe-sortableList-"]');
+        const ul = node?.querySelector('ul[id^="exe-sortableList-"]');
         if (!ul) throw new Error(`no sortable list inside #${id}`);
         return parseInt(ul.id.replace('exe-sortableList-', ''), 10);
     }, ideviceId)) as number;
@@ -852,10 +851,10 @@ export async function waitForFormBound(page: Page, ideviceId: string, timeout = 
             const f = document.getElementById('exelearningobject') as HTMLIFrameElement;
             const w = f.contentWindow as unknown as { jQuery?: { _data?: (el: Element, key: string) => unknown } };
             const d = f.contentDocument as Document | null;
-            const btn = d && d.getElementById(`form-button-check-${id}`);
-            if (!btn || !w || !w.jQuery || !w.jQuery._data) return false;
+            const btn = d?.getElementById(`form-button-check-${id}`);
+            if (!btn || !w?.jQuery?._data) return false;
             const events = w.jQuery._data(btn, 'events') as { click?: unknown[] } | undefined;
-            return !!(events && events.click && events.click.length);
+            return !!events?.click?.length;
         },
         ideviceId,
         { timeout },

@@ -45,6 +45,9 @@ MOODLE_BASE_URL=http://localhost:8097 \
 
 `probe.spec.ts` first: it proves login, the player URL, the iframe and the API
 instrumentation all work, so a later failure is about grading and not about plumbing.
+It opens an activity you create by hand — run `add_activity.php` once (see the docblock
+in the spec for the exact command) and save its JSON output as
+`$AUDIT_ACTIVITY_DIR/probe-scorm.json`; without that file the probe skips and says so.
 
 Two engines are configured, `chromium` and `firefox`. Run both when the change touches the
 end-of-session path: `pagehide`, `visibilitychange` and the back/forward cache do not fire

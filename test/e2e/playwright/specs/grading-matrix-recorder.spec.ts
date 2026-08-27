@@ -17,10 +17,9 @@
  * `trueorfalse` and `form`, a real jQuery-UI mouse drag for `dragdrop`, the runtime's
  * own up-arrows for `scrambled-list`, then each type's own "Comprobar" button.
  *
- * The one deviation from the fixture as authored is `isTest: true` for `trueorfalse`
- * (recorded in `fixtureRepairs` of every trace): with the authored `isTest: false`,
- * `startGame()` is never called, so `gameStarted`/`gameOver` stay false and
- * `sendScoreNew()` refuses to report anything at all.
+ * The fixtures are exported exactly as the generator authors them — no
+ * `fixtureRepairs`. (`trueorfalse` needs `isTest: true` to score at all; that is the
+ * generator's default now, see `GradableSpec.isTest`.)
  *
  * `expected` in each trace is hand-computed here from the answer key and the
  * documented per-type scoring model — never derived from what the code produced.
@@ -59,7 +58,6 @@ import {
     pluginScormAssetsFromEnv,
     PLUGIN_SCORM_ASSETS_ENV,
     type BuiltPackage,
-    type FixtureRepairs,
     type InjectorVariant,
     type RecordedTrace,
     type ServedRuntime,
@@ -83,9 +81,6 @@ const ORACLE_POLICY_ID = 'weighted-mean-v1';
  * instance straight into the plugin's tests/fixtures/traces/.
  */
 const TRACE_DIR = process.env.GRADING_TRACE_DIR ?? path.join(process.cwd(), 'test', 'temp', 'grading-traces');
-
-/** trueorfalse cannot score with the fixture's authored isTest:false (see docblock). */
-const REPAIRS: FixtureRepairs = { isTest: true };
 
 /**
  * The plugin revision whose serving model is recorded: #105, which opens the session
@@ -168,7 +163,6 @@ function writeTrace(
             injectorSource: runtime.injectorSource,
             idevicePatch: pkg.patchedFiles,
         },
-        fixtureRepairs: REPAIRS,
         pages: pkg.pages,
         interactions: recording.interactions,
         scorm: attributePages(pkg, recording.trace.scorm),
@@ -218,7 +212,7 @@ async function setup(
     page: import('@playwright/test').Page,
 ): Promise<{ pkg: BuiltPackage; runtime: ServedRuntime }> {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'grading-matrix-'));
-    const pkg = await buildHtml5Package(spec, tmpDir, REPAIRS);
+    const pkg = await buildHtml5Package(spec, tmpDir);
     const runtime = await installMoodleServing(page, pkg, origin, { injector: INJECTOR });
     await openPackage(page, origin);
     return { pkg, runtime };

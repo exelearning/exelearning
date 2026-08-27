@@ -119,13 +119,18 @@ export interface GradableSpec {
     /** Optional instructions text; defaults to a title derived from `id`. */
     title?: string;
     /**
-     * `isTest` for the trueorfalse payload. Defaults to `false`.
+     * `isTest` (quiz mode) for the trueorfalse payload. Defaults to `true`, the only
+     * configuration in which the type can score.
      *
-     * With `false` the start button is hidden AND `startGame()` is never reached, so
-     * `gameStarted` stays false and `sendScoreNew()`'s `gameStarted || gameOver` guard
-     * blocks every write — the iDevice can never score. With `true` (and `time: 0`)
-     * the questions render, the "Comprobar" button is visible, and clicking it runs
-     * `gameOver()` which sets `gameOver = true` and calls `sendScore(true, …)`.
+     * With `true` and `time: 0` the questions render immediately, the "Comprobar"
+     * button is visible, and clicking it runs `gameOver()` which sets `gameOver = true`
+     * and calls `sendScore(true, …)` — one write per check.
+     *
+     * `false` is a control configuration that can never score: the start button AND
+     * the check button are hidden, `startGame()` is unreachable, so `gameStarted` and
+     * `gameOver` stay false and `sendScoreNew()`'s `gameStarted || gameOver` guard
+     * drops every write — the per-answer `sendScore()` fires and reports nothing. Main
+     * warns about exactly this pair (`isScorm > 0 && !isTest`, #2308).
      */
     isTest?: boolean;
     /**
@@ -493,12 +498,17 @@ export function buildGradableComponent(spec: GradableSpec, order: number): Norma
  * **Settings that make it deterministic and reachable**
  * - `percentageQuestions: 100` + `questionsRandom: false` ⇒ `getQuestions()` returns
  *   the authored array unchanged, in authored order, every run.
- * - `isTest: false` ⇒ `createInterfaceTrueOrFalse()` hides the start button and the
- *   "Comprobar" gate and shows the questions immediately, and the `.TOFP-Answer` click
- *   handler scores + `sendScore()`s on EVERY answer click. One deterministic SCORM
- *   write per answer.
- * - `time: 0` ⇒ no countdown even if `isTest` is flipped (`startGame`'s `setInterval`
- *   is gated on `isTest && time > 0`).
+ * - `isTest: true` + `time: 0` ⇒ `createInterfaceTrueOrFalse()` hides the start button
+ *   (only shown with a countdown) and shows the questions and the "Comprobar" button
+ *   immediately; the `.TOFP-Answer` click handler returns early in quiz mode, and
+ *   "Comprobar" runs `gameOver()` ⇒ `gameOver = true` ⇒ `sendScore(true)`. One
+ *   deterministic SCORM write per check. This is the ONLY pair that can score: with
+ *   `isTest: false` the check button is hidden too, `startGame()` is never reached,
+ *   and `sendScoreNew()` drops every write behind its `gameStarted || gameOver` guard
+ *   (main #2308 warns on `isScorm > 0 && !isTest`). Pass `isTest: false` only to
+ *   record that control case.
+ * - `time: 0` ⇒ no countdown (`startGame`'s `setInterval` is gated on
+ *   `isTest && time > 0`), so nothing runs on a timer.
  * - `evaluation: false` / `evaluationID: ''` ⇒ the "informe" report machinery stays
  *   out of the trace (`addEvents()` only touches it when
  *   `isTest && evaluation && evaluationID.length > 3`).
@@ -630,9 +640,9 @@ export function buildTrueOrFalseJsonProperties(spec: GradableSpec): Record<strin
         // percentage >= 100 && !random — that is what keeps the answer key stable.
         questionsRandom: false,
         percentageQuestions: 100,
-        // false => questions visible immediately, no "Comprobar" gate, no timer,
-        // and one score write per answer click.
-        isTest: spec.isTest ?? false,
+        // Quiz mode with no countdown: questions visible immediately, "Comprobar"
+        // visible, and one score write when it is clicked. See GradableSpec.isTest.
+        isTest: spec.isTest ?? true,
         time: 0,
         questionsGame: buildQuestions(questionCount),
         // 1 => "save automatically after each question" (the traffic under test).

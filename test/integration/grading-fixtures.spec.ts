@@ -499,7 +499,7 @@ describe('grading fixtures', () => {
             expect(tof.weighted).toBe(10);
             expect(tof.questionsRandom).toBe(false);
             expect(tof.percentageQuestions).toBe(100);
-            expect(tof.isTest).toBe(false);
+            expect(tof.isTest).toBe(true);
             expect(tof.time).toBe(0);
             expect((tof.questionsGame as unknown[]).length).toBe(4);
 

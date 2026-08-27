@@ -17,13 +17,32 @@ const BASE_URL = process.env.MOODLE_BASE_URL ?? 'http://localhost:8097';
 const LEARNER = process.env.AUDIT_LEARNER ?? 'learner1';
 const PASSWORD = process.env.AUDIT_PASSWORD ?? 'Audit#1234';
 
-/** Load one activity descriptor written by `add_activity.php`. */
-function activity(name: string): HostActivity {
-    return JSON.parse(fs.readFileSync(path.join(ACTIVITY_DIR, `${name}.json`), 'utf8')) as HostActivity;
+/**
+ * The activity this probe opens, as `add_activity.php` prints it.
+ *
+ * Nothing in the harness writes this file: the probe deliberately reuses an activity
+ * that was created by hand, so that it checks the plumbing and not the CLI bridge.
+ * Stage it once with, from the repository root:
+ *
+ *   docker exec $AUDIT_MOODLE_CONTAINER php $AUDIT_MOODLE_CLI_DIR/add_activity.php \
+ *     --module=scorm --package=/var/www/packages/<zip> --name=probe --grademethod=1 \
+ *     --maxgrade=100 --maxattempt=1 --whatgrade=0 --forcenewattempt=0 --auto=0 \
+ *     > $AUDIT_ACTIVITY_DIR/probe-scorm.json
+ */
+const PROBE_ACTIVITY_FILE = path.join(ACTIVITY_DIR, 'probe-scorm.json');
+
+/** Load the activity descriptor `add_activity.php` printed. */
+function activity(file: string): HostActivity {
+    return JSON.parse(fs.readFileSync(file, 'utf8')) as HostActivity;
 }
 
 test('mod_scorm serves the eXeLearning package and the package talks to window.API', async ({ page }) => {
-    const target = activity('probe-scorm');
+    test.skip(
+        !fs.existsSync(PROBE_ACTIVITY_FILE),
+        `no activity descriptor at ${PROBE_ACTIVITY_FILE} — create the probe activity with add_activity.php ` +
+            'and save its JSON output there (see the docblock in this spec and test/e2e/moodle/README.md)',
+    );
+    const target = activity(PROBE_ACTIVITY_FILE);
     const host = createMoodleHost(page, 'scorm', BASE_URL);
 
     await instrumentScormApi(page);
