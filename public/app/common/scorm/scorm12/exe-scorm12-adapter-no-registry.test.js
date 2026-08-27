@@ -4,11 +4,12 @@ import { describe, expect, it } from 'vitest';
 // file loads it with every layer EXCEPT the activity registry (each test file
 // has its own module registry).
 //
-// That subset is a real deployment, not a hypothetical one: the Moodle plugin
-// injects the runtime into the HTML5 packages it serves and deliberately leaves
-// the registry out, so those packages keep writing the legacy cmi.suspend_data
-// line format that the plugin's own parsers understand. Requiring the registry
-// in the guard disabled the whole runtime for that host.
+// That subset is a tolerance the install guard promises, not a shipped
+// configuration: eXeLearning's exports and the Moodle plugin (mod_exelearning
+// #105 vendors the complete five-layer runtime) always ship the registry. An
+// early plugin snapshot did assemble the runtime without it, and requiring the
+// registry in the guard disabled the whole runtime for that host — the guard
+// must keep degrading gracefully instead.
 const pipwerks = require('./vendor/pipwerks/SCORM_API_wrapper.js');
 window.pipwerks = pipwerks;
 require('./exe-scorm12-client.js');

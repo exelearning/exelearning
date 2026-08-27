@@ -174,12 +174,17 @@ We will:
    (`src/shared/export/utils/Scorm12Runtime.ts`) and ships the vendored
    wrapper verbatim as `libs/SCORM_API_wrapper.js`. iDevices, games and the
    Moodle plugin hard-code exactly these two paths (lazy-loaders), so the
-   two-file package keeps every consumer — including the plugin's injector —
-   working without changes.
+   two-file package keeps every consumer — the lazy-loaders and the script
+   tags the plugin's injector emits alike — working without changes. (The
+   injector itself did change later, for session ownership rather than
+   layout; see follow-up 2.)
 4. **Touch only the 1.2 path.** `fetchScormFiles(version)` becomes
    version-aware in both providers; `'2004'` keeps returning the legacy pair
-   and `Scorm2004Exporter` is untouched, so 2004 output is byte-for-byte
-   unchanged.
+   and `Scorm2004Exporter` is untouched, so the 2004 exporter and the `libs/`
+   runtime files it ships are byte-for-byte unchanged. A 2004 package as a
+   whole is not: it also carries the shared `exe_export.js`, `common.js` and
+   iDevice export runtimes, whose `unload → pagehide` change is described
+   under Consequences.
 5. **Remove the 1.2 inline fallback runtime.** A SCORM 1.2 export now fails
    loudly when the runtime files cannot be fetched instead of shipping a
    divergent, broken runtime.
@@ -253,8 +258,10 @@ handler; nothing is deferred.
   **strict** fake LMS that validates SCORM 1.2 access rules, vocabularies,
   ranges, array indices and error codes, and that can be configured to
   implement only the mandatory data model, a realistic optional subset, or all
-  of it (439 Vitest tests across the runtime layers plus Bun
-  assembly/integration specs).
+  of it (518 Vitest tests across the runtime layers and the strict fake LMS in
+  `public/app/common/scorm/scorm12/`, 703 under `public/app/common/scorm`
+  including the legacy-file suites, plus Bun assembly/integration specs; counts
+  as of this revision).
 - The runtime is provably free of unload-family handlers across the whole
   exported package, so SCORM 1.2 content is back/forward-cache friendly.
 - A real exported SCO is executed against a strict parent `window.API` in the
@@ -295,9 +302,13 @@ handler; nothing is deferred.
     API is defined over strings, and an LMS that compares the received type
     against its data-model default (Moodle's `CollectData` does) can re-send
     an unchanged element;
-  - `cmi.core.score.min`/`.max` are re-sent with every score change instead
-    of once per launch. The values never vary (`0` and `100`), so this is
-    idempotent — slightly more API traffic, nothing stored differs;
+  - `cmi.core.score.min`/`.max` are sent once per session, as the legacy
+    runtime did: the first score write (or an explicit `SetScoreMin`/
+    `SetScoreMax`) publishes them and later score writes only re-send a bound
+    whose value actually changed (`policy.sentBounds`; an earlier revision of
+    this rewrite re-sent them on every score change, corrected in commit
+    `3d9451c16`). The values never vary (`0` and `100`), so the traffic on the
+    wire matches the legacy runtime's;
   - `cmi.student_data.mastery_score` is read once per launch and adopted as
     the success threshold when the LMS publishes one, falling back to the eXe
     default of 50. `Scorm12Exporter` emits no `adlcp:masteryscore`, so an eXe
@@ -416,8 +427,14 @@ and `static` Playwright projects.
    `assets/scorm/SCORM_API_wrapper.js` with the vendored pipwerks file and
    `assets/scorm/SCOFunctions.js` with the assembled runtime; define a
    synchronization mechanism (versioned artifact, checksum, or sync script)
-   replacing manual copies. The plugin's `scorm_injector.php` needs no
-   change (same two script tags).
+   replacing manual copies. Done in `moodle-mod_exelearning` PR #105, which
+   vendors the complete five-layer runtime byte-identical to the exporter's
+   output and pins its digest and version stamp. The plugin's
+   `scorm_injector.php` keeps injecting the same two script tags but did have
+   to change: it now opens the session through
+   `exeScorm12.session.open({ ownsLifecycle: false })` — the runtime's host
+   entry point for a page-owning host — and keeps `pipwerks.SCORM.init()` only
+   as a fallback for content whose runtime predates that entry point.
 3. Staged SCORM 2004 deprecation and eventual removal of
    `Scorm2004Exporter` and the legacy files.
 4. Automated Moodle integration testing (completion, grade, resume) for

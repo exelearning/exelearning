@@ -1586,10 +1586,14 @@ var $exeDevices = {
 
                     const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
                     // Branch on the CAPABILITY, not on the runtime object: a host that
-                    // ships an older or partial runtime (the Moodle plugin injects a
-                    // subset of these layers) still exposes `policy`, and calling a
-                    // method it does not have would throw before the score is written.
-                    // Falling through to the legacy branch keeps that host scoring.
+                    // ships an older or partial runtime may still expose `policy`, and
+                    // calling a method it does not have would throw before the score
+                    // is written. This file travels with the content, but the Moodle
+                    // plugin injects its own vendored copy of the runtime (complete,
+                    // five layers) into content exported by whichever eXeLearning
+                    // release the author used, so the two can come from different
+                    // releases. Falling through to the legacy branch keeps that host
+                    // scoring.
                     if (runtime && runtime.policy && typeof runtime.policy.setScoreDetailed === 'function') {
                         // Game iDevices call this from jQuery ready, which
                         // runs before loadPage() restores cmi.suspend_data.
@@ -1617,11 +1621,12 @@ var $exeDevices = {
                             // Nor summary.score, which counts an evaluable activity that
                             // has not scored yet as 0 and so cannot tell the two apart.
                             //
-                            // A host that ships the runtime WITHOUT the registry layer
-                            // (the Moodle plugin injects a four-layer subset) gets a null
-                            // registry: it cannot answer the question, so it keeps
-                            // scoring exactly as before rather than being silently
-                            // suppressed.
+                            // A host that assembled the runtime WITHOUT the registry
+                            // layer (tolerated by the adapter's install guard; neither
+                            // eXeLearning's exports nor the Moodle plugin ship such a
+                            // build) gets a null registry: it cannot answer the
+                            // question, so it keeps scoring exactly as before rather
+                            // than being silently suppressed.
                             const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
                             // An EMPTY registry is treated the same way as an absent
                             // one: no activity registered, so there is nothing to base

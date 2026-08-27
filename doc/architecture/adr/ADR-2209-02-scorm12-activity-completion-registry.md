@@ -175,10 +175,13 @@ scorm.activities.summary();
    pass/fail distinction and reports completion only.
 8. **The policy corrects only its own verdict.** A terminal status is
    preserved — with one exception: when the policy itself wrote it during this
-   session and a *required* activity registers afterwards (deferred iDevice
-   initialisation), the page demonstrably is not finished, so the policy
-   downgrades its own verdict back to `incomplete` (and the exit becomes
-   `suspend`). Ownership is claimed only by successfully *writing* a status —
+   session and the decision afterwards returns to
+   `required-activities-pending` — a *required* activity registering late
+   (deferred iDevice initialisation) **or** a replay reporting
+   `completed: false` for an activity that had been complete — the page
+   demonstrably is not finished, so the policy downgrades its own verdict back
+   to `incomplete` (and the exit becomes `suspend`). Ownership is claimed only
+   by successfully *writing* a status —
    merely agreeing with a stored value never claims it, so a terminal status
    restored from a previous attempt, or written explicitly by content, is
    never downgraded. The correction runs when an activity registers and
@@ -209,6 +212,19 @@ scorm.activities.summary();
     exe12/1|<uri-encoded id>;<flags>;<answered>;<total>;<score>;<weight>;<min>;<max>|…
     ```
 
+    - `flags` is a bit set (`1` evaluable, `2` completion-required, `4`
+      completed); `score` is the activity's last reported score in its own
+      `min`–`max` scale and is **empty** while the activity has produced no
+      score. As currently implemented, the registry's aggregate counts an
+      evaluable activity with an empty score as **0 with its full weight**
+      (`normalizedScore()` maps `null` to 0), so a page with one required
+      activity answered at 100 and another never touched reports
+      `cmi.core.score.raw = 50` once the first score is published. A consumer
+      that grades per record (the Moodle plugin's `exe12/` parsers) must
+      mirror that rule or document the divergence — `moodle-mod_exelearning`
+      PR #105 currently drops such records and grades the same page 100. The
+      weight an unscored evaluable activity should carry is an open product
+      decision that this ADR records but does not settle.
     - Version-tagged; a payload from a newer runtime is ignored, not misread.
     - An unversioned payload is parsed as the legacy line format into a
       **pending pool**, keyed by page position — outside the main registry,

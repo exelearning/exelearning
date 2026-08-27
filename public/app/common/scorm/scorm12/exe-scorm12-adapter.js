@@ -48,10 +48,12 @@
     // `activities` is deliberately NOT required. This adapter only binds and
     // re-exports the registry, never calls it, and `policy` already degrades to
     // its page-level fallback when the registry is absent. Requiring it here
-    // made the layer set non-composable: a host that ships the runtime WITHOUT
-    // the registry — the Moodle plugin does, so that its packages keep writing
-    // the legacy cmi.suspend_data format its parsers understand — got no
-    // runtime at all instead of one without the registry.
+    // made the layer set non-composable: a host that assembles the runtime
+    // WITHOUT the registry got no runtime at all instead of one without it.
+    // That is a tolerance, not a shipped configuration: eXeLearning's exports
+    // and the Moodle plugin (mod_exelearning #105 vendors the complete
+    // five-layer file, byte-identical to the exporter's output) always ship
+    // all five layers.
     if (
         !exeScorm12 ||
         !exeScorm12.client ||

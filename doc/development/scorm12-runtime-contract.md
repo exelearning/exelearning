@@ -63,11 +63,12 @@ The lazy-load gates are `typeof pipwerks === 'undefined'` (wrapper) and
 `libs/SCOFunctions.js` is assembled by
 `src/shared/export/utils/Scorm12Runtime.ts` from five source layers, in load
 order. Four of them are **required**; `exe-scorm12-activities.js` is optional,
-and the adapter's install guard says so explicitly. A host may assemble the
-runtime without the registry — the Moodle plugin does, so that the packages it
-serves keep writing the legacy `cmi.suspend_data` its own parsers read — and
-`exe-scorm12-policy.js` then degrades to its page-level fallback. eXeLearning's
-own SCORM exports always ship all five.
+and the adapter's install guard says so explicitly. That is a tolerance, not a
+shipped configuration: a host that assembles the runtime without the registry
+still gets a working runtime (`exe-scorm12-policy.js` degrades to its
+page-level fallback), but eXeLearning's own SCORM exports always ship all five,
+and so does the Moodle plugin — `moodle-mod_exelearning` PR #105 vendors the
+complete assembled file, byte-identical to the exporter's output (§12).
 
 | Layer | Responsibility |
 |---|---|
@@ -95,14 +96,18 @@ page with the `exe-scorm` body class:
 2. Scans the page's iDevices to compute `isSCORM` — `true` when at least one
    activity on the page reports SCORM score saving (`isScorm` flag in iDevice
    options/JSON data).
-3. Calls `window.loadPage()`.
-4. Hands the flag to the runtime
-   (`window.exeScorm12.setPageHasScoredActivities(isSCORM)`) and registers no
-   lifecycle listener of its own. For SCORM 2004 packages and packages exported
-   before the rewrite it falls back to a `pagehide` listener calling
-   `window.unloadPage(isSCORM)` — skipped when `event.persisted === true`,
-   because a page frozen into the back/forward cache may be restored intact and
-   ending the LMS session then would close an attempt the learner has not left.
+3. When the runtime is present (`window.exeScorm12.setPageHasScoredActivities`
+   is a function), hands the flag to it **before** calling `loadPage()`
+   (`window.exeScorm12.setPageHasScoredActivities(isSCORM)`), so the entry
+   policy that `loadPage()` applies already knows whether scored iDevices exist
+   (a presentation iDevice may have registered on jQuery ready). It registers
+   no lifecycle listener of its own.
+4. Calls `window.loadPage()`. For SCORM 2004 packages and packages exported
+   before the rewrite (no runtime present) it calls `loadPage()` first and then
+   falls back to a `pagehide` listener calling `window.unloadPage(isSCORM)` —
+   skipped when `event.persisted === true`, because a page frozen into the
+   back/forward cache may be restored intact and ending the LMS session then
+   would close an attempt the learner has not left.
 
 Note that `loadPage()` can therefore run **twice** (body `onload` attribute and
 `exe_export.js`), in either order. It must be idempotent **[LEGACY]**.
@@ -422,9 +427,11 @@ completion and success collapse onto `cmi.core.lesson_status`:
   and flip a passed page to failed on the way out.
 - **The policy may correct its own verdict, never someone else's.** A terminal
   status the policy wrote during this session is downgraded back to
-  `incomplete` when a *required* activity registers afterwards (deferred
-  iDevice initialisation) — the page demonstrably is not finished. A terminal
-  status restored from a previous attempt, or written explicitly by content
+  `incomplete` whenever the decision returns to `required-activities-pending`
+  — a *required* activity registering afterwards (deferred iDevice
+  initialisation) **or** a replay reporting `completed: false` for an activity
+  that had been complete — because the page demonstrably is not finished. A
+  terminal status restored from a previous attempt, or written explicitly by content
   (`setComplete()`, `SetCompletionStatus()`), is never downgraded — and
   merely *agreeing* with a stored status never claims it: ownership is taken
   only when the policy successfully writes the value itself, and the explicit
@@ -480,6 +487,25 @@ exe12/1|<uri-encoded id>;<flags>;<answered>;<total>;<score>;<weight>;<min>;<max>
   corrupt each other's view on resume. The legacy code paths remain for SCORM
   2004 packages and packages exported before the rewrite, where the runtime is
   absent.
+- **Field semantics**: `flags` is a bit set — `1` evaluable, `2`
+  completion-required, `4` completed. `score` is the activity's last reported
+  score in its own scale (`min`–`max`), and it is **empty** when the activity
+  has not produced a score yet (`activity.score === null`). An empty `score`
+  on an evaluable record therefore means: the activity is registered and
+  gradable, it has produced no score, and — **as currently implemented** — the
+  SCO's own aggregate (`summary().score`, the value written to
+  `cmi.core.score.raw` once any activity has scored) counts it as **0 with its
+  full weight** (`exe-scorm12-activities.js` `normalizedScore()` /
+  `aggregateScore()`). A page with two equally weighted required activities,
+  one answered at 100 and one never touched, therefore reports
+  `cmi.core.score.raw = 50`. A consumer that grades per record from this
+  payload must either mirror that rule or document that its aggregate is not
+  the SCO's `score.raw`: `moodle-mod_exelearning` PR #105 currently drops such
+  records (`js/scorm_tracker.js` `decodeExe12Record`,
+  `classes/local/track.php::decode_exe12_record`) and would grade the same page
+  100. Whether an unscored evaluable activity should weigh 0, its full weight,
+  or be excluded is an **open product decision**; this bullet records the
+  current behaviour, not a resolution.
 - **Versioned**: the `exe12/<version>` header. A payload from a newer runtime is
   ignored rather than misread.
 - **Migrated through a pending pool**: an unversioned payload is parsed as the
@@ -621,17 +647,29 @@ the console — nothing is forwarded to the LMS.
   `loadSCORM_API_wrapper`/`loadSCOFunctions` lazy-loaders,
   `scorm.init`/`SetScoreMax`/`SetScoreMin` usage, and their `pagehide` handlers.
 - `moodle-mod_exelearning` — three consumers, not one. (a) `assets/scorm/*`,
-  MIRROR copies of this repo's two package files that the plugin injects into
-  extracted content; they are re-synced by hand and can lag this branch (its
-  PR #105 snapshot predates the activities layer), so treat them as a distinct,
-  possibly-older consumer, never as "identical". (b)
-  `classes/local/scorm/scorm_injector.php`, which force-calls
-  `pipwerks.SCORM.init()` on a poller BEFORE the content's own `scorm.init()` —
-  the host-side activation that §4's adoption clause exists for. (c) The
-  suspend_data parsers `js/scorm_tracker.js` (`parseSuspend`) and
-  `classes/local/track.php::parse_suspend_data()`, which as of PR #105 read only
-  the legacy line format of §9.2 — a §9.1 `exe12/` payload parses to nothing
-  there until the plugin follows up.
+  a vendored copy of this repo's two package files that the plugin injects into
+  extracted content. As of the plugin's PR #105 it is the complete five-layer
+  `libs/SCOFunctions.js` plus the pipwerks wrapper, byte-identical to what
+  `Scorm12Runtime.ts` assembles (the plugin's `assets/scorm/SOURCE` and
+  `scorm_runtime_test.php` pin the digest, the layer order and the
+  `eXeLearning-SCORM12-Runtime` stamp). It is still re-synced by hand and can
+  lag or lead this repository — and it is injected into content exported by
+  whichever eXeLearning release the author used — so treat it as a distinct
+  consumer whose version may differ from the content around it, never as
+  "identical by construction". (b) `classes/local/scorm/scorm_injector.php`,
+  which injects the two script tags and opens the session itself: since #105
+  through `exeScorm12.session.open({ ownsLifecycle: false })` — the plugin
+  owns the page (several pages share one session and one `lesson_status`), so
+  the SCO lifecycle must not be installed — falling back to
+  `pipwerks.SCORM.init()` on a poller only for content whose runtime predates
+  `session.open`. Plugin releases before #105 force-called
+  `pipwerks.SCORM.init()` BEFORE the content's own `scorm.init()`; that is the
+  host-side activation §4's adoption clause exists for. (c) The
+  `cmi.suspend_data` parsers `js/scorm_tracker.js` (`parseSuspend`) and
+  `classes/local/track.php::parse_suspend_data()`, which since #105 read both
+  the versioned `exe12/` payload and the legacy line format of §9.2. Their
+  per-record grading does not mirror the SCO's treatment of an empty `score`
+  field (see §9.2, field semantics).
 - Real exported package fixtures under `test/fixtures/export/*_scorm/`.
 
 Symbols that appear SCORM-related but are **not** part of this contract:
@@ -650,6 +688,9 @@ contract surface above).
 | `public/app/common/scorm/scorm12/exe-scorm12-policy.test.js` | Entry/exit policy, structured score results, the completion matrix, thresholds, lesson modes. |
 | `public/app/common/scorm/scorm12/exe-scorm12-lifecycle.test.js` | `pagehide`/`pageshow`/`visibilitychange` semantics, bfcache cycles, finalization races. |
 | `public/app/common/scorm/scorm12/exe-scorm12-adapter.test.js` | Every legacy global and facade method, the compatibility kinds, centralized finalization. |
+| `public/app/common/scorm/scorm12/exe-scorm12-adapter-guard.test.js` | The install guard: a missing required layer or wrapper disables the runtime loudly. |
+| `public/app/common/scorm/scorm12/exe-scorm12-adapter-no-registry.test.js` | The tolerance for a runtime assembled without the activity registry (§1). |
+| `public/app/common/scorm/scorm12/exe-scorm12-adapter-debug-tracing.test.js` | Upstream pipwerks debug tracing is switched off without modifying the vendored file. |
 | `public/app/common/scorm/scorm12/exe-scorm12-invariants.test.js` | Deterministic and seeded event sequences asserting the runtime invariants. |
 | `test/helpers/unload-handler-scanner.spec.ts` | The package scanner's detection and its allowlist. |
 | `test/integration/export/scorm12-exporter.spec.ts` | Real export pipeline: runtime assembly order, vendored bytes, no unload handlers anywhere in the package. |

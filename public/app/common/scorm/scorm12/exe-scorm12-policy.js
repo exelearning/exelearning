@@ -199,12 +199,14 @@
             };
         }
         if (!activities) {
-            // No registry layer at all. A host may assemble the runtime without
-            // it (the Moodle plugin does), and then NOTHING will ever report
-            // progress — so the page-flag branch below would pin such a page to
-            // `incomplete` for the rest of time. Completion is simply not this
-            // host's business: report no required activities and let the status
-            // be decided without them.
+            // No registry layer at all. Tolerated, not shipped: eXeLearning's
+            // exports and the Moodle plugin both carry all five layers, but a
+            // host that assembles the runtime without this one must still get a
+            // working runtime. There NOTHING will ever report progress — so the
+            // page-flag branch below would pin such a page to `incomplete` for
+            // the rest of time. Completion is simply not that host's business:
+            // report no required activities and let the status be decided
+            // without them.
             return {
                 hasRequired: false,
                 allRequiredComplete: true,
@@ -474,12 +476,16 @@
          *
          * A terminal status already recorded is preserved — with one
          * exception: when the policy itself wrote that terminal status during
-         * this session and a required activity registered afterwards, the
-         * page demonstrably is not finished, so the policy corrects its own
-         * verdict back to "incomplete". A terminal status restored from a
-         * previous attempt, or written explicitly by content, is never
-         * downgraded. Movement *between* terminal statuses (a retried failed
-         * activity now passing) is always allowed.
+         * this session and the decision afterwards returns to
+         * `required-activities-pending` — a required activity registering
+         * late, or a replay reporting `completed: false` for one that had
+         * been complete — the page demonstrably is not finished, so the
+         * policy corrects its own verdict back to "incomplete". (The local
+         * name `lateRegistration` covers both causes: what is checked is the
+         * decision reason, not how it came about.) A terminal status
+         * restored from a previous attempt, or written explicitly by content,
+         * is never downgraded. Movement *between* terminal statuses (a
+         * retried failed activity now passing) is always allowed.
          *
          * `effective` is the status actually in force at the LMS after the
          * call — when a write is rejected it is the previously stored value,

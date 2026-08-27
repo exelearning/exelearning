@@ -16,8 +16,12 @@ byte-for-byte.
 - **Commit:** `82e455b4032ee08febf64d2fa2bf1aacaebaa446` (master, 2018-09-07)
 - **Retrieved:** 2026-07-24
 - **SHA-256:** `f2a558ba284edbc6842edf51678df1f7e3e05cbf09ec00bc6dd5988b6caa2e78`
-- **License:** MIT (header kept intact inside the file; see
-  <http://pipwerks.mit-license.org/>)
+- **License:** MIT. The upstream repository ships no separate `LICENSE`
+  file; the grant is the statement `MIT-style license:
+  http://pipwerks.mit-license.org/` carried by the file header (kept intact
+  inside the vendored copy), by the repository `readme.md` and by its
+  `package.json` `license` field, where <http://pipwerks.mit-license.org/>
+  renders the standard MIT licence text in pipwerks' name.
 - **Usage:** shipped unmodified inside exported SCORM 1.2 packages as
   `libs/SCORM_API_wrapper.js`. The eXeLearning-specific behavior lives in the
   separate project-owned runtime under `public/app/common/scorm/scorm12/`
