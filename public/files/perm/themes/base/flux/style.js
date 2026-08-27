@@ -151,7 +151,7 @@ var myTheme = {
             sessionStorage.setItem('siteNav-off', off ? '1' : '0');
         } catch (e) {}
     },
-    // Toggle nav=false on the nav-button hrefs, keeping the rest of the URL.
+    // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
         var value = act == 'add' ? 'false' : null;
         $('.nav-buttons a').each(function () {
