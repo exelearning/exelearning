@@ -195,7 +195,7 @@ body:has(#teacher-mode-toggler-wrapper) .package-title {
 
 .exe-content .box-head {
     background: #0d77d1;
-    min-height: 70px; /* Icon size + margin */
+    min-height: 70px;
     padding: 10px;
     position: relative;
     border-radius: 4px;
@@ -207,24 +207,38 @@ body:has(#teacher-mode-toggler-wrapper) .package-title {
     margin-right: 10px;
 }
 
+/* The float sits the icon at the top of the 70px header, which was sized for a 50px
+   icon (10 + 50 + 10). With 40px it needs 5px more above to stay centred. Export
+   only: in the editor the icon is a flex item its container already centres. */
+.exe-export .box-icon {
+    margin-top: 5px;
+}
+
 .exe-content .box-icon img {
-    width: 50px;
+    width: 40px;
     height: auto;
 }
 
 /* General icons (Material Symbols) */
 .exe-content {
     --exe-icon-color: #fff;
+    /* The header is blue, so the icon is white there; the white picker chip needs
+       the header blue instead. Both icon groups use it, so they match in the picker. */
+    --exe-icon-picker-color: #0d77d1;
 }
 
 .exe-content .box-head .box-icon {
     color: var(--exe-icon-color, #fff);
 }
 
+#node-content-container.exe-content .box-head .exe-icon img {
+    height: 40px;
+}
+
 .exe-content .box-icon .exe-material-icon {
     display: block;
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     background-color: currentColor;
     -webkit-mask-image: var(--exe-material-icon-url);
     mask-image: var(--exe-material-icon-url);
@@ -756,19 +770,14 @@ body[installation-type] .small-icon.dots-menu-vertical-icon,
     opacity: 1;
 }
 
-/* Both icon groups are white for the blue box head, so darken them for the white
-   chip in the icon picker: Style icons are <img> artwork, General icons are inline
-   sprite <svg> filled with currentColor. Scoped to the icon: inverting the chip
-   blackens it. */
-.modal #change-block-icon-modal-content .option-block-icon.exe-icon img,
-.modal #change-block-icon-modal-content .option-block-icon.exe-icon svg {
-    filter: invert(1);
-    opacity: 0.7;
-}
-
-/* Same reason, but this button also carries a text label, so tint it instead. */
-.modal #change-block-icon-modal-content .icon-picker-custom-button {
-    color: #0d77d1;
+/* General icons are painted with currentColor, so --exe-icon-picker-color reaches
+   them directly. Style icons are white <img> artwork, which only a filter can recolour:
+   brightness(0) flattens the white to black and the rest lands it exactly on #0d77d1.
+   Regenerate the chain if that colour ever changes. Scoped to the icon, since filtering
+   the chip blackens its background. */
+.modal #change-block-icon-modal-content .option-block-icon.exe-icon img {
+    filter: brightness(0) saturate(100%) invert(50%) sepia(40%) saturate(1164%)
+        hue-rotate(171deg) brightness(77%) contrast(119%);
 }
 
 /* Dark mode toggler */
