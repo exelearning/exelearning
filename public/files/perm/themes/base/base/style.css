@@ -1,4 +1,16 @@
-/* Default style (to review) */
+/*!
+ * eXeLearning v4+ Default Style
+ * ----------------------
+ * Author: Ignacio Gros for eXeLearning
+ * Project: exelearning.net
+ *
+ * This CSS file is part of a style for eXeLearning.
+ * Licensed under Creative Commons Attribution-ShareAlike (CC BY-SA).
+ *
+ * Note: The style's config.xml contains additional information
+ *       about materials (images) created by third parties
+ *       and included in this style.
+ */
 
 body.exe-export {
     padding: 1em 0;
@@ -9,12 +21,21 @@ body.exe-web-site {
 }
 
 .exe-content a {
-    color: #d76b4a;
+    color: #c74e00;
 }
 
 .exe-content a:hover,
 .exe-content a:focus {
-    color: #993d28;
+    color: #973f00;
+}
+
+.exe-content .fx-tabs a {
+    color: #b14900;
+}
+
+.exe-content .fx-tabs a:hover,
+.exe-content .fx-tabs a:focus {
+    color: #973f00;
 }
 
 #node-content-container.exe-content #node-content {
@@ -87,8 +108,8 @@ body.exe-web-site {
 }
 
 #node-content-container .box-content {
-    background: #FCFCFC;
-    border: 1px solid #ECECEC;
+    background: #fcfcfc;
+    border: 1px solid #ececec;
     padding: 10px;
     border-radius: 8px;
 }
@@ -109,6 +130,7 @@ article.box.idevice-element-in-content[mode="export"] .idevice_node {
     font-size: 1.5rem;
 }
 
+/* Material Icons: tint colour, applied through currentColor to the icon mask */
 .exe-content {
     --exe-icon-color: #d86e41;
 }
@@ -242,11 +264,11 @@ body.siteNav-off #siteFooter {
 
 #siteNav a.active {
     background: #fff;
-    color: #d76b4a;
+    color: #c74e00;
 }
 
 #siteNav a.highlighted-link {
-    color: #d76b4a;
+    color: #b14900;
     background: #ededed;
 }
 
@@ -404,12 +426,17 @@ button.toggler:focus {
     display: block;
     float: left;
     margin-right: 10px;
+    width: 40px;
+    height: auto;
 }
 
+/* Material Icons: the sprite glyph is painted as a CSS mask tinted with currentColor */
 .exe-export .box-icon .exe-material-icon {
     display: block;
     float: left;
     margin-right: 10px;
+    width: 40px;
+    height: 40px;
     background-color: currentColor;
     -webkit-mask-image: var(--exe-material-icon-url);
     mask-image: var(--exe-material-icon-url);
@@ -419,16 +446,6 @@ button.toggler:focus {
     mask-position: center;
     -webkit-mask-size: contain;
     mask-size: contain;
-}
-
-.exe-export .box-icon img {
-    width: 40px;
-    height: auto;
-}
-
-.exe-export .box-icon .exe-material-icon {
-    width: 40px;
-    height: 40px;
     /* Material Symbols are drawn inside a 20px live area on a 24px grid, so with
        mask-size: contain the glyph ink fills only 20/24 = 83.3% of the box and
        renders smaller than the edge-to-edge Style icons. Scale by 24/20 = 1.2 so
@@ -552,7 +569,7 @@ button.toggler:focus {
 #packageLicense a:hover,
 #packageLicense a:focus {
     text-decoration: none;
-    color: #d76b4a;
+    color: #c74e00;
 }
 
 #packageLicense.propietary {
@@ -596,7 +613,7 @@ button.toggler:focus {
 .exe-content .iDevice_buttons button {
     background: #fff;
     color: #555;
-    border: 1px solid #ccc;
+    border: 1px solid #949494;
     padding: 4px 10px;
     border-radius: 4px;
     transition: 0.5s ease;
@@ -608,7 +625,7 @@ button.toggler:focus {
 .exe-content .iDevice_buttons button:focus {
     box-shadow: 2px 2px 4px #dbdbdb;
     color: #000;
-    border-color: #bbb;
+    border-color: #7a7a7a;
 }
 
 /* Page counter */
@@ -617,7 +634,7 @@ button.toggler:focus {
     float: right;
     margin: 0 0 0.5em 20px;
     font-size: 0.9em;
-    color: #777;
+    color: #767676;
     font-weight: 300;
 }
 
@@ -631,7 +648,7 @@ button.toggler:focus {
     right: 70px;
     margin: 0;
     font-size: 0.9em;
-    color: #777;
+    color: #767676;
     padding: 0 8px;
     border-radius: 4px;
     text-align: left;
@@ -643,16 +660,19 @@ button.toggler:focus {
     margin: 0 0 0 1em;
 }
 
-#teacher-mode-toggler.form-check-input:checked {
-    background-color: #078e8e;
-    border-color: #078e8e;
+#teacher-mode-toggler.form-check-input {
     font-size: 0.9em;
     margin-right: 0.6em;
 }
 
+#teacher-mode-toggler.form-check-input:checked {
+    background-color: #078e8e;
+    border-color: #078e8e;
+}
+
 label[for="teacher-mode-toggler"] {
     font-size: 0.9em;
-    color: #777;
+    color: #767676;
     position: relative;
     top: -0.2em;
 }
@@ -665,8 +685,33 @@ label[for="teacher-mode-toggler"] {
 
 .exe-content .btn-primary:hover,
 .exe-content .btn-primary:focus {
-    background-color: #078e8e;
-    border-color: #078e8e;
+    background-color: #078383;
+    border-color: #078383;
+}
+
+/* Focus */
+.exe-content a:focus-visible,
+#siteNav a:focus-visible,
+#packageLicense a:focus-visible,
+.nav-buttons .nav-button:focus-visible,
+button.toggler:focus-visible,
+.exe-export .box-toggle:focus-visible,
+#exe-client-search-submit:focus-visible,
+#exe-client-search-reset:focus-visible,
+.exe-content .iDevice_buttons input:focus-visible,
+.exe-content .iDevice_buttons button:focus-visible {
+    outline: 2px solid #054d4d;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #siteNav a,
+    .nav-buttons .nav-button,
+    button.toggler,
+    .exe-content .iDevice_buttons input,
+    .exe-content .iDevice_buttons button {
+        transition: none;
+    }
 }
 
 /* Responsive design */
@@ -709,8 +754,6 @@ label[for="teacher-mode-toggler"] {
         width: 100%;
         float: none;
         padding: 68px 10px 20px 10px;
-        min-height: 0 !important;
-        height: auto !important;
     }
 
     /* No false left column */
@@ -777,7 +820,6 @@ label[for="teacher-mode-toggler"] {
 
     .exe-content {
         color: #000;
-        padding: 0;
     }
 
     @page {
