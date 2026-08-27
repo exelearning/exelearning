@@ -366,6 +366,8 @@ var $eXeDragDrop = {
 
     initializeDragAndDrop: function (instance) {
         const mOptions = $eXeDragDrop.options[instance];
+        // The 200ms retry can fire after teardown removed the options
+        if (!mOptions) return;
 
         // Keep a retry counter to handle race conditions (jQuery UI or images not ready)
         mOptions._initRetries = mOptions._initRetries || 0;
