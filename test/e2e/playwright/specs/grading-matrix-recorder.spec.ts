@@ -32,6 +32,7 @@ import { execSync } from 'child_process';
 
 import type { ProjectSpec } from '../../../helpers/grading-fixtures';
 import { gradingAnswerKey } from '../../../helpers/grading-fixtures';
+import { gradingScenario, type ScenarioOracle } from '../../../helpers/grading-scenarios';
 import {
     buildHtml5Package,
     installMoodleServing,
@@ -65,15 +66,6 @@ import {
 
 /** `traceVersion` of what this recorder writes (TRACE-CONTRACT.md). */
 const TRACE_VERSION = 2;
-
-/**
- * The oracle policy every `expected` block below follows: the overall is the
- * weight-normalised mean over ALL gradable iDevices, Σ(score·weight) / Σ(weight), and
- * every iDevice of every scenario is answered, so the rule for an unanswered iDevice
- * (counted as 0, or excluded as ungraded — still a product decision, see the contract)
- * is never exercised here: `expected.ungraded` is always empty.
- */
-const ORACLE_POLICY_ID = 'weighted-mean-v1';
 
 /**
  * Where the recorded traces are written. Defaults inside the repo's own gitignored
@@ -116,16 +108,12 @@ function attributePages<T extends { page: number; href: string }>(pkg: BuiltPack
     });
 }
 
-/** The hand-authored oracle of one scenario, as written into its trace. */
-interface ExpectedOutcome {
-    policyId: string;
-    perItem: Record<string, number>;
-    weights: Record<string, number>;
-    overall: number;
-    /** iDevices deliberately left unanswered — none in this matrix. */
-    ungraded: string[];
-    note: string;
-}
+/**
+ * The hand-authored oracle of one scenario. It is the catalogue's `ScenarioOracle`
+ * verbatim (test/helpers/grading-scenarios.ts) — the recorder does not author its own,
+ * it reads the one every consumer shares and writes it into the trace.
+ */
+type ExpectedOutcome = ScenarioOracle;
 
 /** Everything one scenario observed, plus its oracle. */
 interface Recording {
@@ -232,67 +220,15 @@ async function scrollToInFrame(page: import('@playwright/test').Page, selector: 
 }
 
 // ---------------------------------------------------------------------------
-// The matrix specs (verbatim from test/integration/grading-fixtures.spec.ts)
+// The matrix specs and their oracles — from the shared scenario catalogue
+// (test/helpers/grading-scenarios.ts), the single declaration every grading
+// consumer reads. The click scripts below drive each spec to the target scores
+// the catalogue's `actions` name; the `expected` oracle is the catalogue's own.
 // ---------------------------------------------------------------------------
 
-const M2_SPEC: ProjectSpec = {
-    title: 'M2 one of each type',
-    odeId: 'GRADING-FIXTURE-M2',
-    pages: [
-        {
-            id: 'page-1',
-            title: 'M2 Page',
-            idevices: [
-                { id: 'm2-tof', type: 'trueorfalse', weighted: 10, questions: 4, blockTitle: 'M2 TrueOrFalse' },
-                { id: 'm2-dnd', type: 'dragdrop', weighted: 20, questions: 4, blockTitle: 'M2 DragDrop' },
-                { id: 'm2-sl', type: 'scrambled-list', weighted: 30, questions: 4, blockTitle: 'M2 ScrambledList' },
-                { id: 'm2-frm', type: 'form', weighted: 40, questions: 4, blockTitle: 'M2 Form' },
-            ],
-        },
-    ],
-};
-
-const M3_SPEC: ProjectSpec = {
-    title: 'M3 two pages, two gradable each',
-    odeId: 'GRADING-FIXTURE-M3',
-    pages: [
-        {
-            id: 'page-1',
-            title: 'M3 Page One',
-            idevices: [
-                { id: 'm3-p1-tof', type: 'trueorfalse', weighted: 100, questions: 4, blockTitle: 'M3 P1 A' },
-                { id: 'm3-p1-sl', type: 'scrambled-list', weighted: 100, questions: 4, blockTitle: 'M3 P1 B' },
-            ],
-        },
-        {
-            id: 'page-2',
-            title: 'M3 Page Two',
-            idevices: [
-                { id: 'm3-p2-dnd', type: 'dragdrop', weighted: 100, questions: 4, blockTitle: 'M3 P2 A' },
-                { id: 'm3-p2-frm', type: 'form', weighted: 100, questions: 4, blockTitle: 'M3 P2 B' },
-            ],
-        },
-    ],
-};
-
-const M4_SPEC: ProjectSpec = {
-    title: 'M4 two pages, one gradable each',
-    odeId: 'GRADING-FIXTURE-M4',
-    pages: [
-        {
-            id: 'page-1',
-            title: 'M4 Page One',
-            blockTitle: 'M4 Activity A',
-            idevices: [{ id: 'm4-p1', type: 'trueorfalse', weighted: 25, questions: 4 }],
-        },
-        {
-            id: 'page-2',
-            title: 'M4 Page Two',
-            blockTitle: 'M4 Activity B',
-            idevices: [{ id: 'm4-p2', type: 'form', weighted: 75, questions: 4 }],
-        },
-    ],
-};
+const M2_SPEC: ProjectSpec = gradingScenario('M2').spec;
+const M3_SPEC: ProjectSpec = gradingScenario('M3').spec;
+const M4_SPEC: ProjectSpec = gradingScenario('M4').spec;
 
 /** Answer-key accessors, typed by the discriminated union the fixture returns. */
 function tofSolutions(spec: ProjectSpec, id: string): (0 | 1)[] {
@@ -409,17 +345,7 @@ test.describe('grading matrix recorder', () => {
         const trace = await readTrace(page);
         const cmi = await readCmi(page);
 
-        const expected: ExpectedOutcome = {
-            policyId: ORACLE_POLICY_ID,
-            perItem: { 'm2-tof': 100, 'm2-dnd': 100, 'm2-sl': 0, 'm2-frm': 0 },
-            weights: { 'm2-tof': 10, 'm2-dnd': 20, 'm2-sl': 30, 'm2-frm': 40 },
-            overall: 30,
-            ungraded: [],
-            note:
-                'By hand: tof 4/4 = 100, dnd 4/4 cards on their own target = 100, sl a derangement ' +
-                '(0 of 4 in position) = 0, form 4 wrong answers = 0. Weights sum to 100 already: ' +
-                '(100*10 + 100*20 + 0*30 + 0*40)/100 = 30.',
-        };
+        const expected: ExpectedOutcome = gradingScenario('M2').expected;
 
         const file = writeTrace('m2-four-types-single-page', browserName, pkg, runtime, {
             interactions,
@@ -477,14 +403,7 @@ test.describe('grading matrix recorder', () => {
         const trace = await readTrace(page);
         const cmi = await readCmi(page);
 
-        const expected: ExpectedOutcome = {
-            policyId: ORACLE_POLICY_ID,
-            perItem: { 'm4-p1': 100, 'm4-p2': 0 },
-            weights: { 'm4-p1': 25, 'm4-p2': 75 },
-            overall: 25,
-            ungraded: [],
-            note: 'By hand: page 1 tof 4/4 = 100, page 2 form 0/4 = 0. (100*25 + 0*75)/100 = 25.',
-        };
+        const expected: ExpectedOutcome = gradingScenario('M4').expected;
 
         const file = writeTrace('m4-multipage-weighted-25-75', browserName, pkg, runtime, {
             interactions,
@@ -586,17 +505,7 @@ test.describe('grading matrix recorder', () => {
         const trace = await readTrace(page);
         const cmi = await readCmi(page);
 
-        const expected: ExpectedOutcome = {
-            policyId: ORACLE_POLICY_ID,
-            perItem: { 'm3-p1-tof': 75, 'm3-p1-sl': 50, 'm3-p2-dnd': 25, 'm3-p2-frm': 50 },
-            weights: { 'm3-p1-tof': 100, 'm3-p1-sl': 100, 'm3-p2-dnd': 100, 'm3-p2-frm': 100 },
-            overall: 50,
-            ungraded: [],
-            note:
-                'By hand: tof 3/4 = 75, scrambled-list [0,1,3,2] keeps 2 of 4 in position = 50, ' +
-                'dragdrop 1 of 4 cards on its own target = 25, form 2/4 = 50. All weights 100, so ' +
-                'the overall is the plain mean: (75 + 50 + 25 + 50)/4 = 50.',
-        };
+        const expected: ExpectedOutcome = gradingScenario('M3').expected;
 
         const file = writeTrace('m3-two-pages-two-gradable', browserName, pkg, runtime, {
             interactions,
@@ -696,16 +605,7 @@ test.describe('grading matrix recorder', () => {
         const trace = await readTrace(page);
         const cmi = await readCmi(page);
 
-        const expected: ExpectedOutcome = {
-            policyId: ORACLE_POLICY_ID,
-            perItem: { 'm3-p1-tof': 75, 'm3-p1-sl': 50, 'm3-p2-dnd': 25, 'm3-p2-frm': 75 },
-            weights: { 'm3-p1-tof': 100, 'm3-p1-sl': 100, 'm3-p2-dnd': 100, 'm3-p2-frm': 100 },
-            overall: 56.25,
-            ungraded: [],
-            note:
-                'By hand: tof 3/4 = 75, scrambled-list 2 of 4 in position = 50, dragdrop 1 of 4 = 25, ' +
-                'form 3/4 = 75. All weights 100: (75 + 50 + 25 + 75)/4 = 56.25.',
-        };
+        const expected: ExpectedOutcome = gradingScenario('M3C').expected;
 
         const file = writeTrace('m3-control-form-75', browserName, pkg, runtime, {
             interactions,

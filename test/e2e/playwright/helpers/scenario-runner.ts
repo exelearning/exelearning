@@ -13,24 +13,19 @@
  * silently landing on a neighbouring score would corrupt the measurement.
  */
 import type { Page } from '@playwright/test';
-import type { GradingAnswerKey, ProjectSpec } from '../../../helpers/grading-fixtures';
+import type { GradingAnswerKey } from '../../../helpers/grading-fixtures';
+import type { GradingScenario, ScenarioAction } from '../../../helpers/grading-scenarios';
 import type { HostActivity, HostSco, LmsHost } from './lms-host';
 
 /** What the learner does to one iDevice: a target score, or leave it alone. */
-export type Action = number | 'skip';
+export type Action = ScenarioAction;
 
-/** One scenario as declared in the shared catalogue. */
-export interface Scenario {
-    id: string;
-    title: string;
-    group: string;
-    spec: ProjectSpec;
-    actions: Record<string, Action>;
-    /** Scores to re-enter on a later revisit of a page, keyed by page id then iDevice id. */
-    revisit?: Record<string, Record<string, number>>;
-    /** Page ids in visit order; a page may appear more than once. */
-    navigation: string[];
-}
+/**
+ * One scenario as declared in the shared catalogue (test/helpers/grading-scenarios.ts —
+ * the live lanes read the same declarations from the `catalogue.json` the producer
+ * script writes from it).
+ */
+export type Scenario = GradingScenario;
 
 /** What actually happened to one iDevice, for the evidence record. */
 export interface PerformedAction {

@@ -43,6 +43,7 @@ import {
     type GradableType,
     type ProjectSpec,
 } from '../helpers/grading-fixtures';
+import { gradingPackages } from '../helpers/grading-scenarios';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'grading-fixtures-test');
 const publicDir = path.join(process.cwd(), 'public');
@@ -78,121 +79,18 @@ const SPEC: ProjectSpec = {
 };
 
 /**
- * The matrix the recorder gets a real, unzipped package for.
+ * The matrix the recorder gets a real, unzipped package for — the distinct packages of
+ * the shared scenario catalogue (test/helpers/grading-scenarios.ts), no longer declared
+ * here. M1..M5 are its package ids in catalogue order.
  *
  * M5 is the deliberate bug case: a `trueorfalse` followed by a `dragdrop` IN THE SAME
  * BLOCK. The stored `trueorfalse` `htmlView` leaves `.exe-trueorfalse-container`
  * unclosed, so the browser nests the following sibling inside it (PR #2307, unmerged).
  */
-const MATRIX: { name: string; spec: ProjectSpec }[] = [
-    {
-        name: 'M1',
-        spec: {
-            title: 'M1 two iDevices, separate blocks',
-            odeId: 'GRADING-FIXTURE-M1',
-            pages: [
-                {
-                    id: 'page-1',
-                    title: 'M1 Page',
-                    idevices: [
-                        { id: 'm1-tof', type: 'trueorfalse', weighted: 25, questions: 4, blockTitle: 'M1 TrueOrFalse' },
-                        { id: 'm1-dnd', type: 'dragdrop', weighted: 75, questions: 4, blockTitle: 'M1 DragDrop' },
-                    ],
-                },
-            ],
-        },
-    },
-    {
-        name: 'M2',
-        spec: {
-            title: 'M2 one of each type',
-            odeId: 'GRADING-FIXTURE-M2',
-            pages: [
-                {
-                    id: 'page-1',
-                    title: 'M2 Page',
-                    idevices: [
-                        { id: 'm2-tof', type: 'trueorfalse', weighted: 10, questions: 4, blockTitle: 'M2 TrueOrFalse' },
-                        { id: 'm2-dnd', type: 'dragdrop', weighted: 20, questions: 4, blockTitle: 'M2 DragDrop' },
-                        {
-                            id: 'm2-sl',
-                            type: 'scrambled-list',
-                            weighted: 30,
-                            questions: 4,
-                            blockTitle: 'M2 ScrambledList',
-                        },
-                        { id: 'm2-frm', type: 'form', weighted: 40, questions: 4, blockTitle: 'M2 Form' },
-                    ],
-                },
-            ],
-        },
-    },
-    {
-        name: 'M3',
-        spec: {
-            title: 'M3 two pages, two gradable each',
-            odeId: 'GRADING-FIXTURE-M3',
-            pages: [
-                {
-                    id: 'page-1',
-                    title: 'M3 Page One',
-                    idevices: [
-                        { id: 'm3-p1-tof', type: 'trueorfalse', weighted: 100, questions: 4, blockTitle: 'M3 P1 A' },
-                        { id: 'm3-p1-sl', type: 'scrambled-list', weighted: 100, questions: 4, blockTitle: 'M3 P1 B' },
-                    ],
-                },
-                {
-                    id: 'page-2',
-                    title: 'M3 Page Two',
-                    idevices: [
-                        { id: 'm3-p2-dnd', type: 'dragdrop', weighted: 100, questions: 4, blockTitle: 'M3 P2 A' },
-                        { id: 'm3-p2-frm', type: 'form', weighted: 100, questions: 4, blockTitle: 'M3 P2 B' },
-                    ],
-                },
-            ],
-        },
-    },
-    {
-        name: 'M4',
-        spec: {
-            title: 'M4 two pages, one gradable each',
-            odeId: 'GRADING-FIXTURE-M4',
-            pages: [
-                {
-                    id: 'page-1',
-                    title: 'M4 Page One',
-                    blockTitle: 'M4 Activity A',
-                    idevices: [{ id: 'm4-p1', type: 'trueorfalse', weighted: 25, questions: 4 }],
-                },
-                {
-                    id: 'page-2',
-                    title: 'M4 Page Two',
-                    blockTitle: 'M4 Activity B',
-                    idevices: [{ id: 'm4-p2', type: 'form', weighted: 75, questions: 4 }],
-                },
-            ],
-        },
-    },
-    {
-        name: 'M5',
-        spec: {
-            title: 'M5 same block (swallowing case)',
-            odeId: 'GRADING-FIXTURE-M5',
-            pages: [
-                {
-                    id: 'page-1',
-                    title: 'M5 Page',
-                    blockTitle: 'M5 Shared Block',
-                    sameBlock: true,
-                    idevices: [
-                        { id: 'm5-tof', type: 'trueorfalse', weighted: 40, questions: 4 },
-                        { id: 'm5-dnd', type: 'dragdrop', weighted: 60, questions: 4 },
-                    ],
-                },
-            ],
-        },
-    },
-];
+const MATRIX: { name: string; spec: ProjectSpec }[] = gradingPackages().map(pkg => ({
+    name: pkg.id,
+    spec: pkg.spec,
+}));
 
 /** The expected `.idevice_node` id + weight, flattened per page, for each matrix case. */
 const EXPECTED: Record<string, { id: string; type: GradableType; weighted: number }[][]> = Object.fromEntries(
