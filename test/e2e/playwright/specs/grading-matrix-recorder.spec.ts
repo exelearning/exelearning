@@ -56,6 +56,7 @@ import {
     type BuiltPackage,
     type FixtureRepairs,
     type InjectorVariant,
+    type RecordedTrace,
 } from '../helpers/moodle-serving-model';
 
 /**
@@ -107,6 +108,43 @@ function writeTrace(scenario: string, body: Record<string, unknown>): string {
     const file = path.join(TRACE_DIR, `${scenario}.trace.json`);
     fs.writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`);
     return file;
+}
+
+/** The hand-authored oracle of one scenario, as written into its trace. */
+interface ExpectedOutcome {
+    perItem: Record<string, number>;
+    weights: Record<string, number>;
+    overall: number;
+    note: string;
+}
+
+/**
+ * A recorder that records nothing must not pass.
+ *
+ * The serving model measured exactly that once: a runtime whose client stayed idle
+ * refused every write locally, `finalCmi` came back empty, and the run was green
+ * because only page count and order were asserted. So, after the trace is on disk
+ * (it is the evidence either way), four things are required of it: the package wrote
+ * `cmi.suspend_data` at least once, the LMS-side cmi map is not empty, no uncaught
+ * error fired inside the package, and the score the LMS holds is the scenario's
+ * hand-computed overall — the trace file is the assertion's failure output.
+ */
+function assertRecorded(
+    label: string,
+    trace: RecordedTrace,
+    cmi: Record<string, string>,
+    consoleErrors: string[],
+    expected: ExpectedOutcome,
+): void {
+    const suspendWrites = trace.scorm.filter(c => c.method === 'LMSSetValue' && c.args[0] === 'cmi.suspend_data');
+    expect(suspendWrites.length, `${label}: no LMSSetValue(cmi.suspend_data) reached window.API`).toBeGreaterThan(0);
+    expect(Object.keys(cmi).length, `${label}: the LMS-side cmi map is empty`).toBeGreaterThan(0);
+    const pageErrors = consoleErrors.filter(e => e.startsWith('pageerror:'));
+    expect(pageErrors, `${label}: uncaught errors inside the package`).toEqual([]);
+    expect(
+        Number(cmi['cmi.core.score.raw']),
+        `${label}: cmi.core.score.raw ${JSON.stringify(cmi['cmi.core.score.raw'])} vs hand-authored overall ${expected.overall}`,
+    ).toBe(expected.overall);
 }
 
 async function setup(spec: ProjectSpec, origin: string, page: import('@playwright/test').Page): Promise<BuiltPackage> {
@@ -308,6 +346,16 @@ test.describe('grading matrix recorder', () => {
         const trace = await readTrace(page);
         const cmi = await readCmi(page);
 
+        const expected: ExpectedOutcome = {
+            perItem: { 'm2-tof': 100, 'm2-dnd': 100, 'm2-sl': 0, 'm2-frm': 0 },
+            weights: { 'm2-tof': 10, 'm2-dnd': 20, 'm2-sl': 30, 'm2-frm': 40 },
+            overall: 30,
+            note:
+                'By hand: tof 4/4 = 100, dnd 4/4 cards on their own target = 100, sl a derangement ' +
+                '(0 of 4 in position) = 0, form 4 wrong answers = 0. Weights sum to 100 already: ' +
+                '(100*10 + 100*20 + 0*30 + 0*40)/100 = 30.',
+        };
+
         const file = writeTrace('m2-four-types-single-page', {
             traceVersion: 1,
             scenario: 'm2-four-types-single-page',
@@ -321,15 +369,7 @@ test.describe('grading matrix recorder', () => {
             xapi: attributePages(pkg, trace.xapi),
             finalCmi: cmi,
             consoleErrors,
-            expected: {
-                perItem: { 'm2-tof': 100, 'm2-dnd': 100, 'm2-sl': 0, 'm2-frm': 0 },
-                weights: { 'm2-tof': 10, 'm2-dnd': 20, 'm2-sl': 30, 'm2-frm': 40 },
-                overall: 30,
-                note:
-                    'By hand: tof 4/4 = 100, dnd 4/4 cards on their own target = 100, sl a derangement ' +
-                    '(0 of 4 in position) = 0, form 4 wrong answers = 0. Weights sum to 100 already: ' +
-                    '(100*10 + 100*20 + 0*30 + 0*40)/100 = 30.',
-            },
+            expected,
         });
 
         console.log(`[M2] trace: ${file}`);
@@ -337,6 +377,8 @@ test.describe('grading matrix recorder', () => {
         console.log(`[M2] score.raw: ${JSON.stringify(cmi['cmi.core.score.raw'])}`);
         console.log(`[M2] scorm calls ${trace.scorm.length}, xapi ${trace.xapi.length}`);
         console.log(`[M2] console errors: ${JSON.stringify(consoleErrors.slice(0, 8))}`);
+
+        assertRecorded('M2', trace, cmi, consoleErrors, expected);
     });
 
     test('M4 two pages, one gradable each, weights 25/75', async ({ page }) => {
@@ -378,6 +420,13 @@ test.describe('grading matrix recorder', () => {
         const trace = await readTrace(page);
         const cmi = await readCmi(page);
 
+        const expected: ExpectedOutcome = {
+            perItem: { 'm4-p1': 100, 'm4-p2': 0 },
+            weights: { 'm4-p1': 25, 'm4-p2': 75 },
+            overall: 25,
+            note: 'By hand: page 1 tof 4/4 = 100, page 2 form 0/4 = 0. (100*25 + 0*75)/100 = 25.',
+        };
+
         const file = writeTrace('m4-multipage-weighted-25-75', {
             traceVersion: 1,
             scenario: 'm4-multipage-weighted-25-75',
@@ -391,12 +440,7 @@ test.describe('grading matrix recorder', () => {
             xapi: attributePages(pkg, trace.xapi),
             finalCmi: cmi,
             consoleErrors,
-            expected: {
-                perItem: { 'm4-p1': 100, 'm4-p2': 0 },
-                weights: { 'm4-p1': 25, 'm4-p2': 75 },
-                overall: 25,
-                note: 'By hand: page 1 tof 4/4 = 100, page 2 form 0/4 = 0. (100*25 + 0*75)/100 = 25.',
-            },
+            expected,
         });
 
         console.log(`[M4] trace: ${file}`);
@@ -404,6 +448,8 @@ test.describe('grading matrix recorder', () => {
         console.log(`[M4] score.raw: ${JSON.stringify(cmi['cmi.core.score.raw'])}`);
         console.log(`[M4] scorm calls ${trace.scorm.length}, xapi ${trace.xapi.length}`);
         console.log(`[M4] console errors: ${JSON.stringify(consoleErrors.slice(0, 8))}`);
+
+        assertRecorded('M4', trace, cmi, consoleErrors, expected);
     });
 
     test('M3 two pages, two gradable each, mixed scores', async ({ page }) => {
@@ -489,6 +535,16 @@ test.describe('grading matrix recorder', () => {
         const trace = await readTrace(page);
         const cmi = await readCmi(page);
 
+        const expected: ExpectedOutcome = {
+            perItem: { 'm3-p1-tof': 75, 'm3-p1-sl': 50, 'm3-p2-dnd': 25, 'm3-p2-frm': 50 },
+            weights: { 'm3-p1-tof': 100, 'm3-p1-sl': 100, 'm3-p2-dnd': 100, 'm3-p2-frm': 100 },
+            overall: 50,
+            note:
+                'By hand: tof 3/4 = 75, scrambled-list [0,1,3,2] keeps 2 of 4 in position = 50, ' +
+                'dragdrop 1 of 4 cards on its own target = 25, form 2/4 = 50. All weights 100, so ' +
+                'the overall is the plain mean: (75 + 50 + 25 + 50)/4 = 50.',
+        };
+
         const file = writeTrace('m3-two-pages-two-gradable', {
             traceVersion: 1,
             scenario: 'm3-two-pages-two-gradable',
@@ -502,15 +558,7 @@ test.describe('grading matrix recorder', () => {
             xapi: attributePages(pkg, trace.xapi),
             finalCmi: cmi,
             consoleErrors,
-            expected: {
-                perItem: { 'm3-p1-tof': 75, 'm3-p1-sl': 50, 'm3-p2-dnd': 25, 'm3-p2-frm': 50 },
-                weights: { 'm3-p1-tof': 100, 'm3-p1-sl': 100, 'm3-p2-dnd': 100, 'm3-p2-frm': 100 },
-                overall: 50,
-                note:
-                    'By hand: tof 3/4 = 75, scrambled-list [0,1,3,2] keeps 2 of 4 in position = 50, ' +
-                    'dragdrop 1 of 4 cards on its own target = 25, form 2/4 = 50. All weights 100, so ' +
-                    'the overall is the plain mean: (75 + 50 + 25 + 50)/4 = 50.',
-            },
+            expected,
         });
 
         console.log(`[M3] trace: ${file}`);
@@ -518,6 +566,8 @@ test.describe('grading matrix recorder', () => {
         console.log(`[M3] score.raw: ${JSON.stringify(cmi['cmi.core.score.raw'])}`);
         console.log(`[M3] scorm calls ${trace.scorm.length}, xapi ${trace.xapi.length}`);
         console.log(`[M3] console errors: ${JSON.stringify(consoleErrors.slice(0, 8))}`);
+
+        assertRecorded('M3', trace, cmi, consoleErrors, expected);
     });
     /**
      * M3-control: the SAME package and the same first three answers, with only the
@@ -601,6 +651,15 @@ test.describe('grading matrix recorder', () => {
         const trace = await readTrace(page);
         const cmi = await readCmi(page);
 
+        const expected: ExpectedOutcome = {
+            perItem: { 'm3-p1-tof': 75, 'm3-p1-sl': 50, 'm3-p2-dnd': 25, 'm3-p2-frm': 75 },
+            weights: { 'm3-p1-tof': 100, 'm3-p1-sl': 100, 'm3-p2-dnd': 100, 'm3-p2-frm': 100 },
+            overall: 56.25,
+            note:
+                'By hand: tof 3/4 = 75, scrambled-list 2 of 4 in position = 50, dragdrop 1 of 4 = 25, ' +
+                'form 3/4 = 75. All weights 100: (75 + 50 + 25 + 75)/4 = 56.25.',
+        };
+
         const file = writeTrace('m3-control-form-75', {
             traceVersion: 1,
             scenario: 'm3-control-form-75',
@@ -614,19 +673,14 @@ test.describe('grading matrix recorder', () => {
             xapi: attributePages(pkg, trace.xapi),
             finalCmi: cmi,
             consoleErrors,
-            expected: {
-                perItem: { 'm3-p1-tof': 75, 'm3-p1-sl': 50, 'm3-p2-dnd': 25, 'm3-p2-frm': 75 },
-                weights: { 'm3-p1-tof': 100, 'm3-p1-sl': 100, 'm3-p2-dnd': 100, 'm3-p2-frm': 100 },
-                overall: 56.25,
-                note:
-                    'By hand: tof 3/4 = 75, scrambled-list 2 of 4 in position = 50, dragdrop 1 of 4 = 25, ' +
-                    'form 3/4 = 75. All weights 100: (75 + 50 + 25 + 75)/4 = 56.25.',
-            },
+            expected,
         });
 
         console.log(`[M3C] trace: ${file}`);
         console.log(`[M3C] suspend_data: ${JSON.stringify(cmi['cmi.suspend_data'])}`);
         console.log(`[M3C] score.raw: ${JSON.stringify(cmi['cmi.core.score.raw'])}`);
         console.log(`[M3C] console errors: ${JSON.stringify(consoleErrors.slice(0, 8))}`);
+
+        assertRecorded('M3C', trace, cmi, consoleErrors, expected);
     });
 });
