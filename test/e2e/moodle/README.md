@@ -56,6 +56,48 @@ engine is not a grading result. Evidence from the default engine keeps its plain
 any other engine tags its own (`walk-main.firefox.json`), so runs never overwrite each
 other.
 
+## The scenario catalogue and its packages
+
+Four lanes — `scorm-grading-matrix`, `package-oracles`, `exelearning-serving-matrix` and
+`exelearning-matrix` — replay the **declared scenarios**
+(`test/helpers/grading-scenarios.ts`, the single source shared with the integration spec
+and the recorder). They read three things from `$AUDIT_ROOT`, which the producer script
+writes with the real exporters:
+
+```bash
+# from the repository root; --root defaults to $AUDIT_ROOT or test-results/moodle-harness
+AUDIT_ROOT=$PWD/test-results/moodle-harness \
+  bun run scripts/build-grading-catalogue.ts --producer=main --formats=scorm12,html5,elpx
+```
+
+This writes, under `$AUDIT_ROOT`:
+
+- `scenarios/catalogue.json` — every declared scenario, with its hand-authored oracle;
+- `packages/main/manifest-main.json` — the `head`, the per-scenario `sha256`, the SCORM
+  runtime digests and the page lists the lanes record;
+- `packages/main/<id>-main-<format>.zip` — one package per scenario. Scenarios that share
+  a project (M3 and its control M3C) get identical bytes under their own names, because
+  every lane addresses a package by scenario id.
+
+Run the producer once per revision under test (`--producer=main`, `--producer=2209`, …);
+the `producer` axis of the matrix lanes selects which set is graded. To grade with a
+container-based host (`scorm-grading-matrix`'s `mod_scorm` / `mod_exescorm`), also stage
+those zips where the container reads them:
+
+```bash
+cp $AUDIT_ROOT/packages/main/*.zip test/e2e/moodle/packages/
+```
+
+A lane whose catalogue is not staged **skips itself** with the command above rather than
+failing at import.
+
+**Not produced by this repository:** the `allidevices-{main,2209,2209fix}-scorm12.zip`
+packages the `all-idevices-*.spec.ts` lanes consume. They are exported from a real
+33-iDevice project (`todos-los-idevices`) by each revision's own exporter, not from a
+scenario this repository declares, and the `2209fix` label is a worktree with the audit's
+fixes applied — there is no spec to generate them. Stage them into
+`test/e2e/moodle/packages/` by hand when running those lanes.
+
 ## Environment
 
 | variable | default | what it selects |
