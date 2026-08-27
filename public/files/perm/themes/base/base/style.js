@@ -37,14 +37,10 @@ var myTheme = {
         ';
         $('#siteNav').before(togglers);
         // Check the current NAV status
-        var url = window.location.href;
-        url = url.split('?');
-        if (url.length > 1) {
-            if (url[1].indexOf('nav=false') != -1) {
-                $('body').addClass('siteNav-off');
-                $('#siteNavToggler').attr('aria-expanded', 'false');
-                myTheme.params('add');
-            }
+        if (new URLSearchParams(window.location.search).get('nav') === 'false') {
+            $('body').addClass('siteNav-off');
+            $('#siteNavToggler').attr('aria-expanded', 'false');
+            myTheme.params('add');
         }
         // Menu toggler
         $('#siteNavToggler').on('click', function () {
@@ -115,44 +111,14 @@ var myTheme = {
         if (navH < $(window).height()) wrapper.addClass('fixed');
         else wrapper.removeClass('fixed');
     },
-    param: function (e, act) {
-        if (act == 'add') {
-            var ref = e.href;
-            var hash = '';
-            var h = ref.indexOf('#');
-            if (h != -1) {
-                hash = ref.slice(h);
-                ref = ref.slice(0, h);
-            }
-            var param = 'nav=false';
-            if (ref.indexOf(param) == -1) {
-                e.href =
-                    ref + (ref.indexOf('?') != -1 ? '&' : '?') + param + hash;
-            }
-        } else {
-            var ref = e.href;
-            var q = ref.indexOf('?');
-            if (q == -1) return;
-            var tail = ref.slice(q + 1);
-            var hash = '';
-            var h = tail.indexOf('#');
-            if (h != -1) {
-                hash = tail.slice(h);
-                tail = tail.slice(0, h);
-            }
-            // Keep every other param
-            var kept = tail.split('&').filter(function (p) {
-                return p !== '' && p != 'nav=false';
-            });
-            e.href =
-                ref.slice(0, q) +
-                (kept.length ? '?' + kept.join('&') : '') +
-                hash;
-        }
-    },
+    // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
+        var value = act == 'add' ? 'false' : null;
         $('.nav-buttons a').each(function () {
-            myTheme.param(this, act);
+            this.setAttribute(
+                'href',
+                $exeExport.setUrlParam(this.getAttribute('href'), 'nav', value)
+            );
         });
     },
 };

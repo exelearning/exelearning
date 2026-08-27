@@ -980,6 +980,92 @@ describe('exe_export.js', () => {
       });
     });
 
+    describe('setUrlParam', () => {
+      // The seven hrefs the styles' nav=false handling has to survive.
+      const HREFS = [
+        'page.html',
+        'page.html#sec3',
+        'page.html?exe-teacher=1',
+        'page.html?exe-teacher=1#sec3',
+        'page.html?nav=false',
+        'page.html?nav=false#sec3',
+        'page.html?a=1&b=2',
+      ];
+
+      it('adds nav=false without losing other params or the fragment', () => {
+        const set = (h) => window.$exeExport.setUrlParam(h, 'nav', 'false');
+        expect(HREFS.map(set)).toEqual([
+          'page.html?nav=false',
+          'page.html?nav=false#sec3',
+          'page.html?exe-teacher=1&nav=false',
+          'page.html?exe-teacher=1&nav=false#sec3',
+          'page.html?nav=false',
+          'page.html?nav=false#sec3',
+          'page.html?a=1&b=2&nav=false',
+        ]);
+      });
+
+      it('removes only nav, keeping other params and the fragment', () => {
+        const del = (h) => window.$exeExport.setUrlParam(h, 'nav', null);
+        expect(HREFS.map(del)).toEqual([
+          'page.html',
+          'page.html#sec3',
+          'page.html?exe-teacher=1',
+          'page.html?exe-teacher=1#sec3',
+          'page.html',
+          'page.html#sec3',
+          'page.html?a=1&b=2',
+        ]);
+      });
+
+      it('is idempotent when applied twice', () => {
+        const set = (h) => window.$exeExport.setUrlParam(h, 'nav', 'false');
+        expect(HREFS.map((h) => set(set(h)))).toEqual(HREFS.map(set));
+      });
+
+      it('matches the key, not a substring of the pair', () => {
+        const set = window.$exeExport.setUrlParam;
+        // Keys that merely contain "nav" are preserved.
+        expect(set('page.html?xnav=false', 'nav', 'false')).toBe('page.html?xnav=false&nav=false');
+        // Any value of nav is replaced, not just the literal nav=false.
+        expect(set('page.html?nav=FALSE', 'nav', null)).toBe('page.html');
+        expect(set('page.html?nav=falsey', 'nav', null)).toBe('page.html');
+        expect(set('page.html?nav=false&nav=false', 'nav', 'false')).toBe('page.html?nav=false');
+        // A nav=false hidden inside another param's value is left alone.
+        expect(set('page.html?q=nav%3Dfalse', 'nav', null)).toBe('page.html?q=nav%3Dfalse');
+      });
+
+      it('never drops or reorders the fragment', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('page.html#a?b=1', 'nav', 'false')).toBe('page.html?nav=false#a?b=1');
+        expect(set('page.html#a&b', 'nav', 'false')).toBe('page.html?nav=false#a&b');
+        expect(set('page.html#nav=false', 'nav', null)).toBe('page.html#nav=false');
+        expect(set('page.html#', 'nav', 'false')).toBe('page.html?nav=false#');
+        expect(set('html/a.html?q=x#t%C3%ADtulo', 'nav', null)).toBe('html/a.html?q=x#t%C3%ADtulo');
+      });
+
+      it('leaves a fragment-only href alone, so an in-page jump stays one', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('#anchor', 'nav', 'false')).toBe('#anchor');
+        expect(set('#anchor', 'nav', null)).toBe('#anchor');
+      });
+
+      it('keeps relative hrefs relative and preserves parameter order', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('../index.html', 'nav', 'false')).toBe('../index.html?nav=false');
+        expect(set('html/a.html?endpoint=x&auth=y&actor=z', 'nav', 'false')).toBe(
+            'html/a.html?endpoint=x&auth=y&actor=z&nav=false'
+        );
+      });
+
+      it('returns falsy or nameless input unchanged', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('', 'nav', 'false')).toBe('');
+        expect(set(null, 'nav', 'false')).toBe(null);
+        expect(set('page.html', '', 'false')).toBe('page.html');
+      });
+    });
+
     describe('withTeacherParams', () => {
       it('appends the active params to a relative same-package link', () => {
         const tm = window.$exeExport.teacherMode;
@@ -1008,6 +1094,17 @@ describe('exe_export.js', () => {
         const tm = window.$exeExport.teacherMode;
         tm._navParams = 'exe-teacher=1';
         expect(tm.withTeacherParams('page.html?exe-teacher=1')).toBe('page.html?exe-teacher=1');
+        expect(tm.withTeacherParams('page.html?exe-teacher=0')).toBe('page.html?exe-teacher=1');
+      });
+
+      it('matches the exact key, not any occurrence of the name in the href', () => {
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = 'exe-teacher=1';
+        expect(tm.withTeacherParams('exe-teacher-guide.html')).toBe('exe-teacher-guide.html?exe-teacher=1');
+        expect(tm.withTeacherParams('page.html?q=exe-teacher')).toBe('page.html?q=exe-teacher&exe-teacher=1');
+        expect(tm.withTeacherParams('page.html?exe-teacher-toggler=1')).toBe(
+          'page.html?exe-teacher-toggler=1&exe-teacher=1'
+        );
       });
 
       it('returns the href unchanged when there are no active params', () => {
@@ -1892,6 +1989,143 @@ describe('exe_export.js', () => {
       expect(link.href).toContain('&nav=false');
 
       // Restore jQuery
+      window.$ = originalJQuery;
+    });
+
+    it('click handler keeps the deep-link fragment and other params', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML =
+        '<li><a href="html/page.html#block-7">A</a></li>' +
+        '<li><a href="html/page.html?exe-teacher=1#block-7">B</a></li>' +
+        '<li><a href="html/page.html?nav=false#block-7">C</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        if (selector === '#siteNav') result.is = vi.fn(() => false);
+        return result;
+      });
+
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      const links = [...wrapper.querySelectorAll('a')];
+      links.forEach((link) => clickHandler.call(link));
+
+      expect(links.map((l) => l.getAttribute('href'))).toEqual([
+        'html/page.html?nav=false#block-7',
+        'html/page.html?exe-teacher=1&nav=false#block-7',
+        'html/page.html?nav=false#block-7',
+      ]);
+
+      window.$ = originalJQuery;
+    });
+
+    it('click handler carries exe-teacher=1 onto search hits', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML =
+        '<li><a href="html/page.html?q=foo">A</a></li>' +
+        '<li><a href="html/page.html?q=foo#block-3">B</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        // siteNav visible, so only the teacher param should be added.
+        if (selector === '#siteNav') result.is = vi.fn(() => true);
+        return result;
+      });
+
+      window.$exeExport.teacherMode._navParams = 'exe-teacher=1';
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      const links = [...wrapper.querySelectorAll('a')];
+      links.forEach((link) => clickHandler.call(link));
+
+      expect(links.map((l) => l.getAttribute('href'))).toEqual([
+        'html/page.html?q=foo&exe-teacher=1',
+        'html/page.html?q=foo&exe-teacher=1#block-3',
+      ]);
+
+      window.$exeExport.teacherMode._navParams = '';
+      window.$ = originalJQuery;
+    });
+
+    it('click handler combines teacher mode and nav=false on a deep link', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML = '<li><a href="html/page.html?q=foo#block-3">A</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        if (selector === '#siteNav') result.is = vi.fn(() => false);
+        return result;
+      });
+
+      window.$exeExport.teacherMode._navParams = 'exe-teacher=1';
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      const link = wrapper.querySelector('a');
+      clickHandler.call(link);
+
+      expect(link.getAttribute('href')).toBe('html/page.html?q=foo&exe-teacher=1&nav=false#block-3');
+
+      window.$exeExport.teacherMode._navParams = '';
       window.$ = originalJQuery;
     });
 

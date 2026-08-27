@@ -107,7 +107,7 @@ var eXeUniversalStyle = {
             if (event.target.nodeName == 'A') {
                 if (eXeUniversalStyle.isLowRes()) {
                     event.preventDefault();
-                    window.location = eXeUniversalStyle.navParam(this.href, true);
+                    window.location = $exeExport.setUrlParam(this.href, 'nav', 'false');
                 }
             }
         });
@@ -274,37 +274,14 @@ var eXeUniversalStyle = {
             });
         })
     },
-    navParam: function (href, on) {
-        if (!href) return href;
-        var hash = '';
-        var i = href.indexOf('#');
-        if (i != -1) {
-            hash = href.substring(i);
-            href = href.substring(0, i);
-        }
-        var query = '';
-        i = href.indexOf('?');
-        if (i != -1) {
-            query = href.substring(i + 1);
-            href = href.substring(0, i);
-        }
-        var parts = query ? query.split('&') : [];
-        var kept = [];
-        for (i = 0; i < parts.length; i++) {
-            if (parts[i] && parts[i].split('=')[0] != 'nav') kept.push(parts[i]);
-        }
-        if (on) kept.push('nav=false');
-        return href + (kept.length ? '?' + kept.join('&') : '') + hash;
-    },
-    param: function (e, act) {
-        e.setAttribute(
-            'href',
-            this.navParam(e.getAttribute('href'), act == 'add')
-        );
-    },
+    // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
+        var value = act == 'add' ? 'false' : null;
         $('.nav-buttons a').each(function () {
-            eXeUniversalStyle.param(this, act);
+            this.setAttribute(
+                'href',
+                $exeExport.setUrlParam(this.getAttribute('href'), 'nav', value)
+            );
         });
     },
 };

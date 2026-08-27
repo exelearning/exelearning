@@ -6,7 +6,7 @@
 (function () {
     try {
         var s = sessionStorage.getItem('siteNav-off');
-        var off = s === '1' || (s === null && window.location.search.indexOf('nav=false') !== -1);
+        var off = s === '1' || (s === null && new URLSearchParams(window.location.search).get('nav') === 'false');
         if (off) document.documentElement.classList.add('siteNav-off');
     } catch (e) {}
 })();
@@ -151,26 +151,14 @@ var myTheme = {
             sessionStorage.setItem('siteNav-off', off ? '1' : '0');
         } catch (e) {}
     },
-    param: function (e, act) {
-        if (act == 'add') {
-            var ref = e.href;
-            var con = '?';
-            if (ref.indexOf('.html?') != -1) con = '&';
-            var param = 'nav=false';
-            if (ref.indexOf(param) == -1) {
-                ref += con + param;
-                e.href = ref;
-            }
-        } else {
-            // This will remove all params
-            var ref = e.href;
-            ref = ref.split('?');
-            e.href = ref[0];
-        }
-    },
+    // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
+        var value = act == 'add' ? 'false' : null;
         $('.nav-buttons a').each(function () {
-            myTheme.param(this, act);
+            this.setAttribute(
+                'href',
+                $exeExport.setUrlParam(this.getAttribute('href'), 'nav', value)
+            );
         });
     }
 };
