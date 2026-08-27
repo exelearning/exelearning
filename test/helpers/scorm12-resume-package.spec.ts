@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it, setSystemTime } from 'bun:test';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 
 import { unzipSync } from '../../src/shared/export';
@@ -10,7 +11,30 @@ import {
 } from './scorm12-resume-package';
 import { scanPackageForUnloadHandlers } from './unload-handler-scanner';
 
+function sha256(bytes: Uint8Array): string {
+    return createHash('sha256').update(bytes).digest('hex');
+}
+
+/** Run `fn` with the process time zone switched to `tz`, restoring it afterwards. */
+function withTimeZone<T>(tz: string, fn: () => T): T {
+    const previous = process.env.TZ;
+    process.env.TZ = tz;
+    try {
+        return fn();
+    } finally {
+        if (previous === undefined) {
+            delete process.env.TZ;
+        } else {
+            process.env.TZ = previous;
+        }
+    }
+}
+
 describe('SCORM 1.2 resume-race package', () => {
+    afterEach(() => {
+        setSystemTime();
+    });
+
     it('ships the current runtime, a SCO, and no unload handlers', () => {
         const zip = unzipSync(buildResumeRaceScorm12Package());
         const names = Object.keys(zip);
@@ -38,9 +62,32 @@ describe('SCORM 1.2 resume-race package', () => {
         expect(scanPackageForUnloadHandlers(zip)).toEqual([]);
     });
 
+    it('builds byte-identical packages regardless of the wall clock', () => {
+        // ZIP entries carry a DOS timestamp with 2-second resolution; two builds
+        // far apart in time must still produce the same bytes.
+        setSystemTime(new Date('2026-08-27T10:00:00Z'));
+        const first = sha256(buildResumeRaceScorm12Package());
+        setSystemTime(new Date('2026-08-30T22:13:37Z'));
+        const second = sha256(buildResumeRaceScorm12Package());
+
+        expect(second).toBe(first);
+    });
+
+    it('builds byte-identical packages regardless of the process time zone', () => {
+        // The DOS timestamp is written in local time, so a fixture regenerated on
+        // a developer machine must match the one regenerated in CI (UTC).
+        const utc = withTimeZone('UTC', () => sha256(buildResumeRaceScorm12Package()));
+        const east = withTimeZone('Pacific/Kiritimati', () => sha256(buildResumeRaceScorm12Package()));
+        const west = withTimeZone('America/Los_Angeles', () => sha256(buildResumeRaceScorm12Package()));
+
+        expect(east).toBe(utc);
+        expect(west).toBe(utc);
+    });
+
     it('writes the fixture zip used by Moodle verification', () => {
         const written = writeResumeRaceScorm12Fixture();
         expect(fs.existsSync(written)).toBe(true);
         expect(fs.statSync(written).size).toBeGreaterThan(1000);
+        expect(sha256(new Uint8Array(fs.readFileSync(written)))).toBe(sha256(buildResumeRaceScorm12Package()));
     });
 });

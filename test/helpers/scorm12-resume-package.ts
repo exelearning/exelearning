@@ -5,10 +5,15 @@
  *
  * Used as a fixture for unit/integration tests, the Playwright SCO harness,
  * and Moodle verification.
+ *
+ * The build is deterministic: the same runtime sources always produce the
+ * same bytes, whatever the wall clock or time zone of the machine that runs
+ * it, so the committed fixture can be pinned by hash and only changes when
+ * the runtime does.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { zipSync } from '../../src/shared/export';
+import { zipSync } from 'fflate';
 import { buildScorm12RuntimeFiles, SCORM12_RUNTIME_SOURCE_PATHS } from '../../src/shared/export/utils/Scorm12Runtime';
 
 /** Directory the generated zip is written to for Moodle / manual inspection. */
@@ -112,12 +117,33 @@ const INDEX_HTML = `<!DOCTYPE html>
 </html>
 `;
 
+/** Deflate level for every entry, pinned so the bytes never depend on a library default. */
+const FIXTURE_ZIP_LEVEL = 6;
+
+/**
+ * Modification time stamped on every ZIP entry.
+ *
+ * ZIP entries carry a DOS timestamp that fflate derives from the *local* date
+ * components of the given Date. Building the value from local components at
+ * call time (instead of a fixed UTC instant) therefore yields the same bytes
+ * in every time zone. Noon keeps clear of DST transitions.
+ */
+function fixtureEntryMtime(): Date {
+    return new Date(2026, 0, 1, 12, 0, 0);
+}
+
 function asBytes(content: Uint8Array | string): Uint8Array {
     return typeof content === 'string' ? new TextEncoder().encode(content) : content;
 }
 
 /**
  * Assemble a SCORM 1.2 zip from the current runtime sources.
+ *
+ * No eXeLearning version is passed to the runtime assembler on purpose: the
+ * stamp then reads `unknown`, so the fixture bytes depend only on the runtime
+ * sources and not on the package.json version of the tree that regenerated it.
+ *
+ * @returns The package bytes; identical for identical runtime sources.
  */
 export function buildResumeRaceScorm12Package(): Uint8Array {
     const scormDir = path.join(process.cwd(), 'public', 'app', 'common', 'scorm');
@@ -132,12 +158,16 @@ export function buildResumeRaceScorm12Package(): Uint8Array {
         throw new Error('SCORM 1.2 runtime assembly did not produce the package files');
     }
 
-    return zipSync({
-        'imsmanifest.xml': IMSMANIFEST,
-        'index.html': INDEX_HTML,
-        'libs/SCORM_API_wrapper.js': asBytes(wrapper),
-        'libs/SCOFunctions.js': asBytes(scoFunctions),
-    });
+    // Entry order is the insertion order below; keep it stable.
+    return zipSync(
+        {
+            'imsmanifest.xml': asBytes(IMSMANIFEST),
+            'index.html': asBytes(INDEX_HTML),
+            'libs/SCORM_API_wrapper.js': asBytes(wrapper),
+            'libs/SCOFunctions.js': asBytes(scoFunctions),
+        },
+        { level: FIXTURE_ZIP_LEVEL, mtime: fixtureEntryMtime() },
+    );
 }
 
 /**
