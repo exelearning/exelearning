@@ -807,14 +807,6 @@ var $eXeClasifica = {
 
         $('#clasificaPNumber-' + instance).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeClasifica beforeunload.eXeClasifica', () => {
-            if ($eXeClasifica.mScorm) {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeClasifica.mScorm
-                );
-            }
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1011,8 +1003,6 @@ var $eXeClasifica = {
             .find('.CQP-CardContainer')
             .off('mousedown touchstart mouseup touchend');
         $('#clasificaValidateAnswers-' + instance).off('click');
-
-        $(window).off('unload.eXeClasifica beforeunload.eXeClasifica');
     },
 
     refreshGame: function (instance) {
