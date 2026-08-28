@@ -230,4 +230,72 @@ describe('hidden-image iDevice export', () => {
       expect(fadeIn).toHaveBeenCalledTimes(1);
     });
   });
+
+  // Regression coverage for issue #2272: createSquares and showImageNeo run
+  // from image load handlers and delayed timeouts, so they can fire after the
+  // activity was torn down — options[instance] may be gone and the <img>
+  // element may have been removed. Both must bail out instead of crashing.
+  describe('createSquares guards (#2272)', () => {
+    const instance = 0;
+
+    it('returns early without throwing when options[instance] is gone', () => {
+      document.body.innerHTML = `<div id="hipOverlay-${instance}"></div>`;
+      expect(() => $eXeHiddenImage.createSquares(instance)).not.toThrow();
+    });
+
+    it('builds the rows x columns grid of squares when data and DOM are present (positive path)', () => {
+      document.body.innerHTML = `
+        <div id="hipParent-${instance}">
+          <img id="hiPImage-${instance}">
+          <div id="hipOverlay-${instance}"></div>
+        </div>
+      `;
+      const overlayEl = document.getElementById(`hipOverlay-${instance}`);
+      // happy-dom has no layout; give the overlay a real box.
+      overlayEl.getBoundingClientRect = () => ({
+        width: 100,
+        height: 60,
+        top: 0,
+        left: 0,
+        right: 100,
+        bottom: 60,
+      });
+      $eXeHiddenImage.options[instance] = {
+        questionsGame: [{ columns: 2, rows: 3 }],
+        activeQuestion: 0,
+      };
+      expect(() => $eXeHiddenImage.createSquares(instance)).not.toThrow();
+      expect(document.querySelectorAll(`#hipOverlay-${instance} .HIP-Square`).length).toBe(6);
+    });
+  });
+
+  describe('showImageNeo guards (#2272)', () => {
+    const instance = 0;
+
+    it('returns early without throwing when options[instance] is gone', () => {
+      document.body.innerHTML = `<img id="hiPImage-${instance}">`;
+      expect(() => $eXeHiddenImage.showImageNeo('test.png', instance)).not.toThrow();
+    });
+
+    it('returns early without throwing when the image element is no longer in the DOM', () => {
+      $eXeHiddenImage.options[instance] = {
+        questionsGame: [{ author: 'Author', alt: 'An image' }],
+        activeQuestion: 0,
+      };
+      // DOM is empty: the activity was removed before the image callback ran.
+      expect(() => $eXeHiddenImage.showImageNeo('test.png', instance)).not.toThrow();
+    });
+
+    it('sets the image source and load handlers when data and DOM are present (positive path)', () => {
+      $eXeHiddenImage.options[instance] = {
+        questionsGame: [{ author: 'Author', alt: 'An image' }],
+        activeQuestion: 0,
+      };
+      document.body.innerHTML = `<img id="hiPImage-${instance}">`;
+      $eXeHiddenImage.showAuthor = vi.fn();
+      $eXeHiddenImage.scheduleReflow = vi.fn();
+      expect(() => $eXeHiddenImage.showImageNeo('test.png', instance)).not.toThrow();
+      expect($(`#hiPImage-${instance}`).attr('src')).toBe('test.png');
+    });
+  });
 });
