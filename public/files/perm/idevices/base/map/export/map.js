@@ -1791,6 +1791,14 @@ var $eXeMapa = {
         }
 
         mOptions.scorerp = score;
+        // Exposition mode (evaluationG 0) is the only mode that never reaches
+        // gameOver(): it is finished once every point counted by getScoreVisited has
+        // been visited, which is the full score of 10 that messageAllVisited already
+        // uses as its "all visited" condition. Every other mode ends through
+        // gameOver(), which sets the flag before it reports, so none is touched here.
+        if (mOptions.evaluationG == 0 && numq > 0 && score >= 10) {
+            mOptions.gameOver = true;
+        }
         mOptions.previousScore = $eXeMapa.previousScore;
         mOptions.userName = $eXeMapa.userName;
 
@@ -2537,14 +2545,6 @@ var $eXeMapa = {
             return true;
         });
 
-        $(window).on('unload.eXeMapa beforeunload.eXeMapa', function () {
-            if ($eXeMapa.mScorm && typeof $eXeMapa.mScorm != 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeMapa.mScorm
-                );
-            }
-        });
-
         $('#mapaMultimedia-' + instance).on(
             'mouseenter',
             '.MQP-Point',
@@ -3126,8 +3126,6 @@ var $eXeMapa = {
 
         $('#mapaCodeAccessButton-' + instance).off('click');
         $('#mapaCodeAccessE-' + instance).off('click');
-
-        $(window).off('unload.eXeMapa beforeunload.eXeMapa');
 
         $multimedia.off('click');
 

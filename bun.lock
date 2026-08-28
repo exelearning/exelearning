@@ -63,6 +63,7 @@
         "jquery-ui": "^1.14.2",
         "kill-port": "^2.0.1",
         "sass": "^1.103.1",
+        "scorm-again": "3.3.0",
         "showdown": "^2.1.0",
         "simplelightbox": "^2.14.3",
         "typescript": "^7.0.2",
@@ -1332,6 +1333,8 @@
     "sax": ["sax@1.6.1", "", {}, "sha512-42tBVwLWnaQvW5zc4HbZrTuWccECCZfBi92FDuwtqxasH+JbPB3/FOKb1m222K42R4WxuxzzMsTswfzgtSu64Q=="],
 
     "saxes": ["saxes@6.0.0", "", { "dependencies": { "xmlchars": "^2.2.0" } }, "sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA=="],
+
+    "scorm-again": ["scorm-again@3.3.0", "", {}, "sha512-/KPFB1cr5oljC/ATO6d79Y4AC8EksMgKVMEjlHPwmiYQrBjJsNDgWCTZfnccE0lL5cfAVv+iwHH2sKiiFPW4UA=="],
 
     "semver": ["semver@7.8.5", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA=="],
 

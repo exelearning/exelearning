@@ -128,6 +128,7 @@
     "jquery-ui": "^1.14.2",
     "kill-port": "^2.0.1",
     "sass": "^1.103.1",
+    "scorm-again": "3.3.0",
     "showdown": "^2.1.0",
     "simplelightbox": "^2.14.3",
     "typescript": "^7.0.2",
