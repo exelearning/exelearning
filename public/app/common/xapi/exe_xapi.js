@@ -129,8 +129,12 @@
                 if (!root || typeof root.addEventListener !== 'function') return;
                 var self = this;
                 var handler = function () { self._emitTerminated(); };
+                // `pagehide` alone: it fires in every case `unload` does and
+                // also on mobile, and registering an unload-family listener
+                // would make the page ineligible for the back/forward cache
+                // that the SCORM 1.2 runtime depends on. _emitTerminated() is
+                // once-guarded, so a second lifecycle event changes nothing.
                 root.addEventListener('pagehide', handler);
-                root.addEventListener('unload', handler);
             } catch (e) { /* no-op */ }
         },
 

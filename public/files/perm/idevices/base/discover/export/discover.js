@@ -884,7 +884,6 @@ var $eXeDescubre = {
             'click.eXeDescubre touchstart.eXeDescubre'
         );
         $('#descubreCodeAccessE-' + instance).off('keydown.eXeDescubre');
-        $(window).off('unload.eXeDescubre beforeunload.eXeDescubre');
         $mainContainer.off('click.eXeDescubre', '.Games-SendScore');
         $('#descubreStartGame0-' + instance).off('click.eXeDescubre');
         $('#descubreStartGame1-' + instance).off('click.eXeDescubre');
@@ -988,16 +987,6 @@ var $eXeDescubre = {
         });
 
         $('#descubrePNumber-' + instance).text(mOptions.numberQuestions);
-        $(window).on(
-            'unload.eXeDescubre beforeunload.eXeDescubre',
-            function () {
-                if (typeof $eXeDescubre.mScorm != 'undefined') {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeDescubre.mScorm
-                    );
-                }
-            }
-        );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
