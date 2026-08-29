@@ -75,6 +75,7 @@ var $exeDevice = {
             questionsRandom: false,
             percentageQuestions: 100,
             time: 0,
+            attemptsNumber: 1,
             questionsGame: questionsData.map((q) => ({
                 question: q.baseText || '',
                 feedback: q.feedback || '',
@@ -376,6 +377,10 @@ var $exeDevice = {
                                     <label for="tofETime" class="mb-0">${_('Time (minutes)')}:</label>
                                     <input type="number" class="form-control" name="tofETime" id="tofETime" value="0" min="0" max="59" />
                                 </div>
+                                <div id="tofEAttemptsNumberDiv" class="d-none flex-nowrap align-items-center gap-2">
+                                    <label for="tofEAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
+                                    <input type="number" class="form-control" name="tofEAttemptsNumber" id="tofEAttemptsNumber" value="1" min="1" max="9" />
+                                </div>
                             </div>
                             <div class="toggle-item mb-3">
                                 <span class="toggle-control">
@@ -586,11 +591,13 @@ var $exeDevice = {
         $('#tofEIsTest').on('click', function () {
             const $timeDiv = $('#tofETimeDiv');
             const $reportDiv = $('.Games-Reportdiv');
+            const $attemptsDiv = $('#tofEAttemptsNumberDiv');
 
             const show = $timeDiv.hasClass('d-none');
 
             $timeDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
             $reportDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
+            $attemptsDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
         });
 
         $('#tofEPercentageQuestions')
@@ -856,17 +863,18 @@ var $exeDevice = {
             evaluationID: game.evaluationID,
         });
         $('#tofETime').val(game.time);
+        $('#tofEAttemptsNumber').val(game.attemptsNumber ?? 1);
         $('#tofEQuestionsRandom').prop('checked', game.questionsRandom);
         $('#tofEPercentageQuestions').val(game.percentageQuestions);
         $('#tofEShowSlider').prop('checked', game.showSlider || false);
         $('#tofEIsTest').prop('checked', game.isTest || false);
 
         if (game.isTest) {
-            $('#tofETimeDiv, .Games-Reportdiv')
+            $('#tofETimeDiv, #tofEAttemptsNumberDiv, .Games-Reportdiv')
                 .removeClass('d-none')
                 .addClass('d-flex');
         } else {
-            $('#tofETimeDiv, .Games-Reportdiv')
+            $('#tofETimeDiv, #tofEAttemptsNumberDiv, .Games-Reportdiv')
                 .removeClass('d-flex')
                 .addClass('d-none');
         }
@@ -980,6 +988,7 @@ var $exeDevice = {
             isTest = $('#tofEIsTest').is(':checked'),
             id = $exeDevice.id,
             time = parseInt($('#tofETime').val(), 10),
+            attemptsNumber = parseInt($('#tofEAttemptsNumber').val(), 10) || 1,
             questionsGame = $exeDevice.questionsGame,
             showSlider = $('#tofEShowSlider').is(':checked');
 
@@ -1044,6 +1053,7 @@ var $exeDevice = {
             percentageQuestions: percentageQuestions,
             isTest: isTest,
             time: time,
+            attemptsNumber: attemptsNumber,
             questionsGame: questionsGame,
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,

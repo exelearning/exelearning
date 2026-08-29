@@ -169,6 +169,15 @@ var $trueorfalse = {
 
         data.isTest = typeof data.isTest === 'undefined' ? false : data.isTest;
 
+        // Number of attempts (retries) in test mode. Backward-compatible: packages
+        // exported before this field default to 1. The activity is still marked
+        // completed on the first Comprobar regardless of remaining attempts; this
+        // only limits how many times the learner can retry to improve the score.
+        data.attemptsNumber =
+            typeof data.attemptsNumber === 'undefined'
+                ? 1
+                : parseInt(data.attemptsNumber, 10) || 1;
+
         // Saving a SCORM score needs quiz mode: outside it `startGame()` is
         // unreachable (createInterfaceTrueOrFalse hides both the start and the
         // check controls), so `gameStarted` never becomes true and the shared
@@ -681,6 +690,10 @@ var $trueorfalse = {
 
         mOptions.gameOver = false;
         mOptions.gameStarted = false;
+        // Remaining retries for this play. Consumed on each Comprobar (gameOver);
+        // the "Try again" button is only shown while there are attempts left. Not
+        // reset on reboot, so the attempts run down across retries.
+        mOptions.pendingAttempts = mOptions.attemptsNumber;
         mOptions.counter = parseInt(mOptions.tofPTime) * 60;
         mOptions.active = 0;
         mOptions.scorep = 0;
@@ -825,6 +838,13 @@ var $trueorfalse = {
         mOptions.gameStarted = false;
         mOptions.gameOver = true;
 
+        // Pressing Comprobar (or running out of time) consumes one attempt. The
+        // activity is already completed (gameOver=true); attempts only gate the
+        // "Try again" button shown at the end of gameOver.
+        if (typeof mOptions.pendingAttempts === 'number') {
+            mOptions.pendingAttempts -= 1;
+        }
+
         $('#tofPCheckTest-' + instance).hide();
         $trueorfalse.stopCounter(mOptions);
         let hits = 0;
@@ -887,7 +907,13 @@ var $trueorfalse = {
 
         $trueorfalse.showMessage(type, message, instance);
         $trueorfalse.saveEvaluation(mOptions);
-        $('#tofRebootTest-' + instance).show();
+        // Offer a retry only while attempts remain (default 1 -> no retry after
+        // the first Comprobar). The activity is completed regardless.
+        if (mOptions.pendingAttempts > 0) {
+            $('#tofRebootTest-' + instance).show();
+        } else {
+            $('#tofRebootTest-' + instance).hide();
+        }
         if (mOptions.isScorm == 1) {
             $trueorfalse.initialScore =
                 typeof $trueorfalse.initialScore === 'undefined'

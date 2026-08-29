@@ -336,8 +336,8 @@ var $eXeSopa = {
                     </div>
                     <div class="SPP-LifesGame" id="sopaLifesSopa-${instanceId}"></div>
                     <div class="SPP-TimeNumber">
-                        <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
-                        <div class="exeQuextIcons exeQuextIcons-Time" title="${msgs.msgTime}"></div>
+                        <strong id="sopaPTimeTitle-${instanceId}"><span class="sr-av">${msgs.msgTime}:</span></strong>
+                        <div class="exeQuextIcons exeQuextIcons-Time" id="sopaPTimeIcon-${instanceId}" title="${msgs.msgTime}"></div>
                         <p id="sopaPTime-${instanceId}" class="SPP-PTime">00:00</p>
                         <a href="#" class="SPP-LinkMinimize" id="sopaLinkMinimize-${instanceId}" title="${msgs.msgMinimize}">
                             <strong><span class="sr-av">${msgs.msgMinimize}:</span></strong>
@@ -524,6 +524,32 @@ var $eXeSopa = {
         $('#sopaPTime-' + instanceId).text(
             $exeDevices.iDevice.gamification.helpers.getTimeToString(time)
         );
+    },
+
+    /**
+     * Show or hide the three pieces that make up the countdown indicator: the
+     * screen-reader label, the clock icon and the counter itself. They are one
+     * unit — showing the icon without the counter, or announcing a time limit
+     * that does not exist, is worse than showing nothing.
+     *
+     * @param {number|string} instanceId Instance whose indicator to toggle.
+     * @param {boolean} visible Whether the activity has a time limit.
+     */
+    showTimeIndicator: function (instanceId, visible) {
+        const $indicator = $(
+            '#sopaPTimeTitle-' +
+                instanceId +
+                ', #sopaPTimeIcon-' +
+                instanceId +
+                ', #sopaPTime-' +
+                instanceId
+        );
+
+        if (visible) {
+            $indicator.show();
+        } else {
+            $indicator.hide();
+        }
     },
 
     showMessage: function (type, message, instanceId) {
@@ -800,13 +826,12 @@ var $eXeSopa = {
             $eXeSopa.startGame(instanceId);
         });
 
+        // The countdown indicator is deliberately absent from this list:
+        // showTimeIndicator below is its single owner, so its visibility is
+        // decided in one place from the one thing that determines it.
         $container
             .find(
-                '#sopaPTimeTitle-' +
-                    instanceId +
-                    ', #sopaPTime-' +
-                    instanceId +
-                    ', #sopaStartGame-' +
+                '#sopaStartGame-' +
                     instanceId +
                     ', #sopaDivImgHome-' +
                     instanceId +
@@ -836,16 +861,18 @@ var $eXeSopa = {
                 .find(
                     '#sopaDivImgHome-' +
                         instanceId +
-                        ', #sopaPTimeTitle-' +
-                        instanceId +
-                        ', #sopaPTime-' +
-                        instanceId +
                         ', #sopaStartGame-' +
                         instanceId
                 )
                 .show();
-            $container.find('.exeQuextIcons-Time').show();
         }
+
+        // The countdown indicator — accessible label, clock icon and counter —
+        // belongs to a timed activity and only to one. Without a time limit
+        // there is nothing to count, so it is hidden instead of sitting there
+        // frozen at 00:00 next to a clock that never moves. The icon used to be
+        // left visible in that case because only the counter was hidden.
+        $eXeSopa.showTimeIndicator(instanceId, mOptions.time > 0);
 
         $container
             .find('#sopaFullLinkImage-' + instanceId)

@@ -1751,6 +1751,11 @@ var $exeDevice = {
                 this.value = value;
             });
 
+        $('#adivinaETimeSilence').on('keyup', function () {
+            let v = this.value.replace(/\D/g, '').substring(0, 3);
+            this.value = v;
+        });
+
         $('#adivinaENumberLives')
             .on('keyup', function () {
                 let v = this.value.replace(/\D/g, '').substring(0, 1);

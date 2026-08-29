@@ -254,4 +254,28 @@ describe('quick-questions-multiple-choice edition: $exeDevice guards (#2271)', (
             expect(spy).toHaveBeenCalledWith('picture.png', 0, 0, '');
         });
     });
+
+    // The field truncates on keyup. Capped at one digit, a silence of 10 seconds
+    // or more was impossible to type: the second keystroke was dropped and the
+    // author was left with a different activity than they intended.
+    describe('silence time limit', () => {
+        beforeEach(() => {
+            $('#quickMultipleQEIdeviceForm').append(
+                '<input id="seleccionaETimeSilence" />'
+            );
+            $exeDevice.addEvents();
+        });
+
+        it('keeps a three-digit silence time', () => {
+            $('#seleccionaETimeSilence').val('120').trigger('keyup');
+
+            expect($('#seleccionaETimeSilence').val()).toBe('120');
+        });
+
+        it('truncates beyond three digits and drops non-digits', () => {
+            $('#seleccionaETimeSilence').val('1a2345').trigger('keyup');
+
+            expect($('#seleccionaETimeSilence').val()).toBe('123');
+        });
+    });
 });

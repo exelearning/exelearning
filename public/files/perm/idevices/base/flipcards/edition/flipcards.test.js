@@ -385,4 +385,46 @@ describe('flipcards iDevice', () => {
       ).toHaveBeenCalledTimes(1);
     });
   });
+
+  // The editor truncates its numeric fields on keyup. Capping them at one digit
+  // made ordinary values impossible to enter: the second keystroke was dropped,
+  // so an author aiming for 10 silently ended up with 1.
+  describe('numeric field limits', () => {
+    let previousItinerary;
+
+    beforeEach(() => {
+      previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+      // addEvents wires the whole editor. The itinerary component lives outside
+      // this iDevice's source, so it is stubbed rather than exercised here.
+      $exeDevicesEdition.iDevice.gamification.itinerary = {
+        addEvents: () => {},
+        getTab: () => '',
+        init: () => {},
+        setValues: () => {},
+      };
+      document.body.innerHTML = `
+        <script></script>
+        <form id="gameQEIdeviceForm">
+          <input id="flipcardsETime" />
+        </form>`;
+      $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+      $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      document.body.innerHTML = '';
+    });
+
+    it('keeps a 2-digit time', () => {
+      $('#flipcardsETime').val('45').trigger('keyup');
+
+      expect($('#flipcardsETime').val()).toBe('45');
+    });
+
+    it('truncates the time beyond 2 digits and drops non-digits', () => {
+      $('#flipcardsETime').val('1a234').trigger('keyup');
+
+      expect($('#flipcardsETime').val()).toBe('12');
+    });
+  });
 });

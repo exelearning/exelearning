@@ -280,4 +280,46 @@ describe('guess iDevice', () => {
       expect($exeDevice.wordsGame.length).toBe(0);
     });
   });
+
+  // The editor truncates its numeric fields on keyup. Capping them at one digit
+  // made ordinary values impossible to enter: the second keystroke was dropped,
+  // so an author aiming for 10 silently ended up with 1.
+  describe('numeric field limits', () => {
+    let previousItinerary;
+
+    beforeEach(() => {
+      previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+      // addEvents wires the whole editor. The itinerary component lives outside
+      // this iDevice's source, so it is stubbed rather than exercised here.
+      $exeDevicesEdition.iDevice.gamification.itinerary = {
+        addEvents: () => {},
+        getTab: () => '',
+        init: () => {},
+        setValues: () => {},
+      };
+      document.body.innerHTML = `
+        <script></script>
+        <form id="gameQEIdeviceForm">
+          <input id="adivinaETimeSilence" />
+        </form>`;
+      $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+      $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      document.body.innerHTML = '';
+    });
+
+    it('keeps a 3-digit silence time', () => {
+      $('#adivinaETimeSilence').val('120').trigger('keyup');
+
+      expect($('#adivinaETimeSilence').val()).toBe('120');
+    });
+
+    it('truncates the silence time beyond 3 digits and drops non-digits', () => {
+      $('#adivinaETimeSilence').val('1a2345').trigger('keyup');
+
+      expect($('#adivinaETimeSilence').val()).toBe('123');
+    });
+  });
 });

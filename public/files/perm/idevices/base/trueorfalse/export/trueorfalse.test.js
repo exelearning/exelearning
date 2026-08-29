@@ -454,4 +454,129 @@ describe('trueorfalse iDevice export', () => {
       expect($trueorfalse.sendScore).not.toHaveBeenCalled();
     });
   });
+
+  describe('attempts (retries)', () => {
+    function setupGameOverDom() {
+      document.body.innerHTML = `
+        <button id="tofPCheckTest-tof-1"></button>
+        <button id="tofRebootTest-tof-1"></button>
+        <div id="tofPMessage-tof-1"></div>
+        <div id="tofPMultimedia"></div>
+        <div id="tofPGameContainer-tof-1">
+          <div class="TOFP-QuestionDiv">
+            <input class="TOFP-Answer" type="radio" value="1" checked />
+            <div class="TOFP-Feedback"><span class="TOFP-SolutionMessage"></span></div>
+          </div>
+        </div>`;
+    }
+
+    function baseOptions() {
+      return {
+        id: 'tof-1',
+        questionsGame: [{ solution: '1' }],
+        numberQuestions: 1,
+        msgs: { msgKO: 'KO', msgOk: 'OK', msgYouScore: 'Score' },
+        isInExe: false,
+      };
+    }
+
+    it('updateConfig defaults attemptsNumber to 1 when missing (backward compatible)', () => {
+      const prevExeApp = eXe.app;
+      eXe.app = {
+        ...eXe.app,
+        isInExe: () => false,
+        getIdeviceInstalledExportPath: () => '',
+      };
+      const prevGetQuestions =
+        $exeDevices.iDevice.gamification.helpers.getQuestions;
+      $exeDevices.iDevice.gamification.helpers.getQuestions = q => q;
+
+      try {
+        const result = $trueorfalse.updateConfig(
+          { id: 'x', questionsData: [] },
+          'x'
+        );
+        expect(result.attemptsNumber).toBe(1);
+      } finally {
+        eXe.app = prevExeApp;
+        $exeDevices.iDevice.gamification.helpers.getQuestions = prevGetQuestions;
+      }
+    });
+
+    it('default (1 attempt): completes and hides the retry button on the first check', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      setupGameOverDom();
+      const options = { ...baseOptions(), isScorm: 1, pendingAttempts: 1 };
+
+      try {
+        $trueorfalse.gameOver(options);
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+      }
+
+      // Completed regardless of attempts.
+      expect(options.gameOver).toBe(true);
+      expect(sendScoreNew).toHaveBeenCalled();
+      // One attempt consumed -> no retry offered.
+      expect(options.pendingAttempts).toBe(0);
+      expect(document.getElementById('tofRebootTest-tof-1').style.display).toBe(
+        'none'
+      );
+    });
+
+    it('several attempts: offers the retry button and decrements pendingAttempts', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      $exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      setupGameOverDom();
+      const options = { ...baseOptions(), isScorm: 0, pendingAttempts: 3 };
+
+      try {
+        $trueorfalse.gameOver(options);
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+
+      expect(options.pendingAttempts).toBe(2);
+      expect(
+        document.getElementById('tofRebootTest-tof-1').style.display
+      ).not.toBe('none');
+    });
+
+    // addEvents seeds the per-play counter from the configured value, so a
+    // package saved before the field existed still gets exactly one attempt
+    // through updateConfig's default.
+    it('addEvents seeds pendingAttempts from attemptsNumber', () => {
+      document.body.innerHTML = `
+        <div id="tofPMainContainer-tof-1"></div>
+        <input id="tofPSendScore-tof-1" type="button" />`;
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      $exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon: vi.fn(),
+      };
+      const options = {
+        ...baseOptions(),
+        attemptsNumber: 4,
+        tofPTime: 0,
+        isScorm: 0,
+      };
+
+      try {
+        $trueorfalse.addEvents(options);
+      } finally {
+        $trueorfalse.removeEvents(options);
+        $exeDevices.iDevice.gamification.report = previousReport;
+        document.body.innerHTML = '';
+      }
+
+      expect(options.pendingAttempts).toBe(4);
+    });
+  });
 });

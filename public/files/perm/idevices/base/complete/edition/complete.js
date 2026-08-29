@@ -680,7 +680,7 @@ var $exeDevice = {
 
         $('#cmptETime')
             .on('keyup', function () {
-                let v = this.value.replace(/\D/g, '').substring(0, 1);
+                let v = this.value.replace(/\D/g, '').substring(0, 2);
                 this.value = v;
             })
             .on('focusout', function () {
@@ -704,7 +704,7 @@ var $exeDevice = {
 
         $('#cmptEPercentajeError')
             .on('keyup', function () {
-                let v = this.value.replace(/\D/g, '').substring(0, 1);
+                let v = this.value.replace(/\D/g, '').substring(0, 3);
                 this.value = v;
             })
             .on('focusout', function () {
