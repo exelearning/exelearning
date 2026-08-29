@@ -1225,12 +1225,26 @@ var $exeDevices = {
 
                 getFinalScore: function (lmsData) {
                     // Single aggregation algorithm: when the SCORM 1.2
-                    // registry is present, its summary() owns the historical
-                    // weighting, so the displayed score, cmi.core.score.raw
-                    // and the completion policy always read the same number.
-                    // The local implementation below serves only the legacy
-                    // runtimes (SCORM 2004 and pre-rewrite packages), which
-                    // have no registry.
+                    // registry is present, its summary() owns the weighting,
+                    // so the displayed score, cmi.core.score.raw and the
+                    // completion policy always read the same number. The local
+                    // implementation below serves only the legacy runtimes
+                    // (SCORM 2004 and pre-rewrite packages), which have no
+                    // registry, and must stay arithmetically identical to
+                    // aggregateScore() in exe-scorm12-activities.js.
+                    //
+                    // Both used to scale the weights to integers summing to
+                    // exactly 100 by largest-remainder rounding. That made the
+                    // page's mark depend on the order the author placed the
+                    // iDevices in: the scaling leaves one point over, it goes
+                    // to the largest fraction, and with equal weights every
+                    // fraction ties — so a stable sort handed it to whichever
+                    // activity came first, multiplying that one activity's
+                    // score. Three equally weighted activities scoring
+                    // 100/50/0 aggregated to 50.5, and the same three as
+                    // 0/50/100 to 49.5: same work by the learner, opposite
+                    // verdict against a mastery score of 50. A weighted mean
+                    // is symmetric, so it cannot.
                     const scoreRegistry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
                     if (scoreRegistry) {
                         const aggregate = scoreRegistry.summary().score;
@@ -1248,51 +1262,19 @@ var $exeDevices = {
                         return Math.max(min, Math.min(num, max));
                     }
 
-                    let interactionsData = keys.map(key => {
-                        const activity = lmsData[key] || {};
-                        const scoreVal = parseFloat(activity.score) || 0;
-                        const weightVal = parseFloat(activity.weighted) || 1;
-                        return {
-                            score: clamp(scoreVal, 0, 100),
-                            weighted: clamp(weightVal, 1, 100),
-                        };
-                    });
-
-                    let sumWeights = interactionsData.reduce((acc, item) => acc + item.weighted, 0);
-                    const factor = (sumWeights !== 0) ? 100 / sumWeights : 1;
-                    const tempWeights = interactionsData.map(item => {
-                        const scaled = item.weighted * factor;
-                        const floored = Math.floor(scaled);
-                        const fraction = scaled - floored;
-                        return {
-                            score: item.score,
-                            floored,
-                            fraction
-                        };
-                    });
-
-                    let sumFloors = tempWeights.reduce((acc, w) => acc + w.floored, 0);
-                    let diff = 100 - sumFloors;
-
-                    tempWeights.sort((a, b) => b.fraction - a.fraction);
-
-                    for (let i = 0; i < tempWeights.length && diff !== 0; i++) {
-                        if (diff > 0) {
-                            tempWeights[i].floored += 1;
-                            diff--;
-                        }
-                    }
-
-                    function round2(num) {
-                        return Math.round(num * 100) / 100;
-                    }
-
+                    let sumWeights = 0;
                     let sumWeighted = 0;
-                    tempWeights.forEach(item => {
-                        sumWeighted += (item.score * item.floored);
+                    keys.forEach(key => {
+                        const activity = lmsData[key] || {};
+                        const score = clamp(parseFloat(activity.score) || 0, 0, 100);
+                        const weight = clamp(parseFloat(activity.weighted) || 1, 1, 100);
+                        sumWeighted += score * weight;
+                        sumWeights += weight;
                     });
-                    const finalScore = round2(sumWeighted / 100);
-                    return finalScore;
+
+                    // clamp() forces every weight to at least 1, so the sum of
+                    // one or more of them is never zero.
+                    return Math.round((sumWeighted / sumWeights) * 100) / 100;
                 },
 
                 registerActivity: function (game) {

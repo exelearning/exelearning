@@ -226,57 +226,49 @@
     }
 
     /**
-     * Aggregate the evaluable activities into one 0-100 score with the
-     * historical eXeLearning weighting algorithm: each weight (clamped into
-     * 1-100) is scaled so the weights sum to exactly 100 as integers
-     * (largest-remainder rounding), and the aggregate is the weight-scaled
-     * sum of the normalised scores.
+     * Aggregate the evaluable activities into one 0-100 score: the weighted
+     * mean of their normalised scores, with each weight clamped into 1-100.
      *
-     * This is the registry's only aggregation. Published packages recorded
-     * cmi.core.score.raw with this exact rounding for years, and the
-     * completion policy compares the aggregate against the mastery
-     * threshold — a second algorithm (say, an exact weighted mean) could
-     * disagree near the threshold and flip a passed page to failed at exit.
+     * This is the registry's only aggregation, and `common.js`'s
+     * `getFinalScore()` carries the same arithmetic for the runtimes that have
+     * no registry (SCORM 2004, pre-rewrite packages). The two must agree: a
+     * second algorithm could disagree near the mastery threshold and flip a
+     * passed page to failed at exit. `exe-scorm12-activities.spec.js` pins
+     * them against each other.
+     *
+     * It used to scale the weights to integers summing to exactly 100 by
+     * largest-remainder rounding. That made the page's mark depend on the
+     * order the author placed the iDevices in: the scaling leaves one point
+     * over, it goes to the largest fraction, and with equal weights every
+     * fraction ties — so a stable sort handed it to whichever activity came
+     * first, multiplying that one activity's score. Three equally weighted
+     * activities scoring 100/50/0 aggregated to 50.5, and the same three as
+     * 0/50/100 to 49.5: same work by the learner, opposite verdict against a
+     * mastery score of 50. A weighted mean is symmetric, so it cannot.
      *
      * @returns {number|null} Aggregate score, or null when no activity is
      * evaluable.
      */
     function aggregateScore() {
-        var entries = [];
         var weightSum = 0;
+        var weightedTotal = 0;
+        var evaluableCount = 0;
         for (var index = 0; index < state.order.length; index += 1) {
             var activity = state.byId[state.order[index]];
             if (!activity.evaluable) {
                 continue;
             }
             var weight = clamp(activity.weight, 1, 100);
-            entries.push({ score: normalizedScore(activity), scaled: weight, floored: 0, fraction: 0 });
+            weightedTotal += normalizedScore(activity) * weight;
             weightSum += weight;
+            evaluableCount += 1;
         }
-        if (entries.length === 0) {
+        if (evaluableCount === 0) {
             return null;
         }
-        var factor = 100 / weightSum;
-        var flooredSum = 0;
-        for (var position = 0; position < entries.length; position += 1) {
-            var scaled = entries[position].scaled * factor;
-            entries[position].floored = Math.floor(scaled);
-            entries[position].fraction = scaled - entries[position].floored;
-            flooredSum += entries[position].floored;
-        }
-        var remainder = 100 - flooredSum;
-        entries.sort(function (a, b) {
-            return b.fraction - a.fraction;
-        });
-        for (var slot = 0; slot < entries.length && remainder > 0; slot += 1) {
-            entries[slot].floored += 1;
-            remainder -= 1;
-        }
-        var weightedTotal = 0;
-        for (var item = 0; item < entries.length; item += 1) {
-            weightedTotal += entries[item].score * entries[item].floored;
-        }
-        return round2(weightedTotal / 100);
+        // clamp() forces every weight to at least 1, so the sum of one or more
+        // of them is never zero.
+        return round2(weightedTotal / weightSum);
     }
 
     /**

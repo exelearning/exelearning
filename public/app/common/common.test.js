@@ -1738,6 +1738,54 @@ describe('common.js $exeDevices', () => {
       expect(result).toBe(50);
     });
 
+    // The legacy path (SCORM 2004 and pre-rewrite packages, which have no
+    // registry) used to scale the weights to integers summing to 100 by
+    // largest-remainder rounding. That handed the leftover point to whichever
+    // activity came first whenever the fractions tied, so the page's mark
+    // moved with the order the author placed the iDevices in.
+    it('getFinalScore gives the same result whatever order the activities are in', () => {
+      const scorm = getScorm();
+      const equalWeight = score => ({ score, weighted: 100 });
+
+      const forwards = scorm.getFinalScore({
+        1: equalWeight(100),
+        2: equalWeight(50),
+        3: equalWeight(0),
+      });
+      const backwards = scorm.getFinalScore({
+        1: equalWeight(0),
+        2: equalWeight(50),
+        3: equalWeight(100),
+      });
+
+      expect(forwards).toBe(50);
+      expect(backwards).toBe(50);
+    });
+
+    it('getFinalScore is an exact weighted mean', () => {
+      const scorm = getScorm();
+
+      // (100 + 49 + 0) / 3. The largest-remainder weighting this replaced
+      // answered 50.17, putting a page over the usual mastery threshold of 50
+      // for a learner whose real average is below it.
+      expect(
+        scorm.getFinalScore({
+          1: { score: 100, weighted: 100 },
+          2: { score: 49, weighted: 100 },
+          3: { score: 0, weighted: 100 },
+        })
+      ).toBe(49.67);
+
+      // Unequal weights still count in proportion: 100x3 + 20x1 over 4.
+      expect(
+        scorm.getFinalScore({
+          1: { score: 100, weighted: 75 },
+          2: { score: 20, weighted: 25 },
+        })
+      ).toBe(80);
+    });
+
+
     it('parseSuspendData returns object', () => {
       const scorm = getScorm();
       const result = scorm.parseSuspendData('');
@@ -2352,6 +2400,62 @@ describe('common.js $exeDevices', () => {
       activities.resetDependencies();
       client.resetDependencies();
       delete window.API;
+    });
+
+    // ADR-2209-02 requires one aggregation algorithm, so the displayed score,
+    // cmi.core.score.raw, the in-session status decision and the exit decision
+    // all read the same number. The registry and getFinalScore's legacy branch
+    // are necessarily two implementations — a package without the registry
+    // cannot call into it — so the guarantee is tested rather than structural.
+    it('getFinalScore agrees with the registry aggregate on the same activities', () => {
+      const cases = [
+        [
+          { score: 100, weight: 100 },
+          { score: 49, weight: 100 },
+          { score: 0, weight: 100 },
+        ],
+        [
+          { score: 100, weight: 75 },
+          { score: 20, weight: 25 },
+        ],
+        [
+          { score: 33, weight: 1 },
+          { score: 66, weight: 7 },
+          { score: 99, weight: 13 },
+        ],
+        [{ score: 0, weight: 50 }],
+      ];
+
+      for (const activityCase of cases) {
+        activities.clear();
+        const lmsData = {};
+        activityCase.forEach((activity, index) => {
+          activities.register(`agg-${index}`, {
+            evaluable: true,
+            completed: true,
+            score: activity.score,
+            weight: activity.weight,
+          });
+          lmsData[index + 1] = {
+            score: activity.score,
+            weighted: activity.weight,
+          };
+        });
+
+        const fromRegistry = activities.summary().score;
+
+        // getFinalScore delegates to the registry whenever one is installed,
+        // so the legacy branch is only reachable with it detached — which is
+        // exactly the shape of a SCORM 2004 or pre-rewrite package.
+        const installed = window.exeScorm12.activities;
+        delete window.exeScorm12.activities;
+        try {
+          expect(getScorm().getFinalScore(lmsData)).toBe(fromRegistry);
+        } finally {
+          window.exeScorm12.activities = installed;
+        }
+      }
+      activities.clear();
     });
 
     it('registering before the session opens is silent, and reconciles once it is open', () => {

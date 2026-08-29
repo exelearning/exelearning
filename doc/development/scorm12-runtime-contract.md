@@ -419,15 +419,27 @@ completion and success collapse onto `cmi.core.lesson_status`:
   with a richer notion of completion can report `completed` itself through
   `scorm.activities.update()`.
 - **One aggregation algorithm** **[POLICY]**. The registry's
-  `summary().score` is the historical eXeLearning weighting (weights scaled to
-  integers summing to exactly 100 by largest-remainder rounding, then a
-  weight-scaled sum). `common.js`'s `getFinalScore()` delegates to it whenever
-  the runtime is present, so the displayed score, the recorded
+  `summary().score` is the weighted mean of the evaluable activities'
+  normalised scores, each weight clamped into 1–100. `common.js`'s
+  `getFinalScore()` delegates to it whenever the runtime is present and
+  carries the same arithmetic for the runtimes that have none (SCORM 2004,
+  pre-rewrite packages), so the displayed score, the recorded
   `cmi.core.score.raw`, the in-session status decision and the exit decision
-  all read the same number. Two algorithms (the historical one in-session, an
-  exact weighted mean at exit) could disagree near the mastery threshold —
-  e.g. 100/49/0 at equal weights is 50.17 historically but 49.67 exactly —
-  and flip a passed page to failed on the way out.
+  all read the same number. Two algorithms could disagree near the mastery
+  threshold and flip a passed page to failed on the way out;
+  `common.test.js` pins the two implementations against each other.
+
+  This replaces the historical eXeLearning weighting, which scaled the weights
+  to integers summing to exactly 100 by largest-remainder rounding before the
+  weight-scaled sum. That scaling leaves one point over and awards it to the
+  largest fraction, but with equal weights every fraction ties, so a stable
+  sort gave it to whichever activity was registered first and multiplied that
+  one activity's score: three equally weighted activities scoring 100/50/0
+  aggregated to 50.5 and the same three as 0/50/100 to 49.5 — the same work by
+  the learner, passed or failed on the order the author placed the iDevices
+  in. A package still running the previous runtime keeps the old numbers; they
+  differ by at most one weight-point of a single activity (100/49/0 at equal
+  weights: 50.17 before, 49.67 now).
 - **The policy may correct its own verdict, never someone else's.** A terminal
   status the policy wrote during this session is downgraded back to
   `incomplete` whenever the decision returns to `required-activities-pending`

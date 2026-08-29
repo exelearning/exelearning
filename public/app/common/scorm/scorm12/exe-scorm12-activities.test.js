@@ -172,18 +172,36 @@ describe('exe-scorm12-activities', () => {
             expect(activities.summary().score).toBe(80);
         });
 
-        it('aggregates with the historical largest-remainder weighting, not an exact mean', () => {
+        it('aggregates as an exact weighted mean', () => {
             activities.register('a', { evaluable: true, completed: true, score: 100 });
             activities.register('b', { evaluable: true, completed: true, score: 49 });
             activities.register('c', { evaluable: true, completed: true, score: 0 });
 
-            // Three equal weights scale to the integer split 34/33/33
-            // (largest remainder), so the aggregate is 50.17 — an exact
-            // weighted mean (49.67) would flip this page from passed to
-            // failed at the default mastery threshold of 50. Published
-            // packages recorded cmi.core.score.raw with this rounding, and
-            // the completion policy must read the very same number.
-            expect(activities.summary().score).toBe(50.17);
+            // (100 + 49 + 0) / 3. The largest-remainder weighting this
+            // replaced scaled the three equal weights to the integer split
+            // 34/33/33 and answered 50.17, which is above the default mastery
+            // threshold of 50 for a learner whose real average is below it.
+            expect(activities.summary().score).toBe(49.67);
+        });
+
+        // The scaling that used to run here left one point over and handed it
+        // to the largest fraction. With equal weights every fraction ties, so
+        // it always went to whichever activity was registered first and
+        // multiplied that one's score: these same three scores came out 50.5
+        // in one order and 49.5 in the other — passed or failed on the order
+        // the author happened to place the iDevices in.
+        it('gives the same aggregate whatever order the activities register in', () => {
+            function aggregateInOrder(scores) {
+                activities.clear();
+                scores.forEach((score, index) => {
+                    activities.register(`a${index}`, { evaluable: true, completed: true, score });
+                });
+                return activities.summary().score;
+            }
+
+            expect(aggregateInOrder([100, 50, 0])).toBe(50);
+            expect(aggregateInOrder([0, 50, 100])).toBe(50);
+            expect(aggregateInOrder([50, 0, 100])).toBe(50);
         });
 
         it('clamps an out-of-range weight into 1-100 for the aggregate', () => {

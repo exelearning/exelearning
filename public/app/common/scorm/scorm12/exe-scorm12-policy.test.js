@@ -715,21 +715,42 @@ describe('exe-scorm12-policy', () => {
         });
 
         it('decides the same status during the session and at exit near the threshold', () => {
-            // 100/49/0 with equal weights: the historical largest-remainder
-            // weighting yields 50.17 (passed at the default threshold of
-            // 50), where an exact mean would yield 49.67 (failed). Both the
-            // mid-session decision and the exit decision must read the same
-            // aggregate — a page must never pass while in use and fail on
-            // the way out.
+            // 100/51/0 with equal weights aggregates to 50.33, just over the
+            // default threshold of 50. Both the mid-session decision and the
+            // exit decision must read the same aggregate — a page must never
+            // pass while in use and fail on the way out.
             startSession({ 'cmi.core.lesson_status': 'incomplete' });
             register('a', { evaluable: true, completionRequired: true, completed: true, score: 100 });
-            register('b', { evaluable: true, completionRequired: true, completed: true, score: 49 });
+            register('b', { evaluable: true, completionRequired: true, completed: true, score: 51 });
             register('c', { evaluable: true, completionRequired: true, completed: true, score: 0 });
 
             expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
 
             expect(policy.applyExitPolicy()).toMatchObject({ status: 'passed', exit: '' });
             expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
+        // The aggregate is what separates the two verdicts, so the order the
+        // activities registered in must not reach the status either. Under the
+        // largest-remainder weighting this replaced, these three scores passed
+        // in one order and failed in the other.
+        it('reaches the same verdict whatever order the activities register in', () => {
+            function verdictFor(scores) {
+                activities.clear();
+                startSession({ 'cmi.core.lesson_status': 'incomplete' });
+                scores.forEach((score, index) => {
+                    register(`a${index}`, {
+                        evaluable: true,
+                        completionRequired: true,
+                        completed: true,
+                        score,
+                    });
+                });
+                return policy.recordActivityOutcome().status;
+            }
+
+            expect(verdictFor([100, 50, 0])).toBe('passed');
+            expect(verdictFor([0, 50, 100])).toBe('passed');
         });
     });
 
