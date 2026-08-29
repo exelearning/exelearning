@@ -395,6 +395,56 @@ describe('scrambled-list iDevice export', () => {
     });
   });
 
+  describe('sendScore', () => {
+    /**
+     * Capture what the shared grading surface receives, without touching it.
+     *
+     * @returns {{restore: function(): void, calls: Array}} the recorded calls
+     */
+    function captureGradingSurface() {
+      const calls = [];
+      const previous = global.$exeDevices;
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: {
+              sendScoreNew: (auto, data) => calls.push({ auto, data }),
+            },
+          },
+        },
+      };
+      return { calls, restore: () => { global.$exeDevices = previous; } };
+    }
+
+    it('reports the score on the 0..10 scale the grading surface expects', () => {
+      const surface = captureGradingSurface();
+      const data = { id: 'sl-1', isScorm: 1 };
+
+      $scrambledlist.sendScore(3, 4, data);
+
+      expect(surface.calls).toHaveLength(1);
+      expect(surface.calls[0].data.scorerp).toBe(7.5);
+      surface.restore();
+    });
+
+    it('marks the activity finished, so the page can leave `incomplete`', () => {
+      // common.js derives completion as `gameOver === true || auto !== true`, and this
+      // call passes auto = true. Without the flag the registry never marks the activity
+      // complete and any SCO carrying a scrambled-list stays `incomplete` in the LMS
+      // even at 100%, which costs the learner the "Learning Objects" grade and any
+      // completion condition keyed on status.
+      const surface = captureGradingSurface();
+      const data = { id: 'sl-1', isScorm: 1 };
+
+      $scrambledlist.sendScore(4, 4, data);
+
+      expect(surface.calls[0].auto).toBe(true);
+      expect(surface.calls[0].data.gameOver).toBe(true);
+      expect(surface.calls[0].data.gameStarted).toBe(true);
+      surface.restore();
+    });
+  });
+
   describe('escapeHtmlButKeepRenderedMath', () => {
     const mathSpan =
       '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg><math></math></span>';

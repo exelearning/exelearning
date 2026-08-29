@@ -147,6 +147,7 @@ export class PageRenderer {
             hideNavButtons = false,
             // Asset URL transformation map
             assetExportPathMap,
+            materialIconDataUris,
             // Application version for generator meta tag
             version,
             // xAPI runtime config (always-on emitter)
@@ -173,6 +174,7 @@ export class PageRenderer {
                 language: options.language,
                 translatedLicense: options.navLabels?.license,
             },
+            materialIconDataUris,
             allPages,
             options.pageFilenameMap,
         );
@@ -767,6 +769,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             language?: string;
             translatedLicense?: string;
         },
+        materialIconDataUris?: Map<string, string>,
         allPages?: ExportPage[],
         pageFilenameMap?: Map<string, string>,
     ): string {
@@ -777,6 +780,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 basePath,
                 includeDataAttributes: true,
                 assetExportPathMap,
+                materialIconDataUris,
             });
         }
 
@@ -1266,6 +1270,7 @@ ${userFooterHtml}</div></footer>`;
             addExeLink?: boolean;
             userFooterContent?: string;
             navLabels?: { previous?: string; next?: string; page?: string; license?: string };
+            materialIconDataUris?: Map<string, string>;
         } = {},
     ): string {
         const {
@@ -1287,6 +1292,7 @@ ${userFooterHtml}</div></footer>`;
             addMathJax = false,
             addAccessibilityToolbar = false,
             navLabels,
+            materialIconDataUris,
         } = options;
 
         let contentHtml = '';
@@ -1304,13 +1310,20 @@ ${userFooterHtml}</div></footer>`;
 
             // Render the section content WITHOUT allPages so the multi-page exe-node:
             // rewrite is skipped; single-page uses its own anchor-based rewrite instead.
-            let sectionContent = this.renderPageContent(page, '', projectTitle, undefined, {
-                author: options.author,
-                description: options.description,
-                license: options.license,
-                language: options.language,
-                translatedLicense: navLabels?.license,
-            });
+            let sectionContent = this.renderPageContent(
+                page,
+                '',
+                projectTitle,
+                undefined,
+                {
+                    author: options.author,
+                    description: options.description,
+                    license: options.license,
+                    language: options.language,
+                    translatedLicense: navLabels?.license,
+                },
+                materialIconDataUris,
+            );
             // Namespace this page's named anchors, then resolve exe-node: links to in-page
             // anchors — both at render time so content.xml keeps the raw source (#1927).
             sectionContent = this.namespaceSinglePageAnchors(sectionContent, page.id);
