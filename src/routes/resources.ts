@@ -81,6 +81,23 @@ interface ResourceFile {
 }
 
 /**
+ * Suffixes of files that live next to the SCORM runtime sources but are test-only:
+ * unit tests, specs, and the shared helpers they import (`*.test-util.js`).
+ */
+const SCORM_TEST_FILE_SUFFIXES = ['.test.js', '.spec.js', '.test-util.js'] as const;
+
+/**
+ * Whether a file under app/common/scorm/ is a test artifact that must not be
+ * listed for export.
+ *
+ * @param filePath - Path relative to the scorm directory (e.g. "scorm12/foo.test-util.js").
+ * @returns true when the file is a unit test, a spec, or a shared test helper.
+ */
+export function isScormTestFile(filePath: string): boolean {
+    return SCORM_TEST_FILE_SUFFIXES.some(suffix => filePath.endsWith(suffix));
+}
+
+/**
  * Recursively scan directory for files
  */
 function scanDirectory(dirPath: string, basePath: string = ''): string[] {
@@ -290,13 +307,13 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     })
 
     // GET /api/resources/libs/scorm - Get SCORM JavaScript files
-    // Excludes test files (.test.js, .spec.js) from exports
+    // Excludes test artifacts (.test.js, .spec.js, .test-util.js) from exports
     .get('/api/resources/libs/scorm', () => {
         const scormPath = path.join(COMMON_PATH, 'scorm');
         if (!deps.fs.existsSync(scormPath)) {
             return [];
         }
-        const files = scanDirectory(scormPath).filter(f => !f.endsWith('.test.js') && !f.endsWith('.spec.js'));
+        const files = scanDirectory(scormPath).filter(f => !isScormTestFile(f));
         const version = getAppVersion();
         const basePath = getBasePath();
         return files.map(filePath => ({

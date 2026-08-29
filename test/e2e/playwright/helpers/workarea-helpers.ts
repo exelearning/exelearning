@@ -1742,13 +1742,20 @@ export async function addTextIdevice(page: Page): Promise<void> {
         }
     }
 
-    // Click text iDevice
+    // Click text iDevice. Count-aware wait: with a text iDevice already on
+    // the page, waiting for the *first* node to exist returns immediately
+    // and the brand-new one may not be in the DOM yet.
+    const nodesBefore = await page.locator('#node-content article .idevice_node.text').count();
     const textIdevice = page.locator('.idevice_item[id="text"]').first();
     await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
     await textIdevice.click();
 
-    // Wait for iDevice to appear
-    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
+    // Wait for the new iDevice to appear
+    await page.waitForFunction(
+        expected => document.querySelectorAll('#node-content article .idevice_node.text').length >= expected,
+        nodesBefore + 1,
+        { timeout: 15000 },
+    );
 }
 
 /**
@@ -2347,8 +2354,23 @@ export async function addTextIdeviceWithContent(page: Page, content: string): Pr
     // Add the text iDevice
     await addTextIdevice(page);
 
-    // Wait for TinyMCE to be ready
-    await waitForTinyMCEReady(page);
+    // Wait for the NEW iDevice's editor. `tinymce.activeEditor` can still
+    // point at a previously saved (destroyed) instance right after adding a
+    // second text iDevice; writing there loses the content and the later
+    // save fails. The editor is only ready when the active instance lives
+    // inside the freshly added (last) node.
+    await page.waitForFunction(
+        () => {
+            const editor = (window as any).tinymce?.activeEditor;
+            if (!editor || !editor.initialized || editor.removed) return false;
+            const nodes = document.querySelectorAll('#node-content article .idevice_node.text');
+            const last = nodes[nodes.length - 1];
+            const container = editor.getContainer?.() || editor.getElement?.();
+            return !!last && !!container && last.contains(container);
+        },
+        undefined,
+        { timeout: 15000 },
+    );
 
     // Set the content
     await setTinyMCEContent(page, content);
@@ -2358,10 +2380,12 @@ export async function addTextIdeviceWithContent(page: Page, content: string): Pr
     const saveBtn = block.locator('.btn-save-idevice');
     await saveBtn.click();
 
-    // Wait for save to complete
+    // Wait for save to complete — on the node just saved (the last one),
+    // not on whichever text iDevice happens to be first on the page.
     await page.waitForFunction(
         () => {
-            const idevice = document.querySelector('#node-content article .idevice_node.text');
+            const nodes = document.querySelectorAll('#node-content article .idevice_node.text');
+            const idevice = nodes[nodes.length - 1];
             return idevice && idevice.getAttribute('mode') !== 'edition';
         },
         undefined,

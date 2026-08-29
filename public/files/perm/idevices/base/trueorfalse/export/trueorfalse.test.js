@@ -402,4 +402,56 @@ describe('trueorfalse iDevice export', () => {
       expect(document.getElementById('tof-1').contains(following)).toBe(false);
     });
   });
+
+  describe('page lifecycle', () => {
+    // The SCORM runtime owns the end of the session (pagehide / visibilitychange):
+    // it persists the registry and, when the page really goes away, closes the
+    // attempt. A score sent from the activity's own hide handler races that
+    // lifecycle and can land after the runtime has already terminated the session.
+    it('does not report a score when the page is hidden mid-activity', () => {
+      $exeDevices.iDevice.gamification.scorm.endScorm ??= vi.fn();
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+      document.body.innerHTML = `
+        <div class="idevice_body trueorfalseIdevice" id="tof-1">
+          <div class="exe-trueorfalse-container">
+            <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
+              <div id="tofPGameContainer-tof-1"></div>
+              <button id="tofPStartGame-tof-1"></button>
+              <button id="tofPCheckTest-tof-1"></button>
+              <button id="tofRebootTest-tof-1"></button>
+              <input id="tofPSendScore-tof-1" />
+            </div>
+          </div>
+        </div>
+      `;
+      const options = {
+        id: 'tof-1',
+        idevicePath: '/idevices/trueorfalse/',
+        msgs: { tofPStartGame: 'Start' },
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isScorm: 1,
+        showSlider: false,
+        isTest: true,
+        time: 0,
+        evaluation: false,
+        isInExe: false,
+      };
+      $trueorfalse.sendScore = vi.fn();
+
+      try {
+        $trueorfalse.addEvents(options);
+        // The learner started answering, then navigated away / the tab was hidden.
+        options.gameStarted = true;
+        $(window).trigger('pagehide');
+      } finally {
+        $trueorfalse.removeEvents(options);
+        $exeDevices.iDevice.gamification.report = previousReport;
+        document.body.innerHTML = '';
+      }
+
+      expect($trueorfalse.sendScore).not.toHaveBeenCalled();
+    });
+  });
 });
