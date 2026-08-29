@@ -966,6 +966,68 @@ describe('IdeviceRenderer', () => {
     });
 
     describe('renderBlock with icon', () => {
+        it('falls back to the inlined help data URI when no icon data URI is provided', () => {
+            // The loose per-icon SVG files were removed; the renderer must NOT
+            // emit a dead libs/material-icons/icons/{name}.svg path. With no
+            // materialIconDataUris map (e.g. total sprite-fetch failure) it must
+            // still emit a self-contained help data: URI.
+            const block: ExportBlock = {
+                id: 'block-material',
+                name: 'Material Block',
+                order: 0,
+                components: [],
+                iconName: 'mi-lightbulb',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('libs/material-icons/icons/');
+            expect(html).not.toContain('theme/icons/');
+            expect(html).toContain('--exe-material-icon-url:url(');
+            expect(html).toContain('data:image/svg+xml;utf8,');
+        });
+
+        it('falls back to the help data URI for an unknown material icon name', () => {
+            // The requested icon ("does-not-exist") is absent from the provided
+            // map, so the renderer must reuse the map's "help" entry rather than
+            // point at a missing file.
+            const block: ExportBlock = {
+                id: 'block-material-unknown',
+                name: 'Material Block Unknown',
+                order: 0,
+                components: [],
+                iconName: 'mi-does-not-exist',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                materialIconDataUris: new Map([['help', 'data:image/svg+xml;utf8,%3Chelp%2F%3E']]),
+            });
+
+            expect(html).not.toContain('libs/material-icons/icons/');
+            expect(html).toContain('data:image/svg+xml;utf8,%3Chelp%2F%3E');
+        });
+
+        it('should inline material icon mask as data URI when provided', () => {
+            const block: ExportBlock = {
+                id: 'block-material-inline',
+                name: 'Material Block Inline',
+                order: 0,
+                components: [],
+                iconName: 'mi-lightbulb',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                materialIconDataUris: new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            });
+
+            expect(html).toContain('data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E');
+            expect(html).not.toContain('libs/material-icons/icons/lightbulb.svg');
+        });
+
         it('should render block header with icon when iconName is provided', () => {
             const block: ExportBlock = {
                 id: 'block-1',
@@ -979,6 +1041,29 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('box-icon');
             expect(html).toContain('theme/icons/lightbulb.png');
+        });
+
+        it('should resolve custom asset icons to exported resources path', () => {
+            const block: ExportBlock = {
+                id: 'block-asset',
+                name: 'Asset Block',
+                order: 0,
+                components: [],
+                icon: {
+                    source: 'asset',
+                    value: 'asset://12345678-1234-1234-1234-123456789012/dogs/black-dog.jpg',
+                } as any,
+                iconName: 'asset://12345678-1234-1234-1234-123456789012/dogs/black-dog.jpg',
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                assetExportPathMap: new Map([['12345678-1234-1234-1234-123456789012', 'dogs/black-dog.jpg']]),
+            });
+
+            expect(html).toContain('content/resources/dogs/black-dog.jpg');
+            expect(html).not.toContain('asset://12345678-1234-1234-1234-123456789012');
         });
 
         it('should use themeIconBasePath when provided for icon (preview mode)', () => {

@@ -17,7 +17,6 @@ const IDEVICES_USERS_PATH = 'public/files/perm/idevices/users';
 const LIBS_PATH = 'public/libs';
 const COMMON_PATH = 'public/app/common';
 const BUNDLES_PATH = 'public/bundles';
-
 // Get site themes directory (from FILES_DIR)
 const getSiteThemesPath = (): string => {
     const filesDir = deps.getEnv('ELYSIA_FILES_DIR') || deps.getEnv('FILES_DIR') || '/mnt/data';
@@ -300,9 +299,11 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
         ];
 
         // Check which files actually exist and return only path and url
-        return baseLibs
+        const existingBaseLibs = baseLibs
             .filter(lib => deps.fs.existsSync(lib.srcPath))
             .map(({ path: libPath, url }) => ({ path: libPath, url }));
+
+        return existingBaseLibs;
     })
 
     // GET /api/resources/libs/scorm - Get SCORM JavaScript files
