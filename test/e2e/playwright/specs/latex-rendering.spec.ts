@@ -1058,9 +1058,10 @@ test.describe('LaTeX Rendering', () => {
             await waitForTinyMCEReady(page);
 
             // Set content with raw LaTeX (display and inline math)
-            // Display math uses \\[...\\] rather than $$...$$: the editor round-trip
-            // collapses a $$ pair to a single $, so the expression would reach the page
-            // without a recognised delimiter and never render.
+            // Display math uses \\[...\\], the supported delimiter. Dollar delimiters
+            // were deliberately dropped from eXeLearning: only \\(...\\) and \\[...\\]
+            // are valid, see the decision on PR #2269 closing issue #1990. $$...$$ does
+            // not survive the editor round-trip (a pair collapses to a single $).
             const contentWithLatex = `
                 <p>Inline: \\(a^2 + b^2 = c^2\\)</p>
                 <p>Display: \\[\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}\\]</p>

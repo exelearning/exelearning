@@ -179,8 +179,12 @@ The static PWA build stops duplicating the MathJax configuration: it sets
 
 ## Follow-up work
 
-- The editor round-trip collapses a `$$…$$` delimiter pair to a single `$`, so display
-  math written that way never renders. Pre-existing on `main`; needs its own issue.
+- `tex.displayMath` still lists `$$…$$`, but dollar delimiters were deliberately
+  dropped: only `\(…\)` and `\[…\]` are supported (decision on PR #2269, closing
+  issue #1990). `$$` renders in exports yet loses a `$` per side through the editor
+  round-trip, so it half-works. Aligning the configuration with the decision is a
+  separate change — removing it outright would stop existing `$$` content rendering
+  in exports, where it currently does.
 - `bbm` and `bboldx` stay disabled: MathJax publishes no font package for them under
   the `@mathjax` scope, so their macros render as undefined-macro errors.
 
