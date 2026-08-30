@@ -149,6 +149,7 @@ export interface YjsExportStructure {
             id: string;
             blockName?: string;
             iconName?: string;
+            icon?: { source: 'material' | 'asset' | 'theme' | 'none'; value: string; name?: string };
             properties?: Record<string, unknown>;
             components: Array<{
                 id: string;

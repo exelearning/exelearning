@@ -207,21 +207,33 @@ var $form = {
         const questionsHtml = $form.getHtmlFormView(ldata.questionsData, ldata);
         $('#form-questions-' + ldata.id).empty();
         $('#form-questions-' + ldata.id).append(questionsHtml);
-        const interval = setInterval(() => {
-            const $ideviceElement = $(`[id="${ldata.id}"]`);
-            if ($ideviceElement.length) {
-                $form.setBehaviourButtonResetQuestions(ldata);
-                $form.setBehaviourButtonCheckQuestions(ldata);
-                if (addBtnAnswers) $form.setBehaviourButtonShowAnswers(ldata);
-                $form.setBehaviourOptions(ldata);
-                $form.hideScore(ldata.id);
-                $form.setBehaviourTest(ldata);
-                clearInterval(interval);
-                if (ldata.showSlider) {
-                    $form.addEventsSlideShow(ldata);
-                }
+        const bindBehaviour = () => {
+            $form.setBehaviourButtonResetQuestions(ldata);
+            $form.setBehaviourButtonCheckQuestions(ldata);
+            if (addBtnAnswers) $form.setBehaviourButtonShowAnswers(ldata);
+            $form.setBehaviourOptions(ldata);
+            $form.hideScore(ldata.id);
+            $form.setBehaviourTest(ldata);
+            if (ldata.showSlider) {
+                $form.addEventsSlideShow(ldata);
             }
-        }, 200);
+        };
+        // The questions were just appended into a descendant of this element, so
+        // it is normally already in the document. Binding here instead of only
+        // from the poll closes a window of up to 200 ms in which "Comprobar" is
+        // rendered but has no click handler: a learner clicking in that window
+        // gets no score, no feedback and no error. The poll stays as the
+        // fallback for the case the element genuinely is not there yet.
+        if ($(`[id="${ldata.id}"]`).length) {
+            bindBehaviour();
+        } else {
+            const interval = setInterval(() => {
+                if ($(`[id="${ldata.id}"]`).length) {
+                    clearInterval(interval);
+                    bindBehaviour();
+                }
+            }, 200);
+        }
         const $ideviceReference = $(`[id="${ldata.id}"]`);
         if (!$ideviceReference.length) return;
         const $showAnswersButton = $('#form-button-show-answers-' + ldata.id);

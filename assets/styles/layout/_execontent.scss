@@ -71,7 +71,6 @@
         > {
             .exe-icon.box-icon {
                 flex-shrink: 0;
-                color: var(--dark-exe-color);
             }
 
             h3 {
@@ -117,7 +116,7 @@
                 color: white;
                 transition: var(--tr-02);
             }
-            &:hover {
+            &:not(.box-icon):hover {
                 color: var(--dark-exe-color-text);
                 transition: var(--tr-02);
                 img {
@@ -163,6 +162,7 @@
                     border: 1px solid var(--border-buttons);
                     border-radius: 4px;
                     background-color: #f9f9f9;
+                    color: var(--body-text-color);
                     transition: box-shadow 0.2s ease, background-color 0.2s ease;
                     box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
                     max-width: 100%;
@@ -236,6 +236,26 @@
                 transition: padding 0.1s ease-in;
                 padding: 0;
             }
+        }
+        .exe-material-icon {
+            display: block;
+            width: 40px;
+            height: 40px;
+            background-color: currentColor;
+            -webkit-mask-image: var(--exe-material-icon-url);
+            mask-image: var(--exe-material-icon-url);
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+            -webkit-mask-size: contain;
+            mask-size: contain;
+            // Material Symbols are drawn inside a 20px live area on a 24px grid,
+            // so with mask-size: contain the glyph ink fills only 20/24 ≈ 83.3%
+            // of the box and renders smaller than the edge-to-edge theme (Style)
+            // icons. Scale by 24/20 = 1.2 so the glyph ink matches the Style icon
+            // exactly (verified in a real render: Style 100% vs Material 83.5%).
+            transform: scale(1.2);
         }
         .button-remove-box {
             .exe-icon {

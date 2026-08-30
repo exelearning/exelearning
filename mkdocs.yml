@@ -54,6 +54,7 @@ nav:
       - Installers: development/installers.md
       - REST API: development/rest-api.md
       - Authentication: development/authentication.md
+      - SCORM 1.2 Runtime Contract: development/scorm12-runtime-contract.md
   - File Formats:
       - Legacy ELP Format: contentv3-format.md
       - ELPX Format:

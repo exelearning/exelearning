@@ -419,6 +419,34 @@ describe('three-d-viewer runtime — registry', () => {
         expect(order).toEqual([3, 2, 1]);
     });
 
+    // The runtime binds `pagehide`, not `beforeunload`: an unload-family
+    // listener would make the page ineligible for the back/forward cache that
+    // the SCORM 1.2 runtime relies on.
+    describe('page-lifecycle cleanup binding', () => {
+        function firePageHide(persisted) {
+            const event = new Event('pagehide');
+            Object.defineProperty(event, 'persisted', { value: persisted });
+            globalThis.dispatchEvent(event);
+        }
+
+        it('a real teardown destroys every instance', () => {
+            runtime.init(makeWrapper({ modelSrc: 'asset://a.stl' }));
+            expect(runtime.__registry.size).toBe(1);
+
+            firePageHide(false);
+
+            expect(runtime.__registry.size).toBe(0);
+        });
+
+        it('a back/forward-cache freeze keeps the instances alive', () => {
+            runtime.init(makeWrapper({ modelSrc: 'asset://a.stl' }));
+
+            firePageHide(true);
+
+            expect(runtime.__registry.size).toBe(1);
+        });
+    });
+
     it('destroying one instance leaves the other intact', () => {
         const w1 = makeWrapper({ modelSrc: 'asset://a.stl' });
         const w2 = makeWrapper({ modelSrc: 'asset://b.glb' });
