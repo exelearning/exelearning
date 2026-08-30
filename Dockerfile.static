@@ -22,6 +22,17 @@ ARG VERSION=latest
 RUN bun run build:static -- --version=${VERSION}
 
 FROM nginx:alpine
+# nginx has the gzip module built in but leaves it off, so dist/static's
+# JavaScript, CSS, JSON and SVG assets are served uncompressed. Both JavaScript
+# types are listed on purpose: nginx's own mime.types maps .js to
+# application/javascript, while mime-extra.conf below maps .mjs to
+# text/javascript. text/html is always compressed and needs no entry.
+COPY <<'EOF' /etc/nginx/conf.d/gzip.conf
+gzip on;
+gzip_vary on;
+gzip_min_length 1024;
+gzip_types text/javascript application/javascript application/json text/css image/svg+xml text/xml application/xml text/plain;
+EOF
 # nginx's bundled mime.types has no entry for several extensions we serve and
 # falls back to application/octet-stream, which browsers reject for ES modules.
 COPY docker/nginx/mime-extra.conf /etc/nginx/conf.d/mime-extra.conf

@@ -1563,13 +1563,6 @@ var $eXeFlipCards = {
 
         $('#flcdsPNumber-' + instance).text(mOptions.realNumberCards);
 
-        $(window).on('unload.eXeFlipCards', () => {
-            if ($eXeFlipCards.mScorm)
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeFlipCards.mScorm
-                );
-        });
-
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -1706,7 +1699,6 @@ var $eXeFlipCards = {
         $('#flcdsMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
-        $(window).off('unload.eXeFlipcard');
         $('#flcdsClueButton-' + instance).off('click');
         $('#flcdsNextCard-' + instance).off('click');
         $('#flcdsPreviousCard-' + instance).off('click');
@@ -2433,6 +2425,18 @@ var $eXeFlipCards = {
             mOptions.type > 1
                 ? ((mOptions.hits * 10) / mOptions.realNumberCards).toFixed(2)
                 : $eXeFlipCards.getScoreVisited(instance);
+
+        // The browsing modes (0 Show, 1 Navigation) are finished once every card
+        // has been flipped, which is exactly what a visited score of 10 means, so
+        // the flag and the score can never disagree. The scored modes (2 Identify,
+        // 3 Memory) end through gameOver()/gameOverMemory(), which already raise
+        // the flag before they report, so they are left alone here. Without the
+        // flag the page stays `incomplete` in the LMS even at 100%, because
+        // completion is decided from what the activity reports as finished, not
+        // from the score.
+        if (mOptions.type < 2 && mOptions.scorerp >= 10) {
+            mOptions.gameOver = true;
+        }
 
         mOptions.previousScore = $eXeFlipCards.previousScore;
         mOptions.userName = $eXeFlipCards.userName;

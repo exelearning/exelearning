@@ -2086,4 +2086,78 @@ describe('LegacyXmlParser', () => {
             }
         });
     });
+
+    // Issue #2252 — the default interface texts of a legacy True/False iDevice
+    // must follow the package language declared in <_lang>, not stay in English.
+    describe('True/False iDevice language (issue #2252)', () => {
+        const buildLegacyXml = (lang: string) => `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="7">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="verdaderofalso"/>
+    <string role="key" value="_lang"/>
+    <unicode value="${lang}"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="3">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Inicio"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.truefalseidevice.TrueFalseIdevice" reference="1">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="True-False Question"/>
+              <string role="key" value="questions"/>
+              <list>
+                <instance class="exe.engine.truefalseidevice.TrueFalseQuestion">
+                  <dictionary>
+                    <string role="key" value="questionTextArea"/>
+                    <instance class="exe.engine.field.TextAreaField" reference="4">
+                      <dictionary>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode content="true" value="&lt;p&gt;El protón es una partícula elemental.&lt;/p&gt;"/>
+                      </dictionary>
+                    </instance>
+                    <string role="key" value="isCorrect"/>
+                    <bool value="0"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+        const getTrueFalseMsgs = (lang: string): Record<string, string> => {
+            const result = parser.parse(buildLegacyXml(lang));
+            const idevice = result.pages
+                .flatMap(p => p.blocks.flatMap(b => b.idevices))
+                .find(d => d.type === 'trueorfalse');
+
+            expect(idevice).toBeDefined();
+            return (idevice as { properties: { msgs: Record<string, string> } }).properties.msgs;
+        };
+
+        it('should use the package language for the default messages', () => {
+            const msgs = getTrueFalseMsgs('es');
+
+            expect(msgs.msgTrue).toBe('Verdadero');
+            expect(msgs.msgFalse).toBe('Falso');
+            expect(msgs.msgSuggestion).toBe('Sugerencia');
+        });
+
+        it('should keep English messages for an English package', () => {
+            const msgs = getTrueFalseMsgs('en');
+
+            expect(msgs.msgTrue).toBe('True');
+            expect(msgs.msgFalse).toBe('False');
+            expect(msgs.msgSuggestion).toBe('Suggestion');
+        });
+    });
 });

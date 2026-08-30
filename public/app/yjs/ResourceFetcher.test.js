@@ -290,11 +290,25 @@ describe('ResourceFetcher', () => {
     it('returns cached SCORM files if available', async () => {
       const fetcher = new ResourceFetcher();
       const cachedFiles = new Map([['scorm.js', new Blob(['scorm'])]]);
-      fetcher.cache.set('libs:scorm', cachedFiles);
+      fetcher.cache.set('libs:scorm:2004', cachedFiles);
 
       const result = await fetcher.fetchScormFiles();
 
       expect(result).toBe(cachedFiles);
+    });
+
+    it('caches per SCORM version', async () => {
+      const fetcher = new ResourceFetcher();
+      const cached2004 = new Map([['SCOFunctions.js', new Blob(['legacy'])]]);
+      fetcher.cache.set('libs:scorm:2004', cached2004);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      const result = await fetcher.fetchScormFiles('1.2');
+
+      expect(result).not.toBe(cached2004);
     });
 
     it('fetches SCORM files from API', async () => {
@@ -307,6 +321,57 @@ describe('ResourceFetcher', () => {
       await fetcher.fetchScormFiles();
 
       expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/libs/scorm');
+    });
+
+    it('fetches only the legacy pair for the default (2004) version', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve([
+            { path: 'SCORM_API_wrapper.js', url: '/scorm/SCORM_API_wrapper.js' },
+            { path: 'SCOFunctions.js', url: '/scorm/SCOFunctions.js' },
+            { path: 'scorm12/exe-scorm12-client.js', url: '/scorm/scorm12/exe-scorm12-client.js' },
+          ]),
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['js'])),
+      });
+
+      const result = await fetcher.fetchScormFiles('2004');
+
+      expect(Array.from(result.keys()).sort()).toEqual(['SCOFunctions.js', 'SCORM_API_wrapper.js']);
+    });
+
+    it('fetches the vendored wrapper and runtime layers for 1.2', async () => {
+      const fetcher = new ResourceFetcher();
+      const listed = fetcher
+        .getScormFileNames('1.2')
+        .map(path => ({ path, url: `/scorm/${path}` }))
+        .concat([{ path: 'SCOFunctions.js', url: '/scorm/SCOFunctions.js' }]);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(listed),
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['js'])),
+      });
+
+      const result = await fetcher.fetchScormFiles('1.2');
+
+      expect(Array.from(result.keys()).sort()).toEqual(
+        [
+          'scorm12/vendor/pipwerks/SCORM_API_wrapper.js',
+          'scorm12/exe-scorm12-client.js',
+          'scorm12/exe-scorm12-activities.js',
+          'scorm12/exe-scorm12-policy.js',
+          'scorm12/exe-scorm12-lifecycle.js',
+          'scorm12/exe-scorm12-adapter.js',
+        ].sort(),
+      );
+      expect(result.has('SCOFunctions.js')).toBe(false);
     });
   });
 
@@ -447,6 +512,18 @@ describe('ResourceFetcher', () => {
       expect(result.size).toBe(1);
       expect(result.has('exists.js')).toBe(true);
       expect(result.has('missing.js')).toBe(false);
+    });
+
+    it('excludes material-icons sprite entries from base library maps', async () => {
+      const fetcher = new ResourceFetcher();
+      const result = fetcher.excludeMaterialIconSpriteFromBaseLibs(new Map([
+        ['material-icons/material-icons.svg', new Blob(['sprite'])],
+        ['material-icons/icons/alarm.svg', new Blob(['alarm'])],
+        ['jquery/jquery.min.js', new Blob(['jquery'])],
+      ]));
+
+      expect(result.has('jquery/jquery.min.js')).toBe(true);
+      expect(result.size).toBe(1);
     });
   });
 
