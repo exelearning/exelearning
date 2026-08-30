@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 require('./common.js');
 
@@ -35,6 +35,52 @@ describe('MathJax configuration', () => {
     const packages = global.window.MathJax.tex.packages['[+]'];
     for (const extension of packages) {
       expect(global.window.MathJax.loader.load).toContain(`[tex]/${extension}`);
+    }
+  });
+});
+
+describe('MathJax startup.ready', () => {
+  let defaultReady;
+
+  beforeEach(() => {
+    defaultReady = vi.fn();
+    global.window.MathJax.startup.defaultReady = defaultReady;
+  });
+
+  afterEach(() => {
+    delete global.window.MathJax.startup.defaultReady;
+    delete global.window.MathJax._;
+  });
+
+  it('hands control to MathJax before touching anything', () => {
+    global.window.MathJax.startup.ready();
+
+    expect(defaultReady).toHaveBeenCalledTimes(1);
+  });
+
+  it('trims the language menu once MathJax has started', () => {
+    const locales = new Map([
+      ['en', 'English'],
+      ['es', 'Spanish'],
+      ['sv', 'Swedish'],
+    ]);
+    global.window.MathJax._ = { a11y: { sre_ts: { locales } } };
+
+    global.window.MathJax.startup.ready();
+
+    expect([...locales.keys()]).toEqual(['en', 'es']);
+  });
+
+  it('still starts MathJax when $exe is unavailable', () => {
+    // Anything thrown here would leave MathJax permanently un-started, costing every
+    // formula on the page to tidy up one menu.
+    const originalMath = global.$exe.math;
+    delete global.$exe.math;
+    try {
+      expect(() => global.window.MathJax.startup.ready()).not.toThrow();
+      expect(defaultReady).toHaveBeenCalledTimes(1);
+    } finally {
+      global.$exe.math = originalMath;
     }
   });
 });
