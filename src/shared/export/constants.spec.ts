@@ -223,6 +223,31 @@ describe('Constants', () => {
             const bootstrapIndex = BASE_LIBRARIES.findIndex(lib => lib.includes('bootstrap.bundle'));
             expect(jqueryIndex).toBeLessThan(bootstrapIndex);
         });
+
+        // Tripwire, not a style rule: a library that announces `sourceMappingURL`
+        // must either travel with its .map or have the announcement stripped, or
+        // every exported package 404s in DevTools. Dropping the .map entries here
+        // to save bytes is the tempting half of that trade — this fails if it is
+        // done alone. `stripSourceMappingUrl` in
+        // scripts/static-bundle/strip-source-map-refs.ts is the other half.
+        it('ships a .map for every library that still announces one', () => {
+            const libsDir = path.join(__dirname, '../../../public/libs');
+            let checked = 0;
+
+            for (const lib of BASE_LIBRARIES) {
+                if (lib.endsWith('.map')) continue; // a map's own JSON mentions the word
+                const absPath = path.join(libsDir, lib);
+                if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) continue;
+                if (!fs.readFileSync(absPath, 'utf-8').includes('sourceMappingURL')) continue;
+
+                checked += 1;
+                expect(BASE_LIBRARIES as readonly string[]).toContain(`${lib}.map`);
+            }
+
+            // Guard the guard: if the paths ever stop resolving this must fail
+            // loudly rather than quietly assert nothing.
+            expect(checked).toBeGreaterThan(0);
+        });
     });
 
     describe('SCORM_LIBRARIES', () => {

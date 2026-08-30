@@ -1026,6 +1026,8 @@ describe('copyDirRecursive', () => {
 
         fs.writeFileSync(path.join(srcDir, 'app.js'), 'console.log(1)');
         fs.writeFileSync(path.join(srcDir, 'app.js.map'), '{"version":3}');
+        fs.writeFileSync(path.join(srcDir, 'styles.css.map'), '{"version":3}');
+        fs.writeFileSync(path.join(srcDir, 'world.map'), 'a data file that is not a source map');
         fs.writeFileSync(path.join(srcDir, 'types.d.ts'), 'export type X = number;');
         fs.writeFileSync(path.join(srcDir, 'app.test.js'), 'test stub');
         fs.writeFileSync(path.join(srcDir, 'README.md'), '# readme');
@@ -1052,6 +1054,11 @@ describe('copyDirRecursive', () => {
 
     it('excludes source maps by default', () => {
         expect(fs.existsSync(path.join(destDir, 'app.js.map'))).toBe(false);
+        expect(fs.existsSync(path.join(destDir, 'styles.css.map'))).toBe(false);
+    });
+
+    it('keeps a data file that merely ends in .map', () => {
+        expect(fs.existsSync(path.join(destDir, 'world.map'))).toBe(true);
     });
 
     it('excludes TypeScript type declarations by default', () => {
@@ -1076,5 +1083,40 @@ describe('copyDirRecursive', () => {
         const emptyDest = path.join(destDir, 'from-missing');
         expect(() => copyDirRecursive(missingSrc, emptyDest)).not.toThrow();
         expect(fs.existsSync(emptyDest)).toBe(false);
+    });
+});
+
+describe('copyDirRecursive path-relative exclusions', () => {
+    let srcDir: string;
+    let destDir: string;
+
+    beforeAll(() => {
+        srcDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exe-copy-rel-src-'));
+        destDir = fs.mkdtempSync(path.join(os.tmpdir(), 'exe-copy-rel-dest-'));
+
+        // Mirrors the shape the static build copies: one dev-only `src` tree to
+        // drop, and a same-named runtime tree elsewhere that must survive.
+        const devSrc = path.join(srcDir, 'idevices', 'base', 'slide', 'src');
+        fs.mkdirSync(devSrc, { recursive: true });
+        fs.writeFileSync(path.join(devSrc, 'editor.ts'), 'export const x = 1;');
+
+        const runtimeSrc = path.join(srcDir, 'idevices', 'base', 'other', 'src');
+        fs.mkdirSync(runtimeSrc, { recursive: true });
+        fs.writeFileSync(path.join(runtimeSrc, 'runtime.js'), 'console.log(1)');
+
+        copyDirRecursive(srcDir, destDir, ['idevices/base/slide/src']);
+    });
+
+    afterAll(() => {
+        fs.rmSync(srcDir, { recursive: true, force: true });
+        fs.rmSync(destDir, { recursive: true, force: true });
+    });
+
+    it('excludes the directory named by its path relative to the copy root', () => {
+        expect(fs.existsSync(path.join(destDir, 'idevices', 'base', 'slide', 'src'))).toBe(false);
+    });
+
+    it('keeps a same-named directory living elsewhere in the tree', () => {
+        expect(fs.existsSync(path.join(destDir, 'idevices', 'base', 'other', 'src', 'runtime.js'))).toBe(true);
     });
 });
