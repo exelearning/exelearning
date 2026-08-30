@@ -232,21 +232,24 @@ describe('Constants', () => {
         // scripts/static-bundle/strip-source-map-refs.ts is the other half.
         it('ships a .map for every library that still announces one', () => {
             const libsDir = path.join(__dirname, '../../../public/libs');
-            let checked = 0;
+            let resolved = 0;
 
             for (const lib of BASE_LIBRARIES) {
                 if (lib.endsWith('.map')) continue; // a map's own JSON mentions the word
                 const absPath = path.join(libsDir, lib);
                 if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) continue;
+
+                resolved += 1;
                 if (!fs.readFileSync(absPath, 'utf-8').includes('sourceMappingURL')) continue;
 
-                checked += 1;
                 expect(BASE_LIBRARIES as readonly string[]).toContain(`${lib}.map`);
             }
 
-            // Guard the guard: if the paths ever stop resolving this must fail
-            // loudly rather than quietly assert nothing.
-            expect(checked).toBeGreaterThan(0);
+            // Guard the guard: count files that resolved on disk, not files that
+            // announce a map. Zero announcements is a valid end state — the
+            // announcement can be stripped from the vendored file instead — but
+            // zero resolved paths means the lookup broke and this asserts nothing.
+            expect(resolved).toBeGreaterThan(0);
         });
     });
 
