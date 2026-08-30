@@ -1250,6 +1250,61 @@ describe('ApiCallManager', () => {
       expect(updateBlock).not.toHaveBeenCalled();
       expect(result.responseMessage).toBe('OK');
     });
+
+    it('should sync structured icon updates via Yjs and include icon in response payload', async () => {
+      const updateBlock = vi.fn();
+      const getBlock = vi.fn().mockReturnValue({
+        blockName: 'Title',
+        iconName: 'mi-alarm',
+        icon: { source: 'material', value: 'alarm' },
+        order: 2,
+      });
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateBlock, getBlock } },
+      };
+
+      const result = await apiManager.putSaveBlock({
+        odePagStructureSyncId: 'block-1',
+        blockName: 'Title',
+        iconName: 'asset://uuid-123/icon.jpg',
+        icon: { source: 'asset', value: 'asset://uuid-123/icon.jpg' },
+        order: 2,
+      });
+
+      expect(updateBlock).toHaveBeenCalledWith('block-1', {
+        icon: { source: 'asset', value: 'asset://uuid-123/icon.jpg' },
+        iconName: 'asset://uuid-123/icon.jpg',
+      });
+      expect(result.odePagStructureSync.icon).toEqual({
+        source: 'asset',
+        value: 'asset://uuid-123/icon.jpg',
+      });
+    });
+
+    it('should skip structured icon sync when icon object is unchanged', async () => {
+      const updateBlock = vi.fn();
+      const getBlock = vi.fn().mockReturnValue({
+        blockName: 'Title',
+        iconName: 'mi-alarm',
+        icon: { source: 'material', value: 'alarm' },
+        order: 2,
+      });
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateBlock, getBlock } },
+      };
+
+      await apiManager.putSaveBlock({
+        odePagStructureSyncId: 'block-1',
+        blockName: 'Title',
+        iconName: 'mi-alarm',
+        icon: { source: 'material', value: 'alarm' },
+        order: 2,
+      });
+
+      expect(updateBlock).not.toHaveBeenCalled();
+    });
   });
 
   describe('putSavePropertiesBlock', () => {

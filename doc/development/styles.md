@@ -76,6 +76,104 @@ iDevice icons by…</description>
 
 ---
 
+## Block Icons: Style Icons and General Icons
+
+The icon picker offers two groups. **Style icons** are the artwork your `icons/`
+folder ships. **General icons** are Google Material Symbols, bundled with the
+application and shared by every style.
+
+A General icon is not an `<img>`. It is a `<span class="exe-material-icon">` whose
+glyph is applied as a CSS mask and painted with `currentColor`:
+
+```html
+<span class="exe-material-icon" style="--exe-material-icon-url:url('data:image/svg+xml;utf8,…');"></span>
+```
+
+**Your style does not have to do anything for these icons to work.** The application
+ships a default rule — `content/css/base.css` in exports, the workarea stylesheet in
+the editor — that sizes the span to 40×40 and applies the mask. It loads before
+`theme/style.css`, so you only override what you want to change.
+
+> **The export wrapper is `<div class="exe-content exe-export …">`** — both classes on
+> the same element. A `.exe-content` rule is therefore live in exports too, and an
+> `.exe-export` rule of equal specificity does not replace it, it just wins property by
+> property. Do not restate the size in the `.exe-export` rule unless you mean to change
+> it there.
+
+### Matching them to your own artwork
+
+Set `--exe-icon-color` so General icons take the same colour as your Style icons.
+Without it the tint falls back to the computed text colour of the block header, which
+may not match your artwork at all:
+
+```css
+.exe-content {
+    --exe-icon-color: #d86e41;
+}
+
+.exe-content .box-head .box-icon {
+    color: var(--exe-icon-color, #d86e41);
+}
+```
+
+If that colour is light — because your block header has a coloured background — set
+`--exe-icon-picker-color` as well. The icon picker paints its chips on a light
+background, so a white `--exe-icon-color` would leave both the icons and the selected
+state invisible there. The picker prefers this variable when it is present:
+
+```css
+.exe-content {
+    --exe-icon-color: #fff;         /* white icon on the coloured block header */
+    --exe-icon-picker-color: #0d77d1; /* readable on the picker's light chips */
+}
+```
+
+The variable reaches the General icons, because they are painted with `currentColor`.
+It cannot reach your Style icons: those are `<img>` artwork, and only a filter can
+recolour an image. If your artwork is a flat light colour, `brightness(0)` flattens it
+to black and an invert/sepia/saturate/hue-rotate chain takes it to the accent, so both
+groups match in the picker. The `educablue` style is a worked example:
+
+```css
+.modal #change-block-icon-modal-content .option-block-icon.exe-icon img {
+    filter: brightness(0) saturate(100%) invert(50%) sepia(40%) saturate(1164%)
+        hue-rotate(171deg) brightness(77%) contrast(119%);
+}
+```
+
+To change the size, redefine the span. Keep `transform: scale(1.2)`: Material Symbols
+are drawn inside a 20px live area on a 24px grid, so without it the glyph renders
+about 17% smaller than edge-to-edge Style icons.
+
+Note that the individual `scale` property **composes with** `transform` rather than
+replacing it: a rule setting `scale: 0.9` and another setting `transform: scale(1.2)`
+leave the element at `0.9 × 1.2`. If your style already uses `scale`, account for it.
+
+```css
+.exe-content .box-icon .exe-material-icon {
+    width: 50px;
+    height: 50px;
+    transform: scale(1.2);
+}
+```
+
+### Two things that will break your icons
+
+- **Dark mode by global inversion.** If your style does
+  `html.exe-dark-mode { filter: invert(…) }` and then counter-inverts the media with
+  `:is(img, video, iframe)`, name the span too — it is not an `<img>`, so otherwise
+  your General icons invert while your Style icons do not. Only do this when your
+  Style icons are light artwork; if `--exe-icon-color` is already a dark colour meant
+  to invert to a light one, leave the span out of that list.
+- **Filtering the icon picker.** If your style restyles
+  `#change-block-icon-modal-content .option-block-icon`, never put the rule on the chip
+  itself — it has a background, so a `filter` there paints a solid block over the icon.
+  Scope it to the `img` inside, and leave the General icons out: they are inline `<svg>`
+  filled with `currentColor`, so `--exe-icon-picker-color` already reaches them and
+  filtering them too fights it.
+
+---
+
 ## Optional Files and Folders
 
 You can add other useful folders such as:
@@ -222,6 +320,11 @@ The styles included by default in eXeLearning are located in:
 ```
 
 These are synchronized at server startup and cannot be modified by users.
+
+> **After editing a base style, run `bun run bundle:resources`.** The editor's preview
+> loads themes from pre-built ZIP bundles under `public/bundles/themes/`, not from the
+> source folder, so until you rebuild them the preview keeps showing the previous CSS
+> even though the server serves the new file.
 
 ### Site themes (admin-installed)
 

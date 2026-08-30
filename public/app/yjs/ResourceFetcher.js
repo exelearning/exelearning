@@ -38,6 +38,7 @@
 const THIRD_PARTY_LIBS = new Set([
   'abcjs',
   'bootstrap',
+  'material-icons',
   'exe_atools',
   'exe_elpx_download',
   'fflate',
@@ -924,9 +925,10 @@ class ResourceFetcher {
       try {
         const cached = await this.resourceCache.get('libs', 'base', cacheVersion);
         if (cached) {
-          this.cache.set(cacheKey, cached);
+          const filteredCached = this.excludeMaterialIconSpriteFromBaseLibs(cached);
+          this.cache.set(cacheKey, filteredCached);
           Logger.log('[ResourceFetcher] Base libraries loaded from IndexedDB cache');
-          return cached;
+          return filteredCached;
         }
       } catch (e) {
         console.warn('[ResourceFetcher] IndexedDB cache read failed:', e);
@@ -954,6 +956,7 @@ class ResourceFetcher {
     }
 
     // 5. Cache the result (cache even if empty to avoid repeated fetches)
+    libFiles = this.excludeMaterialIconSpriteFromBaseLibs(libFiles);
     this.cache.set(cacheKey, libFiles);
 
     if (libFiles.size > 0 && this.resourceCache) {
@@ -966,6 +969,32 @@ class ResourceFetcher {
 
     Logger.log(`[ResourceFetcher] Base libraries loaded (${libFiles.size} files)`);
     return libFiles;
+  }
+
+  /**
+   * Drop any `material-icons/` entries from a base-library map.
+   *
+   * The Material Symbols sprite is fetched on demand by the icon runtime, never
+   * bundled with the base libraries, so a stale cache that still carries
+   * `material-icons/material-icons.svg` (or the removed loose `icons/*.svg`
+   * files) must be filtered out to avoid shipping dead/duplicate entries.
+   *
+   * @param {Map<string, Blob>} libFiles - base-library map (path -> blob)
+   * @returns {Map<string, Blob>} the map without any `material-icons/` entries
+   */
+  excludeMaterialIconSpriteFromBaseLibs(libFiles) {
+    if (!libFiles || typeof libFiles.entries !== 'function') {
+      return libFiles || new Map();
+    }
+
+    const filtered = new Map();
+    for (const [filePath, blob] of libFiles.entries()) {
+      if (typeof filePath === 'string' && filePath.startsWith('material-icons/')) {
+        continue;
+      }
+      filtered.set(filePath, blob);
+    }
+    return filtered;
   }
 
   /**
@@ -1047,11 +1076,35 @@ class ResourceFetcher {
   // =========================================================================
 
   /**
+   * File lists per SCORM version, relative to app/common/scorm/.
+   * SCORM 1.2 ships the vendored pipwerks wrapper plus the project runtime
+   * layers (assembled into two package files by the exporter); SCORM 2004
+   * keeps the legacy pair. Canonical list:
+   * src/shared/export/utils/Scorm12Runtime.ts (SCORM12_RUNTIME_SOURCE_PATHS).
+   * @param {string} version - '1.2' or '2004'
+   * @returns {string[]} scorm/-relative file paths
+   */
+  getScormFileNames(version) {
+    if (version === '1.2') {
+      return [
+        'scorm12/vendor/pipwerks/SCORM_API_wrapper.js',
+        'scorm12/exe-scorm12-client.js',
+        'scorm12/exe-scorm12-activities.js',
+        'scorm12/exe-scorm12-policy.js',
+        'scorm12/exe-scorm12-lifecycle.js',
+        'scorm12/exe-scorm12-adapter.js',
+      ];
+    }
+    return ['SCORM_API_wrapper.js', 'SCOFunctions.js'];
+  }
+
+  /**
    * Fetch SCORM JavaScript files
+   * @param {string} [version] - SCORM version: '1.2' or '2004'
    * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob
    */
-  async fetchScormFiles() {
-    const cacheKey = 'libs:scorm';
+  async fetchScormFiles(version = '2004') {
+    const cacheKey = `libs:scorm:${version}`;
     if (this.cache.has(cacheKey)) {
       Logger.log('[ResourceFetcher] SCORM files loaded from cache');
       return this.cache.get(cacheKey);
@@ -1060,7 +1113,7 @@ class ResourceFetcher {
     // In static mode, fetch from local files
     if (this.isStaticMode) {
       console.log('[ResourceFetcher] 📁 Static mode: Loading SCORM files from local');
-      const scormFiles = await this.fetchScormFilesStatic();
+      const scormFiles = await this.fetchScormFilesStatic(version);
       this.cache.set(cacheKey, scormFiles);
       return scormFiles;
     }
@@ -1074,10 +1127,12 @@ class ResourceFetcher {
       }
 
       const fileList = await response.json();
+      const wantedPaths = this.getScormFileNames(version);
+      const wantedFiles = fileList.filter(file => wantedPaths.includes(file.path));
       const scormFiles = new Map();
 
       // Fetch all files in parallel
-      const fetchPromises = fileList.map(async file => {
+      const fetchPromises = wantedFiles.map(async file => {
         try {
           const fileResponse = await fetch(file.url);
           if (fileResponse.ok) {
@@ -1109,11 +1164,12 @@ class ResourceFetcher {
   /**
    * Static mode: Fetch SCORM files from local paths
    * SCORM files are located in app/common/scorm/ directory
+   * @param {string} [version] - SCORM version: '1.2' or '2004'
    * @returns {Promise<Map<string, Blob>>}
    */
-  async fetchScormFilesStatic() {
+  async fetchScormFilesStatic(version = '2004') {
     const scormFiles = new Map();
-    const scormFileNames = ['SCORM_API_wrapper.js', 'SCOFunctions.js'];
+    const scormFileNames = this.getScormFileNames(version);
 
     // In static mode, SCORM files are in app/common/scorm/
     for (const fileName of scormFileNames) {
@@ -1122,7 +1178,8 @@ class ResourceFetcher {
         const response = await fetch(url);
         if (response.ok) {
           const blob = await response.blob();
-          // Store with just filename (caller adds libs/ prefix)
+          // Store with the scorm/-relative path (caller assembles or adds
+          // the libs/ prefix)
           scormFiles.set(fileName, blob);
           console.log(`[ResourceFetcher] Loaded SCORM file: ${fileName}`);
         } else {
