@@ -100,7 +100,10 @@ window.MathJax = {
     }
 };
 document.addEventListener("DOMContentLoaded", function() {
-    var url = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js";
+    // Standalone fallback only; inside eXeLearning the vendored copy is used instead.
+    // Kept on the same major as public/app/common/exe_math so the editor preview matches
+    // what the page will render.
+    var url = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-svg.min.js";
     if (isInExe) {
         url = parent.tinymce.activeEditor.settings.edicuatex_mathjax_url;
 

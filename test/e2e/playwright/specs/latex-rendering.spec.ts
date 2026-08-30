@@ -1058,9 +1058,12 @@ test.describe('LaTeX Rendering', () => {
             await waitForTinyMCEReady(page);
 
             // Set content with raw LaTeX (display and inline math)
+            // Display math uses \\[...\\] rather than $$...$$: the editor round-trip
+            // collapses a $$ pair to a single $, so the expression would reach the page
+            // without a recognised delimiter and never render.
             const contentWithLatex = `
                 <p>Inline: \\(a^2 + b^2 = c^2\\)</p>
-                <p>Display: $$\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}$$</p>
+                <p>Display: \\[\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}\\]</p>
             `;
             await page.evaluate(content => {
                 const editor = (window as any).tinymce?.activeEditor;
@@ -1095,12 +1098,16 @@ test.describe('LaTeX Rendering', () => {
 
             // When addMathJax is enabled, MathJax should render the content at runtime
             const mathRendered = await iframe.locator('body').evaluate(body => {
-                const mjxContainers = body.querySelectorAll('mjx-container');
+                // Count rendered formulas, not DOM nodes: MathJax nests a second
+                // mjx-container inside mjx-assistive-mml for the same expression, so a
+                // raw querySelectorAll('mjx-container') counts every formula twice.
+                const mjxContainers = body.querySelectorAll('mjx-container:not(mjx-assistive-mml mjx-container)');
                 const mjxContainersCount = mjxContainers.length;
+                const assistiveMmlCount = body.querySelectorAll('mjx-assistive-mml math').length;
                 const preRendered = body.querySelectorAll('.exe-math-rendered').length;
                 // Check if raw LaTeX delimiters are still visible (should NOT be after rendering)
                 const hasRawInlineLatex = body.textContent?.includes('\\(') || false;
-                const hasRawDisplayLatex = body.textContent?.includes('$$') || false;
+                const hasRawDisplayLatex = body.textContent?.includes('\\[') || false;
                 // Check for inline formula content (Pythagorean theorem: a² + b² = c²)
                 const hasInlineContent =
                     body.textContent?.includes('a') &&
@@ -1121,6 +1128,7 @@ test.describe('LaTeX Rendering', () => {
 
                 return {
                     mjxContainersCount,
+                    assistiveMmlCount,
                     preRendered,
                     hasRawInlineLatex,
                     hasRawDisplayLatex,
@@ -1135,8 +1143,12 @@ test.describe('LaTeX Rendering', () => {
 
             // Assert: Should have MathJax containers (rendered formulas)
             expect(mathRendered.mjxContainersCount).toBeGreaterThan(0);
-            // Assert: Should have at least 2 containers (one inline, one display)
+            // Assert: Should have 2 rendered formulas (one inline, one display)
             expect(mathRendered.mjxContainersCount).toBeGreaterThanOrEqual(2);
+            // Assert: Every rendered formula carries hidden MathML, which is what screen
+            // readers consume. MathJax 4 turns this off by default; common.js re-enables
+            // it because speech needs a web worker that an offline export cannot start.
+            expect(mathRendered.assistiveMmlCount).toBe(mathRendered.mjxContainersCount);
             // Assert: Should have SVG content (actual rendered math)
             expect(mathRendered.svgMathCount).toBeGreaterThan(0);
             // Assert: Raw LaTeX delimiters should NOT be visible (MathJax should have processed them)

@@ -1,7 +1,7 @@
 /**
  * ServerLatexPreRenderer
  *
- * Pre-renders LaTeX expressions to SVG+MathML using MathJax v3's Node.js API.
+ * Pre-renders LaTeX expressions to SVG+MathML using MathJax's Node.js API.
  * This allows CLI exports to include pre-rendered math without bundling MathJax (~1MB).
  *
  * Output format:
@@ -14,13 +14,13 @@
  * MathJax's liteAdaptor (no DOM required).
  */
 
-import { mathjax } from 'mathjax-full/js/mathjax';
-import { TeX } from 'mathjax-full/js/input/tex';
-import { SVG } from 'mathjax-full/js/output/svg';
-import { liteAdaptor } from 'mathjax-full/js/adaptors/liteAdaptor';
-import { RegisterHTMLHandler } from 'mathjax-full/js/handlers/html';
-import { AllPackages } from 'mathjax-full/js/input/tex/AllPackages';
+import { mathjax } from '@mathjax/src/js/mathjax.js';
+import { TeX } from '@mathjax/src/js/input/tex.js';
+import { SVG } from '@mathjax/src/js/output/svg.js';
+import { liteAdaptor } from '@mathjax/src/js/adaptors/liteAdaptor.js';
+import { RegisterHTMLHandler } from '@mathjax/src/js/handlers/html.js';
 import type { LatexPreRenderResult, ServerLatexPreRendererInterface } from './interfaces';
+import { TEX_PACKAGES } from './mathjax-packages';
 
 // LaTeX detection patterns (for hasLatex quick check)
 const HAS_LATEX_PATTERN = /\\\(|\\\[|\$\$|\\begin\{|\\(?:eq)?ref\{/;
@@ -262,7 +262,7 @@ interface LatexMatch {
 }
 
 /**
- * Server-side LaTeX Pre-renderer using MathJax v3 Node.js API
+ * Server-side LaTeX Pre-renderer using the MathJax 4 Node.js API
  */
 export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
     private adaptor: ReturnType<typeof liteAdaptor>;
@@ -271,13 +271,19 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
     private htmlDoc: ReturnType<typeof mathjax.document>;
 
     constructor() {
+        // MathJax 4 splits the font into a base set plus ranges it fetches on demand
+        // (calligraphic, fraktur, double-struck, script, cyrillic...). The browser gets
+        // them from the combined component, which bundles everything; a Node consumer
+        // has to provide a loader or those glyphs silently disappear from the output.
+        mathjax.asyncLoad = (name: string) => import(name);
+
         // Create adaptor for Node.js (no DOM)
         this.adaptor = liteAdaptor();
         RegisterHTMLHandler(this.adaptor);
 
-        // Create TeX input processor with all packages
+        // Create TeX input processor with the same packages the browser enables
         this.tex = new TeX({
-            packages: AllPackages,
+            packages: TEX_PACKAGES,
             // Enable equation numbering and tagging
             tags: 'ams',
         });
@@ -304,15 +310,20 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
     /**
      * Render a single LaTeX expression to SVG+MathML
      */
-    private renderLatexExpression(latex: string, display: 'inline' | 'block'): { svg: string; mathml: string } {
+    private async renderLatexExpression(
+        latex: string,
+        display: 'inline' | 'block',
+    ): Promise<{ svg: string; mathml: string }> {
         const cleanLatex = cleanLatexDelimiters(latex);
 
         try {
             // Reset the document for fresh rendering
             this.htmlDoc.clear();
 
-            // Convert to MathML first for accessibility
-            const node = this.htmlDoc.convert(cleanLatex, { display: display === 'block' });
+            // Convert to MathML first for accessibility. convertPromise, not convert, so
+            // MathJax can await a font range it does not have yet; the synchronous call
+            // drops the glyph instead.
+            const node = await this.htmlDoc.convertPromise(cleanLatex, { display: display === 'block' });
 
             // Get SVG output
             const svgOutput = this.adaptor.outerHTML(node);
@@ -324,7 +335,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
             // Generate MathML using tex2mml
             let mathmlHtml = '';
             try {
-                const mmlNode = this.htmlDoc.convert(cleanLatex, {
+                const mmlNode = await this.htmlDoc.convertPromise(cleanLatex, {
                     display: display === 'block',
                     em: 16,
                     ex: 8,
@@ -520,7 +531,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         for (const m of equations) {
             const cleanLatex = cleanLatexFromHtml(m.matchWithHtml);
             try {
-                const { svg, mathml } = this.renderLatexExpression(cleanLatex, m.display);
+                const { svg, mathml } = await this.renderLatexExpression(cleanLatex, m.display);
                 m.rendered = this.createRenderedWrapperHtml(m.matchWithHtml, cleanLatex, m.display, svg, mathml);
                 totalReplaced++;
             } catch (error) {
@@ -534,7 +545,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         for (const m of withReferences) {
             const cleanLatex = cleanLatexFromHtml(m.matchWithHtml);
             try {
-                const { svg, mathml } = this.renderLatexExpression(cleanLatex, m.display);
+                const { svg, mathml } = await this.renderLatexExpression(cleanLatex, m.display);
                 m.rendered = this.createRenderedWrapperHtml(m.matchWithHtml, cleanLatex, m.display, svg, mathml);
                 totalReplaced++;
             } catch (error) {
@@ -548,7 +559,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
         for (const m of others) {
             const cleanLatex = cleanLatexFromHtml(m.matchWithHtml);
             try {
-                const { svg, mathml } = this.renderLatexExpression(cleanLatex, m.display);
+                const { svg, mathml } = await this.renderLatexExpression(cleanLatex, m.display);
                 m.rendered = this.createRenderedWrapperHtml(m.matchWithHtml, cleanLatex, m.display, svg, mathml);
                 totalReplaced++;
             } catch (error) {

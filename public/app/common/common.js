@@ -23,6 +23,14 @@
     2015. Refactored and completed by Ignacio Gros (http://www.gros.es) for http://exelearning.net/
 */
 
+// Speech-rule locales vendored under exe_math/sre/mathmaps/. Kept in sync with
+// VENDORED_SRE_LOCALES in scripts/vendor-mathjax.ts by vendor-mathjax.spec.ts.
+// MathJax's contextual menu offers every locale its bundle knows about, not the
+// ones present on disk, and a missing map makes the speech worker hang forever
+// (the request 404s, the promise never settles and speechError never fires), so
+// the menu is trimmed to this list in startup.ready() below.
+window.MATHJAX_SPEECH_LOCALES = ['ca', 'de', 'en', 'es', 'it'];
+
 window.MathJax = window.MathJax || (function() {
     var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
     var isIndex = document.documentElement.id === 'exe-index';
@@ -76,22 +84,30 @@ window.MathJax = window.MathJax || (function() {
         isIndex = true;
     }
 
-    var basePath = isWorkarea
+    // The static PWA build serves everything from one directory and sets this
+    // before common.js runs, so it overrides the path detection above instead of
+    // duplicating the whole configuration.
+    var basePath = window.MATHJAX_BASE_PATH || (isWorkarea
         ? (version ? configBasePath + '/' + version + '/app/common/exe_math' : configBasePath + '/app/common/exe_math')
-        : (isIndex ? 'libs/exe_math' : '../libs/exe_math');
-    
+        : (isIndex ? 'libs/exe_math' : '../libs/exe_math'));
+
+    // MathJax 4 makes five of these usable that the 3.2.2 bundle could not load:
+    // begingroup, colorv2, dsfont, texhtml and units.
+    // 'bbm' and 'bboldx' stay out: both need their own font packages, which MathJax
+    // does not publish for the mathjax-newcm font, so their macros render as
+    // undefined-macro errors rather than glyphs.
     var externalExtensions = [
-        'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
-        'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose',
-        'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
-        'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb',
-        'setoptions'
-        // TODO: Enable these extensions when upgrading to MathJax 4.0
-        // Currently disabled due to dependency issues with bundled tex-mml-svg.js (MathJax 3.x)
-        // These extensions require input/tex-base to be fully loaded before initialization
-        // 'bbm', 'bboldx', 'begingroup', 'colorv2', 'dsfont', 'texhtml', 'units'
+        'amscd', 'bbox', 'begingroup', 'boldsymbol', 'braket', 'bussproofs',
+        'cancel', 'cases', 'centernot', 'color', 'colortbl', 'colorv2', 'dsfont',
+        'empheq', 'enclose', 'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem',
+        'noerrors', 'physics', 'setoptions', 'tagformat', 'texhtml', 'textcomp',
+        'unicode', 'units', 'upgreek', 'verb'
     ];
-    
+
+    // Speak in the document's language when we ship rules for it, English otherwise.
+    var pageLanguage = (document.documentElement.getAttribute('lang') || 'en').slice(0, 2).toLowerCase();
+    var speechLocale = window.MATHJAX_SPEECH_LOCALES.indexOf(pageLanguage) !== -1 ? pageLanguage : 'en';
+
     return {
         tex: {
             inlineMath: [["\\(", "\\)"]],
@@ -103,13 +119,30 @@ window.MathJax = window.MathJax || (function() {
         loader: {
             paths: { mathjax: basePath },
             load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
+                // Hidden MathML for screen readers. MathJax 4 leaves this off because it
+                // prefers the speech extension, but speech needs a web worker and a
+                // fetch, neither of which survives an export opened from the filesystem.
+                // Assistive MathML has no such dependency, so it is our accessibility floor.
+                .concat(['a11y/assistive-mml'])
         },
         options: {
             // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
             // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
             ignoreHtmlClass: 'tex2jax_ignore|dropdown-menu|dropdown-item|modal',
             // Skip processing inside these HTML tags
-            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            enableAssistiveMml: true,
+            sre: { locale: speechLocale }
+        },
+        startup: {
+            ready: function() {
+                MathJax.startup.defaultReady();
+                // Guarded: anything thrown here leaves MathJax permanently un-started,
+                // which would cost every formula on the page to tidy up one menu.
+                if (typeof $exe !== 'undefined' && $exe.math) {
+                    $exe.math.trimSpeechLocaleMenu();
+                }
+            }
         }
     };
 })();
@@ -175,6 +208,21 @@ var $exe = {
         },
         refresh: function(elements) {
             return $exeDevices.iDevice.gamification.math.updateLatex(elements);
+        },
+        // Remove the languages we ship no speech rules for from MathJax's accessibility
+        // menu. Picking one of them would 404 on sre/mathmaps/<locale>.json, and the
+        // speech worker answers a missing map by never settling its promise, which
+        // wedges typesetting with no error. See window.MATHJAX_SPEECH_LOCALES.
+        trimSpeechLocaleMenu: function() {
+            var sre = window.MathJax && window.MathJax._ && window.MathJax._.a11y && window.MathJax._.a11y.sre_ts;
+            if (!sre || !sre.locales || typeof sre.locales.delete !== 'function') return false;
+            // 'euro' (number formats) and 'nemeth' (braille) are support maps, not
+            // languages; MathJax already keeps them out of the language submenu.
+            var keep = window.MATHJAX_SPEECH_LOCALES.concat(['euro', 'nemeth']);
+            Array.from(sre.locales.keys()).forEach(function(locale) {
+                if (keep.indexOf(locale) === -1) sre.locales.delete(locale);
+            });
+            return true;
         },
         // Create links to the code and the image (different possibilities)
         createLinks: function (math) {
