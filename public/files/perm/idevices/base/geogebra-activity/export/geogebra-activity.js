@@ -502,7 +502,9 @@ var $geogebraactivity = {
                         ? messagesScorm[3]
                         : '',
                 msgYouLastScore:
-                    messagesScorm[4] != 'undefined' ? messagesScorm[4] : '',
+                    typeof messagesScorm[4] != 'undefined'
+                        ? messagesScorm[4]
+                        : '',
                 msgOnlySaveScore: 'You can only save the score once!',
                 msgOnlySave: 'You can only save once',
                 msgOnlySaveAuto:

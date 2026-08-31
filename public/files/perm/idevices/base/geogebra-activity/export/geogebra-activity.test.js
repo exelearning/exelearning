@@ -409,6 +409,34 @@ describe('geogebra-activity iDevice (export)', () => {
       expect(options.msgs.msgYouScore).toBe('evaluation-label');
     });
 
+    // msgYouLastScore compared the value against the string 'undefined' where
+    // its six siblings use typeof, so an absent message resolved to undefined
+    // instead of the empty string every other message falls back to.
+    it('falls back to an empty string for messages that were not supplied', () => {
+      $geogebraactivity.messages = ['', '', '', ''];
+
+      const options = $geogebraactivity.getOptions('a0', 100, [], '');
+
+      expect(options.msgs.msgYouLastScore).toBe('');
+      // The siblings, so the fallback stays uniform across all of them.
+      expect(options.msgs.msgScoreScorm).toBe('');
+      expect(options.msgs.msgScore).toBe('');
+      expect(options.msgs.msgWeight).toBe('');
+    });
+
+    it('keeps a supplied last-score message', () => {
+      $geogebraactivity.messages = ['', '', '', ''];
+
+      const options = $geogebraactivity.getOptions(
+        'a0',
+        100,
+        ['', '', '', '', 'última nota'],
+        ''
+      );
+
+      expect(options.msgs.msgYouLastScore).toBe('última nota');
+    });
+
     it('carries the applet suffix so the score is read from the right one', () => {
       $geogebraactivity.messages = ['', '', '', ''];
 
