@@ -1138,14 +1138,21 @@ export function compressJsonInDir(absDir: string): { count: number; origTotal: n
  * Copy directory recursively
  * @param src - Source directory
  * @param dest - Destination directory
- * @param exclude - Directory/file names to exclude (exact match)
- * @param excludePatterns - File patterns to exclude (e.g., '.test.js', '.spec.js')
+ * @param exclude - Directory/file names to exclude, matched either as a bare
+ *   name at any depth ('test') or as a path relative to the copy root
+ *   ('idevices/base/slide/src'). Prefer the relative form for a one-off
+ *   exclusion, so a future directory of the same name elsewhere in the tree is
+ *   not dropped along with it.
+ * @param excludePatterns - File suffixes to exclude (e.g., '.test.js', '.js.map').
+ *   Suffixes are deliberately specific: '.map' alone would also swallow a data
+ *   file that happens to end in it.
  */
 export function copyDirRecursive(
     src: string,
     dest: string,
     exclude: string[] = [],
-    excludePatterns: string[] = ['.test.js', '.spec.js'],
+    excludePatterns: string[] = ['.test.js', '.spec.js', '.js.map', '.css.map', '.d.ts'],
+    root: string = src,
 ) {
     if (!fs.existsSync(src)) {
         console.warn(`Source not found: ${src}`);
@@ -1157,15 +1164,18 @@ export function copyDirRecursive(
 
     for (const entry of entries) {
         if (entry.name.startsWith('.')) continue;
-        if (exclude.includes(entry.name)) continue;
+
+        const srcPath = path.join(src, entry.name);
+        const relPath = path.relative(root, srcPath).split(path.sep).join('/');
+
+        if (exclude.includes(entry.name) || exclude.includes(relPath)) continue;
         // Skip test files
         if (excludePatterns.some(pattern => entry.name.endsWith(pattern))) continue;
 
-        const srcPath = path.join(src, entry.name);
         const destPath = path.join(dest, entry.name);
 
         if (entry.isDirectory()) {
-            copyDirRecursive(srcPath, destPath, exclude, excludePatterns);
+            copyDirRecursive(srcPath, destPath, exclude, excludePatterns, root);
         } else {
             fs.copyFileSync(srcPath, destPath);
         }
