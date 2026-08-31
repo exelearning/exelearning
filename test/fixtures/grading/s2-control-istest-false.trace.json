@@ -1,0 +1,268 @@
+{
+  "traceVersion": 1,
+  "scenario": "s2-control-istest-false",
+  "recordedFrom": {
+    "repo": "exelearning",
+    "ref": "642738cd0ae837d4463ecec0d0eb44dd07c9074c",
+    "exportFormat": "html5"
+  },
+  "fixtureRepairs": {
+    "balanceHtml": true
+  },
+  "package": {
+    "odeId": "TRACE-S2",
+    "pageCount": 1
+  },
+  "pages": [
+    {
+      "index": 0,
+      "url": "index.html",
+      "ideviceNodes": [
+        "ide-a",
+        "ide-b"
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "page": 0,
+      "idevice": "ide-a",
+      "answers": [
+        {
+          "q": 0,
+          "value": 1
+        },
+        {
+          "q": 1,
+          "value": 0
+        },
+        {
+          "q": 2,
+          "value": 1
+        },
+        {
+          "q": 3,
+          "value": 0
+        }
+      ],
+      "hits": 4,
+      "of": 4,
+      "note": "all correct, no Comprobar button exists"
+    }
+  ],
+  "scorm": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSInitialize",
+      "args": [
+        ""
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 1,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.lesson_status"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 2,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 3,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 4,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 5,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity A\"; Puntuación: 0%; Peso: 25%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 6,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 7,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 8,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "0"
+    },
+    {
+      "seq": 9,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 0%; Peso: 25%"
+    },
+    {
+      "seq": 10,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 0%; Peso: 25%"
+    },
+    {
+      "seq": 11,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity A\"; Puntuación: 0%; Peso: 25%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 75%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 12,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 13,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    }
+  ],
+  "xapi": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-trace-s2c.local/index.html",
+      "statement": {
+        "id": "185edb7a-af82-4f34-99db-a9e2d22b30ab",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S2",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/initialized",
+          "display": {
+            "en-US": "initialized"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S2",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "S2 single page weighted"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:29.002Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S2",
+            "https://exelearning.net/xapi/extensions/page-id": "page-1",
+            "https://exelearning.net/xapi/extensions/page-title": "Page One",
+            "https://exelearning.net/xapi/extensions/page-count": 1
+          }
+        }
+      }
+    }
+  ],
+  "finalCmi": {
+    "cmi.suspend_data": "1. \"Activity A\"; Puntuación: 0%; Peso: 25%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 75%",
+    "cmi.core.score.raw": "0",
+    "cmi.core.lesson_status": "failed"
+  },
+  "uiMessage": "Por favor, empieza el juego antes de guardar tu puntuación.",
+  "consoleErrors": [
+    "pageerror: $exe_i18n is not defined",
+    "pageerror: score is not defined",
+    "pageerror: score is not defined",
+    "pageerror: score is not defined",
+    "pageerror: score is not defined"
+  ],
+  "expected": {
+    "perItem": {
+      "ide-a": 100,
+      "ide-b": 0
+    },
+    "overall": 25,
+    "weights": {
+      "ide-a": 25,
+      "ide-b": 75
+    },
+    "note": "CONTROL RECORDING, not a replay scenario. The learner answered 4/4 but the producer never reports it: with isTest:false the start button is hidden, so gameStarted stays false and sendScoreNew() takes the msgEndGameScore branch. The only suspend_data writes are the zero-score registrations done at load."
+  }
+}

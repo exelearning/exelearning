@@ -174,11 +174,18 @@ export const MovePageBody = t.Object({
 // BLOCK SCHEMAS
 // ============================================================================
 
+export const BlockIcon = t.Object({
+    source: t.Union([t.Literal('material'), t.Literal('asset'), t.Literal('theme'), t.Literal('none')]),
+    value: t.String(),
+    name: t.Optional(t.String()),
+});
+
 export const BlockData = t.Object({
     id: t.String(),
     blockId: t.String(),
     blockName: t.String(),
     iconName: t.String(),
+    icon: t.Optional(BlockIcon),
     blockType: t.String(),
     order: t.Number(),
     componentCount: t.Number(),
@@ -195,6 +202,7 @@ export const CreateBlockBody = t.Object({
 export const UpdateBlockBody = t.Object({
     name: t.Optional(t.String()),
     iconName: t.Optional(t.String()),
+    icon: t.Optional(BlockIcon),
     properties: t.Optional(t.Record(t.String(), t.Unknown())),
 });
 

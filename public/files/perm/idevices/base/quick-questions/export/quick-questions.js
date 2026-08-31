@@ -664,12 +664,6 @@ var $quickquestions = {
         const mOptions = $quickquestions.options[instance];
         $quickquestions.removeEvents(instance);
 
-        $(window).on('unload.eXeQuExt beforeunload.eXeQuExt', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $quickquestions.mScorm
-            );
-        });
-
         $('#quextLinkMaximize-' + instance).on('click touchstart', (e) => {
             e.preventDefault();
             $('#quextGameContainer-' + instance).show();
@@ -867,8 +861,6 @@ var $quickquestions = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXeQuExt beforeunload.eXeQuExt');
-
         $('#quextLinkMaximize-' + instance).off('click touchstart');
         $('#quextLinkMinimize-' + instance).off('click touchstart');
         $('#quextMainContainer-' + instance)

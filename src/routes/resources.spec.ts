@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
-import { resourcesRoutes, configure, resetDependencies } from './resources';
+import { resourcesRoutes, configure, resetDependencies, isScormTestFile } from './resources';
 import * as fs from 'fs';
 
 describe('Resources Routes', () => {
@@ -299,6 +299,56 @@ describe('Resources Routes', () => {
             const body = await res.json();
             expect(body.length).toBe(1);
             expect(body[0].path).toBe('SCORM_API.js');
+        });
+
+        it('should not list unit tests or their shared test helpers', async () => {
+            configure({
+                fs: {
+                    existsSync: (filePath: string) => {
+                        if (filePath === 'public/app/common/scorm') return true;
+                        return fs.existsSync(filePath);
+                    },
+                    readdirSync: (dirPath: any, options?: any) => {
+                        if (typeof dirPath === 'string' && dirPath.includes('common/scorm')) {
+                            return [
+                                'exe-scorm12-client.js',
+                                'exe-scorm12-client.test.js',
+                                'exe-scorm12-client.spec.js',
+                                'fake-scorm12-api.test-util.js',
+                            ].map(name => ({
+                                name,
+                                isFile: () => true,
+                                isDirectory: () => false,
+                            })) as unknown as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                    statSync: fs.statSync,
+                    readFileSync: fs.readFileSync,
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/resources/libs/scorm'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.map((file: { path: string }) => file.path)).toEqual(['exe-scorm12-client.js']);
+        });
+    });
+
+    describe('isScormTestFile', () => {
+        it('matches unit tests, specs and shared test helpers', () => {
+            expect(isScormTestFile('exe-scorm12-client.test.js')).toBe(true);
+            expect(isScormTestFile('exe-scorm12-client.spec.js')).toBe(true);
+            expect(isScormTestFile('scorm12/fake-scorm12-api.test-util.js')).toBe(true);
+            expect(isScormTestFile('scorm12/scorm12-data-model.test-util.js')).toBe(true);
+        });
+
+        it('keeps runtime sources and vendored files', () => {
+            expect(isScormTestFile('SCOFunctions.js')).toBe(false);
+            expect(isScormTestFile('scorm12/exe-scorm12-client.js')).toBe(false);
+            expect(isScormTestFile('scorm12/vendor/pipwerks/SCORM_API_wrapper.js')).toBe(false);
         });
     });
 

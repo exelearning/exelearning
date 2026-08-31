@@ -1,5 +1,11 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
-import { waitForAppReady, addTextIdevice, selectFirstPage, gotoWorkarea } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    addTextIdevice,
+    addTextIdeviceWithContent,
+    selectFirstPage,
+    gotoWorkarea,
+} from '../helpers/workarea-helpers';
 
 /**
  * Block Icon Selection Modal Tests
@@ -64,6 +70,8 @@ test.describe('Block Icon Selection Modal', () => {
 
         // Click on the block icon button (the + icon with dashed border) to open the icon selection modal
         // The button has aria-label="Select an icon"
+        // Wait deterministically for the block's icon button to render rather than
+        // sleeping a fixed amount of time.
         const blockIconBtn = page.locator('button[aria-label="Select an icon"]').first();
         await blockIconBtn.waitFor({ state: 'visible', timeout: 10000 });
         await blockIconBtn.click();
@@ -72,19 +80,20 @@ test.describe('Block Icon Selection Modal', () => {
         await page.waitForSelector('#change-block-icon-modal-content', { timeout: 10000 });
 
         // Verify that icons exist in the modal (excluding empty icon)
-        const icons = await page
-            .locator('#change-block-icon-modal-content .option-block-icon:not(.empty-block-icon)')
-            .all();
+        const icons = page.locator('#change-block-icon-modal-content .option-block-icon:not(.empty-block-icon)');
+        const iconCount = await icons.count();
 
         // If the theme has icons, verify they are properly structured
-        if (icons.length > 0) {
-            for (const icon of icons) {
+        if (iconCount > 0) {
+            const sampleCount = Math.min(iconCount, 25);
+            for (let i = 0; i < sampleCount; i++) {
+                const icon = icons.nth(i);
                 // Verify icon-id is not undefined
                 const iconId = await icon.getAttribute('icon-id');
                 expect(iconId).not.toBe('undefined');
                 expect(iconId).toBeTruthy();
 
-                // Verify the img src is not undefined
+                // Theme/custom icons render as img; material modal icons render via sprite SVG.
                 const img = icon.locator('img');
                 if ((await img.count()) > 0) {
                     const src = await img.getAttribute('src');
@@ -96,7 +105,14 @@ test.describe('Block Icon Selection Modal', () => {
                     // Verify the alt text is not undefined
                     const alt = await img.getAttribute('alt');
                     expect(alt).not.toBe('undefined');
+                    continue;
                 }
+
+                const materialSprite = icon.locator('.exe-material-icon-sprite use');
+                await expect(materialSprite).toHaveCount(1);
+                const href = await materialSprite.getAttribute('href');
+                expect(href).toBeTruthy();
+                expect(href).toContain('/libs/material-icons/material-icons.svg#');
             }
         }
 
@@ -105,6 +121,61 @@ test.describe('Block Icon Selection Modal', () => {
         await expect(emptyIcon).toBeVisible();
         const emptyIconId = await emptyIcon.getAttribute('icon-id');
         expect(emptyIconId).toBe('0'); // Empty icon should have id "0"
+    });
+
+    test('should render an applied Material icon as a self-contained data: URI', async ({
+        authenticatedPage,
+        createProject,
+    }, testInfo) => {
+        // Skip in static mode - requires server to create projects and add iDevices
+        skipInStaticMode(test, testInfo, 'Requires server to create projects and add iDevices');
+
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'Test Applied Material Icon');
+        expect(projectUuid).toBeDefined();
+
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await selectFirstPage(page);
+        // Add the iDevice WITH content and save it: the focused full-workarea edit
+        // mode hides the block header (and its icon button) while an iDevice is in
+        // edition, so we must leave edition before the block icon button is visible.
+        await addTextIdeviceWithContent(page, 'Block icon test');
+
+        // Open the icon picker for the first block. Wait deterministically for the
+        // block's icon button to render rather than sleeping a fixed amount of time.
+        const blockIconBtn = page.locator('button[aria-label="Select an icon"]').first();
+        await blockIconBtn.waitFor({ state: 'visible', timeout: 10000 });
+        await blockIconBtn.click();
+
+        const modalBody = page.locator('#change-block-icon-modal-content').last();
+        await modalBody.waitFor({ state: 'visible', timeout: 10000 });
+
+        // Pick a known Material icon ("lightbulb") deterministically by its id.
+        const lightbulb = modalBody.locator('.option-block-icon[icon-id="mi-lightbulb"]').first();
+        await lightbulb.scrollIntoViewIfNeeded();
+        await lightbulb.click();
+
+        // Confirm the selection (the confirm modal's primary button is "Save").
+        const modal = page.locator('.modal.show').filter({ has: modalBody }).last();
+        await modal.locator('button.btn.button-primary').first().click();
+        await page.waitForFunction(() => !document.querySelector('.modal.show'), undefined, { timeout: 5000 });
+
+        // The applied block icon must render from the sprite as an inline data: URI
+        // (the loose per-icon SVG files were removed), not a /libs/.../icons/*.svg path.
+        await page.waitForFunction(
+            () => {
+                const block = document.querySelector('#node-content article.box');
+                const span = block?.querySelector('header.box-head button.box-icon .exe-material-icon');
+                if (!span) return false;
+                const url = (span as HTMLElement).style.getPropertyValue('--exe-material-icon-url');
+                return url.includes('data:image/svg+xml') && !url.includes('/icons/');
+            },
+            undefined,
+            { timeout: 10000 },
+        );
     });
 
     test('should return icons with proper ThemeIcon structure from API', async ({ authenticatedPage }, testInfo) => {

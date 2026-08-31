@@ -593,4 +593,112 @@ describe('sort iDevice export', () => {
             expect(result).toBe(false);
         });
     });
+
+    // ─── SCORM completion signal ──────────────────────────────────────────────
+
+    describe('completion signal', () => {
+        const instance = 0;
+        let reports;
+
+        /**
+         * Build the smallest instance state the end-of-activity path reads.
+         *
+         * `active` is the phrase the learner has just validated: the activity is
+         * over when advancing past it leaves no phrase left.
+         *
+         * @param {number} active index of the phrase just answered
+         * @param {number} phrases how many phrases the activity has
+         * @returns {object} the instance options object
+         */
+        function givenInstance(active, phrases) {
+            const mOptions = {
+                active: active,
+                attempts: 0,
+                feedBack: false,
+                gameActived: true,
+                gameOver: false,
+                gameStarted: true,
+                hits: phrases,
+                isScorm: 1,
+                itinerary: { showClue: false, percentageClue: 0 },
+                main: 'ordenaMainContainer-' + instance,
+                msgs: {},
+                nattempts: 0,
+                numberQuestions: phrases,
+                percentajeFB: 0,
+                phrasesGame: new Array(phrases).fill({ cards: [] }),
+                timeShowSolution: 0,
+                type: 0,
+            };
+            $eXeOrdena.options[instance] = mOptions;
+            return mOptions;
+        }
+
+        beforeEach(() => {
+            reports = [];
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        media: { stopSound: () => {} },
+                        report: { saveEvaluation: () => {} },
+                        scorm: {
+                            // `gameOver` is captured by value: holding a reference to
+                            // the shared options object would let a mutation made
+                            // after the report fake a completion that never happened.
+                            sendScoreNew: (auto, game) =>
+                                reports.push({
+                                    auto: auto,
+                                    gameOver: game.gameOver,
+                                    scorerp: game.scorerp,
+                                }),
+                        },
+                    },
+                },
+            };
+            // nextPhrase hands an intermediate phrase to the renderer, which needs
+            // the authored DOM. Only the branch it takes matters here.
+            $eXeOrdena.showPhrase = () => {};
+            $eXeOrdena.showPhraseText = () => {};
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('does not report the activity finished while phrases remain', () => {
+            const mOptions = givenInstance(0, 3);
+
+            $eXeOrdena.nextPhrase(instance);
+            vi.runAllTimers();
+
+            expect(mOptions.gameOver).toBe(false);
+            expect(reports).toHaveLength(0);
+        });
+
+        it('marks the activity finished on the last phrase, so the page can be passed', () => {
+            // Validating the last phrase is the activity's end condition: nextPhrase
+            // runs out of phrases and calls gameOver(0). Without the flag set before
+            // that report the page stays `incomplete` in the LMS at 100%.
+            givenInstance(2, 3);
+
+            $eXeOrdena.nextPhrase(instance);
+            vi.runAllTimers();
+
+            expect(reports).toHaveLength(1);
+            expect(reports[0].auto).toBe(true);
+            expect(reports[0].gameOver).toBe(true);
+            expect(reports[0].scorerp).toBe(10);
+        });
+
+        it('handles a single-phrase activity, which ends on its first validation', () => {
+            givenInstance(0, 1);
+
+            $eXeOrdena.nextPhrase(instance);
+            vi.runAllTimers();
+
+            expect(reports).toHaveLength(1);
+            expect(reports[0].gameOver).toBe(true);
+        });
+    });
 });

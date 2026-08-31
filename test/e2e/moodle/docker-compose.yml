@@ -1,0 +1,72 @@
+# Isolated Moodle stack for the live-LMS grading harness (see README.md).
+#
+# Hosts Moodle core's mod_scorm and, optionally, the exelearning/mod_exescorm fork
+# side by side, so one exported SCORM 1.2 package can be graded by both and the
+# results compared.
+#
+#   docker compose -p scormaudit up -d
+#   docker exec scormaudit-moodle-1 php /var/www/html/scormaudit/setup.php
+#
+# Port 8097 is deliberately not 8080: this stack is meant to run beside a developer
+# eXeLearning instance, not instead of it. Override MOODLE_BASE_URL in the harness if
+# you move it.
+---
+services:
+
+  moodle:
+    image: erseco/alpine-moodle:v5.0.7
+    restart: unless-stopped
+    environment:
+      LANG: en_US.UTF-8
+      LANGUAGE: en_US:en
+      SITE_URL: http://localhost:8097
+      DB_TYPE: mariadb
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: moodle
+      DB_USER: root
+      DB_PASS: moodle
+      DB_PREFIX: mdl_
+      DEBUG: true
+      REVERSEPROXY: "true"
+      MOODLE_EMAIL: audit@example.invalid
+      MOODLE_LANGUAGE: en
+      MOODLE_SITENAME: SCORM-Grading-Audit
+      MOODLE_USERNAME: admin
+      MOODLE_PASSWORD: Audit#1234
+      POST_CONFIGURE_COMMANDS: |
+        echo 'scorm-audit: forcing upgrade so mod_exescorm installs'
+        php admin/cli/upgrade.php --non-interactive || true
+      client_max_body_size: 1G
+      upload_max_filesize: 1G
+      post_max_size: 1G
+    ports:
+      - "8097:8080"
+    volumes:
+      - moodledata:/var/www/moodledata
+      - moodlehtml:/var/www/html
+      # Optional: clone exelearning/mod_exescorm into ./plugins/exescorm to grade the
+      # same package with the fork as well. An empty directory is fine — Moodle simply
+      # will not offer the activity type, and only the exescorm lane is unavailable.
+      - ./plugins/exescorm:/var/www/html/mod/exescorm:rw
+      - ./cli:/var/www/html/scormaudit:rw
+      - ./packages:/var/www/packages:rw
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:latest
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: moodle
+      MYSQL_ROOT_PASSWORD: moodle
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - dbdata:/var/lib/mysql
+
+volumes:
+  dbdata:
+  moodledata:
+  moodlehtml:
