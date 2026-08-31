@@ -10,7 +10,7 @@
  *   ├── app/                    # Bundled JavaScript
  *   ├── libs/                   # External libraries
  *   ├── style/                  # CSS
- *   ├── bundles/                # Pre-built resource ZIPs (from public/bundles/)
+ *   ├── bundles/                # Bundle manifest only (zips assembled client-side)
  *   ├── data/
  *   │   ├── bundle.json         # Pre-serialized API data
  *   │   └── translations/       # Per-locale JSON
@@ -1170,6 +1170,30 @@ export function copyDirRecursive(
             fs.copyFileSync(srcPath, destPath);
         }
     }
+}
+
+/**
+ * Ship only the bundle manifest into the static distribution, never the
+ * pre-built resource ZIPs.
+ *
+ * In static mode the client assembles each bundle on demand from the loose
+ * files (copied separately) using the manifest's per-bundle file lists, then
+ * persists the result to IndexedDB. Copying the zips would be a redundant,
+ * incompressible ~17 MB duplicate of bytes that ship loosely anyway. Server
+ * mode still serves `public/bundles/*.zip` via `/api/resources/bundle/*`.
+ *
+ * Returns `true` when the manifest was copied, `false` when the source
+ * manifest is missing (caller-visible so the build can warn).
+ */
+export function copyBundleManifest(projectRoot: string, outputDir: string): boolean {
+    const manifestSrc = path.join(projectRoot, 'public/bundles/manifest.json');
+    if (!fs.existsSync(manifestSrc)) {
+        return false;
+    }
+    const bundlesOut = path.join(outputDir, 'bundles');
+    fs.mkdirSync(bundlesOut, { recursive: true });
+    fs.copyFileSync(manifestSrc, path.join(bundlesOut, 'manifest.json'));
+    return true;
 }
 
 // Run build only when executed directly (not when imported for testing).
