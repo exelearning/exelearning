@@ -1705,6 +1705,15 @@ describe('ApiCallManager', () => {
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/prefs/save', { mode: 'dark' });
     });
 
+    it('should not call post when the idevice upload endpoint is missing', async () => {
+      delete apiManager.endpoints.api_idevices_upload;
+
+      const response = await apiManager.postUploadIdevice({ data: 'idevice' });
+
+      expect(response.responseMessage).toBe('Error');
+      expect(mockFunc.post).not.toHaveBeenCalledWith(undefined, { data: 'idevice' });
+    });
+
     it('should call structure and diagnostics endpoints', async () => {
       apiManager.endpoints.api_odes_last_updated = { path: 'http://localhost/last/{odeId}' };
       apiManager.endpoints.api_odes_current_users = {

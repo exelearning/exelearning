@@ -1519,21 +1519,15 @@
     min-height: 50px;
 }
 
+// The alert sits in the flow instead of overlaying the body: as an absolutely
+// positioned box it covered the search field underneath and left no room before
+// the content, and no margin could separate them.
 :is(#modalStyleManager, #modalIdeviceManager) .modal-content .modal-body .alert-danger.show {
     padding: var(--margin-m);
-    position: absolute;
-    z-index: 2;
+    margin-bottom: var(--margin-m);
     display: flex !important;
     justify-content: space-between;
     align-items: center;
-}
-
-#modalStyleManager .modal-content .modal-body .alert-danger.show {
-    width: calc(750px - var(--margin-m) - var(--margin-m));
-}
-
-#modalIdeviceManager .modal-content .modal-body .alert-danger.show {
-    width: calc(100% - 72px);
 }
 
 :is(#modalStyleManager, #modalIdeviceManager) .modal-content .modal-body .alert-danger {
@@ -1547,17 +1541,42 @@
     }
 
     .text {
+        // Stack the paragraphs: a row layout made a two-message alert render as
+        // two columns and overflow the alert box.
         display: flex;
-        width: max-content;
+        flex-direction: column;
+        width: auto;
+        min-width: 0;
     }
 
-    button {
+    .close-alert {
         padding: 0;
         height: 24px;
         width: 24px;
         display: flex;
         justify-content: center;
         align-items: center;
+        flex-shrink: 0;
+        margin-left: var(--margin-m);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        background: url("images/icons/exe-close-icon.svg") transparent center / 16px no-repeat;
+
+        &:hover {
+            background-color: var(--gray-100);
+        }
+
+        &:focus,
+        &:focus-visible {
+            border: none;
+            outline: none;
+        }
+
+        // The icon comes from the background image, not from the &times; glyph.
+        span {
+            display: none;
+        }
     }
 }
 
