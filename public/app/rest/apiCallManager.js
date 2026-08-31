@@ -713,8 +713,17 @@ export default class ApiCallManager {
      * @returns
      */
     async postUploadIdevice(params) {
-        let url = this.endpoints.api_idevices_upload.path;
-        return await this.func.post(url, params);
+        // PROVISIONAL (issue #144): iDevice importing is not available yet. The
+        // endpoint is absent from the static/online route map, so reading its
+        // path threw an unhandled TypeError. Fail gracefully instead; remove
+        // this guard when iDevice importing is implemented.
+        const endpoint = this.endpoints.api_idevices_upload;
+        // No `error` detail: callers already show their own translated message,
+        // and an untranslated string here would duplicate it in the alert.
+        if (!endpoint || !endpoint.path) {
+            return { responseMessage: 'Error' };
+        }
+        return await this.func.post(endpoint.path, params);
     }
 
     /**
