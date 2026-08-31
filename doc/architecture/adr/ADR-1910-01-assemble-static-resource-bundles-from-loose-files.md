@@ -1,7 +1,7 @@
 ---
 id: ADR-1910-01
 title: "Assemble static-mode resource bundles from loose files instead of shipping zips"
-status: Proposed
+status: Accepted
 date: 2026-08-30
 tracking_issue: 1910
 deciders:
