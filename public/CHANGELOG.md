@@ -72,7 +72,7 @@
 
 - iDevice edit mode now expands to fill the work area, keeping the toolbar visible and preventing background page scrolling
 - Page titles can now be renamed directly from the workspace
-- LOMLOE iDevice: added official curriculum datasets for Navarra (ES-NC) and Comunitat Valenciana (ES-VC)
+- LOMLOE iDevice: added official curriculum datasets for Navarra (ES-NC), Comunitat Valenciana (ES-VC) and Extremadura (ES-EX)
 - Mermaid iDevice: added configurable maximum diagram width and height
 - Exported packages now emit xAPI statements for LMS activity tracking and direct LRS reporting
 - File → New: improved the unsaved-changes confirmation dialog with clearer wording and action labels
@@ -83,7 +83,7 @@
 
 ### Changed
 
-- LOMLOE iDevice: the Galicia (ES-GA) and Extremadura (ES-EX) curriculum datasets are temporarily disabled pending confirmation for reactivation
+- LOMLOE iDevice: the Galicia (ES-GA) curriculum dataset is temporarily disabled pending confirmation for reactivation
 
 ### Fixed
 

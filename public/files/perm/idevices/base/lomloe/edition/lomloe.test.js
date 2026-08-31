@@ -455,9 +455,7 @@ describe('toggleCriterio descriptor modes via browse panel (issue #1832)', () =>
     }
 
     it('checkbox-mode dataset starts empty with descriptorOptions and hides browse tags', async () => {
-        // ES-MD stands in for any available checkbox-mode (non-Canarias) dataset.
-        // (ES-EX is on hold — available:false — so its loader path is unreachable.)
-        const sel = await selectCriterio('ES-MD');
+        const sel = await selectCriterio('ES-EX');
         expect(sel.competenciasClave).toEqual([]);
         expect(sel.descriptorOptions).toEqual(['CCL1', 'STEM4', 'CD2']);
         // Browse panel must not present descriptors as fixed per-criterio tags.
@@ -535,7 +533,7 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         vi.restoreAllMocks();
     });
 
-    async function listedCodAreas(dataset, sample) {
+    async function listedCodAreas(dataset, sample, nivel = '1º ESO', etapa = 'ESO') {
         if (sample) {
             globalThis.fetch = vi.fn(() =>
                 Promise.resolve({ ok: true, json: () => Promise.resolve(sample) })
@@ -543,8 +541,8 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
         }
         $exeDevice.init(el, {
             lomloeDataset: dataset,
-            lomloeSelectedEtapa: 'ESO',
-            lomloeSelectedNivel: '1º ESO',
+            lomloeSelectedEtapa: etapa,
+            lomloeSelectedNivel: nivel,
             lomloeSelections: []
         });
         await new Promise(r => setTimeout(r, 50));
@@ -553,15 +551,50 @@ describe('Per-course ESO subject filter (issue #1832)', () => {
             .map(li => li.getAttribute('data-codarea'));
     }
 
-    // The per-course filter is exercised on Madrid because Extremadura (ES-EX) is
-    // on hold (available:false) and its loader path is unreachable; the filtering
-    // mechanism is dataset-agnostic, so ES-MD covers it equally. See issue #1832.
+    it('Extremadura ESO renders the official per-course materias from the real dataset (#1904)', async () => {
+        // Exercise the render path against the production dataset (official
+        // siglas BG, FQ…), the exact integration the #1904 regression broke.
+        const real = loadDataset('lomloe-ES-EX.json');
+        // 1º ESO is filtered to Decreto 110/2022 Anexo V: the official siglas
+        // show; Física y Química (taught 2º/3º) and the 4º-only Digitalización
+        // duplicated into the cycle are hidden.
+        const eso1 = await listedCodAreas('ES-EX', real, '1º ESO');
+        for (const code of ['BG', 'EF', 'EPVA', 'GH', 'LCL', 'LE', 'MAT', 'MUS']) {
+            expect(eso1, `1º ESO should list ${code}`).toContain(code);
+        }
+        expect(eso1).not.toContain('FQ');
+        expect(eso1).not.toContain('DIG');
+        // 4º ESO is intentionally unfiltered: every materia (incl. FQ) stays.
+        const eso4 = await listedCodAreas('ES-EX', real, '4º ESO');
+        expect(eso4).toContain('FQ');
+        expect(eso4.length).toBeGreaterThan(eso1.length);
+    });
+
+    it('Extremadura Bachillerato renders only each course\'s subjects from the real dataset (#1904)', async () => {
+        // No runtime filter for Bachillerato: the per-course distribution lives in
+        // the data (Decreto 109/2022). Selecting 1.º must not surface 2.º-only
+        // subjects (Física, Química, Historia de España…) and vice versa.
+        const real = loadDataset('lomloe-ES-EX.json');
+        const bac1 = await listedCodAreas('ES-EX', real, '1º Bachillerato', 'Bachillerato');
+        expect(bac1).toContain('FYQ');      // Física y Química — 1.º
+        expect(bac1).toContain('HMC');      // Historia del Mundo Contemporáneo — 1.º
+        expect(bac1).not.toContain('FIS');  // Física — 2.º only
+        expect(bac1).not.toContain('QUI');  // Química — 2.º only
+        expect(bac1).not.toContain('HES');  // Historia de España — 2.º only
+        const bac2 = await listedCodAreas('ES-EX', real, '2º Bachillerato', 'Bachillerato');
+        expect(bac2).toContain('FIS');
+        expect(bac2).toContain('QUI');
+        expect(bac2).toContain('HES');
+        expect(bac2).not.toContain('FYQ');  // Física y Química — 1.º only
+        expect(bac2).not.toContain('HMC');  // Historia del Mundo Contemporáneo — 1.º only
+        expect(bac2).toContain('MAT');      // Matemáticas II (I/II family stays in both)
+        expect(bac1).toContain('MAT');      // Matemáticas I
+    });
+
     it('Madrid 1º ESO hides Física y Química too', async () => {
         const codes = await listedCodAreas('ES-MD');
         expect(codes).toContain('BIG');
         expect(codes).not.toContain('FQX');
-        // 4º-only optatives duplicated into the cycle are also filtered out.
-        expect(codes).not.toContain('DIG');
     });
 
     it('EFP (Ceuta/Melilla) 1º ESO hides Física y Química too', async () => {
@@ -1318,8 +1351,68 @@ function assertInfantilLinkedToCompetenciasClave(data) {
     expect(empty, 'all Infantil criterios must be linked to competencias clave').toBe(0);
 }
 
+// ─── Bachillerato per-course distribution (issue #1904) ─────────────────────
+// Bachillerato subjects are assigned to a specific course by law. Sources:
+// RD 243/2022 arts. 9-13 (the state floor every community adopts for the common
+// and modalidad subjects) and, for Extremadura, Decreto 109/2022 arts. 15-19,
+// which adopts the state distribution verbatim. Cross-validated against the two
+// datasets that were extracted per-course correctly from the start: ES-CN and
+// ES-GA. Subjects are matched by NORMALISED denominación so the same check works
+// across datasets regardless of their codArea codes. I/II families (Matemáticas,
+// Latín, Griego, Dibujo Técnico/Artístico, Análisis Musical, Coro y Técnica
+// Vocal, the lenguas comunes…) are taught in BOTH years and are deliberately
+// absent from these lists.
+const BACH_YEAR1_ONLY = [
+    'biologia geologia y ciencias ambientales', 'cultura audiovisual', 'economia',
+    'economia emprendimiento y actividad empresarial', 'educacion fisica', 'filosofia',
+    'fisica y quimica', 'historia del mundo contemporaneo', 'lenguaje y practica musical',
+    'literatura universal', 'matematicas generales', 'proyectos artisticos', 'volumen',
+];
+const BACH_YEAR2_ONLY = [
+    'biologia', 'ciencias generales', 'diseno', 'empresa y diseno de modelos de negocio',
+    'fundamentos artisticos', 'fisica', 'geologia y ciencias ambientales', 'geografia',
+    'historia del arte', 'historia de espana', 'historia de la filosofia',
+    'historia de la musica y de la danza', 'literatura dramatica',
+    'movimientos culturales y artisticos', 'quimica', 'tecnicas de expresion grafico plastica',
+];
+
+function normDenom(s) {
+    return s
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '') // strip accents (and ñ -> n)
+        .toLowerCase()
+        .replace(/\b(i|ii)\b/g, '') // collapse I/II families to their base name
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+// Assert each Bachillerato nivel exposes only the subjects taught in that year:
+// no 2.º-only subject leaks into 1.º and vice versa.
+function assertBachilleratoYearSeparation(data, etapaKey = 'Bachillerato') {
+    const bach = data[etapaKey];
+    expect(bach, `missing ${etapaKey}`).toBeDefined();
+    const courses = Object.keys(bach);
+    const c1 = courses.find(c => /(^|\D)1/.test(c));
+    const c2 = courses.find(c => /(^|\D)2/.test(c));
+    expect(c1, `${etapaKey}: no 1.º course found in ${courses}`).toBeTruthy();
+    expect(c2, `${etapaKey}: no 2.º course found in ${courses}`).toBeTruthy();
+    const d1 = new Set(Object.values(bach[c1]).map(a => normDenom(a.denominacion)));
+    const d2 = new Set(Object.values(bach[c2]).map(a => normDenom(a.denominacion)));
+    for (const s of BACH_YEAR2_ONLY) {
+        expect(d1.has(s), `${etapaKey}/${c1} must not expose 2.º-only subject "${s}"`).toBe(false);
+    }
+    for (const s of BACH_YEAR1_ONLY) {
+        expect(d2.has(s), `${etapaKey}/${c2} must not expose 1.º-only subject "${s}"`).toBe(false);
+    }
+}
+
 describe('lomloe-ES.json (state minimum teachings)', () => {
     const data = loadDataset('lomloe-ES.json');
+
+    it('Bachillerato 1.º/2.º expose only their own subjects (no year mixing, #1904)', () => {
+        assertBachilleratoYearSeparation(data);
+    });
 
     it('parses as a non-empty object with no placeholder notice', () => {
         expect(typeof data).toBe('object');
@@ -1414,6 +1507,33 @@ describe('lomloe-ES.json (state minimum teachings)', () => {
 describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
     const data = loadDataset('lomloe-ES-EX.json');
 
+    it('Bachillerato subjects sit in their legally-assigned course (DOE Decreto 109/2022, #1904)', () => {
+        assertBachilleratoYearSeparation(data);
+        const y1 = new Set(Object.values(data['Bachillerato']['1º Bachillerato']).map(a => a.denominacion));
+        const y2 = new Set(Object.values(data['Bachillerato']['2º Bachillerato']).map(a => a.denominacion));
+        // Single-year subjects appear only in their course (Decreto 109/2022 arts. 15-19).
+        expect(y1).toContain('Física y Química');        // 1.º (art. 16.1.c)
+        expect(y2).not.toContain('Física y Química');
+        expect(y2).toContain('Historia de España');      // 2.º común (art. 15.2.b)
+        expect(y1).not.toContain('Historia de España');
+        for (const s of ['Física', 'Química', 'Biología', 'Historia del Arte', 'Geografía']) {
+            expect(y2, `${s} is taught in 2.º`).toContain(s);
+            expect(y1, `${s} must not appear in 1.º`).not.toContain(s);
+        }
+        for (const s of ['Historia del Mundo Contemporáneo', 'Filosofía', 'Matemáticas Generales']) {
+            expect(y1, `${s} is taught in 1.º`).toContain(s);
+            expect(y2, `${s} must not appear in 2.º`).not.toContain(s);
+        }
+        // I/II families stay in BOTH years, named with the official course
+        // suffix (RD 243/2022 — "Matemáticas I"/"II"…), matching ES-CN (#1904).
+        for (const base of ['Matemáticas', 'Latín', 'Análisis Musical', 'Dibujo Técnico']) {
+            expect(y1, `${base} I in 1.º`).toContain(`${base} I`);
+            expect(y2, `${base} II in 2.º`).toContain(`${base} II`);
+            expect(y1, `1.º must not use the bare name "${base}"`).not.toContain(base);
+            expect(y2, `2.º must not use the bare name "${base}"`).not.toContain(base);
+        }
+    });
+
     it('parses as a non-empty object with no placeholder notice', () => {
         expect(typeof data).toBe('object');
         expect(data).not.toBeNull();
@@ -1441,28 +1561,68 @@ describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
 
     it('Infantil criterios are linked to competencias clave (backfilled, issue #1832)', () => {
         assertInfantilLinkedToCompetenciasClave(data);
+        // Spot-check the same mapping the state dataset asserts: the backfill is
+        // byte-identical across ES / ES-EX / ES-MD (see README, "Infantil
+        // competencias clave"). Crecimiento en Armonía, competencia 1, criterio 1.
+        const ciclo = data['Educación Infantil']['Primer ciclo (0-3 años)'];
+        const aca = Object.values(ciclo).find(a => /Crecimiento en Armon/i.test(a.denominacion));
+        const c1 = Object.values(aca.competencias_especificas)[0];
+        expect(c1.criterios_evaluacion[0].competencias_clave).toEqual(['CCL', 'CPSAA']);
     });
 
     it('Primaria and ESO use the official Extremadura subject codes (DOE 22050223)', () => {
         // ESO official siglas (Anexo VIII): BG, FQ, GH, EPVA, TECD, EVCE, LE, EF…
+        // These must match ESO_COURSE_SUBJECTS['ES-EX'] in edition/lomloe.js, so
+        // the per-course filter shows the right materias (issue #1904).
         const eso1 = data['ESO']['1º ESO'];
         for (const official of ['BG', 'FQ', 'GH', 'EPVA', 'TECD', 'EVCE', 'LE', 'EF']) {
             expect(Object.keys(eso1), `ESO 1º should expose ${official}`).toContain(official);
         }
-        // Generator-derived codes must no longer appear in Primaria/ESO.
+        // Generator-derived codes must no longer appear in Primaria/ESO — neither
+        // as área keys nor embedded in any competencia/criterio/saber code.
+        const derived = ['BIG', 'FQX', 'GEH', 'EPV', 'TYD', 'EVC', 'LEX', 'EFI', 'EAR', 'EEX', 'FOP', 'CMN'];
         for (const etapa of ['Educación Primaria', 'ESO']) {
             for (const [, areas] of Object.entries(data[etapa])) {
-                for (const old of ['BIG', 'FQX', 'GEH', 'EPV', 'TYD', 'EVC', 'LEX', 'EFI', 'EAR', 'EEX', 'FOP', 'CMN']) {
+                for (const old of derived) {
                     expect(areas[old], `${etapa} must not keep derived code ${old}`).toBeUndefined();
                 }
-                // Embedded competencia codes match their area key.
+                // Every embedded code (competencia key, criterio código, saber
+                // nombre) carries its área key in segment 3.
                 for (const [codArea, area] of Object.entries(areas)) {
-                    for (const code of Object.keys(area.competencias_especificas)) {
+                    for (const [code, comp] of Object.entries(area.competencias_especificas)) {
                         expect(code.split('-')[3]).toBe(codArea);
+                        for (const cr of comp.criterios_evaluacion || []) {
+                            expect(cr.codigo.split('-')[3]).toBe(codArea);
+                        }
+                    }
+                    for (const items of Object.values(area.saberes_basicos.bloques)) {
+                        for (const item of items) {
+                            expect(item.nombre.split('-')[3]).toBe(codArea);
+                        }
                     }
                 }
             }
         }
+    });
+
+    it('ESO per-course filter codes are all present in the dataset (issue #1904)', () => {
+        // Mirror of ESO_COURSE_SUBJECTS['ES-EX'] in edition/lomloe.js (Decreto
+        // 110/2022, Anexo V). The editor filters 1º–3º ESO to this distribution,
+        // so every listed código must exist in the dataset or the materia would
+        // silently disappear from the editor — the regression behind #1904.
+        const FILTER = {
+            '1º ESO': ['BG', 'EF', 'EPVA', 'GH', 'LCL', 'LE', 'MAT', 'MUS'],
+            '2º ESO': ['EF', 'EVCE', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'MUS', 'TECD'],
+            '3º ESO': ['BG', 'EF', 'EPVA', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'TECD'],
+        };
+        for (const [nivel, codes] of Object.entries(FILTER)) {
+            const present = Object.keys(data['ESO'][nivel]);
+            for (const code of codes) {
+                expect(present, `${nivel} dataset must contain filter code ${code}`).toContain(code);
+            }
+        }
+        // 4º ESO is intentionally unfiltered; it must still carry materias.
+        expect(Object.keys(data['ESO']['4º ESO']).length).toBeGreaterThan(0);
     });
 
     it('every area record has the iDevice schema shape', () => {
@@ -1515,6 +1675,11 @@ describe('lomloe-ES-EX.json (Extremadura concretion)', () => {
 
 describe('lomloe-ES-MD.json (Comunidad de Madrid concretion)', () => {
     const data = loadDataset('lomloe-ES-MD.json');
+
+    it('Bachillerato 1.º/2.º expose only their own subjects (no year mixing, #1904)', () => {
+        // Madrid (Decreto 64/2022) adopts the RD 243/2022 per-course distribution.
+        assertBachilleratoYearSeparation(data);
+    });
 
     it('parses as a non-empty object with no placeholder notice', () => {
         expect(typeof data).toBe('object');
@@ -1592,6 +1757,13 @@ describe('lomloe-ES-MD.json (Comunidad de Madrid concretion)', () => {
 
 describe('lomloe-ES-EFP.json (Ministry-managed territory: MEFPD)', () => {
     const data = loadDataset('lomloe-ES-EFP.json');
+
+    it('Bachillerato 1.º/2.º expose only their own subjects (no year mixing, #1904)', () => {
+        // MEFPD (Orden EFP/755/2022) adopts the RD 243/2022 per-course distribution.
+        // Note: a few MEFPD-specific optativas (Psicología, Actividad Física y Salud…)
+        // are not in the verified single-year lists and are left untouched.
+        assertBachilleratoYearSeparation(data);
+    });
 
     it('parses as a non-empty object with no placeholder notice', () => {
         expect(typeof data).toBe('object');
@@ -1759,9 +1931,16 @@ describe('lomloe-ES-GA.json (Galicia concretion — full Galician extraction)', 
 // Shared structural assertions for an autonomous-community concretion. The data
 // is generated from the official curriculum decrees, so we check the schema
 // contract and the code invariants rather than specific wording.
-function assertConcretion(name, prefix, etapaNiveles) {
+function assertConcretion(name, prefix, etapaNiveles, opts = {}) {
     describe(name, () => {
         const data = loadDataset(name.split(' ')[0]);
+
+        if (opts.bachilleratoYearSeparated) {
+            const bachKey = Object.keys(etapaNiveles).find(k => /[Bb]achiller|[Bb]atxiller|[Bb]acharel/.test(k));
+            it('Bachillerato 1.º/2.º expose only their own subjects (no year mixing, #1904)', () => {
+                assertBachilleratoYearSeparation(data, bachKey);
+            });
+        }
 
         it('parses as a non-empty object with no placeholder notice', () => {
             expect(typeof data).toBe('object');
@@ -1856,8 +2035,14 @@ assertConcretion(
         'Educación Secundaria Obligatoria': ['1º de ESO', '2º de ESO', '3º de ESO', '4º de ESO'],
         'Bachillerato': ['1º de Bachillerato', '2º de Bachillerato'],
     },
+    // Navarra adopts the RD 243/2022 per-course distribution; its Bachillerato is fixed (#1904).
+    { bachilleratoYearSeparated: true },
 );
 
+// NOTE: lomloe-ES-VC.json (Comunitat Valenciana) still carries the Bachillerato
+// 1r/2n duplication. Its subjects are in Valencian and the per-course fix needs
+// the Valencian Decret 108/2022 to be verified, so it is deliberately left
+// unchanged here (no bachilleratoYearSeparated flag) — see the iDevice README.
 assertConcretion(
     'lomloe-ES-VC.json (Comunitat Valenciana concretion — official Valencian extraction)',
     'ES-VC-',
@@ -1907,12 +2092,10 @@ describe('DATASETS registry (regression guard)', () => {
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-EFP.json'");
     });
 
-    it('declares ES-EX on hold (available:false) with the lomloe-ES-EX.json file', () => {
-        // Temporarily disabled pending confirmation for reactivation. The dataset
-        // file stays in the repo; only the availability flag is flipped off.
+    it('declares ES-EX with available:true and the lomloe-ES-EX.json file', () => {
         const m = entryFor('ES-EX');
         expect(m, "ES-EX entry missing").not.toBeNull();
-        expect(m[1]).toBe('false');
+        expect(m[1]).toBe('true');
         expect(lomloeSrc).toContain("file: '../data/lomloe-ES-EX.json'");
     });
 
@@ -1959,6 +2142,120 @@ describe('DATASETS registry (regression guard)', () => {
         const m = entryFor('ES-CN');
         expect(m, "ES-CN entry missing").not.toBeNull();
         expect(m[1]).toBe('true');
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+describe('Saber DOE code: natural ordering (#1905)', () => {
+    it('compares numeric segments as numbers, not lexicographically', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        expect(cmp('A.1.2', 'A.1.10')).toBeLessThan(0);     // 2 before 10
+        expect(cmp('A.1.10', 'A.1.2')).toBeGreaterThan(0);
+        expect(cmp('E.1.1', 'E.2.1')).toBeLessThan(0);
+        expect(cmp('E.2.1', 'E.1.1')).toBeGreaterThan(0);
+        expect(cmp('A.1.1', 'A.1.1')).toBe(0);
+    });
+
+    it('orders by block letter first', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        expect(cmp('A.9.9', 'B.1.1')).toBeLessThan(0);
+        expect(cmp('C.1.1', 'B.9.9')).toBeGreaterThan(0);
+    });
+
+    it('a shorter prefix sorts before a code that extends it', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        expect(cmp('A.1', 'A.1.1')).toBeLessThan(0);
+        expect(cmp('A.1.1', 'A.1')).toBeGreaterThan(0);
+    });
+
+    it('items without a code sort last and tolerate non-numeric segments', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        expect(cmp('', 'A.1.1')).toBeGreaterThan(0);
+        expect(cmp('A.1.1', '')).toBeLessThan(0);
+        expect(cmp('', '')).toBe(0);
+        expect(cmp('A.x.1', 'A.1.1')).toBeLessThan(0);      // NaN segment → treated as -1
+    });
+
+    it('sortSaberItems reorders a fully-coded block by codigo (immutable copy)', () => {
+        const sort = $exeDevice._sortSaberItems;
+        const block = [
+            { nombre: 'c', codigo: 'E.2.2' },
+            { nombre: 'a', codigo: 'E.2.1' },
+            { nombre: 'b', codigo: 'E.1.1' }
+        ];
+        expect(sort(block).map(s => s.codigo)).toEqual(['E.1.1', 'E.2.1', 'E.2.2']);
+        expect(block.map(s => s.codigo)).toEqual(['E.2.2', 'E.2.1', 'E.1.1']); // input untouched
+    });
+
+    it('sortSaberItems is a no-op when any item lacks a codigo (and for <2 items)', () => {
+        const sort = $exeDevice._sortSaberItems;
+        const partial = [{ nombre: 'a', codigo: 'A.1.1' }, { nombre: 'b' }];
+        expect(sort(partial)).toBe(partial);                // same reference, untouched
+        const one = [{ nombre: 'x', codigo: 'A.1.1' }];
+        expect(sort(one)).toBe(one);
+        expect(sort([])).toEqual([]);
+        expect(sort(null)).toEqual([]);
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+describe('ES-EX real dataset: saberes carry DOE codes and are ordered (#1905)', () => {
+    it('every fully-coded block is non-decreasing by DOE code', () => {
+        const cmp = $exeDevice._compareSaberCode;
+        const data = loadDataset('lomloe-ES-EX.json');
+        let checkedBlocks = 0;
+        for (const { etapa, nivel, codArea, area } of walkAreas(data)) {
+            const bloques = (area.saberes_basicos && area.saberes_basicos.bloques) || {};
+            for (const [title, items] of Object.entries(bloques)) {
+                if (!items.length || !items.every(s => s.codigo)) continue;
+                checkedBlocks++;
+                for (let i = 1; i < items.length; i++) {
+                    expect(
+                        cmp(items[i - 1].codigo, items[i].codigo),
+                        `${etapa}/${nivel}/${codArea} “${title}”: ${items[i - 1].codigo} !<= ${items[i].codigo}`
+                    ).toBeLessThanOrEqual(0);
+                }
+            }
+        }
+        expect(checkedBlocks).toBeGreaterThan(300); // 394 fully-coded blocks today
+    });
+
+    it('Física y Química 1º Bachillerato block E is in official DOE order', () => {
+        const data = loadDataset('lomloe-ES-EX.json');
+        const fyq = data['Bachillerato']['1º Bachillerato']['FYQ'];
+        const blockE = fyq.saberes_basicos.bloques['E. Estática y dinámica'];
+        expect(blockE.map(s => s.codigo)).toEqual(['E.1.1', 'E.2.1', 'E.2.2']);
+        // The code is lifted into `codigo`, not left duplicated in the prose.
+        expect(blockE[0].codigo).toBe('E.1.1');
+        expect(blockE[0].subtitulo_nivel_1.startsWith('E.1.1')).toBe(false);
+    });
+});
+
+// ════════════════════════════════════════════════════════════════
+describe('ES-EX saberes render shows DOE codes in order (#1905)', () => {
+    let el;
+    beforeEach(() => { el = buildMockElement(); });
+    afterEach(() => { el && el.remove(); vi.restoreAllMocks(); });
+
+    it('renders FYQ 1º Bach block E as E.1.1, E.2.1, E.2.2 with the code visible', async () => {
+        const real = loadDataset('lomloe-ES-EX.json');
+        globalThis.fetch = vi.fn(() =>
+            Promise.resolve({ ok: true, json: () => Promise.resolve(real) }));
+        $exeDevice.init(el, {
+            lomloeDataset: 'ES-EX',
+            lomloeActiveTab: 'saberes',
+            lomloeSelectedEtapa: 'Bachillerato',
+            lomloeSelectedNivel: '1º Bachillerato',
+            lomloeSelectedMateria: { codArea: 'FYQ', denominacion: 'Física y Química' },
+            lomloeSelections: []
+        });
+        await new Promise(r => setTimeout(r, 50));
+        const blocks = [...el.querySelectorAll('.lomloe-block')];
+        const blockE = blocks.find(b =>
+            /Estática y dinámica/.test(b.querySelector('.lomloe-block-header').textContent));
+        expect(blockE, 'block E should be rendered').toBeTruthy();
+        const codes = [...blockE.querySelectorAll('.lomloe-saber-code')].map(s => s.textContent);
+        expect(codes).toEqual(['E.1.1', 'E.2.1', 'E.2.2']);
     });
 });
 

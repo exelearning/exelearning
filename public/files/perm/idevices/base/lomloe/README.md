@@ -63,8 +63,9 @@ All dataset JSON files share the same schema:
           "bloques": {
             "Block title": [    // e.g. "I. Cultura científica"
               {
-                "nombre": "PC9N01SBI.1.1",        // unique code
-                "subtitulo_nivel_1": "Topic",
+                "nombre": "PC9N01SBI.1.1",        // unique selection id (stable)
+                "codigo": "A.1.1",               // optional: official source saber code
+                "subtitulo_nivel_1": "Topic",     //   (block letter + numeric segments)
                 "subtitulo_nivel_2": "Sub-topic"  // optional
               }
             ]
@@ -75,6 +76,17 @@ All dataset JSON files share the same schema:
   }
 }
 ```
+
+#### Optional saber `codigo` (source order)
+
+`nombre` is the **stable selection id** (persisted in user documents) and must never
+change. `codigo` is the **official source saber code** (block letter + numeric
+segments, e.g. `A.1.1`, `E.2.1`) when the curriculum source numbers its saberes. The
+iDevice renders each saber's `codigo` (falling back to `nombre`) and **sorts every
+fully-coded block by it** with a natural comparator (`A.1.10` after `A.1.2`), so the
+list follows the official order regardless of array order. Datasets/blocks without
+codes keep their array order unchanged. Currently populated for **`ES-EX`** (see the
+note below); other datasets may add it as their saberes are re-extracted with codes.
 
 ### Optional per-dataset descriptor catalogue (`descriptors`)
 
@@ -310,6 +322,68 @@ code (`ES-EX-ESO1-BG-CE01-CR01`) and shown in the summary/export badges.
 only codify *materias de modalidad* (with per-course suffixes, e.g. `DA I`/`DA II`) while common
 subjects appear by full name without a sigla — so there is no complete, unambiguous official set to
 adopt there.
+
+#### Bachillerato per-course distribution (fixed, #1904)
+
+The Bachillerato etapa exposes `1º` and `2º Bachillerato` as separate niveles, and RD 243/2022
+(arts. 9–13) **does** assign each subject to a specific course. The earlier state-derived datasets,
+however, duplicated most Bachillerato subjects into **both** years (the `#1827`/`#1828` extraction
+copied the per-*modalidad* curriculum into each year instead of placing it per course). Single-year
+subjects — *Física*, *Química*, *Historia de España*, *Historia del Arte* (2.º) or *Física y
+Química*, *Historia del Mundo Contemporáneo*, *Filosofía* (1.º) — therefore showed up in the year
+where they are not taught.
+
+**What was audited.** Every dataset's Bachillerato 1.º/2.º distribution was audited against its
+normative source and cross-validated against the two datasets that were already extracted per-course
+correctly: **`ES-CN`** (Canarias) and **`ES-GA`** (Galicia), which carry disjoint year sets and were
+used as in-repo oracles.
+
+**Normative sources.** RD 243/2022 (BOE-A-2022-5521), arts. 9–13 — the state floor that every
+community adopts for the common and *modalidad* subjects; and, for Extremadura, **Decreto 109/2022**
+(DOE), arts. 15–19, which adopts the state per-course distribution verbatim (no subject is reassigned
+to a different course). The modalidad *General* trap was verified: *Matemáticas Generales* = 1.º,
+*Ciencias Generales* = 2.º.
+
+**Fix (JSON-level, not a runtime filter).** Because the schema exposes each course as its own nivel
+and the law fixes the course, the per-course distribution belongs in the data — exactly how `ES-CN`
+and `ES-GA` already encode it. For each affected dataset the wrong-year copy of every single-year
+subject (identical content, only the `BAC1`/`BAC2` code tag differed) was removed; the correct-year
+copy is kept unchanged. **No `BACH_COURSE_SUBJECTS` runtime filter is needed.** I/II families
+(*Matemáticas*, *Latín*, *Griego*, *Dibujo Técnico/Artístico*, *Análisis Musical*, *Coro y Técnica
+Vocal*, the *lenguas comunes*…) keep their distinct per-year content in both courses and are now
+labelled with the **official course suffix** — *Matemáticas I*/*II*, *Análisis Musical I*/*II*… —
+exactly as RD 243/2022 names them and as `ES-CN` already does (the Castilian datasets previously
+shipped the bare base name in both years).
+
+| Dataset | Bachillerato status |
+|---|---|
+| `ES`, `ES-EX`, `ES-MD` | **Fixed** — 29 wrong-year duplicates removed (RD 243/2022 + Decreto 109/2022 / Decreto 64/2022). |
+| `ES-EFP` | **Fixed** — same 29 removed (Orden EFP/755/2022 adopts the state distribution). |
+| `ES-NC` | **Fixed** — same 29 removed (Navarra adopts the state distribution). |
+| `ES-CN`, `ES-GA` | **Already correct** — extracted per-course from the start; left unchanged (oracles). |
+| `ES-VC` | **Unchanged** — subjects are in Valencian; the per-course fix needs the Valencian Decret 108/2022 to be verified first, so it is intentionally deferred to avoid a cross-language mismatch. |
+
+**Known residuals (not fixed here):**
+
+- **`ES-EX` is missing the 2.º entries of two I/II subjects** — *Artes Escénicas II* and *Matemáticas
+  Aplicadas a las Ciencias Sociales II* (Decreto 109/2022 arts. 18.5 / 17.2 confirm they are taught in
+  2.º; `ES-CN`/`ES-GA` carry both years). The dataset only has the 1.º entry. This is an
+  *under-representation*, not a duplication, and is **not** fixed here because the 2.º criterios/saberes
+  content would have to be authored from the DOE — it must come from a regeneration, not a hand edit.
+- **`ES-EFP`** keeps four MEFPD-specific optativas duplicated across years (*Psicología*, *Actividad
+  Física y Salud*, *Ecología y Sostenibilidad Ambiental*, *Gestión Empresarial y Relación con el
+  Entorno*); these are not in the verified single-year list and need the Orden EFP/755/2022 optativa
+  annex to be confirmed.
+- **`ES-VC`** Bachillerato (Valencian) — see the table above.
+- **Saberes básicos order (Bachillerato) — fixed where codes survived; completeness still pending.**
+  The DOE saber code (`A.1.1`, `E.2.1`…) is now lifted out of the saber prose into a structured
+  `codigo` field, and `ES-EX` ships it for **3399 / 4601** saberes (`#1905`). Every **fully-coded**
+  block is now sorted by `codigo`, so the order matches the DOE (e.g. Física y Química 1.º block *E*
+  is `E.1.1, E.2.1, E.2.2`). What is **not** fixed and needs the DOE **re-extraction follow-up**: the
+  **1202** saberes that still have no code (state-inherited fallback — may be content outside the
+  Extremadura decree) and the **sequence gaps** (omitted saberes, e.g. FYQ block *A* is missing
+  `A.2.1`). Both are itemised per subject/block in **`ES-EX-saberes-code-coverage.md`** as a finite
+  checklist for the curriculum review, and tracked together with the missing 2.º I/II entries above.
 
 ### Generator script
 

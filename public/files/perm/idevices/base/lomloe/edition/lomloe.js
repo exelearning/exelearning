@@ -75,10 +75,7 @@ var $exeDevice = (function () {
             framework: 'LOMLOE',
             community: 'Extremadura',
             file: '../data/lomloe-ES-EX.json',
-            // Temporarily disabled, awaiting confirmation for reactivation. The
-            // dataset JSON stays in the repo untouched; flip back to true to
-            // re-enable.
-            available: false
+            available: true
         },
         {
             id: 'ES-MD',
@@ -178,7 +175,7 @@ var $exeDevice = (function () {
      * only the subjects actually taught in the selected course. See issue #1832.
      *
      * Only datasets whose norm fixes a per-course distribution appear here:
-     *   - ES-EX:  Decreto 110/2022 (DOE), Anexo V. (unreachable while ES-EX available:false)
+     *   - ES-EX:  Decreto 110/2022 (DOE), Anexo V.
      *   - ES-MD:  Decreto 65/2022 (BOCM), Anexo I.
      *   - ES-EFP: Orden EFP/754/2022 (BOE), per-course markers of Anexo II.
      * Datasets absent from this map (ES state floor, ES-CN, ES-GA already
@@ -188,8 +185,6 @@ var $exeDevice = (function () {
      */
     var ESO_COURSE_SUBJECTS = {
         // ES-EX uses the official Extremadura subject codes (see README).
-        // Unreachable while available:false above — getCourseSubjectFilter('ES-EX') is never
-        // called for disabled datasets. Restore together with the available flag above.
         'ES-EX': {
             '1º ESO': ['BG', 'EF', 'EPVA', 'GH', 'LCL', 'LE', 'MAT', 'MUS'],
             '2º ESO': ['EF', 'EVCE', 'FQ', 'GH', 'LCL', 'LE', 'MAT', 'MUS', 'TECD'],
@@ -572,6 +567,42 @@ var $exeDevice = (function () {
         try {
             return rawData[etapa][nivel][codArea].saberes_basicos.bloques || {};
         } catch (e) { return {}; }
+    }
+
+    // Natural comparison of official DOE saber codes ("E.1.1" vs "E.2.1" vs
+    // "E.1.10"): a leading block letter, then numeric segments compared as
+    // integers — so "A.1.10" sorts AFTER "A.1.2", not lexicographically before
+    // it. A shorter prefix sorts before a longer code that extends it; items
+    // without a code sort last. Pure function (exported for unit tests).
+    function compareSaberCode(a, b) {
+        if (a === b) return 0;
+        if (!a) return 1;
+        if (!b) return -1;
+        var pa = String(a).split('.');
+        var pb = String(b).split('.');
+        if (pa[0] !== pb[0]) return pa[0] < pb[0] ? -1 : 1;
+        for (var i = 1; i < Math.max(pa.length, pb.length); i++) {
+            var na = i < pa.length ? parseInt(pa[i], 10) : -1;
+            var nb = i < pb.length ? parseInt(pb[i], 10) : -1;
+            if (isNaN(na)) na = -1;
+            if (isNaN(nb)) nb = -1;
+            if (na !== nb) return na - nb;
+        }
+        return 0;
+    }
+
+    // Returns a block's saberes ordered by their official DOE `codigo`. Only
+    // blocks where EVERY item carries a codigo are reordered; partially-coded
+    // or un-coded blocks (and datasets that ship no codes) keep their dataset
+    // order, so this is a no-op there. Stable sort; the input is not mutated.
+    function sortSaberItems(items) {
+        if (!Array.isArray(items) || items.length < 2) return items || [];
+        for (var i = 0; i < items.length; i++) {
+            if (!items[i] || !items[i].codigo) return items;
+        }
+        return items.slice().sort(function (x, y) {
+            return compareSaberCode(x.codigo, y.codigo);
+        });
     }
 
     function getCompetencias(etapa, nivel, codArea) {
@@ -1073,6 +1104,7 @@ var $exeDevice = (function () {
                 denominacion: matDenom,
                 bloque: bloque,
                 nombre: nombre,
+                codigo: saber.codigo || '',
                 subtitulo1: saber.subtitulo_nivel_1 || '',
                 subtitulo2: saber.subtitulo_nivel_2 || ''
             });
@@ -1302,14 +1334,14 @@ var $exeDevice = (function () {
             return '<div class="lomloe-no-materia">' + _('No basic knowledge for this subject.') + '</div>';
         }
         return bloqueKeys.map(function (bloque) {
-            var items = bloques[bloque];
+            var items = sortSaberItems(bloques[bloque]);
             var itemsHtml = items.map(function (saber) {
                 var selId = saberSelId(selectedEtapa, selectedNivel, selectedMateria.codArea, bloque, saber.nombre);
                 return [
                     '<div class="lomloe-saber-item">',
                     '  <input type="checkbox" data-type="saber" data-id="' + esc(selId) + '">',
                     '  <div class="lomloe-saber-texts">',
-                    '    <span class="lomloe-saber-code">' + esc(saber.nombre) + '</span>',
+                    '    <span class="lomloe-saber-code">' + esc(saber.codigo || saber.nombre) + '</span>',
                     saber.subtitulo_nivel_1
                         ? '<div class="lomloe-saber-s1">' + esc(saber.subtitulo_nivel_1) + '</div>'
                         : '',
@@ -1487,7 +1519,7 @@ var $exeDevice = (function () {
 
     function buildSelItemHtml(sel) {
         var icon = sel.type === 'saber' ? '📚' : '🎯';
-        var code = sel.type === 'saber' ? sel.nombre : sel.codigoCriterio;
+        var code = sel.type === 'saber' ? (sel.codigo || sel.nombre) : sel.codigoCriterio;
         var tooltip = sel.type === 'saber'
             ? ((sel.subtitulo1 || '') + (sel.subtitulo2 ? ' — ' + sel.subtitulo2 : ''))
             : (sel.descripcionCriterio || '');
@@ -1640,7 +1672,7 @@ var $exeDevice = (function () {
                         saberes.forEach(function (sab) {
                             var sabTip = (sab.subtitulo1 || '') + (sab.subtitulo2 ? ' — ' + sab.subtitulo2 : '');
                             html += '<span class="lomloe-saber-link-badge"' + tipAttr(sabTip) + '>';
-                            html += esc(sab.nombre);
+                            html += esc(sab.codigo || sab.nombre);
                             html += '</span>';
                         });
                         html += '</td>';
@@ -1663,7 +1695,7 @@ var $exeDevice = (function () {
             saberes.forEach(function (sel) {
                 var sabTip = (sel.subtitulo1 || '') + (sel.subtitulo2 ? ' — ' + sel.subtitulo2 : '');
                 html += '<tr>';
-                html += '<td><span class="lomloe-saber-link-badge"' + tipAttr(sabTip) + '>' + esc(sel.nombre) + '</span></td>';
+                html += '<td><span class="lomloe-saber-link-badge"' + tipAttr(sabTip) + '>' + esc(sel.codigo || sel.nombre) + '</span></td>';
                 html += '</tr>';
             });
 
@@ -1727,6 +1759,10 @@ var $exeDevice = (function () {
     // ════════════════════════════════════════════════════════════════
 
     return {
+        // Exposed for unit tests — pure, side-effect-free saber-code helpers.
+        _compareSaberCode: compareSaberCode,
+        _sortSaberItems: sortSaberItems,
+
         /**
          * Called by eXeLearning when the iDevice is first created or loaded.
          * @param {HTMLElement} element    The iDevice article element.
