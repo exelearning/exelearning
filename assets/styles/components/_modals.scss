@@ -2456,9 +2456,15 @@
                                             .btn-danger {
                                                 background: var(--red-600, #dc2626);
                                                 border-color: var(--red-600, #dc2626);
+                                                // .btn defaults to var(--text) (dark); force white over the red fill.
+                                                color: var(--white, #fff);
+                                                span {
+                                                    color: var(--white, #fff);
+                                                }
                                                 &:hover {
                                                     background: var(--red-700, #b91c1c);
                                                     border-color: var(--red-700, #b91c1c);
+                                                    color: var(--white, #fff);
                                                 }
                                                 &:disabled {
                                                     opacity: 0.7;
