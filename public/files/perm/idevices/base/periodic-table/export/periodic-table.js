@@ -1565,7 +1565,13 @@ var $periodicTable = {
                     $periodicTable.updateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
                         clearInterval(mOptions.counterClock);
-                        $periodicTable.checkAnswers(instance);
+                        // Time is up, so the attempt ends. This used to call
+                        // checkAnswers(), which does not exist anywhere in this
+                        // iDevice: the timer threw a TypeError instead, so the
+                        // game never ended, no score was reported and the SCO
+                        // never completed. gameOver() is the end path every
+                        // other terminal branch already uses.
+                        $periodicTable.gameOver(instance);
                         return;
                     }
                 }

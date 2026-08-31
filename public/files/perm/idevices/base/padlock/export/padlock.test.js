@@ -136,4 +136,73 @@ describe('padlock iDevice export', () => {
       expect($padlock.idevicePath).toBe('');
     });
   });
+
+  // showFeedback is the padlock's only end: its three callers are the correct
+  // code, the clock running out and reopening an already solved padlock.
+  // common.js derives completion from `gameOver === true || auto !== true` and
+  // the report there is automatic, so without the flag a page carrying a
+  // padlock stays `incomplete` in the LMS even once the learner has opened it.
+  describe('completion signal', () => {
+    function setupPadlock(overrides) {
+      document.body.innerHTML = `
+        <div id="candadoMainContainer-0"></div>
+        <div id="candadoInstructions-0"></div>
+        <div id="candadoFeedRetro-0"></div>
+        <div id="candadoSolutionDiv-0"></div>
+        <div id="candadoNavigator-0"></div>
+        <div id="candadoMessageInfo-0"></div>
+        <div id="candadoShowRetro-0"></div>`;
+      $padlock.options[0] = Object.assign(
+        {
+          id: 0,
+          gameOver: false,
+          candadoStarted: true,
+          candadoSolved: false,
+          counter: 0,
+          score: 10,
+          isScorm: 0,
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($padlock, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($padlock, 'uptateTime').mockImplementation(() => {});
+      // showFeedback checks the container for LaTeX through the shared helper;
+      // this suite does not load the gamification stubs, so provide just that.
+      global.$exeDevices = global.$exeDevices || {};
+      global.$exeDevices.iDevice = global.$exeDevices.iDevice || {};
+      global.$exeDevices.iDevice.gamification =
+        global.$exeDevices.iDevice.gamification || {};
+      global.$exeDevices.iDevice.gamification.math = {
+        hasLatex: vi.fn(() => false),
+        updateLatex: vi.fn(),
+      };
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('marks the activity finished, so the page can leave incomplete', () => {
+      setupPadlock();
+
+      $padlock.showFeedback(0);
+
+      expect($padlock.options[0].gameOver).toBe(true);
+    });
+
+    it('raises the flag before it reports, so the two cannot disagree', () => {
+      setupPadlock({ isScorm: 1 });
+      let flagWhenReported;
+      vi.spyOn($padlock, 'sendScore').mockImplementation(() => {
+        flagWhenReported = $padlock.options[0].gameOver;
+      });
+
+      $padlock.showFeedback(0);
+
+      expect($padlock.sendScore).toHaveBeenCalledWith(true, 0);
+      expect(flagWhenReported).toBe(true);
+    });
+  });
 });

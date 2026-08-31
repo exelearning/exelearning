@@ -943,6 +943,12 @@ var $eXeIdentifica = {
     gameOver: function (instance) {
         let mOptions = $eXeIdentifica.options[instance];
         mOptions.gameStarted = false;
+        // The attempt ends here and only here. common.js derives completion
+        // from `gameOver === true || auto !== true`, and the report below is
+        // automatic, so without this flag the page stays `incomplete` in the
+        // LMS however well the learner did. Raised before the report, so the
+        // score and the completion signal cannot disagree.
+        mOptions.gameOver = true;
         $eXeIdentifica.showCluesLinks(0, instance);
         $('#idfLinkAudio-' + instance).hide();
         $exeDevices.iDevice.gamification.media.stopSound();

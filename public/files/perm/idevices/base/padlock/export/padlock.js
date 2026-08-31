@@ -364,6 +364,14 @@ var $padlock = {
     showFeedback: function (instance) {
         const mOptions = $padlock.options[instance];
 
+        // The padlock is resolved here and only here — its three callers are
+        // the solved code, the clock running out and reopening an already
+        // solved padlock. common.js derives completion from
+        // `gameOver === true || auto !== true`, and the report below is
+        // automatic, so without this flag a page carrying a padlock stays
+        // `incomplete` in the LMS even once the learner has opened it.
+        mOptions.gameOver = true;
+
         if (mOptions.isScorm > 0) {
             $padlock.sendScore(true, instance);
         }

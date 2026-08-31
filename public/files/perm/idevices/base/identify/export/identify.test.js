@@ -98,4 +98,72 @@ describe('identify iDevice export', () => {
       expect($eXeIdentifica.idevicePath).toBe('');
     });
   });
+
+  // common.js derives completion from `gameOver === true || auto !== true`, and
+  // gameOver() reports automatically, so without the flag a page carrying an
+  // identify stays `incomplete` in the LMS however well the learner did.
+  describe('completion signal', () => {
+    function setupGame(overrides) {
+      document.body.innerHTML = `
+        <div id="idfPNumber-0"></div>
+        <div id="idfAnswer-0"></div>
+        <div id="idfSubmit-0"></div>
+        <div id="idfBtnMoveOn-0"></div>
+        <div id="idfMessageClue-0"></div>
+        <div id="idfUseClue-0"></div>
+        <div id="idfLinkAudio-0"></div>
+        <div id="idfCursor-0"></div>
+        <div id="idfRepeatActivity-0"></div>`;
+      $eXeIdentifica.options[0] = Object.assign(
+        {
+          id: 0,
+          gameStarted: true,
+          gameOver: false,
+          score: 8,
+          isScorm: 0,
+          msgs: { msgGameEnd: 'end', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeIdentifica, 'showCluesLinks').mockImplementation(() => {});
+      vi.spyOn($eXeIdentifica, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeIdentifica, 'showScoreGame').mockImplementation(() => {});
+      vi.spyOn($eXeIdentifica, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeIdentifica, 'showFeedBack').mockImplementation(() => {});
+      // gameOver() stops the clue audio through the shared media helper; this
+      // suite does not load the gamification stubs, so provide just that.
+      global.$exeDevices = global.$exeDevices || {};
+      global.$exeDevices.iDevice = global.$exeDevices.iDevice || {};
+      global.$exeDevices.iDevice.gamification =
+        global.$exeDevices.iDevice.gamification || {};
+      global.$exeDevices.iDevice.gamification.media = { stopSound: vi.fn() };
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('marks the activity finished, so the page can leave incomplete', () => {
+      setupGame();
+
+      $eXeIdentifica.gameOver(0);
+
+      expect($eXeIdentifica.options[0].gameOver).toBe(true);
+      expect($eXeIdentifica.options[0].gameStarted).toBe(false);
+    });
+
+    it('raises the flag before it reports, so the two cannot disagree', () => {
+      setupGame({ isScorm: 1 });
+      let flagWhenReported;
+      vi.spyOn($eXeIdentifica, 'sendScore').mockImplementation(() => {
+        flagWhenReported = $eXeIdentifica.options[0].gameOver;
+      });
+
+      $eXeIdentifica.gameOver(0);
+
+      expect($eXeIdentifica.sendScore).toHaveBeenCalledWith(true, 0);
+      expect(flagWhenReported).toBe(true);
+    });
+  });
 });
