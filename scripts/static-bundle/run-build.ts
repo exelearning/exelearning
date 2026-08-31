@@ -35,6 +35,7 @@ import {
     outputDir,
     projectRoot,
 } from '../build-static-bundle';
+import { stripSourceMapReferences } from './strip-source-map-refs';
 
 /**
  * Main build function
@@ -136,8 +137,14 @@ export async function buildStaticBundle() {
         console.warn('  WARNING: public/bundles/manifest.json not found — run bundle:resources first');
     }
 
-    // Copy files/perm (themes, iDevices, favicon)
-    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));
+    // Copy files/perm (themes, iDevices, favicon). The one exclusion is the
+    // `slide` iDevice's hand-maintained TS source, which sits next to the built
+    // JS it actually loads and is never fetched at runtime. Excluded by its
+    // path rather than by the name `src`, so a future runtime directory of that
+    // name elsewhere under files/perm is not dropped with it.
+    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'), [
+        'idevices/base/slide/src',
+    ]);
     console.log('  Copied files/perm/');
 
     // Gzip large iDevice JSON datasets in place (browser decompresses on the fly).
@@ -205,6 +212,13 @@ export async function buildStaticBundle() {
         fs.copyFileSync(previewSwJs, path.join(outputDir, 'preview-sw.js'));
         console.log('  Copied preview-sw.js');
     }
+
+    // Drop `sourceMappingURL` announcements: the distribution ships no .map
+    // files, so every remaining comment is a guaranteed 404 in DevTools.
+    const strippedMaps = stripSourceMapReferences(outputDir);
+    console.log(
+        `  Stripped ${strippedMaps.files} sourceMappingURL reference(s) (${strippedMaps.bytes} bytes)`,
+    );
 
     console.log('\n' + '='.repeat(60));
     console.log('Static distribution built successfully!');
