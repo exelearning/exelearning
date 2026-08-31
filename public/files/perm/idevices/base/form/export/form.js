@@ -8,6 +8,11 @@
  */
 var $form = {
     ideviceId: '',
+    /**
+     * Live instance data by iDevice id, so the SCORM bootstrap can find the
+     * very object the activity's controls are bound to. See resolveInstance().
+     */
+    instances: {},
     dropdownPassRateId: 'dropdownPassRate',
     checkAddBtnAnswersId: 'checkAddBtnAnswers',
     passRate: '',
@@ -305,12 +310,20 @@ var $form = {
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
 
+        // The object the Comprobar button is bound to. The SCORM bootstrap must
+        // reach this very object, never a copy of it — see `instances`.
+        $form.instances[ldata.id] = ldata;
+
         if (
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0
         ) {
-            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
-                $form.initScormData(ldata);
+            // Do NOT gate on init()'s return value. Inside a SCORM package
+            // loadPage() opens the session first, and an already-open session
+            // is the normal case, not a failure; gating here sent the working
+            // path down the wrapper-loading fallback.
+            if (typeof window.scorm !== 'undefined') {
+                $form.initSCORM(ldata);
             } else {
                 this.loadSCORM_API_wrapper(ldata);
             }
@@ -1793,15 +1806,17 @@ var $form = {
     },
 
     loadSCORM_API_wrapper: function (data) {
-        let parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+        const ldata = $form.resolveInstance(data);
+        if (!ldata) return;
         if (typeof pipwerks === 'undefined') {
-            const escapedData = $form.escapeForCallback(parsedData);
             eXe.app.loadScript(
                 this.scormAPIwrapper,
-                '$form.loadSCOFunctions("' + escapedData + '")'
+                '$form.loadSCOFunctions("' +
+                    $form.escapeIdForCallback(ldata.id) +
+                    '")'
             );
         } else {
-            this.loadSCOFunctions(parsedData);
+            this.loadSCOFunctions(ldata);
         }
     },
     escapeForCallback: function (obj) {
@@ -1810,24 +1825,71 @@ var $form = {
         return json;
     },
 
-    loadSCOFunctions: function (data) {
-        let parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-        if (typeof scorm === 'undefined') {
-            const escapedData = $form.escapeForCallback(parsedData);
-            eXe.app.loadScript(
-                this.scormFunctions,
-                '$form.initSCORM("' + escapedData + '")'
-            );
-        } else {
-            this.initSCORM(parsedData);
+    /**
+     * Escape an iDevice id for embedding in a loadScript callback string.
+     *
+     * @param {string} id The instance id.
+     * @returns {string} The id, safe to sit inside double quotes.
+     */
+    escapeIdForCallback: function (id) {
+        return String(id).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    },
+
+    /**
+     * Resolve the live instance data for a bootstrap step.
+     *
+     * The SCORM bootstrap can only reach a script it has just loaded through
+     * an `eXe.app.loadScript` callback, which is a string. The whole ldata
+     * used to travel through it as JSON and be parsed back, which produced a
+     * COPY: registerActivity resolves the iDevice identity (ideviceId,
+     * ideviceNumber, title, mainElement) from the DOM and wrote it onto that
+     * copy, while the object the Comprobar button is bound to received none of
+     * it. reportActivity then refused every score with its `!game.ideviceId`
+     * guard — silently, with no console error — so the mark never reached the
+     * LMS. Only the id travels through the callback now, and the live object
+     * is looked up here.
+     *
+     * @param {Object|string} data Instance data, or the id of one.
+     * @returns {Object|null} The live instance data, or null when unknown.
+     */
+    resolveInstance: function (data) {
+        if (data && typeof data === 'object') return data;
+        if (typeof data !== 'string') return null;
+        if ($form.instances[data]) return $form.instances[data];
+        // A JSON payload from a package built before the id-only callback.
+        // Parsing it back is the very copy this replaced, but a copy still
+        // beats dropping the activity altogether.
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            return null;
         }
     },
-    initSCORM: function (ldata) {
-        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
-        $form.mScorm = scorm;
-        if ($form.mScorm.init()) {
-            $form.initScormData(parsedData);
+
+    loadSCOFunctions: function (data) {
+        const ldata = $form.resolveInstance(data);
+        if (!ldata) return;
+        if (typeof scorm === 'undefined') {
+            eXe.app.loadScript(
+                this.scormFunctions,
+                '$form.initSCORM("' +
+                    $form.escapeIdForCallback(ldata.id) +
+                    '")'
+            );
+        } else {
+            this.initSCORM(ldata);
         }
+    },
+    initSCORM: function (data) {
+        const ldata = $form.resolveInstance(data);
+        if (!ldata) return;
+        $form.mScorm = typeof scorm !== 'undefined' ? scorm : window.scorm;
+        if (!$form.mScorm) return;
+        // Open the session and bind regardless of what init() returns: it is
+        // false when the session is already active, which inside a SCORM
+        // package is the normal case (loadPage opens it first), not a failure.
+        $form.mScorm.init();
+        $form.initScormData(ldata);
     },
     endScorm: function () {
         if ($form.mScorm && typeof $form.mScorm.quit == 'function') {

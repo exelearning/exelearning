@@ -500,4 +500,89 @@ describe('form iDevice export', () => {
       expect(gameOverCalls).toBe(1);
     });
   });
+
+  // The SCORM bootstrap reaches a just-loaded script through an
+  // eXe.app.loadScript callback, which is a string. Sending the whole ldata
+  // through it as JSON and parsing it back handed registerActivity a COPY:
+  // it resolved the iDevice identity onto that copy while the object the
+  // Comprobar button is bound to kept none of it, and reportActivity then
+  // refused every score with its `!game.ideviceId` guard — silently. Only the
+  // id travels now.
+  describe('SCORM bootstrap keeps the live instance', () => {
+    function liveInstance() {
+      const ldata = { id: 'f1', main: 'frmMainContainer-f1', isScorm: 1, msgs: {} };
+      $form.instances[ldata.id] = ldata;
+      return ldata;
+    }
+
+    afterEach(() => {
+      $form.instances = {};
+      delete global.scorm;
+      vi.restoreAllMocks();
+    });
+
+    it('resolves an id back to the object the activity is bound to', () => {
+      const ldata = liveInstance();
+
+      expect($form.resolveInstance('f1')).toBe(ldata);
+    });
+
+    it('passes an object straight through', () => {
+      const ldata = liveInstance();
+
+      expect($form.resolveInstance(ldata)).toBe(ldata);
+    });
+
+    // A package built before the id-only callback still sends JSON. A copy is
+    // worse than the live object but far better than dropping the activity.
+    it('still accepts a legacy JSON payload', () => {
+      expect($form.resolveInstance('{"id":"old"}')).toEqual({ id: 'old' });
+    });
+
+    it('answers null for an unknown id or malformed payload', () => {
+      expect($form.resolveInstance('not-json-and-not-registered{')).toBeNull();
+      expect($form.resolveInstance(undefined)).toBeNull();
+    });
+
+    // The defect end to end: after the asynchronous bootstrap,
+    // registerActivity must have been handed the very object the Comprobar
+    // button holds, not a copy of it.
+    it('registers the bound object, not a copy, through the async path', () => {
+      const ldata = liveInstance();
+      let registered = null;
+      global.scorm = { init: vi.fn(() => false) };
+      vi.spyOn($form, 'initScormData').mockImplementation(data => {
+        registered = data;
+      });
+
+      // What the loadScript callback sends: the id, not the payload.
+      $form.loadSCOFunctions('f1');
+
+      expect(registered).toBe(ldata);
+    });
+
+    // init() answers false when the session is already open, which inside a
+    // SCORM package is the normal case — loadPage() opens it first.
+    it('binds even when init() reports the session as already open', () => {
+      const ldata = liveInstance();
+      global.scorm = { init: vi.fn(() => false) };
+      const initScormData = vi
+        .spyOn($form, 'initScormData')
+        .mockImplementation(() => {});
+
+      $form.initSCORM(ldata);
+
+      expect(global.scorm.init).toHaveBeenCalled();
+      expect(initScormData).toHaveBeenCalledWith(ldata);
+    });
+
+    it('does nothing when there is no SCORM wrapper at all', () => {
+      const initScormData = vi
+        .spyOn($form, 'initScormData')
+        .mockImplementation(() => {});
+
+      expect(() => $form.initSCORM(liveInstance())).not.toThrow();
+      expect(initScormData).not.toHaveBeenCalled();
+    });
+  });
 });
