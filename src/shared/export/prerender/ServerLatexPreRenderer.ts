@@ -272,9 +272,12 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
 
     constructor() {
         // MathJax 4 splits the font into a base set plus ranges it fetches on demand
-        // (calligraphic, fraktur, double-struck, script, cyrillic...). The browser gets
-        // them from the combined component, which bundles everything; a Node consumer
-        // has to provide a loader or those glyphs silently disappear from the output.
+        // (calligraphic, fraktur, double-struck, script, cyrillic...). The combined
+        // component the browser loads carries the base set only — verified by bytes:
+        // none of svg/dynamic/*.js appears inside tex-mml-svg.js — so the browser needs
+        // the ranges on disk (vendored under exe_math/fonts, see scripts/vendor-mathjax.ts)
+        // and a Node consumer needs a loader. Without either, the glyph silently
+        // disappears from the output.
         mathjax.asyncLoad = (name: string) => import(name);
 
         // Create adaptor for Node.js (no DOM)

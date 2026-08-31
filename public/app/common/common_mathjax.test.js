@@ -152,3 +152,99 @@ describe('$exe.math.trimSpeechLocaleMenu', () => {
     expect([...locales.keys()]).toEqual(['en', 'es']);
   });
 });
+
+describe('MathJax font paths', () => {
+  it('resolves the font glyph ranges next to the vendored bundle', () => {
+    // The stock value is https://cdn.jsdelivr.net/npm/@mathjax, which would put an
+    // external request inside every exported package and leave \mathbb, \mathcal and
+    // the stretchy arrows blank wherever there is no network.
+    expect(global.window.MathJax.loader.paths.fonts).toBe('[mathjax]/fonts');
+  });
+});
+
+describe('$exe.math.hideUnavailableRendererMenu', () => {
+  afterEach(() => {
+    delete global.window.MathJax.startup.document;
+  });
+
+  it('reports failure rather than throwing before the menu exists', () => {
+    expect(global.$exe.math.hideUnavailableRendererMenu()).toBe(false);
+  });
+
+  it('reports failure when the menu exposes no findID', () => {
+    global.window.MathJax.startup.document = { menu: { menu: {} } };
+
+    expect(global.$exe.math.hideUnavailableRendererMenu()).toBe(false);
+  });
+
+  it('hides the renderer submenu', () => {
+    // CHTML is not vendored and its woff2 font is a separate package, so choosing it
+    // would request two files that are not there.
+    const hide = vi.fn();
+    const findID = vi.fn(() => ({ hide }));
+    global.window.MathJax.startup.document = { menu: { menu: { findID } } };
+
+    expect(global.$exe.math.hideUnavailableRendererMenu()).toBe(true);
+    expect(findID).toHaveBeenCalledWith('Settings', 'Renderer');
+    expect(hide).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports failure when MathJax stops offering that entry', () => {
+    global.window.MathJax.startup.document = { menu: { menu: { findID: () => null } } };
+
+    expect(global.$exe.math.hideUnavailableRendererMenu()).toBe(false);
+  });
+});
+
+describe('$exe.math.forgetUnavailableMenuSettings', () => {
+  const KEY = 'MathJax-Menu-Settings';
+  let store;
+
+  beforeEach(() => {
+    // The setup file gives common.js a bare window, with no Storage. Stub the two
+    // calls the helper makes rather than pulling in a DOM for one localStorage read.
+    store = new Map();
+    global.window.localStorage = {
+      getItem: (key) => (store.has(key) ? store.get(key) : null),
+      setItem: (key, value) => store.set(key, String(value)),
+      removeItem: (key) => store.delete(key),
+    };
+  });
+
+  afterEach(() => {
+    delete global.window.localStorage;
+  });
+
+  it('does nothing when the menu has never been used', () => {
+    expect(global.$exe.math.forgetUnavailableMenuSettings()).toBe(false);
+  });
+
+  it('leaves settings that do not name a renderer alone', () => {
+    store.set(KEY, JSON.stringify({ zoom: 'Click' }));
+
+    expect(global.$exe.math.forgetUnavailableMenuSettings()).toBe(false);
+    expect(JSON.parse(store.get(KEY))).toEqual({ zoom: 'Click' });
+  });
+
+  it('drops a stored renderer choice, which would load on every page', () => {
+    // The menu persists per origin, so one CHTML click on any MathJax page of the
+    // site would make every later page request the missing component at startup.
+    store.set(KEY, JSON.stringify({ renderer: 'CHTML', zoom: 'Click' }));
+
+    expect(global.$exe.math.forgetUnavailableMenuSettings()).toBe(true);
+    expect(JSON.parse(store.get(KEY))).toEqual({ zoom: 'Click' });
+  });
+
+  it('removes the entry entirely when the renderer was the only setting', () => {
+    store.set(KEY, JSON.stringify({ renderer: 'CHTML' }));
+
+    expect(global.$exe.math.forgetUnavailableMenuSettings()).toBe(true);
+    expect(store.has(KEY)).toBe(false);
+  });
+
+  it('survives corrupt stored JSON', () => {
+    store.set(KEY, '{not json');
+
+    expect(global.$exe.math.forgetUnavailableMenuSettings()).toBe(false);
+  });
+});

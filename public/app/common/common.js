@@ -117,7 +117,17 @@ window.MathJax = window.MathJax || (function() {
             packages: { '[+]': externalExtensions }
         },
         loader: {
-            paths: { mathjax: basePath },
+            paths: {
+                mathjax: basePath,
+                // MathJax 4 fetches the font's glyph ranges (\mathbb, \mathcal,
+                // \mathfrak, stretchy arrows...) on first use, and the stock value here
+                // is https://cdn.jsdelivr.net/npm/@mathjax. That would put an external
+                // request inside every exported package and leave the glyph missing
+                // wherever there is no network. The ranges are vendored under
+                // exe_math/fonts, so point the token at them and nothing can leave the
+                // origin. See scripts/vendor-mathjax.ts (VENDORED_FONT_RANGES).
+                fonts: '[mathjax]/fonts'
+            },
             load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
                 // Hidden MathML for screen readers. MathJax 4 leaves this off because it
                 // prefers the speech extension, but speech needs a web worker and a
@@ -136,11 +146,18 @@ window.MathJax = window.MathJax || (function() {
         },
         startup: {
             ready: function() {
+                // Before defaultReady: the menu reads its persisted settings while the
+                // document is being built, so a stale renderer choice has to be gone by
+                // then. See $exe.math.forgetUnavailableMenuSettings.
+                if (typeof $exe !== 'undefined' && $exe.math) {
+                    $exe.math.forgetUnavailableMenuSettings();
+                }
                 MathJax.startup.defaultReady();
                 // Guarded: anything thrown here leaves MathJax permanently un-started,
                 // which would cost every formula on the page to tidy up one menu.
                 if (typeof $exe !== 'undefined' && $exe.math) {
                     $exe.math.trimSpeechLocaleMenu();
+                    $exe.math.hideUnavailableRendererMenu();
                 }
             }
         }
@@ -223,6 +240,45 @@ var $exe = {
                 if (keep.indexOf(locale) === -1) sre.locales.delete(locale);
             });
             return true;
+        },
+        // Hide the "Math Renderer" entry from the contextual menu. eXeLearning ships
+        // only the SVG output: CHTML lives in a component we do not vendor, and its
+        // own 2.4 MB woff2 font is a separate package, so picking it would fetch two
+        // files that are not there. MathJax disables the entry by itself only when no
+        // loader is present, which is not our case, so do it explicitly.
+        hideUnavailableRendererMenu: function() {
+            var menu = window.MathJax && window.MathJax.startup && window.MathJax.startup.document
+                && window.MathJax.startup.document.menu;
+            if (!menu || !menu.menu || typeof menu.menu.findID !== 'function') return false;
+            var item = menu.menu.findID('Settings', 'Renderer');
+            if (!item || typeof item.hide !== 'function') return false;
+            item.hide();
+            return true;
+        },
+        // Drop menu settings pointing at something this build cannot load. The menu
+        // persists its state in localStorage for the whole origin, so a reader who once
+        // chose CHTML — here or on any other MathJax page of the same site — would make
+        // every later page request the missing component on load, without ever opening
+        // the menu. applySettings() acts on the stored value while the document is being
+        // built, so this has to run before defaultReady().
+        forgetUnavailableMenuSettings: function() {
+            var KEY = 'MathJax-Menu-Settings';
+            try {
+                var stored = window.localStorage.getItem(KEY);
+                if (!stored) return false;
+                var settings = JSON.parse(stored);
+                if (!settings || typeof settings !== 'object' || !('renderer' in settings)) return false;
+                delete settings.renderer;
+                if (Object.keys(settings).length) {
+                    window.localStorage.setItem(KEY, JSON.stringify(settings));
+                } else {
+                    window.localStorage.removeItem(KEY);
+                }
+                return true;
+            } catch (e) {
+                // Private mode, disabled storage or corrupt JSON: nothing to forget.
+                return false;
+            }
         },
         // Create links to the code and the image (different possibilities)
         createLinks: function (math) {

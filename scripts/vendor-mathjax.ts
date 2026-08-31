@@ -42,8 +42,134 @@ export const VENDORED_SRE_LOCALES = [
  *
  * `adaptors/` is deliberately absent: jsdom, linkedom and liteDOM are Node-only
  * DOM adaptors that a browser can never load.
+ *
+ * `output/` is deliberately absent too. It holds only the standalone `svg` and
+ * `chtml` output jaxes: `output/svg` is already inside the combined component
+ * (it declares it via `checkVersion`, so the loader never fetches the file), and
+ * `output/chtml` is reachable only from the menu's Math Renderer entry, whose
+ * CHTML font is a separate 2.4 MB package we do not ship. `common.js` hides that
+ * menu entry, which makes both files dead weight in every math export.
  */
-const VENDORED_DIRECTORIES = ['a11y', 'input', 'output', 'ui'] as const;
+const VENDORED_DIRECTORIES = ['a11y', 'input', 'ui'] as const;
+
+/**
+ * Glyph ranges of the SVG font that are vendored alongside the bundle.
+ *
+ * MathJax 4 splits the font into a base set bundled inside the combined
+ * component plus ~40 ranges the browser fetches on first use. Unvendored, they
+ * resolve through `loader.paths.fonts`, whose default is
+ * `https://cdn.jsdelivr.net/npm/@mathjax` — an external request from exported
+ * packages and a missing glyph wherever there is no network (Electron, the
+ * offline PWA, a SCORM package on an isolated LMS). `common.js` repoints
+ * `paths.fonts` at this directory so a range can never leave the origin.
+ *
+ * The line is drawn by measurement, not by taste: this is exactly the set of
+ * ranges whose code points MathJax 3.2.2's bundled TeX font could already
+ * render, so vendoring them means the upgrade loses no glyph anyone could
+ * previously see. `vendor-mathjax.spec.ts` recomputes that overlap from the
+ * bundle's own range table and accounts for every excluded range.
+ *
+ * Deliberately excluded, with the v3 code points they would restore:
+ *   accents-b-i (2), greek (1), greek-ss (1)  — 1.7 MB for four code points
+ *   PUA (18), monospace-ex (17), sans-serif-ex (12) — 1.4 MB, all reachable
+ *       through the cheaper ranges above in the variants authors actually type
+ *   everything else (latin*, cyrillic*, hebrew, arabic, devanagari, cherokee,
+ *       braille*, phonetics*, marrows, mshapes, sans-serif-[rbi]*, monospace-l)
+ *       — zero overlap: v3 never rendered those code points either, so they are
+ *       new v4 coverage rather than a regression.
+ */
+export const VENDORED_FONT_RANGES = [
+    // TeX font-variant macros: \mathcal, \mathbb, \mathfrak, \mathscr, \mathsf, \mathtt.
+    'calligraphic',
+    'double-struck',
+    'fraktur',
+    'script',
+    'sans-serif',
+    'monospace',
+    // Operators, relations, arrows and shapes reachable from plain TeX macros,
+    // including the stretchy \uparrow / \downarrow delimiters.
+    'arrows',
+    'math',
+    'shapes',
+    'symbols',
+    'symbols-b-i',
+    'variants',
+    // \H{o} and friends.
+    'accents',
+] as const;
+
+/**
+ * Ranges deliberately left out, with the number of MathJax 3.2.2 code points each
+ * one would restore. Every range the font package publishes must appear here or in
+ * VENDORED_FONT_RANGES; `vendor-mathjax.spec.ts` fails otherwise, so a MathJax
+ * upgrade that adds a range cannot slip through unweighed.
+ */
+export const EXCLUDED_FONT_RANGES: Record<string, string> = {
+    // Costly for what they restore.
+    'accents-b-i': 'bold/italic of the 2 accents in `accents` — 145 KB for 2 code points',
+    greek: 'Greek Extended, polytonic and Coptic — 1.0 MB for 1 code point (ϝ); math Greek is in the base set',
+    'greek-ss': 'sans-serif of the same — 528 KB for the same code point',
+    PUA: 'private-use glyphs — 350 KB for 18 code points reachable through the vendored ranges',
+    'monospace-ex': 'extended monospace — 610 KB for 17 code points',
+    'sans-serif-ex': 'extended sans-serif — 484 KB for 12 code points',
+    // No overlap at all with 3.2.2: new v4 coverage, not a regression.
+    latin: 'Latin-1 and Latin Extended — 3.2.2 did not render them either',
+    'latin-b': 'as latin',
+    'latin-i': 'as latin',
+    'latin-bi': 'as latin',
+    'sans-serif-r': 'as latin',
+    'sans-serif-b': 'as latin',
+    'sans-serif-i': 'as latin',
+    'sans-serif-bi': 'as latin',
+    'monospace-l': 'as latin',
+    cyrillic: 'non-Latin script, new in v4',
+    'cyrillic-ss': 'non-Latin script, new in v4',
+    hebrew: 'non-Latin script, new in v4',
+    arabic: 'non-Latin script, new in v4',
+    devanagari: 'non-Latin script, new in v4',
+    cherokee: 'non-Latin script, new in v4',
+    phonetics: 'IPA, new in v4',
+    'phonetics-ss': 'IPA, new in v4',
+    braille: 'braille cells, new in v4 (Nemeth speech output does not need the glyphs)',
+    'braille-d': 'braille cells, new in v4',
+    marrows: 'supplemental arrows, new in v4',
+    mshapes: 'supplemental shapes, new in v4',
+};
+
+/** Path of the SVG font package the ranges above come from, inside node_modules. */
+const FONT_PACKAGE = '@mathjax/mathjax-newcm-font';
+
+/**
+ * Font extensions for the TeX packages that ship glyphs of their own.
+ *
+ * MathJax 4 moved these out of the core font: `[tex]/mhchem` and `[tex]/dsfont`
+ * ask for `[fonts]/<package>/svg.js` the first time a document uses them. Left to
+ * the stock `paths.fonts` they came from jsdelivr and nobody noticed, because a
+ * browser with a network renders the formula anyway — `\ce{H2O}` in an export
+ * opened offline would simply have lost its glyphs.
+ *
+ * `bbm` and `bboldx` have published extensions too (838 KB and 662 KB unpacked),
+ * but neither macro set is enabled in `common.js`, so neither is vendored.
+ */
+export const VENDORED_FONT_EXTENSIONS = [
+    '@mathjax/mathjax-dsfont-font-extension',
+    '@mathjax/mathjax-mhchem-font-extension',
+] as const;
+
+/** Directory of the font package holding one file per glyph range. */
+export function fontRangeDirectory(packageRoot: string): string {
+    return path.join(packageRoot, '..', FONT_PACKAGE, 'svg', 'dynamic');
+}
+
+/**
+ * Where the ranges land inside the vendored tree.
+ *
+ * The layout mirrors the npm package because MathJax builds the URL itself:
+ * the font registers `loader.paths['mathjax-newcm'] = '[fonts]/mathjax-newcm-font'`
+ * and asks for `[mathjax-newcm]/svg/dynamic/<range>.js`. Keeping the same shape
+ * means the only thing we have to configure is `paths.fonts`.
+ */
+const FONT_TARGET_PREFIX = 'fonts/mathjax-newcm-font/svg/dynamic';
 
 /**
  * Individual files copied from the package root.
@@ -93,6 +219,22 @@ export function buildVendorPlan(packageRoot: string): VendorPlanEntry[] {
             const relativePath = `${directory}/${file}`;
             entries.push({ relativePath, sourcePath: path.join(packageRoot, directory, ...file.split('/')) });
         }
+    }
+
+    const fontRoot = fontRangeDirectory(packageRoot);
+    for (const range of VENDORED_FONT_RANGES) {
+        entries.push({
+            relativePath: `${FONT_TARGET_PREFIX}/${range}.js`,
+            sourcePath: path.join(fontRoot, `${range}.js`),
+        });
+    }
+
+    for (const extension of VENDORED_FONT_EXTENSIONS) {
+        const name = extension.split('/')[1];
+        entries.push({
+            relativePath: `fonts/${name}/svg.js`,
+            sourcePath: path.join(packageRoot, '..', extension, 'svg.js'),
+        });
     }
 
     entries.push({

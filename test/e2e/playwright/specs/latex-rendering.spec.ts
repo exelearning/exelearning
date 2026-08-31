@@ -31,6 +31,68 @@ import {
 
 const LATEX_FIXTURE_PATH = path.resolve(__dirname, '../../../fixtures/latex.elp');
 
+interface RecordedRequest {
+    url: string;
+    resourceType: string;
+    status: number | null;
+}
+
+/**
+ * Resource kinds MathJax uses to reach a CDN: component scripts, font files, and the
+ * worker's locale fetches. Images are excluded on purpose — the workarea chrome pulls
+ * a Gravatar avatar, and a guard that trips on unrelated page furniture is a guard
+ * people delete.
+ */
+const OFF_ORIGIN_FORBIDDEN_TYPES = ['script', 'font', 'stylesheet', 'xhr', 'fetch'];
+
+/**
+ * Record every HTTP request the page and its frames make.
+ *
+ * MathJax 4 keeps the font's glyph ranges outside the combined component and, left
+ * alone, resolves them through `loader.paths.fonts`, whose stock value is
+ * https://cdn.jsdelivr.net/npm/@mathjax. That is invisible in a browser with a
+ * network: the formula renders and the suite passes, while every exported package
+ * carries an external dependency and drops the glyph offline. The only way to see
+ * it is to watch the wire, so this backs assertNoOffOriginRequests below.
+ */
+function recordRequests(page: Page): RecordedRequest[] {
+    const requests: RecordedRequest[] = [];
+    page.on('request', request => {
+        const url = request.url();
+        if (url.startsWith('http')) requests.push({ url, resourceType: request.resourceType(), status: null });
+    });
+    page.on('response', response => {
+        const entry = requests.find(request => request.url === response.url() && request.status === null);
+        if (entry) entry.status = response.status();
+    });
+    return requests;
+}
+
+/** Fails naming the offending URLs, so a regression says what leaked and where. */
+function assertNoOffOriginRequests(requests: RecordedRequest[], pageUrl: string): void {
+    const origin = new URL(pageUrl).origin;
+    const offOrigin = requests
+        .filter(
+            request =>
+                new URL(request.url).origin !== origin && OFF_ORIGIN_FORBIDDEN_TYPES.includes(request.resourceType),
+        )
+        .map(request => `${request.resourceType} ${request.url}`);
+
+    expect(offOrigin, `code or fonts were loaded from outside the origin: ${offOrigin.join(', ')}`).toEqual([]);
+}
+
+/** Every vendored glyph range that was asked for must have been served. */
+function assertFontRangesServed(requests: RecordedRequest[]): void {
+    const ranges = requests.filter(request => request.url.includes('/svg/dynamic/'));
+    const failed = ranges.filter(request => request.status !== null && request.status >= 400);
+
+    expect(ranges.length, 'no font glyph range was requested; the formulas no longer exercise one').toBeGreaterThan(0);
+    expect(
+        failed.map(request => request.url),
+        'a vendored glyph range was not served',
+    ).toEqual([]);
+}
+
 /**
  * Open the LaTeX ELP fixture and navigate to "Primeras fórmulas" page
  */
@@ -1037,6 +1099,7 @@ test.describe('LaTeX Rendering', () => {
             createProject,
         }) => {
             const page = authenticatedPage;
+            const requests = recordRequests(page);
 
             const projectUuid = await createProject(page, 'MathJax Runtime Render Test');
             await gotoWorkarea(page, projectUuid);
@@ -1062,9 +1125,13 @@ test.describe('LaTeX Rendering', () => {
             // were deliberately dropped from eXeLearning: only \\(...\\) and \\[...\\]
             // are valid, see the decision on PR #2269 closing issue #1990. $$...$$ does
             // not survive the editor round-trip (a pair collapses to a single $).
+            // \mathbb and \mathcal are deliberate: MathJax 4 keeps those glyphs in font
+            // ranges outside the combined component, so they are what actually exercises
+            // the vendored exe_math/fonts tree and would otherwise be fetched from a CDN.
             const contentWithLatex = `
                 <p>Inline: \\(a^2 + b^2 = c^2\\)</p>
                 <p>Display: \\[\\int_0^\\infty e^{-x^2} dx = \\frac{\\sqrt{\\pi}}{2}\\]</p>
+                <p>Variants: \\(\\mathbb{R} \\subset \\mathcal{L}\\)</p>
             `;
             await page.evaluate(content => {
                 const editor = (window as any).tinymce?.activeEditor;
@@ -1126,8 +1193,17 @@ test.describe('LaTeX Rendering', () => {
                 const hasSuperscript = body.querySelector('mjx-msup, g[data-mml-node="msup"]') !== null;
                 const hasFraction = body.querySelector('mjx-mfrac, g[data-mml-node="mfrac"]') !== null;
                 const hasSquareRoot = body.querySelector('mjx-msqrt, g[data-mml-node="msqrt"]') !== null;
+                // Glyph evidence, not container counting. A glyph whose font range is
+                // missing does not blank the formula: MathJax falls back to drawing the
+                // character with an <text> element in the CSS `unknownFamily` (serif),
+                // so the container, the assistive MathML and the text content all still
+                // look right. The presence of <text> is the tell.
+                const glyphPaths = body.querySelectorAll('mjx-container svg path[d]').length;
+                const fallbackGlyphs = body.querySelectorAll('mjx-container svg text').length;
 
                 return {
+                    glyphPaths,
+                    fallbackGlyphs,
                     mjxContainersCount,
                     assistiveMmlCount,
                     preRendered,
@@ -1165,6 +1241,16 @@ test.describe('LaTeX Rendering', () => {
             const hasComplexMath =
                 mathRendered.hasFraction || mathRendered.hasSquareRoot || mathRendered.mjxContainersCount >= 2;
             expect(hasComplexMath).toBe(true);
+
+            // Assert: \mathbb{R} and \mathcal{L} drew real glyph outlines and nothing
+            // fell back to a system font, i.e. the vendored ranges were found.
+            expect(mathRendered.glyphPaths).toBeGreaterThan(0);
+            expect(mathRendered.fallbackGlyphs).toBe(0);
+            // Assert: nothing was fetched from outside the origin while typesetting, and
+            // every glyph range that was asked for came back. Without the vendored
+            // fonts these would be jsdelivr URLs.
+            assertFontRangesServed(requests);
+            assertNoOffOriginRequests(requests, page.url());
         });
 
         test('should NOT corrupt data-latex when same LaTeX appears multiple times', async ({

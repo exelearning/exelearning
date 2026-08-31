@@ -2,7 +2,17 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildVendorPlan, detectDrift, resolvePaths, run, VENDORED_SRE_LOCALES, writeVendoredTree } from './vendor-mathjax';
+import {
+    buildVendorPlan,
+    detectDrift,
+    EXCLUDED_FONT_RANGES,
+    fontRangeDirectory,
+    resolvePaths,
+    run,
+    VENDORED_FONT_RANGES,
+    VENDORED_SRE_LOCALES,
+    writeVendoredTree,
+} from './vendor-mathjax';
 
 const repoRoot = path.resolve(import.meta.dir, '..');
 const { packageRoot, targetRoot } = resolvePaths(repoRoot);
@@ -44,6 +54,39 @@ describe('vendor-mathjax', () => {
             // them on demand. Issue #2259 was exactly these files going stale.
             expect(plan).toContain('a11y/assistive-mml.js');
             expect(plan).toContain('a11y/complexity.js');
+        });
+
+        it('accounts for every glyph range the font package publishes', () => {
+            // MathJax 4 fetches these on demand and the stock loader path is a CDN, so
+            // an unlisted range is an external request from exported content and a
+            // missing glyph offline. Forcing every range into one of the two lists
+            // means a MathJax upgrade that adds one fails here instead of shipping.
+            const published = fs
+                .readdirSync(fontRangeDirectory(packageRoot))
+                .filter((file) => file.endsWith('.js'))
+                .map((file) => path.basename(file, '.js'))
+                .sort();
+            const accounted = [...VENDORED_FONT_RANGES, ...Object.keys(EXCLUDED_FONT_RANGES)].sort();
+
+            expect(accounted).toEqual(published);
+        });
+
+        it('vendors the glyph ranges the TeX variant macros need', () => {
+            const plan = buildVendorPlan(packageRoot).map((entry) => entry.relativePath);
+
+            // \\mathbb, \\mathcal, \\mathfrak, \\mathscr: MathJax 3.2.2 rendered all of
+            // them from its bundled font, so losing them would be a visible regression.
+            for (const range of ['double-struck', 'calligraphic', 'fraktur', 'script']) {
+                expect(plan).toContain(`fonts/mathjax-newcm-font/svg/dynamic/${range}.js`);
+            }
+        });
+
+        it('drops the standalone output jaxes the menu can no longer reach', () => {
+            const plan = buildVendorPlan(packageRoot).map((entry) => entry.relativePath);
+
+            // output/svg is inside the combined component; output/chtml needs a font
+            // package we do not ship and common.js hides its menu entry.
+            expect(plan.some((relativePath) => relativePath.startsWith('output/'))).toBe(false);
         });
 
         it('points every planned file at a file that exists in the package', () => {

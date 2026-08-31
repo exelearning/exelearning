@@ -72,7 +72,12 @@ document.addEventListener("DOMContentLoaded", function() {
 /* MATHJAX */
 window.MathJax = {
     loader: {
-        load: ['[tex]/color', '[tex]/mhchem']
+        load: ['[tex]/color', '[tex]/mhchem'],
+        // Inside eXeLearning this editor loads the vendored bundle, whose font glyph
+        // ranges live next to it; the stock value would send them to jsdelivr. The
+        // standalone build loads MathJax from a CDN that has no such directory, so it
+        // keeps the default. Mirrors public/app/common/common.js.
+        paths: isInExe ? { fonts: '[mathjax]/fonts' } : {}
     },
     tex: {
         inlineMath: [
