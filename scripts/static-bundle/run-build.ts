@@ -24,6 +24,7 @@ import {
     buildIdevicesList,
     buildThemesList,
     compressJsonInDir,
+    copyBundleManifest,
     copyDirRecursive,
     generatePwaManifest,
     generateServiceWorker,
@@ -128,9 +129,13 @@ export async function buildStaticBundle() {
     copyDirRecursive(path.join(projectRoot, 'public/style'), path.join(outputDir, 'style'));
     console.log('  Copied style/');
 
-    // Copy bundles folder (pre-built resource ZIPs)
-    copyDirRecursive(path.join(projectRoot, 'public/bundles'), path.join(outputDir, 'bundles'));
-    console.log('  Copied bundles/');
+    // Ship only the bundle manifest — zips are assembled client-side from loose files.
+    // See copyBundleManifest() for the rationale.
+    if (copyBundleManifest(projectRoot, outputDir)) {
+        console.log('  Copied bundles/manifest.json (zips assembled client-side from loose files)');
+    } else {
+        console.warn('  WARNING: public/bundles/manifest.json not found — run bundle:resources first');
+    }
 
     // Copy files/perm (themes, iDevices, favicon). The one exclusion is the
     // `slide` iDevice's hand-maintained TS source, which sits next to the built

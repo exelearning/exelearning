@@ -18,6 +18,7 @@ import {
     shouldCompressJson,
     gzipBuffer,
     copyDirRecursive,
+    copyBundleManifest,
     COMPRESS_JSON_DIRS,
     LOCALES,
     LOCALE_NAMES,
@@ -1118,5 +1119,58 @@ describe('copyDirRecursive path-relative exclusions', () => {
 
     it('keeps a same-named directory living elsewhere in the tree', () => {
         expect(fs.existsSync(path.join(destDir, 'idevices', 'base', 'other', 'src', 'runtime.js'))).toBe(true);
+    });
+});
+
+describe('copyBundleManifest', () => {
+    function makeTempRoot(): string {
+        return fs.mkdtempSync(path.join(os.tmpdir(), 'exe-bundle-manifest-'));
+    }
+
+    it('copies only manifest.json into dist bundles/, never the *.zip files', () => {
+        const projectRoot = makeTempRoot();
+        const outputDir = makeTempRoot();
+        try {
+            // Source bundles dir with a manifest AND pre-built zips that must NOT ship.
+            const srcBundles = path.join(projectRoot, 'public/bundles');
+            fs.mkdirSync(srcBundles, { recursive: true });
+            fs.writeFileSync(path.join(srcBundles, 'manifest.json'), '{"version":1,"bundles":[]}');
+            fs.writeFileSync(path.join(srcBundles, 'base.zip'), 'PK fake zip');
+            fs.writeFileSync(path.join(srcBundles, 'libs.zip'), 'PK another zip');
+
+            const copied = copyBundleManifest(projectRoot, outputDir);
+
+            expect(copied).toBe(true);
+
+            const distBundles = path.join(outputDir, 'bundles');
+            const shipped = fs.readdirSync(distBundles);
+            // Manifest is present...
+            expect(shipped).toContain('manifest.json');
+            // ...and zero *.zip files leaked into the static distribution.
+            expect(shipped.filter(name => name.endsWith('.zip'))).toEqual([]);
+            expect(shipped).toEqual(['manifest.json']);
+
+            // Manifest content is byte-identical to the source.
+            const copiedContent = fs.readFileSync(path.join(distBundles, 'manifest.json'), 'utf8');
+            expect(copiedContent).toBe('{"version":1,"bundles":[]}');
+        } finally {
+            fs.rmSync(projectRoot, { recursive: true, force: true });
+            fs.rmSync(outputDir, { recursive: true, force: true });
+        }
+    });
+
+    it('returns false and creates no bundles/ dir when the source manifest is missing', () => {
+        const projectRoot = makeTempRoot();
+        const outputDir = makeTempRoot();
+        try {
+            // No public/bundles/manifest.json present — exercises the WARNING branch.
+            const copied = copyBundleManifest(projectRoot, outputDir);
+
+            expect(copied).toBe(false);
+            expect(fs.existsSync(path.join(outputDir, 'bundles'))).toBe(false);
+        } finally {
+            fs.rmSync(projectRoot, { recursive: true, force: true });
+            fs.rmSync(outputDir, { recursive: true, force: true });
+        }
     });
 });
