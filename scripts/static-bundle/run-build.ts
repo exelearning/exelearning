@@ -19,9 +19,10 @@ import fs from 'fs';
 import path from 'path';
 
 import { minifyDistJs } from './minify-dist';
-import { repackTikzJaxInDist } from './repack-tikzjax';
-import { zstdCompress } from './zstd';
 import { STATIC_ONLY_PRUNE_PATHS, computeBundledAppSources, pruneDistPaths, removeEmptyDirs } from './prune-dist';
+import { repackTikzJaxInDist } from './repack-tikzjax';
+import { stripSourceMapReferences } from './strip-source-map-refs';
+import { zstdCompress } from './zstd';
 
 import {
     COMPRESS_JSON_DIRS,
@@ -105,7 +106,7 @@ export async function buildStaticBundle() {
     fs.writeFileSync(path.join(dataDir, 'bundle.json.zst'), bundleJsonZst);
     console.log(
         `  Created data/bundle.json.zst ` +
-        `(${(bundleJson.length / 1024 / 1024).toFixed(2)} MB → ${(bundleJsonZst.length / 1024 / 1024).toFixed(2)} MB)`,
+            `(${(bundleJson.length / 1024 / 1024).toFixed(2)} MB → ${(bundleJsonZst.length / 1024 / 1024).toFixed(2)} MB)`,
     );
 
     // 2. Generate static HTML
@@ -145,8 +146,14 @@ export async function buildStaticBundle() {
         console.warn('  WARNING: public/bundles/manifest.json not found — run bundle:resources first');
     }
 
-    // Copy files/perm (themes, iDevices, favicon)
-    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));
+    // Copy files/perm (themes, iDevices, favicon). The one exclusion is the
+    // `slide` iDevice's hand-maintained TS source, which sits next to the built
+    // JS it actually loads and is never fetched at runtime. Excluded by its
+    // path rather than by the name `src`, so a future runtime directory of that
+    // name elsewhere under files/perm is not dropped with it.
+    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'), [
+        'idevices/base/slide/src',
+    ]);
     console.log('  Copied files/perm/');
 
     // Gzip large iDevice JSON datasets in place (browser decompresses on the fly).
@@ -159,16 +166,14 @@ export async function buildStaticBundle() {
         if (stats.count === 0) {
             throw new Error(
                 `Compression guard failed: no .json files found under ${relDir}. ` +
-                `Update COMPRESS_JSON_DIRS in build-static-bundle.ts or restore the data.`,
+                    `Update COMPRESS_JSON_DIRS in build-static-bundle.ts or restore the data.`,
             );
         }
-        const pct = stats.origTotal > 0
-            ? Math.round((1 - stats.gzTotal / stats.origTotal) * 100)
-            : 0;
+        const pct = stats.origTotal > 0 ? Math.round((1 - stats.gzTotal / stats.origTotal) * 100) : 0;
         console.log(
             `  Gzipped ${stats.count} file(s) in ${relDir}: ` +
-            `${(stats.origTotal / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(stats.gzTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+                `${(stats.origTotal / 1024 / 1024).toFixed(2)} MB → ` +
+                `${(stats.gzTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
         );
         totalCount += stats.count;
         totalOrig += stats.origTotal;
@@ -178,8 +183,8 @@ export async function buildStaticBundle() {
         const pct = Math.round((1 - totalGz / totalOrig) * 100);
         console.log(
             `  Total: ${totalCount} JSON file(s) compressed, ` +
-            `${(totalOrig / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(totalGz / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+                `${(totalOrig / 1024 / 1024).toFixed(2)} MB → ` +
+                `${(totalGz / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
         );
     }
 
@@ -220,13 +225,13 @@ export async function buildStaticBundle() {
     const staticPrune = pruneDistPaths(outputDir, STATIC_ONLY_PRUNE_PATHS);
     console.log(
         `  Removed ${staticPrune.files} server-only/development file(s) ` +
-        `(${(staticPrune.bytes / 1024).toFixed(0)} KB)`,
+            `(${(staticPrune.bytes / 1024).toFixed(0)} KB)`,
     );
     const bundledSources = await computeBundledAppSources(projectRoot);
     const bundledPrune = pruneDistPaths(outputDir, bundledSources);
     console.log(
         `  Removed ${bundledPrune.files} app source(s) already compiled into app.bundle.js ` +
-        `(${(bundledPrune.bytes / 1024).toFixed(0)} KB)`,
+            `(${(bundledPrune.bytes / 1024).toFixed(0)} KB)`,
     );
     const emptyDirs = removeEmptyDirs(outputDir);
     if (emptyDirs > 0) {
@@ -239,7 +244,7 @@ export async function buildStaticBundle() {
     const minifyStats = await minifyDistJs(outputDir);
     console.log(
         `  Minified ${minifyStats.files} file(s): ` +
-        `${(minifyStats.before / 1024).toFixed(0)} KB → ${(minifyStats.after / 1024).toFixed(0)} KB`,
+            `${(minifyStats.before / 1024).toFixed(0)} KB → ${(minifyStats.after / 1024).toFixed(0)} KB`,
     );
 
     // 7. Repack the TikZJax payloads and fonts (see repack-tikzjax.ts)
@@ -247,12 +252,18 @@ export async function buildStaticBundle() {
     const tikzStats = repackTikzJaxInDist(outputDir);
     console.log(
         `  tikzjax.js ${(tikzStats.jsBefore / 1024 / 1024).toFixed(2)} MB → shell ` +
-        `${(tikzStats.jsAfter / 1024 / 1024).toFixed(2)} MB + payload ${(tikzStats.payloadBytes / 1024 / 1024).toFixed(2)} MB`,
+            `${(tikzStats.jsAfter / 1024 / 1024).toFixed(2)} MB + payload ${(tikzStats.payloadBytes / 1024 / 1024).toFixed(2)} MB`,
     );
     console.log(
         `  fonts ${(tikzStats.fontsBefore / 1024 / 1024).toFixed(2)} MB → pack ` +
-        `${(tikzStats.fontPackBytes / 1024 / 1024).toFixed(2)} MB`,
+            `${(tikzStats.fontPackBytes / 1024 / 1024).toFixed(2)} MB`,
     );
+
+    // Drop `sourceMappingURL` announcements after the last rewrite: the
+    // distribution ships no .map files, so every remaining comment is a
+    // guaranteed 404 in DevTools.
+    const strippedMaps = stripSourceMapReferences(outputDir);
+    console.log(`  Stripped ${strippedMaps.files} sourceMappingURL reference(s) (${strippedMaps.bytes} bytes)`);
 
     console.log('\n' + '='.repeat(60));
     console.log('Static distribution built successfully!');
