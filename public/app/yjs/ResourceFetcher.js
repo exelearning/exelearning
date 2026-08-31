@@ -21,8 +21,9 @@
  * 1. Memory cache
  * 2. User themes (Yjs)
  * 3. IndexedDB user themes
- * 4. Local ZIP bundles (from /bundles/ directory)
- * Note: No server bundles or individual file fallback in static mode
+ * 4. IndexedDB resource cache
+ * 5. Loose files assembled on demand (per bundles/manifest.json file lists)
+ * Note: static builds ship loose files only - no pre-built zips, no server API
  *
  * Mode detection uses app.capabilities (derived from RuntimeConfig) as single
  * source of truth. Do NOT check window.__EXE_STATIC_MODE__ directly.
@@ -51,6 +52,41 @@ const THIRD_PARTY_LIBS = new Set([
   'tinymce_5',
   'yjs',
 ]);
+
+// Map file extensions to MIME types for Blobs built from bundle entries or
+// loose files. Shared by extractZipBundle() and assembleBundleFromLoose().
+const RESOURCE_MIME_TYPES = {
+  css: 'text/css',
+  js: 'application/javascript',
+  json: 'application/json',
+  html: 'text/html',
+  htm: 'text/html',
+  xml: 'text/xml',
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  woff: 'font/woff',
+  woff2: 'font/woff2',
+  ttf: 'font/ttf',
+  eot: 'application/vnd.ms-fontobject',
+  mp3: 'audio/mpeg',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  ogg: 'audio/ogg',
+};
+
+/**
+ * Resolve a MIME type from a file path's extension.
+ * @param {string} filePath
+ * @returns {string}
+ */
+function mimeTypeForPath(filePath) {
+  const ext = filePath.split('.').pop()?.toLowerCase() || '';
+  return RESOURCE_MIME_TYPES[ext] || 'application/octet-stream';
+}
 
 class ResourceFetcher {
   constructor() {
@@ -145,9 +181,12 @@ class ResourceFetcher {
     this.isStaticMode = app?.capabilities?.storage?.remote === false;
 
     if (this.isStaticMode) {
-      // Static mode: bundles are loaded from local ZIP files, not server API
+      // Static mode: bundles are not shipped as zips. The client assembles each
+      // bundle from the loose files using the manifest's per-bundle file lists,
+      // then persists to IndexedDB. Load that manifest now.
       this.bundlesAvailable = false;
-      console.log('[ResourceFetcher] Static mode - using local file paths');
+      await this.loadStaticManifest();
+      console.log('[ResourceFetcher] Static mode - assembling bundles from loose files');
       return;
     }
 
@@ -177,7 +216,8 @@ class ResourceFetcher {
         'Memory cache',
         'User themes (Yjs)',
         'IndexedDB user themes',
-        'Local ZIP bundles (/bundles/)',
+        'IndexedDB resource cache',
+        'Loose files (assembled on demand)',
       ];
     }
     return [
@@ -330,33 +370,7 @@ class ResourceFetcher {
         // Skip directories
         if (filePath.endsWith('/')) continue;
 
-        // Determine MIME type from extension
-        const ext = filePath.split('.').pop()?.toLowerCase() || '';
-        const mimeTypes = {
-          css: 'text/css',
-          js: 'application/javascript',
-          json: 'application/json',
-          html: 'text/html',
-          htm: 'text/html',
-          xml: 'text/xml',
-          svg: 'image/svg+xml',
-          png: 'image/png',
-          jpg: 'image/jpeg',
-          jpeg: 'image/jpeg',
-          gif: 'image/gif',
-          webp: 'image/webp',
-          woff: 'font/woff',
-          woff2: 'font/woff2',
-          ttf: 'font/ttf',
-          eot: 'application/vnd.ms-fontobject',
-          mp3: 'audio/mpeg',
-          mp4: 'video/mp4',
-          webm: 'video/webm',
-          ogg: 'audio/ogg',
-        };
-        const mimeType = mimeTypes[ext] || 'application/octet-stream';
-
-        const blob = new Blob([content], { type: mimeType });
+        const blob = new Blob([content], { type: mimeTypeForPath(filePath) });
         files.set(filePath, blob);
       }
 
@@ -392,6 +406,146 @@ class ResourceFetcher {
       console.warn(`[ResourceFetcher] Failed to fetch bundle ${bundleUrl}:`, e);
       return null;
     }
+  }
+
+  // =========================================================================
+  // Static mode: assemble bundles from loose files (no shipped zips)
+  // =========================================================================
+
+  /**
+   * Load the static bundle manifest (per-bundle loose-file lists). Static mode
+   * does not ship `bundles/*.zip`; instead each bundle is assembled on demand
+   * from the loose files listed here. No-op failure leaves manifest null and
+   * callers degrade to empty Maps.
+   * @returns {Promise<void>}
+   */
+  async loadStaticManifest() {
+    try {
+      const manifestUrl = `${this.basePath}/bundles/manifest.json`;
+      const response = await fetch(manifestUrl);
+      if (response.ok) {
+        this.bundleManifest = await response.json();
+      } else {
+        console.warn(`[ResourceFetcher] Static manifest not found: ${manifestUrl} (${response.status})`);
+      }
+    } catch (e) {
+      console.warn('[ResourceFetcher] Failed to load static manifest:', e?.message || e);
+    }
+  }
+
+  /**
+   * Get the loose-file list ({ s: sourceUrl, t: targetPath }[]) for a static
+   * bundle from the manifest.
+   * @param {string} kind - One of: themes, idevices, libs, common, contentCss
+   * @param {string} [name] - Sub-key for grouped bundles (theme/idevice/lib name)
+   * @returns {Array<{s: string, t: string}>}
+   */
+  getStaticFileList(kind, name) {
+    const group = this.bundleManifest?.staticFiles?.[kind];
+    if (!group) return [];
+    if (name != null) {
+      return Array.isArray(group[name]) ? group[name] : [];
+    }
+    return Array.isArray(group) ? group : [];
+  }
+
+  /**
+   * Assemble a bundle in-memory by fetching its loose files in parallel.
+   * Mirrors the Map<targetPath, Blob> shape produced by extractZipBundle(), so
+   * downstream consumers (exporters) are agnostic to the source.
+   * @param {Array<{s: string, t: string}>} entries
+   * @returns {Promise<Map<string, Blob>>}
+   */
+  async assembleBundleFromLoose(entries) {
+    const files = new Map();
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return files;
+    }
+
+    const results = await Promise.all(entries.map(async ({ s, t }) => {
+      try {
+        const response = await fetch(`${this.basePath}/${s}`);
+        if (response.ok) {
+          const buffer = await response.arrayBuffer();
+          return { t, blob: new Blob([buffer], { type: mimeTypeForPath(t) }) };
+        }
+        console.warn(`[ResourceFetcher] Loose asset not found: ${s} (${response.status})`);
+      } catch (e) {
+        console.warn(`[ResourceFetcher] Error fetching loose asset ${s}:`, e?.message || e);
+      }
+      return null;
+    }));
+
+    for (const result of results) {
+      if (result) {
+        files.set(result.t, result.blob);
+      }
+    }
+    return files;
+  }
+
+  /**
+   * Build a downloadable ZIP Blob for a theme from its assembled files.
+   * Works in both modes (fetchTheme routes static→assemble, server→bundle), so
+   * the "download theme" UI keeps a single code path.
+   * @param {string} themeName
+   * @returns {Promise<Blob|null>}
+   */
+  async fetchThemeZipBlob(themeName) {
+    const files = await this.fetchTheme(themeName);
+    if (!files || files.size === 0) {
+      return null;
+    }
+    if (typeof window.fflate === 'undefined') {
+      console.warn('[ResourceFetcher] fflate not available, cannot build theme zip');
+      return null;
+    }
+    const zipData = {};
+    for (const [path, blob] of files) {
+      zipData[path] = new Uint8Array(await blob.arrayBuffer());
+    }
+    const zipped = window.fflate.zipSync(zipData, { level: 6 });
+    return new Blob([zipped], { type: 'application/zip' });
+  }
+
+  /**
+   * Resolve a downloadable ZIP Blob for a theme, choosing the right source for
+   * the current mode. Single source of truth for the "download theme" UI in
+   * both the navbar and the style-manager modal.
+   *
+   * - Static mode (base/blue/... themes): assemble the zip on demand from the
+   *   loose files shipped in the static build (no pre-built zips exist).
+   * - Server mode, site/admin themes: request on-demand zip generation from the
+   *   API endpoint.
+   * - Server mode, base themes: fetch the pre-built /bundles/themes/{dir}.zip.
+   *
+   * @param {Object} theme - Theme with `dirName` and optional `type`
+   *   ('site'|'admin' route through the API; anything else is a base theme).
+   * @returns {Promise<Blob>} the theme zip blob
+   * @throws {Error} when the theme cannot be assembled or fetched
+   */
+  async fetchThemeBundleBlob(theme) {
+    const dirName = theme?.dirName;
+    const isServerTheme = theme?.type === 'site' || theme?.type === 'admin';
+
+    if (this.isStaticMode && !isServerTheme) {
+      // Static builds ship no zips: assemble the theme zip on demand from the
+      // loose files via fetchThemeZipBlob().
+      const blob = await this.fetchThemeZipBlob(dirName);
+      if (!blob) {
+        throw new Error('Theme could not be assembled from loose files');
+      }
+      return blob;
+    }
+
+    const bundleUrl = isServerTheme
+      ? `${this.basePath}/api/resources/bundle/theme/${dirName}`
+      : `${this.basePath}/bundles/themes/${dirName}.zip`;
+    const response = await fetch(bundleUrl);
+    if (!response.ok) {
+      throw new Error(`Theme bundle not found: ${response.status}`);
+    }
+    return await response.blob();
   }
 
   // =========================================================================
@@ -567,8 +721,8 @@ class ResourceFetcher {
   }
 
   /**
-   * Static mode: Fetch theme files from local static bundle ZIP
-   * In static mode, themes are in ${basePath}/bundles/themes/${themeName}.zip
+   * Static mode: assemble theme files from the loose theme directory listed in
+   * the manifest (bundles/manifest.json staticFiles.themes[themeName]).
    * @param {string} themeName
    * @returns {Promise<Map<string, Blob>>}
    */
@@ -594,15 +748,15 @@ class ResourceFetcher {
       );
     }
 
-    const bundleUrl = `${this.basePath}/bundles/themes/${themeName}.zip`;
-    console.log(`[ResourceFetcher] 📦 Static mode: Loading theme '${themeName}' from bundle:`, bundleUrl);
+    const entries = this.getStaticFileList('themes', themeName);
+    console.log(`[ResourceFetcher] 📁 Static mode: Assembling theme '${themeName}' from ${entries.length} loose files`);
 
-    const themeFiles = await this.fetchBundle(bundleUrl);
+    const themeFiles = await this.assembleBundleFromLoose(entries);
 
     if (themeFiles && themeFiles.size > 0) {
-      Logger.log(`[ResourceFetcher] Static theme '${themeName}' loaded from bundle (${themeFiles.size} files)`);
+      Logger.log(`[ResourceFetcher] Static theme '${themeName}' assembled from loose files (${themeFiles.size} files)`);
     } else {
-      console.warn(`[ResourceFetcher] Static theme '${themeName}' bundle not found or empty`);
+      console.warn(`[ResourceFetcher] Static theme '${themeName}' has no files in manifest`);
     }
 
     return themeFiles || new Map();
@@ -699,16 +853,20 @@ class ResourceFetcher {
       }
     }
 
-    // 3. In static mode, fetch from local iDevices bundle
+    // 3. In static mode, assemble the iDevice from its loose files
     if (this.isStaticMode) {
-      console.log(`[ResourceFetcher] 📁 Static mode: Loading iDevice '${ideviceType}' from local bundle`);
+      console.log(`[ResourceFetcher] 📁 Static mode: Assembling iDevice '${ideviceType}' from loose files`);
       const ideviceFiles = await this.fetchIdeviceStatic(ideviceType);
-      if (ideviceFiles.size > 0) {
-        this.cache.set(cacheKey, ideviceFiles);
-        return ideviceFiles;
-      }
-      // In static mode, return empty Map if not found in bundle
+      // Cache in memory even if empty to avoid repeated lookups
       this.cache.set(cacheKey, ideviceFiles);
+      // Persist to IndexedDB so later sessions skip re-fetching the loose files
+      if (ideviceFiles.size > 0 && this.resourceCache) {
+        try {
+          await this.resourceCache.set('idevice', ideviceType, this.version, ideviceFiles);
+        } catch (e) {
+          console.warn('[ResourceFetcher] IndexedDB cache write failed:', e);
+        }
+      }
       return ideviceFiles;
     }
 
@@ -829,52 +987,22 @@ class ResourceFetcher {
   }
 
   /**
-   * Static mode: Fetch iDevice files from local static bundle ZIP
-   * In static mode, all iDevices are in ${basePath}/bundles/idevices.zip
+   * Static mode: Assemble a single iDevice's files from the loose export/
+   * directory listed in the manifest. Unlike the old monolithic idevices.zip
+   * (all 51 iDevices, ~11 MB up front), this fetches only the requested type.
    * @param {string} ideviceType
    * @returns {Promise<Map<string, Blob>>}
    */
   async fetchIdeviceStatic(ideviceType) {
-    // Load the full iDevices bundle if not already loaded
-    if (!this.cache.has('idevices:all')) {
-      const bundleUrl = `${this.basePath}/bundles/idevices.zip`;
-      console.log('[ResourceFetcher] 📦 Static mode: Loading iDevices from bundle:', bundleUrl);
-
-      const allFiles = await this.fetchBundle(bundleUrl);
-
-      if (!allFiles || allFiles.size === 0) {
-        this.cache.set('idevices:all', new Map());
-        console.warn('[ResourceFetcher] Static iDevices bundle not found or empty');
-      } else {
-        // Distribute files to individual iDevice caches
-        const ideviceFilesMap = new Map();
-
-        for (const [filePath, blob] of allFiles) {
-          const parts = filePath.split('/');
-          if (parts.length < 2) continue;
-
-          const ideviceName = parts[0];
-          const relativePath = parts.slice(1).join('/');
-
-          if (!ideviceFilesMap.has(ideviceName)) {
-            ideviceFilesMap.set(ideviceName, new Map());
-          }
-          ideviceFilesMap.get(ideviceName).set(relativePath, blob);
-        }
-
-        // Store in memory cache
-        for (const [ideviceName, files] of ideviceFilesMap) {
-          this.cache.set(`idevice:${ideviceName}`, files);
-        }
-
-        this.cache.set('idevices:all', ideviceFilesMap);
-        Logger.log(`[ResourceFetcher] Static iDevices loaded from bundle (${ideviceFilesMap.size} iDevices)`);
-      }
+    const entries = this.getStaticFileList('idevices', ideviceType);
+    if (entries.length === 0) {
+      console.warn(`[ResourceFetcher] Static iDevice '${ideviceType}' has no files in manifest`);
+      return new Map();
     }
 
-    // Return the specific iDevice from cache
-    const cacheKey = `idevice:${ideviceType}`;
-    return this.cache.get(cacheKey) || new Map();
+    const ideviceFiles = await this.assembleBundleFromLoose(entries);
+    Logger.log(`[ResourceFetcher] Static iDevice '${ideviceType}' assembled from loose files (${ideviceFiles.size} files)`);
+    return ideviceFiles;
   }
 
   /**
@@ -1040,32 +1168,25 @@ class ResourceFetcher {
   }
 
   /**
-   * Static mode: Fetch base libraries from local static bundle ZIPs
-   * In static mode, base libraries are in ${basePath}/bundles/libs.zip
+   * Static mode: assemble base libraries from loose files listed in the
+   * manifest (bundles/manifest.json staticFiles.libs).
    * Content-specific libraries (exe_effects, exe_lightbox, etc.) are loaded
-   * on-demand via fetchLibraryDirectory() from common.zip - same as online version
+   * on-demand via fetchLibraryDirectory() - same as online version.
    * @returns {Promise<Map<string, Blob>>}
    */
   async fetchBaseLibrariesStatic() {
-    const libFiles = new Map();
+    // Assemble base libraries (jQuery, Bootstrap, common.js, etc.) from loose
+    // files. Content-specific libraries (exe_effects, exe_lightbox, ...) are
+    // loaded on-demand via fetchLibraryDirectory() - same as online version.
+    const entries = this.getStaticFileList('libs');
+    console.log(`[ResourceFetcher] 📁 Static mode: Assembling base libraries from ${entries.length} loose files`);
 
-    // Fetch ONLY libs.zip (base libraries)
-    // Content-specific libraries (common.zip) are loaded via fetchLibraryDirectory()
-    // based on content detection - same as online version
-    const libsBundle = await this.fetchBundle(`${this.basePath}/bundles/libs.zip`);
-
-    console.log('[ResourceFetcher] 📦 Static mode: Loading base libraries from libs.zip');
-
-    if (libsBundle) {
-      for (const [path, blob] of libsBundle) {
-        libFiles.set(path, blob);
-      }
-    }
+    const libFiles = await this.assembleBundleFromLoose(entries);
 
     if (libFiles.size > 0) {
-      Logger.log(`[ResourceFetcher] Static base libraries loaded (${libFiles.size} files)`);
+      Logger.log(`[ResourceFetcher] Static base libraries assembled (${libFiles.size} files)`);
     } else {
-      console.warn('[ResourceFetcher] Static base libraries bundle not found or empty');
+      console.warn('[ResourceFetcher] Static base libraries have no files in manifest');
     }
 
     return libFiles;
@@ -1344,32 +1465,36 @@ class ResourceFetcher {
       return this.cache.get(cacheKey);
     }
 
-    // Static mode: Load from common.zip bundle which contains directory-based libraries
+    // Static mode: assemble the library directory from its loose files
     if (this.isStaticMode) {
-      console.log(`[ResourceFetcher] 📁 Static mode: Loading library '${libraryName}' from common bundle`);
-
-      // Ensure common bundle is loaded
-      if (!this.cache.has('common:all')) {
-        const bundleUrl = `${this.basePath}/bundles/common.zip`;
-        console.log('[ResourceFetcher] 📦 Static mode: Loading common bundle:', bundleUrl);
-        const commonFiles = await this.fetchBundle(bundleUrl);
-        this.cache.set('common:all', commonFiles || new Map());
-      }
-
-      // Extract files for this library from the common bundle
-      const commonFiles = this.cache.get('common:all');
-      const libFiles = new Map();
-      const prefix = `${libraryName}/`;
-
-      for (const [filePath, blob] of commonFiles) {
-        if (filePath.startsWith(prefix)) {
-          // Store with full path (e.g., 'exe_lightbox/exe_lightbox.js')
-          libFiles.set(filePath, blob);
+      // Read-through IndexedDB so later sessions skip re-fetching loose files
+      if (this.resourceCache) {
+        try {
+          const cached = await this.resourceCache.get('libdir', libraryName, this.version);
+          if (cached) {
+            this.cache.set(cacheKey, cached);
+            Logger.log(`[ResourceFetcher] Library '${libraryName}' loaded from IndexedDB cache`);
+            return cached;
+          }
+        } catch (e) {
+          console.warn('[ResourceFetcher] IndexedDB cache read failed:', e);
         }
       }
 
+      const entries = this.getStaticFileList('common', libraryName);
+      console.log(`[ResourceFetcher] 📁 Static mode: Assembling library '${libraryName}' from ${entries.length} loose files`);
+      // Keys keep the library-name prefix (e.g. 'exe_lightbox/exe_lightbox.js')
+      const libFiles = await this.assembleBundleFromLoose(entries);
+
       this.cache.set(cacheKey, libFiles);
-      Logger.log(`[ResourceFetcher] Static library '${libraryName}' loaded (${libFiles.size} files)`);
+      if (libFiles.size > 0 && this.resourceCache) {
+        try {
+          await this.resourceCache.set('libdir', libraryName, this.version, libFiles);
+        } catch (e) {
+          console.warn('[ResourceFetcher] IndexedDB cache write failed:', e);
+        }
+      }
+      Logger.log(`[ResourceFetcher] Static library '${libraryName}' assembled (${libFiles.size} files)`);
       return libFiles;
     }
 
@@ -1721,20 +1846,21 @@ class ResourceFetcher {
   }
 
   /**
-   * Static mode: Fetch content CSS files from local static bundle ZIP
-   * In static mode, CSS files are in ${basePath}/bundles/content-css.zip
+   * Static mode: assemble content CSS files from loose files listed in the
+   * manifest (bundles/manifest.json staticFiles.contentCss). Targets keep the
+   * content/css/ prefix the exporters expect.
    * @returns {Promise<Map<string, Blob>>}
    */
   async fetchContentCssStatic() {
-    const bundleUrl = `${this.basePath}/bundles/content-css.zip`;
-    console.log('[ResourceFetcher] 📦 Static mode: Loading content CSS from bundle:', bundleUrl);
+    const entries = this.getStaticFileList('contentCss');
+    console.log(`[ResourceFetcher] 📁 Static mode: Assembling content CSS from ${entries.length} loose files`);
 
-    const cssFiles = await this.fetchBundle(bundleUrl);
+    const cssFiles = await this.assembleBundleFromLoose(entries);
 
     if (cssFiles && cssFiles.size > 0) {
-      Logger.log(`[ResourceFetcher] Static content CSS loaded from bundle (${cssFiles.size} files)`);
+      Logger.log(`[ResourceFetcher] Static content CSS assembled from loose files (${cssFiles.size} files)`);
     } else {
-      console.warn('[ResourceFetcher] Static content CSS bundle not found or empty');
+      console.warn('[ResourceFetcher] Static content CSS has no files in manifest');
     }
 
     return cssFiles || new Map();
