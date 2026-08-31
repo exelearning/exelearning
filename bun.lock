@@ -39,6 +39,7 @@
         "@biomejs/biome": "^2.5.10",
         "@codecov/bundle-analyzer": "^2.0.1",
         "@electron/notarize": "^3.1.1",
+        "@material-symbols/svg-400": "^0.40.2",
         "@playwright/test": "~1.58.2",
         "@types/fs-extra": "^11.0.4",
         "@types/mime-types": "^3.0.1",
@@ -255,6 +256,8 @@
     "@malept/cross-spawn-promise": ["@malept/cross-spawn-promise@2.0.0", "", { "dependencies": { "cross-spawn": "^7.0.1" } }, "sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg=="],
 
     "@malept/flatpak-bundler": ["@malept/flatpak-bundler@0.4.0", "", { "dependencies": { "debug": "^4.1.1", "fs-extra": "^9.0.0", "lodash": "^4.17.15", "tmp-promise": "^3.0.2" } }, "sha512-9QOtNffcOF/c1seMCDnjckb3R9WHcG34tky+FHpNKKCW0wc/scYLwMtO+ptyGUfMW0/b/n4qRiALlaFHc9Oj7Q=="],
+
+    "@material-symbols/svg-400": ["@material-symbols/svg-400@0.40.2", "", {}, "sha512-e2yEgZW/OveVT1sGaZW1kkRWTPVghjsJYWy+vIea3q08Fv2o7FCYv23PESMyr5D4AaAXdM5dKWkF1e6yIm4swA=="],
 
     "@mermaid-js/parser": ["@mermaid-js/parser@1.2.1", "", { "dependencies": { "@chevrotain/types": "~11.1.2" } }, "sha512-n12NohV3mrUyUL2o93IgG/ifeW9FTyeJn3zDxkhwa8MJ9Fxg3HQMlA3RiGmD/3UnJvheztkjjQAjA2T4LmUcpw=="],
 

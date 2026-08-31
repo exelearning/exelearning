@@ -109,6 +109,11 @@ body#tinymce {
     outline-offset: 2px;
 }
 
+/* General icons (Material Symbols) */
+.exe-content {
+    --exe-icon-color: #0d2953;
+}
+
 /* Fix some issues... */
 /* Quote With Authorship */
 .exe-content .styled-qc {
@@ -250,6 +255,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 .exe-content .box-icon {
     float: left;
     margin-right: 10px;
+    color: var(--exe-icon-color, #0d2953);
 }
 .exe-content .box-head.no-icon {
     padding-left: 20px;
@@ -259,6 +265,21 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     height: auto;
     scale: 0.9;
 }
+/* General icons (Material Symbols) */
+.exe-content .box-icon .exe-material-icon {
+    width: 50px;
+    height: 50px;
+    scale: 0.9;
+    background-color: currentColor;
+    -webkit-mask-image: var(--exe-material-icon-url);
+    mask-image: var(--exe-material-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
 /* iDevice icons in the application */
 #node-content-container.exe-content .box-head .exe-icon img {
     max-width: none;
@@ -266,6 +287,39 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
     width: auto;
     scale: 1;
     margin-right: -10px;
+}
+/* General icons (Material Symbols) */
+#node-content-container.exe-content .box-head .exe-icon .exe-material-icon {
+    width: 45px;
+    height: 45px;
+    scale: 1;
+    margin-right: -10px;
+    background-color: currentColor;
+    -webkit-mask-image: var(--exe-material-icon-url);
+    mask-image: var(--exe-material-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
+/* General icons (Material Symbols) */
+.exe-export .box-icon .exe-material-icon {
+    display: block;
+    float: left;
+    margin-right: 10px;
+    /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons */
+    transform: scale(1.2);
+    background-color: currentColor;
+    -webkit-mask-image: var(--exe-material-icon-url);
+    mask-image: var(--exe-material-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
 }
 .exe-export .box-title {
     padding-top: 12px;

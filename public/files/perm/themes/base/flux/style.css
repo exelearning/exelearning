@@ -384,6 +384,15 @@ body#tinymce {
     font-weight: 400;
 }
 
+/* General icons (Material Symbols) */
+.exe-content {
+    --exe-icon-color: #eda900;
+}
+
+.exe-content .box-head .box-icon {
+    color: var(--exe-icon-color, #eda900);
+}
+
 /* Teacher mode visual indicator */
 .exe-content article.box.teacher-only {
     border: 3px solid #FC0;
@@ -797,6 +806,26 @@ button#siteNavToggler {
 .exe-export .box-icon img {
     width: 40px;
     height: auto;
+}
+
+/* General icons (Material Symbols) */
+.exe-export .box-icon .exe-material-icon {
+    display: block;
+    float: left;
+    margin-right: 10px;
+    width: 40px;
+    height: 40px;
+    background-color: currentColor;
+    -webkit-mask-image: var(--exe-material-icon-url);
+    mask-image: var(--exe-material-icon-url);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons */
+    transform: scale(1.2);
 }
 
 .exe-export .box-title {
