@@ -93,9 +93,10 @@ window.MathJax = window.MathJax || (function() {
 
     // MathJax 4 makes five of these usable that the 3.2.2 bundle could not load:
     // begingroup, colorv2, dsfont, texhtml and units.
-    // 'bbm' and 'bboldx' stay out: both need their own font packages, which MathJax
-    // does not publish for the mathjax-newcm font, so their macros render as
-    // undefined-macro errors rather than glyphs.
+    // 'bbm' and 'bboldx' stay out on weight, not availability: MathJax does publish
+    // @mathjax/mathjax-{bbm,bboldx}-font-extension (svg.js is 206 KB and 141 KB), so
+    // enabling them is a matter of vendoring two more files the way mhchem and dsfont
+    // are. Nobody has asked for either macro set; revisit if someone does.
     var externalExtensions = [
         'amscd', 'bbox', 'begingroup', 'boldsymbol', 'braket', 'bussproofs',
         'cancel', 'cases', 'centernot', 'color', 'colortbl', 'colorv2', 'dsfont',
