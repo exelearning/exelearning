@@ -390,4 +390,192 @@ describe('geogebra-activity iDevice (export)', () => {
       $exeDevices.iDevice.gamification.report = previousReport;
     }
   });
+
+  // The options literal used to declare msgYouScore twice, from two different
+  // sources. The later one wins in JavaScript, so the effective value has
+  // always come from the evaluation messages; this pins that, because dropping
+  // the wrong one of the pair would have changed the label silently.
+  describe('getOptions', () => {
+    it('takes msgYouScore from the evaluation messages, not the SCORM ones', () => {
+      $geogebraactivity.messages = ['m0', 'm1', 'm2', 'evaluation-label'];
+
+      const options = $geogebraactivity.getOptions(
+        'a0',
+        100,
+        ['scorm0', 'scorm-label', 'scorm2', 'scorm3', 'scorm4'],
+        ''
+      );
+
+      expect(options.msgs.msgYouScore).toBe('evaluation-label');
+    });
+
+    it('carries the applet suffix so the score is read from the right one', () => {
+      $geogebraactivity.messages = ['', '', '', ''];
+
+      const options = $geogebraactivity.getOptions('b1', 100, [], '');
+
+      expect(options.appletSuffix).toBe('b1');
+      expect(options.main).toBe('auto-geogebra-b1');
+    });
+  });
+
+  // A page can carry several GeoGebra activities. The engine is loaded once
+  // and publishes a single global `ggbApplet`, so reading the score from it
+  // cannot tell the applets apart: with two scored activities both buttons
+  // read the same construction.
+  describe('reading the score from the right applet', () => {
+    function fakeApplet(values) {
+      return {
+        exists: name => Object.prototype.hasOwnProperty.call(values, name),
+        getValue: name => values[name],
+      };
+    }
+
+    function scored(raw) {
+      return fakeApplet({
+        SCORMRawScore: raw,
+        SCORMMinScore: 0,
+        SCORMMaxScore: 100,
+      });
+    }
+
+    afterEach(() => {
+      delete global.ggbApplet;
+    });
+
+    it('captures each applet under its own suffix as it loads', () => {
+      const previousGGBApplet = global.GGBApplet;
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const captured = [];
+
+      vi.useFakeTimers();
+      global.GGBApplet = vi.fn(function (parameters) {
+        captured.push(parameters);
+        this.inject = vi.fn();
+      });
+      $exeDevices.iDevice.gamification.report = { updateEvaluationIcon: vi.fn() };
+      document.body.innerHTML = `
+        <div class="idevice_body geogebra-activityIdevice">
+          <div id="geogebra-1" class="idevice_node geogebra-activity">
+            <div class="auto-geogebra auto-geogebra-AAA"></div>
+          </div>
+        </div>`;
+
+      try {
+        const activity = document.querySelector('.auto-geogebra');
+        $geogebraactivity.addActivity(
+          activity,
+          'AAA',
+          activity.className.split(' '),
+          0,
+        );
+        vi.runAllTimers();
+
+        // GeoGebra hands the applet its own API through this callback.
+        const api = scored(50);
+        captured[0].appletOnLoad(api);
+
+        expect($geogebraactivity.applets.AAA0).toBe(api);
+      } finally {
+        vi.useRealTimers();
+        global.GGBApplet = previousGGBApplet;
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+    });
+
+    // The defect: two scored activities on one page must not share a score.
+    it('gives each activity the score of its own construction', () => {
+      $geogebraactivity.applets = { a0: scored(30), b1: scored(90) };
+      global.ggbApplet = scored(30);
+
+      expect(
+        $geogebraactivity.getAppletScore({ appletSuffix: 'a0' })
+      ).toBe('3.00');
+      expect(
+        $geogebraactivity.getAppletScore({ appletSuffix: 'b1' })
+      ).toBe('9.00');
+    });
+
+    // A page with one activity, or an applet that loaded without firing the
+    // callback, must keep behaving exactly as before.
+    it('falls back to the global applet when none was captured', () => {
+      $geogebraactivity.applets = {};
+      global.ggbApplet = scored(70);
+
+      expect($geogebraactivity.getApplet({ appletSuffix: 'x0' })).toBe(
+        global.ggbApplet
+      );
+      expect($geogebraactivity.getAppletScore({ appletSuffix: 'x0' })).toBe(
+        '7.00'
+      );
+    });
+
+    it('answers null when there is no applet at all', () => {
+      $geogebraactivity.applets = {};
+
+      expect($geogebraactivity.getApplet({ appletSuffix: 'x0' })).toBeNull();
+    });
+  });
+
+  // getValue() used to be read and formatted before exists() was checked, so a
+  // construction without the SCORM variables threw on undefined.toFixed() —
+  // and since the click handler runs sendScore() then saveEvaluation(), the
+  // SCORM score was sent and the local record then never saved.
+  describe('a construction without the SCORM variables', () => {
+    afterEach(() => {
+      delete global.ggbApplet;
+    });
+
+    it('scores 0 instead of throwing', () => {
+      $geogebraactivity.applets = {
+        z0: { exists: () => false, getValue: () => undefined },
+      };
+
+      expect(() =>
+        $geogebraactivity.getAppletScore({ appletSuffix: 'z0' })
+      ).not.toThrow();
+      expect($geogebraactivity.getAppletScore({ appletSuffix: 'z0' })).toBe(
+        '0.00'
+      );
+    });
+
+    it('lets saveEvaluation record the attempt', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const saveEvaluation = vi.fn();
+      $exeDevices.iDevice.gamification.report = { saveEvaluation };
+      $geogebraactivity.applets = {
+        z0: { exists: () => false, getValue: () => undefined },
+      };
+
+      try {
+        expect(() =>
+          $geogebraactivity.saveEvaluation({
+            appletSuffix: 'z0',
+            isInExe: false,
+          })
+        ).not.toThrow();
+        expect(saveEvaluation).toHaveBeenCalledWith(
+          expect.objectContaining({ scorerp: '0.00' }),
+          false
+        );
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+    });
+
+    // A construction whose min and max are the same would divide by zero and
+    // report NaN to the LMS.
+    it('scores 0 for a degenerate score range', () => {
+      $geogebraactivity.applets = {
+        z0: {
+          exists: () => true,
+          getValue: name => (name === 'SCORMRawScore' ? 5 : 10),
+        },
+      };
+
+      expect($geogebraactivity.getAppletScore({ appletSuffix: 'z0' })).toBe(
+        '0.00'
+      );
+    });
+  });
 });

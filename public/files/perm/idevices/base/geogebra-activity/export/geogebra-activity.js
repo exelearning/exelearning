@@ -21,6 +21,19 @@ var $geogebraactivity = {
     idevicePath: '',
     isInExe: false,
     optionsScorm: [],
+    /**
+     * GeoGebra API object per activity, keyed by its suffix.
+     *
+     * A page can carry several GeoGebra activities: the engine
+     * (`deployggb.js`) is loaded once and `enable()` then injects one
+     * independent applet per activity. GeoGebra publishes a single global
+     * `ggbApplet`, so reading the score from it cannot tell those applets
+     * apart — with two scored activities both buttons would read the same
+     * construction. Each applet's own API is captured here as it finishes
+     * loading, and the score is read from the one that belongs to the button
+     * the learner pressed.
+     */
+    applets: {},
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
 
@@ -338,6 +351,12 @@ var $geogebraactivity = {
             playButton: c.indexOf('playButton') > -1 ? true : false,
             language: lang,
             borderColor: borderColor,
+            // Capture this applet's own API as it finishes loading, so the
+            // score is read from the right construction when the page carries
+            // more than one activity. See $geogebraactivity.applets.
+            appletOnLoad: function (api) {
+                $geogebraactivity.applets[sfx] = api;
+            },
             // use this instead of ggbBase64 to load a material from geogebra.org
             material_id: id,
         };
@@ -458,14 +477,14 @@ var $geogebraactivity = {
         let options = {
             id: $geogebraactivity.getIdeviceID(sfx),
             main: 'auto-geogebra-' + sfx,
+            // Which applet this button reads its score from (see getApplet).
+            appletSuffix: sfx,
             scorerp: 0,
             weighted: weighted ?? 100,
             evaluation: evaluationID.length !== 0,
             evaluationID: evaluationID,
             isInExe: this.isInExe,
-            main: 'auto-geogebra-' + sfx,
             idevice: 'geogebra-activityIdevice',
-            scorerp: 0,
             idevicePath: this.idevicePath,
             textButtonScorm: $geogebraactivity.messages[3],
             isScorm: 2,
@@ -473,10 +492,6 @@ var $geogebraactivity = {
                 msgScoreScorm:
                     typeof messagesScorm[0] != 'undefined'
                         ? messagesScorm[0]
-                        : '',
-                msgYouScore:
-                    typeof messagesScorm[1] != 'undefined'
-                        ? messagesScorm[1]
                         : '',
                 msgScore:
                     typeof messagesScorm[2] != 'undefined'
@@ -490,14 +505,6 @@ var $geogebraactivity = {
                     messagesScorm[4] != 'undefined' ? messagesScorm[4] : '',
                 msgOnlySaveScore: 'You can only save the score once!',
                 msgOnlySave: 'You can only save once',
-                msgOnlySaveAuto:
-                    'Your score will be saved after each question. You can only play once.',
-                msgSaveAuto:
-                    'Your score will be automatically saved after each question.',
-                msgSeveralScore:
-                    'You can save the score as many times as you want',
-                msgPlaySeveralTimes:
-                    'You can do this activity as many times as you want',
                 msgOnlySaveAuto:
                     'Your score will be saved after each question. You can only play once.',
                 msgSaveAuto:
@@ -527,25 +534,67 @@ var $geogebraactivity = {
         return options;
     },
 
-    saveEvaluation: function (options) {
-        const mOptions = JSON.parse(JSON.stringify(options));
+    /**
+     * The GeoGebra API this activity's score must be read from.
+     *
+     * Falls back to the global `ggbApplet` when no per-activity API was
+     * captured — a page with a single activity behaves exactly as before, and
+     * so does one whose applet loaded without firing `appletOnLoad`.
+     *
+     * @param {Object} options The activity options (carries appletSuffix).
+     * @returns {Object|null} The applet API, or null when there is none.
+     */
+    getApplet: function (options) {
+        const suffix = options && options.appletSuffix;
+        if (suffix !== undefined && $geogebraactivity.applets[suffix]) {
+            return $geogebraactivity.applets[suffix];
+        }
+        return typeof ggbApplet !== 'undefined' ? ggbApplet : null;
+    },
+
+    /**
+     * Read the activity's score from its own applet, on the 0-10 scale.
+     *
+     * Answers 0 unless the construction defines all three SCORM variables:
+     * reading them first and formatting afterwards used to be the other way
+     * round, so a construction without them threw on `undefined.toFixed()`
+     * and took down the caller.
+     *
+     * @param {Object} options The activity options.
+     * @returns {string} The score, with two decimals.
+     */
+    getAppletScore: function (options) {
+        const applet = $geogebraactivity.getApplet(options);
         const SCORE_RAW = 'SCORMRawScore';
         const SCORE_MIN = 'SCORMMinScore';
         const SCORE_MAX = 'SCORMMaxScore';
-        let score = ggbApplet.getValue(SCORE_RAW);
-        score = score.toFixed(2);
+
         if (
-            ggbApplet.exists(SCORE_RAW) &&
-            ggbApplet.exists(SCORE_MIN) &&
-            ggbApplet.exists(SCORE_MAX)
+            !applet ||
+            !applet.exists(SCORE_RAW) ||
+            !applet.exists(SCORE_MIN) ||
+            !applet.exists(SCORE_MAX)
         ) {
-            let score_raw = ggbApplet.getValue(SCORE_RAW),
-                score_min = ggbApplet.getValue(SCORE_MIN),
-                score_max = ggbApplet.getValue(SCORE_MAX),
-                score_scaled =
-                    (score_raw - score_min) / (score_max - score_min);
-            score = (score_scaled * 10).toFixed(2);
+            return (0).toFixed(2);
         }
+
+        const score_raw = applet.getValue(SCORE_RAW),
+            score_min = applet.getValue(SCORE_MIN),
+            score_max = applet.getValue(SCORE_MAX);
+        // A degenerate range would divide by zero and report NaN to the LMS.
+        if (score_max === score_min) {
+            return (0).toFixed(2);
+        }
+
+        return (
+            ((score_raw - score_min) / (score_max - score_min)) *
+            10
+        ).toFixed(2);
+    },
+
+    saveEvaluation: function (options) {
+        const mOptions = JSON.parse(JSON.stringify(options));
+        const score = $geogebraactivity.getAppletScore(options);
 
         mOptions.scorerp = score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
@@ -562,25 +611,8 @@ var $geogebraactivity = {
         mOptions.gameStarted = true;
         pipwerks.SCORM.SetScoreMax('100');
         pipwerks.SCORM.SetScoreMin('0');
-        const SCORE_RAW = 'SCORMRawScore';
-        const SCORE_MIN = 'SCORMMinScore';
-        const SCORE_MAX = 'SCORMMaxScore';
 
-        let score = 0;
-        if (
-            ggbApplet.exists(SCORE_RAW) &&
-            ggbApplet.exists(SCORE_MIN) &&
-            ggbApplet.exists(SCORE_MAX)
-        ) {
-            let score_raw = ggbApplet.getValue(SCORE_RAW),
-                score_min = ggbApplet.getValue(SCORE_MIN),
-                score_max = ggbApplet.getValue(SCORE_MAX),
-                score_scaled =
-                    (score_raw - score_min) / (score_max - score_min);
-            score = (score_scaled * 10).toFixed(2);
-        }
-
-        mOptions.scorerp = score;
+        mOptions.scorerp = $geogebraactivity.getAppletScore(options);
 
         mOptions.previousScore = $geogebraactivity.previousScore || '';
         mOptions.userName = $geogebraactivity.userName || '';
