@@ -2458,6 +2458,72 @@ describe('common.js $exeDevices', () => {
       activities.clear();
     });
 
+    // Moodle refreshes its course-structure menu on LMSCommit and nowhere else
+    // (mod/scorm/datamodels/scorm_12.js LMSCommit -> connectPrereqCallback),
+    // and its own autocommit ships disabled and is a 60-second timer when on.
+    // Without an explicit commit here the mark the learner just earned is
+    // absent from the index until they leave the page.
+    describe('committing a scored interaction', () => {
+      it('commits so the LMS index picks the new mark up', () => {
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        getScorm().updateActivity(game(), {}, true);
+
+        expect(api.callNames()).toContain('LMSCommit');
+      });
+
+      it('commits after the writes, never before them', () => {
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        getScorm().updateActivity(game(), {}, true);
+
+        const scoreWrite = api.calls.findIndex(
+          call => call.method === 'LMSSetValue' && call.args[0] === 'cmi.core.score.raw'
+        );
+        const commit = api.calls.findIndex(call => call.method === 'LMSCommit');
+        expect(scoreWrite).toBeGreaterThanOrEqual(0);
+        expect(commit).toBeGreaterThan(scoreWrite);
+      });
+
+      // iDevices register on jQuery ready, before loadPage(). client.commit()
+      // refuses without a session but warns while doing it, which is the noise
+      // #2209 removed from reconcilePendingActivities — do not reintroduce it.
+      //
+      // The single warning asserted here is the pre-existing one from
+      // persistActivities' setValue (exe-scorm12-client.js:336), unrelated to
+      // the commit; pinning the count is what would catch a second one
+      // appearing because the isActive() guard was dropped.
+      it('neither commits nor adds a warning before the session is open', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        getScorm().updateActivity(game(), {}, true);
+
+        expect(api.callNames()).not.toContain('LMSCommit');
+        expect(warn).toHaveBeenCalledTimes(1);
+      });
+
+      // The commit persists what was written; it decides nothing. LMSCommit
+      // runs StoreData(cmi, false), which promotes no status.
+      it('leaves a page with pending required work incomplete', () => {
+        getScorm().reportActivity(game(), { total: 4 });
+        getScorm().reportActivity(game({ ideviceId: 'quiz-2', ideviceNumber: 2 }), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        getScorm().updateActivity(game(), {}, true);
+
+        expect(api.callNames()).toContain('LMSCommit');
+        expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+      });
+    });
+
     it('registering before the session opens is silent, and reconciles once it is open', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -2575,6 +2641,9 @@ describe('common.js $exeDevices', () => {
       expect(api.data['cmi.suspend_data']).toBe('1. "Quiz"; Score: 90%; Weight: 1%');
       expect(api.data['cmi.core.score.raw']).toBe('90');
       expect(api.data['cmi.core.lesson_status']).toBe('passed');
+      // The legacy path needs the same commit as the runtime one, and for the
+      // same reason: Moodle refreshes its index on LMSCommit alone.
+      expect(api.callNames()).toContain('LMSCommit');
     });
 
     it('showFinalScore parses the legacy cmi.suspend_data when given no lmsData and there is no registry', () => {

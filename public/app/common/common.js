@@ -1526,6 +1526,37 @@ var $exeDevices = {
                             $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry(),
                             game
                         );
+                        // Everything above is LMSSetValue, which only reaches the
+                        // LMS's in-memory data model. Moodle refreshes its
+                        // course-structure menu on LMSCommit and nowhere else
+                        // (mod/scorm/datamodels/scorm_12.js LMSCommit ->
+                        // connectPrereqCallback, unless hidetoc === '3'), so without
+                        // this the mark the learner has just earned is not shown in
+                        // the index for the rest of the visit — the runtime's own
+                        // commits happen when the page is hidden or left. Moodle's
+                        // autocommit is no substitute: it ships disabled and, when
+                        // enabled, is a 60-second timer.
+                        //
+                        // Committing mid-activity is safe: LMSCommit runs
+                        // StoreData(cmi, false), and with storetotaltime false it
+                        // neither promotes the status nor applies the mastery_score
+                        // override. It persists what was written; it decides nothing.
+                        //
+                        // Branch on the capability, not the runtime object, for the
+                        // same reason showFinalScore does: the Moodle plugin injects
+                        // its own vendored copy of the runtime, which may come from a
+                        // different release. And check isActive() first — iDevices
+                        // register on jQuery ready, before loadPage(), and commit()
+                        // warns when there is no session (see
+                        // reconcilePendingActivities for the same guard).
+                        if (
+                            runtime.client &&
+                            typeof runtime.client.commit === 'function' &&
+                            typeof runtime.client.isActive === 'function' &&
+                            runtime.client.isActive()
+                        ) {
+                            runtime.client.commit();
+                        }
                         return;
                     }
 
@@ -1544,6 +1575,14 @@ var $exeDevices = {
 
                     $exeDevices.iDevice.gamification.scorm.showFinalScore(lmsData, game);
 
+                    // Same reason as the SCORM 1.2 branch above: the writes only
+                    // reach the LMS's in-memory data model, and Moodle refreshes its
+                    // course-structure menu on LMSCommit alone. Without this the
+                    // learner's new mark stays out of the index until the page is
+                    // left.
+                    if (typeof pipwerks.SCORM.save === 'function') {
+                        pipwerks.SCORM.save();
+                    }
                 },
 
                 showFinalScore: function (lmsData, game) {
