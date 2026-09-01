@@ -155,4 +155,60 @@ describe('puzzle iDevice export', () => {
       expect($eXePuzzle.idevicePath).toBe('');
     });
   });
+
+  // common.js derives completion from `gameOver === true || auto !== true`, and
+  // updateScore reports automatically, so without the flag a page carrying a
+  // puzzle stayed `incomplete` in the LMS however well the learner did.
+  describe('completion on the last puzzle', () => {
+    function setupSolved(overrides) {
+      document.body.innerHTML = `<div id="pzlImagePuzzle-0"></div>`;
+      $eXePuzzle.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameOver: false,
+          active: 2,
+          puzzlesGame: [{}, {}, {}],
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXePuzzle, 'updateScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('marks the activity finished when the last puzzle is solved', () => {
+      setupSolved({ active: 2, puzzlesGame: [{}, {}, {}] });
+
+      $eXePuzzle.showCompletedWindows(0);
+
+      expect($eXePuzzle.options[0].gameOver).toBe(true);
+    });
+
+    // Solving an intermediate puzzle must not close the attempt: the page would
+    // go to passed/failed while the learner is still playing.
+    it('leaves the activity unfinished while puzzles remain', () => {
+      setupSolved({ active: 0, puzzlesGame: [{}, {}, {}] });
+
+      $eXePuzzle.showCompletedWindows(0);
+
+      expect($eXePuzzle.options[0].gameOver).toBe(false);
+    });
+
+    it('raises the flag before it reports, so the two cannot disagree', () => {
+      setupSolved({ active: 2, puzzlesGame: [{}, {}, {}] });
+      let flagWhenReported;
+      $eXePuzzle.updateScore.mockImplementation(() => {
+        flagWhenReported = $eXePuzzle.options[0].gameOver;
+      });
+
+      $eXePuzzle.showCompletedWindows(0);
+
+      expect(flagWhenReported).toBe(true);
+    });
+  });
 });

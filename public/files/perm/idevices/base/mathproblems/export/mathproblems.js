@@ -1192,6 +1192,15 @@ var $eXeMathProblems = {
         message = $eXeMathProblems.getMessageAnswer(correctAnswer, instance);
         mOptions.score = (mOptions.hits / mOptions.numberQuestions) * 10;
 
+        // No questions left means this answer ends the activity. Raise the flag
+        // before the report below, so the one carrying the final score is the
+        // one that tells the LMS the activity is finished: common.js derives
+        // completion from `gameOver === true || auto !== true`, and the gameOver()
+        // that runs after the reveal delay comes too late for this send.
+        if (pendientes <= 0) {
+            mOptions.gameOver = true;
+        }
+
         if (mOptions.isScorm === 1) {
             if (
                 mOptions.scorm.repeatActivity ||

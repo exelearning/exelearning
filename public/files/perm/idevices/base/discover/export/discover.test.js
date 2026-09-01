@@ -199,4 +199,72 @@ describe('discover iDevice export', () => {
       expect($eXeDescubre.options).toEqual([]);
     });
   });
+
+  // common.js derives completion from `gameOver === true || auto !== true`, and
+  // the report below is automatic, so without the flag a page carrying a
+  // discover stayed `incomplete` in the LMS however well the learner did.
+  describe('completion when every group is discovered', () => {
+    function setupPair(overrides) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreMultimedia-0"></div>
+          <div id="descubrePShowClue-0"></div>
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameOver: false,
+          hits: 3,
+          errors: 0,
+          selecteds: [0],
+          activeQuestion: 0,
+          wordsGame: [{}, {}, {}],
+          obtainedClue: false,
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeDescubre, 'updateCovers').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'updateScore').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'saveEvaluation').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('marks the activity finished on the last group', () => {
+      setupPair({ hits: 3, wordsGame: [{}, {}, {}] });
+
+      $eXeDescubre.correctPair(0, 0);
+
+      expect($eXeDescubre.options[0].gameOver).toBe(true);
+    });
+
+    // An intermediate pair must not close the attempt.
+    it('leaves the activity unfinished while groups remain', () => {
+      setupPair({ hits: 1, wordsGame: [{}, {}, {}] });
+
+      $eXeDescubre.correctPair(0, 0);
+
+      expect($eXeDescubre.options[0].gameOver).toBe(false);
+    });
+
+    it('raises the flag before it reports, so the two cannot disagree', () => {
+      setupPair({ hits: 3, wordsGame: [{}, {}, {}] });
+      let flagWhenReported;
+      $eXeDescubre.sendScore.mockImplementation(() => {
+        flagWhenReported = $eXeDescubre.options[0].gameOver;
+      });
+
+      $eXeDescubre.correctPair(0, 0);
+
+      expect(flagWhenReported).toBe(true);
+    });
+  });
 });

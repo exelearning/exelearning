@@ -1338,6 +1338,13 @@ var $eXeDescubre = {
         mOptions.selecteds = [];
         $eXeDescubre.updateCovers(instance, true);
         $eXeDescubre.updateScore(true, instance);
+        // Every group discovered ends the activity. Raise the flag now, so the
+        // report below carries the completion and leaving during the reveal
+        // that precedes gameOver() still records the page as finished rather
+        // than `incomplete`.
+        if (mOptions.hits >= mOptions.wordsGame.length) {
+            mOptions.gameOver = true;
+        }
         const percentageHits =
             (mOptions.hits / mOptions.wordsGame.length) * 100;
         if (

@@ -656,6 +656,14 @@ var $eXePuzzle = {
         $('#pzlImagePuzzle-' + instance)
             .find('.PZLP-Completed')
             .fadeIn();
+        // Solving the last puzzle ends the activity. Raise the flag before the
+        // report updateScore is about to make, so it carries the completion:
+        // common.js derives it from `gameOver === true || auto !== true`, and
+        // leaving before the next/close button would otherwise record the page
+        // as `incomplete` however well the learner did.
+        if (mOptions.active >= mOptions.puzzlesGame.length - 1) {
+            mOptions.gameOver = true;
+        }
         $eXePuzzle.updateScore(true, instance);
     },
 
