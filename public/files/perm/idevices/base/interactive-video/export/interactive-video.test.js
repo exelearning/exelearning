@@ -560,4 +560,350 @@ describe('interactive-video iDevice export', () => {
       expect(typeof $interactivevideo.controls.seek).toBe('function');
     });
   });
+
+  // updateScore() reports on each element the learner resolves, but nothing
+  // ever declared the activity complete: common.js derives completion from
+  // `gameOver === true || auto !== true`, so an activity in automatic mode left
+  // its page `incomplete` in the LMS however well the learner did.
+  describe('finalizeScorm', () => {
+    beforeEach(() => {
+      $interactivevideo.mOptions = { gameOver: false };
+      vi.spyOn($interactivevideo, 'sendScore').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('marks the activity finished and reports in automatic mode', () => {
+      global.InteractiveVideo.scorm = { isScorm: 1 };
+
+      $interactivevideo.finalizeScorm();
+
+      expect($interactivevideo.mOptions.gameOver).toBe(true);
+      expect($interactivevideo.sendScore).toHaveBeenCalledWith(true);
+    });
+
+    // Manual mode has its own save button; the flag rides on its next send.
+    it('marks the activity finished without reporting in manual mode', () => {
+      global.InteractiveVideo.scorm = { isScorm: 2 };
+
+      $interactivevideo.finalizeScorm();
+
+      expect($interactivevideo.mOptions.gameOver).toBe(true);
+      expect($interactivevideo.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the activity is not scored', () => {
+      global.InteractiveVideo.scorm = { isScorm: 0 };
+
+      $interactivevideo.finalizeScorm();
+
+      expect($interactivevideo.mOptions.gameOver).toBe(false);
+      expect($interactivevideo.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when there is no SCORM configuration at all', () => {
+      global.InteractiveVideo.scorm = undefined;
+
+      expect(() => $interactivevideo.finalizeScorm()).not.toThrow();
+      expect($interactivevideo.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
+  // The shared SCORM markup that common.js renders carries classes, never ids.
+  // This iDevice reached it through `#interactiveSendScore` and
+  // `#interactiveRepeatActivity`, which match no element anywhere.
+  describe('reaching the shared SCORM markup', () => {
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+      document.body.innerHTML = `
+        <div class="idevice_node interactive-video" id="interactive-video-1">
+          <div class="exe-interactive-video">
+            <input type="button" class="Games-SendScore" />
+            <span class="Games-RepeatActivity"></span>
+          </div>
+        </div>`;
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('getIdeviceRoot finds the container that holds them', () => {
+      const root = $interactivevideo.getIdeviceRoot();
+
+      expect(root.length).toBe(1);
+      expect(root.find('.Games-SendScore').length).toBe(1);
+      expect(root.find('.Games-RepeatActivity').length).toBe(1);
+    });
+
+    // Binding by id matched nothing, so in manual mode pressing "save score"
+    // did nothing at all and the result never reached the LMS.
+    it('a click on the shared button reaches sendScore through the container', () => {
+      vi.spyOn($interactivevideo, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($interactivevideo, 'saveEvaluation').mockImplementation(() => {});
+      $interactivevideo
+        .getIdeviceRoot()
+        .off('click.interactivevideo', '.Games-SendScore')
+        .on('click.interactivevideo', '.Games-SendScore', function (e) {
+          e.preventDefault();
+          $interactivevideo.sendScore(false);
+          $interactivevideo.saveEvaluation();
+        });
+
+      $('.Games-SendScore').trigger('click');
+
+      expect($interactivevideo.sendScore).toHaveBeenCalledWith(false);
+      expect($interactivevideo.saveEvaluation).toHaveBeenCalled();
+    });
+
+    it('the source no longer reaches for the ids that do not exist', () => {
+      const source = readFileSync(
+        join(__dirname, 'interactive-video.js'),
+        'utf-8'
+      );
+
+      expect(source).not.toContain("$('#interactiveSendScore')");
+      expect(source).not.toContain("$('#interactiveRepeatActivity')");
+    });
+  });
+
+  // registerActivity resolves ideviceId, ideviceNumber, title and mainElement
+  // from the DOM and writes them onto whatever it is handed. Registering a
+  // throwaway copy left sendScore working off a different, unidentified object,
+  // and reportActivity refuses those with its `!game.ideviceId` guard.
+  describe('registerScormActivity', () => {
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+      document.body.innerHTML = `
+        <div class="idevice_node interactive-video" id="interactive-video-1">
+          <div class="exe-interactive-video"></div>
+        </div>`;
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('registers the very object the saves use, not a copy', () => {
+      global.InteractiveVideo = { scorm: { isScorm: 1 } };
+      // A complete options object: `main` is what tells registerScormActivity
+      // this one is usable rather than the empty placeholder.
+      const live = { id: 'iv', main: '.exe-interactive-video' };
+      $interactivevideo.mOptions = live;
+      let registered = null;
+      const scorm = global.$exeDevices.iDevice.gamification.scorm;
+      const previous = scorm.registerActivity;
+      scorm.registerActivity = g => {
+        registered = g;
+      };
+
+      try {
+        $interactivevideo.registerScormActivity();
+      } finally {
+        scorm.registerActivity = previous;
+      }
+
+      expect(registered).toBe(live);
+    });
+
+    it('does nothing when the activity is not scored', () => {
+      global.InteractiveVideo = { scorm: { isScorm: 0 } };
+      const scorm = global.$exeDevices.iDevice.gamification.scorm;
+      const previous = scorm.registerActivity;
+      const registerActivity = vi.fn();
+      scorm.registerActivity = registerActivity;
+
+      try {
+        $interactivevideo.registerScormActivity();
+      } finally {
+        scorm.registerActivity = previous;
+      }
+
+      expect(registerActivity).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when there is no SCORM configuration', () => {
+      global.InteractiveVideo = undefined;
+
+      expect(() => $interactivevideo.registerScormActivity()).not.toThrow();
+    });
+  });
+
+  // cover.hide() runs again on every restart, and it used to append to
+  // scoreSlides without clearing: numSlides doubled, and since the score is
+  // (score * 10) / numSlides the mark stored in the LMS was halved each time.
+  describe('restarting the activity', () => {
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+      document.body.innerHTML = `
+        <div class="idevice_node interactive-video" id="interactive-video-1">
+          <div class="exe-interactive-video"></div>
+        </div>`;
+      global.InteractiveVideo = {
+        slides: [
+          { type: 'singleChoice', results: null },
+          { type: 'singleChoice', results: null },
+          { type: 'singleChoice', results: null },
+        ],
+        scorm: { isScorm: 0 },
+        scoreNIA: false,
+        evaluation: false,
+        evaluationID: '',
+        ideviceID: '',
+      };
+      vi.spyOn($interactivevideo.controls, 'play').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      delete global.InteractiveVideo;
+      vi.restoreAllMocks();
+    });
+
+    it('rebuilds the slide list instead of appending to it', () => {
+      $interactivevideo.cover.hide(false);
+      const first = $interactivevideo.scoreSlides.length;
+
+      // What a restart does: the learner returns to the start link.
+      $interactivevideo.cover.hide(false);
+
+      expect(first).toBe(3);
+      expect($interactivevideo.scoreSlides.length).toBe(3);
+    });
+
+    // numSlides is the denominator of the reported mark, so a doubled list
+    // halved every score the LMS stored after a restart.
+    it('keeps the score denominator stable across restarts', () => {
+      $interactivevideo.cover.hide(false);
+      const first = $interactivevideo.numSlides;
+
+      $interactivevideo.cover.hide(false);
+
+      expect($interactivevideo.numSlides).toBe(first);
+    });
+
+    // Starting must not leave the previous run's mark standing.
+    it('resets the mark to zero on start', () => {
+      $interactivevideo.score = 2;
+
+      $interactivevideo.cover.hide(false);
+
+      expect($interactivevideo.score).toBe(0);
+    });
+
+    // finalizeScorm() raises gameOver when the questions run out and nothing
+    // lowered it, so repeating the activity reported "finished, score 0" on its
+    // first report and the page stayed terminal instead of going back to
+    // in-progress.
+    it('clears the completion flag so a repeat starts in progress', () => {
+      $interactivevideo.mOptions = {
+        id: 'iv',
+        main: '.exe-interactive-video',
+        gameOver: true,
+      };
+
+      $interactivevideo.cover.hide(false);
+
+      expect($interactivevideo.mOptions.gameOver).toBe(false);
+    });
+  });
+
+  // mOptions starts as `{}`, which is truthy: testing it alone left an empty
+  // object registered, with no `main` — and sendScoreNew dereferences
+  // `game.main.charAt(0)`, so the report threw and died.
+  describe('registerScormActivity with an incomplete options object', () => {
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+      document.body.innerHTML = `
+        <div class="idevice_node interactive-video" id="interactive-video-1">
+          <div class="exe-interactive-video"></div>
+        </div>`;
+      global.InteractiveVideo = {
+        scorm: { isScorm: 1 },
+        ideviceID: 'interactive-video-1',
+      };
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      delete global.InteractiveVideo;
+      vi.restoreAllMocks();
+    });
+
+    it('rebuilds the placeholder rather than registering it', () => {
+      $interactivevideo.mOptions = {};
+      const scorm = global.$exeDevices.iDevice.gamification.scorm;
+      const previous = scorm.registerActivity;
+      scorm.registerActivity = () => {};
+
+      try {
+        $interactivevideo.registerScormActivity();
+      } finally {
+        scorm.registerActivity = previous;
+      }
+
+      expect($interactivevideo.mOptions.main).toBeTruthy();
+    });
+  });
+
+  // The mark is shown and reported when the activity starts, and again on
+  // every answer, until the questions run out.
+  describe('reportScore', () => {
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+      document.body.innerHTML = `
+        <div class="idevice_node interactive-video" id="interactive-video-1">
+          <div class="exe-interactive-video">
+            <span class="Games-RepeatActivity"></span>
+          </div>
+        </div>`;
+      global.InteractiveVideo = {
+        scorm: { isScorm: 1 },
+        i18n: { msgYouScore: 'Score' },
+      };
+      $interactivevideo.numSlides = 2;
+      vi.spyOn($interactivevideo, 'sendScore').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      delete global.InteractiveVideo;
+      vi.restoreAllMocks();
+    });
+
+    it('shows and reports a zero at the start of the attempt', () => {
+      $interactivevideo.score = 0;
+
+      $interactivevideo.reportScore();
+
+      expect($('.Games-RepeatActivity').text()).toBe('Score: 0.00');
+      expect($interactivevideo.sendScore).toHaveBeenCalledWith(true);
+    });
+
+    it('shows the mark out of ten as answers come in', () => {
+      $interactivevideo.score = 1;
+
+      $interactivevideo.reportScore();
+
+      expect($('.Games-RepeatActivity').text()).toBe('Score: 5.00');
+    });
+
+    // Manual mode has its own save button; nothing is reported automatically.
+    it('stays quiet outside automatic SCORM mode', () => {
+      global.InteractiveVideo.scorm.isScorm = 2;
+
+      $interactivevideo.reportScore();
+
+      expect($interactivevideo.sendScore).not.toHaveBeenCalled();
+    });
+  });
 });
