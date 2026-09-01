@@ -114,6 +114,18 @@ var $eXeMathOperations = {
         );
     },
 
+    // The editor stores a boolean, but legacy and imported activities can carry
+    // it as the string "false" or "0", which is truthy in JS and popped the
+    // feedback panel open on an activity whose author never enabled it.
+    isFeedbackEnabled: function (feedBack) {
+        return (
+            feedBack === true ||
+            feedBack === 1 ||
+            feedBack === 'true' ||
+            feedBack === '1'
+        );
+    },
+
     loadDataGame: function (data, instance) {
         let json = data.text(),
             options =
@@ -129,6 +141,9 @@ var $eXeMathOperations = {
         options.solution =
             typeof options.solution == 'undefined' ? true : options.solution;
         options.mode = typeof options.mode == 'undefined' ? 0 : options.mode;
+        options.feedBack = $eXeMathOperations.isFeedbackEnabled(
+            options.feedBack
+        );
         options.negativeFractions =
             typeof options.negativeFractions == 'undefined'
                 ? false
@@ -173,6 +188,9 @@ var $eXeMathOperations = {
         options.solution =
             typeof options.solution == 'undefined' ? true : options.solution;
         options.mode = typeof options.mode == 'undefined' ? 0 : options.mode;
+        options.feedBack = $eXeMathOperations.isFeedbackEnabled(
+            options.feedBack
+        );
         options.negativeFractions =
             typeof options.negativeFractions == 'undefined'
                 ? false

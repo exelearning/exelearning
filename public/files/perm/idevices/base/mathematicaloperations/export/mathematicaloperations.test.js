@@ -112,6 +112,22 @@ describe('mathematicaloperations iDevice export', () => {
     });
   });
 
+  describe('isFeedbackEnabled', () => {
+    it('accepts the shapes a saved activity can carry the flag in', () => {
+      for (const enabled of [true, 1, 'true', '1']) {
+        expect($eXeMathOperations.isFeedbackEnabled(enabled)).toBe(true);
+      }
+    });
+
+    // These strings are truthy in JS, so an unguarded `if (mOptions.feedBack)`
+    // revealed the panel on an activity whose author never enabled it.
+    it('rejects the falsy flag written as a string', () => {
+      for (const disabled of [false, 0, 'false', '0', undefined, null, '']) {
+        expect($eXeMathOperations.isFeedbackEnabled(disabled)).toBe(false);
+      }
+    });
+  });
+
   describe('borderColors', () => {
     it('has required color definitions', () => {
       expect($eXeMathOperations.borderColors).toBeDefined();
