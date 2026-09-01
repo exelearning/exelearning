@@ -269,9 +269,21 @@ count as applied.
    one in 0–100 it becomes the success threshold; otherwise the eXeLearning
    default of 50 stays in force **[POLICY]**.
 3. Restore the activity registry from `cmi.suspend_data` (§9).
-4. Publish the restored score when the registry can account for one
+4. **Adopt a restored terminal status the restored registry derives** **[POLICY]**.
+   When the stored `cmi.core.lesson_status` is terminal *and* the just-restored
+   registry decides that same status on its own, it is this policy's own earlier
+   verdict returning across a page load, so it is claimed as the session's. That
+   claim is what lets the replay correction in §9.1 downgrade it later. Without
+   it, a learner who finishes a page, navigates away, comes back and restarts an
+   activity gets the score reset to 0 while the LMS keeps showing `passed`.
+   The registry is what keeps this narrow: a status content wrote explicitly, or
+   one left by a genuinely different attempt, does not match what the restored
+   payload derives, so rule 1 preserves it. This is not the same as *agreeing*
+   with a stored value mid-session, which never claims ownership — here the
+   agreement comes from the payload the LMS just handed back.
+5. Publish the restored score when the registry can account for one
    (`summary().scored > 0`).
-5. **Flush what was reported before the session opened** **[POLICY]**. iDevices
+6. **Flush what was reported before the session opened** **[POLICY]**. iDevices
    register and report on jQuery `ready`, while `loadPage()` runs on
    `<body onload>` — after every image and video has finished loading. A report
    landing in that window reaches the registry, which needs no session, but the

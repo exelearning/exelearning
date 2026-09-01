@@ -131,6 +131,53 @@ describe('exe-scorm12-policy', () => {
             ).toEqual([]);
         });
 
+        // The learner finishes a page, navigates away and comes back, then
+        // restarts an activity. The restart resets the score to 0, but the
+        // status the LMS restored was written in the previous visit, so the
+        // policy no longer recognised it as its own and refused the downgrade:
+        // the menu showed "passed" next to a 0.
+        it('adopts a restored terminal status the restored registry derives', () => {
+            startSession({
+                'cmi.core.lesson_status': 'passed',
+                'cmi.suspend_data': 'exe12/1|quiz;7;4;4;90;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+            // The learner presses start: the activity replays as unfinished.
+            activities.register('quiz', {
+                evaluable: true,
+                completionRequired: true,
+                completed: false,
+                score: 0,
+            });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({
+                status: 'incomplete',
+                written: true,
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+        });
+
+        // The narrowing that keeps the adoption honest: content's own verdict
+        // is not derivable from the registry, so it is not the policy's to
+        // downgrade, however many page loads later.
+        it('leaves a restored terminal status the registry does not account for', () => {
+            startSession({
+                'cmi.core.lesson_status': 'passed',
+                'cmi.suspend_data': 'exe12/1|quiz;3;0;4;0;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+            activities.register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
         it('writes no score at all when an evaluable activity is registered but unanswered', () => {
             // The real ordering, which the other entry-policy cases invert: iDevices
             // bootstrap on jQuery ready and register BEFORE loadPage() runs the entry

@@ -316,6 +316,25 @@
             if (activities) {
                 activities.load(client.getValue(SUSPEND_DATA));
             }
+            // A terminal status the LMS already holds that the *restored*
+            // registry derives on its own is this policy's own earlier verdict
+            // coming back across a page load: the same registry wrote it and
+            // the same registry still accounts for it. Adopt it as the session
+            // claim, so the replay correction in applyDecidedStatus still
+            // applies to it. Without this, a learner who finishes a page,
+            // navigates away, comes back and restarts an activity gets the
+            // score reset to 0 while the LMS keeps showing "passed".
+            //
+            // Deliberately narrow, and it is the registry that makes it so: a
+            // status content set explicitly, or one left by a genuinely
+            // different attempt, does not match what the restored payload
+            // derives, so it stays preserved. This is not the same as
+            // agreeing with a stored value mid-session, which never claims
+            // ownership (see applyDecidedStatus) — here the agreement comes
+            // from the payload the LMS just handed back.
+            if (activities && policy.isTerminalStatus(status) && policy.decideStatus().status === status) {
+                state.policySessionStatus = status;
+            }
             state.entryApplied = true;
             var summary = activities ? activities.summary() : null;
             // `summary.scored`, not `summary.score !== null`: the aggregate maps an
