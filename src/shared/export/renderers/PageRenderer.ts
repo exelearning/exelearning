@@ -1346,6 +1346,15 @@ ${sectionContent}
             }
         }
 
+        // Stylesheet order must match the multi-page export (see buildHead): content-detected
+        // libraries and the accessibility toolbar first, then base.css, then the theme last.
+        // exe_effects.css styles components with the same specificity the theme uses, so the
+        // theme only wins the tie when its sheet comes last (#2282).
+        const libraryIncludes = this.renderDetectedLibraries(effectiveDetectedLibraries, '');
+        const atoolsIncludes = addAccessibilityToolbar
+            ? '\n<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">'
+            : '';
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">
 <head>
@@ -1353,6 +1362,7 @@ ${sectionContent}
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${this.escapeHtml(projectTitle)}</title>
+${this.renderFavicon('', faviconPath, faviconType)}
 <script>document.querySelector("html").classList.add("js");</script>
 <script src="libs/jquery/jquery.min.js"> </script>
 <script src="libs/common_i18n.js"> </script>
@@ -1360,14 +1370,11 @@ ${sectionContent}
 <script src="libs/exe_export.js"> </script>
 ${xapi ? `<script>window.exeXapi=${this.serializeForScript(xapi)};</script>\n` : ''}<script src="libs/xapi/exe_xapi.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
-<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
+<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}${libraryIncludes}${atoolsIncludes}
 <link rel="stylesheet" href="content/css/base.css">
 <script src="theme/style.js"> </script>
 <link rel="stylesheet" href="theme/style.css">
-${this.renderFavicon('', faviconPath, faviconType)}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
-${this.renderDetectedLibraries(effectiveDetectedLibraries, '')}
-${addAccessibilityToolbar ? `<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">` : ''}
 ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>
 <body class="exe-export exe-single-page">

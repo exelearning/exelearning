@@ -1002,6 +1002,57 @@ describe('PageRenderer', () => {
             expect(html).toContain('<span class="license">');
             expect(html).not.toContain('href="https://creativecommons.org/licenses/by/4.0/"');
         });
+
+        it('should load the theme stylesheet last, after libraries and base.css (#2282)', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                detectedLibraries: ['exe_effects', 'exe_highlighter'],
+                addAccessibilityToolbar: true,
+            });
+
+            const themeIndex = html.indexOf('<link rel="stylesheet" href="theme/style.css">');
+            expect(themeIndex).toBeGreaterThan(-1);
+            for (const earlier of [
+                'href="libs/bootstrap/bootstrap.min.css"',
+                'href="libs/exe_effects/exe_effects.css"',
+                'href="libs/exe_highlighter/exe_highlighter.css"',
+                'href="libs/exe_atools/exe_atools.css"',
+                'href="content/css/base.css"',
+            ]) {
+                const index = html.indexOf(earlier);
+                expect(index).toBeGreaterThan(-1);
+                expect(index).toBeLessThan(themeIndex);
+            }
+        });
+
+        it('should keep custom styles after the theme stylesheet', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, { customStyles: '.custom { color: red; }' });
+
+            expect(html.indexOf('.custom { color: red; }')).toBeGreaterThan(
+                html.indexOf('<link rel="stylesheet" href="theme/style.css">'),
+            );
+        });
+
+        it('should match the multi-page stylesheet order for theme, libraries and base.css', () => {
+            const pages = [createTestPage()];
+            const options = { detectedLibraries: ['exe_effects'], addAccessibilityToolbar: true };
+            const singlePageHtml = renderer.renderSinglePage(pages, options);
+            const multiPageHtml = renderer.render(pages[0], {
+                projectTitle: 'Test',
+                basePath: '',
+                allPages: pages,
+                themeFiles: ['style.css', 'style.js'],
+                ...options,
+            });
+
+            const sheetOrder = (html: string): string[] =>
+                Array.from(html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g))
+                    .map(match => match[1])
+                    .filter(href => !href.startsWith('idevices/'));
+
+            expect(sheetOrder(singlePageHtml)).toEqual(sheetOrder(multiPageHtml));
+        });
     });
 
     describe('renderFavicon', () => {
