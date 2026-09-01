@@ -691,6 +691,28 @@ describe('sort iDevice export', () => {
             expect(reports[0].scorerp).toBe(10);
         });
 
+        // The validate handler reports as soon as nextPhrase returns, without
+        // waiting for the timeShowSolution delay. Raising the flag only inside
+        // the delayed gameOver() left that report carrying the final score with
+        // completed: false, so a learner who left during the delay stayed at
+        // 100% on a page the LMS still called incomplete.
+        it('marks the last phrase finished before the reveal delay elapses', () => {
+            const mOptions = givenInstance(2, 3);
+
+            $eXeOrdena.nextPhrase(instance);
+
+            // No timer advanced: this is what the validate handler would send.
+            expect(mOptions.gameOver).toBe(true);
+        });
+
+        it('leaves the flag down while phrases remain, before the delay too', () => {
+            const mOptions = givenInstance(0, 3);
+
+            $eXeOrdena.nextPhrase(instance);
+
+            expect(mOptions.gameOver).toBe(false);
+        });
+
         it('handles a single-phrase activity, which ends on its first validation', () => {
             givenInstance(0, 1);
 
@@ -705,6 +727,94 @@ describe('sort iDevice export', () => {
     // The count used to subtract gameColumns from response.valids in the
     // ordered-columns mode, so the feedback undercounted the learner's own
     // result — with three columns, three correct positions read as none.
+    describe('SCORM reporting on start', () => {
+        function setupGame(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="ordenaMainContainer-0">
+                    <div id="ordenaPhrasesContainer-0"></div>
+                    <div id="ordenaGameButtons-0"></div>
+                    <div id="ordenaPShowClue-0"></div>
+                    <div id="ordenaShowClue-0"></div>
+                    <div id="ordenaPHits-0"></div>
+                    <div id="ordenaPErrors-0"></div>
+                    <div id="ordenaCubierta-0"></div>
+                    <div id="ordenaGameOver-0"></div>
+                    <div id="ordenaPTime-0"></div>
+                    <div id="ordenaImgTime-0"></div>
+                    <div id="ordenaMultimedia-0"></div>
+                </div>`;
+            $eXeOrdena.options[0] = Object.assign(
+                {
+                    main: 'ordenaMainContainer-0',
+                    isScorm: 1,
+                    type: 0,
+                    time: 0,
+                    attempts: 0,
+                    gameStarted: false,
+                    gameOver: false,
+                    hits: 0,
+                    errors: 0,
+                    score: 0,
+                    scorerp: 0,
+                    numberQuestions: 4,
+                    msgs: { msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn($eXeOrdena, 'initCards').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'showMessage').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'uptateTime').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'sendScore').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('saveScormScore reports only in automatic SCORM mode', () => {
+            setupGame({ isScorm: 1 });
+            $eXeOrdena.saveScormScore(0);
+            expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+
+            $eXeOrdena.sendScore.mockClear();
+            $eXeOrdena.options[0].isScorm = 2;
+            $eXeOrdena.saveScormScore(0);
+            expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+        });
+
+        // The defect: clicking the play link cleared the board, but the LMS
+        // menu kept the previous attempt's grade and its terminal status.
+        it('publishes the cleared state when a finished game is restarted', () => {
+            setupGame({ hits: 4, errors: 2, score: 10, gameOver: true });
+            let stateWhenReported;
+            $eXeOrdena.sendScore.mockImplementation(() => {
+                const { hits, errors, gameOver, gameStarted } =
+                    $eXeOrdena.options[0];
+                stateWhenReported = { hits, errors, gameOver, gameStarted };
+            });
+
+            $eXeOrdena.startGame(0);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                gameOver: false,
+                // sendScoreNew ignores a game that reports as neither started
+                // nor over.
+                gameStarted: true,
+            });
+        });
+
+        it('does not report a game that was already running', () => {
+            setupGame({ gameStarted: true });
+
+            $eXeOrdena.startGame(0);
+
+            expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+        });
+    });
+
     describe('getCorrectPositionsCount', () => {
         it('counts every correct position', () => {
             expect(

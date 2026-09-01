@@ -755,6 +755,22 @@ var $eXeOrdena = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, errors, the score and gameOver, but nothing
+     * told the LMS, so the menu kept the previous attempt's grade and status
+     * until the learner finished the new one.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeOrdena.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeOrdena.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeOrdena.options[instance];
 
@@ -1429,6 +1445,15 @@ var $eXeOrdena = {
     nextPhrase: function (instance) {
         const mOptions = $eXeOrdena.options[instance];
         $exeDevices.iDevice.gamification.media.stopSound();
+        // Advancing past the last phrase finishes the activity, so raise the
+        // flag here and not only in the gameOver() that runs after the
+        // timeShowSolution delay. The validate handler reports right after
+        // this call returns: without the flag that report carries the final
+        // score with completed: false, and a learner who leaves during the
+        // delay is left at 100% on a page the LMS still calls incomplete.
+        if (mOptions.active >= mOptions.phrasesGame.length - 1) {
+            mOptions.gameOver = true;
+        }
         setTimeout(() => {
             const $histsGame = $(`#ordenaHistsGame-${instance}`);
             $histsGame.html('');
@@ -1928,6 +1953,9 @@ var $eXeOrdena = {
         }
 
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeOrdena.saveScormScore(instance);
     },
 
     uptateTime: function (tiempo, instance) {
