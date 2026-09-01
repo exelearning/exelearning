@@ -701,4 +701,28 @@ describe('sort iDevice export', () => {
             expect(reports[0].gameOver).toBe(true);
         });
     });
+
+    // The count used to subtract gameColumns from response.valids in the
+    // ordered-columns mode, so the feedback undercounted the learner's own
+    // result — with three columns, three correct positions read as none.
+    describe('getCorrectPositionsCount', () => {
+        it('counts every correct position', () => {
+            expect(
+                $eXeOrdena.getCorrectPositionsCount({ valids: [0, 1, 2] })
+            ).toBe(3);
+        });
+
+        it('does not discount anything in the ordered-columns mode', () => {
+            // Three columns, three correct positions: the learner got them all.
+            const response = { valids: [0, 1, 2], correct: true };
+
+            expect($eXeOrdena.getCorrectPositionsCount(response)).toBe(3);
+        });
+
+        it('answers zero when there is nothing to count', () => {
+            expect($eXeOrdena.getCorrectPositionsCount({ valids: [] })).toBe(0);
+            expect($eXeOrdena.getCorrectPositionsCount({})).toBe(0);
+            expect($eXeOrdena.getCorrectPositionsCount(undefined)).toBe(0);
+        });
+    });
 });

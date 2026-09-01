@@ -1160,10 +1160,7 @@ var $eXeOrdena = {
                         ? $eXeOrdena.checkPhraseColumns(instance)
                         : $eXeOrdena.checkPhrase(instance);
             }
-            const valids =
-                mOptions.type > 0 && mOptions.orderedColumns
-                    ? response.valids.length - mOptions.gameColumns
-                    : response.valids.length;
+            const valids = $eXeOrdena.getCorrectPositionsCount(response);
             let msg = `${$eXeOrdena.updateScore(response.correct, instance)} ${mOptions.msgs.msgPositions}: ${valids}. `;
             let color = $eXeOrdena.borderColors.red;
             if (response.correct) {
@@ -2145,6 +2142,21 @@ var $eXeOrdena = {
             : mOptions.msgs.msgFailures;
         sMessages = sMessages.split('|');
         return sMessages[Math.floor(Math.random() * sMessages.length)];
+    },
+
+    /**
+     * How many positions the learner got right, for the feedback message.
+     *
+     * `response.valids` already holds exactly those positions. The count used
+     * to subtract `gameColumns` from it in the ordered-columns mode, which
+     * undercounted the learner's own result — with three columns, three
+     * correct positions were reported as none.
+     *
+     * @param {Object} response The result of checkPhrase / checkPhraseColumns.
+     * @returns {number} The number of correct positions.
+     */
+    getCorrectPositionsCount: function (response) {
+        return Array.isArray(response?.valids) ? response.valids.length : 0;
     },
 
     updateScore: function (correctAnswer, instance) {
