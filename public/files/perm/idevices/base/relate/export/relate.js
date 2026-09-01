@@ -386,6 +386,9 @@ var $eXeRelaciona = {
         }
 
         mOptions.gameStarted = true;
+        // Same hole on the way in: pressing start cleared the board without
+        // telling the LMS either.
+        $eXeRelaciona.saveScormScore(instance);
     },
     redibujarLineas: function (instance, isMoving) {
         const mOptions = $eXeRelaciona.options[instance];
@@ -650,6 +653,9 @@ var $eXeRelaciona = {
             }
         }
         $('#rlcMessage-' + instance).hide();
+        // After gameStarted/gameOver above, never before: sendScoreNew ignores
+        // a game that reports as neither started nor over.
+        $eXeRelaciona.saveScormScore(instance);
     },
 
     rebootCards: function (instance) {
@@ -1605,6 +1611,23 @@ var $eXeRelaciona = {
                 mOptions,
                 $eXeRelaciona.isInExe
             ));
+    },
+
+    /**
+     * Publish the freshly reset state to the LMS when a game starts or
+     * restarts.
+     *
+     * reboot() and startGame() both clear hits, errors and gameOver, but
+     * neither told the LMS, so the menu kept the finished attempt's grade and
+     * its terminal status until the learner checked the board again.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeRelaciona.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeRelaciona.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {
