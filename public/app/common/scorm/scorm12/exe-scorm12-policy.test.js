@@ -92,6 +92,45 @@ describe('exe-scorm12-policy', () => {
             ]);
         });
 
+        // iDevices register and report on jQuery ready; loadPage() runs on body
+        // onload, after every image and video has loaded. A report that lands in
+        // that window reaches the registry — which needs no session — but
+        // showFinalScore's own publish is refused, so it stayed unseen by the
+        // LMS until something else flushed it, which is why the mark only
+        // surfaced on leaving the page.
+        it('flushes a report that arrived before the session opened', () => {
+            activities.register('quiz', {
+                evaluable: true,
+                completionRequired: true,
+                completed: true,
+                score: 90,
+            });
+            startSession({ 'cmi.core.lesson_status': '' });
+
+            policy.applyEntryPolicy();
+
+            expect(api.data['cmi.core.score.raw']).toBe('90');
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+            expect(api.callNames()).toContain('LMSCommit');
+        });
+
+        // Deciding the status from a purely restored registry would rewrite an
+        // attempt this session has not touched, which the entry contract forbids.
+        it('does not decide a status for a registry that only came from the restore', () => {
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100',
+            });
+            api.resetCalls();
+
+            policy.applyEntryPolicy();
+
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+            expect(
+                api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.lesson_status')
+            ).toEqual([]);
+        });
+
         it('writes no score at all when an evaluable activity is registered but unanswered', () => {
             // The real ordering, which the other entry-policy cases invert: iDevices
             // bootstrap on jQuery ready and register BEFORE loadPage() runs the entry

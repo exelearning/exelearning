@@ -302,6 +302,17 @@
             }
             policy.resolveSuccessThreshold();
             var activities = deps.getActivities();
+            // Anything the registry already holds got there before the session
+            // opened: iDevices register and report on jQuery ready, while
+            // loadPage() runs on body onload, after every image and video has
+            // loaded. The registry needs no session, so those reports land —
+            // but showFinalScore's own publish is refused, and they would sit
+            // unseen by the LMS until something else flushed them. Noted here,
+            // before load() merges the stored payload over them, so the flush
+            // below can tell this session's work from a restored attempt.
+            var summaryBeforeRestore = activities ? activities.summary() : null;
+            var reportedBeforeEntry =
+                !!summaryBeforeRestore && summaryBeforeRestore.scored > 0;
             if (activities) {
                 activities.load(client.getValue(SUSPEND_DATA));
             }
@@ -315,6 +326,14 @@
             // question and common.js reads the same field.
             if (summary && summary.score !== null && summary.scored > 0) {
                 policy.setScoreDetailed(summary.score, 0, 100);
+            }
+            // Flush what was reported before the session opened, and only that:
+            // deciding the status from a purely restored registry would rewrite
+            // an attempt this session has not touched, which the entry contract
+            // forbids. The score above is published either way — it always was.
+            if (reportedBeforeEntry) {
+                policy.applyDecidedStatus();
+                client.commit();
             }
         },
 

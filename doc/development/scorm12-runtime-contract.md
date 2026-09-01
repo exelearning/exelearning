@@ -269,6 +269,19 @@ count as applied.
    one in 0–100 it becomes the success threshold; otherwise the eXeLearning
    default of 50 stays in force **[POLICY]**.
 3. Restore the activity registry from `cmi.suspend_data` (§9).
+4. Publish the restored score when the registry can account for one
+   (`summary().scored > 0`).
+5. **Flush what was reported before the session opened** **[POLICY]**. iDevices
+   register and report on jQuery `ready`, while `loadPage()` runs on
+   `<body onload>` — after every image and video has finished loading. A report
+   landing in that window reaches the registry, which needs no session, but the
+   publish in `showFinalScore` is refused because the entry policy has not run.
+   Those reports would then sit unseen by the LMS until the next flush, so the
+   learner's mark only surfaced on leaving the page. When the registry already
+   held a score *before* step 3 merged the stored payload over it, the status is
+   decided from the registry and the session is committed. Only then: deciding a
+   status from a purely restored registry would rewrite an attempt this session
+   has not touched, which rule 1 forbids.
 
 `"not attempted"` is never written by the runtime: SCORM 1.2 requires the LMS to
 refuse that value from a SCO **[SCORM]**.
