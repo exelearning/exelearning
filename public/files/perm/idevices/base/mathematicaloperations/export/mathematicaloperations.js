@@ -216,6 +216,14 @@ var $eXeMathOperations = {
         $('#mthoPShowClue-' + instance).hide();
 
         $eXeMathOperations.createQuestions(instance);
+        // An untimed activity never reaches startGame — enable() marks it as
+        // running and hides the start button — so the restart has to publish
+        // its own cleared state, and mark the attempt in progress for it:
+        // sendScoreNew ignores a game that reports as neither started nor
+        // over. A timed restart lowers the flag again on the next line of the
+        // click handler, before startGame.
+        options.gameStarted = true;
+        $eXeMathOperations.saveScormScore(instance);
     },
     createQuestions: function (instance) {
         const mOptions = $eXeMathOperations.options[instance];
@@ -1551,6 +1559,23 @@ var $eXeMathOperations = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts or
+     * restarts.
+     *
+     * startGame() and reloadGame() both clear hits, errors and gameOver, but
+     * neither told the LMS, so the menu kept the finished attempt's grade and
+     * status until the learner answered again.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeMathOperations.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeMathOperations.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeMathOperations.options[instance];
 
@@ -1719,6 +1744,9 @@ var $eXeMathOperations = {
             $eXeMathOperations.uptateTime(mOptions.time * 60, instance);
         }
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeMathOperations.saveScormScore(instance);
     },
 
     enterCodeAccess: function (instance) {

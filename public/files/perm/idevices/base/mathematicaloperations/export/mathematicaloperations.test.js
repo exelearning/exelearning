@@ -128,6 +128,111 @@ describe('mathematicaloperations iDevice export', () => {
     });
   });
 
+  describe('SCORM reporting when a game starts or restarts', () => {
+    function setupGame(overrides = {}) {
+      document.body.innerHTML = `
+        <div id="mthoMainContainer-0">
+          <div id="mthoMultimedia-0"></div>
+          <div id="mthoDivImgHome-0"></div>
+          <div id="mthoStartGame-0"></div>
+          <div id="mthoPTime-0"></div>
+          <div id="mthoDivFeedBack-0"></div>
+          <div id="mthoPShowClue-0"></div>
+        </div>`;
+      $eXeMathOperations.options[0] = Object.assign(
+        {
+          main: 'mthoMainContainer-0',
+          isScorm: 1,
+          time: 0,
+          gameStarted: false,
+          gameOver: false,
+          hits: 0,
+          errors: 0,
+          score: 0,
+          number: 4,
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeMathOperations, 'updateGameBoard').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'createQuestions').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'loadQuestions').mockImplementation(o => o);
+      vi.spyOn($eXeMathOperations, 'sendScore').mockImplementation(() => {});
+      // Formats the countdown through a shared helper absent from the stubs.
+      vi.spyOn($eXeMathOperations, 'uptateTime').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupGame({ isScorm: 1 });
+      $eXeMathOperations.saveScormScore(0);
+      expect($eXeMathOperations.sendScore).toHaveBeenCalledWith(true, 0);
+
+      $eXeMathOperations.sendScore.mockClear();
+      $eXeMathOperations.options[0].isScorm = 2;
+      $eXeMathOperations.saveScormScore(0);
+      expect($eXeMathOperations.sendScore).not.toHaveBeenCalled();
+    });
+
+    // The defect: restarting cleared the board but the LMS menu kept the
+    // finished attempt's grade and its terminal status. An untimed activity
+    // never reaches startGame, so the restart has to publish its own state.
+    it('publishes the cleared state when an untimed game is restarted', () => {
+      setupGame({ hits: 4, errors: 1, score: 10, gameOver: true });
+      let stateWhenReported;
+      $eXeMathOperations.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } =
+          $eXeMathOperations.options[0];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+
+      $eXeMathOperations.reloadGame(0);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        // sendScoreNew ignores a game that reports as neither started nor over.
+        gameStarted: true,
+      });
+    });
+
+    it('publishes the cleared state when a timed game starts', () => {
+      setupGame({ time: 1, hits: 3, gameOver: true });
+      let stateWhenReported;
+      $eXeMathOperations.sendScore.mockImplementation(() => {
+        const { hits, gameOver, gameStarted } = $eXeMathOperations.options[0];
+        stateWhenReported = { hits, gameOver, gameStarted };
+      });
+      vi.useFakeTimers();
+
+      try {
+        $eXeMathOperations.startGame(0);
+      } finally {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+      }
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('does not report a game that was already running', () => {
+      setupGame({ gameStarted: true });
+
+      $eXeMathOperations.startGame(0);
+
+      expect($eXeMathOperations.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
   describe('borderColors', () => {
     it('has required color definitions', () => {
       expect($eXeMathOperations.borderColors).toBeDefined();
