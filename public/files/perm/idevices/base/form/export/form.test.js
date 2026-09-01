@@ -586,4 +586,127 @@ describe('form iDevice export', () => {
       expect(initScormData).not.toHaveBeenCalled();
     });
   });
+
+  describe('restarting the form', () => {
+    function gameData(overrides = {}) {
+      return Object.assign(
+        {
+          id: 'f1',
+          main: 'frmMainContainer-f1',
+          isScorm: 1,
+          time: 0,
+          gameStarted: false,
+          gameOver: true,
+          totalQuestions: 3,
+          rightQuestions: 3,
+          wrongQuestions: 0,
+          msgs: {},
+        },
+        overrides
+      );
+    }
+
+    beforeEach(() => {
+      document.body.className = 'exe-scorm';
+      vi.spyOn($form, 'sendScore').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      document.body.className = '';
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    // The defect: Reiniciar cleared the answers on screen, but the LMS menu
+    // kept the finished attempt's grade and its terminal status until the
+    // learner pressed Comprobar again.
+    it('publishes the cleared state, with the attempt reopened', () => {
+      const data = gameData();
+      let stateWhenReported;
+      $form.sendScore.mockImplementation(() => {
+        stateWhenReported = {
+          rightQuestions: data.rightQuestions,
+          gameOver: data.gameOver,
+          gameStarted: data.gameStarted,
+        };
+      });
+
+      $form.rebootGame(data);
+
+      expect(stateWhenReported).toEqual({
+        rightQuestions: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    // A timed form restarts the clock through startGame, which is what marks
+    // the attempt as running; the untimed branch has to do it itself.
+    it('reports a timed form too, once startGame has restarted it', () => {
+      const data = gameData({ time: 5 });
+      vi.spyOn($form, 'startGame').mockImplementation(d => {
+        d.gameStarted = true;
+      });
+
+      $form.rebootGame(data);
+
+      expect($form.startGame).toHaveBeenCalledWith(data);
+      expect($form.sendScore).toHaveBeenCalledWith(data);
+    });
+
+    it('saveScormScore stays quiet outside a SCORM package', () => {
+      document.body.className = '';
+
+      $form.saveScormScore(gameData());
+
+      expect($form.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('saveScormScore stays quiet on an untracked activity', () => {
+      $form.saveScormScore(gameData({ isScorm: 0 }));
+
+      expect($form.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('the countdown of a timed form', () => {
+    beforeEach(() => {
+      document.body.innerHTML = '<div id="frmMainContainer-f1"></div>';
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            math: { hasLatex: () => false, updateLatex: () => {} },
+          },
+        },
+      };
+      vi.spyOn($form, 'resizeSlideShow').mockImplementation(() => {});
+      vi.spyOn($form, 'gameOver').mockImplementation(() => {});
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      document.body.innerHTML = '';
+      delete global.$exeDevices;
+      vi.restoreAllMocks();
+    });
+
+    // Guards the tempting wrong fix for the stray global that used to sit in
+    // this loop: qualifying it as `data.gameStarted = false` fails the gate on
+    // the next tick, so the clock freezes one second in and the time never
+    // runs out.
+    it('keeps counting past the first tick and ends when the time is up', () => {
+      const data = { id: 'f1', time: 3 / 60, gameStarted: false, msgs: {} };
+
+      $form.startGame(data);
+
+      vi.advanceTimersByTime(1000);
+      expect(data.counter).toBe(2);
+
+      vi.advanceTimersByTime(2000);
+      expect(data.counter).toBe(0);
+      expect($form.gameOver).toHaveBeenCalledWith(data);
+    });
+  });
 });

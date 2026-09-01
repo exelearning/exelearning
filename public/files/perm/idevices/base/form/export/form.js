@@ -731,7 +731,12 @@ var $form = {
 
                 data.counter--;
                 $form.updateTime(data.counter, data.id);
-                gameStarted = false;
+                // Nothing else here: an undeclared `gameStarted = false` used
+                // to sit on this line, writing a stray global once a second
+                // that nothing reads. Qualifying it as `data.gameStarted`
+                // would not be the fix either — it would fail the gate above
+                // on the next tick, freezing the countdown one second in and
+                // never reaching gameOver.
                 if (data.counter <= 0) {
                     $form.gameOver(data);
                 }
@@ -827,8 +832,15 @@ var $form = {
         if (data.time > 0) {
             toggle($resetButton, false);
             toggle($showAnswers, false);
+            // Leaves gameStarted true, which is why the flag is cleared first:
+            // startGame returns early on a game it believes is already running.
             $form.startGame(data);
+        } else {
+            // An untimed form never goes through startGame, so nothing else
+            // marks the reopened attempt as in progress.
+            data.gameStarted = true;
         }
+        $form.saveScormScore(data);
     },
     saveEvaluation: function (data) {
         data.scorerp = (data.rightQuestions * 10) / data.totalQuestions;
@@ -836,6 +848,22 @@ var $form = {
             data,
             data.isInExe
         );
+    },
+
+    /**
+     * Publish the freshly reset state to the LMS when the form restarts.
+     *
+     * rebootGame() clears the answers and the counts, but nothing told the
+     * LMS, so the menu kept the finished attempt's grade and its terminal
+     * status until the learner pressed Comprobar again.
+     *
+     * Mirrors the condition gameOver() already reports under, so both ways out
+     * of an attempt agree on when this iDevice talks to the LMS.
+     */
+    saveScormScore: function (data) {
+        if (!data || !(data.isScorm > 0)) return;
+        if (!$('body').hasClass('exe-scorm')) return;
+        $form.sendScore(data);
     },
 
     sendScore: function (data) {
