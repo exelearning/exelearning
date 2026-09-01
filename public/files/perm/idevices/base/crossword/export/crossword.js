@@ -2021,6 +2021,22 @@ var $eXeCrucigrama = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, score and gameOver, but nothing told the LMS,
+     * so after "volver a jugar" the menu kept the finished attempt's grade and
+     * status until the learner checked the crossword again.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeCrucigrama.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeCrucigrama.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeCrucigrama.options[instance];
 
@@ -2747,6 +2763,9 @@ var $eXeCrucigrama = {
             });
 
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeCrucigrama.saveScormScore(instance);
     },
 
     enterCodeAccess: function (instance) {

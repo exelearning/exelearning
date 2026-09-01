@@ -491,4 +491,79 @@ describe('crossword iDevice export', () => {
       expect(mOptions.wordsGame).toHaveLength(0);
     });
   });
+
+  describe('SCORM reporting on start', () => {
+    function setupGame(overrides = {}) {
+      $eXeCrucigrama.options[0] = Object.assign(
+        {
+          isScorm: 1,
+          main: 'ccgmMainContainer-0',
+          gameStarted: false,
+          gameOver: false,
+          hits: 0,
+          score: 0,
+          time: 0,
+          wordsGame: [{ word: 'uno' }, { word: 'dos' }],
+          numberQuestions: 2,
+          msgs: { msgSelectWord: 'select' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeCrucigrama, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupGame({ isScorm: 1 });
+      $eXeCrucigrama.saveScormScore(0);
+      expect($eXeCrucigrama.sendScore).toHaveBeenCalledWith(true, 0);
+
+      $eXeCrucigrama.sendScore.mockClear();
+      $eXeCrucigrama.options[0].isScorm = 2;
+      $eXeCrucigrama.saveScormScore(0);
+      expect($eXeCrucigrama.sendScore).not.toHaveBeenCalled();
+    });
+
+    // The defect: "volver a jugar" rebuilds the board and clears the state,
+    // but the LMS menu kept the finished attempt's grade and status until the
+    // learner checked the crossword again.
+    it('publishes the cleared state when a finished game is restarted', () => {
+      setupGame({ gameStarted: false, gameOver: true, hits: 2, score: 10 });
+      let stateWhenReported;
+      $eXeCrucigrama.sendScore.mockImplementation(() => {
+        const { hits, gameOver } = $eXeCrucigrama.options[0];
+        stateWhenReported = { hits, gameOver };
+      });
+
+      $eXeCrucigrama.startGame(0);
+
+      expect(stateWhenReported).toEqual({ hits: 0, gameOver: false });
+    });
+
+    // sendScoreNew ignores a game that reports as neither started nor over, so
+    // reporting before the flag is set would be silently dropped.
+    it('reports with the game already marked as started', () => {
+      setupGame();
+      let startedWhenReported;
+      $eXeCrucigrama.sendScore.mockImplementation(() => {
+        startedWhenReported = $eXeCrucigrama.options[0].gameStarted;
+      });
+
+      $eXeCrucigrama.startGame(0);
+
+      expect(startedWhenReported).toBe(true);
+    });
+
+    it('does not report a game that was already running', () => {
+      setupGame({ gameStarted: true });
+
+      $eXeCrucigrama.startGame(0);
+
+      expect($eXeCrucigrama.sendScore).not.toHaveBeenCalled();
+    });
+  });
 });
