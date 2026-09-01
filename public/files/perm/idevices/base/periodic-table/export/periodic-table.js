@@ -330,6 +330,24 @@ var $periodicTable = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, errors and gameOver, but nothing told the LMS.
+     * updateGameBoard() does report, and startGame() calls it — but one line
+     * before raising gameStarted, and that report is gated on the flag, so the
+     * opening state never went out and the menu kept the previous attempt's
+     * grade and status.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $periodicTable.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $periodicTable.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $periodicTable.options[instance];
 
@@ -1615,6 +1633,9 @@ var $periodicTable = {
         $periodicTable.updateGameBoard(instance);
 
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $periodicTable.saveScormScore(instance);
     },
 
     enterCodeAccess: function (instance) {

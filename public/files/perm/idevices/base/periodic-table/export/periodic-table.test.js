@@ -141,6 +141,101 @@ describe('periodic-table iDevice export', () => {
         });
     });
 
+    describe('SCORM reporting on start', () => {
+        function setupGame(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="ptMainContainer-0">
+                    <div id="ptShowClue-0"></div>
+                    <div id="ptStartGameDiv-0"></div>
+                    <div id="ptStartGameMobileDiv-0"></div>
+                    <div id="ptImageMobile-0"></div>
+                    <div id="ptPShowClue-0"></div>
+                    <div id="ptMessageDiv-0"></div>
+                </div>`;
+            $periodicTable.options[0] = Object.assign(
+                {
+                    id: 0,
+                    main: 'ptMainContainer-0',
+                    isScorm: 1,
+                    gameStarted: false,
+                    gameOver: false,
+                    hits: 0,
+                    errors: 0,
+                    number: 4,
+                    attempts: 0,
+                    elements: [],
+                    time: 0,
+                    itinerary: { showClue: false },
+                    msgs: { msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn($periodicTable, 'getRandomElements').mockReturnValue([]);
+            vi.spyOn($periodicTable, 'updateGameBoard').mockImplementation(
+                () => {}
+            );
+            vi.spyOn($periodicTable, 'completeMode').mockImplementation(
+                () => {}
+            );
+            vi.spyOn($periodicTable, 'gameMode').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'MobileMode').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'sendScore').mockImplementation(() => {});
+        }
+
+        it('saveScormScore reports only in automatic SCORM mode', () => {
+            setupGame({ isScorm: 1 });
+            $periodicTable.saveScormScore(0);
+            expect($periodicTable.sendScore).toHaveBeenCalledWith(true, 0);
+
+            $periodicTable.sendScore.mockClear();
+            $periodicTable.options[0].isScorm = 2;
+            $periodicTable.saveScormScore(0);
+            expect($periodicTable.sendScore).not.toHaveBeenCalled();
+        });
+
+        // The defect: clicking the play link cleared the board, but the LMS
+        // menu kept the previous attempt's grade and its terminal status.
+        it('publishes the cleared state when a finished game is restarted', () => {
+            setupGame({ hits: 3, errors: 1, gameOver: true });
+            let stateWhenReported;
+            $periodicTable.sendScore.mockImplementation(() => {
+                const { hits, errors, gameOver } = $periodicTable.options[0];
+                stateWhenReported = { hits, errors, gameOver };
+            });
+
+            $periodicTable.startGame(0);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                gameOver: false,
+            });
+        });
+
+        // updateGameBoard() reports too, but startGame() calls it one line
+        // before raising the flag, and sendScoreNew ignores a game that reports
+        // as neither started nor over.
+        it('reports with the game already marked as started', () => {
+            setupGame();
+            let startedWhenReported;
+            $periodicTable.sendScore.mockImplementation(() => {
+                startedWhenReported = $periodicTable.options[0].gameStarted;
+            });
+
+            $periodicTable.startGame(0);
+
+            expect(startedWhenReported).toBe(true);
+        });
+
+        it('does not report a game that was already running', () => {
+            setupGame({ gameStarted: true });
+
+            $periodicTable.startGame(0);
+
+            expect($periodicTable.sendScore).not.toHaveBeenCalled();
+        });
+    });
+
     // The name is gone from the source; a reference to it is always a defect,
     // because the function has never existed in this iDevice.
     it('does not reference the non-existent checkAnswers()', () => {
