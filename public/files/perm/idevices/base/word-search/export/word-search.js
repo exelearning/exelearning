@@ -518,6 +518,10 @@ var $eXeSopa = {
                 }
             }
         }, 1000);
+
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeSopa.saveScormScore(instanceId);
     },
 
     uptateTime: function (time, instanceId) {
@@ -656,6 +660,25 @@ var $eXeSopa = {
             mOptions,
             $eXeSopa.isInExe
         );
+    },
+
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, the score and gameOver, but nothing told the
+     * LMS, so the menu kept the previous attempt's grade and status until the
+     * learner found a word.
+     *
+     * Only reachable on a timed activity: without a time limit the game is
+     * already running when enable() finishes and the start button is hidden.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeSopa.sendScore(true, instanceId);
     },
 
     sendScore: function (auto, instanceId) {

@@ -156,4 +156,92 @@ describe('word-search iDevice export', () => {
             expect($('#sopaPTime-4').css('display')).not.toBe('none');
         });
     });
+
+    // Only a timed activity has a start button: without a time limit the game
+    // is already running when enable() finishes and the button stays hidden.
+    describe('SCORM reporting when a timed game starts', () => {
+        function setupInstance(overrides = {}) {
+            document.body.innerHTML = `
+                <div class="idevice_node">
+                    <div id="sopaMainContainer-0">
+                        <div id="sopaResolve-0"></div>
+                        <div id="sopaMessage-0"></div>
+                        <div id="sopaMultimedia-0"></div>
+                        <div id="sopaDivImgHome-0"></div>
+                        <div id="sopaPHits-0"></div>
+                        <div id="sopaPScore-0"></div>
+                        <div id="sopaStartGame-0"></div>
+                        <div id="sopaPTime-0"></div>
+                    </div>
+                </div>`;
+            $eXeSopa.instances[0] = Object.assign(
+                {
+                    main: 'sopaMainContainer-0',
+                    instanceId: 0,
+                    isScorm: 1,
+                    time: 1,
+                    gameStarted: false,
+                    gameOver: false,
+                    hits: 0,
+                    score: 0,
+                    showResolve: false,
+                    wordsGame: [{ audio: '' }, { audio: '' }],
+                    numberQuestions: 2,
+                    itinerary: { showClue: false, percentageClue: 0 },
+                    msgs: { msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn($eXeSopa, 'uptateTime').mockImplementation(() => {});
+            vi.spyOn($eXeSopa, 'sendScore').mockImplementation(() => {});
+            vi.useFakeTimers();
+        }
+
+        afterEach(() => {
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('saveScormScore reports only in automatic SCORM mode', () => {
+            setupInstance({ isScorm: 1 });
+            $eXeSopa.saveScormScore(0);
+            expect($eXeSopa.sendScore).toHaveBeenCalledWith(true, 0);
+
+            $eXeSopa.sendScore.mockClear();
+            $eXeSopa.instances[0].isScorm = 2;
+            $eXeSopa.saveScormScore(0);
+            expect($eXeSopa.sendScore).not.toHaveBeenCalled();
+        });
+
+        // The defect: pressing the start button left the LMS holding the
+        // previous attempt's grade and status until a word was found.
+        it('publishes the cleared state when a finished game is restarted', () => {
+            setupInstance({ hits: 2, score: 10, gameOver: true });
+            let stateWhenReported;
+            $eXeSopa.sendScore.mockImplementation(() => {
+                const { hits, score, gameOver, gameStarted } =
+                    $eXeSopa.instances[0];
+                stateWhenReported = { hits, score, gameOver, gameStarted };
+            });
+
+            $eXeSopa.startGame(0);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                score: 0,
+                gameOver: false,
+                // sendScoreNew ignores a game that reports as neither started
+                // nor over.
+                gameStarted: true,
+            });
+        });
+
+        it('does not report a game that was already running', () => {
+            setupInstance({ gameStarted: true });
+
+            $eXeSopa.startGame(0);
+
+            expect($eXeSopa.sendScore).not.toHaveBeenCalled();
+        });
+    });
 });
