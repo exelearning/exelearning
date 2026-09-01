@@ -2510,6 +2510,94 @@ describe('common.js $exeDevices', () => {
 
       // The commit persists what was written; it decides nothing. LMSCommit
       // runs StoreData(cmi, false), which promotes no status.
+      // showFinalScore writes the score and the status and only then paints the
+      // result. A failure while painting — a missing message, a node an iDevice
+      // expects and its markup does not have — used to leave the LMS holding
+      // the values with nothing to persist them: "the score is right but the
+      // menu never updates". An activity that reports once, from a check
+      // button, has no second chance; one that reports per answer hides it,
+      // because the next report commits what the last one left behind.
+      it('commits even when painting the result throws', () => {
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+        const showFinalScore = vi
+          .spyOn(getScorm(), 'showFinalScore')
+          .mockImplementation(() => {
+            throw new Error('painting failed');
+          });
+
+        try {
+          expect(() => getScorm().updateActivity(game(), {}, true)).toThrow(
+            'painting failed'
+          );
+        } finally {
+          showFinalScore.mockRestore();
+        }
+
+        expect(api.callNames()).toContain('LMSCommit');
+      });
+
+      // Moodle redraws the SCO status in its menu only on LMSCommit. The
+      // synchronous commit is the guarantee; this deferred retry carries the
+      // writes that land after it — a status settled by a timer or an
+      // animation — which an activity reporting once, from a check button, has
+      // no later report to carry for it.
+      it('retries the commit shortly after the report', () => {
+        vi.useFakeTimers();
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        try {
+          getScorm().triggerMoodleDetection();
+          // Nothing yet: the retry is deferred, so it cannot be what carries
+          // a report the learner navigates away from.
+          expect(api.callNames()).not.toContain('LMSCommit');
+
+          vi.advanceTimersByTime(50);
+
+          expect(api.callNames()).toContain('LMSCommit');
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
+      it('does not throw when the retry finds no committable session', () => {
+        vi.useFakeTimers();
+
+        try {
+          getScorm().triggerMoodleDetection();
+
+          expect(() => vi.advanceTimersByTime(50)).not.toThrow();
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
+      // A deferred-only commit would be lost if the learner navigates within
+      // the delay, so the synchronous one has to stand on its own.
+      it('commits synchronously as well, without waiting for the retry', () => {
+        vi.useFakeTimers();
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        try {
+          getScorm().updateActivity(game(), {}, true);
+
+          expect(api.callNames()).toContain('LMSCommit');
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
       it('leaves a page with pending required work incomplete', () => {
         getScorm().reportActivity(game(), { total: 4 });
         getScorm().reportActivity(game({ ideviceId: 'quiz-2', ideviceNumber: 2 }), { total: 4 });

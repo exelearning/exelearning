@@ -1481,6 +1481,11 @@ var $exeDevices = {
                             $repeatActivity.text(message).show();
                         }
 
+                        // updateActivity committed synchronously above; this
+                        // schedules the deferred retry that carries whatever
+                        // settles after it. See triggerMoodleDetection.
+                        $exeDevices.iDevice.gamification.scorm.triggerMoodleDetection();
+
                     } else {
                         message = game.msgs.msgEndGameScore;
                     }
@@ -1501,10 +1506,83 @@ var $exeDevices = {
                  * activity. Supplied explicitly by the caller — the completion
                  * policy never infers it from a game property.
                  */
+                /**
+                 * Persist the session (LMSCommit), through the SCORM 1.2
+                 * runtime when it is present and the vendored wrapper
+                 * otherwise.
+                 *
+                 * Branches on the capability, not on the runtime object, for
+                 * the same reason showFinalScore does: the Moodle plugin
+                 * injects its own vendored copy of the runtime, which may come
+                 * from a different release. isActive() is checked first —
+                 * iDevices register on jQuery ready, before loadPage(), and
+                 * commit() warns when there is no session.
+                 */
+                commitSession: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) return;
+                    const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
+                    if (
+                        runtime &&
+                        runtime.client &&
+                        typeof runtime.client.commit === 'function' &&
+                        typeof runtime.client.isActive === 'function' &&
+                        runtime.client.isActive()
+                    ) {
+                        runtime.client.commit();
+                        return;
+                    }
+                    if (typeof pipwerks.SCORM.save === 'function') {
+                        pipwerks.SCORM.save();
+                    }
+                },
+
+                /**
+                 * Deferred retry commit, so a value written just as the
+                 * interface settles still reaches the LMS.
+                 *
+                 * Moodle redraws the SCO status in its course-structure menu
+                 * only on LMSCommit — it does not observe the DOM inside the
+                 * SCO's iframe, so nudging the markup is a no-op for detection.
+                 * updateActivity already commits synchronously, and that
+                 * remains the guarantee: a deferred-only commit would be lost
+                 * if the learner navigates within the delay. This covers the
+                 * writes that land after that commit — a status settled by a
+                 * timer or an animation — which an activity reporting once,
+                 * from a check button, has no later report to carry for it.
+                 */
+                triggerMoodleDetection: function () {
+                    if (typeof setTimeout !== 'function') return;
+                    setTimeout(function () {
+                        try {
+                            $exeDevices.iDevice.gamification.scorm.commitSession();
+                        } catch (e) {
+                            // The API may not be in a committable state; the
+                            // synchronous commit is the guarantee, not this.
+                        }
+                    }, 50);
+                },
+
                 updateActivity: function (game, lmsData, completed) {
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM || typeof game !== 'object' || game === null) {
                         return;
                     }
+
+                    // Everything the branches below write is an LMSSetValue, which
+                    // only reaches the LMS's in-memory data model. Moodle refreshes
+                    // its course-structure menu on LMSCommit and nowhere else
+                    // (mod/scorm/datamodels/scorm_12.js LMSCommit ->
+                    // connectPrereqCallback, unless hidetoc === '3'), so without a
+                    // commit the mark the learner has just earned stays out of the
+                    // index for the rest of the visit. Moodle's own autocommit is no
+                    // substitute: it ships disabled and, when enabled, is a
+                    // 60-second timer.
+                    //
+                    // Committing mid-activity is safe: LMSCommit runs
+                    // StoreData(cmi, false), and with storetotaltime false it
+                    // neither promotes the status nor applies the mastery_score
+                    // override. It persists what was written; it decides nothing.
+                    const commitSession =
+                        $exeDevices.iDevice.gamification.scorm.commitSession;
 
                     const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
                     if (registry) {
@@ -1522,40 +1600,23 @@ var $exeDevices = {
                         if (runtime.policy && typeof runtime.policy.persistActivities === 'function') {
                             runtime.policy.persistActivities();
                         }
-                        $exeDevices.iDevice.gamification.scorm.showFinalScore(
-                            $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry(),
-                            game
-                        );
-                        // Everything above is LMSSetValue, which only reaches the
-                        // LMS's in-memory data model. Moodle refreshes its
-                        // course-structure menu on LMSCommit and nowhere else
-                        // (mod/scorm/datamodels/scorm_12.js LMSCommit ->
-                        // connectPrereqCallback, unless hidetoc === '3'), so without
-                        // this the mark the learner has just earned is not shown in
-                        // the index for the rest of the visit — the runtime's own
-                        // commits happen when the page is hidden or left. Moodle's
-                        // autocommit is no substitute: it ships disabled and, when
-                        // enabled, is a 60-second timer.
-                        //
-                        // Committing mid-activity is safe: LMSCommit runs
-                        // StoreData(cmi, false), and with storetotaltime false it
-                        // neither promotes the status nor applies the mastery_score
-                        // override. It persists what was written; it decides nothing.
-                        //
-                        // Branch on the capability, not the runtime object, for the
-                        // same reason showFinalScore does: the Moodle plugin injects
-                        // its own vendored copy of the runtime, which may come from a
-                        // different release. And check isActive() first — iDevices
-                        // register on jQuery ready, before loadPage(), and commit()
-                        // warns when there is no session (see
-                        // reconcilePendingActivities for the same guard).
-                        if (
-                            runtime.client &&
-                            typeof runtime.client.commit === 'function' &&
-                            typeof runtime.client.isActive === 'function' &&
-                            runtime.client.isActive()
-                        ) {
-                            runtime.client.commit();
+                        try {
+                            $exeDevices.iDevice.gamification.scorm.showFinalScore(
+                                $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry(),
+                                game
+                            );
+                        } finally {
+                            // In a `finally`, because showFinalScore writes the score
+                            // and the status and only then paints the result: a failure
+                            // while painting — a missing message, a node an iDevice
+                            // expects and its markup does not have — would otherwise
+                            // leave the LMS holding the values with nothing to persist
+                            // them, which is exactly "the score is right but the menu
+                            // never updates". An activity that reports once, from a
+                            // check button, has no second chance; one that reports per
+                            // answer hides it, because the next report commits what the
+                            // last one left behind.
+                            commitSession();
                         }
                         return;
                     }
@@ -1573,15 +1634,10 @@ var $exeDevices = {
 
                     pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
 
-                    $exeDevices.iDevice.gamification.scorm.showFinalScore(lmsData, game);
-
-                    // Same reason as the SCORM 1.2 branch above: the writes only
-                    // reach the LMS's in-memory data model, and Moodle refreshes its
-                    // course-structure menu on LMSCommit alone. Without this the
-                    // learner's new mark stays out of the index until the page is
-                    // left.
-                    if (typeof pipwerks.SCORM.save === 'function') {
-                        pipwerks.SCORM.save();
+                    try {
+                        $exeDevices.iDevice.gamification.scorm.showFinalScore(lmsData, game);
+                    } finally {
+                        commitSession();
                     }
                 },
 
