@@ -1758,6 +1758,11 @@ var $eXeDescubre = {
             $('#descubreImgTime-' + instance).hide();
         }
 
+        // Never leave a previous countdown running: the level buttons and the
+        // play-again button re-enter startGame directly, without passing
+        // through rebootGame, so without this a second game ran two intervals
+        // over the same counter and its clock ticked twice per second.
+        clearInterval(mOptions.counterClock);
         if (mOptions.time > 0) {
             mOptions.counterClock = setInterval(function () {
                 let $node = $('#descubreMainContainer-' + instance);
@@ -1806,6 +1811,10 @@ var $eXeDescubre = {
         mOptions.gameStarted = false;
         mOptions.gameActived = false;
         mOptions.gameOver = true;
+        // The attempt is over, so the countdown has no reason to survive it.
+        // It used to run for the life of the page, and a second game started
+        // from the level buttons then added its own on top.
+        clearInterval(mOptions.counterClock);
         $exeDevices.iDevice.gamification.media.stopSound();
         $('#descubreCubierta-' + instance).show();
         $eXeDescubre.showScoreGame(type, instance);

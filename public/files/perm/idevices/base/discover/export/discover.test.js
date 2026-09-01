@@ -203,6 +203,103 @@ describe('discover iDevice export', () => {
   // common.js derives completion from `gameOver === true || auto !== true`, and
   // the report below is automatic, so without the flag a page carrying a
   // discover stayed `incomplete` in the LMS however well the learner did.
+  describe('the countdown across attempts', () => {
+    function setupTimedGame(overrides = {}) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreMultimedia-0"></div>
+          <div id="descubrePShowClue-0"></div>
+          <div id="descubreShowClue-0"></div>
+          <div id="descubrePHits-0"></div>
+          <div id="descubrePErrors-0"></div>
+          <div id="descubreCubierta-0"></div>
+          <div id="descubreGameOver-0"></div>
+          <div id="descubreStartLevels-0"></div>
+          <div id="descubreMessage-0"></div>
+          <div id="descubrePTime-0"></div>
+          <div id="descubreImgTime-0"></div>
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 0,
+          // 3 seconds: the interval ticks once a second.
+          time: 3 / 60,
+          gameStarted: false,
+          gameOver: false,
+          hits: 0,
+          errors: 0,
+          attempts: 0,
+          wordsGame: [{}, {}],
+          wordsGameFix: [{}, {}],
+          gameLevels: 1,
+          numberQuestions: 2,
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: { msgSelectLevel: '', msgRookie: '', msgStar: '' },
+        },
+        overrides
+      );
+      // Builds the deck for the chosen level through the shared shuffle
+      // helper; irrelevant to the countdown and absent from the test stubs.
+      vi.spyOn($eXeDescubre, 'getCardsLevels').mockReturnValue([]);
+      vi.spyOn($eXeDescubre, 'addCards').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'initCards').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'uptateTime').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'showScoreGame').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'showFeedBack').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation(() => {});
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      // gameOver() silences the statement audio; absent from the test stubs.
+      global.$exeDevices.iDevice.gamification.media = { stopSound: vi.fn() };
+    });
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      delete global.$exeDevices.iDevice.gamification.media;
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    // Asserted on the live timer count, not on the counter: gameOver() clears
+    // gameStarted, and the interval body only decrements while that is set, so
+    // a surviving interval is invisible in the counter alone.
+    it('stops the countdown when the attempt ends', () => {
+      setupTimedGame();
+      $eXeDescubre.startGame(0, 0);
+      $eXeDescubre.options[0].gameStarted = true;
+      expect(vi.getTimerCount()).toBe(1);
+
+      $eXeDescubre.gameOver(2, 0);
+
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    // The level buttons and the play-again button re-enter startGame without
+    // passing through rebootGame, so a second game used to run two intervals
+    // over the same counter: its clock ticked twice per second and the time
+    // ran out in half the time.
+    it('never leaves two countdowns running over the same game', () => {
+      setupTimedGame();
+      $eXeDescubre.startGame(0, 0);
+      // Whatever reopened the activity left the flag down without ending the
+      // attempt through gameOver().
+      $eXeDescubre.options[0].gameStarted = false;
+
+      $eXeDescubre.startGame(0, 0);
+      $eXeDescubre.options[0].gameStarted = true;
+      vi.advanceTimersByTime(1000);
+
+      expect(vi.getTimerCount()).toBe(1);
+      expect($eXeDescubre.options[0].counter).toBe(2);
+    });
+  });
+
   describe('completion when every group is discovered', () => {
     function setupPair(overrides) {
       document.body.innerHTML = `
