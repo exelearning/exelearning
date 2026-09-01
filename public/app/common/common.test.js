@@ -1638,6 +1638,43 @@ describe('common.js $exeDevices', () => {
       expect(scorm.getPreviousScore(mockScorm)).toBe('85');
     });
 
+    // The bug this helper exists to prevent: init() answers false when the
+    // session is already open, which inside a SCORM package is the normal case
+    // — loadPage() opens it first. Two iDevices separately gated their whole
+    // setup on that return value and so skipped the binding for exactly the
+    // sessions that were working.
+    it('bindSession binds even when init() reports the session as already open', () => {
+      const scorm = getScorm();
+      const api = {
+        init: vi.fn(() => false),
+        SetScoreMax: vi.fn(),
+        SetScoreMin: vi.fn(),
+        GetLearnerName: () => 'Ada',
+        GetScoreRaw: () => '42',
+      };
+
+      expect(scorm.bindSession(api)).toEqual({ userName: 'Ada', previousScore: '42' });
+      expect(api.init).toHaveBeenCalled();
+      expect(api.SetScoreMax).toHaveBeenCalledWith(100);
+      expect(api.SetScoreMin).toHaveBeenCalledWith(0);
+    });
+
+    it('bindSession writes the bounds through the data model when the setters are absent', () => {
+      const scorm = getScorm();
+      const set = vi.fn();
+      const api = { init: vi.fn(), set };
+
+      scorm.bindSession(api);
+
+      expect(set).toHaveBeenCalledWith('cmi.core.score.max', '100');
+      expect(set).toHaveBeenCalledWith('cmi.core.score.min', '0');
+    });
+
+    it('bindSession answers defaults when there is no wrapper at all', () => {
+      const scorm = getScorm();
+      expect(scorm.bindSession(null)).toEqual({ userName: '', previousScore: '0' });
+    });
+
     it('parseJSONSafe returns empty object for invalid JSON', () => {
       const scorm = getScorm();
       expect(scorm.parseJSONSafe('invalid')).toEqual({});

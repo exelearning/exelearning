@@ -561,9 +561,11 @@ describe('form iDevice export', () => {
       expect(registered).toBe(ldata);
     });
 
-    // init() answers false when the session is already open, which inside a
-    // SCORM package is the normal case — loadPage() opens it first.
-    it('binds even when init() reports the session as already open', () => {
+    // Opening the session is bindSession's job (common.js); initSCORM must not
+    // gate the binding on anything it sees first. init() answers false when the
+    // session is already open, which inside a SCORM package is the normal case
+    // — loadPage() opens it first.
+    it('binds even when the session is already open', () => {
       const ldata = liveInstance();
       global.scorm = { init: vi.fn(() => false) };
       const initScormData = vi
@@ -572,7 +574,6 @@ describe('form iDevice export', () => {
 
       $form.initSCORM(ldata);
 
-      expect(global.scorm.init).toHaveBeenCalled();
       expect(initScormData).toHaveBeenCalledWith(ldata);
     });
 

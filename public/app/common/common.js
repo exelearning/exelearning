@@ -957,6 +957,49 @@ var $exeDevices = {
                     }
                 },
 
+                /**
+                 * Opens the SCORM session for an iDevice and reads back what it
+                 * needs from it: the learner name, the score already stored for
+                 * this SCO, and the 0..100 bounds the LMS grades against.
+                 *
+                 * Deliberately does NOT gate on what init() returns. It answers
+                 * false when the session is already open, which inside a SCORM
+                 * package is the normal case — loadPage() opens it first — so
+                 * gating on it skipped the binding for exactly the sessions
+                 * that were working. Two iDevices grew that bug separately;
+                 * this is where the fix lives so a third cannot.
+                 *
+                 * @param {Object} scormgame The SCORM API wrapper.
+                 * @returns {Object} `{ userName, previousScore }`, defaulted
+                 *   when there is no session to read.
+                 */
+                bindSession: function (scormgame) {
+                    if (!scormgame) {
+                        return { userName: '', previousScore: '0' };
+                    }
+
+                    if (typeof scormgame.init === 'function') {
+                        scormgame.init();
+                    }
+
+                    if (typeof scormgame.SetScoreMax === 'function') {
+                        scormgame.SetScoreMax(100);
+                    } else if (typeof scormgame.set === 'function') {
+                        scormgame.set('cmi.core.score.max', '100');
+                    }
+
+                    if (typeof scormgame.SetScoreMin === 'function') {
+                        scormgame.SetScoreMin(0);
+                    } else if (typeof scormgame.set === 'function') {
+                        scormgame.set('cmi.core.score.min', '0');
+                    }
+
+                    return {
+                        userName: $exeDevices.iDevice.gamification.scorm.getUserName(scormgame),
+                        previousScore: $exeDevices.iDevice.gamification.scorm.getPreviousScore(scormgame),
+                    };
+                },
+
                 // Nueva función: Obtener puntuación de una actividad específica desde suspend_data
                 getActivityScore: function (ideviceNumber) {
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {

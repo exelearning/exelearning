@@ -663,25 +663,11 @@ var $form = {
 
     initScormData: function (ldata) {
         $form.mScorm = window.scorm;
-        $form.userName = $exeDevices.iDevice.gamification.scorm.getUserName(
+        const session = $exeDevices.iDevice.gamification.scorm.bindSession(
             $form.mScorm
         );
-        $form.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $form.mScorm
-            );
-        if (typeof $form.mScorm.SetScoreMax === 'function') {
-            $form.mScorm.SetScoreMax(100);
-        } else {
-            $form.mScorm.SetScoreMax(100);
-        }
-
-        if (typeof $form.mScorm.SetScoreMin === 'function') {
-            $form.mScorm.SetScoreMin(0);
-        } else {
-            $form.mScorm.SetScoreMin(0);
-        }
-
+        $form.userName = session.userName;
+        $form.previousScore = session.previousScore;
         $form.initialScore = $form.previousScore;
         $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
     },
@@ -1885,10 +1871,7 @@ var $form = {
         if (!ldata) return;
         $form.mScorm = typeof scorm !== 'undefined' ? scorm : window.scorm;
         if (!$form.mScorm) return;
-        // Open the session and bind regardless of what init() returns: it is
-        // false when the session is already active, which inside a SCORM
-        // package is the normal case (loadPage opens it first), not a failure.
-        $form.mScorm.init();
+        // bindSession, reached through initScormData, is what opens the session.
         $form.initScormData(ldata);
     },
     endScorm: function () {
