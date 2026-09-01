@@ -875,6 +875,12 @@ var $scrambledlist = {
     sendScore: function (rightAnswers, totalOptions, data) {
         data.scorerp = (rightAnswers * 10) / totalOptions;
         data.gameStarted = true;
+        // The learner pressed Check and the list has been graded, so the activity is
+        // finished. common.js derives completion from `gameOver === true || auto !== true`
+        // and this call passes auto = true, so without this flag the activity never
+        // completes and any page carrying a scrambled-list stays `incomplete` in the LMS
+        // even at 100%. Every other gradable iDevice sets it at the same point.
+        data.gameOver = true;
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
     },
     /**

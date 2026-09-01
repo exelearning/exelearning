@@ -37,7 +37,25 @@ const createMockResourceProvider = (): ResourceProvider => ({
     fetchTheme: async () => new Map(),
     fetchIdeviceResources: async () => new Map(),
     fetchBaseLibraries: async () => new Map(),
-    fetchLibraryFiles: async () => new Map(),
+    fetchLibraryFiles: async (files: string[]) => {
+        const result = new Map<string, Buffer>();
+        if (files.includes('material-icons/material-icons.svg')) {
+            result.set(
+                'material-icons/material-icons.svg',
+                Buffer.from(
+                    [
+                        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+                        '<symbol id="lightbulb" viewBox="0 -960 960 960"><path d="M0Z"/></symbol>',
+                        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M1Z"/></symbol>',
+                        '<symbol id="filter_5" viewBox="0 -960 960 960"><path d="M2Z"/></symbol>',
+                        '<symbol id="help" viewBox="0 -960 960 960"><path d="M3Z"/></symbol>',
+                        '</svg>',
+                    ].join('\n'),
+                ),
+            );
+        }
+        return result;
+    },
     fetchScormFiles: async () => new Map(),
     normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, ''),
     fetchExeLogo: async () => null,
@@ -154,6 +172,34 @@ describe('PrintPreviewExporter', () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('Hello World');
             expect(result.html).toContain('About page content');
+        });
+
+        it('should inline material icon SVGs in print preview HTML', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'page-1',
+                    title: 'Home',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block 1',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ]);
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('data:image/svg+xml;utf8,');
+            expect(result.html).not.toContain('libs/material-icons/icons/lightbulb.svg');
         });
 
         it('should include package header with project title', async () => {
@@ -458,6 +504,42 @@ describe('PrintPreviewExporter', () => {
             // This matches the asset ID.
             expect(result.html).toContain('blob:mock-url-3');
             expect(result.html).not.toContain('content/resources/1234-5678.png');
+        });
+
+        it('should resolve custom block icon assets to blob URLs in print preview HTML', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            iconName: 'asset://1234-5678',
+                            icon: { source: 'asset', value: 'asset://1234-5678' },
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>Content</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider, mockAssetProvider as any);
+            const result = await exp.generatePreview();
+
+            expect(result.html).toContain('blob:mock-url-3');
+            expect(result.html).not.toContain('asset://1234-5678');
+            expect(result.html).not.toContain('content/resources/1234-5678');
         });
 
         it('should handle multiple assets with same filename by generating unique blob URLs', async () => {

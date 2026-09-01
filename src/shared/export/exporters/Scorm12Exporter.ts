@@ -21,6 +21,7 @@ import { Scorm12ManifestGenerator } from '../generators/Scorm12Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
+import { buildScorm12RuntimeFiles } from '../utils/Scorm12Runtime';
 
 export class Scorm12Exporter extends Html5Exporter {
     protected manifestGenerator: Scorm12ManifestGenerator | null = null;
@@ -105,6 +106,8 @@ export class Scorm12Exporter extends Html5Exporter {
 
             // Configure iDevice renderer with theme files for icon resolution
             this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+            const { files: materialIconFiles, dataUris: materialIconDataUris } =
+                await this.resolveMaterialIconDataUris(pages);
 
             // Fetch translated nav labels for the content language (includes license)
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
@@ -127,6 +130,7 @@ export class Scorm12Exporter extends Html5Exporter {
                     faviconInfo,
                     pageFilenameMap,
                     navLabels,
+                    materialIconDataUris,
                 );
 
                 // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
@@ -255,6 +259,11 @@ export class Scorm12Exporter extends Html5Exporter {
                 // No base libraries available
             }
 
+            this.addPrefixedFiles(materialIconFiles, 'libs/', (path, content) => {
+                this.zip.addFile(path, content);
+                commonFiles.push(path);
+            });
+
             // 4.5. Generate localized i18n file
             const i18nContent = await this.generateI18nContent(meta.language || 'en');
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
@@ -286,18 +295,22 @@ export class Scorm12Exporter extends Html5Exporter {
                 await this.ensureElpxDownloadLibraries(addFile, commonFiles);
             }
 
-            // 6. Fetch SCORM API wrapper files
-            try {
-                const scormFiles = await this.resources.fetchScormFiles('1.2');
-                for (const [filePath, content] of scormFiles) {
-                    addFile(`libs/${filePath}`, content);
-                    commonFiles.push(`libs/${filePath}`);
-                }
-            } catch {
-                // Add fallback SCORM files
-                addFile('libs/SCORM_API_wrapper.js', this.getScormApiWrapper());
-                addFile('libs/SCOFunctions.js', this.getScoFunctions());
-                commonFiles.push('libs/SCORM_API_wrapper.js', 'libs/SCOFunctions.js');
+            // 6. Fetch and assemble the SCORM 1.2 runtime (vendored pipwerks
+            // wrapper + project-owned runtime layers). No silent fallback: an
+            // incomplete runtime breaks LMS tracking, so a failed fetch fails
+            // the export (buildScorm12RuntimeFiles throws with the missing
+            // file list and the outer catch reports it).
+            const scormSources = await this.resources.fetchScormFiles('1.2');
+            // Stamp the assembled runtime with the version that produced it: one
+            // eXeLearning version, one runtime, and a consumer can prove which.
+            // The project's own `exelearningVersion` is NOT used as a fallback: it
+            // is the version that authored the project, so an old project exported
+            // by a new eXeLearning would be stamped with the wrong runtime. An
+            // unstamped runtime says 'unknown', which is honest.
+            const scormRuntimeFiles = buildScorm12RuntimeFiles(scormSources, options?.runtimeVersion);
+            for (const [filePath, content] of scormRuntimeFiles) {
+                addFile(`libs/${filePath}`, content);
+                commonFiles.push(`libs/${filePath}`);
             }
 
             // 6b. Copy content.xml and DTD (always include for re-editing capability)
@@ -428,6 +441,7 @@ export class Scorm12Exporter extends Html5Exporter {
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
         navLabels?: { previous: string; next: string; license?: string },
+        materialIconDataUris?: Map<string, string>,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -478,7 +492,10 @@ export class Scorm12Exporter extends Html5Exporter {
             bodyClass: bodyClass,
             extraHeadScripts: this.getScormHeadScripts(basePath),
             onLoadScript: 'loadPage()',
-            onUnloadScript: 'unloadPage()',
+            // No onUnloadScript: the SCORM 1.2 runtime owns end-of-session
+            // handling (pagehide/visibilitychange) — unload/beforeunload
+            // handlers are unreliable and break the back/forward cache.
+            // See doc/development/scorm12-runtime-contract.md and ADR-2209-01.
             // Hide navigation elements - LMS handles navigation in SCORM
             hideNavigation: true,
             hideNavButtons: true,
@@ -491,6 +508,7 @@ export class Scorm12Exporter extends Html5Exporter {
             pageFilenameMap,
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
+            materialIconDataUris,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
         });
@@ -502,161 +520,6 @@ export class Scorm12Exporter extends Html5Exporter {
     getScormHeadScripts(basePath: string): string {
         return `<script src="${basePath}libs/SCORM_API_wrapper.js"></script>
 <script src="${basePath}libs/SCOFunctions.js"></script>`;
-    }
-
-    /**
-     * Get minimal SCORM API wrapper (fallback)
-     */
-    getScormApiWrapper(): string {
-        return `/**
- * SCORM API Wrapper
- * Minimal implementation for SCORM 1.2 communication
- */
-var pipwerks = pipwerks || {};
-
-pipwerks.SCORM = {
-  version: "1.2",
-  API: { handle: null, isFound: false },
-  data: { completionStatus: null, exitStatus: null },
-  debug: { isActive: true }
-};
-
-pipwerks.SCORM.API.find = function(win) {
-  var findAttempts = 0, findAttemptLimit = 500;
-  while (!win.API && win.parent && win.parent !== win && findAttempts < findAttemptLimit) {
-    findAttempts++;
-    win = win.parent;
-  }
-  return win.API || null;
-};
-
-pipwerks.SCORM.API.get = function() {
-  var win = window;
-  if (win.parent && win.parent !== win) { this.handle = this.find(win.parent); }
-  if (!this.handle && win.opener) { this.handle = this.find(win.opener); }
-  if (this.handle) { this.isFound = true; }
-  return this.handle;
-};
-
-pipwerks.SCORM.API.getHandle = function() {
-  if (!this.handle) { this.get(); }
-  return this.handle;
-};
-
-pipwerks.SCORM.connection = { isActive: false };
-
-pipwerks.SCORM.init = function() {
-  var success = false, API = this.API.getHandle();
-  if (API) {
-    success = API.LMSInitialize("");
-    if (success) { this.connection.isActive = true; }
-  }
-  return success;
-};
-
-pipwerks.SCORM.quit = function() {
-  var success = false, API = this.API.getHandle();
-  if (API && this.connection.isActive) {
-    success = API.LMSFinish("");
-    if (success) { this.connection.isActive = false; }
-  }
-  return success;
-};
-
-pipwerks.SCORM.get = function(parameter) {
-  var value = "", API = this.API.getHandle();
-  if (API && this.connection.isActive) {
-    value = API.LMSGetValue(parameter);
-  }
-  return value;
-};
-
-pipwerks.SCORM.set = function(parameter, value) {
-  var success = false, API = this.API.getHandle();
-  if (API && this.connection.isActive) {
-    success = API.LMSSetValue(parameter, value);
-  }
-  return success;
-};
-
-pipwerks.SCORM.save = function() {
-  var success = false, API = this.API.getHandle();
-  if (API && this.connection.isActive) {
-    success = API.LMSCommit("");
-  }
-  return success;
-};
-
-// Shorthand
-var scorm = pipwerks.SCORM;
-`;
-    }
-
-    /**
-     * Get minimal SCO Functions (fallback)
-     */
-    getScoFunctions(): string {
-        return `/**
- * SCO Functions for SCORM 1.2
- * Page load/unload handlers for SCORM communication
- */
-
-var startTimeStamp = null;
-var exitPageStatus = false;
-
-function loadPage() {
-  startTimeStamp = new Date();
-  var result = scorm.init();
-  if (result) {
-    var status = scorm.get("cmi.core.lesson_status");
-    if (status === "not attempted" || status === "") {
-      scorm.set("cmi.core.lesson_status", "incomplete");
-    }
-  }
-  return result;
-}
-
-function unloadPage() {
-  if (!exitPageStatus) {
-    exitPageStatus = true;
-    computeTime();
-    scorm.quit();
-  }
-}
-
-function computeTime() {
-  if (startTimeStamp != null) {
-    var now = new Date();
-    var elapsed = now.getTime() - startTimeStamp.getTime();
-    elapsed = Math.round(elapsed / 1000);
-    var hours = Math.floor(elapsed / 3600);
-    var mins = Math.floor((elapsed - hours * 3600) / 60);
-    var secs = elapsed - hours * 3600 - mins * 60;
-    hours = hours < 10 ? "0" + hours : hours;
-    mins = mins < 10 ? "0" + mins : mins;
-    secs = secs < 10 ? "0" + secs : secs;
-    var sessionTime = hours + ":" + mins + ":" + secs;
-    scorm.set("cmi.core.session_time", sessionTime);
-  }
-}
-
-function setComplete() {
-  scorm.set("cmi.core.lesson_status", "completed");
-  scorm.save();
-}
-
-function setIncomplete() {
-  scorm.set("cmi.core.lesson_status", "incomplete");
-  scorm.save();
-}
-
-function setScore(score, maxScore, minScore) {
-  scorm.set("cmi.core.score.raw", score);
-  if (maxScore !== undefined) scorm.set("cmi.core.score.max", maxScore);
-  if (minScore !== undefined) scorm.set("cmi.core.score.min", minScore);
-  scorm.save();
-}
-`;
     }
 
     /**

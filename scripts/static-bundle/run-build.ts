@@ -2,7 +2,7 @@
  * Static distribution build orchestrator.
  *
  * This is the effectful CLI half of the static build: it wipes and repopulates
- * the output directory, copies hundreds of megabytes out of public/, and gzips
+ * the output directory, copies hundreds of megabytes out of public/, and zstd-compresses
  * the bundled JSON datasets in place. All of the logic it drives — version
  * resolution, translation/iDevice/theme discovery, template rendering, the copy
  * and compression primitives — lives in ../build-static-bundle.ts and is unit
@@ -24,6 +24,7 @@ import {
     buildIdevicesList,
     buildThemesList,
     compressJsonInDir,
+    copyBundleManifest,
     copyDirRecursive,
     generatePwaManifest,
     generateServiceWorker,
@@ -34,6 +35,7 @@ import {
     outputDir,
     projectRoot,
 } from '../build-static-bundle';
+import { stripSourceMapReferences } from './strip-source-map-refs';
 
 /**
  * Main build function
@@ -127,17 +129,27 @@ export async function buildStaticBundle() {
     copyDirRecursive(path.join(projectRoot, 'public/style'), path.join(outputDir, 'style'));
     console.log('  Copied style/');
 
-    // Copy bundles folder (pre-built resource ZIPs)
-    copyDirRecursive(path.join(projectRoot, 'public/bundles'), path.join(outputDir, 'bundles'));
-    console.log('  Copied bundles/');
+    // Ship only the bundle manifest — zips are assembled client-side from loose files.
+    // See copyBundleManifest() for the rationale.
+    if (copyBundleManifest(projectRoot, outputDir)) {
+        console.log('  Copied bundles/manifest.json (zips assembled client-side from loose files)');
+    } else {
+        console.warn('  WARNING: public/bundles/manifest.json not found — run bundle:resources first');
+    }
 
-    // Copy files/perm (themes, iDevices, favicon)
-    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));
+    // Copy files/perm (themes, iDevices, favicon). The one exclusion is the
+    // `slide` iDevice's hand-maintained TS source, which sits next to the built
+    // JS it actually loads and is never fetched at runtime. Excluded by its
+    // path rather than by the name `src`, so a future runtime directory of that
+    // name elsewhere under files/perm is not dropped with it.
+    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'), [
+        'idevices/base/slide/src',
+    ]);
     console.log('  Copied files/perm/');
 
-    // Gzip large iDevice JSON datasets in place (browser decompresses on the fly).
+    // Zstd-compress large iDevice JSON datasets in place (browser decompresses via fzstd).
     let totalOrig = 0;
-    let totalGz = 0;
+    let totalCompressed = 0;
     let totalCount = 0;
     for (const relDir of COMPRESS_JSON_DIRS) {
         const absDir = path.join(outputDir, relDir);
@@ -149,23 +161,23 @@ export async function buildStaticBundle() {
             );
         }
         const pct = stats.origTotal > 0
-            ? Math.round((1 - stats.gzTotal / stats.origTotal) * 100)
+            ? Math.round((1 - stats.compressedTotal / stats.origTotal) * 100)
             : 0;
         console.log(
-            `  Gzipped ${stats.count} file(s) in ${relDir}: ` +
+            `  Zstd-compressed ${stats.count} file(s) in ${relDir}: ` +
             `${(stats.origTotal / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(stats.gzTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+            `${(stats.compressedTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
         );
         totalCount += stats.count;
         totalOrig += stats.origTotal;
-        totalGz += stats.gzTotal;
+        totalCompressed += stats.compressedTotal;
     }
     if (totalCount > 0) {
-        const pct = Math.round((1 - totalGz / totalOrig) * 100);
+        const pct = Math.round((1 - totalCompressed / totalOrig) * 100);
         console.log(
             `  Total: ${totalCount} JSON file(s) compressed, ` +
             `${(totalOrig / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(totalGz / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+            `${(totalCompressed / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
         );
     }
 
@@ -200,6 +212,13 @@ export async function buildStaticBundle() {
         fs.copyFileSync(previewSwJs, path.join(outputDir, 'preview-sw.js'));
         console.log('  Copied preview-sw.js');
     }
+
+    // Drop `sourceMappingURL` announcements: the distribution ships no .map
+    // files, so every remaining comment is a guaranteed 404 in DevTools.
+    const strippedMaps = stripSourceMapReferences(outputDir);
+    console.log(
+        `  Stripped ${strippedMaps.files} sourceMappingURL reference(s) (${strippedMaps.bytes} bytes)`,
+    );
 
     console.log('\n' + '='.repeat(60));
     console.log('Static distribution built successfully!');

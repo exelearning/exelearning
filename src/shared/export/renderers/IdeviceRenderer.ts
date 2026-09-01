@@ -18,6 +18,8 @@ import type {
     ExportComponentProperties,
 } from '../interfaces';
 import { getIdeviceConfig, getIdeviceExportFiles, isIdeviceJsModule } from '../../../services/idevice-config';
+import { deriveBlockIcon } from '../../block-icon';
+import { HELP_ICON_FALLBACK_DATA_URI, MATERIAL_ICON_FALLBACK } from '../../material-icons/spriteParser';
 
 /**
  * CSS link for an iDevice
@@ -76,6 +78,53 @@ export class IdeviceRenderer {
         }
         // Fallback to .png for backwards compatibility with legacy themes
         return `${baseName}.png`;
+    }
+
+    private resolveBlockAssetIconPath(
+        assetUrl: string,
+        basePath: string,
+        assetExportPathMap?: Map<string, string>,
+    ): string {
+        if (!assetUrl) return '';
+
+        if (assetUrl.startsWith('/')) {
+            return `${basePath}${assetUrl.replace(/^\//, '')}`;
+        }
+
+        if (!assetUrl.startsWith('asset://')) {
+            return assetUrl;
+        }
+
+        const fixed = this.fixAssetUrls(`src="${this.escapeAttr(assetUrl)}"`, basePath, false, assetExportPathMap);
+        const match = fixed.match(/src="([^"]+)"/);
+        return match?.[1] || assetUrl;
+    }
+
+    private resolveAssetExportPath(assetPath: string, assetExportPathMap?: Map<string, string>): string | null {
+        if (!assetExportPathMap || !assetPath) return null;
+
+        const candidates = new Set<string>([assetPath]);
+        const basename = assetPath.includes('/') ? assetPath.split('/').pop() || assetPath : assetPath;
+        candidates.add(basename);
+
+        const basenameWithoutExtension = basename.replace(/\.[a-z0-9]+$/i, '');
+        if (basenameWithoutExtension && basenameWithoutExtension !== basename) {
+            candidates.add(basenameWithoutExtension);
+        }
+
+        const pathWithoutExtension = assetPath.replace(/\.[a-z0-9]+$/i, '');
+        if (pathWithoutExtension && pathWithoutExtension !== assetPath) {
+            candidates.add(pathWithoutExtension);
+        }
+
+        for (const candidate of candidates) {
+            const exportPath = assetExportPathMap.get(candidate) || assetExportPathMap.get(`resources/${candidate}`);
+            if (exportPath) {
+                return exportPath;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -229,13 +278,20 @@ ${contentHtml}
         block: ExportBlock,
         options: BlockRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const { basePath = '', includeDataAttributes = true, themeIconBasePath, assetExportPathMap } = options;
+        const {
+            basePath = '',
+            includeDataAttributes = true,
+            themeIconBasePath,
+            assetExportPathMap,
+            materialIconDataUris,
+        } = options;
 
         const blockId = block.id;
         const blockName = block.name || '';
         const components = block.components || [];
         const properties: ExportBlockProperties = block.properties || {};
         const iconName = block.iconName || '';
+        const icon = block.icon || deriveBlockIcon(iconName);
 
         // Build CSS classes for block
         const classes = ['box'];
@@ -259,7 +315,7 @@ ${contentHtml}
         }
 
         // Build block header - always render icon and toggle if enabled, even without title text
-        const hasIcon = iconName && iconName.trim() !== '';
+        const hasIcon = !!(icon.value && icon.value.trim() !== '' && icon.source !== 'none');
         const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
 
         // Build icon HTML if iconName exists
@@ -267,15 +323,36 @@ ${contentHtml}
         // We use resolveIconName() to resolve to actual filename with extension (e.g., "share.svg")
         let iconHtml = '';
         if (hasIcon) {
-            // Resolve icon baseName to actual filename with extension
-            const resolvedIconName = this.resolveIconName(iconName);
-            const iconPath = themeIconBasePath
-                ? `${themeIconBasePath}${resolvedIconName}`
-                : `${basePath}theme/icons/${resolvedIconName}`;
-            iconHtml = `<div class="box-icon exe-icon">
-<img src="${this.escapeAttr(iconPath)}" alt="">
+            if (icon.source === 'material') {
+                // The loose per-icon SVG files no longer exist on disk (only the
+                // single sprite does), so there is no `libs/.../icons/{name}.svg`
+                // path to fall back to. When the inlined map lacks this icon
+                // (unknown name) or is empty entirely (the sprite could not be
+                // fetched), emit the self-contained `help` data URI instead.
+                const iconPath =
+                    materialIconDataUris?.get(icon.value || '') ||
+                    materialIconDataUris?.get(MATERIAL_ICON_FALLBACK) ||
+                    HELP_ICON_FALLBACK_DATA_URI;
+                iconHtml = `<div class="box-icon exe-icon">
+<span class="exe-material-icon" style="--exe-material-icon-url:url('${this.escapeAttr(iconPath)}');" aria-hidden="true"></span>
 </div>
 `;
+            } else if (icon.source === 'asset') {
+                const iconPath = this.resolveBlockAssetIconPath(icon.value, basePath, assetExportPathMap);
+                iconHtml = `<div class="box-icon exe-icon">
+<img src="${this.escapeAttr(iconPath)}" alt="" style="display:block;object-fit:contain;">
+</div>
+`;
+            } else {
+                const resolvedIconName = this.resolveIconName(icon.value);
+                const iconPath = themeIconBasePath
+                    ? `${themeIconBasePath}${resolvedIconName}`
+                    : `${basePath}theme/icons/${resolvedIconName}`;
+                iconHtml = `<div class="box-icon exe-icon">
+<img src="${this.escapeAttr(iconPath)}" alt="" style="display:block;object-fit:contain;">
+</div>
+`;
+            }
         }
 
         // Build toggle button if allowToggle is enabled (default: true when undefined)
@@ -383,10 +460,11 @@ ${contentHtml}
                 // Legacy format: uuid/path - extract path after UUID
                 const slashIndex = fullPath.indexOf('/');
                 if (slashIndex === -1) {
-                    // No path after UUID, keep original
-                    return _match;
+                    const exportPath = this.resolveAssetExportPath(fullPath, assetExportPathMap);
+                    return exportPath ? `${basePath}content/resources/${exportPath}` : _match;
                 }
-                const exportPath = fullPath.substring(slashIndex + 1);
+                const exportPath =
+                    this.resolveAssetExportPath(fullPath, assetExportPathMap) || fullPath.substring(slashIndex + 1);
                 return `${basePath}content/resources/${exportPath}`;
             });
         }

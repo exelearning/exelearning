@@ -17,6 +17,7 @@ import * as path from 'path';
 import type { ResourceProvider, LibraryPattern } from '../interfaces';
 import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants, LEGACY_IDEVICE_MAPPING } from '../constants';
 import { parseXlfTranslations } from '../generators/I18nGenerator';
+import { SCORM12_RUNTIME_SOURCE_PATHS } from '../utils/Scorm12Runtime';
 
 /**
  * Resource file entry
@@ -284,21 +285,26 @@ export class FileSystemResourceProvider implements ResourceProvider {
 
     /**
      * Fetch SCORM API wrapper files
-     * @param version - SCORM version: '1.2' or '2004' (files are the same for both)
+     * @param version - `'1.2'` returns the vendored wrapper plus runtime layers; `'2004'` returns the legacy pair
      * @returns Map of file paths to content
      */
-    async fetchScormFiles(_version: '1.2' | '2004' = '1.2'): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(version: '1.2' | '2004' = '1.2'): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
 
         // SCORM API files are in app/common/scorm/
         const scormPath = path.join(this.publicDir, 'app', 'common', 'scorm');
-        const scormFileNames = ['SCORM_API_wrapper.js', 'SCOFunctions.js'];
+        // 1.2 uses the vendored pipwerks wrapper plus the project runtime
+        // layers (assembled by the exporter, see Scorm12Runtime.ts); 2004
+        // keeps the legacy pair.
+        const scormFileNames =
+            version === '1.2' ? SCORM12_RUNTIME_SOURCE_PATHS : ['SCORM_API_wrapper.js', 'SCOFunctions.js'];
 
         for (const fileName of scormFileNames) {
-            const fullPath = path.join(scormPath, fileName);
+            const fullPath = path.join(scormPath, ...fileName.split('/'));
             if (await fs.pathExists(fullPath)) {
                 const content = await fs.readFile(fullPath);
-                // Store with just the filename (caller will add libs/ prefix)
+                // Store with the scorm/-relative path (caller assembles or
+                // adds the libs/ prefix)
                 files.set(fileName, content);
             }
         }

@@ -2,7 +2,8 @@
  * Unit tests for the DigCompEdu iDevice (edition).
  *
  * They cover the resources the editor owns beyond its own form: the framework
- * download, the `document` keydown listener and the `<body>` overlay class.
+ * download (including the .zst → plain → XHR fallback chain), the `document`
+ * keydown listener and the `<body>` overlay class.
  */
 
 /* eslint-disable no-undef */
@@ -12,6 +13,48 @@ import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+function minimalFramework() {
+    return {
+        competences: {
+            C1: {
+                name: 'Competence 1',
+                levels: {},
+            },
+        },
+    };
+}
+
+function mockZstFetch(data) {
+    const jsonBytes = new TextEncoder().encode(JSON.stringify(data));
+    globalThis.window.fzstd = { decompress: vi.fn(() => jsonBytes) };
+    globalThis.fetch = vi.fn((url) => {
+        if (/\.zst$/.test(url)) {
+            return Promise.resolve({
+                ok: true,
+                arrayBuffer: () => Promise.resolve(jsonBytes.buffer),
+            });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(data) });
+    });
+}
+
+function mockZstFetch404ThenPlain(data) {
+    globalThis.window.fzstd = { decompress: vi.fn() };
+    globalThis.fetch = vi.fn((url) => {
+        if (/\.zst$/.test(url)) {
+            return Promise.resolve({ ok: false, status: 404 });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(data) });
+    });
+}
+
+function mockPlainFetchOnly(data) {
+    delete globalThis.window.fzstd;
+    globalThis.fetch = vi.fn(() =>
+        Promise.resolve({ ok: true, json: () => Promise.resolve(data) })
+    );
+}
 
 describe('digcompedu iDevice (edition)', () => {
     let $exeDevice;
@@ -29,6 +72,7 @@ describe('digcompedu iDevice (edition)', () => {
         document.body.innerHTML = '';
         document.body.className = '';
         delete global.fetch;
+        delete globalThis.window.fzstd;
     });
 
     /**
@@ -111,7 +155,7 @@ describe('digcompedu iDevice (edition)', () => {
             await $exeDevice.loadFrameworkData('en');
 
             expect(global.fetch).toHaveBeenCalled();
-            received.forEach(options => {
+            received.forEach((options) => {
                 expect(options.signal).toBe($exeDevice.$lifecycle.signal);
             });
         });
@@ -129,6 +173,42 @@ describe('digcompedu iDevice (edition)', () => {
 
             expect(received.signal.aborted).toBe(true);
         });
+
+        it('tries <url>.zst first and decompresses via window.fzstd when available', async () => {
+            mockZstFetch(minimalFramework());
+            const data = await $exeDevice.loadFrameworkData('es');
+            expect(globalThis.fetch).toHaveBeenCalled();
+            const firstCall = globalThis.fetch.mock.calls[0];
+            expect(firstCall[0]).toMatch(/\.zst$/);
+            expect(firstCall[1].signal).toBe($exeDevice.$lifecycle.signal);
+            expect(globalThis.window.fzstd.decompress).toHaveBeenCalled();
+            expect(data).toEqual(minimalFramework());
+        });
+
+        it('falls back to the plain <url> fetch when the .zst request 404s', async () => {
+            mockZstFetch404ThenPlain(minimalFramework());
+            const data = await $exeDevice.loadFrameworkData('es');
+            const urls = globalThis.fetch.mock.calls.map((c) => c[0]);
+            expect(urls.some((u) => /\.zst$/.test(u))).toBe(true);
+            expect(urls.some((u) => !/\.zst$/.test(u))).toBe(true);
+            expect(data).toEqual(minimalFramework());
+        });
+
+        it('skips the .zst tier entirely when window.fzstd is not loaded', async () => {
+            mockPlainFetchOnly(minimalFramework());
+            const data = await $exeDevice.loadFrameworkData('es');
+            const urls = globalThis.fetch.mock.calls.map((c) => c[0]);
+            expect(urls.every((u) => !/\.zst$/.test(u))).toBe(true);
+            expect(data).toEqual(minimalFramework());
+        });
+
+        it('caches the result per language and does not re-fetch on a second call', async () => {
+            mockZstFetch(minimalFramework());
+            await $exeDevice.loadFrameworkData('es');
+            const callsAfterFirst = globalThis.fetch.mock.calls.length;
+            await $exeDevice.loadFrameworkData('es');
+            expect(globalThis.fetch.mock.calls.length).toBe(callsAfterFirst);
+        });
     });
 
     describe('init', () => {
@@ -137,7 +217,7 @@ describe('digcompedu iDevice (edition)', () => {
             const element = document.getElementById('digcompeduBody');
             let release;
             $exeDevice.loadFrameworkData = () =>
-                new Promise(resolve => {
+                new Promise((resolve) => {
                     release = resolve;
                 });
             const createForm = vi.spyOn($exeDevice, 'createForm').mockImplementation(() => {});
