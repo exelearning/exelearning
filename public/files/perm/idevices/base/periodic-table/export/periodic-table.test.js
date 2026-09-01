@@ -84,6 +84,13 @@ describe('periodic-table iDevice export', () => {
                 msgs: { msgGameOver: '%s %s %s', msgYouScore: 'Score' },
             };
             vi.spyOn($periodicTable, 'getRandomElements').mockReturnValue([]);
+            vi.spyOn($periodicTable, 'elements_dataf').mockReturnValue([
+                { number: 1, name: 'H', symbol: 'H', group: '1' },
+                { number: 2, name: 'He', symbol: 'He', group: '18' },
+                { number: 3, name: 'Li', symbol: 'Li', group: '1' },
+                { number: 4, name: 'Be', symbol: 'Be', group: '2' },
+                { number: 5, name: 'B', symbol: 'B', group: '13' },
+            ]);
             vi.spyOn($periodicTable, 'showMessage').mockImplementation(() => {});
             vi.spyOn($periodicTable, 'updateTime').mockImplementation(() => {});
             vi.spyOn($periodicTable, 'showQuestion').mockImplementation(() => {});

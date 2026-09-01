@@ -148,4 +148,123 @@ describe('guess iDevice export', () => {
       expect($guess.idevicePath).toBe('');
     });
   });
+
+  // The automatic report used to happen only from newQuestion()/showQuestion(),
+  // i.e. once the setTimeout that reveals the next question had elapsed. That
+  // put the mark in the LMS seconds late, and a learner who left during that
+  // window lost the answer: the timer never fired.
+  describe('reporting in the same turn the learner answered', () => {
+    function setupAnswer(overrides) {
+      document.body.innerHTML = `
+        <div id="adivinaMainContainer-0">
+          <div id="adivinaPShowClue-0"></div>
+          <div id="adivinaModeBoardOK-0"></div>
+          <div id="adivinaModeBoardKO-0"></div>
+          <div id="adivinaModeBoardMoveOn-0"></div>
+        </div>`;
+      $guess.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: true,
+          gameOver: false,
+          hits: 1,
+          errors: 0,
+          numberQuestions: 4,
+          activeQuestion: 0,
+          activeCounter: true,
+          gameActived: true,
+          wordsGame: [
+            { word: 'uno' },
+            { word: 'dos' },
+            { word: 'tres' },
+            { word: 'cuatro' },
+          ],
+          obtainedClue: false,
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($guess, 'updateScore').mockReturnValue(1);
+      vi.spyOn($guess, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($guess, 'newQuestion').mockImplementation(() => {});
+      vi.spyOn($guess, 'showMessage').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports before the reveal timer runs, not after it', () => {
+      vi.useFakeTimers();
+      setupAnswer();
+
+      $guess.answerQuestionBoard(true, 0);
+
+      // No timer has been advanced: the report has to have gone out already.
+      expect($guess.sendScore).toHaveBeenCalledWith(true, 0);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    it('does not report when the activity is not in automatic SCORM mode', () => {
+      vi.useFakeTimers();
+      setupAnswer({ isScorm: 0 });
+
+      $guess.answerQuestionBoard(true, 0);
+
+      expect($guess.sendScore).not.toHaveBeenCalled();
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // An intermediate answer must not close the attempt: the page would go to
+    // passed/failed while the learner is still playing.
+    it('leaves the activity unfinished while questions remain', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeQuestion: 0, numberQuestions: 4 });
+
+      $guess.answerQuestionBoard(true, 0);
+
+      expect($guess.options[0].gameOver).toBe(false);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // The last answer must carry the completion, so leaving during the reveal
+    // delay still records a finished activity.
+    it('marks the activity finished on the last question, before reporting', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeQuestion: 3, numberQuestions: 4 });
+      let flagWhenReported;
+      $guess.sendScore.mockImplementation(() => {
+        flagWhenReported = $guess.options[0].gameOver;
+      });
+
+      $guess.answerQuestionBoard(true, 0);
+
+      expect(flagWhenReported).toBe(true);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // saveScormScore is the single entry point the three call sites share
+    // (startGame, answerQuestion, answerQuestionBoard).
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupAnswer({ isScorm: 1 });
+      $guess.saveScormScore(0);
+      expect($guess.sendScore).toHaveBeenCalledWith(true, 0);
+
+      $guess.sendScore.mockClear();
+      $guess.options[0].isScorm = 2;
+      $guess.saveScormScore(0);
+      expect($guess.sendScore).not.toHaveBeenCalled();
+    });
+  });
 });

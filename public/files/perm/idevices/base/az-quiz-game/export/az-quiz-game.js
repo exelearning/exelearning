@@ -837,6 +837,7 @@ var $azquizgame = {
 
         mOptions.gameActived = true;
         mOptions.gameStarted = true;
+        $azquizgame.saveScormScore(instance);
         $azquizgame.newWord(instance);
     },
 
@@ -1286,6 +1287,14 @@ var $azquizgame = {
 
         $azquizgame.drawRosco(instance);
 
+        // Answering the last word ends the attempt. Raise the flag before the
+        // report so it carries the completion, and so a learner who leaves
+        // during the delay below still has the activity recorded as finished.
+        if (mOptions.activeWord + 1 >= mOptions.numberWords) {
+            mOptions.gameOver = true;
+        }
+        $azquizgame.saveScormScore(instance);
+
         setTimeout(() => {
             $azquizgame.newWord(instance);
         }, timeShowSolution);
@@ -1360,6 +1369,14 @@ var $azquizgame = {
         });
 
         $azquizgame.drawRosco(instance);
+
+        // Answering the last word ends the attempt. Raise the flag before the
+        // report so it carries the completion, and so a learner who leaves
+        // during the delay below still has the activity recorded as finished.
+        if (mOptions.activeWord + 1 >= mOptions.numberWords) {
+            mOptions.gameOver = true;
+        }
+        $azquizgame.saveScormScore(instance);
 
         setTimeout(() => {
             $azquizgame.newWord(instance);
@@ -1720,6 +1737,23 @@ var $azquizgame = {
             mOptions,
             $azquizgame.isInExe
         );
+    },
+
+    /**
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen from showWord(), i.e. once the
+     * setTimeout that reveals the next word had elapsed. That put the mark in
+     * the LMS one to four seconds late — so the SCORM menu still showed the
+     * previous score right after answering — and a learner who left during
+     * that window lost the answer entirely, because the timer never fired.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $azquizgame.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        $azquizgame.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {

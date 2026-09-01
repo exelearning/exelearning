@@ -261,4 +261,127 @@ describe('az-quiz-game iDevice export', () => {
       expect($azquizgame.sendScore).not.toHaveBeenCalled();
     });
   });
+
+  // The automatic report used to happen from showWord(), i.e. only once the
+  // setTimeout that reveals the next word had elapsed. That put the mark in the
+  // LMS one to four seconds late, and a learner who left during that window
+  // lost the answer: the timer never fired.
+  describe('reporting in the same turn the learner answered', () => {
+    function setupAnswer(overrides) {
+      document.body.innerHTML = `
+        <div id="roscoMainContainer-0">
+          <div id="roscoPShowClue-0"></div>
+          <div id="roscotPHits-0"></div>
+          <div id="roscotPErrors-0"></div>
+          <div id="roscoEdReply-0"></div>
+        </div>`;
+      $azquizgame.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: true,
+          gameActived: true,
+          gameOver: false,
+          hits: 1,
+          errors: 0,
+          validWords: 4,
+          numberWords: 4,
+          activeWord: 0,
+          letters: ['A', 'B', 'C', 'D'],
+          wordsGame: [
+            { word: 'uno', answer: 'uno', state: 0 },
+            { word: 'dos', answer: 'dos', state: 0 },
+            { word: 'tres', answer: 'tres', state: 0 },
+            { word: 'cuatro', answer: 'cuatro', state: 0 },
+          ],
+          showSolution: false,
+          timeShowSolution: 1,
+          itinerary: { showClue: false, percentageClue: 0 },
+          obtainedClue: false,
+          msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($azquizgame, 'drawRosco').mockImplementation(() => {});
+      vi.spyOn($azquizgame, 'drawMessage').mockImplementation(() => {});
+      vi.spyOn($azquizgame, 'newWord').mockImplementation(() => {});
+      vi.spyOn($azquizgame, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports before the reveal timer runs, not after it', () => {
+      vi.useFakeTimers();
+      setupAnswer();
+
+      $azquizgame.answerQuetionBoard(0, 0);
+
+      // No timer has been advanced: the report has to have gone out already.
+      expect($azquizgame.sendScore).toHaveBeenCalledWith(true, 0);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    it('does not report when the activity is not in automatic SCORM mode', () => {
+      vi.useFakeTimers();
+      setupAnswer({ isScorm: 0 });
+
+      $azquizgame.answerQuetionBoard(0, 0);
+
+      expect($azquizgame.sendScore).not.toHaveBeenCalled();
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // An intermediate answer must not close the attempt: the page would go to
+    // passed/failed while the learner is still playing.
+    it('leaves the activity unfinished while words remain', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeWord: 0, numberWords: 4 });
+
+      $azquizgame.answerQuetionBoard(0, 0);
+
+      expect($azquizgame.options[0].gameOver).toBe(false);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // The last answer must carry the completion, so leaving during the reveal
+    // delay still records a finished activity.
+    it('marks the activity finished on the last word, before reporting', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeWord: 3, numberWords: 4 });
+      let flagWhenReported;
+      $azquizgame.sendScore.mockImplementation(() => {
+        flagWhenReported = $azquizgame.options[0].gameOver;
+      });
+
+      $azquizgame.answerQuetionBoard(0, 0);
+
+      expect(flagWhenReported).toBe(true);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // saveScormScore is the single entry point the three call sites share
+    // (startGame, answerQuetion, answerQuetionBoard), so its mode guard is
+    // pinned once here rather than through each of them.
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupAnswer({ isScorm: 1 });
+      $azquizgame.saveScormScore(0);
+      expect($azquizgame.sendScore).toHaveBeenCalledWith(true, 0);
+
+      $azquizgame.sendScore.mockClear();
+      $azquizgame.options[0].isScorm = 2;
+      $azquizgame.saveScormScore(0);
+      expect($azquizgame.sendScore).not.toHaveBeenCalled();
+    });
+  });
 });

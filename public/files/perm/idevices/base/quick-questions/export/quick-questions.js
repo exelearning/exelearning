@@ -1172,6 +1172,7 @@ var $quickquestions = {
         $('#quextPErrors-' + instance).text(mOptions.errors);
         $('#quextPScore-' + instance).text(mOptions.score);
         mOptions.gameStarted = true;
+        $quickquestions.saveScormScore(instance);
         $quickquestions.newQuestion(instance);
     },
 
@@ -1725,6 +1726,17 @@ var $quickquestions = {
             answord = parseInt(respuesta, 10);
 
         $quickquestions.updateScore(solution === answord, instance);
+        // Answering the last question ends the attempt — either the questions
+        // ran out or the lives did. Raise the flag before the report so it
+        // carries the completion, and so a learner who leaves during the reveal
+        // delay below still has the activity recorded as finished.
+        if (
+            mOptions.activeQuestion + 1 >= mOptions.numberQuestions ||
+            (mOptions.useLives && mOptions.livesLeft <= 0)
+        ) {
+            mOptions.gameOver = true;
+        }
+        $quickquestions.saveScormScore(instance);
 
         const percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
 
@@ -1853,6 +1865,28 @@ var $quickquestions = {
             mOptions,
             $quickquestions.isInExe
         );
+    },
+
+    /**
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen only from showQuestion(), i.e. once
+     * the setTimeout that reveals the next question had elapsed. That put the
+     * mark in the LMS seconds late, and a learner who left during that window
+     * lost the answer: the timer never fired.
+     *
+     * Carries the same non-repeat lock showQuestion applies, so an activity
+     * that may only be scored once is not scored twice through this path.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $quickquestions.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        if (!mOptions.repeatActivity && $quickquestions.initialScore !== '') {
+            return;
+        }
+        $quickquestions.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {

@@ -1133,7 +1133,21 @@ var $eXeHiddenImage = {
         if (mOptions.showSolution) {
             $eXeHiddenImage.drawSolution(instance);
         }
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, instead of waiting for the
+        // reveal delay and the newQuestion -> gameOver that follows it; the
+        // delayed gameOver still runs for the end-of-game interface.
+        if (mOptions.activeQuestion >= mOptions.numberQuestions - 1) {
+            mOptions.gameOver = true;
+        }
         $eXeHiddenImage.saveEvaluation(instance);
+        // Report in the same turn the learner answered. The automatic report
+        // used to happen only from showQuestion(), i.e. once the reveal delay
+        // below had elapsed, so the mark reached the LMS seconds late and a
+        // learner who left during that window lost the answer.
+        if (mOptions.isScorm > 0) {
+            $eXeHiddenImage.sendScore(true, instance);
+        }
 
         $eXeHiddenImage.hideSquares(instance, $eXeHiddenImage.startNewQuestion);
     },

@@ -298,4 +298,90 @@ describe('hidden-image iDevice export', () => {
       expect($(`#hiPImage-${instance}`).attr('src')).toBe('test.png');
     });
   });
+
+  // The automatic report used to happen only from showQuestion(), i.e. once the
+  // hideSquares reveal had elapsed. That put the mark in the LMS seconds late,
+  // and a learner who left during that window lost the answer.
+  describe('reporting in the same turn the learner answered', () => {
+    function setupAnswer(overrides) {
+      document.body.innerHTML = `
+        <div id="hiPMainContainer-0">
+          <div id="hiPHits-0"></div>
+          <div id="hiPErrors-0"></div>
+          <div id="hiPShowClue-0"></div>
+        </div>`;
+      $eXeHiddenImage.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: true,
+          gameActived: true,
+          gameOver: false,
+          hits: 1,
+          errors: 0,
+          numberQuestions: 4,
+          activeQuestion: 0,
+          activeCounter: true,
+          showSolution: false,
+          obtainedClue: false,
+          question: { solution: 1 },
+          questionsGame: [{}, {}, {}, {}],
+          itinerary: { showClue: false, percentageClue: 0, clueGame: '' },
+          msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeHiddenImage, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'hideSquares').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'drawSolution').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'updateScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports without waiting for the reveal', () => {
+      setupAnswer();
+
+      $eXeHiddenImage.answerQuestion(true, 0);
+
+      // hideSquares is stubbed, so nothing deferred has run yet.
+      expect($eXeHiddenImage.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+
+    it('does not report when the activity is not scored', () => {
+      setupAnswer({ isScorm: 0 });
+
+      $eXeHiddenImage.answerQuestion(true, 0);
+
+      expect($eXeHiddenImage.sendScore).not.toHaveBeenCalled();
+    });
+
+    // An intermediate answer must not close the attempt: the page would go to
+    // passed/failed while the learner is still playing.
+    it('leaves the activity unfinished while questions remain', () => {
+      setupAnswer({ activeQuestion: 0, numberQuestions: 4 });
+
+      $eXeHiddenImage.answerQuestion(true, 0);
+
+      expect($eXeHiddenImage.options[0].gameOver).toBe(false);
+    });
+
+    // The last answer must carry the completion, so leaving during the reveal
+    // still records a finished activity.
+    it('marks the activity finished on the last question, before reporting', () => {
+      setupAnswer({ activeQuestion: 3, numberQuestions: 4 });
+      let flagWhenReported;
+      $eXeHiddenImage.sendScore.mockImplementation(() => {
+        flagWhenReported = $eXeHiddenImage.options[0].gameOver;
+      });
+
+      $eXeHiddenImage.answerQuestion(true, 0);
+
+      expect(flagWhenReported).toBe(true);
+    });
+  });
 });

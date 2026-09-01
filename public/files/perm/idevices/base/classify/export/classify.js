@@ -1707,6 +1707,11 @@ var $eXeClasifica = {
         }
 
         mOptions.gameStarted = true;
+        // Report as soon as the learner starts, so the LMS menu shows the
+        // attempt from the first move rather than only once a card is placed.
+        if (mOptions.isScorm === 1) {
+            $eXeClasifica.sendScore(true, instance);
+        }
     },
 
     uptateTime: function (tiempo, instance) {

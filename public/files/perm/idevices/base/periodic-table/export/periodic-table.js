@@ -974,6 +974,14 @@ var $periodicTable = {
             $symbol.prop('disabled', true);
             setTimeout(function () {
                 if (mOptions.active >= mOptions.number) {
+                    // Answering the last question ends the attempt. Raise the flag and report
+                    // here, so the mark and the completion reach the LMS now instead of after
+                    // the reveal delay below — a learner who leaves during it would otherwise
+                    // lose both.
+                    mOptions.gameOver = true;
+                    if (mOptions.isScorm == 1) {
+                        $periodicTable.sendScore(true, instance);
+                    }
                     $periodicTable.gameMobileOver(instance);
                 } else {
                     $periodicTable.showMobileQuestion(instance);
@@ -1003,6 +1011,14 @@ var $periodicTable = {
                 $symbol.prop('disabled', true);
                 setTimeout(function () {
                     if (mOptions.active >= mOptions.number) {
+                        // Answering the last question ends the attempt. Raise the flag and report
+                        // here, so the mark and the completion reach the LMS now instead of after
+                        // the reveal delay below — a learner who leaves during it would otherwise
+                        // lose both.
+                        mOptions.gameOver = true;
+                        if (mOptions.isScorm == 1) {
+                            $periodicTable.sendScore(true, instance);
+                        }
                         $periodicTable.gameMobileOver(instance);
                     } else {
                         $periodicTable.showMobileQuestion(instance);
@@ -1072,6 +1088,14 @@ var $periodicTable = {
             mOptions.active++;
             $periodicTable.showMessage(2, mOptions.msgs.msgIsOKEQ, instance);
             if (mOptions.active >= mOptions.number) {
+                // Answering the last question ends the attempt. Raise the flag and report
+                // here, so the mark and the completion reach the LMS now instead of after
+                // the reveal delay below — a learner who leaves during it would otherwise
+                // lose both.
+                mOptions.gameOver = true;
+                if (mOptions.isScorm == 1) {
+                    $periodicTable.sendScore(true, instance);
+                }
                 setTimeout(function () {
                     $periodicTable.gameOver(instance);
                 }, 3000);

@@ -72,4 +72,62 @@ describe('trivial iDevice export', () => {
       expect($eXeTrivial.sendScore).not.toHaveBeenCalled();
     });
   });
+
+  // The report used to live at the end of correctAnswer(), so a wrong answer
+  // changed nothing in the LMS until the next correct one or the end of the
+  // game — and a win reported twice, once there and once from gameOver().
+  describe('reporting every answer, right or wrong', () => {
+    function setupTurn(overrides) {
+      $eXeTrivial.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: true,
+          gameOver: false,
+        },
+        overrides
+      );
+      vi.spyOn($eXeTrivial, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeTrivial, 'saveEvaluation').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('reports while the game is running', () => {
+      setupTurn();
+
+      $eXeTrivial.saveQuestionScore(0);
+
+      expect($eXeTrivial.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+
+    // gameOver() reports the terminal state itself; reporting here as well
+    // sent the same result to the LMS twice.
+    it('stands down once the game is over', () => {
+      setupTurn({ gameOver: true });
+
+      $eXeTrivial.saveQuestionScore(0);
+
+      expect($eXeTrivial.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('does not report outside automatic SCORM mode', () => {
+      setupTurn({ isScorm: 0 });
+
+      $eXeTrivial.saveQuestionScore(0);
+
+      expect($eXeTrivial.sendScore).not.toHaveBeenCalled();
+    });
+
+    // Recording the attempt locally happens either way.
+    it('records the evaluation whether or not it reports', () => {
+      setupTurn({ isScorm: 0 });
+
+      $eXeTrivial.saveQuestionScore(0);
+
+      expect($eXeTrivial.saveEvaluation).toHaveBeenCalledWith(0);
+    });
+  });
 });

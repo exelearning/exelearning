@@ -38,6 +38,26 @@ var $eXeEC = {
         $eXeEC.loadGame();
     },
 
+    /**
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen only from showQuestion(), i.e. once
+     * the setTimeout that reveals the next question had elapsed. That put the
+     * mark in the LMS seconds late, and a learner who left during that window
+     * lost the answer: the timer never fired.
+     *
+     * Carries the same non-repeat lock showQuestion applies, so an activity
+     * that may only be scored once is not scored twice through this path.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeEC.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        if (!mOptions.repeatActivity && $eXeEC.initialScore !== '') return;
+        $eXeEC.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeEC.options[instance];
 
@@ -1084,6 +1104,9 @@ var $eXeEC = {
         $(`#elcpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        if (mOptions.activityMode !== 'show') {
+            $eXeEC.saveScormScore(instance);
+        }
         $eXeEC.newQuestion(instance);
     },
 
@@ -1458,6 +1481,17 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(correct, instance);
+        // Answering the last question ends the attempt — either the questions
+        // ran out or the lives did. Raise the flag before the report so it
+        // carries the completion, and so a learner who leaves during the reveal
+        // delay below still has the activity recorded as finished.
+        if (
+            mOptions.activeQuestion + 1 >= mOptions.numberQuestions ||
+            (mOptions.useLives && mOptions.livesLeft <= 0)
+        ) {
+            mOptions.gameOver = true;
+        }
+        $eXeEC.saveScormScore(instance);
 
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -1523,6 +1557,17 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(value, instance);
+        // Answering the last question ends the attempt — either the questions
+        // ran out or the lives did. Raise the flag before the report so it
+        // carries the completion, and so a learner who leaves during the reveal
+        // delay below still has the activity recorded as finished.
+        if (
+            mOptions.activeQuestion + 1 >= mOptions.numberQuestions ||
+            (mOptions.useLives && mOptions.livesLeft <= 0)
+        ) {
+            mOptions.gameOver = true;
+        }
+        $eXeEC.saveScormScore(instance);
 
          let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000

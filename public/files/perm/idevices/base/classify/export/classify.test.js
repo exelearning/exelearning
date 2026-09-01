@@ -487,4 +487,63 @@ describe('classify iDevice export', () => {
       expect($eXeClasifica.options[1].idevice).toBe('clasifica-IDevice');
     });
   });
+
+  // Reporting as soon as the learner starts puts the attempt in the LMS menu
+  // from the first move, rather than only once a card has been placed.
+  describe('reporting when the game starts', () => {
+    function setupStart(overrides) {
+      document.body.innerHTML = `
+        <div id="clasificaMainContainer-0">
+          <div id="clasificaGameContainer-0"></div>
+          <div id="clasificaStartGame-0"></div>
+          <div id="clasificaSlide-0"></div>
+        </div>`;
+      $eXeClasifica.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: false,
+          gameOver: false,
+          cardsGame: [],
+          time: 0,
+          msgs: { mgsGameStart: 'start' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeClasifica, 'addCards').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'initializeDragAndDrop').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports the attempt on start', () => {
+      setupStart();
+
+      $eXeClasifica.startGame(0);
+
+      expect($eXeClasifica.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+
+    it('does not report outside automatic SCORM mode', () => {
+      setupStart({ isScorm: 0 });
+
+      $eXeClasifica.startGame(0);
+
+      expect($eXeClasifica.sendScore).not.toHaveBeenCalled();
+    });
+
+    // Starting is not finishing: the page must not go to passed/failed here.
+    it('does not mark the activity finished', () => {
+      setupStart();
+
+      $eXeClasifica.startGame(0);
+
+      expect($eXeClasifica.options[0].gameOver).toBe(false);
+    });
+  });
 });

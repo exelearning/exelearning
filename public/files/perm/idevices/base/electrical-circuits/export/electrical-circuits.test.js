@@ -262,4 +262,137 @@ describe('electrical-circuits iDevice export', () => {
         expect(loaded.selectsGame[0].tikzSvg).toBe('<svg viewBox="0 0 10 10"></svg>');
         expect(loaded.selectsGame[0]).not.toHaveProperty('tikzSvgHash');
     });
+
+    // The automatic report used to happen only from showQuestion(), i.e. once
+    // the setTimeout that reveals the next question had elapsed. That put the
+    // mark in the LMS seconds late, and a learner who left during that window
+    // lost the answer: the timer never fired.
+    describe('reporting in the same turn the learner answered', () => {
+        const idevice = () => global.$eXeEC;
+
+        function setupAnswer(overrides) {
+            document.body.innerHTML =
+                '<div id="elcpMainContainer-0">' +
+                '<div id="elcpPShowClue-0"></div>' +
+                '<div id="elcpLinkAudio-0"></div>' +
+                '</div>';
+            idevice().initialScore = '';
+            idevice().options[0] = Object.assign(
+                {
+                    id: 0,
+                    isScorm: 1,
+                    repeatActivity: true,
+                    gameStarted: true,
+                    gameActived: true,
+                    gameOver: false,
+                    hits: 1,
+                    errors: 0,
+                    numberQuestions: 4,
+                    activeQuestion: 0,
+                    activeCounter: true,
+                    useLives: false,
+                    livesLeft: 3,
+                    showSolution: false,
+                    audioFeedBach: false,
+                    obtainedClue: false,
+                    selectsGame: [
+                        { audio: '', typeSelect: 0 },
+                        { audio: '', typeSelect: 0 },
+                        { audio: '', typeSelect: 0 },
+                        { audio: '', typeSelect: 0 },
+                    ],
+                    itinerary: { showClue: false, percentageClue: 0 },
+                    msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn(idevice(), 'updateScore').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'sendScore').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'showMessage').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports before the reveal timer runs, not after it', () => {
+            vi.useFakeTimers();
+            setupAnswer();
+
+            idevice().answerQuestionBoard(true, 0);
+
+            // No timer has been advanced: the report has to have gone out.
+            expect(idevice().sendScore).toHaveBeenCalledWith(true, 0);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('does not report outside automatic SCORM mode', () => {
+            vi.useFakeTimers();
+            setupAnswer({ isScorm: 0 });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().sendScore).not.toHaveBeenCalled();
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // An intermediate answer must not close the attempt: the page would go
+        // to passed/failed while the learner is still playing.
+        it('leaves the activity unfinished while questions remain', () => {
+            vi.useFakeTimers();
+            setupAnswer({ activeQuestion: 0, numberQuestions: 4 });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(false);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // The last answer must carry the completion, so leaving during the
+        // reveal delay still records a finished activity.
+        it('marks the activity finished on the last question, before reporting', () => {
+            vi.useFakeTimers();
+            setupAnswer({ activeQuestion: 3, numberQuestions: 4 });
+            let flagWhenReported;
+            idevice().sendScore.mockImplementation(() => {
+                flagWhenReported = idevice().options[0].gameOver;
+            });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(flagWhenReported).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('marks the activity finished when the last life is lost', () => {
+            vi.useFakeTimers();
+            setupAnswer({ useLives: true, livesLeft: 0 });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('honours the non-repeat lock', () => {
+            setupAnswer({ repeatActivity: false });
+            idevice().initialScore = '5.00';
+
+            idevice().saveScormScore(0);
+
+            expect(idevice().sendScore).not.toHaveBeenCalled();
+        });
+    });
 });

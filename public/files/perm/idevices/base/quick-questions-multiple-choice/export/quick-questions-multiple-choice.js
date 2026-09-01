@@ -48,6 +48,31 @@ var $quickquestionsmultiplechoice = {
         $quickquestionsmultiplechoice.loadGame();
     },
 
+    /**
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen only from showQuestion(), i.e. once
+     * the setTimeout that reveals the next question had elapsed. That put the
+     * mark in the LMS seconds late, and a learner who left during that window
+     * lost the answer: the timer never fired.
+     *
+     * Carries the same non-repeat lock showQuestion applies, so an activity
+     * that may only be scored once is not scored twice through this path.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $quickquestionsmultiplechoice.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        if (
+            !mOptions.repeatActivity &&
+            $quickquestionsmultiplechoice.initialScore !== ''
+        ) {
+            return;
+        }
+        $quickquestionsmultiplechoice.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
 
@@ -1461,6 +1486,7 @@ var $quickquestionsmultiplechoice = {
         $(`#seleccionaPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        $quickquestionsmultiplechoice.saveScormScore(instance);
         $quickquestionsmultiplechoice.newQuestion(instance, false, true);
     },
 
@@ -1975,6 +2001,15 @@ var $quickquestionsmultiplechoice = {
             $quickquestionsmultiplechoice.updateScoreThree(correct, instance);
         }
 
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $quickquestionsmultiplechoice.saveScormScore(instance);
+
         if (
             mOptions.showSolution &&
             question.audio.trim().length > 5 &&
@@ -2046,6 +2081,15 @@ var $quickquestionsmultiplechoice = {
         } else {
             $quickquestionsmultiplechoice.updateScoreThree(value, instance);
         }
+
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $quickquestionsmultiplechoice.saveScormScore(instance);
 
         if (
             mOptions.showSolution &&

@@ -930,8 +930,28 @@ var $eXeTrivial = {
         }
 
         $exeDevices.iDevice.gamification.media.stopSound();
-        $eXeTrivial.saveEvaluation(instance);
+        $eXeTrivial.saveQuestionScore(instance);
         $eXeTrivial.saveDataStorage(instance);
+    },
+
+    /**
+     * Report the score in the same turn the learner answered, right or wrong.
+     *
+     * The report used to live at the end of correctAnswer(), so a wrong answer
+     * changed nothing in the LMS until the next correct one or the end of the
+     * game — and a win reported twice, once there and once from gameOver().
+     * Reporting here covers both branches, and the gameOver guard leaves the
+     * terminal report to gameOver() alone.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveQuestionScore: function (instance) {
+        const mOptions = $eXeTrivial.options[instance];
+
+        if (mOptions.isScorm == 1 && !mOptions.gameOver) {
+            $eXeTrivial.sendScore(true, instance);
+        }
+        $eXeTrivial.saveEvaluation(instance);
     },
 
     correctAnswer: function (instance) {
@@ -1019,7 +1039,9 @@ var $eXeTrivial = {
                 $eXeTrivial.loadGameBoard(instance);
             }, 3000);
         }
-        $eXeTrivial.sendScore(true, instance);
+        // The report moved to saveQuestionScore(), which questionAnswer() calls
+        // for a wrong answer too, and which stands down once the game is over
+        // so the win is not reported both here and from gameOver().
     },
 
     cheesePositions: function (numasi) {
