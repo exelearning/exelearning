@@ -2,7 +2,7 @@
  * Static distribution build orchestrator.
  *
  * This is the effectful CLI half of the static build: it wipes and repopulates
- * the output directory, copies hundreds of megabytes out of public/, and gzips
+ * the output directory, copies hundreds of megabytes out of public/, and zstd-compresses
  * the bundled JSON datasets in place. All of the logic it drives — version
  * resolution, translation/iDevice/theme discovery, template rendering, the copy
  * and compression primitives — lives in ../build-static-bundle.ts and is unit
@@ -147,9 +147,9 @@ export async function buildStaticBundle() {
     ]);
     console.log('  Copied files/perm/');
 
-    // Gzip large iDevice JSON datasets in place (browser decompresses on the fly).
+    // Zstd-compress large iDevice JSON datasets in place (browser decompresses via fzstd).
     let totalOrig = 0;
-    let totalGz = 0;
+    let totalCompressed = 0;
     let totalCount = 0;
     for (const relDir of COMPRESS_JSON_DIRS) {
         const absDir = path.join(outputDir, relDir);
@@ -161,23 +161,23 @@ export async function buildStaticBundle() {
             );
         }
         const pct = stats.origTotal > 0
-            ? Math.round((1 - stats.gzTotal / stats.origTotal) * 100)
+            ? Math.round((1 - stats.compressedTotal / stats.origTotal) * 100)
             : 0;
         console.log(
-            `  Gzipped ${stats.count} file(s) in ${relDir}: ` +
+            `  Zstd-compressed ${stats.count} file(s) in ${relDir}: ` +
             `${(stats.origTotal / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(stats.gzTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+            `${(stats.compressedTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
         );
         totalCount += stats.count;
         totalOrig += stats.origTotal;
-        totalGz += stats.gzTotal;
+        totalCompressed += stats.compressedTotal;
     }
     if (totalCount > 0) {
-        const pct = Math.round((1 - totalGz / totalOrig) * 100);
+        const pct = Math.round((1 - totalCompressed / totalOrig) * 100);
         console.log(
             `  Total: ${totalCount} JSON file(s) compressed, ` +
             `${(totalOrig / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(totalGz / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+            `${(totalCompressed / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
         );
     }
 
