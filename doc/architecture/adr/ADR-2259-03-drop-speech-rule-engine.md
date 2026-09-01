@@ -100,7 +100,7 @@ Vendor `a11y/{sre,explorer,speech,semantic-enrich,complexity}.js`,
 
 **Cons**
 
-- 2,668,043 B raw / ~471 KB in the release ZIP, in every math export.
+- 2,668,043 B raw / ~469 KB in the release ZIP, in every math export.
 - Works only over HTTP. The most common offline consumption paths — an extracted
   HTML5 export, an EPUB, an unpacked SCORM package, the Electron app reading a
   local file — get nothing from it.
@@ -123,9 +123,9 @@ MathML is the answer, not the explorer.
 
 **Pros**
 
-- −2,668,043 B raw / −471,371 B zipped from `exe_math/`, in every math export.
-  The directory drops to 4,431,592 B raw / 1,504,189 B zipped, which is 350 KB
-  *below* the broken tree on `main` rather than 121 KB above it.
+- −2,668,043 B raw / −469,461 B zipped from `exe_math/`, in every math export.
+  The directory drops to 4,490,045 B raw / 1,530,496 B zipped, which is 324 KB
+  *below* the broken tree on `main` rather than 145 KB above it.
 - Removes the reach into `MathJax._`; the menu work becomes documented API.
 - No capability regression for the path that actually reaches blind learners: the
   MathML floor is unchanged, and it is the only path that works offline.
@@ -211,8 +211,8 @@ figures are `zip -r` over the directory, the same deflate the release ZIP uses.
 | `exe_math/` state | files | raw | ZIP |
 |---|---:|---:|---:|
 | `main` (3.2.2/4.0 mix, explorer broken) | 85 | 8,628,066 | 1,854,484 |
-| MathJax 4 + vendored font ranges, with SRE | 85 | 7,099,635 | 1,975,560 |
-| MathJax 4 + vendored font ranges, without SRE | 68 | 4,431,592 | 1,504,189 |
+| MathJax 4 + vendored font assets, with SRE | 87 | 7,158,088 | 1,999,957 |
+| MathJax 4 + vendored font assets, without SRE | 70 | 4,490,045 | 1,530,496 |
 
 For comparison, the accessibility toolbar that covers every page of a project —
 text size, uppercase, dyslexia-friendly font, contrast mode, translate, read-aloud —
@@ -291,7 +291,7 @@ this ADR should then be closed as `Rejected` with the reasoning recorded.
 - **The decision is read as "eXeLearning does less accessibility".** It is the
   opposite — the floor is now unconditional and works offline, where the removed
   ceiling never did — but the framing needs care in the release notes.
-- **Rejecting Option 2 leaves `exe_math/` above `main`** at 1,975,560 B zipped,
+- **Rejecting Option 2 leaves `exe_math/` above `main`** at 1,999,957 B zipped,
   which works against the plugin-size effort tracked in #1542 and PR #2260. That
   trade-off should be made knowingly rather than by default.
 
