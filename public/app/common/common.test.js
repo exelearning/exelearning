@@ -1762,6 +1762,47 @@ describe('common.js $exeDevices', () => {
       expect(backwards).toBe(50);
     });
 
+    // An iDevice computes its mark as hits over a total it reads from its own
+    // data, and a total of zero — an activity saved with no questions, a deck
+    // that failed to load — makes that division Infinity. The old isNaN test
+    // let it through, and it travelled out to cmi.core.score.raw as the
+    // learner's grade.
+    it('sendScoreNew reduces a non-finite score to zero', () => {
+      const scorm = getScorm();
+      document.body.innerHTML = `
+        <article>
+          <div class="idevice_node" id="n-1">
+            <div id="main-1"></div>
+            <div class="Games-SendScore"></div>
+            <span class="Games-RepeatActivity"></span>
+          </div>
+        </article>`;
+      const reported = [];
+      const previous = scorm.updateActivity;
+      const previousPipwerks = global.pipwerks;
+      scorm.updateActivity = game => reported.push(game.scorerp);
+      // sendScoreNew stands down without the wrapper; the guard under test is
+      // downstream of that.
+      global.pipwerks = { SCORM: { get: () => '', set: () => true } };
+
+      try {
+        for (const scorerp of [1 / 0, -1 / 0, Number.NaN]) {
+          scorm.sendScoreNew(true, {
+            main: 'main-1',
+            gameStarted: true,
+            scorerp,
+            weighted: 100,
+            msgs: { msgYouScore: 'Score' },
+          });
+        }
+      } finally {
+        scorm.updateActivity = previous;
+        document.body.innerHTML = '';
+      }
+
+      expect(reported).toEqual(['0', '0', '0']);
+    });
+
     it('getFinalScore is an exact weighted mean', () => {
       const scorm = getScorm();
 

@@ -1450,8 +1450,15 @@ var $exeDevices = {
                         const scoreVal = parseFloat(lmsData[game.ideviceNumber]?.score);
                         const previousScore = !Number.isNaN(scoreVal) ? (scoreVal / 10).toFixed(2) : '';
 
+                        // Number.isFinite, not !isNaN: an iDevice computes its
+                        // mark as hits over a total it reads from its own data,
+                        // and a total of zero — an activity saved with no
+                        // questions, a deck that failed to load — makes that
+                        // division Infinity. isNaN lets Infinity through, and
+                        // it travelled into the registry and out to
+                        // cmi.core.score.raw as the learner's grade.
                         const scoreNumber = parseFloat(game.scorerp);
-                        const formattedScore = !isNaN(scoreNumber) ? scoreNumber.toFixed(2) : '0';
+                        const formattedScore = Number.isFinite(scoreNumber) ? scoreNumber.toFixed(2) : '0';
                         game.scorerp = formattedScore;
 
                         if (!auto) {
