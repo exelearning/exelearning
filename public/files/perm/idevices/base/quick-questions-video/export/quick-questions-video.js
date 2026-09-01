@@ -68,6 +68,22 @@ var $quickquestionsvideo = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, errors and the running score, but nothing told
+     * the LMS, so the menu kept the previous attempt's grade and status until
+     * the learner answered a question.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $quickquestionsvideo.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $quickquestionsvideo.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $quickquestionsvideo.options[instance];
 
@@ -1390,6 +1406,11 @@ var $quickquestionsvideo = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
+        // Cleared here and not only at load: gameOver() leaves gameStarted
+        // false, so a finished game can be started again — and it carried the
+        // stale gameOver into the new one, which made the first answer report
+        // the fresh attempt as already finished.
+        mOptions.gameOver = false;
         mOptions.livesLeft = mOptions.numberLives;
         $quickquestionsvideo.updateLives(instance);
         mOptions.stateReproduction = 0;
@@ -1581,6 +1602,9 @@ var $quickquestionsvideo = {
             $('#vquextNavigationButtons-' + instance).show();
         }*/
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $quickquestionsvideo.saveScormScore(instance);
     },
 
     updataProgressBar: function (ntime, instance) {
