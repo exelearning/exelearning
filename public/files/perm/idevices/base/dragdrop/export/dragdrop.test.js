@@ -67,6 +67,120 @@ describe('dragdrop iDevice export', () => {
     });
   });
 
+  describe('SCORM reporting when a game starts or restarts', () => {
+    const instance = 0;
+
+    function setupGame(overrides = {}) {
+      document.body.innerHTML = `
+        <div id="dadPMainContainer-0">
+          <div id="dadPContainerGame-0"></div>
+          <div id="dadPImgTime-0"></div>
+          <div id="dadPPTime-0"></div>
+          <div id="dadPButtons-0"></div>
+          <div id="dadPResetButton-0"></div>
+          <div id="dadPCheckButton-0"></div>
+          <div id="dadPPShowClue-0"></div>
+          <div id="dadPShowClue-0"></div>
+          <div id="dadPPHits-0"></div>
+          <div id="dadPPErrors-0"></div>
+          <div id="dadPCubierta-0"></div>
+          <div id="dadPStartGame-0"></div>
+          <div id="dadPMessage-0"></div>
+        </div>`;
+      $eXeDragDrop.options[instance] = Object.assign(
+        {
+          main: 'dadPMainContainer-0',
+          isScorm: 1,
+          type: 0,
+          time: 0,
+          gameStarted: false,
+          gameOver: false,
+          hits: 0,
+          errors: 0,
+          score: 0,
+          active: 0,
+          obtainedClue: false,
+          realNumberCards: 4,
+          itinerary: { showClue: false, showCodeAccess: false },
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeDragDrop, 'initializeDragAndDrop').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'createDrags').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'showScoreGame').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'updateTime').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupGame({ isScorm: 1 });
+      $eXeDragDrop.saveScormScore(instance);
+      expect($eXeDragDrop.sendScore).toHaveBeenCalledWith(true, instance);
+
+      $eXeDragDrop.sendScore.mockClear();
+      $eXeDragDrop.options[instance].isScorm = 2;
+      $eXeDragDrop.saveScormScore(instance);
+      expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
+    });
+
+    // The defect: "volver a jugar" cleared the board, but the LMS menu kept
+    // the finished attempt's grade and its terminal status.
+    it('publishes the cleared state when the board is restarted', () => {
+      setupGame({ hits: 4, errors: 2, gameOver: true });
+      let stateWhenReported;
+      $eXeDragDrop.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } =
+          $eXeDragDrop.options[instance];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+
+      $eXeDragDrop.reboot(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        // sendScoreNew ignores a game that reports as neither started nor over.
+        gameStarted: true,
+      });
+    });
+
+    // reboot reaches startGame, which returns early on a game it believes is
+    // already running — so the restart used to do none of its work whenever
+    // the flag was still up.
+    it('restarts a board whose game flag was still up', () => {
+      setupGame({ hits: 4, gameStarted: true, gameOver: false });
+
+      $eXeDragDrop.reboot(instance);
+
+      expect($eXeDragDrop.sendScore).toHaveBeenCalledWith(true, instance);
+      expect($eXeDragDrop.options[instance].hits).toBe(0);
+    });
+
+    it('publishes the cleared state when a game starts', () => {
+      setupGame({ hits: 3, gameOver: true });
+      let stateWhenReported;
+      $eXeDragDrop.sendScore.mockImplementation(() => {
+        const { hits, gameOver, gameStarted } = $eXeDragDrop.options[instance];
+        stateWhenReported = { hits, gameOver, gameStarted };
+      });
+
+      $eXeDragDrop.startGame(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+  });
+
   describe('setupTouchDragAndDrop', () => {
     it('exists as a function', () => {
       expect(typeof $eXeDragDrop.setupTouchDragAndDrop).toBe('function');

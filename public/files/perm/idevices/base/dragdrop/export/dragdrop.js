@@ -362,6 +362,9 @@ var $eXeDragDrop = {
         }
         $eXeDragDrop.initializeDragAndDrop(instance);
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeDragDrop.saveScormScore(instance);
     },
 
     initializeDragAndDrop: function (instance) {
@@ -767,6 +770,11 @@ var $eXeDragDrop = {
 
     reboot: function (instance) {
         const mOptions = $eXeDragDrop.options[instance];
+        // Lowered before rebootDrags, which reaches startGame: that returns
+        // early on a game it believes is already running, so a restart while
+        // the flag was still up did none of its work — including the report
+        // that puts the LMS back to zero.
+        mOptions.gameStarted = false;
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
@@ -1113,10 +1121,30 @@ var $eXeDragDrop = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts or
+     * restarts.
+     *
+     * startGame() clears hits, errors and gameOver, but nothing told the LMS,
+     * so the menu kept the finished attempt's grade and its terminal status
+     * until the learner checked the board again. Every restart routes through
+     * startGame (reboot -> rebootDrags -> startGame), so this one call site
+     * covers both ways in.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeDragDrop.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeDragDrop.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeDragDrop.options[instance];
-        mOptions.scorerp = score =
-            (mOptions.hits * 10) / mOptions.realNumberCards;
+        // Was assigning through an undeclared `score`, which wrote a global on
+        // every report and was read by nobody.
+        mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards;
         mOptions.previousScore = $eXeDragDrop.previousScore;
         mOptions.userName = $eXeDragDrop.userName;
 
