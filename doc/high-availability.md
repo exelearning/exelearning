@@ -323,9 +323,15 @@ Headline results:
   previous defaults, which measurably failed under load (58.4% login success at 1000 concurrent WebSocket
   connections) — the new values handled the same load at 100% success and under 15% instance CPU.
 
+**Decisions recorded**: the two durable decisions above are architecture decision records —
+[ADR-2255-01](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2255-01-balance-websocket-upstream-with-least-conn.md)
+(`least_conn` for the WebSocket upstream) and
+[ADR-2255-02](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2255-02-verify-passwords-with-bun-native-bcrypt.md)
+(native password verification).
+
 **Reproducing or extending these benchmarks**: the load-testing tooling (k6 scenarios, orchestration scripts, and
 the HA deployment variant used for these tests) lives under
-[`test/load/`](../../test/load/README.md) — see that directory for exact commands.
+[`test/load/`](https://github.com/exelearning/exelearning/blob/main/test/load/README.md) — see that directory for exact commands.
 
 ---
 

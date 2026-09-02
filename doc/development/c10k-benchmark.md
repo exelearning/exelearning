@@ -2,11 +2,14 @@
 
 Report for [issue #2255](https://github.com/exelearning/exelearning/issues/2255): how many concurrent users and
 long-lived WebSocket connections a single eXeLearning instance, and a horizontally scaled HA deployment, can
-sustain under realistic workloads. Benchmark tooling lives under [`test/load/`](../../test/load/README.md); see
+sustain under realistic workloads. Benchmark tooling lives under [`test/load/`](https://github.com/exelearning/exelearning/blob/main/test/load/README.md); see
 that directory's README for exact reproduction commands.
 
-*(Draft — being written alongside an in-progress benchmark run. Sections not yet backed by a completed test are
-marked accordingly.)*
+The two durable decisions this benchmark produced are recorded as architecture decision records:
+[ADR-2255-01](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2255-01-balance-websocket-upstream-with-least-conn.md)
+(`least_conn` instead of `ip_hash` for the WebSocket upstream) and
+[ADR-2255-02](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2255-02-verify-passwords-with-bun-native-bcrypt.md)
+(native `Bun.password.verify` instead of pure-JS `bcryptjs` for password verification).
 
 ## Objective
 
@@ -69,9 +72,9 @@ fronted by Traefik (reached LAN-direct, bypassing Cloudflare as above). `APP_ENV
 setting; see [Modifications tested](#modifications-tested) for why this was not changed for the WebSocket-capacity
 runs).
 
-HA topology (Redis + PostgreSQL + N instances + Nginx) is defined in [`test/load/deploy/`](../../test/load/deploy/)
+HA topology (Redis + PostgreSQL + N instances + Nginx) is defined in [`test/load/deploy/`](https://github.com/exelearning/exelearning/tree/main/test/load/deploy/)
 and adapts [`doc/deploy/docker-compose.redis.yml`](../deploy/docker-compose.redis.yml); results below under
-[HA results](#ha-results) once that phase runs.
+[HA results](#ha-results).
 
 ```mermaid
 flowchart LR
@@ -111,7 +114,7 @@ flowchart LR
 
 ## Benchmark implementation
 
-k6 scenarios and orchestration scripts: [`test/load/`](../../test/load/README.md).
+k6 scenarios and orchestration scripts: [`test/load/`](https://github.com/exelearning/exelearning/blob/main/test/load/README.md).
 
 - `smoke.mjs` — ~10 users, one iteration each, validates auth/WS/scripts before any real concurrency.
 - `login-burst.mjs` — isolated `POST /api/auth/login` concurrency test, no WebSocket.
@@ -205,7 +208,7 @@ pass with it (verified by reverting each fix in turn and re-running).
 exact production symptom (a connection registered but never removable) without its fix and is clean with it. A
 live check after deploying the fix confirmed it end-to-end: `GET /api/websocket/info` returned `0/0` after a
 redeploy, and returned to the expected room/connection count (not higher) after each subsequent test tier — see
-[the fix verification](#fix-verification-live-check) below. This is very likely the dominant explanation for the
+[the final single-instance results](#single-instance-results-final) below. This is very likely the dominant explanation for the
 elevated login/WS latency observed at the 5000+ VU tiers on the pre-fix image, ahead of the "combined arrival
 rate" explanation offered at the time: by the 10000-VU attempt, the room manager was iterating and bookkeeping for
 roughly 17,000 phantom entries on top of whatever real traffic was in flight. The whole single-instance
@@ -321,7 +324,7 @@ comfortably have driven every tier reported here.
 
 Deployment: the SUT, `/home/deploy/exenew-ha` — 2 `exenew` instances (image digest
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645`), PostgreSQL 18, Redis, Nginx LB (see
-[`test/load/deploy/`](../../test/load/deploy/)). `APP_ENV=prod`. The single-instance stack was stopped (not
+[`test/load/deploy/`](https://github.com/exelearning/exelearning/tree/main/test/load/deploy/)). `APP_ENV=prod`. The single-instance stack was stopped (not
 removed — data preserved) to free CPU/RAM for this phase, so the two topologies were never measured concurrently.
 
 ### Topology sanity
@@ -550,7 +553,7 @@ across instances), not a failure — see [ip_hash vs least_conn](#ip_hash-vs-lea
 
 ## Reproducibility
 
-See [`test/load/README.md`](../../test/load/README.md) for exact prerequisites, environment variables, and
+See [`test/load/README.md`](https://github.com/exelearning/exelearning/blob/main/test/load/README.md) for exact prerequisites, environment variables, and
 commands to reproduce every run above, including RUN IDs.
 
 ## Capacity recommendations

@@ -3,8 +3,14 @@
 Informe para la [issue #2255](https://github.com/exelearning/exelearning/issues/2255): cuántos usuarios concurrentes
 y conexiones WebSocket de larga duración puede sostener una única instancia de eXeLearning, y un despliegue HA
 escalado horizontalmente, bajo cargas de trabajo realistas. Las herramientas del benchmark están en
-[`test/load/`](../../test/load/README.md); consulta el README de ese directorio para los comandos exactos de
+[`test/load/`](https://github.com/exelearning/exelearning/blob/main/test/load/README.md); consulta el README de ese directorio para los comandos exactos de
 reproducción.
+
+Las dos decisiones duraderas que produjo este benchmark están registradas como architecture decision records:
+[ADR-2255-01](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2255-01-balance-websocket-upstream-with-least-conn.md)
+(`least_conn` en lugar de `ip_hash` para el upstream WebSocket) y
+[ADR-2255-02](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2255-02-verify-passwords-with-bun-native-bcrypt.md)
+(`Bun.password.verify` nativo en lugar del `bcryptjs` en JS puro para verificar contraseñas).
 
 ## Objetivo
 
@@ -68,7 +74,7 @@ Línea base de instancia única: el despliegue existente del SUT en `/home/deplo
 sobre por qué no se cambió para las pruebas de capacidad WebSocket).
 
 La topología HA (Redis + PostgreSQL + N instancias + Nginx) está definida en
-[`test/load/deploy/`](../../test/load/deploy/) y adapta
+[`test/load/deploy/`](https://github.com/exelearning/exelearning/tree/main/test/load/deploy/) y adapta
 [`doc/deploy/docker-compose.redis.yml`](../deploy/docker-compose.redis.yml); resultados más abajo en
 [Resultados HA](#resultados-ha).
 
@@ -110,7 +116,7 @@ flowchart LR
 
 ## Implementación del benchmark
 
-Escenarios de k6 y scripts de orquestación: [`test/load/`](../../test/load/README.md).
+Escenarios de k6 y scripts de orquestación: [`test/load/`](https://github.com/exelearning/exelearning/blob/main/test/load/README.md).
 
 - `smoke.mjs` — ~10 usuarios, una iteración cada uno; valida auth/WS/scripts antes de cualquier concurrencia real.
 - `login-burst.mjs` — prueba de concurrencia aislada sobre `POST /api/auth/login`, sin WebSocket.
@@ -339,7 +345,7 @@ reportado aquí.
 
 Despliegue: el SUT, `/home/deploy/exenew-ha` — 2 instancias `exenew` (digest de imagen
 `sha256:c1ec78fc9b213cc3a6317b81565a5b343e15beb436130605db72ca284dd8e645`), PostgreSQL 18, Redis, LB Nginx (ver
-[`test/load/deploy/`](../../test/load/deploy/)). `APP_ENV=prod`. El stack de instancia única se detuvo (no se
+[`test/load/deploy/`](https://github.com/exelearning/exelearning/tree/main/test/load/deploy/)). `APP_ENV=prod`. El stack de instancia única se detuvo (no se
 eliminó — los datos se conservaron) para liberar CPU/RAM para esta fase, así que las dos topologías nunca se
 midieron a la vez.
 
@@ -591,7 +597,7 @@ para el relato completo.
 
 ## Reproducibilidad
 
-Ver [`test/load/README.md`](../../test/load/README.md) para los requisitos exactos, variables de entorno y
+Ver [`test/load/README.md`](https://github.com/exelearning/exelearning/blob/main/test/load/README.md) para los requisitos exactos, variables de entorno y
 comandos para reproducir cada ejecución de arriba, incluidos los RUN IDs.
 
 ## Recomendaciones de capacidad
