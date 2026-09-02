@@ -286,6 +286,34 @@ describe('discover iDevice export', () => {
       expect(clockWhenEnded).toBe(0);
     });
 
+    // The level buttons and the play-again button all route through startGame,
+    // so one report there covers choosing a level as well as starting.
+    it.each([0, 1, 2])('publishes a zero when level %s is chosen', level => {
+      setupTimedGame({ isScorm: 1, hits: 3, gameOver: true });
+      let stateWhenReported;
+      $eXeDescubre.sendScore.mockImplementation(() => {
+        const { hits, gameOver, gameStarted } = $eXeDescubre.options[0];
+        stateWhenReported = { hits, gameOver, gameStarted };
+      });
+
+      $eXeDescubre.startGame(0, level);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        // sendScoreNew ignores a game that reports as neither started nor over.
+        gameStarted: true,
+      });
+    });
+
+    it('does not report outside automatic SCORM mode', () => {
+      setupTimedGame({ isScorm: 2 });
+
+      $eXeDescubre.startGame(0, 0);
+
+      expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+    });
+
     it('stops the countdown when the attempt ends', () => {
       setupTimedGame();
       $eXeDescubre.startGame(0, 0);
