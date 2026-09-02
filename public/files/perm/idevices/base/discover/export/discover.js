@@ -1066,8 +1066,11 @@ var $eXeDescubre = {
         $('#descubreMultimedia-' + instance).on(
             'click',
             '.DescubreQP-CardContainer',
-            function () {
-                $eXeDescubre.cardClick(this, instance);
+            function (e) {
+                // The audio link plays the sound itself, so tell cardClick not
+                // to start it a second time when the click came from there.
+                const fromAudioLink = $(e.target).closest('a[data-audio]').length > 0;
+                $eXeDescubre.cardClick(this, instance, !fromAudioLink);
             }
         );
 
@@ -1076,7 +1079,10 @@ var $eXeDescubre = {
         $container.off('click', 'a[data-audio]');
 
         $container.on('click', 'a[data-audio]', function (e) {
-            e.stopPropagation();
+            // Deliberately NOT stopping propagation. The icon sits inside the
+            // card, so the click has to reach the card container and select or
+            // deselect it like a click anywhere else on the card would; the
+            // learner should not have to aim around the speaker.
             e.preventDefault();
             const audioId = this.dataset.audio;
             if (audioId && audioId.length > 3) {
@@ -1155,7 +1161,16 @@ var $eXeDescubre = {
         }
     },
 
-    cardClick: function (cc, instance) {
+    /**
+     * Select the card the learner clicked.
+     *
+     * @param {HTMLElement} cc the card container
+     * @param {number} instance activity instance
+     * @param {boolean} [playAudio=true] false when the click came from the
+     * card's own audio link, which has already started the sound — playing it
+     * again here would restart it in the same turn.
+     */
+    cardClick: function (cc, instance, playAudio) {
         const mOptions = $eXeDescubre.options[instance],
             $cc = $(cc);
         let maxsel = 1;
@@ -1195,7 +1210,7 @@ var $eXeDescubre = {
             $cc.find('.DescubreQP-LinkAudioBig').data('audio') ||
             '';
 
-        if (sound.length > 3) {
+        if (playAudio !== false && sound.length > 3) {
             $exeDevices.iDevice.gamification.media.playSound(sound);
         }
 

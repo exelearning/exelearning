@@ -203,6 +203,89 @@ describe('discover iDevice export', () => {
   // common.js derives completion from `gameOver === true || auto !== true`, and
   // the report below is automatic, so without the flag a page carrying a
   // discover stayed `incomplete` in the LMS however well the learner did.
+  describe('clicking the sound icon on a card', () => {
+    function setupCard(overrides = {}) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreMultimedia-0">
+            <div class="DescubreQP-CardContainer" data-state="0" data-number="1">
+              <div class="DescubreQP-Card1">
+                <a href="#" data-audio="sound.mp3" class="DescubreQP-LinkAudio">
+                  <img class="DescubreQP-Audio" alt="Audio">
+                </a>
+              </div>
+            </div>
+          </div>
+          <div id="descubreMessage-0"></div>
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 0,
+          gameMode: 0,
+          gameActived: true,
+          gameStarted: true,
+          gameOver: false,
+          showCards: false,
+          selecteds: [],
+          hits: 0,
+          errors: 0,
+          nattempts: 0,
+          wordsGame: [{}, {}],
+          numberQuestions: 2,
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: { msgSelectCard: 'select' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
+      global.$exeDevices.iDevice.gamification.media = {
+        stopSound: vi.fn(),
+        playSound: vi.fn(),
+      };
+    }
+
+    afterEach(() => {
+      delete global.$exeDevices.iDevice.gamification.media;
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    // The icon sits inside the card, so the learner should not have to aim
+    // around the speaker: clicking it selects the card like any other part.
+    it('selects the card the icon belongs to', () => {
+      setupCard();
+      const $card = $('.DescubreQP-CardContainer');
+
+      $eXeDescubre.cardClick($card[0], 0, false);
+
+      expect($card.data('state')).toBe('1');
+      expect($eXeDescubre.options[0].selecteds).toEqual([1]);
+    });
+
+    // The audio link starts the sound itself; cardClick starting it again in
+    // the same turn would restart it under the learner.
+    it('does not start the sound a second time', () => {
+      setupCard();
+
+      $eXeDescubre.cardClick($('.DescubreQP-CardContainer')[0], 0, false);
+
+      expect(
+        global.$exeDevices.iDevice.gamification.media.playSound
+      ).not.toHaveBeenCalled();
+    });
+
+    it('still plays the sound when the card itself is clicked', () => {
+      setupCard();
+
+      $eXeDescubre.cardClick($('.DescubreQP-CardContainer')[0], 0);
+
+      expect(
+        global.$exeDevices.iDevice.gamification.media.playSound
+      ).toHaveBeenCalledWith('sound.mp3');
+    });
+  });
+
   describe('the countdown across attempts', () => {
     function setupTimedGame(overrides = {}) {
       document.body.innerHTML = `
