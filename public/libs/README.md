@@ -306,6 +306,9 @@
 *   Files: /public/libs/fflate/\*
     *   Copyright: 101arrowz
     *   License: MIT
+*   Files: /public/libs/fzstd/\*
+    *   Copyright: 101arrowz
+    *   License: MIT
 *   File: /public/libs/interact/\*
     *   Copyright: Taye Adeyemi
     *   License: MIT
