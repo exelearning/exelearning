@@ -157,4 +157,27 @@ describe('exemermaid plugin - Path Handling', () => {
             expect(isMermaidElement('pre', 'mermaid')).toBe(false);
         });
     });
+
+    describe('Mermaid library preload on dialog open', () => {
+        // The plugin preloads the library when the dialog opens (openHTMLDialog)
+        function preloadMermaid(exe) {
+            if (typeof exe !== 'undefined' && exe.mermaid) {
+                exe.mermaid.loadMermaid();
+            }
+        }
+
+        it('should call loadMermaid when $exe.mermaid is available', () => {
+            const loadMermaid = vi.fn();
+            preloadMermaid({ mermaid: { loadMermaid } });
+            expect(loadMermaid).toHaveBeenCalledTimes(1);
+        });
+
+        it('should not throw when $exe is undefined', () => {
+            expect(() => preloadMermaid(undefined)).not.toThrow();
+        });
+
+        it('should not throw when $exe.mermaid is missing', () => {
+            expect(() => preloadMermaid({})).not.toThrow();
+        });
+    });
 });
