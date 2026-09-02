@@ -100,7 +100,7 @@
     "yjs": "^13.6.32"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.10",
+    "@biomejs/biome": "^2.5.11",
     "@codecov/bundle-analyzer": "^2.0.1",
     "@electron/notarize": "^3.1.1",
     "@material-symbols/svg-400": "^0.40.2",
