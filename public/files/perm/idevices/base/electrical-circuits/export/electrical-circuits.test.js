@@ -395,4 +395,79 @@ describe('electrical-circuits iDevice export', () => {
             expect(idevice().sendScore).not.toHaveBeenCalled();
         });
     });
+
+    // Presentation mode has no questions: walking to the last circuit is the
+    // whole of the activity. The score already reached 10 there, but nothing
+    // said the activity was finished, so the page stayed `incomplete`.
+    describe('completion in presentation mode', () => {
+        const instance = 0;
+        const idevice = () => global.$eXeEC;
+        let reported;
+
+        function setupShow(circuits) {
+            document.body.innerHTML = `
+                <div id="elcpMainContainer-${instance}">
+                    <div id="elcpMultimedia-${instance}"></div>
+                    <div id="elcpShowPrev-${instance}"></div>
+                    <div id="elcpShowNext-${instance}"></div>
+                </div>`;
+            idevice().previousScore = '';
+            idevice().options[instance] = {
+                main: `elcpMainContainer-${instance}`,
+                isScorm: 1,
+                activityMode: 'show',
+                gameOver: false,
+                gameStarted: false,
+                visiteds: 0,
+                showCurrentIndex: 0,
+                selectsGame: new Array(circuits).fill({}),
+                msgs: { msgYouScore: 'Score' },
+            };
+            reported = [];
+            idevice().showCircuitAtIndex = () => {};
+            idevice().saveEvaluation = () => {};
+            idevice().sendScore = (auto, i) => {
+                reported.push({
+                    auto,
+                    gameOver: idevice().options[i].gameOver,
+                    scorerp: idevice().getScoreRP(i),
+                });
+            };
+            idevice().initShowMode(instance);
+        }
+
+        /** Press Next once. */
+        function next() {
+            $(`#elcpShowNext-${instance}`).trigger('click');
+        }
+
+        it('stays unfinished while circuits remain', () => {
+            setupShow(3);
+
+            next();
+
+            expect(reported).toHaveLength(1);
+            expect(reported[0].gameOver).toBe(false);
+        });
+
+        it('finishes on the last circuit, with the full mark', () => {
+            setupShow(3);
+
+            next();
+            next();
+
+            expect(reported).toHaveLength(2);
+            expect(reported[1].gameOver).toBe(true);
+            expect(reported[1].scorerp).toBe(10);
+        });
+
+        it('finishes on the first step of a two-circuit presentation', () => {
+            setupShow(2);
+
+            next();
+
+            expect(reported[0].gameOver).toBe(true);
+            expect(reported[0].scorerp).toBe(10);
+        });
+    });
 });

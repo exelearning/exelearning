@@ -704,6 +704,16 @@ var $eXeEC = {
                 mOptions.showCurrentIndex++;
                 mOptions.visiteds++;
                 $eXeEC.showCircuitAtIndex(mOptions.showCurrentIndex, instance);
+                // Reaching the last circuit is the end of a presentation:
+                // there is nothing further to visit. common.js derives
+                // completion from `gameOver === true || auto !== true`, and
+                // this report is automatic, so without the flag the page
+                // stayed `incomplete` even with every circuit seen and the
+                // score already at 10. Raised before the report, so the one
+                // carrying the full mark is the one that says it is finished.
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 if (mOptions.isScorm > 0) {
                     $eXeEC.sendScore(true, instance);
                 }
