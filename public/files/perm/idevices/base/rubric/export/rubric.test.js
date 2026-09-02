@@ -1148,7 +1148,140 @@ describe('rubric iDevice SCORM integration', () => {
       expect(sendSpy.mock.calls[0][0]).toBe(false);
       expect(sendSpy.mock.calls[0][1].scorerp).toBe(10);
       expect(sendSpy.mock.calls[0][1].gameStarted).toBe(true);
-      expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
+      // Both criteria are ticked, so the rubric is finished.
+      expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+    });
+
+    // The rubric is finished exactly while every criterion is scored. It used
+    // to report `gameOver: false` always, so a fully filled rubric never took
+    // its page out of `incomplete`.
+    describe('completion follows the ticked criteria', () => {
+      /**
+       * Report one change and hand back what reached the runtime.
+       *
+       * @param {Function} tick applies the ticks to the table
+       * @returns {object} the game object as it was reported
+       */
+      function reportAfter(tick) {
+        const table = buildScoredTable();
+        tick(table);
+        const sendSpy = vi.fn();
+        globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+        $rubric.sendRubricScore(true, {
+          table,
+          scormGame: { scorerp: 0, gameStarted: false, gameOver: false },
+        });
+
+        return sendSpy.mock.calls[0][1];
+      }
+
+      it('is unfinished while a criterion is left unscored', () => {
+        const reported = reportAfter(table => {
+          table.find('input[value="3"]').prop('checked', true);
+        });
+
+        expect(reported.gameOver).toBe(false);
+      });
+
+      it('is finished once every criterion is scored', () => {
+        const reported = reportAfter(table => {
+          table.find('input[value="1"]').prop('checked', true);
+          table.find('input[value="2"]').prop('checked', true);
+        });
+
+        expect(reported.gameOver).toBe(true);
+      });
+
+      // Unticking has to take the verdict back, not just lower the score.
+      it('is unfinished again when a criterion is cleared', () => {
+        const reported = reportAfter(table => {
+          table.find('input[value="1"]').prop('checked', true);
+        });
+
+        expect(reported.gameOver).toBe(false);
+      });
+
+      it('is unfinished when nothing has been ticked at all', () => {
+        expect(reportAfter(() => {}).gameOver).toBe(false);
+      });
+
+      // Rows without cells — a spacer, a heading — are not criteria and must
+      // not hold the rubric open for ever.
+      it('ignores rows that carry no cells', () => {
+        const table = buildScoredTable();
+        table.find('tbody').append('<tr><th>Notes</th><td></td></tr>');
+        table.find('input[value="1"]').prop('checked', true);
+        table.find('input[value="2"]').prop('checked', true);
+
+        expect($rubric.isRubricComplete(table)).toBe(true);
+      });
+
+      it('answers false for a table with no criteria at all', () => {
+        expect($rubric.isRubricComplete($('<table><tbody></tbody></table>'))).toBe(false);
+      });
+    });
+
+    // sendScoreNew counts any manual submit as completion — `gameOver === true
+    // || auto !== true` — whatever the flag says, so the rule has to be
+    // enforced before the report or the button would close an unfinished
+    // rubric anyway.
+    describe('the manual save button obeys the same rule', () => {
+      function givenManualSave(tick) {
+        const node = $('<div class="idevice_node"><span class="Games-RepeatActivity"></span></div>');
+        document.body.append(node);
+        const table = buildScoredTable();
+        tick(table);
+        const sendSpy = vi.fn();
+        globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+        const game = {
+          scorerp: 0,
+          gameStarted: false,
+          gameOver: false,
+          mainElement: node,
+          msgs: { msgEndGameScore: 'Complete the rubric first' },
+        };
+        $rubric.sendRubricScore(false, { table, scormGame: game });
+
+        return { sendSpy, node };
+      }
+
+      it('refuses to save an unfinished rubric, and says why', () => {
+        const { sendSpy, node } = givenManualSave(table => {
+          table.find('input[value="3"]').prop('checked', true);
+        });
+
+        expect(sendSpy).not.toHaveBeenCalled();
+        expect(node.find('.Games-RepeatActivity').text()).toBe('Complete the rubric first');
+      });
+
+      it('saves once every criterion is scored', () => {
+        const { sendSpy } = givenManualSave(table => {
+          table.find('input[value="1"]').prop('checked', true);
+          table.find('input[value="2"]').prop('checked', true);
+        });
+
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+      });
+
+      // The automatic path reports every change, finished or not: that is how
+      // the score follows along and how the attempt reopens.
+      it('does not hold back the automatic report', () => {
+        const table = buildScoredTable();
+        table.find('input[value="3"]').prop('checked', true);
+        const sendSpy = vi.fn();
+        globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
+
+        $rubric.sendRubricScore(true, {
+          table,
+          scormGame: { scorerp: 0, gameStarted: false, gameOver: false, msgs: {} },
+        });
+
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
+      });
     });
 
     it('sendRubricScore is a no-op when data has no scormGame', () => {
@@ -1161,17 +1294,20 @@ describe('rubric iDevice SCORM integration', () => {
       expect(sendSpy).not.toHaveBeenCalled();
     });
 
-    it('resetScormScore zeroes the score and flags gameOver', () => {
+    // Clearing the rubric leaves every criterion unscored, so the attempt is
+    // open again. Reporting it finished told the LMS the learner had completed
+    // the rubric and scored nothing.
+    it('resetScormScore zeroes the score and reopens the attempt', () => {
       const sendSpy = vi.fn();
       globalThis.$exeDevices.iDevice.gamification.scorm.sendScoreNew = sendSpy;
 
-      const game = { scorerp: 7, gameStarted: true, gameOver: false };
+      const game = { scorerp: 7, gameStarted: true, gameOver: true };
       $rubric.resetScormScore({ isScorm: 1, scormGame: game });
 
       expect(sendSpy).toHaveBeenCalledTimes(1);
       expect(sendSpy.mock.calls[0][0]).toBe(true);
       expect(sendSpy.mock.calls[0][1].scorerp).toBe(0);
-      expect(sendSpy.mock.calls[0][1].gameOver).toBe(true);
+      expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
     });
 
     it('resetScormScore is a no-op when isScorm is 0', () => {

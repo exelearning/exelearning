@@ -1532,15 +1532,82 @@ var $rubric = {
         $actions.prepend($btn).prepend(' ');
     },
 
+    /**
+     * Has the learner scored every criterion?
+     *
+     * A criterion is a `tbody` row carrying cells; it is scored once any one
+     * of them is ticked, since ticking one unticks the rest of that row. Rows
+     * without cells — a spacer, a heading — are not criteria and do not hold
+     * the rubric open.
+     *
+     * @param {HTMLElement|jQuery} table the rubric table
+     * @returns {boolean} true when every criterion has a ticked cell
+     */
+    isRubricComplete: function (table) {
+        var criteria = 0;
+        var scored = 0;
+
+        $(table)
+            .find('tbody tr')
+            .each(function () {
+                var $cells = $(this).find('input[type="checkbox"]');
+                if ($cells.length === 0) return;
+                criteria += 1;
+                if ($cells.filter(':checked').length > 0) scored += 1;
+            });
+
+        return criteria > 0 && scored === criteria;
+    },
+
+    /**
+     * Tell the learner why their score was not saved.
+     *
+     * Uses the shared score node the SCORM markup renders next to the button,
+     * which is where every other message about the score appears; an alert is
+     * the fallback for markup that does not carry it.
+     *
+     * @param {object} game the registered SCORM game object
+     * @param {string} message what to say
+     */
+    showScormMessage: function (game, message) {
+        if (!message) return;
+
+        var $node = game && game.mainElement ? $(game.mainElement).find('.Games-RepeatActivity') : $();
+        if ($node.length > 0) {
+            $node.text(message).show();
+            return;
+        }
+
+        if (typeof alert === 'function') alert(message);
+    },
+
     sendRubricScore: function (auto, data) {
         if (!data || !data.scormGame) return;
 
         var $table = $(data.table);
         var score = this.calculateScormScore($table);
         var game = data.scormGame;
+        var complete = this.isRubricComplete($table);
+
+        // A manual save must not close an unfinished rubric. sendScoreNew
+        // counts any manual submit as completion — `gameOver === true ||
+        // auto !== true` — whatever the flag says, so refusing has to happen
+        // here, before the report. The string for it has been in this iDevice
+        // all along, unused.
+        if (auto === false && !complete) {
+            this.showScormMessage(game, game.msgs && game.msgs.msgEndGameScore);
+            return;
+        }
+
         game.scorerp = score;
         game.gameStarted = true;
-        game.gameOver = false;
+        // The rubric is finished exactly while every criterion is scored, and
+        // it stops being finished the moment one is cleared. This used to be
+        // hardcoded false, so a fully filled rubric never took its page out of
+        // `incomplete`. Both directions matter: unticking a cell reopens the
+        // attempt, which the completion policy allows because the verdict it is
+        // taking back is one it wrote itself.
+        game.gameOver = complete;
 
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, game);
@@ -1553,7 +1620,10 @@ var $rubric = {
         var game = data.scormGame;
         game.scorerp = 0;
         game.gameStarted = true;
-        game.gameOver = true;
+        // Clearing the rubric leaves every criterion unscored, so the attempt
+        // is open again — not finished. Reporting it as finished told the LMS
+        // the learner had completed the rubric and scored nothing.
+        game.gameOver = false;
 
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, game);
