@@ -233,6 +233,78 @@ describe('mathematicaloperations iDevice export', () => {
     });
   });
 
+  describe('reporting the end of the attempt', () => {
+    function setupFinished(overrides = {}) {
+      document.body.innerHTML = `
+        <div id="mthoMainContainer-0">
+          <div id="mthoGameContainer-0"></div>
+          <div id="mthoStartGame-0"></div>
+          <div id="mthoPTime-0"></div>
+        </div>`;
+      $eXeMathOperations.options[0] = Object.assign(
+        {
+          main: 'mthoMainContainer-0',
+          isScorm: 1,
+          time: 1,
+          gameStarted: true,
+          gameOver: false,
+          hits: 2,
+          errors: 1,
+          number: 4,
+          msgs: { msgNewGame: 'New', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeMathOperations, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'checkClue').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'showFeedBack').mockImplementation(() => {});
+      vi.spyOn($eXeMathOperations, 'uptateTime').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      $eXeMathOperations.initialScore = '';
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports the finished attempt when the clock runs out', () => {
+      setupFinished();
+      let flagWhenReported;
+      $eXeMathOperations.sendScore.mockImplementation(() => {
+        flagWhenReported = $eXeMathOperations.options[0].gameOver;
+      });
+
+      $eXeMathOperations.gameOver(0, 0);
+
+      expect($eXeMathOperations.sendScore).toHaveBeenCalledWith(true, 0);
+      // The flag has to be up before the report, or the page never completes.
+      expect(flagWhenReported).toBe(true);
+    });
+
+    // `initialScore` belongs to the module, not to the instance, so it is
+    // shared by every activity on the page. Gating the end-of-attempt report on
+    // it meant one finished activity silenced another's — and that report is
+    // the only one carrying gameOver.
+    it('reports even after another activity on the page has finished', () => {
+      setupFinished();
+      $eXeMathOperations.initialScore = '7.50';
+      $eXeMathOperations.options[0].repeatActivity = false;
+
+      $eXeMathOperations.gameOver(0, 0);
+
+      expect($eXeMathOperations.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+
+    it('does not report outside automatic SCORM mode', () => {
+      setupFinished({ isScorm: 2 });
+
+      $eXeMathOperations.gameOver(0, 0);
+
+      expect($eXeMathOperations.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
   describe('borderColors', () => {
     it('has required color definitions', () => {
       expect($eXeMathOperations.borderColors).toBeDefined();

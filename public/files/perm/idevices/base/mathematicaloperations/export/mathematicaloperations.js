@@ -1800,17 +1800,20 @@ var $eXeMathOperations = {
             .find('input[type="submit"]')
             .hide();
 
+        // Reported unconditionally. This used to be gated on
+        // `mOptions.repeatActivity || $eXeMathOperations.initialScore === ''`,
+        // and `initialScore` is a property of the module, shared by every
+        // activity on the page: once any one of them finished, it stopped
+        // being empty, and a second activity that had not reported yet — so
+        // with `repeatActivity` still unset — had its END-OF-ATTEMPT report
+        // silently dropped. That is the only report carrying `gameOver`, so
+        // its page stayed `incomplete` in the LMS however the learner did.
+        // The activity registry is the single owner of what has been recorded
+        // now; an iDevice does not get to decide whether its own result counts.
         if (mOptions.isScorm == 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeMathOperations.initialScore === ''
-            ) {
-                const score = ((mOptions.hits * 10) / mOptions.number).toFixed(
-                    2
-                );
-                $eXeMathOperations.sendScore(true, instance);
-                $eXeMathOperations.initialScore = score;
-            }
+            const score = ((mOptions.hits * 10) / mOptions.number).toFixed(2);
+            $eXeMathOperations.sendScore(true, instance);
+            $eXeMathOperations.initialScore = score;
         }
 
         $eXeMathOperations.saveEvaluation(instance);
@@ -1854,13 +1857,11 @@ var $eXeMathOperations = {
 
         pendientes = mOptions.number - mOptions.errors - mOptions.hits;
         mOptions.score = (mOptions.hits / mOptions.number) * 10;
+        // Same gate as gameOver had, and dropped for the same reason: it hangs
+        // on a module-level property shared by every activity on the page, so
+        // one finished activity silenced another's per-answer reports.
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeMathOperations.initialScore === ''
-            ) {
-                $eXeMathOperations.sendScore(true, instance);
-            }
+            $eXeMathOperations.sendScore(true, instance);
         }
 
         $eXeMathOperations.saveEvaluation(instance);
