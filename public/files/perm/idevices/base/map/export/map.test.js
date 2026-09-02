@@ -210,6 +210,75 @@ describe('map iDevice export — completion signal', () => {
         return 0;
     }
 
+    describe('reporting when the learner presses start', () => {
+        /**
+         * Minimal state for a map waiting on its start button.
+         *
+         * @param {number} evaluationG the game mode
+         * @returns {number} the instance index
+         */
+        function givenWaitingToStart(evaluationG) {
+            const instance = 0;
+            document.body.innerHTML = `
+                <div id="mapaMainContainer-${instance}">
+                    <div id="mapaCheckOrder-${instance}"></div>
+                    <div id="mapaMessageFindP-${instance}"></div>
+                    <div id="mapaStartGame-${instance}"></div>
+                </div>`;
+            m.options[instance] = {
+                main: `mapaMainContainer-${instance}`,
+                isScorm: 1,
+                evaluationG,
+                gameStarted: false,
+                gameOver: false,
+                hits: 0,
+                errors: 0,
+                score: 0,
+                numberQuestions: 4,
+                order: [],
+                msgs: { msgYouScore: 'Score' },
+            };
+            // Paints the first prompt of the identify/find modes from the
+            // shuffled title deck; irrelevant to the report.
+            vi.spyOn(m, 'showFind').mockImplementation(() => {});
+            return instance;
+        }
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        // The defect: pressing start revealed the interface and told the LMS
+        // nothing, so its menu kept the previous attempt's grade and status
+        // until the learner answered.
+        it.each([
+            ['Identify', 2],
+            ['Find', 3],
+            ['Quiz', 4],
+            ['Order', 5],
+        ])('publishes a zero on start in %s mode', (_name, evaluationG) => {
+            m.startGame(givenWaitingToStart(evaluationG));
+
+            expect(calls).toHaveLength(1);
+            expect(calls[0].auto).toBe(true);
+            // Raw, not formatted: the recording mock stands in for the runtime,
+            // and it is common.js that rounds a report on the way out.
+            expect(calls[0].game.scorerp).toBe(0);
+            // Starting is not finishing.
+            expect(calls[0].game.gameOver).toBe(false);
+            expect(calls[0].game.gameStarted).toBe(true);
+        });
+
+        it('does not report outside automatic SCORM mode', () => {
+            const i = givenWaitingToStart(2);
+            m.options[i].isScorm = 2;
+
+            m.startGame(i);
+
+            expect(calls).toHaveLength(0);
+        });
+    });
+
     describe('sendScore in exposition mode', () => {
         it('reports progress as a fraction of the points visited', () => {
             m.sendScore(true, givenExposition(['p1'], 4));

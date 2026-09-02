@@ -1776,6 +1776,25 @@ var $eXeMapa = {
         );
     },
 
+    /**
+     * Publish the opening state to the LMS when the learner presses start.
+     *
+     * startGame() only reveals the interface — the counters were cleared at
+     * load (loadDataGame, and startFinds for the identify/find modes) — but
+     * nothing told the LMS, so its menu kept the previous attempt's grade and
+     * status until the learner answered.
+     *
+     * Safe in every mode: hits are 0 at this point, so the report is a zero.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeMapa.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeMapa.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeMapa.options[instance],
             numq =
@@ -3708,6 +3727,9 @@ var $eXeMapa = {
         }
 
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeMapa.saveScormScore(instance);
     },
 
     showMapDetail: function (instance, num) {
