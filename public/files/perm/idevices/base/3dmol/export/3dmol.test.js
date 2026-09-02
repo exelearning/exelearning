@@ -307,4 +307,83 @@ describe('3dmol iDevice export', () => {
             expect(rule).toContain('text-align: center;');
         });
     });
+
+    // Presentation mode has no questions: walking to the last model is the
+    // whole of the activity. The score already reached 10 there, but nothing
+    // said the activity was finished, so the page stayed `incomplete`.
+    describe('completion in presentation mode', () => {
+        const instance = 0;
+        let reported;
+
+        function setupShow(models) {
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <div id="dmolpMultimedia-${instance}"></div>
+                    <div id="dmolpShowPrev-${instance}"></div>
+                    <div id="dmolpShowNext-${instance}"></div>
+                    <div id="dmolpShowClue-${instance}"></div>
+                    <div id="dmolpDivFeedBack-${instance}"></div>
+                </div>`;
+            dmol.options[instance] = {
+                main: `dmolpMainContainer-${instance}`,
+                isScorm: 1,
+                activityMode: 'show',
+                gameOver: false,
+                gameStarted: false,
+                visiteds: 0,
+                showCurrentIndex: 0,
+                selectsGame: new Array(models).fill({}),
+                feedBack: false,
+                obtainedClue: false,
+                itinerary: { showClue: false, percentageClue: 0 },
+                msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+            };
+            reported = [];
+            dmol.showModelAtIndex = () => {};
+            dmol.setModelStyleControlVisibility = () => {};
+            dmol.saveEvaluation = () => {};
+            dmol.sendScore = (auto, i) => {
+                reported.push({
+                    auto,
+                    gameOver: dmol.options[i].gameOver,
+                    scorerp: dmol.getScoreRP(i),
+                });
+            };
+            dmol.initShowMode(instance);
+        }
+
+        /** Press Next once. */
+        function next() {
+            $(`#dmolpShowNext-${instance}`).trigger('click');
+        }
+
+        it('stays unfinished while models remain', () => {
+            setupShow(3);
+
+            next();
+
+            expect(reported).toHaveLength(1);
+            expect(reported[0].gameOver).toBe(false);
+        });
+
+        it('finishes on the last model, with the full mark', () => {
+            setupShow(3);
+
+            next();
+            next();
+
+            expect(reported).toHaveLength(2);
+            expect(reported[1].gameOver).toBe(true);
+            expect(reported[1].scorerp).toBe(10);
+        });
+
+        it('finishes on the first step of a two-model presentation', () => {
+            setupShow(2);
+
+            next();
+
+            expect(reported[0].gameOver).toBe(true);
+            expect(reported[0].scorerp).toBe(10);
+        });
+    });
 });

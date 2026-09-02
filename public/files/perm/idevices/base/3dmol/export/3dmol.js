@@ -933,6 +933,16 @@ var $eXe3Dmol = {
                     }
                 }
                 $eXe3Dmol.showModelAtIndex(mOptions.showCurrentIndex, instance);
+                // Reaching the last model is the end of a presentation: there
+                // is nothing further to visit. common.js derives completion
+                // from `gameOver === true || auto !== true`, and this report is
+                // automatic, so without the flag the page stayed `incomplete`
+                // even with every model seen and the score already at 10.
+                // Raised before the report, so the one carrying the full mark
+                // is the one that says the activity is finished.
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 if (mOptions.isScorm > 0) {
                     $eXe3Dmol.sendScore(true, instance);
                 }
