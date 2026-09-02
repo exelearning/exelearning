@@ -220,6 +220,16 @@ describe('common.js $exe helpers', () => {
       expect(global.$exe.mermaid.initialized).toBe(true);
       global.$exe.mermaid.initialized = originalInitialized;
     });
+
+    it('a save right after opening the dialog does not download the library twice', () => {
+      // Dialog open preloads, then the editor deactivates and init() renders
+      delete global.mermaid;
+      document.body.innerHTML = '<div class="mermaid">graph TD; A-->B;</div>';
+      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
+      global.$exe.mermaid.loadMermaid();
+      global.$exe.mermaid.init();
+      expect(appendChildSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('$exe.setModalWindowContentSize', () => {
