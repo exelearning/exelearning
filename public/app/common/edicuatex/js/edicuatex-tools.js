@@ -38,6 +38,11 @@ if (isInExe) {
 // Redefine _ function once the DOM is loaded and $i18n is available
 document.addEventListener("DOMContentLoaded", function() {
     _ = function(str){
+        // Prioritize eXe's translation
+        if (isInExe && typeof parent._ === 'function') {
+            let exeTranslation = parent._(str);
+            if (exeTranslation !== str) return exeTranslation;
+        }
         let res = str;
         let appLang = document.documentElement.lang;
         // Default language (en)
@@ -46,8 +51,6 @@ document.addEventListener("DOMContentLoaded", function() {
         if (typeof $i18n[appLang] == 'object') translations = $i18n[appLang];
         // Return local translation if available
         if (typeof translations[str] == 'string') return translations[str];
-        // Use eXe's translation if needed
-        if (isInExe) return parent._(str);
         // Otherwite, return the original string
         return res;
     }
@@ -81,7 +84,11 @@ window.MathJax = {
         // is enough on its own: it registers `menuOptions.settings.assistiveMml: true`
         // itself unless options.enableAssistiveMml is explicitly false.
         // Reported by @jjdeharo, fixed upstream in edicuatex@5e64791.
-        load: ['[tex]/color', '[tex]/mhchem', 'a11y/assistive-mml'],
+        // 'cases' and 'mathtools' are listed in tex.packages below, but nothing ever
+        // loaded them: MathJax 3 stayed quiet and \begin{numcases} failed, MathJax 4
+        // warns on the console. Load what the config claims.
+        load: ['[tex]/cases', '[tex]/color', '[tex]/mathtools', '[tex]/mhchem',
+               'a11y/assistive-mml'],
         // Inside eXeLearning this editor loads the vendored bundle, whose font glyph
         // ranges live next to it; the stock value would send them to jsdelivr. The
         // standalone build loads MathJax from a CDN that has no such directory, so it
