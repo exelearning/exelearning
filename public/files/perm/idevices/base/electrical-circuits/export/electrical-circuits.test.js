@@ -386,14 +386,20 @@ describe('electrical-circuits iDevice export', () => {
             vi.useRealTimers();
         });
 
-        it('honours the non-repeat lock', () => {
+        // No "score only once" lock any more: every report goes out. The one
+        // that used to sit here could never close anyway — registerActivity
+        // forces repeatActivity to true at page load (common.js
+        // updateScormNew) — and a stale mark in the LMS is worse than a
+        // repeated one.
+        it('reports again after a previous score, with repeating disabled', () => {
             setupAnswer({ repeatActivity: false });
-            idevice().initialScore = '5.00';
+            idevice().options[0].initialScore = '5.00';
 
             idevice().saveScormScore(0);
 
-            expect(idevice().sendScore).not.toHaveBeenCalled();
+            expect(idevice().sendScore).toHaveBeenCalledWith(true, 0);
         });
+
     });
 
     // Presentation mode has no questions: walking to the last circuit is the

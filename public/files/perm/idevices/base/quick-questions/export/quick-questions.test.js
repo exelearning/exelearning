@@ -157,15 +157,18 @@ describe('quick-questions iDevice export', () => {
             vi.useRealTimers();
         });
 
-        // showQuestion applies the same lock; the new path must not bypass it
-        // and score a non-repeatable activity twice.
-        it('honours the non-repeat lock', () => {
+        // No "score only once" lock any more: every report goes out. The one
+        // that used to sit here could never close anyway — registerActivity
+        // forces repeatActivity to true at page load (common.js
+        // updateScormNew) — and a stale mark in the LMS is worse than a
+        // repeated one.
+        it('reports again after a previous score, with repeating disabled', () => {
             setupAnswer({ repeatActivity: false });
-            $quickquestions.initialScore = '5.00';
+            $quickquestions.options[0].initialScore = '5.00';
 
             $quickquestions.saveScormScore(0);
 
-            expect($quickquestions.sendScore).not.toHaveBeenCalled();
+            expect($quickquestions.sendScore).toHaveBeenCalledWith(true, 0);
         });
 
         it('saveScormScore reports only in automatic SCORM mode', () => {

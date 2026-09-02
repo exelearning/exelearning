@@ -1800,20 +1800,16 @@ var $eXeMathOperations = {
             .find('input[type="submit"]')
             .hide();
 
-        // Reported unconditionally. This used to be gated on
-        // `mOptions.repeatActivity || $eXeMathOperations.initialScore === ''`,
-        // and `initialScore` is a property of the module, shared by every
-        // activity on the page: once any one of them finished, it stopped
-        // being empty, and a second activity that had not reported yet — so
-        // with `repeatActivity` still unset — had its END-OF-ATTEMPT report
-        // silently dropped. That is the only report carrying `gameOver`, so
-        // its page stayed `incomplete` in the LMS however the learner did.
-        // The activity registry is the single owner of what has been recorded
-        // now; an iDevice does not get to decide whether its own result counts.
+        // No "score only once" lock: the end of the attempt is always
+        // reported. The lock this used to carry could never close anyway —
+        // registerActivity forces `repeatActivity` to true at page load
+        // (common.js updateScormNew), so it short-circuited the condition
+        // before the learner touched anything. The activity registry owns what
+        // has been recorded.
         if (mOptions.isScorm == 1) {
             const score = ((mOptions.hits * 10) / mOptions.number).toFixed(2);
             $eXeMathOperations.sendScore(true, instance);
-            $eXeMathOperations.initialScore = score;
+            mOptions.initialScore = score;
         }
 
         $eXeMathOperations.saveEvaluation(instance);
@@ -1857,9 +1853,8 @@ var $eXeMathOperations = {
 
         pendientes = mOptions.number - mOptions.errors - mOptions.hits;
         mOptions.score = (mOptions.hits / mOptions.number) * 10;
-        // Same gate as gameOver had, and dropped for the same reason: it hangs
-        // on a module-level property shared by every activity on the page, so
-        // one finished activity silenced another's per-answer reports.
+        // Every answer is reported; see gameOver for why the lock that used to
+        // sit here is gone.
         if (mOptions.isScorm === 1) {
             $eXeMathOperations.sendScore(true, instance);
         }

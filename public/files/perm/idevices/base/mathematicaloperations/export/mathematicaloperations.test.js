@@ -282,14 +282,13 @@ describe('mathematicaloperations iDevice export', () => {
       expect(flagWhenReported).toBe(true);
     });
 
-    // `initialScore` belongs to the module, not to the instance, so it is
-    // shared by every activity on the page. Gating the end-of-attempt report on
-    // it meant one finished activity silenced another's — and that report is
-    // the only one carrying gameOver.
-    it('reports even after another activity on the page has finished', () => {
-      setupFinished();
-      $eXeMathOperations.initialScore = '7.50';
-      $eXeMathOperations.options[0].repeatActivity = false;
+    // No "score only once" lock any more: the end of the attempt is always
+    // reported. The one that used to sit here could never close anyway —
+    // registerActivity forces repeatActivity to true at page load (common.js
+    // updateScormNew) — and a stale mark in the LMS is worse than a repeated
+    // one.
+    it('reports again after a previous score, with repeating disabled', () => {
+      setupFinished({ repeatActivity: false, initialScore: '7.50' });
 
       $eXeMathOperations.gameOver(0, 0);
 

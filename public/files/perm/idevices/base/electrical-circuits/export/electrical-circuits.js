@@ -54,7 +54,11 @@ var $eXeEC = {
     saveScormScore: function (instance) {
         const mOptions = $eXeEC.options[instance];
         if (mOptions.isScorm !== 1) return;
-        if (!mOptions.repeatActivity && $eXeEC.initialScore !== '') return;
+        // No "score only once" lock: every answer is reported. The lock this
+        // used to carry could never close anyway — registerActivity forces
+        // `repeatActivity` to true at page load (common.js updateScormNew), so
+        // it short-circuited the condition before the learner touched
+        // anything. The activity registry owns what has been recorded.
         $eXeEC.sendScore(true, instance);
     },
 
@@ -1159,20 +1163,15 @@ var $eXeEC = {
         mOptions.gameOver = true;
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeEC.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXeEC.sendScore(true, instance);
-                $(`#elcpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $eXeEC.initialScore = score;
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $eXeEC.sendScore(true, instance);
+            $(`#elcpRepeatActivity-${instance}`).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
+            mOptions.initialScore = score;
         }
         $eXeEC.saveEvaluation(instance);
         $eXeEC.showFeedBack(instance);
@@ -1342,19 +1341,14 @@ var $eXeEC = {
         }
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeEC.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXeEC.sendScore(true, instance);
-                $(`#elcpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $eXeEC.sendScore(true, instance);
+            $(`#elcpRepeatActivity-${instance}`).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
         }
 
 

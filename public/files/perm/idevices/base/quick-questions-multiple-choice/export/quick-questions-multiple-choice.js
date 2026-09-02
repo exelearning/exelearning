@@ -64,12 +64,11 @@ var $quickquestionsmultiplechoice = {
     saveScormScore: function (instance) {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
         if (mOptions.isScorm !== 1) return;
-        if (
-            !mOptions.repeatActivity &&
-            $quickquestionsmultiplechoice.initialScore !== ''
-        ) {
-            return;
-        }
+        // No "score only once" lock: every answer is reported. The lock this
+        // used to carry could never close anyway — registerActivity forces
+        // `repeatActivity` to true at page load (common.js updateScormNew), so
+        // it short-circuited the condition before the learner touched
+        // anything. The activity registry owns what has been recorded.
         $quickquestionsmultiplechoice.sendScore(true, instance);
     },
 
@@ -1545,20 +1544,15 @@ var $quickquestionsmultiplechoice = {
         mOptions.gameOver = true;
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsmultiplechoice.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestionsmultiplechoice.sendScore(true, instance);
-                $(`#seleccionaRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $quickquestionsmultiplechoice.initialScore = score;
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $quickquestionsmultiplechoice.sendScore(true, instance);
+            $(`#seleccionaRepeatActivity-${instance}`).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
+            mOptions.initialScore = score;
         }
         $quickquestionsmultiplechoice.saveEvaluation(instance);
         $quickquestionsmultiplechoice.showFeedBack(instance);
@@ -1808,19 +1802,14 @@ var $quickquestionsmultiplechoice = {
         }
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsmultiplechoice.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestionsmultiplechoice.sendScore(true, instance);
-                $(`#seleccionaRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $quickquestionsmultiplechoice.sendScore(true, instance);
+            $(`#seleccionaRepeatActivity-${instance}`).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
         }
 
         if (q.audio.length > 4 && q.type !== 2 && !mOptions.audioFeedBach) {

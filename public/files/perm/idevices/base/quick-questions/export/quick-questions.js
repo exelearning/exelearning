@@ -1250,20 +1250,15 @@ var $quickquestions = {
         mOptions.gameOver = true;
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestions.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestions.sendScore(true, instance);
-                $('#quextRepeatActivity-' + instance).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $quickquestions.initialScore = score;
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $quickquestions.sendScore(true, instance);
+            $('#quextRepeatActivity-' + instance).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
+            mOptions.initialScore = score;
         }
 
         $quickquestions.saveEvaluation(instance);
@@ -1327,19 +1322,14 @@ var $quickquestions = {
         $quickquestions.showMessage(0, '', instance);
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestions.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestions.sendScore(true, instance);
-                $('#quextRepeatActivity-' + instance).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $quickquestions.sendScore(true, instance);
+            $('#quextRepeatActivity-' + instance).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
         }
 
         $quickquestions.saveEvaluation(instance);
@@ -1883,9 +1873,11 @@ var $quickquestions = {
     saveScormScore: function (instance) {
         const mOptions = $quickquestions.options[instance];
         if (mOptions.isScorm !== 1) return;
-        if (!mOptions.repeatActivity && $quickquestions.initialScore !== '') {
-            return;
-        }
+        // No "score only once" lock: every answer is reported. The lock this
+        // used to carry could never close anyway — registerActivity forces
+        // `repeatActivity` to true at page load (common.js updateScormNew), so
+        // it short-circuited the condition before the learner touched
+        // anything. The activity registry owns what has been recorded.
         $quickquestions.sendScore(true, instance);
     },
 
