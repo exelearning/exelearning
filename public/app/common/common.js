@@ -23,14 +23,6 @@
     2015. Refactored and completed by Ignacio Gros (http://www.gros.es) for http://exelearning.net/
 */
 
-// Speech-rule locales vendored under exe_math/sre/mathmaps/. Kept in sync with
-// VENDORED_SRE_LOCALES in scripts/vendor-mathjax.ts by vendor-mathjax.spec.ts.
-// MathJax's contextual menu offers every locale its bundle knows about, not the
-// ones present on disk, and a missing map makes the speech worker hang forever
-// (the request 404s, the promise never settles and speechError never fires), so
-// the menu is trimmed to this list in startup.ready() below.
-window.MATHJAX_SPEECH_LOCALES = ['ca', 'de', 'en', 'es', 'it'];
-
 window.MathJax = window.MathJax || (function() {
     var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
     var isIndex = document.documentElement.id === 'exe-index';
@@ -105,10 +97,6 @@ window.MathJax = window.MathJax || (function() {
         'unicode', 'units', 'upgreek', 'verb'
     ];
 
-    // Speak in the document's language when we ship rules for it, English otherwise.
-    var pageLanguage = (document.documentElement.getAttribute('lang') || 'en').slice(0, 2).toLowerCase();
-    var speechLocale = window.MATHJAX_SPEECH_LOCALES.indexOf(pageLanguage) !== -1 ? pageLanguage : 'en';
-
     return {
         tex: {
             inlineMath: [["\\(", "\\)"]],
@@ -143,7 +131,26 @@ window.MathJax = window.MathJax || (function() {
             // Skip processing inside these HTML tags
             skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
             enableAssistiveMml: true,
-            sre: { locale: speechLocale }
+            // The Speech Rule Engine is not vendored (ADR-2259-03), and speech lives
+            // inside the combined component, so deleting the files is not enough: the
+            // menu would still offer the toggles and each one would request a file that
+            // is not there, leaving typesetPromise() unsettled and the queue stalled.
+            //
+            // These have to be set as *menu* settings rather than document options.
+            // MathJax builds the menu inside the document constructor and then writes
+            // enableSpeech/enableBraille/enableComplexity/enableExplorer back onto the
+            // document from them, so anything set directly on `options` is overwritten
+            // a moment later. `enrich: false` is the single lever: enrichment gates all
+            // four. assistiveMml stays true — it is the floor, and it is independent.
+            menuOptions: {
+                settings: {
+                    enrich: false,
+                    speech: false,
+                    braille: false,
+                    collapsible: false,
+                    assistiveMml: true
+                }
+            }
         },
         startup: {
             ready: function() {
@@ -157,8 +164,7 @@ window.MathJax = window.MathJax || (function() {
                 // Guarded: anything thrown here leaves MathJax permanently un-started,
                 // which would cost every formula on the page to tidy up one menu.
                 if (typeof $exe !== 'undefined' && $exe.math) {
-                    $exe.math.trimSpeechLocaleMenu();
-                    $exe.math.hideUnavailableRendererMenu();
+                    $exe.math.hideUnavailableMenuEntries();
                 }
             }
         }
@@ -227,34 +233,35 @@ var $exe = {
         refresh: function(elements) {
             return $exeDevices.iDevice.gamification.math.updateLatex(elements);
         },
-        // Remove the languages we ship no speech rules for from MathJax's accessibility
-        // menu. Picking one of them would 404 on sre/mathmaps/<locale>.json, and the
-        // speech worker answers a missing map by never settling its promise, which
-        // wedges typesetting with no error. See window.MATHJAX_SPEECH_LOCALES.
-        trimSpeechLocaleMenu: function() {
-            var sre = window.MathJax && window.MathJax._ && window.MathJax._.a11y && window.MathJax._.a11y.sre_ts;
-            if (!sre || !sre.locales || typeof sre.locales.delete !== 'function') return false;
-            // 'euro' (number formats) and 'nemeth' (braille) are support maps, not
-            // languages; MathJax already keeps them out of the language submenu.
-            var keep = window.MATHJAX_SPEECH_LOCALES.concat(['euro', 'nemeth']);
-            Array.from(sre.locales.keys()).forEach(function(locale) {
-                if (keep.indexOf(locale) === -1) sre.locales.delete(locale);
-            });
-            return true;
-        },
-        // Hide the "Math Renderer" entry from the contextual menu. eXeLearning ships
-        // only the SVG output: CHTML lives in a component we do not vendor, and its
-        // own 2.4 MB woff2 font is a separate package, so picking it would fetch two
-        // files that are not there. MathJax disables the entry by itself only when no
-        // loader is present, which is not our case, so do it explicitly.
-        hideUnavailableRendererMenu: function() {
+        // Hide the contextual-menu entries this build cannot serve.
+        //
+        //   Speech / Braille / Explorer — the Speech Rule Engine is not vendored
+        //     (ADR-2259-03). The features are already off via menuOptions.settings, but
+        //     the sections stay in the menu because they are built into the bundle, and
+        //     toggling one would request a file that is not there and stall the typeset
+        //     queue rather than fail.
+        //   Settings -> Math Renderer — only the SVG output ships. CHTML lives in a
+        //     component we do not vendor and its font is a separate 2.4 MB package.
+        //
+        // MathJax hides these itself only when no loader is present, which is not our
+        // case, so it has to be explicit. Returns the number of entries hidden so the
+        // caller can tell "nothing to do" from "the menu moved under us".
+        hideUnavailableMenuEntries: function() {
             var menu = window.MathJax && window.MathJax.startup && window.MathJax.startup.document
                 && window.MathJax.startup.document.menu;
-            if (!menu || !menu.menu || typeof menu.menu.findID !== 'function') return false;
-            var item = menu.menu.findID('Settings', 'Renderer');
-            if (!item || typeof item.hide !== 'function') return false;
-            item.hide();
-            return true;
+            if (!menu || !menu.menu || typeof menu.menu.findID !== 'function') return 0;
+            // 'Accessibility' is the label heading the three sections; without them it
+            // would sit above nothing.
+            var paths = [['Accessibility'], ['Speech'], ['Braille'], ['Explorer'], ['Settings', 'Renderer']];
+            var hidden = 0;
+            paths.forEach(function(path) {
+                var item = menu.menu.findID.apply(menu.menu, path);
+                if (item && typeof item.hide === 'function') {
+                    item.hide();
+                    hidden++;
+                }
+            });
+            return hidden;
         },
         // Drop persisted menu settings that this build cannot honour. MathJax keeps
         // them in localStorage for the whole origin and acts on them while the document
@@ -266,6 +273,11 @@ var $exe = {
         //   renderer — CHTML is not vendored and its font is a separate package, so a
         //     stored choice makes every page request a missing component at startup,
         //     without anyone opening the menu.
+        //
+        //   enrich / speech / braille / collapsible / explorer — all gate the Speech
+        //     Rule Engine, which is not vendored (ADR-2259-03). A value stored before
+        //     it was removed, or by any other MathJax page on this origin, would turn
+        //     a feature back on and stall the typeset queue on a missing file.
         //
         //   assistiveMml — the hidden MathML is our accessibility floor (ADR-2259-02),
         //     but MathJax treats it as an alternative to speech rather than a floor:
@@ -287,10 +299,12 @@ var $exe = {
                 var settings = JSON.parse(stored);
                 if (!settings || typeof settings !== 'object') return false;
                 var dropped = false;
-                if ('renderer' in settings) {
-                    delete settings.renderer;
-                    dropped = true;
-                }
+                ['renderer', 'enrich', 'speech', 'braille', 'collapsible', 'explorer'].forEach(function(key) {
+                    if (key in settings) {
+                        delete settings[key];
+                        dropped = true;
+                    }
+                });
                 if (settings.assistiveMml === false) {
                     delete settings.assistiveMml;
                     dropped = true;

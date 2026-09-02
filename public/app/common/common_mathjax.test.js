@@ -3,10 +3,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 require('./common.js');
 
 describe('MathJax configuration', () => {
-  it('exposes the speech locales the vendored tree ships', () => {
-    // Kept equal to VENDORED_SRE_LOCALES in scripts/vendor-mathjax.ts by
-    // src/shared/export/prerender/mathjax-packages.spec.ts.
-    expect(global.window.MATHJAX_SPEECH_LOCALES).toEqual(['ca', 'de', 'en', 'es', 'it']);
+  it('turns off every feature the Speech Rule Engine backs', () => {
+    // The engine is not vendored (ADR-2259-03) and speech lives inside the combined
+    // component, so the toggles have to be off or they request a missing file and
+    // leave typesetPromise() unsettled. `enrich` gates all four.
+    const settings = global.window.MathJax.options.menuOptions.settings;
+    expect(settings.enrich).toBe(false);
+    expect(settings.speech).toBe(false);
+    expect(settings.braille).toBe(false);
+    expect(settings.collapsible).toBe(false);
+  });
+
+  it('keeps assistive MathML on, which is independent of enrichment', () => {
+    expect(global.window.MathJax.options.menuOptions.settings.assistiveMml).toBe(true);
   });
 
   it('loads assistive MathML, which is the only a11y path that needs no worker', () => {
@@ -49,6 +58,7 @@ describe('MathJax startup.ready', () => {
 
   afterEach(() => {
     delete global.window.MathJax.startup.defaultReady;
+    delete global.window.MathJax.startup.document;
     delete global.window.MathJax._;
   });
 
@@ -58,17 +68,14 @@ describe('MathJax startup.ready', () => {
     expect(defaultReady).toHaveBeenCalledTimes(1);
   });
 
-  it('trims the language menu once MathJax has started', () => {
-    const locales = new Map([
-      ['en', 'English'],
-      ['es', 'Spanish'],
-      ['sv', 'Swedish'],
-    ]);
-    global.window.MathJax._ = { a11y: { sre_ts: { locales } } };
+  it('hides the unavailable menu entries once MathJax has started', () => {
+    const hide = vi.fn();
+    const findID = vi.fn(() => ({ hide }));
+    global.window.MathJax.startup.document = { menu: { menu: { findID } } };
 
     global.window.MathJax.startup.ready();
 
-    expect([...locales.keys()]).toEqual(['en', 'es']);
+    expect(hide).toHaveBeenCalledTimes(5);
   });
 
   it('still starts MathJax when $exe is unavailable', () => {
@@ -85,74 +92,6 @@ describe('MathJax startup.ready', () => {
   });
 });
 
-describe('$exe.math.trimSpeechLocaleMenu', () => {
-  beforeEach(() => {
-    delete global.window.MathJax._;
-  });
-
-  it('reports failure rather than throwing when MathJax has not exposed SRE yet', () => {
-    expect(global.$exe.math.trimSpeechLocaleMenu()).toBe(false);
-  });
-
-  it('reports failure when the locales map is not a Map', () => {
-    global.window.MathJax._ = { a11y: { sre_ts: { locales: {} } } };
-
-    expect(global.$exe.math.trimSpeechLocaleMenu()).toBe(false);
-  });
-
-  it('removes languages whose speech rules are not vendored', () => {
-    // MathJax offers every locale its bundle knows about, not the ones on disk, and
-    // choosing a missing one makes the speech worker hang forever. See issue #2259.
-    const locales = new Map([
-      ['af', 'Afrikaans'],
-      ['ca', 'Catalan'],
-      ['da', 'Danish'],
-      ['de', 'German'],
-      ['en', 'English'],
-      ['es', 'Spanish'],
-      ['fr', 'French'],
-      ['hi', 'Hindi'],
-      ['it', 'Italian'],
-      ['ko', 'Korean'],
-      ['nb', 'Bokmål'],
-      ['nn', 'Nynorsk'],
-      ['sv', 'Swedish'],
-      ['euro', 'Euro'],
-      ['nemeth', 'Nemeth'],
-    ]);
-    global.window.MathJax._ = { a11y: { sre_ts: { locales } } };
-
-    expect(global.$exe.math.trimSpeechLocaleMenu()).toBe(true);
-    expect([...locales.keys()].sort()).toEqual(['ca', 'de', 'en', 'es', 'euro', 'it', 'nemeth']);
-  });
-
-  it('keeps the euro and nemeth support maps, which are not languages', () => {
-    const locales = new Map([
-      ['en', 'English'],
-      ['euro', 'Euro'],
-      ['nemeth', 'Nemeth'],
-      ['sv', 'Swedish'],
-    ]);
-    global.window.MathJax._ = { a11y: { sre_ts: { locales } } };
-    global.$exe.math.trimSpeechLocaleMenu();
-
-    expect(locales.has('euro')).toBe(true);
-    expect(locales.has('nemeth')).toBe(true);
-    expect(locales.has('sv')).toBe(false);
-  });
-
-  it('leaves an already-trimmed map untouched', () => {
-    const locales = new Map([
-      ['en', 'English'],
-      ['es', 'Spanish'],
-    ]);
-    global.window.MathJax._ = { a11y: { sre_ts: { locales } } };
-    global.$exe.math.trimSpeechLocaleMenu();
-
-    expect([...locales.keys()]).toEqual(['en', 'es']);
-  });
-});
-
 describe('MathJax font paths', () => {
   it('resolves the font glyph ranges next to the vendored bundle', () => {
     // The stock value is https://cdn.jsdelivr.net/npm/@mathjax, which would put an
@@ -162,37 +101,40 @@ describe('MathJax font paths', () => {
   });
 });
 
-describe('$exe.math.hideUnavailableRendererMenu', () => {
+describe('$exe.math.hideUnavailableMenuEntries', () => {
   afterEach(() => {
     delete global.window.MathJax.startup.document;
   });
 
-  it('reports failure rather than throwing before the menu exists', () => {
-    expect(global.$exe.math.hideUnavailableRendererMenu()).toBe(false);
+  it('reports nothing hidden rather than throwing before the menu exists', () => {
+    expect(global.$exe.math.hideUnavailableMenuEntries()).toBe(0);
   });
 
-  it('reports failure when the menu exposes no findID', () => {
+  it('reports nothing hidden when the menu exposes no findID', () => {
     global.window.MathJax.startup.document = { menu: { menu: {} } };
 
-    expect(global.$exe.math.hideUnavailableRendererMenu()).toBe(false);
+    expect(global.$exe.math.hideUnavailableMenuEntries()).toBe(0);
   });
 
-  it('hides the renderer submenu', () => {
-    // CHTML is not vendored and its woff2 font is a separate package, so choosing it
-    // would request two files that are not there.
+  it('hides the SRE sections and the renderer', () => {
     const hide = vi.fn();
     const findID = vi.fn(() => ({ hide }));
     global.window.MathJax.startup.document = { menu: { menu: { findID } } };
 
-    expect(global.$exe.math.hideUnavailableRendererMenu()).toBe(true);
-    expect(findID).toHaveBeenCalledWith('Settings', 'Renderer');
-    expect(hide).toHaveBeenCalledTimes(1);
+    expect(global.$exe.math.hideUnavailableMenuEntries()).toBe(5);
+    expect(findID.mock.calls).toEqual([
+      ['Accessibility'],
+      ['Speech'],
+      ['Braille'],
+      ['Explorer'],
+      ['Settings', 'Renderer'],
+    ]);
   });
 
-  it('reports failure when MathJax stops offering that entry', () => {
+  it('skips entries MathJax stops offering instead of throwing', () => {
     global.window.MathJax.startup.document = { menu: { menu: { findID: () => null } } };
 
-    expect(global.$exe.math.hideUnavailableRendererMenu()).toBe(false);
+    expect(global.$exe.math.hideUnavailableMenuEntries()).toBe(0);
   });
 });
 

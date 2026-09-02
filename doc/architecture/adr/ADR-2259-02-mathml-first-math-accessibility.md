@@ -128,22 +128,26 @@ We will enable `a11y/assistive-mml` and `enableAssistiveMml: true` in every cont
 making hidden MathML the guaranteed accessibility path — it is the only one that
 survives an export opened from the filesystem.
 
-We will vendor the speech-rule maps for `ca`, `de`, `en`, `es` and `it`, plus the
-`base`, `euro` and `nemeth` support maps, keeping the expression explorer, braille
-and Auto Voicing working in the languages eXeLearning is translated into.
+**Superseded in part by ADR-2259-03.** This ADR originally also vendored the
+speech-rule maps for `ca`, `de`, `en`, `es` and `it` and trimmed the language menu to
+match. ADR-2259-03 removed the Speech Rule Engine altogether, so there are no locales
+to bound and no menu to trim: `$exe.math.trimSpeechLocaleMenu()` and
+`window.MATHJAX_SPEECH_LOCALES` are gone. The floor is unchanged and is what the rest
+of this document describes.
 
-Because MathJax offers every language its bundle knows about rather than the ones
-present on disk, `$exe.math.trimSpeechLocaleMenu()` removes the unshipped languages
-from `MathJax._.a11y.sre_ts.locales` in `startup.ready()`. The list lives in
-`window.MATHJAX_SPEECH_LOCALES` in `common.js`, and a test asserts it equals
-`VENDORED_SRE_LOCALES` in `scripts/vendor-mathjax.ts`.
+### What this decision guarantees, and what it used to
 
-The speech locale defaults to the document's `lang` when we ship rules for it, and to
-English otherwise.
+**As of ADR-2259-03 the floor is an invariant.** With the Speech Rule Engine gone and
+`enrich`/`speech`/`braille`/`collapsible` off in `menuOptions.settings`, the menu no
+longer offers the toggle that traded hidden MathML for speech, so nothing in the UI
+can switch it off. Verified in a browser: `enableAssistiveMml: true`,
+`enableSpeech`/`enableBraille`/`enableExplorer`/`enableEnrichment` all `false`, one
+`mjx-assistive-mml` per formula, and zero requests for the removed components.
 
-### What this decision does not guarantee
+The rest of this section records why that mattered, because it is the reason the
+guarantee is now structural rather than restored on every load.
 
-The word "guaranteed" above describes intent, not a structural invariant, and the
+The word "guaranteed" above described intent, not a structural invariant, and the
 difference was measured after the decision was first written. MathJax does not model
 hidden MathML as a floor beneath speech: it models the two as alternatives. In
 `tex-mml-svg.js`, `setSpeech(true)` calls `setValue(false)` on the `assistiveMml`
@@ -158,13 +162,11 @@ origin, so it follows the reader from one package to the next on the same LMS, a
 an export opened from the filesystem speech cannot start either — leaving no accessible
 maths at all, silently.
 
-`$exe.math.forgetUnavailableMenuSettings()` therefore drops a stored
-`assistiveMml: false` before `defaultReady()`, alongside the stored renderer. That
-turns the floor back into something the page enforces rather than something the reader
-can switch off by accident. It is a mitigation, not a proof: while SRE ships, the
-guarantee is "restored on every load", not "impossible to lose". Dropping SRE
-(ADR-2259-03, Option 2) would make it an invariant, because the menu would no longer
-offer the toggle that trades one for the other.
+`$exe.math.forgetUnavailableMenuSettings()` drops a stored `assistiveMml: false`
+before `defaultReady()`, alongside the stored renderer and the SRE keys. That still
+matters after ADR-2259-03: a reader may carry a `false` from before the removal, or
+from any other MathJax page on the same origin, and nothing in this build would put it
+back.
 
 ### Relationship with MathJax's own recommendation
 
@@ -205,20 +207,21 @@ MathJax 4 documentation should find this stated rather than have to reconcile it
 
 ## Risks
 
-- **`MathJax._.a11y.sre_ts.locales` disappears in a future MathJax release.** Then the
-  menu offers all 13 languages again and eight of them hang if chosen. Mitigated by
-  the guard, but a MathJax upgrade should re-run the locale check.
-- **A locale is added to one list and not the other**, re-creating the hang. Covered
-  by the parity test in `mathjax-packages.spec.ts`.
-- **The floor is restored per load, not enforced.** A reader who turns Speech on mid
-  session loses the hidden MathML for the rest of that page view; it comes back on the
-  next load. Removing SRE closes this; while it ships, the window stays open.
+- ~~**`MathJax._.a11y.sre_ts.locales` disappears in a future MathJax release.**~~ and
+  ~~**a locale is added to one list and not the other**~~ — both gone with the engine
+  (ADR-2259-03). The reach into MathJax's internal `_` namespace went with them.
+- **A MathJax upgrade re-enables the features by changing a default.** The settings
+  are pinned in `menuOptions.settings` and the menu entries hidden by id; an upgrade
+  that renames an id would silently unhide a section. `vendor-mathjax.spec.ts` fails
+  if the removed components reappear, which is the load-bearing half.
+- ~~**The floor is restored per load, not enforced.**~~ Closed by ADR-2259-03: the
+  toggle that traded MathML for speech is no longer in the menu.
 
 ## Validation
 
-- `public/app/common/common_mathjax.test.js` — 10 tests covering the configuration
-  and every branch of `trimSpeechLocaleMenu()`.
-- `src/shared/export/prerender/mathjax-packages.spec.ts` — locale list parity.
+- `public/app/common/common_mathjax.test.js` — 22 tests covering the configuration,
+  every branch of `hideUnavailableMenuEntries()` and of the settings cleanup.
+- `scripts/vendor-mathjax.spec.ts` — asserts the engine is absent and the floor present.
 - `test/e2e/playwright/specs/latex-rendering.spec.ts` asserts every rendered formula
   carries hidden MathML.
 - `common_mathjax.test.js` covers dropping a persisted `assistiveMml: false`.
@@ -228,9 +231,9 @@ MathJax 4 documentation should find this stated rather than have to reconcile it
 
 ## Follow-up work
 
-- Re-check the locale trim on the next MathJax upgrade.
-- If export size becomes the priority, Option 2 (drop SRE, 3.7 MB) remains available
-  and costs only the explorer, which no released build has ever had working.
+- Re-check the hidden menu ids on the next MathJax upgrade.
+- If the explorer or braille are ever asked for, ADR-2259-03 records the exact cost of
+  putting them back.
 
 ## References
 

@@ -21,27 +21,33 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** Speech-rule locales shipped for the expression explorer. */
-export const VENDORED_SRE_LOCALES = [
-    // Support maps, always needed: base rules, euro number formats, Nemeth braille.
-    'base',
-    'euro',
-    'nemeth',
-    // Speech locales. SRE supports af/ca/da/de/en/es/fr/hi/it/ko/nb/nn/sv; we ship the
-    // five that overlap eXeLearning's own UI languages. eo/eu/gl/pt/ro/va have no SRE
-    // support at all, so there is nothing to ship for them.
-    'ca',
-    'de',
-    'en',
-    'es',
-    'it',
-] as const;
+/**
+ * Accessibility components vendored from the package.
+ *
+ * Only assistive MathML. It is the accessibility floor (ADR-2259-02): a `<math>`
+ * element beside the visual output, which NVDA, JAWS and VoiceOver turn into speech
+ * themselves. It needs no worker and no fetch, so it is the only path that survives
+ * an export opened from the filesystem.
+ *
+ * The Speech Rule Engine — `a11y/{sre,explorer,speech,semantic-enrich,complexity}.js`
+ * plus `sre/` — is deliberately absent (ADR-2259-03). It bought the expression
+ * explorer, Nemeth braille and Auto Voicing, at 2,668,043 B in every export
+ * containing LaTeX, only over HTTP, and only in 5 of eXeLearning's 11 interface
+ * languages. `common.js` turns the features off through `menuOptions.settings` and
+ * hides their menu sections, because speech lives inside the combined component:
+ * deleting the files alone would leave the menu offering toggles that stall the
+ * typeset queue.
+ */
+const VENDORED_A11Y_FILES = ['a11y/assistive-mml.js'] as const;
 
 /**
  * Directories copied wholesale from the package.
  *
  * `adaptors/` is deliberately absent: jsdom, linkedom and liteDOM are Node-only
  * DOM adaptors that a browser can never load.
+ *
+ * `a11y/` is not here either: only one file of it is vendored, see
+ * VENDORED_A11Y_FILES.
  *
  * `output/` is deliberately absent too. It holds only the standalone `svg` and
  * `chtml` output jaxes: `output/svg` is already inside the combined component
@@ -50,7 +56,7 @@ export const VENDORED_SRE_LOCALES = [
  * CHTML font is a separate 2.4 MB package we do not ship. `common.js` hides that
  * menu entry, which makes both files dead weight in every math export.
  */
-const VENDORED_DIRECTORIES = ['a11y', 'input', 'ui'] as const;
+const VENDORED_DIRECTORIES = ['input', 'ui'] as const;
 
 /**
  * Glyph ranges of the SVG font that are vendored alongside the bundle.
@@ -237,15 +243,8 @@ export function buildVendorPlan(packageRoot: string): VendorPlanEntry[] {
         });
     }
 
-    entries.push({
-        relativePath: 'sre/speech-worker.js',
-        sourcePath: path.join(packageRoot, 'sre', 'speech-worker.js'),
-    });
-    for (const locale of VENDORED_SRE_LOCALES) {
-        entries.push({
-            relativePath: `sre/mathmaps/${locale}.json`,
-            sourcePath: path.join(packageRoot, 'sre', 'mathmaps', `${locale}.json`),
-        });
+    for (const file of VENDORED_A11Y_FILES) {
+        entries.push({ relativePath: file, sourcePath: path.join(packageRoot, ...file.split('/')) });
     }
 
     return entries.sort((a, b) => a.relativePath.localeCompare(b.relativePath));

@@ -10,7 +10,6 @@ import {
     resolvePaths,
     run,
     VENDORED_FONT_RANGES,
-    VENDORED_SRE_LOCALES,
     writeVendoredTree,
 } from './vendor-mathjax';
 
@@ -36,24 +35,25 @@ describe('vendor-mathjax', () => {
             expect(plan.some((relativePath) => relativePath.startsWith('adaptors/'))).toBe(false);
         });
 
-        it('vendors the speech worker and exactly the selected locales', () => {
-            const mathmaps = buildVendorPlan(packageRoot)
-                .map((entry) => entry.relativePath)
-                .filter((relativePath) => relativePath.startsWith('sre/mathmaps/'))
-                .map((relativePath) => path.basename(relativePath, '.json'))
-                .sort();
-
-            expect(mathmaps).toEqual([...VENDORED_SRE_LOCALES].sort());
-            expect(buildVendorPlan(packageRoot).map((e) => e.relativePath)).toContain('sre/speech-worker.js');
-        });
-
-        it('ships the lazily-loaded accessibility components the MathJax menu offers', () => {
+        it('ships assistive MathML, which is the accessibility floor', () => {
             const plan = buildVendorPlan(packageRoot).map((entry) => entry.relativePath);
 
-            // These are NOT bundled into tex-mml-svg.js; the contextual menu fetches
-            // them on demand. Issue #2259 was exactly these files going stale.
+            // Not bundled into tex-mml-svg.js; common.js asks the loader for it. It is
+            // the only a11y path with no worker and no fetch, so it is the only one that
+            // works in an export opened from the filesystem. ADR-2259-02.
             expect(plan).toContain('a11y/assistive-mml.js');
-            expect(plan).toContain('a11y/complexity.js');
+        });
+
+        it('ships no Speech Rule Engine', () => {
+            const plan = buildVendorPlan(packageRoot).map((entry) => entry.relativePath);
+
+            // ADR-2259-03. 2,668,043 B in every export containing LaTeX, usable only
+            // over HTTP and only in 5 of 11 interface languages, for capabilities the
+            // screen reader already provides from the MathML.
+            expect(plan.filter((relativePath) => relativePath.startsWith('sre/'))).toEqual([]);
+            for (const component of ['sre', 'explorer', 'speech', 'semantic-enrich', 'complexity']) {
+                expect(plan).not.toContain(`a11y/${component}.js`);
+            }
         });
 
         it('accounts for every glyph range the font package publishes', () => {

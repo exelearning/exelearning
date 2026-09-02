@@ -116,10 +116,12 @@ and fail the test suite when the committed tree and the package disagree.
 We will upgrade to MathJax 4.1.3 and generate `public/app/common/exe_math/` from the
 pinned `mathjax` npm package using `scripts/vendor-mathjax.ts`, run via
 `make vendor-mathjax`. The script owns an explicit manifest: the `tex-mml-svg`
-combined component and the component entry points, all of `a11y/`, `input/`,
-`output/` and `ui/`, the speech worker, and the speech-rule locales from
-ADR-2259-02. It excludes `adaptors/`, the combined components eXeLearning does not
-load, and the Node entry points.
+combined component and the component entry points, `input/` and `ui/`,
+`a11y/assistive-mml.js`, and the font glyph ranges and TeX font extensions the
+browser would otherwise fetch from a CDN. It excludes `adaptors/`, `output/`, the
+Speech Rule Engine (ADR-2259-03), the combined components eXeLearning does not
+load, and the Node entry points. Every exclusion is a named list with a reason, so
+an upgrade that adds a file fails the build instead of shipping it unweighed.
 
 `scripts/vendor-mathjax.spec.ts` compares the committed tree against the package by
 SHA-256 and fails on any missing, extra or changed file, so a partial revert cannot

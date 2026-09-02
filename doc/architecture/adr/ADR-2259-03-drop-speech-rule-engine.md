@@ -1,8 +1,8 @@
 ---
 id: ADR-2259-03
 title: "Weigh the Speech Rule Engine against the accessibility surface it does not cover"
-status: Proposed
-date: 2026-09-01
+status: Accepted
+date: 2026-09-02
 tracking_issue: 2259
 deciders:
   - "@ignaciogros"
@@ -239,28 +239,41 @@ Other facts:
 
 ## Decision
 
-**Not yet taken.** This ADR stays `Proposed` until the author of issue #2259 rules,
-because it contradicts that issue's acceptance criteria and because removing four
-menu sections is a UI removal, which AGENTS.md reserves for an explicit decision.
+**We will take Option 2: drop the Speech Rule Engine and keep hidden MathML as the
+floor.** Ruled by the maintainers on 2026-09-02, on a review that agreed with removing
+braille. Braille alone was not the lever: `nemeth.json` deflates to **19,550 B of the
+release ZIP** out of the engine's 469,461 B, and removing it leaves every structural
+cost in place — the worker, the seven remaining maps, the reach into `MathJax._`, and
+the toggle that can switch the accessibility floor off. The argument accepted for
+braille — the assistive technology already turns MathML into braille, MathJax only
+adds the last translation step — applies unchanged to speech, so the two were decided
+together.
 
-The recommendation put to that decision is **Option 2: drop SRE and keep hidden
-MathML as the floor.** The case is that the capability SRE adds beyond the floor is
-narrow (formula braille and arrow-key exploration), unavailable exactly where
-exported content is most often read (offline), unavailable in six of eleven
-interface languages, unmissed for eight months — and that the same 2.7 MB compared
-against the 0.65 MB accessibility toolbar that covers every page of every project
-makes the opportunity cost concrete.
+`sre/` and `a11y/{sre,explorer,speech,semantic-enrich,complexity}.js` are removed from
+the vendored tree. Because speech is compiled into the combined component, deleting
+the files is not sufficient: `enrich`, `speech`, `braille` and `collapsible` are set to
+`false` in `options.menuOptions.settings` — menu settings rather than document options,
+because the document constructor writes the menu's values back over the document's —
+and the Speech, Braille, Explorer and Math Renderer menu sections are hidden by id.
+`forgetUnavailableMenuSettings()` also drops those keys if a reader carries them in
+`localStorage` from before the removal.
 
-If the ruling is to keep SRE, Option 1 is already implemented and no code changes;
-this ADR should then be closed as `Rejected` with the reasoning recorded.
+Verified in a browser on the resulting build: `enableSpeech`, `enableBraille`,
+`enableExplorer` and `enableEnrichment` all `false`; `enableAssistiveMml` `true` with
+one `mjx-assistive-mml` per formula; all four menu sections hidden; and **zero requests
+for any removed component**.
 
 ## Consequences
 
 ### Positive
 
-- Under Option 2, `exe_math/` lands below the current `main` in both raw and ZIP
-  terms while being consistent and complete for the first time since January, and
-  every math export gets 471 KB smaller.
+- `exe_math/` lands below the current `main` in both raw and ZIP terms while being
+  consistent and complete for the first time since January, and every math export
+  gets ~469 KB smaller.
+- **The accessibility floor becomes a structural invariant.** ADR-2259-02 promised
+  hidden MathML but MathJax models it as an alternative to speech, and toggling Speech
+  in the menu switched it off and persisted that per origin. With no speech in the
+  menu there is nothing to trade it against.
 - The MathJax menu stops offering three features whose runtime dependencies we would
   not be shipping, which is the same class of defect as the CHTML renderer entry and
   the untrimmed language list.
@@ -269,9 +282,10 @@ this ADR should then be closed as `Rejected` with the reasoning recorded.
 
 ### Negative
 
-- Under Option 2, formula braille and expression exploration are gone from
-  eXeLearning until someone asks for them, and reinstating them means re-vendoring
-  ~2.7 MB.
+- Formula braille and expression exploration are gone from eXeLearning until someone
+  asks for them. Reinstating them means re-vendoring ~2.7 MB and restoring four
+  settings — the ADR records exactly which, so it is a small change, not an
+  archaeology exercise.
 - The `pp_addMathJax` help text no longer has an accessibility angle to sell, which
   is part of why it was rewritten to name no features (`src/routes/config-params.ts`).
 
@@ -291,9 +305,8 @@ this ADR should then be closed as `Rejected` with the reasoning recorded.
 - **The decision is read as "eXeLearning does less accessibility".** It is the
   opposite — the floor is now unconditional and works offline, where the removed
   ceiling never did — but the framing needs care in the release notes.
-- **Rejecting Option 2 leaves `exe_math/` above `main`** at 1,999,957 B zipped,
-  which works against the plugin-size effort tracked in #1542 and PR #2260. That
-  trade-off should be made knowingly rather than by default.
+- ~~**Rejecting Option 2 leaves `exe_math/` above `main`.**~~ Resolved: the tree is
+  now below `main` in both measures.
 
 ## Validation
 
@@ -310,11 +323,12 @@ this ADR should then be closed as `Rejected` with the reasoning recorded.
 
 ## Follow-up work
 
-- Get a ruling from @ignaciogros on #2259 before this branch is proposed upstream.
-- If Option 2: remove the files, hide the four menu sections, update ADR-2259-02's
-  locale bound, and close #2259 with the reasoning rather than the implementation.
-- Independently of the ruling: check the accessibility toolbar's read-aloud against
-  formulas (see Validation).
+- Close #2259 with the reasoning rather than the implementation: the answer to
+  "restore interactive math speech" is that hidden MathML is the answer.
+- Check the accessibility toolbar's read-aloud against formulas (see Validation). If
+  it reads the hidden MathML usefully, the whole-document path covers formulas too; if
+  it skips them, that is a toolbar bug and a better use of the budget than SRE was.
+- Re-check the hidden menu ids on the next MathJax upgrade.
 
 ## References
 

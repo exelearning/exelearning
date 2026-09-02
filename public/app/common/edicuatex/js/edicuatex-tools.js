@@ -94,9 +94,34 @@ window.MathJax = {
     svg: {
         fontCache: 'local'
     },
+    // Inside eXeLearning this editor loads eXeLearning's vendored MathJax, which ships
+    // no Speech Rule Engine. Speech is built into the combined component, so the menu
+    // would still offer Speech, Braille and Explorer and each toggle would request a
+    // file that is not there, leaving typesetPromise() unsettled and the preview stuck.
+    // `enrich` gates all four. Standalone the editor loads a complete CDN build, where
+    // the features work, so it keeps MathJax's defaults. Mirrors public/app/common/common.js.
+    options: isInExe
+        ? { menuOptions: { settings: { enrich: false, speech: false, braille: false, collapsible: false } } }
+        : {},
     startup: {
         ready: () => {
             MathJax.startup.defaultReady();
+            if (isInExe) {
+                // Same reasoning: hide what this build cannot serve. Guarded, because a
+                // throw here would leave MathJax un-started and every formula unrendered.
+                try {
+                    var menu = MathJax.startup.document && MathJax.startup.document.menu;
+                    if (menu && menu.menu && typeof menu.menu.findID === 'function') {
+                        [['Accessibility'], ['Speech'], ['Braille'], ['Explorer'], ['Settings', 'Renderer']]
+                            .forEach(function (path) {
+                                var item = menu.menu.findID.apply(menu.menu, path);
+                                if (item && typeof item.hide === 'function') item.hide();
+                            });
+                    }
+                } catch (e) {
+                    console.warn('[edicuatex] could not tidy the MathJax menu:', e && e.message);
+                }
+            }
             // This function is defined below in the main script
             if (window.initializeLatexEditor) {
                 window.initializeLatexEditor();
