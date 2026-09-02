@@ -1083,12 +1083,13 @@ export function generateServiceWorker(): string {
 
 /**
  * Directories (relative to dist/static/) whose .json files must be shipped as
- * .json.gz. Large repetitive curricular data — compressing ~85% saves ~30 MB
- * in the static build and Electron package. Decompressed on the fly in the
- * browser via DecompressionStream('gzip').
+ * .json.zst. Large repetitive curricular data — zstd-19 compresses ~94% (vs
+ * ~81% for gzip), saving an extra ~6.5 MB over gzip in the static build and
+ * Electron package. Decompressed on the fly in the browser via `fzstd`
+ * (public/libs/fzstd/fzstd.umd.js) — see lomloe.js / digcompedu.js.
  *
  * Add new entries when introducing other large JSON datasets that the iDevice
- * loaders fetch through the .gz-first pattern (see lomloe.js / digcompedu.js).
+ * loaders fetch through the .zst-first pattern.
  */
 export const COMPRESS_JSON_DIRS = [
     'files/perm/idevices/base/lomloe/data',
@@ -1099,19 +1100,19 @@ export function shouldCompressJson(fileName: string): boolean {
     return fileName.endsWith('.json');
 }
 
-export function gzipBuffer(input: Buffer): Buffer {
-    return zlib.gzipSync(input, { level: zlib.constants.Z_BEST_COMPRESSION });
+export function zstdCompressBuffer(input: Buffer): Buffer {
+    return zlib.zstdCompressSync(input, { params: { [zlib.constants.ZSTD_c_compressionLevel]: 19 } });
 }
 
 /**
- * Walk a directory, gzip every .json into a sibling .json.gz, and delete the
- * raw .json. Returns aggregate stats for logging.
+ * Walk a directory, zstd-compress every .json into a sibling .json.zst, and
+ * delete the raw .json. Returns aggregate stats for logging.
  */
-export function compressJsonInDir(absDir: string): { count: number; origTotal: number; gzTotal: number } {
+export function compressJsonInDir(absDir: string): { count: number; origTotal: number; compressedTotal: number } {
     let count = 0;
     let origTotal = 0;
-    let gzTotal = 0;
-    if (!fs.existsSync(absDir)) return { count, origTotal, gzTotal };
+    let compressedTotal = 0;
+    if (!fs.existsSync(absDir)) return { count, origTotal, compressedTotal };
     const entries = fs.readdirSync(absDir, { withFileTypes: true });
     for (const entry of entries) {
         const abs = path.join(absDir, entry.name);
@@ -1119,19 +1120,19 @@ export function compressJsonInDir(absDir: string): { count: number; origTotal: n
             const sub = compressJsonInDir(abs);
             count += sub.count;
             origTotal += sub.origTotal;
-            gzTotal += sub.gzTotal;
+            compressedTotal += sub.compressedTotal;
             continue;
         }
         if (!shouldCompressJson(entry.name)) continue;
         const data = fs.readFileSync(abs);
-        const gz = gzipBuffer(data);
-        fs.writeFileSync(abs + '.gz', gz);
+        const compressed = zstdCompressBuffer(data);
+        fs.writeFileSync(abs + '.zst', compressed);
         fs.unlinkSync(abs);
         count += 1;
         origTotal += data.length;
-        gzTotal += gz.length;
+        compressedTotal += compressed.length;
     }
-    return { count, origTotal, gzTotal };
+    return { count, origTotal, compressedTotal };
 }
 
 /**

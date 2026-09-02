@@ -209,6 +209,53 @@ h2 { color: red !important; }
 
 ---
 
+## Effects (FX)
+
+The Accordion, Tabs, Pagination, Carousel and Timeline effects are styled by
+`exe_effects.css`, which ships with eXeLearning. Every effect is wrapped in
+`<div class="exe-fx exe-...">`.
+
+Their controls (tab labels, page numbers, carousel arrows, accordion titles and the
+timeline markers) are links, but **not links inside a block of text**. `exe_effects.css`
+therefore keeps them free of underlines and gives them a focus ring of its own, so a
+keyboard user always sees where the focus is, whatever style is applied.
+
+The ring is drawn with `outline`, outside the control, over the page background. To
+recolour it, set one custom property rather than restyling every control:
+
+```css
+.exe-content {
+    --exe-fx-focus-color: #054d4d; /* default: #1a1a1a */
+}
+```
+
+Keep at least a 3:1 contrast ratio between that colour and the page background. Paint
+the controls themselves with `background` or `box-shadow` — the ring never uses
+`box-shadow`, so both keep working together.
+
+To recolour the controls, target `.exe-content .fx-tabs a` and
+`.exe-content .fx-pagination a`: the carousel pagination carries the `fx-pagination`
+class too, so it needs no rule of its own.
+
+Careful with the current page, which is a **filled chip**: `exe_effects.css` gives it a
+dark background *and* white text, and a rule that recolours every pagination link is more
+specific than that pair, so it repaints the text and leaves it on the dark chip. Either
+exclude it or restyle the whole chip:
+
+```css
+/* Leave the chip alone... */
+.exe-content .fx-pagination li:not(.fx-current) a {
+    color: #b14900;
+}
+/* ...or give it both halves of the pair */
+.exe-content .fx-pagination .fx-current a {
+    background: #145cb1;
+    color: #ffffff;
+}
+```
+
+---
+
 ## CSS Classes by Export Type
 
 Each export type adds a CSS class to the `<body>` element:
