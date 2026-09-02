@@ -72,7 +72,16 @@ document.addEventListener("DOMContentLoaded", function() {
 /* MATHJAX */
 window.MathJax = {
     loader: {
-        load: ['[tex]/color', '[tex]/mhchem'],
+        // MathJax 3 bundled assistive-mml into its combined components, so every formula
+        // carried a hidden MathML copy. MathJax 4 dropped it, and the SVG it emits is a
+        // bare role="img": a screen reader announces an unlabelled graphic and nothing
+        // more. This editor has its own window.MathJax, so it does not inherit the floor
+        // common.js sets, and inside eXeLearning it now has no speech either -- the
+        // vendored tree ships no Speech Rule Engine (ADR-2259-03). Loading the component
+        // is enough on its own: it registers `menuOptions.settings.assistiveMml: true`
+        // itself unless options.enableAssistiveMml is explicitly false.
+        // Reported by @jjdeharo, fixed upstream in edicuatex@5e64791.
+        load: ['[tex]/color', '[tex]/mhchem', 'a11y/assistive-mml'],
         // Inside eXeLearning this editor loads the vendored bundle, whose font glyph
         // ranges live next to it; the stock value would send them to jsdelivr. The
         // standalone build loads MathJax from a CDN that has no such directory, so it
