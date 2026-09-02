@@ -1,13 +1,88 @@
 # CHANGELOG
 
-## Unreleased
+## v4.0.4 – 2026-09-10
 
 ### Added
 
+- New EducaBlue style, contributed by EducaMadrid: a modern responsive blue design with dark mode, whose colours and typography meet WCAG 2.2 level AA
+- Material Icons are now the default icon set for block and iDevice icons, with a clearer selected state, the current style's own icons listed first and a search that covers both catalogues
 - Users signed in with an eXeLearning password can now change it from the user menu, entering their current password
 - Administrators can reset the password of a local account from Admin → Users, using the new actions menu on each row
 - New `make change-password EMAIL=user@example.com` command, which asks for the new password without showing it on screen
 - Password changes are unavailable for guest accounts and for users signed in through CAS, OpenID Connect or SAML; those users change their password with their identity provider
+- True/False iDevice: the number of attempts allowed is now configurable
+- Word Search iDevice: the time icon can now be hidden in timed activities
+- Platform integration: `PROVIDER_URLS` now accepts wildcard subdomains and is matched against the address host, so multi-tenant deployments can be authorised without opening up the allow-list
+- New `assets:conflicts` command to list and resolve asset storage conflicts, keeping either the old or the new copy
+- Restored the French (FR) translation, which was lost in the migration from version 3
+- Reviewed and completed Spanish (ES) translation
+- Added automated placeholder translations for new strings in incomplete translations
+
+### Changed
+
+- SCORM: the status and the score of a page are now decided by the learner's interaction with its activities — a page stays `incomplete` until the activity is started, is marked `failed` while the score is below 50 and `passed` from there on, while pages with no activities are completed on entry
+- SCORM: the score is sent and committed to the LMS on every answer, so the platform index updates while the learner is still working on the page
+- SCORM 1.2: the runtime included in exported packages has been rewritten with the same behaviour for the LMS, clear licensing and full regression tests
+- Universal style: dark mode is now disabled by default, except when exporting as a website
+- The static distribution is now considerably smaller: unused resources, duplicated bundles and unreachable third-party files have been removed, and the largest datasets are compressed more efficiently
+- The static Docker image now serves compressed content, reducing download sizes by around 65%
+- Project assets are now stored in sharded folders using paths relative to the data directory, so the data directory can be moved, remounted or restored without invalidating projects; existing installations convert automatically at startup
+- The "Import iDevice" button is hidden until the feature is available
+
+### Fixed
+
+- Workarea: dragging an iDevice into the page no longer fails when the content is refreshed at the same time
+- iDevices: activities made up of several scripts, such as the 360° panorama viewer or Select media files, now load reliably
+- iDevices: closing an activity editor no longer causes errors from actions that were still in progress
+- iDevices: Before-After, Hidden image, Map and Drag & Drop activities no longer fail when the page is left while they are still loading
+- TinyMCE: the paste-code, media and definition-list tools no longer fail when the editor or the dialog has already been closed
+- True/False iDevice: any iDevice placed after it in the same block is no longer lost in exported content
+- True/False iDevice: answering no longer causes an error, and the score is reported correctly
+- True/False iDevice: activities imported from eXeLearning 2.x now show their texts in the language of the project instead of English
+- Form iDevice: the Check button now works from the moment the activity is displayed
+- Sort iDevice: fixed its height and the count of correctly positioned items
+- iDevice editing: fixed the digit limits of the time and percentage fields in eight iDevices
+- SCORM: results are now saved when leaving a page in browsers that no longer support the previously used event, and when the tab is discarded
+- SCORM: opening a page no longer marks it as started
+- SCORM: a page that was opened and left untouched no longer prevented the rest of the package from saving its results
+- SCORM: the result now reaches the platform index without having to finish the whole page
+- SCORM: the pass or fail result no longer depends on the order of the activities on the page
+- SCORM: Interactive Video now registers when the page loads, so the page score is calculated over all its activities
+- SCORM: activities that scored on their own when the page loaded no longer do so, and those that lost the score when finishing now keep it
+- SCORM: moving between the contents of a page no longer marks it as completed
+- Export: the theme stylesheet is now loaded last in single-page exports, so it is not overridden
+- Export: the `nav=false` parameter no longer discards teacher mode, xAPI credentials or the rest of the address, and search results now keep the parameters the page was opened with
+- Effects: accordion, tab, pagination, carousel and timeline controls are no longer underlined, always show a visible focus ring and meet the contrast requirements
+- Effects: the timeline no longer opens and closes again on a single click
+- Base and Universal styles: full revision for WCAG level AA compliance, presentation fixes and updated third-party file information
+- Styles: Creative Commons badges and the licences of bundled fonts and icons are now credited and shipped with every style
+- File → Open: fixed the colours of the Delete button
+- Admin panel: fixed the contrast of the Source column in Styles Management
+- Preview: PDFs embedded in a Text iDevice are now displayed correctly in Docker and static deployments
+- Math: MathJax is no longer shipped as a mix of two incompatible versions, restoring the accessibility explorer and reducing the size of every export containing formulas
+- Import: activities with damaged data now keep their original content instead of being emptied, and are reported to the author
+- Uploads: large files are now staged in the configured data directory instead of the application folder
+- Sign-in no longer slows down the rest of the server when many users log in at the same time
+- Collaboration: closed connections are now released, preventing servers from accumulating them over time
+- German (DE): fixed nine misaligned translations that made True and False show unrelated texts
+- Galician (GL): fixed the name of the Slide iDevice
+
+### Upgraded
+
+- fast-xml-parser: 5.4.1 → 5.11.0
+- fast-xml-builder: 1.0.0 → 1.3.1
+- mathjax: 3.2.2 → 4.1.3
+- @xmldom/xmldom: 0.9.11 → 0.9.12
+- jose: 6.2.9 → 6.2.10
+- sass: 1.103.0 → 1.103.1
+- @biomejs/biome: 2.5.9 → 2.5.10
+- Several other dependencies updated to their latest compatible versions, clearing all known security advisories
+
+### Removed
+
+- Deprecated `@elysiajs/cookie` dependency and unnecessary type stub packages
+
+---
 
 ## v4.0.3 – 2026-08-06
 
