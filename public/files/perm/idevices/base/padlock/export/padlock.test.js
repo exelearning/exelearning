@@ -142,6 +142,72 @@ describe('padlock iDevice export', () => {
   // common.js derives completion from `gameOver === true || auto !== true` and
   // the report there is automatic, so without the flag a page carrying a
   // padlock stays `incomplete` in the LMS even once the learner has opened it.
+  // saveCandadoData stores the mark under `candadoScore`, and this used to read
+  // `mOptions.candadoScore` — a key nothing ever puts on the instance — so it
+  // always fell through to 0. A learner who had solved the padlock came back to
+  // a restored 0, and startGame's early path reports it: a passed page turned
+  // into a failed one just by being revisited.
+  describe('restoring a saved padlock', () => {
+    function setupRestore(stored) {
+      document.body.innerHTML = `
+        <div id="candadoMainContainer-0"></div>
+        <div id="candadoTimeNumber-0"></div>
+        <div id="candadoPTime-0"></div>`;
+      $padlock.options[0] = {
+        id: 0,
+        isScorm: 1,
+        candadoTime: 5,
+        candadoReboot: false,
+        candadoShowMinimize: true,
+        score: 0,
+        msgs: {},
+      };
+      vi.spyOn($padlock, 'getCandadoData').mockReturnValue(stored);
+      vi.spyOn($padlock, 'uptateTime').mockImplementation(() => {});
+      vi.spyOn($padlock, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($padlock, 'startGame').mockImplementation(() => {});
+      vi.spyOn($padlock, 'saveEvaluation').mockImplementation(() => {});
+      global.$exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      global.$exeDevices.iDevice.gamification.report = {
+        updateEvaluationIcon: vi.fn(),
+      };
+      global.localStorage = { removeItem: vi.fn(), setItem: vi.fn() };
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('restores the mark the learner had earned', () => {
+      setupRestore({
+        candadoSolved: true,
+        counter: 120,
+        candadoTime: 5,
+        candadoReboot: false,
+        candadoScore: 10,
+      });
+
+      $padlock.addEvents(0);
+
+      expect($padlock.options[0].score).toBe(10);
+    });
+
+    it('restores a zero when nothing was scored', () => {
+      setupRestore({
+        candadoSolved: false,
+        counter: 120,
+        candadoTime: 5,
+        candadoReboot: false,
+        candadoScore: 0,
+      });
+
+      $padlock.addEvents(0);
+
+      expect($padlock.options[0].score).toBe(0);
+    });
+  });
+
   describe('completion signal', () => {
     function setupPadlock(overrides) {
       document.body.innerHTML = `
@@ -203,6 +269,26 @@ describe('padlock iDevice export', () => {
 
       expect($padlock.sendScore).toHaveBeenCalledWith(true, 0);
       expect(flagWhenReported).toBe(true);
+    });
+
+    // A padlock is a gate, not a question. Reaching the end of it is the whole
+    // of the task, so every way in reports full marks and the page passes —
+    // including the clock running out, which used to leave a 0 behind and, with
+    // it, a page the LMS called failed.
+    it.each([
+      ['the code was solved', { candadoSolved: true, counter: 90 }],
+      ['the clock ran out', { candadoSolved: false, counter: 0 }],
+    ])('reports a finished ten when %s', (_name, state) => {
+      setupPadlock(Object.assign({ isScorm: 1, score: 0 }, state));
+      const reported = [];
+      global.$exeDevices.iDevice.gamification.scorm = {
+        sendScoreNew: (auto, game) =>
+          reported.push({ auto, scorerp: game.scorerp, gameOver: game.gameOver }),
+      };
+
+      $padlock.showFeedback(0);
+
+      expect(reported).toEqual([{ auto: true, scorerp: 10, gameOver: true }]);
     });
   });
 });

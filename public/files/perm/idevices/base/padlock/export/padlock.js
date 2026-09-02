@@ -277,8 +277,13 @@ var $padlock = {
             } else {
                 mOptions.candadoSolved = dataCandado.candadoSolved;
                 mOptions.counter = dataCandado.counter;
-                mOptions.score = mOptions.candadoScore
-                    ? mOptions.candadoScore
+                // Read from the stored payload, not from mOptions: saveCandadoData
+                // writes `candadoScore`, but nothing ever puts that key on the
+                // instance, so this always fell through to 0. A learner who had
+                // solved the padlock came back to a restored 0, and startGame's
+                // early path reports it — turning a passed page into a failed one.
+                mOptions.score = dataCandado.candadoScore
+                    ? dataCandado.candadoScore
                     : 0;
             }
         }
@@ -302,6 +307,7 @@ var $padlock = {
         if (!mOptions.candadoShowMinimize) {
             $padlock.startGame(instance);
         }
+
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
@@ -371,6 +377,13 @@ var $padlock = {
         // automatic, so without this flag a page carrying a padlock stays
         // `incomplete` in the LMS even once the learner has opened it.
         mOptions.gameOver = true;
+        // Full marks whichever of the three ways in was taken — the code was
+        // solved, the clock ran out, or an already solved padlock was reopened.
+        // A padlock is a gate, not a question: reaching the end of it is the
+        // whole of the task, and the learner is not being measured on how they
+        // got there. The local evaluation report has always recorded it this way
+        // (saveEvaluation); this makes the LMS agree with it.
+        mOptions.score = 10;
 
         if (mOptions.isScorm > 0) {
             $padlock.sendScore(true, instance);
