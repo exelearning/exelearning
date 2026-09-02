@@ -269,6 +269,23 @@ describe('discover iDevice export', () => {
     // Asserted on the live timer count, not on the counter: gameOver() clears
     // gameStarted, and the interval body only decrements while that is set, so
     // a surviving interval is invisible in the counter alone.
+    // The early return that ends the attempt used to skip the last paint, so
+    // the clock jumped from 00:01 to the results screen.
+    it('shows the clock reaching zero before ending the attempt', () => {
+      setupTimedGame();
+      $eXeDescubre.startGame(0, 0);
+      $eXeDescubre.options[0].gameStarted = true;
+      let clockWhenEnded;
+      vi.spyOn($eXeDescubre, 'gameOver').mockImplementation(() => {
+        const painted = $eXeDescubre.uptateTime.mock.calls;
+        clockWhenEnded = painted[painted.length - 1][0];
+      });
+
+      vi.advanceTimersByTime(3000);
+
+      expect(clockWhenEnded).toBe(0);
+    });
+
     it('stops the countdown when the attempt ends', () => {
       setupTimedGame();
       $eXeDescubre.startGame(0, 0);

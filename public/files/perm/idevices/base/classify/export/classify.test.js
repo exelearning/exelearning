@@ -490,6 +490,65 @@ describe('classify iDevice export', () => {
 
   // Reporting as soon as the learner starts puts the attempt in the LMS menu
   // from the first move, rather than only once a card has been placed.
+  describe('ending the attempt at any level', () => {
+    function setupGameOver(overrides) {
+      document.body.innerHTML = `
+        <div id="clasificaMainContainer-0">
+          <div id="clasificaMultimedia-0"></div>
+          <div id="clasificaSlide-0"></div>
+        </div>`;
+      $eXeClasifica.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: true,
+          gameOver: false,
+          gameLevel: 2,
+          hits: 3,
+          errors: 0,
+          numberQuestions: 3,
+          cardsGame: [{}, {}, {}],
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeClasifica, 'showLevel0Score').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showLevel1Score').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showCustomScore').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'checkClueGame').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'showFeedBack').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeClasifica, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it.each([0, 1, 2])('reports the finished attempt at level %s', level => {
+      setupGameOver({ gameLevel: level });
+
+      $eXeClasifica.gameOver(0);
+
+      expect($eXeClasifica.sendScore).toHaveBeenCalledWith(true, 0);
+      expect($eXeClasifica.options[0].gameOver).toBe(true);
+    });
+
+    // The comparisons are strict and the field is only written by the editor,
+    // so an activity saved before it existed carries `undefined` and used to
+    // match no branch at all: the attempt ended with no report to carry the
+    // completion, and the page stayed `incomplete` in the LMS forever.
+    it('still reports when the activity carries no game level', () => {
+      setupGameOver({ gameLevel: undefined });
+
+      $eXeClasifica.gameOver(0);
+
+      expect($eXeClasifica.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+  });
+
   describe('reporting when the game starts', () => {
     function setupStart(overrides) {
       document.body.innerHTML = `

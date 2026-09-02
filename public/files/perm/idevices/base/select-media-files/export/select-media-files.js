@@ -1187,6 +1187,13 @@ var $eXeSeleccionaMedias = {
                 if (mOptions.gameStarted) {
                     mOptions.counter--;
                     if (mOptions.counter <= 0) {
+                        // Painted before ending: the early return used to skip
+                        // this last update, so the clock jumped from 00:01 to
+                        // the results screen and never showed 00:00.
+                        $eXeSeleccionaMedias.uptateTime(
+                            mOptions.counter,
+                            instance
+                        );
                         $eXeSeleccionaMedias.gameOver(2, instance);
                         return;
                     }

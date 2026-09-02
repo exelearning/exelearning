@@ -1633,9 +1633,10 @@ var $eXeRelaciona = {
     sendScore: function (auto, instance) {
         const mOptions = $eXeRelaciona.options[instance];
 
-        ((mOptions.scorerp = score =
-            (mOptions.hits * 10) / mOptions.realNumberCards),
-            (mOptions.previousScore = $eXeRelaciona.previousScore));
+        // Was a comma expression assigning through an undeclared `score`,
+        // which wrote a global on every report and was read by nobody.
+        mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards;
+        mOptions.previousScore = $eXeRelaciona.previousScore;
         mOptions.userName = $eXeRelaciona.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);

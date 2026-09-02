@@ -420,10 +420,12 @@ var $eXeDesafio = {
 
         $(window).on('pagehide.eXeChallenger', () => {
             if (mOptions.gameStarted || mOptions.gameOver) {
+                // Persist only. The endScorm() call that used to follow was
+                // dead twice over: the helper is intentionally empty in
+                // common.js — the SCORM 1.2 runtime owns end-of-session
+                // handling — and $eXeDesafio.mScorm is declared null and never
+                // assigned, so it passed null to a no-op.
                 $eXeDesafio.saveDataStorage(instance);
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeDesafio.mScorm
-                );
             }
         });
         $(`#desafioSolutionDiv-${instance}`).hide();

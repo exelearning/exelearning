@@ -1170,7 +1170,15 @@ var $eXeClasifica = {
             $eXeClasifica.gameOverLevel0(instance);
         } else if (mOptions.gameLevel === 1) {
             $eXeClasifica.gameOverLevel1(instance);
-        } else if (mOptions.gameLevel === 2) {
+        } else {
+            // Level 2 and anything else. The comparison is strict and the
+            // field is only written by the editor, so an activity saved
+            // before it existed carries `undefined` and used to match no
+            // branch at all — the attempt ended without the report that
+            // carries the completion, leaving the page `incomplete` in the
+            // LMS forever. Falling through to the level-2 presenter is the
+            // safe default: it recounts the board from the DOM rather than
+            // trusting a running tally.
             $eXeClasifica.gameOverLevel2(instance);
         }
 
