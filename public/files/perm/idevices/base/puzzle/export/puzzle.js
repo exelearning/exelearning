@@ -1802,6 +1802,14 @@ var $eXePuzzle = {
         const mOptions = $eXePuzzle.options[instance],
             obtainedPoints = 10 / mOptions.puzzlesGame.length;
 
+        // Repeating reopens the attempt, so the flag showCompletedWindows
+        // raises on the last puzzle has to come back down. The drag handlers
+        // refuse to move a piece while `gameOver` is set, so leaving it up
+        // gave the learner a board they could look at and not touch. The
+        // report below carries the reopening to the LMS along with the point
+        // this hand is giving back.
+        mOptions.gameOver = false;
+
         mOptions.score -= obtainedPoints;
         const sscore =
             mOptions.score % 1 === 0
@@ -1822,6 +1830,9 @@ var $eXePuzzle = {
             mOptions.obtainedClue = true;
         }
 
+        if (mOptions.isScorm === 1) {
+            $eXePuzzle.sendScore(true, instance);
+        }
         $eXePuzzle.saveEvaluation(instance);
     },
 

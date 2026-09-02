@@ -211,4 +211,71 @@ describe('puzzle iDevice export', () => {
       expect(flagWhenReported).toBe(true);
     });
   });
+
+  describe('repeating a solved puzzle', () => {
+    function setupRepeat(overrides) {
+      document.body.innerHTML = `
+        <div id="pzlPNumber-0"></div>
+        <div id="pzlPErrors-0"></div>
+        <div id="pzlPScore-0"></div>
+        <div id="pzlPHits-0"></div>`;
+      $eXePuzzle.options[0] = Object.assign(
+        {
+          id: 0,
+          main: 'pzlMainContainer-0',
+          isScorm: 1,
+          gameStarted: true,
+          gameOver: true,
+          hits: 3,
+          errors: 0,
+          score: 10,
+          active: 2,
+          puzzlesGame: [{}, {}, {}],
+          itinerary: { percentageClue: 100 },
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXePuzzle, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'saveEvaluation').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    // The defect: solving the last puzzle raises gameOver so the report
+    // carries the completion, and the drag handlers refuse to move a piece
+    // while it is set. Repeating left it up, so the learner got a board they
+    // could look at and not touch.
+    it('reopens the attempt so the pieces can be moved again', () => {
+      setupRepeat();
+
+      $eXePuzzle.updateScoreRepeat(0);
+
+      expect($eXePuzzle.options[0].gameOver).toBe(false);
+    });
+
+    it('tells the LMS the attempt was reopened', () => {
+      setupRepeat();
+      let flagWhenReported;
+      $eXePuzzle.sendScore.mockImplementation(() => {
+        flagWhenReported = $eXePuzzle.options[0].gameOver;
+      });
+
+      $eXePuzzle.updateScoreRepeat(0);
+
+      expect($eXePuzzle.sendScore).toHaveBeenCalledWith(true, 0);
+      expect(flagWhenReported).toBe(false);
+    });
+
+    it('does not report outside automatic SCORM mode', () => {
+      setupRepeat({ isScorm: 2 });
+
+      $eXePuzzle.updateScoreRepeat(0);
+
+      expect($eXePuzzle.sendScore).not.toHaveBeenCalled();
+    });
+  });
 });
