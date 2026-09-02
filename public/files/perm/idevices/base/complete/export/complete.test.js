@@ -548,6 +548,112 @@ describe('complete iDevice export', () => {
    * or every gap right. These tests pin the flag to that condition and to nothing else:
    * a check with attempts still left must NOT complete the activity.
    */
+  describe('starting a timed activity', () => {
+    const instance = 7;
+
+    function setupStart(overrides = {}) {
+      const container = document.createElement('div');
+      container.id = `cmptMainContainer-${instance}`;
+      container.innerHTML = `
+        <div id="cmptGameContainer-${instance}">
+          <div class="CMPT-ButtonsDiv"></div>
+        </div>
+        <div id="cmptButonsDiv-${instance}"></div>
+        <div id="cmptMultimedia-${instance}"></div>
+        <div id="cmptDivImgHome-${instance}"></div>
+        <span id="cmptPHits-${instance}"></span>
+        <span id="cmptPScore-${instance}"></span>
+        <div id="cmptStartGame-${instance}"></div>`;
+      document.body.appendChild(container);
+      $eXeCompleta.options[instance] = Object.assign(
+        {
+          main: `cmptMainContainer-${instance}`,
+          isScorm: 1,
+          type: 0,
+          time: 1,
+          gameStarted: false,
+          gameOver: true,
+          hits: 4,
+          errors: 2,
+          score: 10,
+          number: 4,
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeCompleta, 'updateTime').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'sendScore').mockImplementation(() => {});
+      vi.useFakeTimers();
+    }
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupStart({ isScorm: 1 });
+      $eXeCompleta.saveScormScore(instance);
+      expect($eXeCompleta.sendScore).toHaveBeenCalledWith(true, instance);
+
+      $eXeCompleta.sendScore.mockClear();
+      $eXeCompleta.options[instance].isScorm = 2;
+      $eXeCompleta.saveScormScore(instance);
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+    });
+
+    // The defect: pressing start left the LMS holding the previous attempt's
+    // grade and status until the learner checked the phrase again.
+    it('publishes the cleared state when a finished game is restarted', () => {
+      setupStart();
+      let stateWhenReported;
+      $eXeCompleta.sendScore.mockImplementation(() => {
+        const { hits, errors, score, gameOver, gameStarted } =
+          $eXeCompleta.options[instance];
+        stateWhenReported = { hits, errors, score, gameOver, gameStarted };
+      });
+
+      $eXeCompleta.startGame(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        score: 0,
+        gameOver: false,
+        // sendScoreNew ignores a game that reports as neither started nor over.
+        gameStarted: true,
+      });
+    });
+
+    // The counters used to be cleared on `$eXeCompleta` — the module object,
+    // which nothing reads — instead of on the instance, so a replayed activity
+    // carried the previous attempt's hits until the next check recomputed
+    // them, and opened showing them.
+    it('clears the counters on the instance, not on the module', () => {
+      setupStart({ hits: 4, errors: 2, score: 10 });
+
+      $eXeCompleta.startGame(instance);
+
+      expect($eXeCompleta.options[instance]).toMatchObject({
+        hits: 0,
+        errors: 0,
+        score: 0,
+      });
+      expect($eXeCompleta.hits).toBeUndefined();
+      expect($eXeCompleta.score).toBeUndefined();
+    });
+
+    it('does not report a game that was already running', () => {
+      setupStart({ gameStarted: true });
+
+      $eXeCompleta.startGame(instance);
+
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
   describe('completion signal on the automatic report', () => {
     let reports;
     let originalScorm;
@@ -718,8 +824,11 @@ describe('complete iDevice export', () => {
         vi.useRealTimers();
       }
 
-      expect(reports).toHaveLength(1);
-      expect(reports[0].gameOver).toBe(true);
+      // Two reports: startGame publishes the cleared state on the way in, and
+      // the forced check publishes the result. The last one is the verdict.
+      expect(reports).toHaveLength(2);
+      expect(reports[0].gameOver).toBe(false);
+      expect(reports[1].gameOver).toBe(true);
     });
   });
 });

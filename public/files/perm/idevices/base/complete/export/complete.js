@@ -574,12 +574,20 @@ var $eXeCompleta = {
 
         $(`#cmptMultimedia-${instance}`).fadeIn();
         $(`#cmptDivImgHome-${instance}`).hide();
-        $(`#cmptPHits-${instance}`).text(mOptions.hits);
-        $(`#cmptPScore-${instance}`).text(mOptions.score);
         $(`#cmptStartGame-${instance}`).hide();
 
-        $eXeCompleta.hits = 0;
-        $eXeCompleta.score = 0;
+        // Cleared on the instance, and before they are painted. This used to
+        // assign `$eXeCompleta.hits` and `$eXeCompleta.score` — the module
+        // object, which nothing reads — two lines after painting
+        // `mOptions.hits`, so a replayed activity started by showing the
+        // previous attempt's counters and kept its hit count until the next
+        // check recomputed it.
+        mOptions.hits = 0;
+        mOptions.errors = 0;
+        mOptions.score = 0;
+
+        $(`#cmptPHits-${instance}`).text(mOptions.hits);
+        $(`#cmptPScore-${instance}`).text(mOptions.score);
 
         mOptions.counter = mOptions.time * 60;
         mOptions.gameOver = false;
@@ -611,6 +619,10 @@ var $eXeCompleta = {
                 }
             }
         }, 1000);
+
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeCompleta.saveScormScore(instance);
     },
 
     gameOver: function (type, instance) {
@@ -1435,6 +1447,22 @@ var $eXeCompleta = {
             color: color,
             'font-weight': '450',
         });
+    },
+
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears the counters and gameOver, but nothing told the LMS,
+     * so the menu kept the previous attempt's grade and status until the
+     * learner checked the phrase again.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeCompleta.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeCompleta.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {
