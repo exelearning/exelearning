@@ -123,4 +123,97 @@ describe('select-media-files iDevice export', () => {
             expect(dmedia.options[instance].gameStarted).toBe(true);
         });
     });
+
+    // startGame cleared the counters but told the LMS nothing, so its menu kept
+    // the previous attempt's grade and status until the learner answered.
+    describe('reporting when a timed game starts', () => {
+        const instance = 0;
+
+        function setupStart(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="slcmpMainContainer-${instance}">
+                    <div id="slcmpQuestion-${instance}"></div>
+                    <div id="slcmpGameButtons-${instance}"></div>
+                    <div id="slcmpShowClue-${instance}"></div>
+                    <div id="slcmpPHits-${instance}"></div>
+                    <div id="slcmpPNumber-${instance}"></div>
+                    <div id="slcmpPScore-${instance}"></div>
+                    <div id="slcmpPErrors-${instance}"></div>
+                    <div id="slcmpCubierta-${instance}"></div>
+                    <div id="slcmpGameOver-${instance}"></div>
+                    <div id="slcmpStartGame-${instance}"></div>
+                    <div id="slcmpCheck-${instance}"></div>
+                    <div id="slcmpPTime-${instance}"></div>
+                    <div id="slcmpImgTime-${instance}"></div>
+                    <div id="slcmpGameContainer-${instance}"></div>
+                </div>`;
+            dmedia.options[instance] = Object.assign(
+                {
+                    main: `slcmpMainContainer-${instance}`,
+                    isScorm: 1,
+                    time: 1,
+                    attempts: 0,
+                    gameStarted: false,
+                    gameOver: true,
+                    hits: 3,
+                    errors: 2,
+                    score: 10,
+                    numberQuestions: 4,
+                    phrasesGame: [{ definition: 'Q0', audioDefinition: '', cards: [] }],
+                    phrase: { definition: 'Q0', audioDefinition: '', cards: [] },
+                    itinerary: { showCodeAccess: false },
+                    msgs: { msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            dmedia.activateHover = () => {};
+            dmedia.uptateTime = () => {};
+            dmedia.sendScore = vi.fn();
+            vi.useFakeTimers();
+        }
+
+        afterEach(() => {
+            vi.clearAllTimers();
+            vi.useRealTimers();
+            document.body.innerHTML = '';
+        });
+
+        it('publishes the cleared state when a finished game is restarted', () => {
+            setupStart();
+            let stateWhenReported;
+            dmedia.sendScore.mockImplementation(() => {
+                const { hits, errors, score, gameOver, gameStarted } =
+                    dmedia.options[instance];
+                stateWhenReported = { hits, errors, score, gameOver, gameStarted };
+            });
+
+            dmedia.startGame(instance);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                score: 0,
+                gameOver: false,
+                // sendScoreNew ignores a game that reports as neither started
+                // nor over.
+                gameStarted: true,
+            });
+        });
+
+        it('does not report outside automatic SCORM mode', () => {
+            setupStart({ isScorm: 2 });
+
+            dmedia.startGame(instance);
+
+            expect(dmedia.sendScore).not.toHaveBeenCalled();
+        });
+
+        it('does not report a game that was already running', () => {
+            setupStart({ gameStarted: true });
+
+            dmedia.startGame(instance);
+
+            expect(dmedia.sendScore).not.toHaveBeenCalled();
+        });
+    });
 });

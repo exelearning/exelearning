@@ -520,6 +520,22 @@ var $eXeSeleccionaMedias = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, errors, the score and gameOver, but nothing
+     * told the LMS, so the menu kept the previous attempt's grade and status
+     * until the learner answered.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeSeleccionaMedias.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeSeleccionaMedias.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
 
@@ -1210,6 +1226,9 @@ var $eXeSeleccionaMedias = {
 
         mOptions.gameStarted = true;
         $eXeSeleccionaMedias.activateHover(instance);
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeSeleccionaMedias.saveScormScore(instance);
     },
 
     uptateTime: function (tiempo, instance) {
