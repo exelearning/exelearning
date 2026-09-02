@@ -256,20 +256,46 @@ var $exe = {
             item.hide();
             return true;
         },
-        // Drop menu settings pointing at something this build cannot load. The menu
-        // persists its state in localStorage for the whole origin, so a reader who once
-        // chose CHTML — here or on any other MathJax page of the same site — would make
-        // every later page request the missing component on load, without ever opening
-        // the menu. applySettings() acts on the stored value while the document is being
-        // built, so this has to run before defaultReady().
+        // Drop persisted menu settings that this build cannot honour. MathJax keeps
+        // them in localStorage for the whole origin and acts on them while the document
+        // is being built, so this has to run before defaultReady(), and a value picked up
+        // on any other MathJax page of the same site counts.
+        //
+        // Two keys matter:
+        //
+        //   renderer — CHTML is not vendored and its font is a separate package, so a
+        //     stored choice makes every page request a missing component at startup,
+        //     without anyone opening the menu.
+        //
+        //   assistiveMml — the hidden MathML is our accessibility floor (ADR-2259-02),
+        //     but MathJax treats it as an alternative to speech rather than a floor:
+        //     toggling Speech in the menu calls setValue(false) on it and persists that.
+        //     A reader who did so once gets no MathML from then on, and in an export
+        //     opened from the filesystem speech cannot start either, so they would be
+        //     left with nothing. Only a stored `false` is dropped; a stored `true` is
+        //     already what we want.
+        //
+        // Note the reach: because the key is per origin, this also rewrites the setting
+        // for any other MathJax page hosted on the same origin. Accepted deliberately —
+        // both keys name something this build cannot honour, and the alternative is
+        // leaving a reader's maths silently unreadable.
         forgetUnavailableMenuSettings: function() {
             var KEY = 'MathJax-Menu-Settings';
             try {
                 var stored = window.localStorage.getItem(KEY);
                 if (!stored) return false;
                 var settings = JSON.parse(stored);
-                if (!settings || typeof settings !== 'object' || !('renderer' in settings)) return false;
-                delete settings.renderer;
+                if (!settings || typeof settings !== 'object') return false;
+                var dropped = false;
+                if ('renderer' in settings) {
+                    delete settings.renderer;
+                    dropped = true;
+                }
+                if (settings.assistiveMml === false) {
+                    delete settings.assistiveMml;
+                    dropped = true;
+                }
+                if (!dropped) return false;
                 if (Object.keys(settings).length) {
                     window.localStorage.setItem(KEY, JSON.stringify(settings));
                 } else {

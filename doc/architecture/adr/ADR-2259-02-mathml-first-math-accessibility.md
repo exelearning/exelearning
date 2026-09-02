@@ -141,6 +141,46 @@ from `MathJax._.a11y.sre_ts.locales` in `startup.ready()`. The list lives in
 The speech locale defaults to the document's `lang` when we ship rules for it, and to
 English otherwise.
 
+### What this decision does not guarantee
+
+The word "guaranteed" above describes intent, not a structural invariant, and the
+difference was measured after the decision was first written. MathJax does not model
+hidden MathML as a floor beneath speech: it models the two as alternatives. In
+`tex-mml-svg.js`, `setSpeech(true)` calls `setValue(false)` on the `assistiveMml`
+variable and `setAssistiveMml(true)` turns speech off, and `applySettings()` copies the
+menu's value over `document.options.enableAssistiveMml` on every page load.
+
+Reproduced in Chrome against this branch: on a clean profile the floor holds
+(`enableAssistiveMml: true`, one `mjx-assistive-mml` per formula). Toggling Speech off
+and back on in the contextual menu leaves `{"assistiveMml":false}` in `localStorage`
+and **zero** `mjx-assistive-mml` nodes for two formulas. The key is scoped to the
+origin, so it follows the reader from one package to the next on the same LMS, and in
+an export opened from the filesystem speech cannot start either — leaving no accessible
+maths at all, silently.
+
+`$exe.math.forgetUnavailableMenuSettings()` therefore drops a stored
+`assistiveMml: false` before `defaultReady()`, alongside the stored renderer. That
+turns the floor back into something the page enforces rather than something the reader
+can switch off by accident. It is a mitigation, not a proof: while SRE ships, the
+guarantee is "restored on every load", not "impossible to lose". Dropping SRE
+(ADR-2259-03, Option 2) would make it an invariant, because the menu would no longer
+offer the toggle that trades one for the other.
+
+### Relationship with MathJax's own recommendation
+
+This decision goes against the direction upstream took, and that is deliberate.
+MathJax 4 turned assistive MathML off by default and made speech the primary path
+because assistive-technology support for MathML is uneven across browsers and screen
+readers — a fair reading of the web they optimise for.
+
+We have a constraint MathJax does not: eXeLearning does not publish pages, it publishes
+packages. An extracted HTML5 export, an EPUB, an unpacked SCORM package on an isolated
+LMS and the Electron app are all read without a network, and MathJax's speech path
+cannot start there at all (`blob:` worker → `importScripts()` → locale fetch). In that
+delivery model uneven MathML support beats no output whatsoever, so the trade-off
+upstream makes correctly for served pages inverts for us. A reviewer reading the
+MathJax 4 documentation should find this stated rather than have to reconcile it.
+
 ## Consequences
 
 ### Positive
@@ -170,6 +210,9 @@ English otherwise.
   the guard, but a MathJax upgrade should re-run the locale check.
 - **A locale is added to one list and not the other**, re-creating the hang. Covered
   by the parity test in `mathjax-packages.spec.ts`.
+- **The floor is restored per load, not enforced.** A reader who turns Speech on mid
+  session loses the hidden MathML for the rest of that page view; it comes back on the
+  next load. Removing SRE closes this; while it ships, the window stays open.
 
 ## Validation
 
@@ -178,6 +221,10 @@ English otherwise.
 - `src/shared/export/prerender/mathjax-packages.spec.ts` — locale list parity.
 - `test/e2e/playwright/specs/latex-rendering.spec.ts` asserts every rendered formula
   carries hidden MathML.
+- `common_mathjax.test.js` covers dropping a persisted `assistiveMml: false`.
+- Not covered by an automated test: the mid-session Speech toggle, because it needs a
+  real contextual menu and the state it produces is exactly the one the load-time
+  cleanup removes. Verified by hand, recorded above.
 
 ## Follow-up work
 

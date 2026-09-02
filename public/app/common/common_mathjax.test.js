@@ -242,6 +242,31 @@ describe('$exe.math.forgetUnavailableMenuSettings', () => {
     expect(store.has(KEY)).toBe(false);
   });
 
+  it('drops an assistiveMml:false that the Speech toggle persisted', () => {
+    // Measured in Chrome: toggling Speech off and on in the contextual menu leaves
+    // {"assistiveMml":false} in localStorage and zero mjx-assistive-mml nodes. In an
+    // export opened from the filesystem speech cannot start either, so the reader
+    // would be left with no accessible maths at all. ADR-2259-02.
+    store.set(KEY, JSON.stringify({ assistiveMml: false, zoom: 'Click' }));
+
+    expect(global.$exe.math.forgetUnavailableMenuSettings()).toBe(true);
+    expect(JSON.parse(store.get(KEY))).toEqual({ zoom: 'Click' });
+  });
+
+  it('leaves an assistiveMml:true alone, which is already the floor', () => {
+    store.set(KEY, JSON.stringify({ assistiveMml: true }));
+
+    expect(global.$exe.math.forgetUnavailableMenuSettings()).toBe(false);
+    expect(JSON.parse(store.get(KEY))).toEqual({ assistiveMml: true });
+  });
+
+  it('drops both keys at once', () => {
+    store.set(KEY, JSON.stringify({ renderer: 'CHTML', assistiveMml: false }));
+
+    expect(global.$exe.math.forgetUnavailableMenuSettings()).toBe(true);
+    expect(store.has(KEY)).toBe(false);
+  });
+
   it('survives corrupt stored JSON', () => {
     store.set(KEY, '{not json');
 
