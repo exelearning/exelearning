@@ -92,7 +92,7 @@
     "kysely": "^0.29.5",
     "kysely-bun-worker": "^2.0.1",
     "lib0": "^0.2.117",
-    "mermaid": "^11.17.0",
+    "mermaid": "^11.17.2",
     "mime-types": "^3.0.2",
     "mysql2": "^3.23.4",
     "nunjucks": "^3.2.4",
