@@ -5,7 +5,7 @@
  * file paths that exporters expect.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';

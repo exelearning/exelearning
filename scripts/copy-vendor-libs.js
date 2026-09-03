@@ -50,7 +50,7 @@ function resetCreatedDirs() {
 const MAP_FILE_COMMENT =
     /(?:\/\/[@#][ \t]+?sourceMappingURL=([^\s'"`]+?)[ \t]*?$)|(?:\/\*[@#][ \t]+sourceMappingURL=([^*]+?)[ \t]*?(?:\*\/){1}[ \t]*?$)/gm;
 const INLINE_COMMENT =
-    /^\s*?\/[\/*][@#]\s+?sourceMappingURL=data:(((?:application|text)\/json)(?:;charset=([^;,]+?)?)?)?(?:;(base64))?,(.*?)$/gm;
+    /^\s*?\/[/*][@#]\s+?sourceMappingURL=data:(((?:application|text)\/json)(?:;charset=([^;,]+?)?)?)?(?:;(base64))?,(.*?)$/gm;
 
 function stripSourceMappingUrl(content) {
     return content.replace(INLINE_COMMENT, '').replace(MAP_FILE_COMMENT, '');
