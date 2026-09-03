@@ -140,3 +140,10 @@ test/e2e/moodle/packages/*
 !test/e2e/moodle/packages/.gitkeep
 test/e2e/moodle/plugins/*
 !test/e2e/moodle/plugins/.gitkeep
+
+# Load-test (issue #2255) run artifacts and environment-specific seed data —
+# reproducible via test/load/scripts/prepare.sh and run.sh, not committed.
+/test/load/results/*
+!/test/load/results/.gitkeep
+/test/load/data/*
+!/test/load/data/.gitkeep

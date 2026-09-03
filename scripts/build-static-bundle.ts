@@ -1003,12 +1003,13 @@ const STATIC_ASSETS = [
     './libs/yjs/yjs.min.js',
     './libs/yjs/y-indexeddb.min.js',
     './libs/fflate/fflate.umd.js',
+    './libs/fzstd/fzstd.umd.js',
     './libs/jquery/jquery.min.js',
     './libs/bootstrap/bootstrap.bundle.min.js',
     './libs/bootstrap/bootstrap.min.css',
     './style/workarea/main.css',
     './style/workarea/base.css',
-    './data/bundle.json',
+    './data/bundle.json.zst',
 ];
 
 // Install: Cache all static assets

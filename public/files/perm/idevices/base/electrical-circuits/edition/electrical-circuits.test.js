@@ -957,15 +957,23 @@ describe('electrical-circuits iDevice edition', () => {
         });
 
         describe('loadTikzFont', () => {
-            it('aborts the pending font download when the edition closes', () => {
+            it('aborts the pending font download when the edition closes', async () => {
                 let received = null;
-                global.fetch = vi.fn((url, options) => {
+                global.fetch = vi.fn((_url, options) => {
                     received = options;
                     return new Promise(() => {});
                 });
                 $exeDevice.tikzFontCache = {};
+                $exeDevice.tikzFontPackPromise = null;
+                delete window.fzstd;
 
                 $exeDevice.loadTikzFont('cmr10');
+                // Pack lookup is async even when fzstd is absent; the abort
+                // signal is attached to the loose-TTF fallback that follows.
+                await Promise.resolve();
+                await Promise.resolve();
+                expect(received?.signal).toBeDefined();
+
                 $exeDevice.$lifecycle.destroy();
 
                 expect(received.signal.aborted).toBe(true);
@@ -1010,5 +1018,121 @@ describe('electrical-circuits iDevice edition', () => {
             $exeDevice.showCircuitGenerationModal();
             $exeDevice.hideCircuitGenerationModal();
         }).not.toThrow();
+    });
+});
+
+describe('loadTikzFontPack (static-dist zstd font pack)', () => {
+    // Build an uncompressed pack (u32le header length + JSON header + payload)
+    // and mock window.fzstd.decompress to return it, standing in for the real
+    // fonts.pack.zst that scripts/static-bundle/repack-tikzjax.ts writes.
+    function buildFontPack(entries) {
+        const encoder = new TextEncoder();
+        const header = {};
+        let offset = 0;
+        for (const [family, bytes] of entries) {
+            header[family] = [offset, bytes.length];
+            offset += bytes.length;
+        }
+        const headerBytes = encoder.encode(JSON.stringify(header));
+        const pack = new Uint8Array(4 + headerBytes.length + offset);
+        new DataView(pack.buffer).setUint32(0, headerBytes.length, true);
+        pack.set(headerBytes, 4);
+        let cursor = 4 + headerBytes.length;
+        for (const [, bytes] of entries) {
+            pack.set(bytes, cursor);
+            cursor += bytes.length;
+        }
+        return pack;
+    }
+
+    let $exeDevice;
+    let cmr10;
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        const code = readFileSync(join(__dirname, 'electrical-circuits.js'), 'utf-8');
+        $exeDevice = loadIdevice(code);
+        const file = readFileSync(join(__dirname, 'fonts', 'cmr10.ttf'));
+        cmr10 = new Uint8Array(file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength));
+        $exeDevice.tikzFontCache = {};
+        $exeDevice.tikzFontPackPromise = null;
+        $exeDevice.idevicePath = '/idevice/';
+    });
+
+    afterEach(() => {
+        delete window.fzstd;
+        $exeDevice.tikzFontCache = {};
+        $exeDevice.tikzFontPackPromise = null;
+    });
+
+    it('parses fonts out of the pack without fetching loose TTFs', async () => {
+        const pack = buildFontPack([['cmr10', cmr10]]);
+        window.fzstd = { decompress: vi.fn(() => pack) };
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer, // pretend-compressed
+        });
+
+        const font = await $exeDevice.loadTikzFont('cmr10');
+
+        expect(font.unitsPerEm).toBeGreaterThan(0);
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts.pack.zst');
+        expect(window.fzstd.decompress).toHaveBeenCalledTimes(1);
+
+        // Second family shares the cached pack (no new fetch).
+        await $exeDevice.loadTikzFont('cmr10');
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to the loose TTF when the family is not in the pack', async () => {
+        const pack = buildFontPack([['cmr10', cmr10]]);
+        window.fzstd = { decompress: vi.fn(() => pack) };
+        const ttfBuffer = cmr10.buffer.slice(0);
+        global.fetch = vi.fn(url => {
+            if (String(url).endsWith('fonts.pack.zst')) {
+                return Promise.resolve({ ok: true, arrayBuffer: async () => new Uint8Array([1]).buffer });
+            }
+            return Promise.resolve({ ok: true, arrayBuffer: async () => ttfBuffer });
+        });
+
+        const font = await $exeDevice.loadTikzFont('cmmi10');
+
+        expect(font.unitsPerEm).toBeGreaterThan(0);
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmmi10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
+    });
+
+    it('falls back to the loose TTF when fzstd is unavailable (server mode)', async () => {
+        const ttfBuffer = cmr10.buffer.slice(0);
+        global.fetch = vi.fn().mockResolvedValue({ ok: true, arrayBuffer: async () => ttfBuffer });
+
+        const font = await $exeDevice.loadTikzFont('cmr10');
+
+        expect(font.unitsPerEm).toBeGreaterThan(0);
+        // No pack request at all — straight to the loose file.
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
+    });
+
+    it('falls back to the loose TTF when the pack request fails', async () => {
+        window.fzstd = { decompress: vi.fn() };
+        const ttfBuffer = cmr10.buffer.slice(0);
+        global.fetch = vi.fn(url => {
+            if (String(url).endsWith('fonts.pack.zst')) {
+                return Promise.resolve({ ok: false, status: 404 });
+            }
+            return Promise.resolve({ ok: true, arrayBuffer: async () => ttfBuffer });
+        });
+
+        const font = await $exeDevice.loadTikzFont('cmr10');
+
+        expect(font.unitsPerEm).toBeGreaterThan(0);
+        expect(window.fzstd.decompress).not.toHaveBeenCalled();
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
     });
 });
