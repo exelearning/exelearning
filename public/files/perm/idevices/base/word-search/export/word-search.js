@@ -651,10 +651,6 @@ var $eXeSopa = {
     removeEvents: function (instanceId) {
         const $container = $('#sopaMainContainer-' + instanceId);
 
-        $(window).off(
-            'unload.eXeSopa' + instanceId + ' beforeunload.eXeSopa' + instanceId
-        );
-
         $container
             .find('#sopaLinkMaximize-' + instanceId)
             .off('click touchstart');
@@ -755,19 +751,6 @@ var $eXeSopa = {
         $container
             .find('#sopaPNumber-' + instanceId)
             .text(mOptions.numberQuestions);
-
-        $(window).on(
-            'unload.eXeSopa' +
-                instanceId +
-                ' beforeunload.eXeSopa' +
-                instanceId,
-            () => {
-                if ($eXeSopa.mScorm)
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeSopa.mScorm
-                    );
-            }
-        );
 
         if (mOptions.instructions) {
             $container

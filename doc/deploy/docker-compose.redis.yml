@@ -20,6 +20,13 @@ services:
       - "${LB_PORT:-80}:80"
     volumes:
       - ./nginx-ha.conf:/etc/nginx/nginx.conf:ro
+    # Must be at least nginx-ha.conf's worker_rlimit_nofile, or nginx can't
+    # actually use the higher limit it asks for. Validated by issue #2255's
+    # benchmark — see nginx-ha.conf's own comment for the measured numbers.
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     depends_on:
       exelearning-1:
         condition: service_healthy

@@ -19,6 +19,7 @@ import * as path from 'path';
 import * as os from 'os';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
+import { getAppVersion } from '../utils/version';
 
 // Centralized export system
 import {
@@ -263,7 +264,8 @@ export async function platformPetitionSet(
         }
 
         // 7. Run export
-        const exportResult: ExportResult = await exporter.export({});
+        // Stamp the SCORM 1.2 runtime with the release doing the exporting.
+        const exportResult: ExportResult = await exporter.export({ runtimeVersion: getAppVersion() });
 
         // Cleanup temp directory
         await fs.remove(tempDir);

@@ -144,4 +144,114 @@ describe('build-resource-bundles', () => {
             }
         });
     });
+
+    // The static distribution ships no zips; the client assembles each bundle
+    // from the loose files listed here. These tests guarantee the manifest
+    // describes the same content as the zips and that every source URL resolves.
+    describe('staticFiles (loose-file mappings for static mode)', () => {
+        let manifest: any;
+
+        beforeAll(() => {
+            const manifestPath = path.join(bundlesPath, 'manifest.json');
+            manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+        });
+
+        it('should declare every bundle group', () => {
+            const sf = manifest.staticFiles;
+            expect(sf).toBeDefined();
+            expect(sf.themes).toBeDefined();
+            expect(sf.idevices).toBeDefined();
+            expect(Array.isArray(sf.libs)).toBe(true);
+            expect(sf.common).toBeDefined();
+            expect(Array.isArray(sf.contentCss)).toBe(true);
+        });
+
+        it('should use { s, t } entries whose source URL is relative to public/', () => {
+            const sample = manifest.staticFiles.libs[0];
+            expect(sample.s).toBeDefined();
+            expect(sample.t).toBeDefined();
+            // s is a relative URL (no leading slash, no scheme)
+            expect(sample.s.startsWith('/')).toBe(false);
+            expect(sample.s.includes('://')).toBe(false);
+        });
+
+        it('should map content CSS to the content/css/ target prefix', () => {
+            for (const { s, t } of manifest.staticFiles.contentCss) {
+                expect(t.startsWith('content/css/')).toBe(true);
+                expect(s.startsWith('style/workarea/')).toBe(true);
+            }
+        });
+
+        it('should map iDevice sources under each export/ directory', () => {
+            for (const [name, entries] of Object.entries<any>(manifest.staticFiles.idevices)) {
+                for (const { s } of entries) {
+                    expect(s.startsWith(`files/perm/idevices/base/${name}/export/`)).toBe(true);
+                }
+            }
+        });
+
+        it('should not list colocated .test.js / .spec.js sources (idevices and common)', () => {
+            // The dist/static copy excludes these test sources, so the manifest
+            // must not list them either — otherwise assembly 404s on every one
+            // and the static manifest diverges from the server-mode zips.
+            const isTestSource = (p: string) => /\.(test|spec)\.js$/.test(p);
+            const groups = [
+                ...Object.values<any>(manifest.staticFiles.idevices),
+                ...Object.values<any>(manifest.staticFiles.common),
+            ];
+            for (const entries of groups) {
+                for (const { s, t } of entries) {
+                    expect(isTestSource(s)).toBe(false);
+                    expect(isTestSource(t)).toBe(false);
+                }
+            }
+        });
+
+        it('should reference loose files that actually exist on disk', () => {
+            // Spot-check one entry per group so assembly never 404s.
+            const groups = [
+                manifest.staticFiles.libs,
+                manifest.staticFiles.contentCss,
+                manifest.staticFiles.idevices.text,
+                manifest.staticFiles.themes.base,
+                manifest.staticFiles.common.exe_lightbox,
+            ];
+            for (const entries of groups) {
+                expect(Array.isArray(entries)).toBe(true);
+                for (const { s } of entries) {
+                    expect(fs.existsSync(path.join(projectRoot, 'public', s))).toBe(true);
+                }
+            }
+        });
+
+        it('should describe the same file set as idevices.zip (assembled === zipped)', () => {
+            const unzipped = unzipSync(new Uint8Array(fs.readFileSync(path.join(bundlesPath, 'idevices.zip'))));
+            // Group zip entries (`<name>/<rel>`) by iDevice into target paths.
+            const zipByIdevice: Record<string, Set<string>> = {};
+            for (const full of Object.keys(unzipped)) {
+                const slash = full.indexOf('/');
+                const name = full.slice(0, slash);
+                const rel = full.slice(slash + 1);
+                (zipByIdevice[name] ??= new Set()).add(rel);
+            }
+            for (const [name, entries] of Object.entries<any>(manifest.staticFiles.idevices)) {
+                const manifestTargets = new Set(entries.map((e: any) => e.t));
+                expect(manifestTargets).toEqual(zipByIdevice[name]);
+            }
+        });
+
+        it('should describe the same file set as content-css.zip', () => {
+            const unzipped = unzipSync(new Uint8Array(fs.readFileSync(path.join(bundlesPath, 'content-css.zip'))));
+            const zipTargets = new Set(Object.keys(unzipped));
+            const manifestTargets = new Set(manifest.staticFiles.contentCss.map((e: any) => e.t));
+            expect(manifestTargets).toEqual(zipTargets);
+        });
+
+        it('should describe the same file set as libs.zip', () => {
+            const unzipped = unzipSync(new Uint8Array(fs.readFileSync(path.join(bundlesPath, 'libs.zip'))));
+            const zipTargets = new Set(Object.keys(unzipped));
+            const manifestTargets = new Set(manifest.staticFiles.libs.map((e: any) => e.t));
+            expect(manifestTargets).toEqual(zipTargets);
+        });
+    });
 });

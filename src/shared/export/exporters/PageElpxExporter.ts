@@ -127,6 +127,14 @@ export class PageElpxExporter extends ElpxExporter {
 
         for (const page of pages) {
             for (const block of page.blocks || []) {
+                const blockIconValue = block.icon?.source === 'asset' ? block.icon.value : block.iconName || '';
+                if (typeof blockIconValue === 'string' && blockIconValue.startsWith('asset://')) {
+                    const matches = blockIconValue.matchAll(assetPattern);
+                    for (const match of matches) {
+                        assetIds.add(match[1]);
+                    }
+                }
+
                 for (const component of block.components || []) {
                     // Extract from content (htmlView field)
                     if (component.content) {

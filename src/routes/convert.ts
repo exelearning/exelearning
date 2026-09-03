@@ -46,6 +46,7 @@ import {
 // Import system (ELP → Y.Doc)
 import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
 import * as Y from 'yjs';
+import { getAppVersion } from '../utils/version';
 
 // =============================================================================
 // Types and Interfaces
@@ -256,8 +257,9 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                     return { success: false, error: `Unsupported export format: ${exportType}` };
             }
 
-            // Run export
-            const result = await exporter.export(options);
+            // Run export. runtimeVersion stamps the SCORM 1.2 runtime with the release
+            // doing the exporting; a caller-supplied value wins.
+            const result = await exporter.export({ runtimeVersion: getAppVersion(), ...options });
             return result;
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);

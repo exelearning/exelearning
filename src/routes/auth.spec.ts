@@ -307,14 +307,14 @@ describe('Auth Routes', () => {
     // =========================================================================
     // Username-enumeration timing oracle (constant-time login)
     //
-    // A failed login MUST run exactly one bcrypt.compare whether or not the
-    // email exists, otherwise the fast "user not found" path (no bcrypt) leaks
+    // A failed login MUST run exactly one Bun.password.verify whether or not the
+    // email exists, otherwise the fast "user not found" path (no verify) leaks
     // account existence through response latency. See security finding
-    // "no-rate-limit-auth-brute-force".
+    // "no-rate-limit-auth-brute-force" and ADR-2255-02.
     // =========================================================================
     describe('login is constant-time for unknown vs existing accounts', () => {
-        it('POST /api/auth/login runs bcrypt.compare even when the email does not exist', async () => {
-            const compareSpy = spyOn(bcrypt, 'compare');
+        it('POST /api/auth/login runs password verify even when the email does not exist', async () => {
+            const verifySpy = spyOn(Bun.password, 'verify');
             try {
                 const response = await app.handle(
                     new Request('http://localhost/api/auth/login', {
@@ -328,16 +328,16 @@ describe('Auth Routes', () => {
                 );
 
                 expect(response.status).toBe(401);
-                // Vulnerable code returns before bcrypt.compare when the user is
+                // Vulnerable code returns before verify when the user is
                 // absent, so the spy is never called and this assertion fails.
-                expect(compareSpy).toHaveBeenCalledTimes(1);
+                expect(verifySpy).toHaveBeenCalledTimes(1);
             } finally {
-                compareSpy.mockRestore();
+                verifySpy.mockRestore();
             }
         });
 
-        it('POST /login_check runs bcrypt.compare even when the email does not exist', async () => {
-            const compareSpy = spyOn(bcrypt, 'compare');
+        it('POST /login_check runs password verify even when the email does not exist', async () => {
+            const verifySpy = spyOn(Bun.password, 'verify');
             try {
                 const response = await app.handle(
                     new Request('http://localhost/login_check', {
@@ -352,25 +352,25 @@ describe('Auth Routes', () => {
 
                 // Symfony-compatible form login redirects on failure.
                 expect(response.status).toBe(302);
-                expect(compareSpy).toHaveBeenCalledTimes(1);
+                expect(verifySpy).toHaveBeenCalledTimes(1);
             } finally {
-                compareSpy.mockRestore();
+                verifySpy.mockRestore();
             }
         });
     });
 
     describe('verifyUserPassword (constant-time helper)', () => {
-        it('returns false for a missing user even if bcrypt.compare would succeed', async () => {
+        it('returns false for a missing user even if password verify would succeed', async () => {
             // Boolean(user) must gate the result: a non-existent account can never
             // authenticate, even though a decoy compare runs (timing parity).
-            const compareSpy = spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+            const verifySpy = spyOn(Bun.password, 'verify').mockResolvedValue(true as never);
             try {
                 expect(await verifyUserPassword(null, 'anything')).toBe(false);
                 expect(await verifyUserPassword(undefined, 'anything')).toBe(false);
                 // The decoy compare still ran (one call per invocation) — timing parity.
-                expect(compareSpy).toHaveBeenCalledTimes(2);
+                expect(verifySpy).toHaveBeenCalledTimes(2);
             } finally {
-                compareSpy.mockRestore();
+                verifySpy.mockRestore();
             }
         });
 
