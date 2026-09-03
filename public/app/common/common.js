@@ -1588,18 +1588,56 @@ var $exeDevices = {
 
                 /**
                  * Deferred retry commit, so a value written just as the
-                 * interface settles still reaches the LMS.
+                 * interface settles still reaches the LMS — and so Moodle
+                 * redraws its course-structure menu from stored data.
                  *
-                 * Moodle redraws the SCO status in its course-structure menu
-                 * only on LMSCommit — it does not observe the DOM inside the
-                 * SCO's iframe, so nudging the markup is a no-op for detection.
-                 * updateActivity already commits synchronously, and that
-                 * remains the guarantee: a deferred-only commit would be lost
-                 * if the learner navigates within the delay. This covers the
-                 * writes that land after that commit — a status settled by a
-                 * timer or an animation — which an activity reporting once,
-                 * from a check button, has no later report to carry for it.
+                 * Moodle redraws the SCO status only on LMSCommit — it does not
+                 * observe the DOM inside the SCO's iframe, so nudging the markup
+                 * is a no-op for detection. updateActivity already commits
+                 * synchronously, and that remains the guarantee: a
+                 * deferred-only commit would be lost if the learner navigates
+                 * within the delay. This covers the writes that land after that
+                 * commit — a status settled by a timer or an animation — which
+                 * an activity reporting once, from a check button, has no later
+                 * report to carry for it.
+                 *
+                 * It also carries the menu refresh, which the synchronous
+                 * commit cannot. Moodle picks the transport for a commit in
+                 * useBeaconAPI(), nested inside DoRequest() in
+                 * mod/scorm/request.js (MOODLE_405_STABLE, identical in
+                 * MOODLE_500_STABLE):
+                 *
+                 *     if (window.event && ['beforeunload', 'unload', 'pagehide']
+                 *             .indexOf(window.event.type)) {
+                 *         window.mod_scorm_useBeaconAPI = true;
+                 *     }
+                 *
+                 * The comparison is missing its `!== -1`: indexOf answers -1 for
+                 * any event type NOT in that list, and -1 is truthy, so the test
+                 * is inverted — a `click` turns the flag on while `beforeunload`
+                 * (index 0, falsy) does not. Every commit an iDevice issues runs
+                 * inside a click handler, so from the learner's first answer
+                 * Moodle sends commits through navigator.sendBeacon: the data
+                 * POST does not block, and the TOC refresh LMSCommit fires
+                 * straight afterwards (a GET to prereqs.php) overtakes it and
+                 * redraws the course-structure menu from the pre-commit state.
+                 *
+                 * This retry is what puts the icon right, and it needs nothing
+                 * but time: LMSCommit fires that refresh whatever the transport,
+                 * and this commit carries no data of its own — CollectData
+                 * advanced `defaultvalue` during the first one, so its
+                 * datastring is empty. What is wanted is the refresh behind it,
+                 * reading a server that has by then received the first beacon.
+                 *
+                 * The delay is therefore a margin, not a guarantee. Measured
+                 * against a live Moodle: beacon 337-877 ms, TOC refresh
+                 * 224-572 ms. At the 50 ms this used to carry it always redrew
+                 * the old status. A beacon slower than the delay leaves the icon
+                 * as it is today, and LMSFinish refreshes the menu again on the
+                 * way out — the retry can never make things worse.
                  */
+                moodleDetectionDelay: 1200,
+
                 triggerMoodleDetection: function () {
                     if (typeof setTimeout !== 'function') return;
                     setTimeout(function () {
@@ -1609,7 +1647,7 @@ var $exeDevices = {
                             // The API may not be in a committable state; the
                             // synchronous commit is the guarantee, not this.
                         }
-                    }, 50);
+                    }, $exeDevices.iDevice.gamification.scorm.moodleDetectionDelay);
                 },
 
                 updateActivity: function (game, lmsData, completed) {

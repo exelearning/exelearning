@@ -2622,7 +2622,13 @@ describe('common.js $exeDevices', () => {
       // writes that land after it — a status settled by a timer or an
       // animation — which an activity reporting once, from a check button, has
       // no later report to carry for it.
-      it('retries the commit shortly after the report', () => {
+      //
+      // Its delay also has to outlast the first commit's beacon: that commit
+      // runs inside the click, so Moodle sends it fire-and-forget, and this
+      // refresh reads what the server has stored by the time it runs. Measured
+      // beacons took 337-877 ms; at the 50 ms this used to carry it always
+      // redrew the old status.
+      it('retries the commit late enough to outlast a beacon round-trip', () => {
         vi.useFakeTimers();
         getScorm().reportActivity(game(), { total: 4 });
         runtime.setPageHasScoredActivities(true);
@@ -2635,7 +2641,16 @@ describe('common.js $exeDevices', () => {
           // a report the learner navigates away from.
           expect(api.callNames()).not.toContain('LMSCommit');
 
-          vi.advanceTimersByTime(50);
+          // Asserted against the configured delay rather than a literal, so
+          // tuning it cannot silently leave the test measuring nothing. The
+          // floor is the slowest beacon measured (877 ms), rounded up: below
+          // it the refresh can still read the pre-commit state, which is the
+          // defect this delay exists to avoid.
+          expect(getScorm().moodleDetectionDelay).toBeGreaterThanOrEqual(900);
+          vi.advanceTimersByTime(getScorm().moodleDetectionDelay - 1);
+          expect(api.callNames()).not.toContain('LMSCommit');
+
+          vi.advanceTimersByTime(1);
 
           expect(api.callNames()).toContain('LMSCommit');
         } finally {
@@ -2650,7 +2665,9 @@ describe('common.js $exeDevices', () => {
         try {
           getScorm().triggerMoodleDetection();
 
-          expect(() => vi.advanceTimersByTime(50)).not.toThrow();
+          expect(() =>
+            vi.advanceTimersByTime(getScorm().moodleDetectionDelay)
+          ).not.toThrow();
         } finally {
           vi.clearAllTimers();
           vi.useRealTimers();

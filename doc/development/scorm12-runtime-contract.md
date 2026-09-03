@@ -377,6 +377,68 @@ LMS skipping an optional element, so nothing is logged for it — the report
 still records `unsupported: true`. Every other error code is reported as
 usual.
 
+### 8.1 The deferred retry commit, and Moodle's beacon transport **[BROWSER]**
+
+Every score report commits twice: `updateActivity` commits synchronously — that
+is the guarantee, and it is what a learner who navigates immediately relies on —
+and `triggerMoodleDetection` schedules a second commit
+`moodleDetectionDelay` ms later. The second one exists for two reasons: it
+carries writes that land after the first (a status settled by a timer or an
+animation), and it is the only one that can make Moodle redraw its
+course-structure menu from stored data.
+
+That second reason comes from a defect in `useBeaconAPI()`, nested inside
+`DoRequest()` in `mod/scorm/request.js` — read from `MOODLE_405_STABLE`, and
+identical in `MOODLE_500_STABLE`:
+
+```js
+var useBeaconAPI = function() {
+    if (typeof window.mod_scorm_useBeaconAPI === 'undefined' || window.mod_scorm_useBeaconAPI === false) {
+        // Last ditch effort, the SCORM package may have introduced its own listeners before our listeners.
+        // This is OLD API, window.event is not reliable and is not recommended API.
+        if (window.event && ['beforeunload', 'unload', 'pagehide'].indexOf(window.event.type)) {
+            window.mod_scorm_useBeaconAPI = true;
+        }
+    }
+    return (window.mod_scorm_useBeaconAPI && canUseBeaconAPI());
+};
+```
+
+The comparison is missing its `!== -1`. `indexOf` answers `-1` for any event
+type **not** in that list, and `-1` is truthy, so the test is inverted: a
+`click` turns the flag on while `beforeunload` (index 0, falsy) does not. Every
+commit an iDevice issues runs inside a click handler, so the flag is on from the
+learner's first answer. It then stays on: the outer guard re-reads it only while
+it is `undefined` or `false`, nothing ever lowers it, and it lives on the window
+that loaded `request.js` — the LMS player, which outlives every SCO navigation.
+
+Once it is on, Moodle sends the commit through `navigator.sendBeacon`, which
+does not wait and whose result it fabricates (*"Make it look like it was a
+success"*). `LMSCommit` then fires its TOC refresh — a GET to `prereqs.php` —
+straight afterwards, and that GET reaches the server **before** the
+fire-and-forget POST, so the menu is redrawn from the pre-commit state.
+Measured against a live Moodle: beacon 337–877 ms, TOC refresh 224–572 ms.
+
+The retry needs nothing but time to put that right. `LMSCommit` fires the TOC
+refresh whatever the transport — the GET does not look at the result of the
+POST — and the retry carries **no data of its own**: `CollectData` advanced its
+`defaultvalue` during the first commit, so its datastring is empty. What is
+wanted is the refresh behind it, reading a server that has by then received the
+first beacon.
+
+`moodleDetectionDelay` is therefore a **margin, not a guarantee**. A beacon
+slower than the delay leaves the icon as it was, and `LMSFinish` refreshes the
+menu again on the way out (unconditionally — it does not check `hidetoc`), so a
+missed window heals when the learner leaves the page. The retry can never make
+things worse than not running at all.
+
+Deliberately **not** done: clearing `window.mod_scorm_useBeaconAPI` on the
+player window to force Moodle back onto its synchronous XHR. It would make the
+ordering deterministic — `window.event` is unset outside an event dispatch, so
+`useBeaconAPI()` would answer false — but that XHR **blocks the tab** for the
+length of the POST (200–900 ms on the LMS measured above), and it means writing
+to a global that belongs to the LMS. The margin is cheaper and self-healing.
+
 When the mandatory `cmi.core.score.raw` write itself fails (a broken LMS —
 the triplet was already validated), the completion policy still decides and
 records `cmi.core.lesson_status` **[POLICY]**: completion is not held hostage
