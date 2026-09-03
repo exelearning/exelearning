@@ -23,6 +23,20 @@
     2015. Refactored and completed by Ignacio Gros (http://www.gros.es) for http://exelearning.net/
 */
 
+// Glyph ranges vendored under exe_math/fonts/. Kept equal to VENDORED_FONT_RANGES in
+// scripts/vendor-mathjax.ts by mathjax-packages.spec.ts.
+//
+// MathJax 4 asks for a range the first time a character needs it. The ones we do not
+// ship must never be asked for: with paths.fonts pointing at our own tree the request
+// 404s, and MathJax remembers the failure -- the first character degrades to a serif
+// glyph, but the *second* one rejects the whole render call, so every formula in that
+// call is left on screen as raw \(...\), accented or not. See
+// $exe.math.silenceUnvendoredFontRanges below.
+window.MATHJAX_VENDORED_FONT_RANGES = [
+    'accents', 'arrows', 'calligraphic', 'double-struck', 'fraktur', 'math', 'monospace',
+    'sans-serif', 'script', 'shapes', 'symbols', 'symbols-b-i', 'variants'
+];
+
 window.MathJax = window.MathJax || (function() {
     var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
     var isIndex = document.documentElement.id === 'exe-index';
@@ -76,22 +90,27 @@ window.MathJax = window.MathJax || (function() {
         isIndex = true;
     }
 
-    var basePath = isWorkarea
+    // The static PWA build serves everything from one directory and sets this
+    // before common.js runs, so it overrides the path detection above instead of
+    // duplicating the whole configuration.
+    var basePath = window.MATHJAX_BASE_PATH || (isWorkarea
         ? (version ? configBasePath + '/' + version + '/app/common/exe_math' : configBasePath + '/app/common/exe_math')
-        : (isIndex ? 'libs/exe_math' : '../libs/exe_math');
-    
+        : (isIndex ? 'libs/exe_math' : '../libs/exe_math'));
+
+    // MathJax 4 makes five of these usable that the 3.2.2 bundle could not load:
+    // begingroup, colorv2, dsfont, texhtml and units.
+    // 'bbm' and 'bboldx' stay out on weight, not availability: MathJax does publish
+    // @mathjax/mathjax-{bbm,bboldx}-font-extension (svg.js is 206 KB and 141 KB), so
+    // enabling them is a matter of vendoring two more files the way mhchem and dsfont
+    // are. Nobody has asked for either macro set; revisit if someone does.
     var externalExtensions = [
-        'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
-        'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose',
-        'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
-        'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb',
-        'setoptions'
-        // TODO: Enable these extensions when upgrading to MathJax 4.0
-        // Currently disabled due to dependency issues with bundled tex-mml-svg.js (MathJax 3.x)
-        // These extensions require input/tex-base to be fully loaded before initialization
-        // 'bbm', 'bboldx', 'begingroup', 'colorv2', 'dsfont', 'texhtml', 'units'
+        'amscd', 'bbox', 'begingroup', 'boldsymbol', 'braket', 'bussproofs',
+        'cancel', 'cases', 'centernot', 'color', 'colortbl', 'colorv2', 'dsfont',
+        'empheq', 'enclose', 'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem',
+        'noerrors', 'physics', 'setoptions', 'tagformat', 'texhtml', 'textcomp',
+        'unicode', 'units', 'upgreek', 'verb'
     ];
-    
+
     return {
         tex: {
             inlineMath: [["\\(", "\\)"]],
@@ -101,15 +120,68 @@ window.MathJax = window.MathJax || (function() {
             packages: { '[+]': externalExtensions }
         },
         loader: {
-            paths: { mathjax: basePath },
+            paths: {
+                mathjax: basePath,
+                // MathJax 4 fetches the font's glyph ranges (\mathbb, \mathcal,
+                // \mathfrak, stretchy arrows...) on first use, and the stock value here
+                // is https://cdn.jsdelivr.net/npm/@mathjax. That would put an external
+                // request inside every exported package and leave the glyph missing
+                // wherever there is no network. The ranges are vendored under
+                // exe_math/fonts, so point the token at them and nothing can leave the
+                // origin. See scripts/vendor-mathjax.ts (VENDORED_FONT_RANGES).
+                fonts: '[mathjax]/fonts'
+            },
             load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
+                // Hidden MathML for screen readers. MathJax 4 leaves this off because it
+                // prefers the speech extension, but speech needs a web worker and a
+                // fetch, neither of which survives an export opened from the filesystem.
+                // Assistive MathML has no such dependency, so it is our accessibility floor.
+                .concat(['a11y/assistive-mml'])
         },
         options: {
             // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
             // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
             ignoreHtmlClass: 'tex2jax_ignore|dropdown-menu|dropdown-item|modal',
             // Skip processing inside these HTML tags
-            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            enableAssistiveMml: true,
+            // The Speech Rule Engine is not vendored (ADR-2259-03), and speech lives
+            // inside the combined component, so deleting the files is not enough: the
+            // menu would still offer the toggles and each one would request a file that
+            // is not there, leaving typesetPromise() unsettled and the queue stalled.
+            //
+            // These have to be set as *menu* settings rather than document options.
+            // MathJax builds the menu inside the document constructor and then writes
+            // enableSpeech/enableBraille/enableComplexity/enableExplorer back onto the
+            // document from them, so anything set directly on `options` is overwritten
+            // a moment later. `enrich: false` is the single lever: enrichment gates all
+            // four. assistiveMml stays true — it is the floor, and it is independent.
+            menuOptions: {
+                settings: {
+                    enrich: false,
+                    speech: false,
+                    braille: false,
+                    collapsible: false,
+                    assistiveMml: true
+                }
+            }
+        },
+        startup: {
+            ready: function() {
+                // Before defaultReady: the menu reads its persisted settings while the
+                // document is being built, so a stale renderer choice has to be gone by
+                // then. See $exe.math.forgetUnavailableMenuSettings.
+                if (typeof $exe !== 'undefined' && $exe.math) {
+                    $exe.math.forgetUnavailableMenuSettings();
+                }
+                MathJax.startup.defaultReady();
+                // Guarded: anything thrown here leaves MathJax permanently un-started,
+                // which would cost every formula on the page to tidy up one menu.
+                if (typeof $exe !== 'undefined' && $exe.math) {
+                    $exe.math.silenceUnvendoredFontRanges();
+                    $exe.math.hideUnavailableMenuEntries();
+                }
+            }
         }
     };
 })();
@@ -175,6 +247,149 @@ var $exe = {
         },
         refresh: function(elements) {
             return $exeDevices.iDevice.gamification.math.updateLatex(elements);
+        },
+        // Stop MathJax asking for glyph ranges this build does not ship.
+        //
+        // MathJax 4 keeps most of the font in ~40 ranges it fetches on first use, and
+        // seeds its character tables with a placeholder per code point saying which
+        // range provides it. We vendor the 13 whose code points MathJax 3.2.2 could
+        // already render, so no glyph anyone could previously see is lost; the rest
+        // would 404 against our own tree.
+        //
+        // A 404 is not a quiet degradation. loadDynamicFile() catches the first failure
+        // and marks the range `failed`; every later request for the same range rejects,
+        // which fails the whole typeset call and leaves every formula in it on screen as
+        // raw \(...\) -- including formulas with no unusual characters. Two accented
+        // letters in one iDevice were enough to blank eleven formulas.
+        //
+        // So drop the placeholders instead. getChar() then finds nothing, takes the
+        // unknown-character path and renders the glyph in the CSS `unknownFamily` serif,
+        // which is exactly what 3.2.2 did with the same characters. Dropping them rather
+        // than resolving their promises also matters for speed: getChar() deletes one
+        // placeholder per call and re-renders the whole document to retry, so leaving
+        // them in place costs a full re-render per accented letter.
+        //
+        // Returns how many placeholders were dropped, so a MathJax upgrade that renames
+        // or restructures the ranges shows up as 0 instead of failing silently.
+        silenceUnvendoredFontRanges: function() {
+            var jax = window.MathJax && window.MathJax.startup && window.MathJax.startup.document
+                && window.MathJax.startup.document.outputJax;
+            var font = jax && jax.font;
+            if (!font || !font.variant) return 0;
+            var vendored = window.MATHJAX_VENDORED_FONT_RANGES;
+            var dropped = 0;
+            Object.keys(font.variant).forEach(function(name) {
+                var chars = font.variant[name] && font.variant[name].chars;
+                if (!chars) return;
+                Object.keys(chars).forEach(function(code) {
+                    var entry = chars[code];
+                    // Glyph data is an array; a placeholder is the range descriptor.
+                    if (!entry || Array.isArray(entry) || !entry.file) return;
+                    if (vendored.indexOf(entry.file) !== -1) return;
+                    delete chars[code];
+                    dropped++;
+                });
+            });
+            // Belt and braces: if a descriptor is reachable by some path this does not
+            // cover, make it resolve rather than reject, so at worst a glyph is missing
+            // instead of the whole call failing.
+            var files = font.CLASS && font.CLASS.dynamicFiles;
+            if (files) {
+                Object.keys(files).forEach(function(range) {
+                    if (vendored.indexOf(range) !== -1) return;
+                    files[range].promise = Promise.resolve();
+                    files[range].setup = function() {};
+                });
+            }
+            return dropped;
+        },
+        // Hide the contextual-menu entries this build cannot serve.
+        //
+        //   Speech / Braille / Explorer — the Speech Rule Engine is not vendored
+        //     (ADR-2259-03). The features are already off via menuOptions.settings, but
+        //     the sections stay in the menu because they are built into the bundle, and
+        //     toggling one would request a file that is not there and stall the typeset
+        //     queue rather than fail.
+        //   Settings -> Math Renderer — only the SVG output ships. CHTML lives in a
+        //     component we do not vendor and its font is a separate 2.4 MB package.
+        //
+        // MathJax hides these itself only when no loader is present, which is not our
+        // case, so it has to be explicit. Returns the number of entries hidden so the
+        // caller can tell "nothing to do" from "the menu moved under us".
+        hideUnavailableMenuEntries: function() {
+            var menu = window.MathJax && window.MathJax.startup && window.MathJax.startup.document
+                && window.MathJax.startup.document.menu;
+            if (!menu || !menu.menu || typeof menu.menu.findID !== 'function') return 0;
+            // 'Accessibility' is the label heading the three sections; without them it
+            // would sit above nothing.
+            var paths = [['Accessibility'], ['Speech'], ['Braille'], ['Explorer'], ['Settings', 'Renderer']];
+            var hidden = 0;
+            paths.forEach(function(path) {
+                var item = menu.menu.findID.apply(menu.menu, path);
+                if (item && typeof item.hide === 'function') {
+                    item.hide();
+                    hidden++;
+                }
+            });
+            return hidden;
+        },
+        // Drop persisted menu settings that this build cannot honour. MathJax keeps
+        // them in localStorage for the whole origin and acts on them while the document
+        // is being built, so this has to run before defaultReady(), and a value picked up
+        // on any other MathJax page of the same site counts.
+        //
+        // Two keys matter:
+        //
+        //   renderer — CHTML is not vendored and its font is a separate package, so a
+        //     stored choice makes every page request a missing component at startup,
+        //     without anyone opening the menu.
+        //
+        //   enrich / speech / braille / collapsible / explorer — all gate the Speech
+        //     Rule Engine, which is not vendored (ADR-2259-03). A value stored before
+        //     it was removed, or by any other MathJax page on this origin, would turn
+        //     a feature back on and stall the typeset queue on a missing file.
+        //
+        //   assistiveMml — the hidden MathML is our accessibility floor (ADR-2259-02),
+        //     but MathJax treats it as an alternative to speech rather than a floor:
+        //     toggling Speech in the menu calls setValue(false) on it and persists that.
+        //     A reader who did so once gets no MathML from then on, and in an export
+        //     opened from the filesystem speech cannot start either, so they would be
+        //     left with nothing. Only a stored `false` is dropped; a stored `true` is
+        //     already what we want.
+        //
+        // Note the reach: because the key is per origin, this also rewrites the setting
+        // for any other MathJax page hosted on the same origin. Accepted deliberately —
+        // both keys name something this build cannot honour, and the alternative is
+        // leaving a reader's maths silently unreadable.
+        forgetUnavailableMenuSettings: function() {
+            var KEY = 'MathJax-Menu-Settings';
+            try {
+                var stored = window.localStorage.getItem(KEY);
+                if (!stored) return false;
+                var settings = JSON.parse(stored);
+                if (!settings || typeof settings !== 'object') return false;
+                var dropped = false;
+                ['renderer', 'enrich', 'speech', 'braille', 'collapsible', 'explorer'].forEach(function(key) {
+                    if (key in settings) {
+                        delete settings[key];
+                        dropped = true;
+                    }
+                });
+                if (settings.assistiveMml === false) {
+                    delete settings.assistiveMml;
+                    dropped = true;
+                }
+                if (!dropped) return false;
+                if (Object.keys(settings).length) {
+                    window.localStorage.setItem(KEY, JSON.stringify(settings));
+                } else {
+                    window.localStorage.removeItem(KEY);
+                }
+                return true;
+            } catch (e) {
+                // Private mode, disabled storage or corrupt JSON: nothing to forget.
+                return false;
+            }
         },
         // Create links to the code and the image (different possibilities)
         createLinks: function (math) {
