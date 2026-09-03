@@ -1705,6 +1705,15 @@ describe('ApiCallManager', () => {
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/prefs/save', { mode: 'dark' });
     });
 
+    it('should not call post when the idevice upload endpoint is missing', async () => {
+      delete apiManager.endpoints.api_idevices_upload;
+
+      const response = await apiManager.postUploadIdevice({ data: 'idevice' });
+
+      expect(response.responseMessage).toBe('Error');
+      expect(mockFunc.post).not.toHaveBeenCalledWith(undefined, { data: 'idevice' });
+    });
+
     it('should call structure and diagnostics endpoints', async () => {
       apiManager.endpoints.api_odes_last_updated = { path: 'http://localhost/last/{odeId}' };
       apiManager.endpoints.api_odes_current_users = {
@@ -2034,6 +2043,58 @@ describe('ApiCallManager', () => {
         expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('window.__EXE_STATIC_DATA__'));
 
         delete window.__EXE_STATIC_DATA__;
+        logSpy.mockRestore();
+      });
+
+      it('should prefer bundle.json.zst when window.fzstd is available', async () => {
+        const mockBundleData = {
+          parameters: { routes: { api_test: { path: '/api/test' } } },
+          translations: { en: { translations: {} } },
+          idevices: { idevices: [] },
+          themes: { themes: [] },
+        };
+        const jsonBytes = new TextEncoder().encode(JSON.stringify(mockBundleData));
+        // Pretend-compressed payload; the mocked decompressor returns the JSON bytes.
+        const compressed = new Uint8Array([0x28, 0xb5, 0x2f, 0xfd, 1, 2, 3]);
+        window.fzstd = { decompress: vi.fn(() => jsonBytes) };
+        global.fetch = vi.fn().mockResolvedValueOnce({
+          ok: true,
+          arrayBuffer: () => Promise.resolve(compressed.buffer),
+        });
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(global.fetch).toHaveBeenCalledWith('./data/bundle.json.zst');
+        expect(window.fzstd.decompress).toHaveBeenCalled();
+        expect(apiManager.staticData).toEqual(mockBundleData);
+
+        delete window.fzstd;
+        logSpy.mockRestore();
+      });
+
+      it('should fall back to plain bundle.json when the .zst tier is unavailable', async () => {
+        const mockBundleData = {
+          parameters: { routes: {} },
+          translations: { en: { translations: {} } },
+          idevices: { idevices: [] },
+          themes: { themes: [] },
+        };
+        window.fzstd = { decompress: vi.fn() };
+        global.fetch = vi
+          .fn()
+          .mockResolvedValueOnce({ ok: false, status: 404 }) // bundle.json.zst missing
+          .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockBundleData) });
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(global.fetch).toHaveBeenNthCalledWith(1, './data/bundle.json.zst');
+        expect(global.fetch).toHaveBeenNthCalledWith(2, './data/bundle.json');
+        expect(window.fzstd.decompress).not.toHaveBeenCalled();
+        expect(apiManager.staticData).toEqual(mockBundleData);
+
+        delete window.fzstd;
         logSpy.mockRestore();
       });
 

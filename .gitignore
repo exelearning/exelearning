@@ -141,5 +141,12 @@ test/e2e/moodle/packages/*
 test/e2e/moodle/plugins/*
 !test/e2e/moodle/plugins/.gitkeep
 
+# Load-test (issue #2255) run artifacts and environment-specific seed data —
+# reproducible via test/load/scripts/prepare.sh and run.sh, not committed.
+/test/load/results/*
+!/test/load/results/.gitkeep
+/test/load/data/*
+!/test/load/data/.gitkeep
+
 # external-media build: --check writes here transiently
 /public/app/common/exe_external_media/dist.check/
