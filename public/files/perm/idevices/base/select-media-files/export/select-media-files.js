@@ -1140,9 +1140,12 @@ var $eXeSeleccionaMedias = {
             $('#slcmpCodeAccessDiv-' + instance).hide();
             $('#slcmpCubierta-' + instance).hide();
             $('#slcmpLinkMaximize-' + instance).trigger('click');
-            if (mOptions.time > 0) {
-                $eXeSeleccionaMedias.startGame(instance);
-            }
+            // Unconditionally: the load path only starts an untimed game when
+            // there is no code, so gating this on the timer left a coded,
+            // untimed activity with nobody to start it — no check button, no
+            // hover and no opening zero, since startGame is the only place
+            // that shows the button bar addEvents hid.
+            $eXeSeleccionaMedias.startGame(instance);
         } else {
             $('#slcmpMesajeAccesCodeE-' + instance)
                 .fadeOut(300)

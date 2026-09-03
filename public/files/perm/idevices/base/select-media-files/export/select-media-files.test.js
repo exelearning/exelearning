@@ -215,5 +215,77 @@ describe('select-media-files iDevice export', () => {
 
             expect(dmedia.sendScore).not.toHaveBeenCalled();
         });
+
+        /**
+         * The code field and the cover the entry drives, plus the button bar
+         * hidden the way addEvents leaves it before the game starts.
+         *
+         * @param {string} typed what the learner puts in the code field
+         */
+        function addCodeAccessDom(typed) {
+            $(`#slcmpMainContainer-${instance}`).append(`
+                <div id="slcmpCodeAccessDiv-${instance}"></div>
+                <div id="slcmpMesajeAccesCodeE-${instance}"></div>
+                <a id="slcmpLinkMaximize-${instance}" href="#"></a>
+                <input id="slcmpCodeAccessE-${instance}" value="${typed}" />`);
+            $(`#slcmpGameButtons-${instance}`).hide();
+        }
+
+        // Without a timer the load path only starts the game when there is no
+        // code, and the code entry only started it when there was a timer. A
+        // coded, untimed activity was therefore left with nobody to start it:
+        // no check button to answer with, and no opening zero either.
+        it('starts an untimed activity when the code opens it, so it can be answered', () => {
+            setupStart({
+                time: 0,
+                itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+            });
+            addCodeAccessDom('abre');
+            let stateWhenReported;
+            dmedia.sendScore.mockImplementation(() => {
+                const { hits, gameOver, gameStarted } = dmedia.options[instance];
+                stateWhenReported = { hits, gameOver, gameStarted };
+            });
+
+            dmedia.enterCodeAccess(instance);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                gameOver: false,
+                gameStarted: true,
+            });
+            // The check button lives inside this bar: without the start there
+            // is nothing for the learner to press.
+            expect($(`#slcmpGameButtons-${instance}`).css('display')).toBe(
+                'flex'
+            );
+        });
+
+        it('still starts a timed activity when the code opens it', () => {
+            setupStart({
+                time: 1,
+                itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+            });
+            addCodeAccessDom('abre');
+
+            dmedia.enterCodeAccess(instance);
+
+            expect(dmedia.sendScore).toHaveBeenCalledWith(true, instance);
+            expect(dmedia.options[instance].gameStarted).toBe(true);
+        });
+
+        it('neither starts nor reports when the code is wrong', () => {
+            setupStart({
+                time: 0,
+                itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+            });
+            addCodeAccessDom('nope');
+
+            dmedia.enterCodeAccess(instance);
+
+            expect(dmedia.sendScore).not.toHaveBeenCalled();
+            expect(dmedia.options[instance].gameStarted).toBe(false);
+            expect($(`#slcmpCodeAccessE-${instance}`).val()).toBe('');
+        });
     });
 });
