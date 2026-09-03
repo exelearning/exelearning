@@ -839,6 +839,11 @@ var $eXeIdentifica = {
         if (codeInput === requiredCode) {
             $eXeIdentifica.showCubiertaOptions(false, instance);
             $(`#idfLinkMaximize-${instance}`).trigger('click');
+            // A valid code is the learner opening the activity. Nothing needs
+            // starting — startGame ran while the page loaded, behind the cover
+            // — but nothing had told the LMS either: showQuestion holds its
+            // report until initGame, which only a clue or an answer raises.
+            $eXeIdentifica.saveScormScore(instance);
         } else {
             $(`#idfMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
@@ -1305,6 +1310,19 @@ var $eXeIdentifica = {
             mOptions,
             $eXeIdentifica.isInExe
         );
+    },
+
+    /**
+     * Publish the freshly cleared state to the LMS when the learner opens the
+     * activity from an explicit control.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeIdentifica.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeIdentifica.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {

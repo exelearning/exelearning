@@ -166,4 +166,78 @@ describe('identify iDevice export', () => {
       expect(flagWhenReported).toBe(true);
     });
   });
+
+  // Behind a code the activity is already running: startGame goes through on
+  // load, under the cover. What never happened was the report — showQuestion
+  // holds it until initGame, which only a clue or an answer raises — so the LMS
+  // kept the previous attempt's grade. Accepting the code is that first act.
+  describe('opening the activity with an access code', () => {
+    function setupCodeAccess(typed, overrides) {
+      document.body.innerHTML = `
+        <div id="idfMainContainer-0">
+          <div id="idfCodeAccessDiv-0"></div>
+          <div id="idfMesajeAccesCodeE-0"></div>
+          <a id="idfLinkMaximize-0" href="#"></a>
+          <input id="idfCodeAccessE-0" value="${typed}" />
+        </div>`;
+      $eXeIdentifica.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          // The load path already ran startGame, which is what cleared the
+          // score and raised the flag before the learner saw the code field.
+          gameStarted: true,
+          gameOver: false,
+          score: 0,
+          initGame: false,
+          itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeIdentifica, 'showCubiertaOptions').mockImplementation(
+        () => {}
+      );
+      vi.spyOn($eXeIdentifica, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('publishes a zero and an unfinished attempt when the code is right', () => {
+      setupCodeAccess('AbrE');
+      let stateWhenReported;
+      $eXeIdentifica.sendScore.mockImplementation(() => {
+        const { score, gameOver, gameStarted } = $eXeIdentifica.options[0];
+        stateWhenReported = { score, gameOver, gameStarted };
+      });
+
+      $eXeIdentifica.enterCodeAccess(0);
+
+      expect(stateWhenReported).toEqual({
+        score: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('reports nothing when the code is wrong', () => {
+      setupCodeAccess('nope');
+
+      $eXeIdentifica.enterCodeAccess(0);
+
+      expect($eXeIdentifica.sendScore).not.toHaveBeenCalled();
+      expect($('#idfCodeAccessE-0').val()).toBe('');
+    });
+
+    it('does not auto-report in manual SCORM mode', () => {
+      setupCodeAccess('abre', { isScorm: 2 });
+
+      $eXeIdentifica.enterCodeAccess(0);
+
+      expect($eXeIdentifica.sendScore).not.toHaveBeenCalled();
+    });
+  });
 });
