@@ -760,8 +760,14 @@ describe('generateServiceWorkerContent', () => {
         expect(result).toContain('./index.html');
         expect(result).toContain('./app/app.bundle.js');
         expect(result).toContain('./libs/yjs/yjs.min.js');
-        expect(result).toContain('./data/bundle.json');
+        expect(result).toContain('./libs/fzstd/fzstd.umd.js');
+        expect(result).toContain('./data/bundle.json.zst');
         expect(result).toContain('./style/workarea/main.css');
+    });
+
+    it('should precache the compressed bundle data, not a raw bundle.json', () => {
+        const result = generateServiceWorkerContent('v1.0.0', 'abc123');
+        expect(result).not.toContain("'./data/bundle.json',");
     });
 
     it('should include install event handler', () => {
