@@ -569,6 +569,7 @@ var $exe = {
         })(),
         reload_pending: false,
         initialized: false,
+        loading: false,
         loadMermaid: function () {
             // Dynamic path resolution
             var enginePath = this.engine;
@@ -585,10 +586,17 @@ var $exe = {
             }
 
             if (typeof window.mermaid === 'undefined') {
+                // Already being fetched: do not inject the script twice
+                if (this.loading) return;
+                this.loading = true;
                 const script = document.createElement("script");
                 script.src = enginePath;
                 script.async = true;
+                script.onerror = function () {
+                    $exe.mermaid.loading = false;
+                };
                 script.onload = function () {
+                    $exe.mermaid.loading = false;
                     mermaid = window.mermaid;
                     mermaid.initialize({
                         startOnLoad: false,
