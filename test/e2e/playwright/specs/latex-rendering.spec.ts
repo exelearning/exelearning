@@ -1253,6 +1253,79 @@ test.describe('LaTeX Rendering', () => {
             assertNoOffOriginRequests(requests, page.url());
         });
 
+        test('renders formulas whose text uses characters from unvendored font ranges', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            // Regression guard for the blocker @ignaciogros found. MathJax 4 keeps most
+            // of its font in ranges fetched on demand; this build vendors 13 of ~40 and
+            // points paths.fonts at its own tree, so an unvendored range 404s. The first
+            // character degrades quietly to a serif glyph -- what 3.2.2 did -- but the
+            // range is then marked failed, and the *second* request for it rejects,
+            // which fails the whole typeset call: every formula in it is left on screen
+            // as raw \(...\), including formulas with no unusual characters.
+            //
+            // Accents live in the `latin` range, which is not vendored, so two accented
+            // letters in one iDevice used to blank every formula on the page. The
+            // existing tests missed it twice over: they use \mathbb and \mathcal, whose
+            // ranges *are* vendored, and they look at the first render, which is the
+            // case that works.
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'LaTeX Unvendored Glyphs');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await enableMathJaxViaUI(page);
+            await selectFirstPage(page);
+            await addTextIdevice(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 15000 });
+            await waitForTinyMCEReady(page);
+
+            // Accented text, bold accented text and Greek, mixed with plain formulas
+            // that must survive alongside them.
+            const content = `
+                <p>Control: \\(a^2 + b^2 = c^2\\) y \\(\\frac{x}{y}\\)</p>
+                <p>Un acento: \\(\\text{área} = \\pi r^2\\)</p>
+                <p>Dos acentos: \\(\\text{período mínimo}\\)</p>
+                <p>Colateral: \\(\\text{ñ}\\) y \\(\\text{ç}\\) y \\(\\frac{a}{b}\\)</p>
+                <p>Negrita: \\(\\textbf{Ámbito máximo}\\)</p>
+                <p>Griego: \\(\\alpha + \\beta + \\gamma = \\pi\\)</p>
+            `;
+            await page.evaluate(html => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(html);
+                    editor.fire('change');
+                    editor.setDirty(true);
+                }
+            }, content);
+
+            await block.locator('.btn-save-idevice').click();
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            await waitForPreviewContent(page);
+            const iframe = getPreviewFrame(page);
+            await page.waitForTimeout(1500);
+
+            const rendered = await iframe.locator('body').evaluate(body => ({
+                containers: body.querySelectorAll('mjx-container:not(mjx-assistive-mml mjx-container)').length,
+                rawDelimiters: (body.textContent || '').split('\\(').length - 1,
+            }));
+
+            // Assert: every formula rendered, and none was left as source text. Before
+            // the fix this was 0 rendered and 11 raw.
+            expect(rendered.containers).toBeGreaterThanOrEqual(9);
+            expect(rendered.rawDelimiters).toBe(0);
+        });
+
         test('should NOT corrupt data-latex when same LaTeX appears multiple times', async ({
             authenticatedPage,
             createProject,

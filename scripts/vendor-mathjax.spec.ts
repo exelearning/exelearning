@@ -44,6 +44,16 @@ describe('vendor-mathjax', () => {
             expect(plan).toContain('a11y/assistive-mml.js');
         });
 
+        it('ships no TeX extension whose font extension is not vendored', () => {
+            const plan = buildVendorPlan(packageRoot).map((entry) => entry.relativePath);
+
+            // Shipping the TeX half alone is worse than shipping neither: \require{bbm}
+            // registers glyph ranges pointing at files that are not there, and the
+            // second character in such a range fails the whole typeset call.
+            expect(plan).not.toContain('input/tex/extensions/bbm.js');
+            expect(plan).not.toContain('input/tex/extensions/bboldx.js');
+        });
+
         it('ships no Speech Rule Engine', () => {
             const plan = buildVendorPlan(packageRoot).map((entry) => entry.relativePath);
 

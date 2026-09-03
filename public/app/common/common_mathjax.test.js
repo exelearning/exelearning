@@ -101,6 +101,64 @@ describe('MathJax font paths', () => {
   });
 });
 
+describe('$exe.math.silenceUnvendoredFontRanges', () => {
+  function fontWith(chars) {
+    return {
+      variant: { normal: { chars } },
+      CLASS: { dynamicFiles: { latin: { file: 'latin', promise: null, setup: () => {} } } },
+    };
+  }
+
+  afterEach(() => {
+    delete global.window.MathJax.startup.document;
+  });
+
+  it('reports nothing dropped rather than throwing before MathJax has started', () => {
+    expect(global.$exe.math.silenceUnvendoredFontRanges()).toBe(0);
+  });
+
+  it('drops the placeholders of ranges this build does not ship', () => {
+    // A placeholder is the range descriptor; real glyph data is an array. Leaving an
+    // unvendored placeholder in place makes the second request for that range reject
+    // and fail the whole typeset call.
+    const chars = {
+      225: { file: 'latin' },
+      8477: { file: 'double-struck' },
+      65: [0, 0, 0.5],
+    };
+    global.window.MathJax.startup.document = { outputJax: { font: fontWith(chars) } };
+
+    expect(global.$exe.math.silenceUnvendoredFontRanges()).toBe(1);
+    expect(chars[225]).toBeUndefined();
+  });
+
+  it('keeps the placeholders of ranges that are vendored', () => {
+    const chars = { 8477: { file: 'double-struck' } };
+    global.window.MathJax.startup.document = { outputJax: { font: fontWith(chars) } };
+
+    global.$exe.math.silenceUnvendoredFontRanges();
+
+    expect(chars[8477]).toEqual({ file: 'double-struck' });
+  });
+
+  it('leaves real glyph data alone', () => {
+    const chars = { 65: [0, 0, 0.5] };
+    global.window.MathJax.startup.document = { outputJax: { font: fontWith(chars) } };
+
+    expect(global.$exe.math.silenceUnvendoredFontRanges()).toBe(0);
+    expect(chars[65]).toEqual([0, 0, 0.5]);
+  });
+
+  it('makes an unvendored range resolve instead of reject, as a second line', () => {
+    const font = fontWith({});
+    global.window.MathJax.startup.document = { outputJax: { font } };
+
+    global.$exe.math.silenceUnvendoredFontRanges();
+
+    expect(font.CLASS.dynamicFiles.latin.promise).toBeInstanceOf(Promise);
+  });
+});
+
 describe('$exe.math.hideUnavailableMenuEntries', () => {
   afterEach(() => {
     delete global.window.MathJax.startup.document;

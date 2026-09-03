@@ -1,7 +1,7 @@
 ---
 id: ADR-2259-02
 title: "Make hidden MathML the math accessibility floor and bound the speech locales"
-status: Proposed
+status: Accepted
 date: 2026-08-30
 tracking_issue: 2259
 deciders:
@@ -185,21 +185,24 @@ MathJax 4 documentation should find this stated rather than have to reconcile it
 
 ## Consequences
 
+The speech half of these was superseded by ADR-2259-03; what follows is the state
+after that decision.
+
 ### Positive
 
 - Screen readers announce mathematics in every delivery format, including an export
   opened from disk, which MathJax 4's defaults would not have done.
-- The explorer and braille work again for the first time since `9272d5c67`.
+- The floor is an invariant rather than a default: with speech out of the menu,
+  nothing in the UI can trade the hidden MathML away.
 - No menu entry can be chosen that wedges typesetting.
-- 2.2 MB smaller than shipping all sixteen locale maps.
 
 ### Negative
 
-- `trimSpeechLocaleMenu()` reaches into `MathJax._`, an internal namespace, so a
-  MathJax upgrade could change or remove it. It fails closed: the function returns
-  `false` and the menu keeps its full list rather than throwing.
-- A reader whose language is `eo`, `eu`, `gl`, `pt`, `ro` or `va` gets English in the
-  explorer. Their screen reader still reads the MathML in their own language.
+- Nothing announces mathematics *aloud* from MathJax itself; that is the assistive
+  technology's job now. In practice this is what already happened — the explorer had
+  not worked since `9272d5c67` and nobody reported it.
+- The MathML has to be good enough on its own, so a MathML bug in an assistive
+  technology has no second path to fall back on.
 
 ### Neutral
 

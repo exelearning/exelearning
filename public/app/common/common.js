@@ -23,6 +23,20 @@
     2015. Refactored and completed by Ignacio Gros (http://www.gros.es) for http://exelearning.net/
 */
 
+// Glyph ranges vendored under exe_math/fonts/. Kept equal to VENDORED_FONT_RANGES in
+// scripts/vendor-mathjax.ts by mathjax-packages.spec.ts.
+//
+// MathJax 4 asks for a range the first time a character needs it. The ones we do not
+// ship must never be asked for: with paths.fonts pointing at our own tree the request
+// 404s, and MathJax remembers the failure -- the first character degrades to a serif
+// glyph, but the *second* one rejects the whole render call, so every formula in that
+// call is left on screen as raw \(...\), accented or not. See
+// $exe.math.silenceUnvendoredFontRanges below.
+window.MATHJAX_VENDORED_FONT_RANGES = [
+    'accents', 'arrows', 'calligraphic', 'double-struck', 'fraktur', 'math', 'monospace',
+    'sans-serif', 'script', 'shapes', 'symbols', 'symbols-b-i', 'variants'
+];
+
 window.MathJax = window.MathJax || (function() {
     var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
     var isIndex = document.documentElement.id === 'exe-index';
@@ -164,6 +178,7 @@ window.MathJax = window.MathJax || (function() {
                 // Guarded: anything thrown here leaves MathJax permanently un-started,
                 // which would cost every formula on the page to tidy up one menu.
                 if (typeof $exe !== 'undefined' && $exe.math) {
+                    $exe.math.silenceUnvendoredFontRanges();
                     $exe.math.hideUnavailableMenuEntries();
                 }
             }
@@ -232,6 +247,61 @@ var $exe = {
         },
         refresh: function(elements) {
             return $exeDevices.iDevice.gamification.math.updateLatex(elements);
+        },
+        // Stop MathJax asking for glyph ranges this build does not ship.
+        //
+        // MathJax 4 keeps most of the font in ~40 ranges it fetches on first use, and
+        // seeds its character tables with a placeholder per code point saying which
+        // range provides it. We vendor the 13 whose code points MathJax 3.2.2 could
+        // already render, so no glyph anyone could previously see is lost; the rest
+        // would 404 against our own tree.
+        //
+        // A 404 is not a quiet degradation. loadDynamicFile() catches the first failure
+        // and marks the range `failed`; every later request for the same range rejects,
+        // which fails the whole typeset call and leaves every formula in it on screen as
+        // raw \(...\) -- including formulas with no unusual characters. Two accented
+        // letters in one iDevice were enough to blank eleven formulas.
+        //
+        // So drop the placeholders instead. getChar() then finds nothing, takes the
+        // unknown-character path and renders the glyph in the CSS `unknownFamily` serif,
+        // which is exactly what 3.2.2 did with the same characters. Dropping them rather
+        // than resolving their promises also matters for speed: getChar() deletes one
+        // placeholder per call and re-renders the whole document to retry, so leaving
+        // them in place costs a full re-render per accented letter.
+        //
+        // Returns how many placeholders were dropped, so a MathJax upgrade that renames
+        // or restructures the ranges shows up as 0 instead of failing silently.
+        silenceUnvendoredFontRanges: function() {
+            var jax = window.MathJax && window.MathJax.startup && window.MathJax.startup.document
+                && window.MathJax.startup.document.outputJax;
+            var font = jax && jax.font;
+            if (!font || !font.variant) return 0;
+            var vendored = window.MATHJAX_VENDORED_FONT_RANGES;
+            var dropped = 0;
+            Object.keys(font.variant).forEach(function(name) {
+                var chars = font.variant[name] && font.variant[name].chars;
+                if (!chars) return;
+                Object.keys(chars).forEach(function(code) {
+                    var entry = chars[code];
+                    // Glyph data is an array; a placeholder is the range descriptor.
+                    if (!entry || Array.isArray(entry) || !entry.file) return;
+                    if (vendored.indexOf(entry.file) !== -1) return;
+                    delete chars[code];
+                    dropped++;
+                });
+            });
+            // Belt and braces: if a descriptor is reachable by some path this does not
+            // cover, make it resolve rather than reject, so at worst a glyph is missing
+            // instead of the whole call failing.
+            var files = font.CLASS && font.CLASS.dynamicFiles;
+            if (files) {
+                Object.keys(files).forEach(function(range) {
+                    if (vendored.indexOf(range) !== -1) return;
+                    files[range].promise = Promise.resolve();
+                    files[range].setup = function() {};
+                });
+            }
+            return dropped;
         },
         // Hide the contextual-menu entries this build cannot serve.
         //

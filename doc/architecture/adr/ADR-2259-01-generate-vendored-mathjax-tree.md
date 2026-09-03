@@ -1,7 +1,7 @@
 ---
 id: ADR-2259-01
 title: "Generate the vendored MathJax tree from one pinned package"
-status: Proposed
+status: Accepted
 date: 2026-08-30
 tracking_issue: 2259
 deciders:

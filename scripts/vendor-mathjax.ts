@@ -59,6 +59,20 @@ const VENDORED_A11Y_FILES = ['a11y/assistive-mml.js'] as const;
 const VENDORED_DIRECTORIES = ['input', 'ui'] as const;
 
 /**
+ * Files skipped inside the directories above.
+ *
+ * `bbm` and `bboldx` draw their glyphs from font extensions published separately
+ * (@mathjax/mathjax-{bbm,bboldx}-font-extension), which are not vendored: nobody has
+ * asked for the macros and each extension is heavier than both the ones that are.
+ * Shipping the TeX half alone is worse than shipping neither, because `\require{bbm}`
+ * would then register glyph ranges pointing at files that are not there, and the
+ * second character in one of those ranges fails the whole typeset call rather than
+ * just missing a glyph. Leaving them out turns that into an ordinary "extension not
+ * found" on the console.
+ */
+const EXCLUDED_DIRECTORY_FILES = new Set(['input/tex/extensions/bbm.js', 'input/tex/extensions/bboldx.js']);
+
+/**
  * Glyph ranges of the SVG font that are vendored alongside the bundle.
  *
  * MathJax 4 splits the font into a base set bundled inside the combined
@@ -223,6 +237,7 @@ export function buildVendorPlan(packageRoot: string): VendorPlanEntry[] {
     for (const directory of VENDORED_DIRECTORIES) {
         for (const file of listFilesRecursively(path.join(packageRoot, directory))) {
             const relativePath = `${directory}/${file}`;
+            if (EXCLUDED_DIRECTORY_FILES.has(relativePath)) continue;
             entries.push({ relativePath, sourcePath: path.join(packageRoot, directory, ...file.split('/')) });
         }
     }
