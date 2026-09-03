@@ -698,6 +698,11 @@ var $eXeBeforeAfter = {
             $('#bfafMultimedia-' + instance).show();
             $eXeBeforeAfter.showImage(0, instance);
             $eXeBeforeAfter.activeButton(0, instance);
+            // A valid code is the learner opening the activity, the same gesture
+            // as the click on the board that starts it when there is no code.
+            // Last, never before showImage: that one reports too once the game
+            // is running, and starting first would send the same score twice.
+            $eXeBeforeAfter.startGame(instance);
         } else {
             $(`#bfafMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)

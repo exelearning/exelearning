@@ -20,7 +20,7 @@
  */
 
 /* eslint-disable no-undef */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -167,5 +167,119 @@ describe('beforeafter iDevice export — completion signal', () => {
             expect(calls[0].game.scorerp).toBe(10);
             expect(calls[0].game.gameOver).toBe(true);
         });
+    });
+});
+
+/**
+ * Behind an access code the activity never started: the cover is a sibling of
+ * the game container, so the click that submits the code does not reach the
+ * handler that starts it, and showImage only reports once the game is running.
+ * The LMS therefore kept the previous attempt's grade until the learner clicked
+ * the board. A valid code is that same opening gesture and has to start it.
+ */
+describe('beforeafter iDevice export — access code', () => {
+    let bfaf;
+    let calls;
+    let previousScorm;
+    let previousReport;
+
+    beforeEach(() => {
+        global.$eXeBeforeAfter = undefined;
+        calls = [];
+        global.$exeDevices.iDevice.gamification.colors = PALETTE;
+        previousScorm = global.$exeDevices.iDevice.gamification.scorm;
+        previousReport = global.$exeDevices.iDevice.gamification.report;
+        global.$exeDevices.iDevice.gamification.scorm = {
+            sendScoreNew: (auto, game) =>
+                calls.push({
+                    auto,
+                    scorerp: game.scorerp,
+                    gameOver: game.gameOver,
+                    gameStarted: game.gameStarted,
+                }),
+        };
+        global.$exeDevices.iDevice.gamification.report = {
+            saveEvaluation: vi.fn(),
+            updateEvaluationIcon: vi.fn(),
+        };
+        bfaf = loadExport();
+    });
+
+    afterEach(() => {
+        global.$exeDevices.iDevice.gamification.scorm = previousScorm;
+        global.$exeDevices.iDevice.gamification.report = previousReport;
+        delete global.$exeDevices.iDevice.gamification.colors;
+        delete global.$eXeBeforeAfter;
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+    });
+
+    /**
+     * A covered activity with `cards` images, waiting on the code "abre".
+     * showImage and activeButton are stubbed: they only paint, and the whole
+     * point here is what reaches the LMS and in which order.
+     *
+     * @param {string} typed what the learner puts in the code field
+     * @param {number} cards how many cards the activity has
+     */
+    function givenCoveredActivity(typed, cards = 4) {
+        bfaf.options = [
+            {
+                gameStarted: false,
+                visiteds: 0,
+                isScorm: 1,
+                cardsGame: new Array(cards).fill({}),
+                itinerary: { codeAccess: 'abre', showClue: false },
+                msgs: {},
+            },
+        ];
+        document.body.innerHTML = `
+            <div id="bfafCodeAccessDiv-0"></div>
+            <div id="bfafCubierta-0"></div>
+            <div id="bfafMesajeAccesCodeE-0"></div>
+            <a id="bfafLinkMaximize-0" href="#"></a>
+            <a id="bfafStartGame-0" href="#"></a>
+            <div id="bfafMultimedia-0"></div>
+            <input id="bfafCodeAccessE-0" value="${typed}" />`;
+        vi.spyOn(bfaf, 'activeButton').mockImplementation(() => {});
+    }
+
+    it('reports the opening progress as unfinished when a valid code opens it', () => {
+        givenCoveredActivity('AbrE');
+        vi.spyOn(bfaf, 'showImage').mockImplementation(() => {});
+
+        bfaf.enterCodeAccess(0);
+
+        // One card of four seen, and nothing finished yet: exactly what the
+        // click on the board publishes when there is no code.
+        expect(calls).toEqual([
+            { auto: true, scorerp: 2.5, gameOver: false, gameStarted: true },
+        ]);
+    });
+
+    it('starts after painting the first card, so the score is not sent twice', () => {
+        givenCoveredActivity('abre');
+        let startedWhenPainted;
+        vi.spyOn(bfaf, 'showImage').mockImplementation(() => {
+            startedWhenPainted = bfaf.options[0].gameStarted;
+        });
+
+        bfaf.enterCodeAccess(0);
+
+        // showImage reports on its own once the game is running, so starting
+        // before it would put the same score on the wire twice.
+        expect(startedWhenPainted).toBe(false);
+        expect(calls).toHaveLength(1);
+    });
+
+    it('neither starts nor reports when the code is wrong', () => {
+        givenCoveredActivity('nope');
+        vi.spyOn(bfaf, 'showImage').mockImplementation(() => {});
+
+        bfaf.enterCodeAccess(0);
+
+        expect(calls).toEqual([]);
+        expect(bfaf.options[0].gameStarted).toBe(false);
+        expect($('#bfafCodeAccessE-0').val()).toBe('');
     });
 });
