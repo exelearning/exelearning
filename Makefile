@@ -453,6 +453,14 @@ lint: check-bun lint-ts lint-js lint-tests architecture-check
 .PHONY: fix
 fix: check-bun fix-ts fix-js fix-tests
 
+# Regenerate public/app/common/exe_math/ from the pinned `mathjax` npm package.
+# The tree is committed (exports, the static build and Electron all need it on
+# disk), so run this after bumping the dependency. vendor-mathjax.spec.ts fails
+# if the committed tree and the package disagree.
+.PHONY: vendor-mathjax
+vendor-mathjax: check-bun
+	bun run scripts/vendor-mathjax.ts
+
 # Print the architecture record index, derived from document frontmatter.
 # Deliberately not a committed file: it would conflict on every concurrent branch.
 .PHONY: architecture-records

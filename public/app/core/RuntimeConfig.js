@@ -72,7 +72,7 @@ export class RuntimeConfig {
                 mode: 'static',
                 baseUrl: staticBasePath,
                 wsUrl: null,
-                staticDataPath: joinBasePath(staticBasePath, '/data/bundle.json'),
+                staticDataPath: joinBasePath(staticBasePath, '/data/bundle.json.zst'),
                 isEmbedded: isInIframe || !!embeddingConfig,
                 parentOrigin: embeddingConfig?.parentOrigin || null,
                 embeddingConfig,
