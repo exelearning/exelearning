@@ -1005,6 +1005,19 @@ var $eXePuzzle = {
         );
     },
 
+    /**
+     * Publish the freshly cleared board to the LMS when the learner opens or
+     * reopens the activity from an explicit control.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXePuzzle.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXePuzzle.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXePuzzle.options[instance];
 
@@ -1168,9 +1181,7 @@ var $eXePuzzle = {
             // it: sendScoreNew drops a game that reports as neither started nor
             // over.
             $eXePuzzle.showPuzzle(0, instance);
-            if (mOptions.isScorm === 1) {
-                $eXePuzzle.sendScore(true, instance);
-            }
+            $eXePuzzle.saveScormScore(instance);
             $eXePuzzle.saveEvaluation(instance);
             $('#pzlCubierta-' + instance).hide();
         });
@@ -1528,6 +1539,12 @@ var $eXePuzzle = {
             $(`#pzlLinkMaximize-${instance}`).trigger('click');
             $(`#pzlCodeAccessDiv-${instance}`).hide();
             $(`#pzlCubierta-${instance}`).hide();
+            // A valid code is the learner opening the activity. Nothing needs
+            // starting — showPuzzle laid the board out and raised gameStarted
+            // while the page loaded, behind the cover — but nothing had told
+            // the LMS either, so the previous attempt's grade stood until a
+            // piece landed. This is the opening zero.
+            $eXePuzzle.saveScormScore(instance);
         } else {
             $(`#pzlMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)

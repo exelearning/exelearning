@@ -411,4 +411,92 @@ describe('puzzle iDevice export', () => {
       ).not.toHaveBeenCalled();
     });
   });
+
+  // Behind a code the board is laid out and started while the page loads, under
+  // the cover, and nothing reports until a piece lands. Accepting the code is
+  // the learner opening the activity, so that is where the opening zero goes.
+  describe('opening the puzzle with an access code', () => {
+    function setupCodeAccess(typed, overrides) {
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="pzlMainContainer-0"></div>
+          <a href="#" id="pzlLinkMaximize-0"></a>
+          <div id="pzlCodeAccessDiv-0"></div>
+          <div id="pzlMesajeAccesCodeE-0"></div>
+          <div id="pzlCubierta-0"></div>
+          <input id="pzlCodeAccessE-0" value="${typed}" />
+        </article>`;
+      $eXePuzzle.options[0] = Object.assign(
+        {
+          id: 0,
+          main: 'pzlMainContainer-0',
+          isScorm: 1,
+          // The load path already ran: showPuzzle placed the pieces and raised
+          // the flag before the learner ever saw the code field.
+          gameStarted: true,
+          gameOver: false,
+          hits: 0,
+          errors: 0,
+          score: 0,
+          numberQuestions: 3,
+          puzzlesGame: [{}, {}, {}],
+          itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+          time: 0,
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = vi.fn();
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('publishes a zero and an unfinished attempt when the code is right', () => {
+      setupCodeAccess('abre');
+      let reportedState;
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew.mockImplementation(
+        (auto, game) => {
+          reportedState = {
+            auto,
+            gameOver: game.gameOver,
+            gameStarted: game.gameStarted,
+            scorerp: game.scorerp,
+          };
+        }
+      );
+
+      $eXePuzzle.enterCodeAccess(0);
+
+      expect(reportedState).toEqual({
+        auto: true,
+        gameOver: false,
+        gameStarted: true,
+        scorerp: 0,
+      });
+    });
+
+    it('reports nothing when the code is wrong', () => {
+      setupCodeAccess('nope');
+
+      $eXePuzzle.enterCodeAccess(0);
+
+      expect(
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew
+      ).not.toHaveBeenCalled();
+      expect($('#pzlCodeAccessE-0').val()).toBe('');
+    });
+
+    it('does not auto-report in manual SCORM mode', () => {
+      setupCodeAccess('abre', { isScorm: 2 });
+
+      $eXePuzzle.enterCodeAccess(0);
+
+      expect(
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew
+      ).not.toHaveBeenCalled();
+    });
+  });
 });
