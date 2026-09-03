@@ -1063,6 +1063,14 @@ var $eXeDragDrop = {
                 `#dadPCodeAccessDiv-${instance}, #dadPCubierta-${instance}`
             ).hide();
             $(`#dadPLinkMaximize-${instance}`).trigger('click');
+            // A valid code is the learner opening the activity. startGame is
+            // silent by design — loading and minimizing also route through it —
+            // so the opening zero is published here instead. Starting first is
+            // what makes the report land: sendScoreNew drops a game that says
+            // it is neither started nor over, and startGame returns early when
+            // the maximize click above already started it.
+            $eXeDragDrop.startGame(instance);
+            $eXeDragDrop.saveScormScore(instance);
         } else {
             $(`#dadPMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)

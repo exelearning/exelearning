@@ -167,6 +167,58 @@ describe('dragdrop iDevice export', () => {
       expect($eXeDragDrop.options[instance].gameOver).toBe(false);
       expect($eXeDragDrop.options[instance].gameStarted).toBe(true);
     });
+
+    /** The code field, its cover and the maximize link the code entry drives. */
+    function addCodeAccessDom(typed) {
+      $('#dadPMainContainer-0').append(`
+        <div id="dadPCodeAccessDiv-0"></div>
+        <div id="dadPMesajeAccesCodeE-0"></div>
+        <a id="dadPLinkMaximize-0" href="#"></a>
+        <input id="dadPCodeAccessE-0" value="${typed}" />`);
+    }
+
+    // Behind a code the board never reported: the cover only hides it, and
+    // startGame is silent on purpose because loading and minimizing reach it
+    // too. The LMS kept the previous attempt's grade until the learner checked.
+    it('publishes a zero and an unfinished attempt when a valid code opens the board', () => {
+      setupGame({
+        hits: 3,
+        errors: 1,
+        gameOver: true,
+        itinerary: { showClue: false, showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('AbrE');
+      let stateWhenReported;
+      $eXeDragDrop.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } =
+          $eXeDragDrop.options[instance];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+
+      $eXeDragDrop.enterCodeAccess(instance);
+
+      // No maximize handler is bound here: the report has to survive without
+      // the click side effect that normally starts the board.
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('neither starts nor reports when the code is wrong', () => {
+      setupGame({
+        itinerary: { showClue: false, showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('nope');
+
+      $eXeDragDrop.enterCodeAccess(instance);
+
+      expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
+      expect($eXeDragDrop.options[instance].gameStarted).toBe(false);
+      expect($('#dadPCodeAccessE-0').val()).toBe('');
+    });
   });
 
   describe('setupTouchDragAndDrop', () => {
