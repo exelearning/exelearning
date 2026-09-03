@@ -73,27 +73,35 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 /* MATHJAX */
+// Where MathJax comes from when the editor runs on its own (inside eXe the host
+// says, see below). js/mathjax/ is committed, so this is what every deployment
+// uses and nothing leaves the origin; the CDN stays as a fallback for a partial
+// checkout or a copy served without that directory.
+// Resolved against this file's own URL so index.html and menus/editor.html,
+// which sit at different depths, both find it.
+var MATHJAX_LOCAL_URL = new URL('mathjax/tex-svg.js', document.currentScript.src).href;
+var MATHJAX_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-svg.min.js';
+// Whether what answered may be missing the Speech Rule Engine. The name is a
+// leftover: the test is not "is it ours" but "is it anything other than the CDN
+// build", the only copy known to carry the engine. Ours dropped it (see
+// scripts/vendor-mathjax.mjs) and so did eXeLearning's, which arrives through
+// edicuatex_mathjax_url and matches neither URL constant.
+var mathjaxIsVendored = false;
+
 window.MathJax = {
     loader: {
-        // MathJax 3 bundled assistive-mml into its combined components, so every formula
-        // carried a hidden MathML copy. MathJax 4 dropped it, and the SVG it emits is a
-        // bare role="img": a screen reader announces an unlabelled graphic and nothing
-        // more. This editor has its own window.MathJax, so it does not inherit the floor
-        // common.js sets, and inside eXeLearning it now has no speech either -- the
-        // vendored tree ships no Speech Rule Engine (ADR-2259-03). Loading the component
-        // is enough on its own: it registers `menuOptions.settings.assistiveMml: true`
-        // itself unless options.enableAssistiveMml is explicitly false.
-        // Reported by @jjdeharo, fixed upstream in edicuatex@5e64791.
-        // 'cases' and 'mathtools' are listed in tex.packages below, but nothing ever
-        // loaded them: MathJax 3 stayed quiet and \begin{numcases} failed, MathJax 4
-        // warns on the console. Load what the config claims.
+        // 'cases' and 'mathtools' are listed in tex.packages below, but nothing
+        // ever loaded them: MathJax 3 stayed quiet about it and \begin{numcases}
+        // failed, MathJax 4 warns on the console. Load what the config claims.
+        // MathJax 3 bundled assistive-mml into the combined components and every
+        // formula carried hidden MathML for screen readers. MathJax 4 does not:
+        // without this the SVG is a bare role="img" with no label and a screen
+        // reader announces nothing. Load it back.
         load: ['[tex]/cases', '[tex]/color', '[tex]/mathtools', '[tex]/mhchem',
                'a11y/assistive-mml'],
-        // Inside eXeLearning this editor loads the vendored bundle, whose font glyph
-        // ranges live next to it; the stock value would send them to jsdelivr. The
-        // standalone build loads MathJax from a CDN that has no such directory, so it
-        // keeps the default. Mirrors public/app/common/common.js.
-        paths: isInExe ? { fonts: '[mathjax]/fonts' } : {}
+        // Filled in by loadMathJax(), which only knows where the glyph ranges
+        // are once it knows which copy of MathJax answered.
+        paths: {}
     },
     tex: {
         inlineMath: [
@@ -110,33 +118,14 @@ window.MathJax = {
     svg: {
         fontCache: 'local'
     },
-    // Inside eXeLearning this editor loads eXeLearning's vendored MathJax, which ships
-    // no Speech Rule Engine. Speech is built into the combined component, so the menu
-    // would still offer Speech, Braille and Explorer and each toggle would request a
-    // file that is not there, leaving typesetPromise() unsettled and the preview stuck.
-    // `enrich` gates all four. Standalone the editor loads a complete CDN build, where
-    // the features work, so it keeps MathJax's defaults. Mirrors public/app/common/common.js.
-    options: isInExe
-        ? { menuOptions: { settings: { enrich: false, speech: false, braille: false, collapsible: false } } }
-        : {},
     startup: {
         ready: () => {
+            if (mathjaxIsVendored) forgetSpeechMenuSettings();
             MathJax.startup.defaultReady();
-            if (isInExe) {
-                // Same reasoning: hide what this build cannot serve. Guarded, because a
-                // throw here would leave MathJax un-started and every formula unrendered.
-                try {
-                    var menu = MathJax.startup.document && MathJax.startup.document.menu;
-                    if (menu && menu.menu && typeof menu.menu.findID === 'function') {
-                        [['Accessibility'], ['Speech'], ['Braille'], ['Explorer'], ['Settings', 'Renderer']]
-                            .forEach(function (path) {
-                                var item = menu.menu.findID.apply(menu.menu, path);
-                                if (item && typeof item.hide === 'function') item.hide();
-                            });
-                    }
-                } catch (e) {
-                    console.warn('[edicuatex] could not tidy the MathJax menu:', e && e.message);
-                }
+            // Guarded: anything thrown while tidying the menu would leave MathJax
+            // un-started, and no formula on the page would ever render.
+            if (mathjaxIsVendored) {
+                try { hideSpeechMenuEntries(); } catch (e) {}
             }
             // This function is defined below in the main script
             if (window.initializeLatexEditor) {
@@ -145,12 +134,97 @@ window.MathJax = {
         }
     }
 };
+// Drops menu settings this copy cannot honour. MathJax keeps them in
+// localStorage for the whole origin and acts on them while the document is
+// being built, so this has to run before defaultReady(): a `speech: true` left
+// by an older version, or by any other MathJax page on the same origin, would
+// ask for the Speech Rule Engine that is no longer vendored and stall the
+// typeset queue on a file that answers 404.
+//
+// `assistiveMml: false` is dropped too. Turning Speech off in MathJax's menu
+// stores it, and it would take the hidden MathML away with it -- the one thing
+// screen readers actually read -- for good, on that browser.
+function forgetSpeechMenuSettings() {
+    var KEY = 'MathJax-Menu-Settings';
+    try {
+        var stored = window.localStorage.getItem(KEY);
+        if (!stored) return;
+        var settings = JSON.parse(stored);
+        if (!settings || typeof settings !== 'object') return;
+        ['enrich', 'speech', 'braille', 'collapsible', 'explorer'].forEach(function(key) {
+            delete settings[key];
+        });
+        if (settings.assistiveMml === false) delete settings.assistiveMml;
+        if (Object.keys(settings).length) {
+            window.localStorage.setItem(KEY, JSON.stringify(settings));
+        } else {
+            window.localStorage.removeItem(KEY);
+        }
+    } catch (e) {
+        // Private mode, storage disabled or corrupt JSON: nothing to forget.
+    }
+}
+
+// Hides the menu sections backed by the Speech Rule Engine. MathJax hides them
+// by itself only when no loader is present, which is not the case here, so
+// without this the menu offers Speech, Braille and Explorer and each toggle
+// asks for a file that is not there. 'Accessibility' is the heading above the
+// three, and would otherwise sit on top of nothing.
+function hideSpeechMenuEntries() {
+    var menu = window.MathJax && window.MathJax.startup
+        && window.MathJax.startup.document && window.MathJax.startup.document.menu;
+    if (!menu || !menu.menu || typeof menu.menu.findID !== 'function') return;
+    ['Accessibility', 'Speech', 'Braille', 'Explorer'].forEach(function(id) {
+        var item = menu.menu.findID(id);
+        if (item && typeof item.hide === 'function') item.hide();
+    });
+}
+
+// Loads MathJax from `url`, retrying on `fallbackUrl` if that file is not there.
+function loadMathJax(url, fallbackUrl) {
+    // MathJax 4 fetches the glyph ranges of its font (\mathbb, \mathcal,
+    // stretchy arrows, the mhchem glyphs...) the first time a formula needs
+    // them, and the default source is https://cdn.jsdelivr.net/npm/@mathjax.
+    // Every copy that is not the CDN keeps them under fonts/ next to the bundle
+    // (eXeLearning's exe_math/fonts, ours from `npm run vendor`), so nothing has
+    // to leave the origin. No CDN mirrors the font packages, so the CDN keeps
+    // MathJax's own default.
+    window.MathJax.loader.paths = url === MATHJAX_CDN_URL ? {} : { fonts: '[mathjax]/fonts' };
+    // Any copy that is not the full CDN build may lack the Speech Rule Engine: ours
+    // does since the engine was dropped, and so does eXeLearning's, which supplies
+    // its own MathJax through edicuatex_mathjax_url and made the same call. Only the
+    // CDN is known to carry it, so that is the one exception -- same condition as the
+    // font paths above.
+    mathjaxIsVendored = url !== MATHJAX_CDN_URL;
+    if (mathjaxIsVendored) {
+        // The menu's own defaults have speech, braille and the explorer on, and
+        // MathJax starts its speech worker while the document is being built --
+        // before anyone opens a menu. Hiding the entries is not enough on its
+        // own: without this it asks for sre/speech-worker.js, the request 404s
+        // and not a single formula renders.
+        window.MathJax.options = window.MathJax.options || {};
+        window.MathJax.options.menuOptions = {
+            settings: { enrich: false, speech: false, braille: false, explorer: false }
+        };
+    }
+    var s = document.createElement("script");
+    s['async'] = "";
+    s.id = "MathJax-script";
+    s.src = url;
+    if (fallbackUrl) {
+        s.onerror = function() {
+            s.remove();
+            loadMathJax(fallbackUrl, null);
+        };
+    }
+    document.getElementsByTagName("head")[0].appendChild(s);
+}
+
 document.addEventListener("DOMContentLoaded", function() {
-    // Standalone fallback only; inside eXeLearning the vendored copy is used instead.
-    // Kept on the same major as public/app/common/exe_math so the editor preview matches
-    // what the page will render.
-    var url = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-svg.min.js";
+    var url = MATHJAX_LOCAL_URL;
+    var fallbackUrl = MATHJAX_CDN_URL;
     if (isInExe) {
+        fallbackUrl = null;
         url = parent.tinymce.activeEditor.settings.edicuatex_mathjax_url;
 
         // Detect app base path from edicuatex iframe URL for subdirectory deployments
@@ -182,10 +256,5 @@ document.addEventListener("DOMContentLoaded", function() {
             url = window.location.origin + appBasePath + '/' + url.substring(2);
         }
     }
-    var s;
-        s = document.createElement("script");
-        s['async'] = "";
-        s.id = "MathJax-script";
-        s.src = url;
-    document.getElementsByTagName("head")[0].appendChild(s);
+    loadMathJax(url, fallbackUrl);
 });
