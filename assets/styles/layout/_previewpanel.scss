@@ -1,5 +1,5 @@
 // Preview Panel Styles
-// Panel deslizable para previsualización con opción de fijar (3 paneles)
+// Slide-out preview panel with an option to pin it (3-panel layout)
 
 // Variables
 $preview-panel-width: calc(100vw - 400px);
@@ -16,7 +16,7 @@ $preview-transition: 0.3s ease;
     height: calc(100% - var(--head-height, 64px) - 40px);
 }
 
-// Panel deslizable (slide-out mode)
+// Slide-out panel (slide-out mode)
 #previewsidenav-content {
     font-family: "Inter", sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -57,6 +57,11 @@ $preview-transition: 0.3s ease;
 
         &.active {
             transform: translateX(0%);
+        }
+
+        &.preview-fullscreen {
+            width: 100vw;
+            max-width: 100vw;
         }
 
         .preview-panel-header {
@@ -112,7 +117,7 @@ $preview-transition: 0.3s ease;
     }
 }
 
-// Contenedor de preview fijado (3-panel mode)
+// Pinned preview container (3-panel mode)
 #preview-pinned-container {
     display: none;
     width: 0;
@@ -161,7 +166,7 @@ $preview-transition: 0.3s ease;
     }
 }
 
-// Layout del workarea cuando el preview está fijado
+// Workarea layout when the preview is pinned
 #workarea[data-preview-pinned="true"] {
     #preview-pinned-container {
         display: flex;
@@ -176,12 +181,12 @@ $preview-transition: 0.3s ease;
     }
 }
 
-// Ocultar panel deslizable cuando está fijado (selector global)
+// Hide the slide-out panel when pinned (global selector)
 #workarea[data-preview-pinned="true"] ~ #previewsidenav-content {
     display: none;
 }
 
-// Estado de carga
+// Loading state
 .preview-loading {
     .preview-iframe {
         opacity: 0.5;
@@ -209,7 +214,7 @@ $preview-transition: 0.3s ease;
     }
 }
 
-// Indicador de auto-refresco activo
+// Active auto-refresh indicator
 .preview-auto-refresh-active {
     #preview-refresh-button,
     #preview-pinned-refresh-button {
@@ -230,10 +235,22 @@ $preview-transition: 0.3s ease;
     }
 }
 
-// Iconos personalizados para el panel
+// Custom icons for the panel
 .external-link-icon::before {
     content: "open_in_new";
     font-family: var(--icons-ff);
+}
+
+.enlarge-icon::before {
+    content: "aspect_ratio";
+    font-family: var(--icons-ff);
+}
+
+#preview-extract-button.is-active,
+#preview-extract-button[aria-pressed="true"] {
+    color: var(--brand-primary);
+    background-color: var(--gray-100);
+    box-shadow: inset 0 0 0 1px var(--brand-primary);
 }
 
 .pin-icon::before {
@@ -258,8 +275,8 @@ $preview-transition: 0.3s ease;
     font-family: var(--icons-ff);
 }
 
-// Estado activo (modo móvil): el botón se queda claramente "pulsado".
-// Especificidad doble (id + clase + atributo) para superar a `.button-tertiary`.
+// Active state (mobile mode): the button stays clearly "pressed".
+// Double specificity (id + class + attribute) to override `.button-tertiary`.
 #preview-mobile-button.is-active,
 #preview-mobile-button[aria-pressed="true"],
 #preview-pinned-mobile-button.is-active,
@@ -269,15 +286,15 @@ $preview-transition: 0.3s ease;
     box-shadow: inset 0 0 0 1px var(--brand-primary);
 }
 
-// Marco de dispositivo: en escritorio es transparente y deja el iframe a tamaño
-// completo; en modo móvil simula un teléfono (bisel + notch) centrado.
+// Device frame: transparent and lets the iframe take up the full size on
+// desktop; simulates a phone (bezel + notch), centered, in mobile mode.
 .preview-device-frame {
     width: 100%;
     height: 100%;
 }
 
-// Vista móvil. Los selectores se anclan a los contenedores con id para superar
-// la especificidad de la regla `.preview-iframe { width: 100% }` existente.
+// Mobile view. Selectors anchor to the id-based containers to override the
+// specificity of the existing `.preview-iframe { width: 100% }` rule.
 #previewsidenav-content .preview-sidenav .preview-panel-body.preview-mobile-viewport,
 #preview-pinned-container .preview-pinned-body.preview-mobile-viewport {
     display: flex;
@@ -299,7 +316,7 @@ $preview-transition: 0.3s ease;
         border-radius: 36px;
         box-shadow: 0 10px 30px rgba(16, 24, 40, 0.25);
 
-        // Notch del teléfono
+        // Phone notch
         &::before {
             content: "";
             position: absolute;
@@ -345,13 +362,13 @@ $preview-transition: 0.3s ease;
         max-width: 100vw;
     }
 
-    // Deshabilitar fijado en pantallas pequeñas
+    // Disable pinning on small screens
     #preview-pin-button {
         display: none;
     }
 
     #workarea[data-preview-pinned="true"] {
-        // Revertir a layout de 2 paneles
+        // Revert to 2-panel layout
         #preview-pinned-container {
             display: none;
         }
@@ -362,7 +379,7 @@ $preview-transition: 0.3s ease;
     }
 }
 
-// Placeholder cuando no hay contenido
+// Placeholder when there is no content
 .preview-placeholder {
     display: flex;
     flex-direction: column;
