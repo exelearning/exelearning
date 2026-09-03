@@ -38,7 +38,25 @@ function resetCreatedDirs() {
  * turns that into a non-zero exit. Throwing (rather than calling process.exit
  * inline) keeps the error path unit-testable.
  */
-function copyFile(src, dest) {
+/**
+ * Remove `sourceMappingURL` announcements. Same matchers as
+ * scripts/static-bundle/strip-source-map-refs.ts — the `m` flag is load-bearing
+ * because `$` without it misses files that end with a newline.
+ *
+ * Applied to the Bootstrap dist copies because exports and the resource bundle
+ * read those files directly (#2260). Shipping the npm comment would 404 every
+ * exported package the moment DevTools opens.
+ */
+const MAP_FILE_COMMENT =
+    /(?:\/\/[@#][ \t]+?sourceMappingURL=([^\s'"`]+?)[ \t]*?$)|(?:\/\*[@#][ \t]+sourceMappingURL=([^*]+?)[ \t]*?(?:\*\/){1}[ \t]*?$)/gm;
+const INLINE_COMMENT =
+    /^\s*?\/[\/*][@#]\s+?sourceMappingURL=data:(((?:application|text)\/json)(?:;charset=([^;,]+?)?)?)?(?:;(base64))?,(.*?)$/gm;
+
+function stripSourceMappingUrl(content) {
+    return content.replace(INLINE_COMMENT, '').replace(MAP_FILE_COMMENT, '');
+}
+
+function copyFile(src, dest, options = {}) {
     const destDir = path.dirname(dest);
     if (!createdDirs.has(destDir)) {
         fs.mkdirSync(destDir, { recursive: true });
@@ -46,6 +64,13 @@ function copyFile(src, dest) {
     }
     try {
         fs.copyFileSync(src, dest);
+        if (options.stripSourceMap) {
+            const original = fs.readFileSync(dest, 'utf8');
+            const stripped = stripSourceMappingUrl(original);
+            if (stripped !== original) {
+                fs.writeFileSync(dest, stripped);
+            }
+        }
     } catch (err) {
         throw new Error(`could not copy ${src}: ${err.message}`);
     }
@@ -69,8 +94,8 @@ function appendFile(dest, content) {
 /** Copy every entry in COPIES, then re-apply local overrides. Throws on the first failure. */
 function run() {
     console.log('Copying vendor libs from node_modules...');
-    for (const { src, dest } of COPIES) {
-        copyFile(src, dest);
+    for (const { src, dest, stripSourceMap } of COPIES) {
+        copyFile(src, dest, { stripSourceMap });
     }
     for (const { dest, content } of APPENDS) {
         appendFile(dest, content);
@@ -90,13 +115,23 @@ const COPIES = [
     // jquery 3.x
     { src: nm('jquery/dist/jquery.min.js'), dest: pub('libs/jquery/jquery.min.js') },
 
-    // bootstrap (bundle includes Popper.js)
-    { src: nm('bootstrap/dist/js/bootstrap.bundle.min.js'), dest: pub('libs/bootstrap/bootstrap.bundle.min.js') },
+    // bootstrap (bundle includes Popper.js). stripSourceMap: exports and the
+    // resource bundle read these files as-is (#2260); the npm dist still
+    // announces maps we do not ship in BASE_LIBS.
+    {
+        src: nm('bootstrap/dist/js/bootstrap.bundle.min.js'),
+        dest: pub('libs/bootstrap/bootstrap.bundle.min.js'),
+        stripSourceMap: true,
+    },
     {
         src: nm('bootstrap/dist/js/bootstrap.bundle.min.js.map'),
         dest: pub('libs/bootstrap/bootstrap.bundle.min.js.map'),
     },
-    { src: nm('bootstrap/dist/css/bootstrap.min.css'), dest: pub('libs/bootstrap/bootstrap.min.css') },
+    {
+        src: nm('bootstrap/dist/css/bootstrap.min.css'),
+        dest: pub('libs/bootstrap/bootstrap.min.css'),
+        stripSourceMap: true,
+    },
     { src: nm('bootstrap/dist/css/bootstrap.min.css.map'), dest: pub('libs/bootstrap/bootstrap.min.css.map') },
 
     // showdown
@@ -194,6 +229,7 @@ module.exports = {
     copyFile,
     resetCreatedDirs,
     run,
+    stripSourceMappingUrl,
 };
 
 // Run only when executed directly (not when imported by a test).

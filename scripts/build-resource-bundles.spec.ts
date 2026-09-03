@@ -267,6 +267,14 @@ describe('build-resource-bundles', () => {
             expect(required).toContain('libs/bootstrap/bootstrap.min.css');
         });
 
+        it('does not put Bootstrap source maps in the libs bundle', () => {
+            // #2260 dropped the .map entries from BASE_LIBS so exported packages
+            // do not 404 them. Maps may still be copied next to the dist files
+            // for local debugging; they must not be required or zipped.
+            const srcs = resourceBundles.BASE_LIBS.map((lib: { src: string }) => lib.src);
+            expect(srcs.some((src: string) => src.endsWith('.map'))).toBe(false);
+        });
+
         it('does not mark repository-tracked source files (common.js, favicon) as required', () => {
             const byScr = new Map(
                 resourceBundles.BASE_LIBS.map((lib: { src: string; required?: boolean }) => [lib.src, !!lib.required]),

@@ -774,6 +774,7 @@ var $exeDevice = {
 
     // Parsed Computer Modern fonts, keyed by font-family, reused across renders.
     tikzFontCache: {},
+    tikzFontPackPromise: null,
 
     // TikZJax emits one Unicode code point per glyph from its own font-encoding
     // table. That mapping for the operators-font uppercase Omega is off by one:
@@ -1047,16 +1048,66 @@ var $exeDevice = {
         return data;
     },
 
+    // The static build packs the whole fonts/ directory into one
+    // zstd-compressed sidecar (fonts.pack.zst) so 140 loose TTFs are not
+    // shipped twice-compressible. Fetch and decode it once, lazily; resolve
+    // to null when the pack (or the fzstd decoder) is unavailable — the
+    // server runtime keeps serving the loose files.
+    // Format: u32le header length + JSON {family: [offset, length]} + payload.
+    loadTikzFontPack: function () {
+        if (!$exeDevice.tikzFontPackPromise) {
+            $exeDevice.tikzFontPackPromise = (async () => {
+                if (!window.fzstd) return null;
+                const url = ($exeDevice.idevicePath || '') + 'fonts.pack.zst';
+                const response = await fetch(url);
+                // A missing pack (server mode serves the loose TTFs instead)
+                // is a stable answer worth caching for the session.
+                if (!response.ok) return null;
+                const packed = new Uint8Array(await response.arrayBuffer());
+                const bytes = window.fzstd.decompress(packed);
+                const headerLength = new DataView(
+                    bytes.buffer,
+                    bytes.byteOffset,
+                    4
+                ).getUint32(0, true);
+                const header = JSON.parse(
+                    new TextDecoder().decode(bytes.subarray(4, 4 + headerLength))
+                );
+                return { header, payload: bytes.subarray(4 + headerLength) };
+            })().catch(() => {
+                // Transient failure (network blip): let a later call retry
+                // instead of degrading fonts for the whole session.
+                $exeDevice.tikzFontPackPromise = null;
+                return null;
+            });
+        }
+        return $exeDevice.tikzFontPackPromise;
+    },
+
     // Fetch and parse a Computer Modern font shipped next to this iDevice,
     // caching the (promise of the) result. Overridable in tests.
     loadTikzFont: function (family) {
         if (!$exeDevice.tikzFontCache[family]) {
-            const url = ($exeDevice.idevicePath || '') + 'fonts/' + family + '.ttf';
-            $exeDevice.tikzFontCache[family] = fetch(url)
-                .then((response) => (response.ok ? response.arrayBuffer() : null))
-                .then((buffer) =>
-                    buffer ? $exeDevice.parseTikzFont(buffer) : null
-                )
+            $exeDevice.tikzFontCache[family] = $exeDevice
+                .loadTikzFontPack()
+                .then((pack) => {
+                    const entry = pack && pack.header[family];
+                    if (entry) {
+                        // .slice() copies into a fresh buffer, matching the
+                        // ArrayBuffer shape parseTikzFont expects.
+                        const bytes = pack.payload.slice(entry[0], entry[0] + entry[1]);
+                        return $exeDevice.parseTikzFont(bytes.buffer);
+                    }
+                    const url =
+                        ($exeDevice.idevicePath || '') + 'fonts/' + family + '.ttf';
+                    return fetch(url)
+                        .then((response) =>
+                            response.ok ? response.arrayBuffer() : null
+                        )
+                        .then((buffer) =>
+                            buffer ? $exeDevice.parseTikzFont(buffer) : null
+                        );
+                })
                 .catch(() => null);
         }
         return $exeDevice.tikzFontCache[family];

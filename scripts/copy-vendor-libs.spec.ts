@@ -21,7 +21,7 @@ const copyVendor = require('./copy-vendor-libs.js');
 
 const projectRoot = path.resolve(__dirname, '..');
 
-type Copy = { src: string; dest: string };
+type Copy = { src: string; dest: string; stripSourceMap?: boolean };
 const COPIES: Copy[] = copyVendor.COPIES;
 
 afterEach(() => {
@@ -63,6 +63,13 @@ describe('copy-vendor-libs', () => {
         it('resolves every source path (run `bun install` first)', () => {
             const missing = COPIES.filter(c => !fs.existsSync(c.src)).map(c => path.relative(projectRoot, c.src));
             expect(missing).toEqual([]);
+        });
+
+        it('strips sourceMappingURL from the Bootstrap dist copies exports actually load', () => {
+            const stripped = COPIES.filter(c => c.stripSourceMap).map(c => c.dest.replace(/\\/g, '/'));
+            expect(stripped.some(d => d.endsWith('libs/bootstrap/bootstrap.bundle.min.js'))).toBe(true);
+            expect(stripped.some(d => d.endsWith('libs/bootstrap/bootstrap.min.css'))).toBe(true);
+            expect(stripped.some(d => d.endsWith('.map'))).toBe(false);
         });
     });
 
@@ -106,6 +113,19 @@ describe('copy-vendor-libs', () => {
                 expect(mkdirCalls).toBe(1);
                 expect(fs.existsSync(destA)).toBe(true);
                 expect(fs.existsSync(destB)).toBe(true);
+            } finally {
+                fs.rmSync(tmpDir, { recursive: true, force: true });
+            }
+        });
+
+        it('strips sourceMappingURL when stripSourceMap is set', () => {
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'copy-vendor-strip-'));
+            try {
+                const src = path.join(tmpDir, 'bootstrap.bundle.min.js');
+                fs.writeFileSync(src, '!function(){}();\n//# sourceMappingURL=bootstrap.bundle.min.js.map\n');
+                const dest = path.join(tmpDir, 'out', 'bootstrap.bundle.min.js');
+                copyVendor.copyFile(src, dest, { stripSourceMap: true });
+                expect(fs.readFileSync(dest, 'utf8')).not.toContain('sourceMappingURL');
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }

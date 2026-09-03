@@ -2,7 +2,7 @@
  * Static distribution build orchestrator.
  *
  * This is the effectful CLI half of the static build: it wipes and repopulates
- * the output directory, copies hundreds of megabytes out of public/, and gzips
+ * the output directory, copies hundreds of megabytes out of public/, and zstd-compresses
  * the bundled JSON datasets in place. All of the logic it drives — version
  * resolution, translation/iDevice/theme discovery, template rendering, the copy
  * and compression primitives — lives in ../build-static-bundle.ts and is unit
@@ -17,6 +17,12 @@
 
 import fs from 'fs';
 import path from 'path';
+
+import { minifyDistJs } from './minify-dist';
+import { STATIC_ONLY_PRUNE_PATHS, computeBundledAppSources, pruneDistPaths, removeEmptyDirs } from './prune-dist';
+import { repackTikzJaxInDist } from './repack-tikzjax';
+import { stripSourceMapReferences } from './strip-source-map-refs';
+import { zstdCompress } from './zstd';
 
 import {
     COMPRESS_JSON_DIRS,
@@ -76,13 +82,9 @@ export async function buildStaticBundle() {
     const idevices = buildIdevicesList();
     const themes = buildThemesList();
 
-    // Read existing bundle manifest
-    const bundleManifestPath = path.join(projectRoot, 'public/bundles/manifest.json');
-    let bundleManifest = null;
-    if (fs.existsSync(bundleManifestPath)) {
-        bundleManifest = JSON.parse(fs.readFileSync(bundleManifestPath, 'utf-8'));
-    }
-
+    // Note: the resource-bundle manifest is NOT embedded here. ResourceFetcher
+    // reads bundles/manifest.json directly; an embedded copy had zero
+    // consumers and duplicated ~150 KB.
     const bundleData = {
         version: buildVersion,
         builtAt: new Date().toISOString(),
@@ -90,14 +92,22 @@ export async function buildStaticBundle() {
         translations,
         idevices,
         themes,
-        bundleManifest,
     };
 
-    // Write bundle.json
+    // Write bundle.json.zst (zstd, decompressed in the browser via fzstd —
+    // same pattern as the LOMLOE/DigCompEdu datasets). ~3.2 MB of JSON that
+    // the service worker precaches on install becomes ~0.4 MB on disk and on
+    // the wire. apiCallManager falls back to plain bundle.json when the .zst
+    // tier is unavailable (dev setups, older mirrors).
     const dataDir = path.join(outputDir, 'data');
     fs.mkdirSync(dataDir, { recursive: true });
-    fs.writeFileSync(path.join(dataDir, 'bundle.json'), JSON.stringify(bundleData, null, 2));
-    console.log('  Created data/bundle.json');
+    const bundleJson = Buffer.from(JSON.stringify(bundleData));
+    const bundleJsonZst = zstdCompress(bundleJson);
+    fs.writeFileSync(path.join(dataDir, 'bundle.json.zst'), bundleJsonZst);
+    console.log(
+        `  Created data/bundle.json.zst ` +
+            `(${(bundleJson.length / 1024 / 1024).toFixed(2)} MB → ${(bundleJsonZst.length / 1024 / 1024).toFixed(2)} MB)`,
+    );
 
     // 2. Generate static HTML
     console.log('\n2. Generating static HTML...');
@@ -136,13 +146,19 @@ export async function buildStaticBundle() {
         console.warn('  WARNING: public/bundles/manifest.json not found — run bundle:resources first');
     }
 
-    // Copy files/perm (themes, iDevices, favicon)
-    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));
+    // Copy files/perm (themes, iDevices, favicon). The one exclusion is the
+    // `slide` iDevice's hand-maintained TS source, which sits next to the built
+    // JS it actually loads and is never fetched at runtime. Excluded by its
+    // path rather than by the name `src`, so a future runtime directory of that
+    // name elsewhere under files/perm is not dropped with it.
+    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'), [
+        'idevices/base/slide/src',
+    ]);
     console.log('  Copied files/perm/');
 
-    // Gzip large iDevice JSON datasets in place (browser decompresses on the fly).
+    // Zstd-compress large iDevice JSON datasets in place (browser decompresses via fzstd).
     let totalOrig = 0;
-    let totalGz = 0;
+    let totalCompressed = 0;
     let totalCount = 0;
     for (const relDir of COMPRESS_JSON_DIRS) {
         const absDir = path.join(outputDir, relDir);
@@ -150,27 +166,25 @@ export async function buildStaticBundle() {
         if (stats.count === 0) {
             throw new Error(
                 `Compression guard failed: no .json files found under ${relDir}. ` +
-                `Update COMPRESS_JSON_DIRS in build-static-bundle.ts or restore the data.`,
+                    `Update COMPRESS_JSON_DIRS in build-static-bundle.ts or restore the data.`,
             );
         }
-        const pct = stats.origTotal > 0
-            ? Math.round((1 - stats.gzTotal / stats.origTotal) * 100)
-            : 0;
+        const pct = stats.origTotal > 0 ? Math.round((1 - stats.compressedTotal / stats.origTotal) * 100) : 0;
         console.log(
-            `  Gzipped ${stats.count} file(s) in ${relDir}: ` +
-            `${(stats.origTotal / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(stats.gzTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+            `  Zstd-compressed ${stats.count} file(s) in ${relDir}: ` +
+                `${(stats.origTotal / 1024 / 1024).toFixed(2)} MB → ` +
+                `${(stats.compressedTotal / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
         );
         totalCount += stats.count;
         totalOrig += stats.origTotal;
-        totalGz += stats.gzTotal;
+        totalCompressed += stats.compressedTotal;
     }
     if (totalCount > 0) {
-        const pct = Math.round((1 - totalGz / totalOrig) * 100);
+        const pct = Math.round((1 - totalCompressed / totalOrig) * 100);
         console.log(
             `  Total: ${totalCount} JSON file(s) compressed, ` +
-            `${(totalOrig / 1024 / 1024).toFixed(2)} MB → ` +
-            `${(totalGz / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
+                `${(totalOrig / 1024 / 1024).toFixed(2)} MB → ` +
+                `${(totalCompressed / 1024 / 1024).toFixed(2)} MB (-${pct}%)`,
         );
     }
 
@@ -205,6 +219,51 @@ export async function buildStaticBundle() {
         fs.copyFileSync(previewSwJs, path.join(outputDir, 'preview-sw.js'));
         console.log('  Copied preview-sw.js');
     }
+
+    // 5. Prune static-only dead weight (see prune-dist.ts for justifications)
+    console.log('\n5. Pruning static-only dead weight...');
+    const staticPrune = pruneDistPaths(outputDir, STATIC_ONLY_PRUNE_PATHS);
+    console.log(
+        `  Removed ${staticPrune.files} server-only/development file(s) ` +
+            `(${(staticPrune.bytes / 1024).toFixed(0)} KB)`,
+    );
+    const bundledSources = await computeBundledAppSources(projectRoot);
+    const bundledPrune = pruneDistPaths(outputDir, bundledSources);
+    console.log(
+        `  Removed ${bundledPrune.files} app source(s) already compiled into app.bundle.js ` +
+            `(${(bundledPrune.bytes / 1024).toFixed(0)} KB)`,
+    );
+    const emptyDirs = removeEmptyDirs(outputDir);
+    if (emptyDirs > 0) {
+        console.log(`  Removed ${emptyDirs} empty director${emptyDirs === 1 ? 'y' : 'ies'}`);
+    }
+
+    // 6. Minify first-party editor JS (dist copy only; sources stay in git,
+    // export-copied libraries stay byte-identical — see minify-dist.ts)
+    console.log('\n6. Minifying first-party editor JS...');
+    const minifyStats = await minifyDistJs(outputDir);
+    console.log(
+        `  Minified ${minifyStats.files} file(s): ` +
+            `${(minifyStats.before / 1024).toFixed(0)} KB → ${(minifyStats.after / 1024).toFixed(0)} KB`,
+    );
+
+    // 7. Repack the TikZJax payloads and fonts (see repack-tikzjax.ts)
+    console.log('\n7. Repacking TikZJax assets...');
+    const tikzStats = repackTikzJaxInDist(outputDir);
+    console.log(
+        `  tikzjax.js ${(tikzStats.jsBefore / 1024 / 1024).toFixed(2)} MB → shell ` +
+            `${(tikzStats.jsAfter / 1024 / 1024).toFixed(2)} MB + payload ${(tikzStats.payloadBytes / 1024 / 1024).toFixed(2)} MB`,
+    );
+    console.log(
+        `  fonts ${(tikzStats.fontsBefore / 1024 / 1024).toFixed(2)} MB → pack ` +
+            `${(tikzStats.fontPackBytes / 1024 / 1024).toFixed(2)} MB`,
+    );
+
+    // Drop `sourceMappingURL` announcements after the last rewrite: the
+    // distribution ships no .map files, so every remaining comment is a
+    // guaranteed 404 in DevTools.
+    const strippedMaps = stripSourceMapReferences(outputDir);
+    console.log(`  Stripped ${strippedMaps.files} sourceMappingURL reference(s) (${strippedMaps.bytes} bytes)`);
 
     console.log('\n' + '='.repeat(60));
     console.log('Static distribution built successfully!');

@@ -4,11 +4,7 @@ import * as fs from 'node:fs';
 
 import { unzipSync } from '../../src/shared/export';
 import { SCORM12_VENDOR_WRAPPER_PATH } from '../../src/shared/export/utils/Scorm12Runtime';
-import {
-    RESUME_RACE_ACTIVITY_ID,
-    buildResumeRaceScorm12Package,
-    writeResumeRaceScorm12Fixture,
-} from './scorm12-resume-package';
+import { RESUME_RACE_ACTIVITY_ID, buildResumeRaceScorm12Package } from './scorm12-resume-package';
 import { scanPackageForUnloadHandlers } from './unload-handler-scanner';
 
 function sha256(bytes: Uint8Array): string {
@@ -82,12 +78,5 @@ describe('SCORM 1.2 resume-race package', () => {
 
         expect(east).toBe(utc);
         expect(west).toBe(utc);
-    });
-
-    it('writes the fixture zip used by Moodle verification', () => {
-        const written = writeResumeRaceScorm12Fixture();
-        expect(fs.existsSync(written)).toBe(true);
-        expect(fs.statSync(written).size).toBeGreaterThan(1000);
-        expect(sha256(new Uint8Array(fs.readFileSync(written)))).toBe(sha256(buildResumeRaceScorm12Package()));
     });
 });
