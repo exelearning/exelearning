@@ -32,6 +32,7 @@ RUN bun run build:all && \
     ls -la public/app/app.bundle.js && \
     ls -la public/app/yjs/importers.bundle.js && \
     ls -la public/app/yjs/exporters.bundle.js && \
+    ls -la public/app/common/edicuatex/index.html && \
     ls -la public/bundles/
 
 # Prune dev dependencies after build
