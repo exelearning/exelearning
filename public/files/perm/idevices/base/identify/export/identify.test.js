@@ -240,4 +240,80 @@ describe('identify iDevice export', () => {
       expect($eXeIdentifica.sendScore).not.toHaveBeenCalled();
     });
   });
+
+  // Without a code the activity is live from the moment the page loads — there
+  // is no start button — so nothing may reach the LMS until the learner acts.
+  // A zero recorded on load would mark the attempt of somebody who only walked
+  // past the page. initGame is the gate: only a clue or an answer raises it.
+  describe('staying silent until the learner acts', () => {
+    function setupSilent(overrides) {
+      document.body.innerHTML = `
+        <div id="idfMainContainer-0">
+          <div id="idfPNumber-0"></div>
+          <div id="idfPHits-0"></div>
+          <div id="idfPErrors-0"></div>
+          <div id="idfPScore-0"></div>
+          <div id="idfShowClue-0"></div>
+          <div id="idfPShowClue-0"></div>
+          <div id="idfGameContainer-0"></div>
+          <div id="idfCardDraw-0"><div class="IDFP-card-inner"></div></div>
+          <div id="idfAttempts-0"></div>
+          <div id="idfPoints-0"></div>
+          <div id="idfUseClue-0"></div>
+          <div id="idfRepeatActivity-0"></div>
+          <div id="idfMultimedia-0"></div>
+        </div>`;
+      $eXeIdentifica.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: false,
+          gameOver: false,
+          score: 0,
+          hits: 0,
+          errors: 0,
+          initGame: false,
+          numberQuestions: 2,
+          questionsGame: [{ attempts: 2 }, { attempts: 2 }],
+          itinerary: { showClue: false, showCodeAccess: false },
+          msgs: { msgShowClue: 'clue', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeIdentifica, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports nothing while the page loads', () => {
+      setupSilent();
+      vi.spyOn($eXeIdentifica, 'newQuestion').mockImplementation(() => {});
+
+      $eXeIdentifica.startGame(0);
+
+      expect($eXeIdentifica.sendScore).not.toHaveBeenCalled();
+      // Started all the same: sendScoreNew drops a game that reports as
+      // neither started nor over, so the first answer needs this flag up.
+      expect($eXeIdentifica.options[0].gameStarted).toBe(true);
+    });
+
+    it('shows a question without reporting before the learner has acted', () => {
+      setupSilent({ initGame: false });
+
+      $eXeIdentifica.showQuestion(0, 0);
+
+      expect($eXeIdentifica.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('reports once the learner has acted', () => {
+      setupSilent({ initGame: true });
+
+      $eXeIdentifica.showQuestion(0, 0);
+
+      expect($eXeIdentifica.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+  });
 });
