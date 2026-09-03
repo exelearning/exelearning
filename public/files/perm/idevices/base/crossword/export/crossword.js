@@ -2516,7 +2516,11 @@ var $eXeCrucigrama = {
             $('#ccgmAuthorBackImage-' + instance).css('display', 'flex');
         }
 
-        if (mOptions.time == 0 && !mOptions.showCodeAccess) {
+        // itinerary.showCodeAccess, not showCodeAccess: nothing ever sets the
+        // latter, so an untimed crossword behind a code started itself here.
+        // enterCodeAccess then found gameStarted already true, startGame
+        // returned early, and the LMS never got the opening zero.
+        if (mOptions.time == 0 && !mOptions.itinerary.showCodeAccess) {
             mOptions.gameStarted = false;
             $eXeCrucigrama.startGame(instance);
         }

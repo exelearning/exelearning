@@ -521,7 +521,6 @@ describe('crossword iDevice export', () => {
           caseSensitive: false,
           tilde: true,
           showSolution: false,
-          showCodeAccess: false,
           itinerary: { showClue: false, showCodeAccess: false },
           feedBack: false,
           activeQuestion: -1,
@@ -694,6 +693,71 @@ describe('crossword iDevice export', () => {
       $eXeCrucigrama.enterCodeAccess(0);
 
       expect($eXeCrucigrama.startGame).toHaveBeenCalledWith(0, true);
+    });
+
+    // Without a countdown there is no play button, so the code is the only
+    // explicit start the learner ever gives: it has to publish the zero and
+    // leave the attempt unfinished.
+    it('publishes a zero and an unfinished attempt when the code opens an untimed board', () => {
+      setupGame({ time: 0, gameStarted: false, gameOver: true, hits: 2, score: 10 });
+      $eXeCrucigrama.options[0].itinerary.codeAccess = 'abre';
+      document.body.innerHTML = `
+        <div id="ccgmMainContainer-0">
+          <a id="ccgmLinkMaximize-0" href="#"></a>
+          <div id="ccgmCrossword-0"></div>
+          <input id="ccgmCodeAccessE-0" value="abre" />
+        </div>`;
+      vi.spyOn($eXeCrucigrama, 'showCubiertaOptions').mockImplementation(
+        () => {}
+      );
+      let stateWhenReported;
+      $eXeCrucigrama.sendScore.mockImplementation(() => {
+        const { hits, score, gameOver, gameStarted } =
+          $eXeCrucigrama.options[0];
+        stateWhenReported = { hits, score, gameOver, gameStarted };
+      });
+
+      $eXeCrucigrama.enterCodeAccess(0);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        score: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    // The load-time guard used to read mOptions.showCodeAccess, a key nothing
+    // sets. An untimed crossword therefore started itself behind its own cover,
+    // and the code entry above hit startGame's early return in silence.
+    it('leaves an untimed board behind an access code unstarted while the page loads', () => {
+      setupGame({
+        time: 0,
+        itinerary: {
+          showClue: false,
+          showCodeAccess: true,
+          codeAccess: 'abre',
+          messageCodeAccess: 'code',
+        },
+      });
+      document.body.innerHTML = `
+        <div class="idevice_node">
+          <div id="ccgmMainContainer-0">
+            <div id="ccgmCodeAccessDiv-0"></div>
+            <div id="ccgmMesajeAccesCodeE-0"></div>
+            <input id="ccgmCodeAccessE-0" value="" />
+          </div>
+        </div>`;
+      vi.spyOn($eXeCrucigrama, 'showCubiertaOptions').mockImplementation(
+        () => {}
+      );
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+
+      $eXeCrucigrama.addEvents(0);
+
+      // gameStarted, not sendScore: the load path never passes reportScorm, so
+      // asserting on the report would pass with the bug still in place.
+      expect($eXeCrucigrama.options[0].gameStarted).toBe(false);
     });
 
     it('does not start or report when the access code is wrong', () => {
