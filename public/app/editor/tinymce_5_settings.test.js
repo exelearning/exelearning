@@ -2666,3 +2666,62 @@ describe('TinyMCE 5 Settings', () => {
     });
   });
 });
+
+describe('vendored TinyMCE tree matches the configured plugin/skin surface', () => {
+  // The static and server builds ship public/libs/tinymce_5 wholesale, so the
+  // vendored tree is pruned to exactly what the editor configs can load.
+  // These tests fail loudly if a config starts naming a plugin that was
+  // pruned, or if unused upstream payloads (mobile theme, alternate skins)
+  // sneak back into the tree.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const repoRoot = path.resolve(__dirname, '../../..');
+  const tinymceRoot = path.join(repoRoot, 'public/libs/tinymce_5/js/tinymce');
+
+  // Plugin lists used by iDevice mini-editors (quick-questions*, trivial,
+  // map, guess, interactive-video admin) on top of the main config above.
+  const IDEVICE_EXTRA_PLUGINS = ['code', 'paste', 'textcolor', 'link', 'image', 'autoresize', 'lists'];
+
+  it('ships a plugin directory for every plugin named in the main config', () => {
+    for (const plugin of globalThis.$exeTinyMCE.plugins.split(/\s+/).filter(Boolean)) {
+      const dir = path.join(tinymceRoot, 'plugins', plugin);
+      expect(fs.existsSync(dir), `missing TinyMCE plugin dir: ${plugin}`).toBe(true);
+    }
+  });
+
+  it('ships a plugin directory for every plugin the iDevice editors request', () => {
+    for (const plugin of IDEVICE_EXTRA_PLUGINS) {
+      const dir = path.join(tinymceRoot, 'plugins', plugin);
+      expect(fs.existsSync(dir), `missing TinyMCE plugin dir: ${plugin}`).toBe(true);
+    }
+  });
+
+  it('ships the default silver theme and oxide skin (no skin/theme is configured)', () => {
+    expect(fs.existsSync(path.join(tinymceRoot, 'themes/silver'))).toBe(true);
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide/skin.min.css'))).toBe(true);
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide/content.min.css'))).toBe(true);
+  });
+
+  it('does not ship upstream payloads no config can load (pruned for bundle size)', () => {
+    for (const gone of [
+      'plugins/emoticons', // biggest pruned plugin (~1.4 MB of emoji databases)
+      'plugins/media', // exemedia is used instead
+    ]) {
+      expect(fs.existsSync(path.join(tinymceRoot, gone)), `${gone} should stay pruned`).toBe(false);
+    }
+    expect(fs.existsSync(path.join(tinymceRoot, 'themes/mobile'))).toBe(false);
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide-dark'))).toBe(false);
+    // TinyMCE 5 defaults content_css to ['default'] for iframe editors with
+    // no explicit content_css (five iDevice mini-editors rely on that), so the
+    // default content skin must ship; the unused variants stay pruned.
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/content/default/content.min.css'))).toBe(true);
+    for (const variant of ['dark', 'document', 'writer']) {
+      expect(fs.existsSync(path.join(tinymceRoot, `skins/content/${variant}`)), `skins/content/${variant} should stay pruned`).toBe(false);
+    }
+    expect(fs.existsSync(path.join(tinymceRoot, 'skins/ui/oxide/skin.mobile.min.css'))).toBe(false);
+  });
+
+  it('keeps the TinyMCE license', () => {
+    expect(fs.existsSync(path.join(repoRoot, 'public/libs/tinymce_5/js/tinymce/license.txt'))).toBe(true);
+  });
+});

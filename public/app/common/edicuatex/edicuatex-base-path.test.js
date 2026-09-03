@@ -233,7 +233,7 @@ describe('EdiCuaTeX Base Path Computation', () => {
         });
 
         it('should not modify CDN URLs (https://)', () => {
-            const cdnUrl = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js';
+            const cdnUrl = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.1.3/tex-svg.min.js';
             const url = resolveMathJaxUrl(
                 cdnUrl,
                 '/dist/static/app/common/edicuatex/index.html'
