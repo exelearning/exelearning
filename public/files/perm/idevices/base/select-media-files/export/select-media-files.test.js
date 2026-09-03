@@ -187,7 +187,7 @@ describe('select-media-files iDevice export', () => {
                 stateWhenReported = { hits, errors, score, gameOver, gameStarted };
             });
 
-            dmedia.startGame(instance);
+            dmedia.startGame(instance, true);
 
             expect(stateWhenReported).toEqual({
                 hits: 0,
@@ -203,7 +203,7 @@ describe('select-media-files iDevice export', () => {
         it('does not report outside automatic SCORM mode', () => {
             setupStart({ isScorm: 2 });
 
-            dmedia.startGame(instance);
+            dmedia.startGame(instance, true);
 
             expect(dmedia.sendScore).not.toHaveBeenCalled();
         });
@@ -211,9 +211,24 @@ describe('select-media-files iDevice export', () => {
         it('does not report a game that was already running', () => {
             setupStart({ gameStarted: true });
 
+            dmedia.startGame(instance, true);
+
+            expect(dmedia.sendScore).not.toHaveBeenCalled();
+        });
+
+        // Loading an untimed activity and maximizing the board both reach
+        // startGame, and a zero recorded there is one the learner never asked
+        // for: with no timer and no code, nothing is published until the first
+        // answer.
+        it('stays silent when the start did not come from a control', () => {
+            setupStart({ time: 0 });
+
             dmedia.startGame(instance);
 
             expect(dmedia.sendScore).not.toHaveBeenCalled();
+            // Silent, but started: the board is playable and checkQuestion's
+            // report will carry, since sendScoreNew drops an unstarted game.
+            expect(dmedia.options[instance].gameStarted).toBe(true);
         });
 
         /**
@@ -272,6 +287,32 @@ describe('select-media-files iDevice export', () => {
 
             expect(dmedia.sendScore).toHaveBeenCalledWith(true, instance);
             expect(dmedia.options[instance].gameStarted).toBe(true);
+        });
+
+        // The timed case: no code, so the learner presses the play button and
+        // that is the explicit start the LMS has to hear about.
+        it('reports when the play button starts a timed activity', () => {
+            setupStart({
+                time: 1,
+                author: '',
+                itinerary: { showCodeAccess: false },
+            });
+            $(`#slcmpMainContainer-${instance}`).append(
+                `<a id="slcmpStartGame-${instance}" href="#"></a>`
+            );
+            $exeDevices.iDevice.gamification.scorm = {
+                registerActivity: vi.fn(),
+            };
+            $exeDevices.iDevice.gamification.report = {
+                saveEvaluation: vi.fn(),
+                updateEvaluationIcon: vi.fn(),
+            };
+            vi.spyOn(dmedia, 'startGame').mockImplementation(() => {});
+
+            dmedia.addEvents(instance);
+            $(`#slcmpStartGame-${instance}`).trigger('click');
+
+            expect(dmedia.startGame).toHaveBeenCalledWith(instance, true);
         });
 
         it('neither starts nor reports when the code is wrong', () => {

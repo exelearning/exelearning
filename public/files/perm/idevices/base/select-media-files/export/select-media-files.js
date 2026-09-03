@@ -880,14 +880,14 @@ var $eXeSeleccionaMedias = {
 
         $('#slcmpStartGame-' + instance).on('click', function (e) {
             e.preventDefault();
-            $eXeSeleccionaMedias.startGame(instance);
+            $eXeSeleccionaMedias.startGame(instance, true);
             $(this).hide();
         });
 
         $('#slcmpStartGameEnd-' + instance).on('click', function (e) {
             e.preventDefault();
             $eXeSeleccionaMedias.showPhrase(0, instance);
-            $eXeSeleccionaMedias.startGame(instance);
+            $eXeSeleccionaMedias.startGame(instance, true);
             $('#slcmpCubierta-' + instance).hide();
         });
 
@@ -1140,12 +1140,13 @@ var $eXeSeleccionaMedias = {
             $('#slcmpCodeAccessDiv-' + instance).hide();
             $('#slcmpCubierta-' + instance).hide();
             $('#slcmpLinkMaximize-' + instance).trigger('click');
-            // Unconditionally: the load path only starts an untimed game when
-            // there is no code, so gating this on the timer left a coded,
-            // untimed activity with nobody to start it — no check button, no
-            // hover and no opening zero, since startGame is the only place
-            // that shows the button bar addEvents hid.
-            $eXeSeleccionaMedias.startGame(instance);
+            // Unconditionally, and reporting: the load path only starts an
+            // untimed game when there is no code, so gating this on the timer
+            // left a coded, untimed activity with nobody to start it — no
+            // check button, no hover and no opening zero, since startGame is
+            // the only place that shows the button bar addEvents hid. A valid
+            // code is the learner opening the activity, so it publishes.
+            $eXeSeleccionaMedias.startGame(instance, true);
         } else {
             $('#slcmpMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
@@ -1156,7 +1157,16 @@ var $eXeSeleccionaMedias = {
         }
     },
 
-    startGame: function (instance) {
+    /**
+     * @param {number} instance - Activity index.
+     * @param {boolean} [reportScorm] - True only when the learner started the
+     * activity from an explicit control: the play button, the replay link or a
+     * valid access code. Loading an untimed activity and maximizing the board
+     * both reach here too, and a zero recorded there is one the learner never
+     * asked for — an untimed activity with no code publishes nothing until the
+     * first answer (checkQuestion).
+     */
+    startGame: function (instance, reportScorm = false) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
 
         if (mOptions.gameStarted) return;
@@ -1231,7 +1241,9 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.activateHover(instance);
         // After gameStarted, never before: sendScoreNew ignores a game that
         // reports as neither started nor over.
-        $eXeSeleccionaMedias.saveScormScore(instance);
+        if (reportScorm) {
+            $eXeSeleccionaMedias.saveScormScore(instance);
+        }
     },
 
     uptateTime: function (tiempo, instance) {
