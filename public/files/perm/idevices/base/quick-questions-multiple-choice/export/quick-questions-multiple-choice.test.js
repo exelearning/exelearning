@@ -300,4 +300,94 @@ describe('quick-questions-multiple-choice export', () => {
         });
 
     });
+
+    // Replaying a finished attempt from the New game link: its sibling
+    // quick-questions lowers gameOver in startGame, this one did not, so the
+    // opening report carried the previous attempt's completion and the LMS
+    // never went back to incomplete.
+    describe('replaying a finished attempt', () => {
+        const idevice = () => global.$quickquestionsmultiplechoice;
+
+        function setupReplay(overrides) {
+            document.body.innerHTML = `
+                <div id="seleccionaMainContainer-0">
+                    <div id="seleccionaGameContainer-0">
+                        <div class="SLCNP-StartGame"></div>
+                    </div>
+                    <div id="seleccionaVideoIntroContainer-0"></div>
+                    <div id="seleccionaLinkVideoIntroShow-0"></div>
+                    <div id="seleccionaPShowClue-0"></div>
+                    <div id="seleccionaQuestion-0"></div>
+                    <div id="seleccionaQuestionDiv-0"></div>
+                    <div id="seleccionaWordDiv-0"></div>
+                    <div id="seleccionaPNumber-0"></div>
+                    <div id="seleccionaGamerOver-0"></div>
+                    <div id="seleccionaPHits-0"></div>
+                    <div id="seleccionaPErrors-0"></div>
+                    <div id="seleccionaPScore-0"></div>
+                </div>`;
+            idevice().options[0] = Object.assign(
+                {
+                    id: 0,
+                    isScorm: 1,
+                    order: 0,
+                    // What gameOver() left behind: finished, with a grade.
+                    gameStarted: false,
+                    gameOver: true,
+                    hits: 4,
+                    errors: 0,
+                    score: 10,
+                    scoreGame: 4,
+                    scoreTotal: 4,
+                    numberQuestions: 4,
+                    numberLives: 3,
+                    time: 0,
+                    selectsGame: [{}, {}, {}, {}],
+                    itinerary: { showClue: false },
+                    msgs: { msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn(idevice(), 'updateLives').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'updateTime').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'sendScore').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.clearAllTimers();
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+        });
+
+        it('reports the replay as unfinished, with the counts cleared', () => {
+            vi.useFakeTimers();
+            setupReplay();
+            let stateWhenReported;
+            idevice().sendScore.mockImplementation(() => {
+                const { hits, errors, scoreGame, gameOver, gameStarted } =
+                    idevice().options[0];
+                stateWhenReported = {
+                    hits,
+                    errors,
+                    scoreGame,
+                    gameOver,
+                    gameStarted,
+                };
+            });
+
+            idevice().startGame(0);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                scoreGame: 0,
+                // The whole point: sendScoreNew reads gameOver as "the learner
+                // finished", and a replay has not.
+                gameOver: false,
+                gameStarted: true,
+            });
+        });
+    });
 });

@@ -1409,6 +1409,12 @@ var $quickquestionsmultiplechoice = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
+        // gameOver() leaves this true; a replay starts as unfinished before the
+        // automatic zero-score report is sent to SCORM. Without it the report
+        // below carries gameOver, and sendScoreNew reads that as a finished
+        // attempt: the activity stayed complete in the LMS instead of going
+        // back to incomplete.
+        mOptions.gameOver = false;
         mOptions.livesLeft = mOptions.numberLives;
 
         $quickquestionsmultiplechoice.updateLives(instance);
