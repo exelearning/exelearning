@@ -1,7 +1,23 @@
-# ADR-2302-02: Retire the current xAPI emitter
+---
+id: ADR-2302-02
+title: "Retire the current xAPI emitter"
+status: Proposed
+date: 2026-09-03
+tracking_issue: 2302
+deciders:
+  - "@erseco"
+related:
+  prs: [1867, 2302, 2360]
+  changes: []
+  adrs: []
+supersedes: []
+superseded_by: []
+ai_assistance:
+  tool: "ChatGPT"
+  model: "gpt-5.6-sol"
+---
 
-- Status: Proposed
-- Date: 2026-09-03
+# ADR-2302-02: Retire the current xAPI emitter
 
 ## Context
 
