@@ -1882,10 +1882,10 @@ class ResourceFetcher {
     // Font configuration - matches GlobalFontGenerator.ts
     const fontConfigs = {
       opendyslexic: [
-        'OpenDyslexic-Regular.woff',
-        'OpenDyslexic-Bold.woff',
-        'OpenDyslexic-Italic.woff',
-        'OpenDyslexic-BoldItalic.woff',
+        'OpenDyslexic-Regular.woff2',
+        'OpenDyslexic-Bold.woff2',
+        'OpenDyslexic-Italic.woff2',
+        'OpenDyslexic-BoldItalic.woff2',
         'OFL.txt',
       ],
       andika: [

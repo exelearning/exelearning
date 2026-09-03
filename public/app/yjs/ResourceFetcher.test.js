@@ -2097,10 +2097,10 @@ describe('ResourceFetcher', () => {
       const result = await fetcher.fetchGlobalFontFiles('opendyslexic');
 
       expect(mockFetch).toHaveBeenCalledTimes(5); // 4 font files + OFL.txt
-      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(true);
-      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Bold.woff')).toBe(true);
-      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Italic.woff')).toBe(true);
-      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-BoldItalic.woff')).toBe(true);
+      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff2')).toBe(true);
+      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Bold.woff2')).toBe(true);
+      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-Italic.woff2')).toBe(true);
+      expect(result.has('fonts/global/opendyslexic/OpenDyslexic-BoldItalic.woff2')).toBe(true);
       expect(result.has('fonts/global/opendyslexic/OFL.txt')).toBe(true);
     });
 
@@ -2200,7 +2200,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
       await fetcher.fetchGlobalFontFiles('opendyslexic');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/web/exelearning/files/perm/fonts/global/opendyslexic/OpenDyslexic-Regular.woff'
+        '/web/exelearning/files/perm/fonts/global/opendyslexic/OpenDyslexic-Regular.woff2'
       );
     });
   });

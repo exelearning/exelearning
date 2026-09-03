@@ -59,8 +59,6 @@ const BASE_LIBS = [
   { src: 'libs/jquery/jquery.min.js', dest: 'jquery/jquery.min.js' },
   { src: 'libs/bootstrap/bootstrap.bundle.min.js', dest: 'bootstrap/bootstrap.bundle.min.js' },
   { src: 'libs/bootstrap/bootstrap.min.css', dest: 'bootstrap/bootstrap.min.css' },
-  { src: 'libs/bootstrap/bootstrap.bundle.min.js.map', dest: 'bootstrap/bootstrap.bundle.min.js.map' },
-  { src: 'libs/bootstrap/bootstrap.min.css.map', dest: 'bootstrap/bootstrap.min.css.map' },
   { src: 'app/common/common.js', dest: 'common.js' },
   { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
   { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
