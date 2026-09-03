@@ -362,9 +362,6 @@ var $eXeDragDrop = {
         }
         $eXeDragDrop.initializeDragAndDrop(instance);
         mOptions.gameStarted = true;
-        // After gameStarted, never before: sendScoreNew ignores a game that
-        // reports as neither started nor over.
-        $eXeDragDrop.saveScormScore(instance);
     },
 
     initializeDragAndDrop: function (instance) {
@@ -784,6 +781,7 @@ var $eXeDragDrop = {
         $eXeDragDrop.showScoreGame(instance);
         mOptions.gameStarted = true;
         mOptions.gameOver = false;
+        $eXeDragDrop.saveScormScore(instance);
 
         $('#dadPMessage-' + instance).hide();
     },
@@ -1122,14 +1120,11 @@ var $eXeDragDrop = {
     },
 
     /**
-     * Publish the freshly reset state to the LMS when a game starts or
-     * restarts.
+     * Publish the freshly reset state only after the learner explicitly asks
+     * to play again.
      *
-     * startGame() clears hits, errors and gameOver, but nothing told the LMS,
-     * so the menu kept the finished attempt's grade and its terminal status
-     * until the learner checked the board again. Every restart routes through
-     * startGame (reboot -> rebootDrags -> startGame), so this one call site
-     * covers both ways in.
+     * Loading/minimizing can route through startGame(), so reporting there
+     * submits a zero score before the learner interacts with the activity.
      *
      * Automatic mode only: in manual mode the learner owns the send button,
      * and reporting here would submit an attempt they never asked to submit.

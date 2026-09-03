@@ -1543,7 +1543,7 @@ var $eXeCrucigrama = {
         }
     },
 
-    repeatActivity: function (instance) {
+    repeatActivity: function (instance, reportScorm = false) {
         const mOptions = $eXeCrucigrama.options[instance];
 
         mOptions.wordsGame =
@@ -1560,7 +1560,7 @@ var $eXeCrucigrama = {
         this.cleanupInstance(instance);
 
         $eXeCrucigrama.generateCrossword(instance);
-        $eXeCrucigrama.startGame(instance);
+        $eXeCrucigrama.startGame(instance, reportScorm);
 
         if (mOptions.modeGame) {
             $eXeCrucigrama.modeCrossword(instance);
@@ -2022,11 +2022,12 @@ var $eXeCrucigrama = {
     },
 
     /**
-     * Publish the freshly reset state to the LMS when a game starts.
+     * Publish the freshly reset state to the LMS when a learner starts or
+     * restarts the crossword from an explicit control.
      *
-     * startGame() clears hits, score and gameOver, but nothing told the LMS,
-     * so after "volver a jugar" the menu kept the finished attempt's grade and
-     * status until the learner checked the crossword again.
+     * The crossword also starts itself while loading when no timer/code access
+     * is configured, so startGame() must only publish when the caller confirms
+     * that the start came from user interaction.
      *
      * Automatic mode only: in manual mode the learner owns the send button,
      * and reporting here would submit an attempt they never asked to submit.
@@ -2115,7 +2116,7 @@ var $eXeCrucigrama = {
             e.preventDefault();
             $('#ccgmReboot-' + instance).hide();
             $('#ccgmSolutions-' + instance).hide();
-            $eXeCrucigrama.repeatActivity(instance);
+            $eXeCrucigrama.repeatActivity(instance, true);
             $('#ccgmCheck-' + instance).show();
             $('#ccgmActiveDefinition-' + instance).html(
                 mOptions.msgs.msgSelectWord
@@ -2223,7 +2224,7 @@ var $eXeCrucigrama = {
 
         $('#ccgmStartGame-' + instance).on('click', function (e) {
             e.preventDefault();
-            $eXeCrucigrama.startGame(instance);
+            $eXeCrucigrama.startGame(instance, true);
         });
 
         $mainContainer.on('click', '.CCGMP-LinkImageDef', function (e) {
@@ -2702,7 +2703,7 @@ var $eXeCrucigrama = {
         return ignoredKeys.includes(key);
     },
 
-    startGame: function (instance) {
+    startGame: function (instance, reportScorm = false) {
         const mOptions = $eXeCrucigrama.options[instance];
 
         if (mOptions.gameStarted) return;
@@ -2763,9 +2764,9 @@ var $eXeCrucigrama = {
             });
 
         mOptions.gameStarted = true;
-        // After gameStarted, never before: sendScoreNew ignores a game that
-        // reports as neither started nor over.
-        $eXeCrucigrama.saveScormScore(instance);
+        if (reportScorm) {
+            $eXeCrucigrama.saveScormScore(instance);
+        }
     },
 
     enterCodeAccess: function (instance) {
@@ -2779,7 +2780,9 @@ var $eXeCrucigrama = {
         ) {
             $('#ccgmLinkMaximize-' + instance).trigger('click');
             $eXeCrucigrama.showCubiertaOptions(instance, false);
-            $eXeCrucigrama.startGame(instance);
+            // A valid access code is an explicit start, like the play button:
+            // it is the learner opening the attempt, not the page loading it.
+            $eXeCrucigrama.startGame(instance, true);
         } else {
             $('#ccgmMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
@@ -2809,6 +2812,9 @@ var $eXeCrucigrama = {
         $exeDevices.iDevice.gamification.media.stopSound();
 
         if (mOptions.isScorm == 1) {
+            // A finished attempt always reports: this runs on the check button
+            // and on the countdown running out, never while the page loads.
+            // The load-path distinction belongs to startGame(), not here.
             $eXeCrucigrama.sendScore(true, instance);
             $('#ccgmRepeatActivity-' + instance).text(
                 mOptions.msgs.msgYouScore + ': ' + score

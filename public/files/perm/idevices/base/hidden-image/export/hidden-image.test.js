@@ -383,5 +383,34 @@ describe('hidden-image iDevice export', () => {
 
       expect(flagWhenReported).toBe(true);
     });
+
+    it('clears the previous game-over flag before starting a replay question', () => {
+      document.body.innerHTML = '<div id="hiPGameContainer-0"><div class="HIP-StartGame"></div></div>';
+      $eXeHiddenImage.options[0] = {
+        gameStarted: false,
+        gameOver: true,
+        scoreGame: 8,
+        obtainedClue: true,
+        hits: 3,
+        errors: 1,
+        score: 8,
+        gameActived: true,
+        activeQuestion: 3,
+        validQuestions: 4,
+        numberQuestions: 4,
+        questionsGame: [{ time: 10 }],
+      };
+      let flagWhenStartingQuestion;
+      vi.spyOn($eXeHiddenImage, 'uptateTime').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeHiddenImage, 'newQuestion').mockImplementation(() => {
+        flagWhenStartingQuestion = $eXeHiddenImage.options[0].gameOver;
+      });
+
+      $eXeHiddenImage.startGame(0);
+
+      expect(flagWhenStartingQuestion).toBe(false);
+      expect($eXeHiddenImage.options[0].gameOver).toBe(false);
+    });
   });
 });

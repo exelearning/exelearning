@@ -674,6 +674,9 @@ var $eXeHiddenImage = {
         mOptions.gameActived = false;
         mOptions.activeQuestion = -1;
         mOptions.validQuestions = mOptions.numberQuestions;
+        // gameOver() leaves this true; a replay starts as unfinished before
+        // newQuestion() can publish the automatic SCORM score.
+        mOptions.gameOver = false;
 
         $('#hiPNumber-' + instance).text(mOptions.numberQuestions);
 

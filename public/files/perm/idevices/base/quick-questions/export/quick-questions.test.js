@@ -181,5 +181,38 @@ describe('quick-questions iDevice export', () => {
             $quickquestions.saveScormScore(0);
             expect($quickquestions.sendScore).not.toHaveBeenCalled();
         });
+
+        it('clears the previous game-over flag before reporting a replay start', () => {
+            document.body.innerHTML = '<div id="quextGameContainer-0"><div class="QXTP-StartGame"></div></div>';
+            $quickquestions.options[0] = {
+                gameStarted: false,
+                gameOver: true,
+                scoreGame: 8,
+                obtainedClue: true,
+                hits: 3,
+                errors: 1,
+                score: 8,
+                gameActived: true,
+                activeQuestion: 3,
+                validQuestions: 4,
+                numberQuestions: 4,
+                counter: 10,
+                useLives: false,
+                numberLives: 3,
+                livesLeft: 0,
+            };
+            let flagWhenReported;
+            vi.spyOn($quickquestions, 'updateLives').mockImplementation(() => {});
+            vi.spyOn($quickquestions, 'uptateTime').mockImplementation(() => {});
+            vi.spyOn($quickquestions, 'newQuestion').mockImplementation(() => {});
+            vi.spyOn($quickquestions, 'saveScormScore').mockImplementation(() => {
+                flagWhenReported = $quickquestions.options[0].gameOver;
+            });
+
+            $quickquestions.startGame(0);
+
+            expect(flagWhenReported).toBe(false);
+            expect($quickquestions.options[0].gameOver).toBe(false);
+        });
     });
 });

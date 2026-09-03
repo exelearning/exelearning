@@ -778,7 +778,7 @@ var $trueorfalse = {
 
         $(`#tofPStartGame-${instance}`).val(msgs.tofPStartGame);
         $(`#tofPStartGame-${instance}`).on('click', function () {
-            $trueorfalse.startGame(mOptions);
+            $trueorfalse.startGame(mOptions, true);
         });
 
         $('#tofPGameContainer-' + instance).on(
@@ -951,7 +951,7 @@ var $trueorfalse = {
         mOptions.errors = errors;
     },
 
-    startGame: function (data) {
+    startGame: function (data, reportScorm = false) {
         const mOptions = data,
             instance = mOptions.id;
 
@@ -961,6 +961,7 @@ var $trueorfalse = {
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.scorerp = 0;
+        mOptions.gameOver = false;
 
         $(`#tofPMultimedia-${instance}`).removeClass('TOFP-EHidden');
         $(`#tofPCheckTestDiv-${instance}`).removeClass('TOFP-EHidden');
@@ -994,10 +995,10 @@ var $trueorfalse = {
                     return;
                 }
                 if (mOptions && mOptions.isTest && mOptions.gameStarted) {
-                    mOptions.counter--;
+                    mOptions.counter = Math.max(0, mOptions.counter - 1);
                     $trueorfalse.updateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
-                        $trueorfalse.gameOver(mOptions);
+                        $trueorfalse.finishByTime(mOptions);
                     }
                 }
             }, 1000);
@@ -1009,6 +1010,17 @@ var $trueorfalse = {
             );
         }
         mOptions.gameStarted = true;
+        if (reportScorm && mOptions.isScorm == 1) {
+            $trueorfalse.sendScore(true, mOptions);
+        }
+    },
+
+    finishByTime: function (data) {
+        const mOptions = data;
+        mOptions.counter = 0;
+        mOptions.gameStarted = false;
+        mOptions.gameOver = true;
+        $trueorfalse.gameOver(mOptions);
     },
 
     stopCounter: function (data) {

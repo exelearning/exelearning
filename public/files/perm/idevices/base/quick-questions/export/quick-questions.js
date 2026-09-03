@@ -1130,6 +1130,9 @@ var $quickquestions = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
+        // gameOver() leaves this true; a replay starts as unfinished before the
+        // automatic zero-score report is sent to SCORM.
+        mOptions.gameOver = false;
         mOptions.livesLeft = mOptions.numberLives;
 
         $quickquestions.updateLives(instance);

@@ -1159,8 +1159,19 @@ var $eXePuzzle = {
 
         $('#pzlStartGameEnd-' + instance).on('click', function (e) {
             e.preventDefault();
-            $eXePuzzle.showPuzzle(0, instance);
+            // Lowered first: startGame returns early on a game it believes is
+            // already running, and the replay would then carry the finished
+            // attempt's hits, errors and score into the new board.
+            mOptions.gameStarted = false;
             $eXePuzzle.startGame(instance);
+            // showPuzzle raises gameStarted again, and the report has to follow
+            // it: sendScoreNew drops a game that reports as neither started nor
+            // over.
+            $eXePuzzle.showPuzzle(0, instance);
+            if (mOptions.isScorm === 1) {
+                $eXePuzzle.sendScore(true, instance);
+            }
+            $eXePuzzle.saveEvaluation(instance);
             $('#pzlCubierta-' + instance).hide();
         });
 

@@ -695,7 +695,7 @@ var $form = {
         return `${hh}:${mm}:${ss}`;
     },
 
-    startGame: function (data) {
+    startGame: function (data, reportScorm = false) {
         if (data.gameStarted) return;
         const checkButton = document.querySelector(
             `#form-button-check-${data.id}`
@@ -716,6 +716,7 @@ var $form = {
         if (checkButton) checkButton.style.display = 'block';
         if (body) body.style.display = 'block';
         $form.resetScore(data);
+        data.gameOver = false;
         data.counter = data.time * 60;
         data.clock = setInterval(() => {
             if (data.gameStarted) {
@@ -756,6 +757,9 @@ var $form = {
             $form.resizeSlideShow(data);
         }, 100);
         data.gameStarted = true;
+        if (reportScorm) {
+            $form.saveScormScore(data);
+        }
     },
 
     gameOver: function (data) {
@@ -1461,7 +1465,7 @@ var $form = {
         const $startGame = $('#frmStartGame-' + data.id);
         if (!$startGame.length) return;
         $startGame.on('click', function () {
-            $form.startGame(data);
+            $form.startGame(data, true);
         });
     },
 

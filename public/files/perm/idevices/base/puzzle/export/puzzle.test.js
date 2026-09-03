@@ -278,4 +278,137 @@ describe('puzzle iDevice export', () => {
       expect($eXePuzzle.sendScore).not.toHaveBeenCalled();
     });
   });
+
+  describe('playing again from the end screen', () => {
+    function setupPlayAgain(overrides) {
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="pzlMainContainer-0"></div>
+          <a href="#" id="pzlStartGameEnd-0">Play again</a>
+          <div id="pzlCubierta-0"></div>
+          <div id="pzlShowClue-0"></div>
+          <div id="pzlPHits-0"></div>
+          <div id="pzlPNumber-0"></div>
+          <div id="pzlPScore-0"></div>
+          <div id="pzlPErrors-0"></div>
+          <div id="pzlGameOver-0"></div>
+        </article>`;
+      $eXePuzzle.options[0] = Object.assign(
+        {
+          id: 0,
+          main: 'pzlMainContainer-0',
+          isScorm: 1,
+          gameStarted: false,
+          gameOver: true,
+          hits: 3,
+          errors: 0,
+          score: 10,
+          numberQuestions: 3,
+          puzzlesGame: [{}, {}, {}],
+          itinerary: { showCodeAccess: false },
+          time: 0,
+          author: '',
+          fullscreen: false,
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.report = {
+        updateEvaluationIcon: vi.fn(),
+        saveEvaluation: vi.fn(),
+      };
+      vi.spyOn($eXePuzzle, 'uptateTime').mockImplementation(() => {});
+      // Rebuilding the board is stubbed out, but the real showPuzzle raises
+      // gameStarted and the replay report depends on that: sendScoreNew drops
+      // a game that is neither started nor over. A bare no-op here would let
+      // the stub, not the code, decide whether the report carries.
+      vi.spyOn($eXePuzzle, 'showPuzzle').mockImplementation(() => {
+        $eXePuzzle.options[0].gameStarted = true;
+      });
+      vi.spyOn($eXePuzzle, 'saveEvaluation').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('resets before rebuilding the board and reports the replay start to SCORM', () => {
+      setupPlayAgain();
+      let reportedState;
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew.mockImplementation(
+        (auto, game) => {
+          reportedState = {
+            auto,
+            gameOver: game.gameOver,
+            gameStarted: game.gameStarted,
+            hits: game.hits,
+            score: game.score,
+            scorerp: game.scorerp,
+          };
+        }
+      );
+
+      $eXePuzzle.addEvents(0);
+      $('#pzlStartGameEnd-0').trigger('click');
+
+      expect($eXePuzzle.options[0].hits).toBe(0);
+      expect($eXePuzzle.options[0].score).toBe(0);
+      expect($eXePuzzle.options[0].scorerp).toBe(0);
+      expect($eXePuzzle.options[0].gameOver).toBe(false);
+      expect($eXePuzzle.options[0].gameStarted).toBe(true);
+      expect($eXePuzzle.showPuzzle).toHaveBeenCalledWith(0, 0);
+      expect(reportedState).toEqual({
+        auto: true,
+        gameOver: false,
+        gameStarted: true,
+        hits: 0,
+        score: 0,
+        scorerp: 0,
+      });
+    });
+
+    // startGame returns early on a game it believes is already running, so the
+    // handler lowers the flag first. Without that, the replay kept the finished
+    // attempt's errors — the one count the handler never reset by hand.
+    it('clears every count when the game flag was still up', () => {
+      setupPlayAgain({ gameStarted: true, gameOver: false, hits: 3, errors: 2 });
+
+      $eXePuzzle.addEvents(0);
+      $('#pzlStartGameEnd-0').trigger('click');
+
+      expect($eXePuzzle.options[0].hits).toBe(0);
+      expect($eXePuzzle.options[0].errors).toBe(0);
+      expect($eXePuzzle.options[0].score).toBe(0);
+    });
+
+    it('does not auto-report a manual SCORM replay', () => {
+      setupPlayAgain({ isScorm: 2 });
+      vi.spyOn($eXePuzzle, 'sendScore').mockImplementation(() => {});
+
+      $eXePuzzle.addEvents(0);
+      $('#pzlStartGameEnd-0').trigger('click');
+
+      expect($eXePuzzle.sendScore).not.toHaveBeenCalled();
+      expect($eXePuzzle.saveEvaluation).toHaveBeenCalledWith(0);
+    });
+
+    // The puzzle reports when a piece resolves a board and when the learner
+    // asks to play again — never on the way in. addEvents() is what the load
+    // path runs (init -> addEvents -> showPuzzle), so it must only wire the
+    // handlers up.
+    it('reports nothing while loading the page', () => {
+      setupPlayAgain();
+      vi.spyOn($eXePuzzle, 'sendScore').mockImplementation(() => {});
+
+      $eXePuzzle.addEvents(0);
+
+      expect($eXePuzzle.sendScore).not.toHaveBeenCalled();
+      expect(
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew
+      ).not.toHaveBeenCalled();
+    });
+  });
 });

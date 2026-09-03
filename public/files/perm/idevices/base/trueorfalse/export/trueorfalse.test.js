@@ -283,6 +283,227 @@ describe('trueorfalse iDevice export', () => {
       expect(options.idevice).toBe('trueorfalseIdevice');
       expect(updateEvaluationIcon).toHaveBeenCalledWith(options, false);
     });
+
+    it('starts with SCORM reporting when the learner clicks the start button', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      $exeDevices.iDevice.gamification.report = {
+        updateEvaluationIcon: vi.fn(),
+      };
+      document.body.innerHTML = `
+        <div class="idevice_body trueorfalseIdevice" id="tof-1">
+          <div class="exe-trueorfalse-container">
+            <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
+              <div id="tofPGameContainer-tof-1"></div>
+              <button id="tofPStartGame-tof-1"></button>
+              <button id="tofPCheckTest-tof-1"></button>
+              <button id="tofRebootTest-tof-1"></button>
+              <input id="tofPSendScore-tof-1" />
+            </div>
+          </div>
+        </div>
+      `;
+      const options = {
+        id: 'tof-1',
+        idevicePath: '/idevices/trueorfalse/',
+        msgs: { tofPStartGame: 'Start' },
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isScorm: 1,
+        showSlider: false,
+        isTest: true,
+        time: 0,
+        evaluation: false,
+        isInExe: false,
+      };
+      vi.spyOn($trueorfalse, 'startGame').mockImplementation(() => {});
+
+      try {
+        $trueorfalse.addEvents(options);
+        document.getElementById('tofPStartGame-tof-1').click();
+      } finally {
+        $trueorfalse.removeEvents(options);
+        $exeDevices.iDevice.gamification.report = previousReport;
+        document.body.innerHTML = '';
+      }
+
+      expect($trueorfalse.startGame).toHaveBeenCalledWith(options, true);
+    });
+  });
+
+  describe('SCORM reporting on start', () => {
+    function setupStartDom() {
+      document.body.innerHTML = `
+        <div id="tofPMainContainer-tof-1">
+          <div id="tofPMultimedia-tof-1">
+            <div class="TOFP-Suggestion"></div>
+            <div class="TOFP-Feedback"></div>
+          </div>
+          <div id="tofPCheckTestDiv-tof-1"></div>
+          <div id="tofPStartGameDiv-tof-1"></div>
+          <button id="tofRebootTest-tof-1"></button>
+          <button id="tofPCheckTest-tof-1"></button>
+          <div id="tofPGameContainer-tof-1">
+            <input class="TOFP-Answer" type="radio" checked disabled />
+          </div>
+          <div id="tofPMessage-tof-1"></div>
+        </div>`;
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('publishes zero score when an explicit start opens the attempt', () => {
+      setupStartDom();
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      const options = {
+        id: 'tof-1',
+        isScorm: 1,
+        isTest: true,
+        time: 0,
+        gameStarted: false,
+        gameOver: true,
+        hits: 2,
+        errors: 1,
+        scorerp: 8,
+        questionsGame: [{ solution: '1' }, { solution: '0' }],
+        msgs: {},
+      };
+
+      try {
+        $trueorfalse.startGame(options, true);
+      } finally {
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+      }
+
+      expect(sendScoreNew).toHaveBeenCalledWith(true, options);
+      expect(options.gameStarted).toBe(true);
+      expect(options.gameOver).toBe(false);
+      expect(options.hits).toBe(0);
+      expect(options.errors).toBe(0);
+      expect(options.scorerp).toBe(0);
+    });
+
+    it('does not publish when startGame is called without explicit interaction', () => {
+      setupStartDom();
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      const options = {
+        id: 'tof-1',
+        isScorm: 1,
+        isTest: true,
+        time: 0,
+        gameStarted: false,
+        gameOver: false,
+        hits: 0,
+        errors: 0,
+        scorerp: 0,
+        questionsGame: [{ solution: '1' }],
+        msgs: {},
+      };
+
+      try {
+        $trueorfalse.startGame(options);
+      } finally {
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+      }
+
+      expect(sendScoreNew).not.toHaveBeenCalled();
+    });
+
+    // The edition form stores isScorm through parseInt, but content written
+    // straight through the REST API can carry the string. gameOver() has always
+    // compared loosely, so the start has to agree: a package that reported when
+    // it finished but not when it started would look arbitrary.
+    it('publishes when isScorm arrives as a string', () => {
+      setupStartDom();
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      const options = {
+        id: 'tof-1',
+        isScorm: '1',
+        isTest: true,
+        time: 0,
+        gameStarted: false,
+        gameOver: true,
+        hits: 2,
+        errors: 1,
+        scorerp: 8,
+        questionsGame: [{ solution: '1' }, { solution: '0' }],
+        msgs: {},
+      };
+
+      try {
+        $trueorfalse.startGame(options, true);
+      } finally {
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+      }
+
+      expect(sendScoreNew).toHaveBeenCalledWith(true, options);
+    });
+
+    it('publishes the completed status when the countdown finishes', () => {
+      vi.useFakeTimers();
+      setupStartDom();
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const previousGetTimeToString =
+        $exeDevices.iDevice.gamification.helpers.getTimeToString;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      $exeDevices.iDevice.gamification.helpers.getTimeToString = vi.fn((seconds) =>
+        String(seconds)
+      );
+      const options = {
+        id: 'tof-1',
+        isScorm: 1,
+        isTest: true,
+        time: 1 / 60,
+        gameStarted: false,
+        gameOver: false,
+        hits: 0,
+        errors: 0,
+        scorerp: 0,
+        questionsGame: [{ solution: '1' }],
+        numberQuestions: 1,
+        pendingAttempts: 1,
+        msgs: { msgKO: 'KO', msgOk: 'OK', msgYouScore: 'Score' },
+        isInExe: false,
+      };
+
+      try {
+        $trueorfalse.startGame(options, true);
+        vi.advanceTimersByTime(1000);
+      } finally {
+        $trueorfalse.stopCounter(options);
+        $exeDevices.iDevice.gamification.report = previousReport;
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+        $exeDevices.iDevice.gamification.helpers.getTimeToString =
+          previousGetTimeToString;
+        vi.useRealTimers();
+      }
+
+      expect(sendScoreNew).toHaveBeenCalledTimes(2);
+      expect(sendScoreNew).toHaveBeenLastCalledWith(true, options);
+      expect(options.gameStarted).toBe(false);
+      expect(options.gameOver).toBe(true);
+      expect(options.scorerp).toBe(0);
+      expect(options.pendingAttempts).toBe(0);
+    });
   });
 
   describe('source hygiene', () => {

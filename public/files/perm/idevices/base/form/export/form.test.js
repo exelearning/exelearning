@@ -667,6 +667,43 @@ describe('form iDevice export', () => {
 
       expect($form.sendScore).not.toHaveBeenCalled();
     });
+
+    it('publishes the cleared state when the learner clicks the start button', () => {
+      const data = gameData({
+        time: 5,
+        gameStarted: false,
+        gameOver: true,
+        rightQuestions: 2,
+      });
+      document.body.innerHTML = `
+        <div id="frmMainContainer-f1">
+          <div id="frmStartGameDiv-f1">
+            <button id="frmStartGame-f1" type="button">Click here to start</button>
+          </div>
+          <div id="frmBody-f1"></div>
+          <input id="form-button-check-f1" type="button">
+          <input id="form-button-reset-f1" type="button">
+        </div>`;
+      vi.spyOn($form, 'resizeSlideShow').mockImplementation(() => {});
+      let stateWhenReported;
+      $form.sendScore.mockImplementation(() => {
+        stateWhenReported = {
+          rightQuestions: data.rightQuestions,
+          gameOver: data.gameOver,
+          gameStarted: data.gameStarted,
+        };
+      });
+
+      $form.setBehaviourTest(data);
+      document.getElementById('frmStartGame-f1').click();
+      clearInterval(data.clock);
+
+      expect(stateWhenReported).toEqual({
+        rightQuestions: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
   });
 
   describe('the countdown of a timed form', () => {

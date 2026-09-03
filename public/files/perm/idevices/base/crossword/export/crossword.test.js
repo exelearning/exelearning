@@ -492,8 +492,18 @@ describe('crossword iDevice export', () => {
     });
   });
 
-  describe('SCORM reporting on start', () => {
+  describe('SCORM reporting from explicit controls', () => {
     function setupGame(overrides = {}) {
+      $exeDevices.iDevice.gamification.media = {
+        stopSound: vi.fn(),
+      };
+      $exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon: vi.fn(),
+      };
+      $exeDevices.iDevice.gamification.helpers.getTimeToString = vi.fn(
+        () => '00:00'
+      );
       $eXeCrucigrama.options[0] = Object.assign(
         {
           isScorm: 1,
@@ -505,7 +515,26 @@ describe('crossword iDevice export', () => {
           time: 0,
           wordsGame: [{ word: 'uno' }, { word: 'dos' }],
           numberQuestions: 2,
-          msgs: { msgSelectWord: 'select' },
+          modeGame: true,
+          mappedWords: [],
+          grid: [],
+          caseSensitive: false,
+          tilde: true,
+          showSolution: false,
+          showCodeAccess: false,
+          itinerary: { showClue: false, showCodeAccess: false },
+          feedBack: false,
+          activeQuestion: -1,
+          wordIndex: 0,
+          word: 0,
+          half: 1,
+          hasBack: false,
+          authorBackImage: '',
+          msgs: {
+            msgSelectWord: 'select',
+            msgGameOver: 'Score %s %s %s',
+            msgYouScore: 'Score',
+          },
         },
         overrides
       );
@@ -514,6 +543,7 @@ describe('crossword iDevice export', () => {
 
     afterEach(() => {
       document.body.innerHTML = '';
+      vi.useRealTimers();
       vi.restoreAllMocks();
     });
 
@@ -528,42 +558,159 @@ describe('crossword iDevice export', () => {
       expect($eXeCrucigrama.sendScore).not.toHaveBeenCalled();
     });
 
-    // The defect: "volver a jugar" rebuilds the board and clears the state,
-    // but the LMS menu kept the finished attempt's grade and status until the
-    // learner checked the crossword again.
-    it('publishes the cleared state when a finished game is restarted', () => {
+    it('does not publish a score when the crossword starts automatically', () => {
+      setupGame({ gameStarted: false, gameOver: true, hits: 2, score: 10 });
+
+      $eXeCrucigrama.startGame(0);
+
+      expect($eXeCrucigrama.sendScore).not.toHaveBeenCalled();
+      expect($eXeCrucigrama.options[0].hits).toBe(0);
+      expect($eXeCrucigrama.options[0].gameOver).toBe(false);
+      expect($eXeCrucigrama.options[0].gameStarted).toBe(true);
+    });
+
+    it('publishes the cleared state when the play button starts the crossword', () => {
       setupGame({ gameStarted: false, gameOver: true, hits: 2, score: 10 });
       let stateWhenReported;
       $eXeCrucigrama.sendScore.mockImplementation(() => {
-        const { hits, gameOver } = $eXeCrucigrama.options[0];
-        stateWhenReported = { hits, gameOver };
+        const { hits, gameOver, gameStarted } = $eXeCrucigrama.options[0];
+        stateWhenReported = { hits, gameOver, gameStarted };
       });
 
-      $eXeCrucigrama.startGame(0);
+      $eXeCrucigrama.startGame(0, true);
 
-      expect(stateWhenReported).toEqual({ hits: 0, gameOver: false });
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
     });
 
-    // sendScoreNew ignores a game that reports as neither started nor over, so
-    // reporting before the flag is set would be silently dropped.
-    it('reports with the game already marked as started', () => {
-      setupGame();
-      let startedWhenReported;
+    it('publishes the cleared state when a finished game is restarted', () => {
+      setupGame({ gameStarted: false, gameOver: true, hits: 2, score: 10 });
+      $exeDevices.iDevice.gamification.helpers.shuffleAds = vi.fn((items) => items);
+      vi.spyOn($eXeCrucigrama, 'cleanupInstance').mockImplementation(() => {});
+      vi.spyOn($eXeCrucigrama, 'generateCrossword').mockImplementation(() => {});
+      vi.spyOn($eXeCrucigrama, 'modeCrossword').mockImplementation(() => {});
+      let stateWhenReported;
       $eXeCrucigrama.sendScore.mockImplementation(() => {
-        startedWhenReported = $eXeCrucigrama.options[0].gameStarted;
+        const { hits, gameOver, gameStarted } = $eXeCrucigrama.options[0];
+        stateWhenReported = { hits, gameOver, gameStarted };
       });
 
-      $eXeCrucigrama.startGame(0);
+      $eXeCrucigrama.repeatActivity(0, true);
 
-      expect(startedWhenReported).toBe(true);
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    // A finished attempt always reports. gameOver() is reached from the check
+    // button and from the countdown running out, never while the page loads,
+    // so it carries no opt-in: a caller that forgot one would drop the
+    // learner's final grade silently.
+    it('reports whenever the attempt finishes', () => {
+      setupGame({ hits: 1 });
+      vi.spyOn($eXeCrucigrama, 'highlightWord').mockImplementation(() => {});
+      vi.spyOn($eXeCrucigrama, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeCrucigrama, 'showFeedBack').mockImplementation(() => {});
+
+      $eXeCrucigrama.gameOver(0);
+
+      expect($eXeCrucigrama.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+
+    it('checks and reports the score when time expires', () => {
+      setupGame({ time: 1 / 60 });
+      vi.useFakeTimers();
+      document.body.innerHTML = `
+        <div id="ccgmMainContainer-0">
+          <div id="ccgmGameContainer-0">
+            <span class="exeQuextIcons-Time"></span>
+          </div>
+          <div id="ccgmCrossword-0"></div>
+          <span id="ccgmPTime-0"></span>
+        </div>`;
+      vi.spyOn($eXeCrucigrama, 'verifyCrossword').mockImplementation(() => {});
+
+      $eXeCrucigrama.startGame(0);
+      vi.advanceTimersByTime(1000);
+
+      expect($eXeCrucigrama.verifyCrossword).toHaveBeenCalledWith(0);
+    });
+
+    it('passes explicit reporting from the interactive buttons', () => {
+      setupGame({ isScorm: 0, time: 1 });
+      document.body.innerHTML = `
+        <div class="idevice_node">
+          <div id="ccgmMainContainer-0">
+            <a id="ccgmStartGame-0" href="#"></a>
+            <a id="ccgmCheck-0" href="#"></a>
+            <a id="ccgmReboot-0" href="#"></a>
+          </div>
+        </div>`;
+      vi.spyOn($eXeCrucigrama, 'startGame').mockImplementation(() => {});
+      vi.spyOn($eXeCrucigrama, 'verifyCrossword').mockImplementation(() => {});
+      vi.spyOn($eXeCrucigrama, 'repeatActivity').mockImplementation(() => {});
+
+      $eXeCrucigrama.addEvents(0);
+      $('#ccgmStartGame-0').trigger('click');
+      $('#ccgmCheck-0').trigger('click');
+      $('#ccgmReboot-0').trigger('click');
+
+      expect($eXeCrucigrama.startGame).toHaveBeenCalledWith(0, true);
+      expect($eXeCrucigrama.repeatActivity).toHaveBeenCalledWith(0, true);
+      // Checking always reports, so it needs no opt-in from the button.
+      expect($eXeCrucigrama.verifyCrossword).toHaveBeenCalledWith(0);
     });
 
     it('does not report a game that was already running', () => {
       setupGame({ gameStarted: true });
 
-      $eXeCrucigrama.startGame(0);
+      $eXeCrucigrama.startGame(0, true);
 
       expect($eXeCrucigrama.sendScore).not.toHaveBeenCalled();
+    });
+
+    // Unlocking with the access code is the learner opening the attempt, so it
+    // reports like the play button — a board behind a code never starts on its
+    // own, and without this the LMS kept the previous attempt's grade until the
+    // learner checked the crossword.
+    it('publishes the cleared state when a valid access code opens the board', () => {
+      setupGame({ gameStarted: false, gameOver: true, hits: 2, score: 10 });
+      document.body.innerHTML = `
+        <div id="ccgmMainContainer-0">
+          <a id="ccgmLinkMaximize-0" href="#"></a>
+          <input id="ccgmCodeAccessE-0" value="AbrE" />
+        </div>`;
+      $eXeCrucigrama.options[0].itinerary.codeAccess = 'abre';
+      vi.spyOn($eXeCrucigrama, 'showCubiertaOptions').mockImplementation(
+        () => {}
+      );
+      vi.spyOn($eXeCrucigrama, 'startGame').mockImplementation(() => {});
+
+      $eXeCrucigrama.enterCodeAccess(0);
+
+      expect($eXeCrucigrama.startGame).toHaveBeenCalledWith(0, true);
+    });
+
+    it('does not start or report when the access code is wrong', () => {
+      setupGame({ gameStarted: false, gameOver: true, hits: 2, score: 10 });
+      document.body.innerHTML = `
+        <div id="ccgmMainContainer-0">
+          <a id="ccgmLinkMaximize-0" href="#"></a>
+          <div id="ccgmMesajeAccesCodeE-0"></div>
+          <input id="ccgmCodeAccessE-0" value="nope" />
+        </div>`;
+      $eXeCrucigrama.options[0].itinerary.codeAccess = 'abre';
+      vi.spyOn($eXeCrucigrama, 'startGame').mockImplementation(() => {});
+
+      $eXeCrucigrama.enterCodeAccess(0);
+
+      expect($eXeCrucigrama.startGame).not.toHaveBeenCalled();
+      expect($('#ccgmCodeAccessE-0').val()).toBe('');
     });
   });
 });

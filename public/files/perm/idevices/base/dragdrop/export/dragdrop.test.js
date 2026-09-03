@@ -67,7 +67,7 @@ describe('dragdrop iDevice export', () => {
     });
   });
 
-  describe('SCORM reporting when a game starts or restarts', () => {
+  describe('SCORM reporting on explicit replay', () => {
     const instance = 0;
 
     function setupGame(overrides = {}) {
@@ -129,8 +129,6 @@ describe('dragdrop iDevice export', () => {
       expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
     });
 
-    // The defect: "volver a jugar" cleared the board, but the LMS menu kept
-    // the finished attempt's grade and its terminal status.
     it('publishes the cleared state when the board is restarted', () => {
       setupGame({ hits: 4, errors: 2, gameOver: true });
       let stateWhenReported;
@@ -146,14 +144,10 @@ describe('dragdrop iDevice export', () => {
         hits: 0,
         errors: 0,
         gameOver: false,
-        // sendScoreNew ignores a game that reports as neither started nor over.
         gameStarted: true,
       });
     });
 
-    // reboot reaches startGame, which returns early on a game it believes is
-    // already running — so the restart used to do none of its work whenever
-    // the flag was still up.
     it('restarts a board whose game flag was still up', () => {
       setupGame({ hits: 4, gameStarted: true, gameOver: false });
 
@@ -163,21 +157,15 @@ describe('dragdrop iDevice export', () => {
       expect($eXeDragDrop.options[instance].hits).toBe(0);
     });
 
-    it('publishes the cleared state when a game starts', () => {
+    it('does not publish a score when a game starts', () => {
       setupGame({ hits: 3, gameOver: true });
-      let stateWhenReported;
-      $eXeDragDrop.sendScore.mockImplementation(() => {
-        const { hits, gameOver, gameStarted } = $eXeDragDrop.options[instance];
-        stateWhenReported = { hits, gameOver, gameStarted };
-      });
 
       $eXeDragDrop.startGame(instance);
 
-      expect(stateWhenReported).toEqual({
-        hits: 0,
-        gameOver: false,
-        gameStarted: true,
-      });
+      expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
+      expect($eXeDragDrop.options[instance].hits).toBe(0);
+      expect($eXeDragDrop.options[instance].gameOver).toBe(false);
+      expect($eXeDragDrop.options[instance].gameStarted).toBe(true);
     });
   });
 
