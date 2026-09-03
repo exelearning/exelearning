@@ -296,7 +296,10 @@ var $eXeCompleta = {
             e.preventDefault();
             $(`#cmptGameContainer-${instance}`).show();
             $(`#cmptGameMinimize-${instance}`).hide();
-            if (!mOptions.cmptStarted) {
+            // gameStarted, not cmptStarted: nothing ever wrote that key, so
+            // the guard always passed and what actually held the line was
+            // startGame's own early return. Same outcome, decided here.
+            if (!mOptions.gameStarted) {
                 $eXeCompleta.startGame(instance);
             }
             $(`#cmptSolution-${instance}`).focus();
@@ -525,7 +528,13 @@ var $eXeCompleta = {
             if (mOptions.time > 0) {
                 $eXeCompleta.startGame(instance);
             } else {
+                // Without a timer there is no startGame to run: the board was
+                // laid out while the page loaded, behind the cover. Raising
+                // the flag is all that is left — and then the opening zero,
+                // after it and never before, because sendScoreNew drops a game
+                // that reports as neither started nor over.
                 mOptions.gameStarted = true;
+                $eXeCompleta.saveScormScore(instance);
             }
             $(`#cmptLinkMaximize-${instance}`).trigger('click');
         } else {

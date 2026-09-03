@@ -652,6 +652,126 @@ describe('complete iDevice export', () => {
 
       expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
     });
+
+    /** The code field and the cover the entry drives. */
+    function addCodeAccessDom(typed) {
+      $(`#cmptMainContainer-${instance}`).append(`
+        <div id="cmptCodeAccessDiv-${instance}"></div>
+        <div id="cmptCubierta-${instance}"></div>
+        <div id="cmptMesajeAccesCodeE-${instance}"></div>
+        <a id="cmptLinkMaximize-${instance}" href="#"></a>
+        <input id="cmptCodeAccessE-${instance}" value="${typed}" />`);
+      vi.spyOn($eXeCompleta, 'showCubiertaOptions').mockImplementation(
+        () => {}
+      );
+    }
+
+    // Untimed and behind a code, the board is already laid out under the cover:
+    // there is no startGame to run, so the entry used to raise the flag and
+    // say nothing, and the LMS kept the previous attempt's grade until the
+    // learner checked the phrase.
+    it('publishes a zero and an unfinished attempt when an untimed code opens it', () => {
+      setupStart({
+        time: 0,
+        gameStarted: false,
+        gameOver: false,
+        hits: 0,
+        itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('AbrE');
+      let stateWhenReported;
+      $eXeCompleta.sendScore.mockImplementation(() => {
+        const { hits, gameOver, gameStarted } = $eXeCompleta.options[instance];
+        stateWhenReported = { hits, gameOver, gameStarted };
+      });
+
+      $eXeCompleta.enterCodeAccess(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('starts a timed activity when the code opens it', () => {
+      setupStart({
+        time: 1,
+        gameStarted: false,
+        itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('abre');
+
+      $eXeCompleta.enterCodeAccess(instance);
+
+      expect($eXeCompleta.sendScore).toHaveBeenCalledWith(true, instance);
+      expect($eXeCompleta.options[instance].gameStarted).toBe(true);
+    });
+
+    it('neither starts nor reports when the code is wrong', () => {
+      setupStart({
+        time: 0,
+        gameStarted: false,
+        itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('nope');
+
+      $eXeCompleta.enterCodeAccess(instance);
+
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+      expect($eXeCompleta.options[instance].gameStarted).toBe(false);
+      expect($(`#cmptCodeAccessE-${instance}`).val()).toBe('');
+    });
+
+    // No timer and no code: the board is live from the moment the page loads,
+    // and the learner has given no signal yet. Maximizing must not become one.
+    it('stays silent when an untimed, uncoded board is maximized', () => {
+      setupStart({ time: 0, gameStarted: true });
+
+      $eXeCompleta.startGame(instance);
+
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+    });
+
+    // The guard read mOptions.cmptStarted, a key nothing in the iDevice ever
+    // writes, so it always passed and startGame was called on every maximize —
+    // harmless only because startGame returns early on its own.
+    /**
+     * Wire the real handlers and click the maximize link.
+     *
+     * @param {number} time minutes on the clock; 0 leaves addEvents raising
+     * gameStarted, above 0 leaves it waiting for the play button.
+     */
+    function maximizeAfterAddEvents(time) {
+      setupStart({
+        time,
+        gameStarted: false,
+        author: '',
+        text: 'uno @@dos@@ tres',
+        itinerary: { showCodeAccess: false, showClue: false },
+      });
+      $(`#cmptMainContainer-${instance}`).append(`
+        <a id="cmptLinkMaximize-${instance}" href="#"></a>
+        <div id="cmptGameMinimize-${instance}"></div>
+        <input id="cmptSolution-${instance}" />`);
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      vi.spyOn($eXeCompleta, 'startGame').mockImplementation(() => {});
+
+      $eXeCompleta.addEvents(instance);
+      $(`#cmptLinkMaximize-${instance}`).trigger('click');
+    }
+
+    it('does not start an untimed board again when it is maximized', () => {
+      maximizeAfterAddEvents(0);
+
+      expect($eXeCompleta.startGame).not.toHaveBeenCalled();
+    });
+
+    it('starts a timed board when it is maximized before the play button', () => {
+      maximizeAfterAddEvents(1);
+
+      expect($eXeCompleta.startGame).toHaveBeenCalledWith(instance);
+    });
   });
 
   describe('completion signal on the automatic report', () => {
