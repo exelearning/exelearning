@@ -545,12 +545,43 @@ describe('adaptative-quiz export', () => {
 
             adq.checkAnswer(id);
 
-            expect(sendScoreSpy).toHaveBeenCalledOnce();
+            // Two reports, not one: the answer itself, and then the completion
+            // that endGame triggers. They used to collapse into the first,
+            // because the marker could not tell the two states apart — so the
+            // LMS only ever heard the answer, with the activity unfinished.
+            expect(sendScoreSpy).toHaveBeenCalledTimes(2);
             expect(sendScoreSpy).toHaveBeenCalledWith(true, id);
-            expect(saveEvaluationSpy).toHaveBeenCalledOnce();
+            expect(saveEvaluationSpy).toHaveBeenCalledTimes(2);
             expect(saveEvaluationSpy).toHaveBeenCalledWith(id);
             expect(adq.options[id].hits).toBe(1);
-            expect(adq.options[id].progressSaveMarker).toBe('1:1:0');
+            expect(adq.options[id].gameOver).toBe(true);
+            expect(adq.options[id].progressSaveMarker).toBe('1:1:0:1');
+        });
+
+        // The counters do not move between the last answer and endGame, so the
+        // finished state is the only thing that distinguishes the two reports.
+        it('reports the completion even though the counts did not change', () => {
+            const id = 'progress-completion';
+            adq.options[id] = {
+                id,
+                roundCount: 1,
+                hits: 1,
+                errors: 0,
+                gameOver: false,
+                isScorm: 1,
+            };
+            const sendScoreSpy = vi
+                .spyOn(adq, 'sendScore')
+                .mockImplementation(() => {});
+            vi.spyOn(adq, 'saveEvaluation').mockImplementation(() => {});
+
+            adq.saveProgress(id);
+            const afterAnswer = sendScoreSpy.mock.calls.length;
+            adq.options[id].gameOver = true;
+            adq.saveProgress(id);
+
+            expect(afterAnswer).toBe(1);
+            expect(sendScoreSpy).toHaveBeenCalledTimes(2);
         });
 
         it('does not duplicate progress persistence for the same answered state', () => {

@@ -1487,7 +1487,18 @@ var $adaptativequiz = {
         const opts = this.options[id];
         if (!opts) return;
 
-        const marker = [opts.roundCount || 0, opts.hits || 0, opts.errors || 0].join(':');
+        // gameOver belongs in the marker: finishing is a change worth
+        // reporting, and the three counters alone cannot see it. The last
+        // answer reports through here and stores its marker, and endGame then
+        // reports again with the same counts — so the guard swallowed the one
+        // report that carries the completion, and the LMS only ever heard the
+        // last answer, still unfinished.
+        const marker = [
+            opts.roundCount || 0,
+            opts.hits || 0,
+            opts.errors || 0,
+            opts.gameOver ? 1 : 0,
+        ].join(':');
         if (opts.progressSaveMarker === marker) return;
 
         if (opts.isScorm === 1) {
