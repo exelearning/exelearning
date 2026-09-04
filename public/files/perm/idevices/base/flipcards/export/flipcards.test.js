@@ -253,4 +253,94 @@ describe('flipcards iDevice export', () => {
       expect(scoreCalls[0].game.gameOver).toBe(true);
     });
   });
+
+  // An untimed memory game starts itself while the page loads, and that start
+  // hides the cover — wiping out the code dialog that had just been put up.
+  // The learner played without a code and only met the dialog when the cover
+  // came back at game over.
+  describe('an untimed memory game behind an access code', () => {
+    const instance = 0;
+
+    function givenMemoryGame(overrides) {
+      document.body.innerHTML = `
+        <div id="flcdsMainContainer-${instance}">
+          <div id="flcdsCubierta-${instance}">
+            <div id="flcdsCodeAccessDiv-${instance}">
+              <div id="flcdsMesajeAccesCodeE-${instance}"></div>
+              <input id="flcdsCodeAccessE-${instance}" value="abre" />
+            </div>
+          </div>
+          <div id="flcdsStartLevels-${instance}"></div>
+        </div>`;
+      $eXeFlipCards.options[instance] = Object.assign(
+        {
+          id: instance,
+          type: 3,
+          time: 0,
+          author: '',
+          fullscreen: false,
+          itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeFlipCards, 'startGameMemory').mockImplementation(() => {});
+      return instance;
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('starts the game when the code is accepted', () => {
+      $eXeFlipCards.enterCodeAccess(givenMemoryGame());
+
+      expect($eXeFlipCards.startGameMemory).toHaveBeenCalledWith(instance);
+      expect($(`#flcdsCodeAccessDiv-${instance}`).css('display')).toBe('none');
+      expect($(`#flcdsCubierta-${instance}`).css('display')).toBe('none');
+    });
+
+    it('starts nothing when the code is wrong', () => {
+      const i = givenMemoryGame();
+      $(`#flcdsCodeAccessE-${i}`).val('nope');
+
+      $eXeFlipCards.enterCodeAccess(i);
+
+      expect($eXeFlipCards.startGameMemory).not.toHaveBeenCalled();
+      expect($(`#flcdsCodeAccessE-${i}`).val()).toBe('');
+    });
+
+    // With a clock the level panel is what starts the game, so the code only
+    // has to get out of the way.
+    it('leaves a timed memory game to its level panel', () => {
+      $eXeFlipCards.enterCodeAccess(givenMemoryGame({ time: 2 }));
+
+      expect($eXeFlipCards.startGameMemory).not.toHaveBeenCalled();
+    });
+
+    // The load path is where the defect lived: it started the game itself and
+    // the start hid the dialog on its way in.
+    it('does not start itself while the page loads', () => {
+      const i = givenMemoryGame();
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+
+      $eXeFlipCards.addEvents(i);
+
+      expect($eXeFlipCards.startGameMemory).not.toHaveBeenCalled();
+      expect($(`#flcdsCubierta-${i}`).css('display')).not.toBe('none');
+      expect($(`#flcdsCodeAccessDiv-${i}`).css('display')).not.toBe('none');
+    });
+
+    it('still starts itself when there is no code in front of it', () => {
+      const i = givenMemoryGame({
+        itinerary: { showCodeAccess: false, codeAccess: '' },
+      });
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+
+      $eXeFlipCards.addEvents(i);
+
+      expect($eXeFlipCards.startGameMemory).toHaveBeenCalledWith(i);
+    });
+  });
 });

@@ -1626,10 +1626,18 @@ var $eXeFlipCards = {
             mOptions.type === 3 && mOptions.time > 0
         );
 
-        if (mOptions.type === 3 && mOptions.time === 0) {
-            $eXeFlipCards.startGameMemory(instance);
-        } else if (mOptions.type === 3) {
-            $('#flcdsStartLevels-' + instance).show();
+        if (mOptions.type === 3) {
+            if (mOptions.time > 0) {
+                $('#flcdsStartLevels-' + instance).show();
+            } else if (!mOptions.itinerary.showCodeAccess) {
+                // Untimed and not behind a code, so it starts itself. Behind a
+                // code it must not: startGameMemory hides the cover on its way
+                // in, so it wiped out the dialog the lines above had just put
+                // up — the learner played without ever entering a code and
+                // only met the dialog when the cover returned at game over.
+                // enterCodeAccess starts it instead.
+                $eXeFlipCards.startGameMemory(instance);
+            }
         }
 
         $('#flcdsLinkFullScreen-' + instance).on('click touchstart', (e) => {
@@ -2199,6 +2207,12 @@ var $eXeFlipCards = {
         ) {
             $('#flcdsCodeAccessDiv-' + instance).hide();
             $('#flcdsCubierta-' + instance).hide();
+            if (mOptions.type === 3 && mOptions.time === 0) {
+                // The start the load path had to skip: an untimed memory game
+                // has no level panel and no play button, so the code is the
+                // only thing left that can begin it.
+                $eXeFlipCards.startGameMemory(instance);
+            }
         } else {
             $('#flcdsMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
