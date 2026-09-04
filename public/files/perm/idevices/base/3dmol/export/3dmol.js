@@ -1457,7 +1457,19 @@ var $eXe3Dmol = {
 
         if (codeEntered === correctCode) {
             $eXe3Dmol.showCubiertaOptions(false, instance);
-            $eXe3Dmol.startGame(instance);
+            // Quiz mode starts here, and startGame publishes the opening mark
+            // through the first showQuestion. Presentation mode cannot: it was
+            // already started by initShowMode behind the cover, so startGame
+            // returns early — which is what stops it laying the quiz interface
+            // over the presentation, and also what left the LMS hearing
+            // nothing. Report it here instead.
+            if (mOptions.activityMode === 'show') {
+                if (mOptions.isScorm === 1) {
+                    $eXe3Dmol.sendScore(true, instance);
+                }
+            } else {
+                $eXe3Dmol.startGame(instance);
+            }
             $(`#dmolpLinkMaximize-${instance}`).trigger('click');
         } else {
             $(`#dmolpMesajeAccesCodeE-${instance}`)
@@ -2066,6 +2078,20 @@ var $eXe3Dmol = {
 
         $eXe3Dmol.updateScore(correct, instance);
 
+        // Answering the last question ends the attempt. Raise the flag and
+        // report here, before the reveal delay below: gameOver() is only
+        // reached from the setTimeout that follows it, so a learner who leaves
+        // while the solution is on screen used to have neither this answer's
+        // points nor the completion recorded. There is no later report to
+        // carry them — showQuestion only reports when a NEXT question appears,
+        // and after the last one there is none.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+            if (mOptions.isScorm === 1) {
+                $eXe3Dmol.sendScore(true, instance);
+            }
+        }
+
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 1000;
@@ -2131,7 +2157,21 @@ var $eXe3Dmol = {
 
         $eXe3Dmol.updateScore(value, instance);
 
-         let timeShowSolution = mOptions.showSolution
+        // Answering the last question ends the attempt. Raise the flag and
+        // report here, before the reveal delay below: gameOver() is only
+        // reached from the setTimeout that follows it, so a learner who leaves
+        // while the solution is on screen used to have neither this answer's
+        // points nor the completion recorded. There is no later report to
+        // carry them — showQuestion only reports when a NEXT question appears,
+        // and after the last one there is none.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+            if (mOptions.isScorm === 1) {
+                $eXe3Dmol.sendScore(true, instance);
+            }
+        }
+
+        let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 1000;
         const percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;

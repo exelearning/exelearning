@@ -386,4 +386,188 @@ describe('3dmol iDevice export', () => {
             expect(reported[0].scorerp).toBe(10);
         });
     });
+
+    // The quiz modes only reported when a NEXT question appeared (showQuestion)
+    // and from gameOver(), which is reached solely from the setTimeout that
+    // shows the solution. After the last answer there is no next question, so
+    // a learner who left while the solution was on screen had neither that
+    // answer's points nor the completion recorded.
+    describe('completion on the last answer', () => {
+        const instance = 0;
+        let reported;
+
+        function setupLastQuestion(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <input id="dmolpEdAnswer-${instance}" type="text" value="OHM">
+                    <button id="dmolpBtnReply-${instance}"></button>
+                    <button id="dmolpBtnMoveOn-${instance}"></button>
+                    <span id="dmolpPHits-${instance}"></span>
+                    <span id="dmolpPErrors-${instance}"></span>
+                    <span id="dmolpPScore-${instance}"></span>
+                    <div id="dmolpShowClue-${instance}"></div>
+                    <div id="dmolpPShowClue-${instance}"></div>
+                </div>`;
+            dmol.options[instance] = Object.assign(
+                {
+                    main: `dmolpMainContainer-${instance}`,
+                    isScorm: 1,
+                    activeQuestion: 0,
+                    numberQuestions: 1,
+                    gameActived: true,
+                    gameStarted: true,
+                    gameOver: false,
+                    respuesta: '',
+                    showSolution: false,
+                    timeShowSolution: 3,
+                    hits: 0,
+                    errors: 0,
+                    scoreGame: 0,
+                    scoreTotal: 1,
+                    gameMode: 1,
+                    itinerary: { showClue: false, percentageClue: 0 },
+                    msgs: { msgYouScore: 'Score' },
+                    selectsGame: [
+                        { typeSelect: 2, solutionQuestion: 'OHM', customScore: 1 },
+                    ],
+                },
+                overrides
+            );
+            reported = [];
+            vi.spyOn(dmol, 'sameQuestion').mockReturnValue(false);
+            vi.spyOn(dmol, 'showMessage').mockImplementation(() => {});
+            vi.spyOn(dmol, 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sendScore').mockImplementation((auto, i) => {
+                reported.push({ auto, gameOver: dmol.options[i].gameOver });
+            });
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports the completion in the same turn the learner answered', () => {
+            setupLastQuestion();
+
+            dmol.answerQuestion(instance);
+
+            expect(reported).toEqual([{ auto: true, gameOver: true }]);
+        });
+
+        it('does the same from the board buttons', () => {
+            setupLastQuestion();
+
+            dmol.answerQuestionBoard(true, instance);
+
+            expect(reported).toEqual([{ auto: true, gameOver: true }]);
+        });
+
+        // An intermediate answer must not close the attempt: the page would go
+        // to passed/failed while the learner is still playing.
+        it('leaves the attempt open while questions remain', () => {
+            setupLastQuestion({ numberQuestions: 3 });
+
+            dmol.answerQuestion(instance);
+
+            expect(dmol.options[instance].gameOver).toBe(false);
+            expect(reported).toEqual([]);
+        });
+
+        it('does not auto-report in manual SCORM mode', () => {
+            setupLastQuestion({ isScorm: 2 });
+
+            dmol.answerQuestion(instance);
+
+            expect(reported).toEqual([]);
+            // The flag still rises: the attempt is over either way, and the
+            // learner's own send button has to carry the completion.
+            expect(dmol.options[instance].gameOver).toBe(true);
+        });
+    });
+
+    // The code opens both modes, but only one of them can be started by it.
+    describe('opening with an access code', () => {
+        const instance = 0;
+        let reported;
+
+        function setupCoded(activityMode, typed) {
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <div id="dmolpCodeAccessDiv-${instance}"></div>
+                    <div id="dmolpMesajeAccesCodeE-${instance}"></div>
+                    <a id="dmolpLinkMaximize-${instance}" href="#"></a>
+                    <input id="dmolpCodeAccessE-${instance}" value="${typed}">
+                </div>`;
+            dmol.options[instance] = {
+                main: `dmolpMainContainer-${instance}`,
+                isScorm: 1,
+                activityMode,
+                // initShowMode raises this at load in presentation mode; the
+                // quiz waits for its start.
+                gameStarted: activityMode === 'show',
+                gameOver: false,
+                visiteds: 0,
+                showCurrentIndex: 0,
+                selectsGame: [{}, {}],
+                itinerary: { codeAccess: 'abre', showCodeAccess: true },
+                msgs: { msgYouScore: 'Score' },
+            };
+            reported = [];
+            vi.spyOn(dmol, 'showCubiertaOptions').mockImplementation(() => {});
+            vi.spyOn(dmol, 'startGame').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sendScore').mockImplementation((auto, i) => {
+                reported.push({
+                    auto,
+                    gameOver: dmol.options[i].gameOver,
+                    scorerp: dmol.getScoreRP(i),
+                });
+            });
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('starts the quiz, which publishes through its first question', () => {
+            setupCoded('quiz', 'AbrE');
+
+            dmol.enterCodeAccess(instance);
+
+            expect(dmol.startGame).toHaveBeenCalledWith(instance);
+        });
+
+        // startGame returns early on a presentation — that early return is what
+        // keeps the quiz interface off it — so the report has to come from here.
+        it('publishes the opening mark of a presentation itself', () => {
+            setupCoded('show', 'abre');
+
+            dmol.enterCodeAccess(instance);
+
+            expect(dmol.startGame).not.toHaveBeenCalled();
+            expect(reported).toEqual([
+                // One model of two seen, and nothing finished yet.
+                { auto: true, gameOver: false, scorerp: 5 },
+            ]);
+        });
+
+        it('reports nothing when the code is wrong', () => {
+            setupCoded('show', 'nope');
+
+            dmol.enterCodeAccess(instance);
+
+            expect(reported).toEqual([]);
+            expect($(`#dmolpCodeAccessE-${instance}`).val()).toBe('');
+        });
+
+        it('does not auto-report a presentation in manual SCORM mode', () => {
+            setupCoded('show', 'abre');
+            dmol.options[instance].isScorm = 2;
+
+            dmol.enterCodeAccess(instance);
+
+            expect(reported).toEqual([]);
+        });
+    });
 });
