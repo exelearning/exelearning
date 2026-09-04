@@ -8,6 +8,7 @@
  *   --extract-only       Only extract strings (skip cleanup)
  *   --clean-only         Only clean XLF files (skip extraction)
  *   --remove-obsolete    Remove trans-units not found in source code
+ *   --allow-missing-generated  Extract even though a generated source tree is missing
  */
 import { parseArgs, getString, getBoolean, hasHelp } from '../utils/args';
 import { success, error, warning, info, colors, EXIT_CODES } from '../utils/output';
@@ -31,6 +32,51 @@ export interface TranslationsResult {
         removed: number;
         locales: string[];
     };
+}
+
+/** A source tree the build generates instead of the repository committing it. */
+export interface GeneratedSource {
+    /** Repo-relative path, POSIX separators. */
+    path: string;
+    /** Command that puts the tree back on disk. */
+    regenerateWith: string;
+    /** Why the extraction needs it, for the operator reading the warning. */
+    reason: string;
+}
+
+/**
+ * Generated source trees the extraction depends on.
+ *
+ * These are scanned like any other source (they sit under `public/app/`), but they are
+ * gitignored and only exist after a build, so a checkout that has not been built yields
+ * an incomplete key set — silently, because every other source still scans fine.
+ *
+ * That is harmless while only adding keys. It is destructive under `--remove-obsolete`,
+ * which treats the extracted set as the whole truth and deletes every trans-unit outside
+ * it from every locale.
+ *
+ * **Add an entry whenever a library carrying translatable strings starts being vendored
+ * from an npm dependency into a scanned path.** The repository is moving that way — the
+ * strings are no longer committed next to the code that shows them, so the extraction
+ * can no longer assume a checkout contains everything it needs to scan. A vendored tree
+ * that is committed (`public/app/common/exe_math/`) or excluded from scanning does not
+ * belong here; one that is gitignored and scanned does.
+ */
+export const GENERATED_SOURCE_DIRS: GeneratedSource[] = [
+    {
+        path: 'public/app/common/edicuatex',
+        regenerateWith: 'make vendor-edicuatex',
+        reason: 'holds the EdiCuaTeX equation editor strings, vendored from the pinned edicuatex package',
+    },
+];
+
+/**
+ * Returns the generated source trees that are not on disk.
+ *
+ * Takes the working directory so tests can point it at a fixture instead of the repo.
+ */
+export function findMissingGeneratedSources(cwd: string = process.cwd()): GeneratedSource[] {
+    return GENERATED_SOURCE_DIRS.filter(source => !fs.existsSync(path.join(cwd, ...source.path.split('/'))));
 }
 
 /**
@@ -401,6 +447,7 @@ export async function execute(
     const extractOnly = getBoolean(flags, 'extract-only', false);
     const cleanOnly = getBoolean(flags, 'clean-only', false);
     const removeObsolete = getBoolean(flags, 'remove-obsolete', false);
+    const allowMissingGenerated = getBoolean(flags, 'allow-missing-generated', false);
 
     // Determine locales to process
     const locales = specificLocale ? [specificLocale] : Object.keys(LOCALES);
@@ -420,6 +467,28 @@ export async function execute(
             success: false,
             message: `Translations directory not found: ${translationsDir}`,
         };
+    }
+
+    // A generated source tree that has not been built is invisible to the scan, so the
+    // key set comes out short without anything looking wrong. Say so before extracting,
+    // and refuse outright to delete trans-units on the strength of a short key set.
+    const missingGenerated = findMissingGeneratedSources();
+    for (const source of missingGenerated) {
+        warning(`Generated source tree missing: ${source.path} — ${source.reason}`);
+        warning(`  Regenerate it with \`${source.regenerateWith}\`.`);
+    }
+    if (missingGenerated.length > 0) {
+        warning('Extraction will be incomplete: strings that live only in those trees cannot be found.');
+
+        if (removeObsolete && !allowMissingGenerated) {
+            return {
+                success: false,
+                message:
+                    'Refusing to remove obsolete trans-units while generated source trees are missing: every ' +
+                    'string that lives only in them would be deleted from every locale. Regenerate them as ' +
+                    'shown above, or pass --allow-missing-generated to proceed anyway (destructive).',
+            };
+        }
     }
 
     // Always extract keys from source files (needed for both extraction and cleanup)
@@ -475,6 +544,11 @@ ${colors.cyan('Options:')}
   --extract-only       Only extract strings (skip cleanup)
   --clean-only         Only clean XLF files (skip extraction)
   --remove-obsolete    Remove trans-units not found in source code (destructive)
+  --allow-missing-generated
+                       Proceed even though a generated source tree is missing. Only
+                       meaningful with --remove-obsolete, which otherwise refuses to
+                       run: the key set would be short and the missing strings would
+                       be deleted from every locale.
   -h, --help           Show this help message
 
 ${colors.cyan('Available Locales:')}
@@ -496,6 +570,11 @@ ${colors.cyan('Extraction:')}
   - public/app/**/*.js
   - public/libs/**/*.js
   - public/files/perm/idevices/**/*.js
+
+${colors.cyan('Generated sources:')}
+  public/app/common/edicuatex is vendored from the pinned edicuatex package by
+  build:all and is gitignored, so a checkout that has not been built does not have
+  it. Extraction warns when it is absent; --remove-obsolete refuses to run.
 
 ${colors.cyan('Cleanup:')}
   - Replaces <target>__...</target> with <target></target>

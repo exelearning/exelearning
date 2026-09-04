@@ -284,6 +284,56 @@ describe('Translations Sort Command', () => {
     // Extra units not in reference (edge case)
     // -----------------------------------------------------------------------
 
+    describe('missing generated sources', () => {
+        it('should warn but still sort, since sorting cannot delete a trans-unit', async () => {
+            const warnings: string[] = [];
+            const originalWarn = console.warn;
+            const originalLog = console.log;
+            console.warn = (msg: string) => warnings.push(String(msg));
+            console.log = (msg: string) => warnings.push(String(msg));
+
+            const { execute, configure } = await import('./translations-sort');
+            configure({
+                extractKeys: async () => new Set(['Key A', 'Key B', 'Key C']),
+                findMissingGenerated: () => [
+                    {
+                        path: 'public/app/common/edicuatex',
+                        regenerateWith: 'make vendor-edicuatex',
+                        reason: 'holds the EdiCuaTeX equation editor strings',
+                    },
+                ],
+            });
+
+            const result = await execute([], { locale: 'es' });
+
+            console.warn = originalWarn;
+            console.log = originalLog;
+
+            expect(result.success).toBe(true);
+            expect(warnings.join('\n')).toContain('public/app/common/edicuatex');
+            expect(warnings.join('\n')).toContain('make vendor-edicuatex');
+        });
+
+        it('should not warn when every generated tree is present', async () => {
+            const warnings: string[] = [];
+            const originalWarn = console.warn;
+            console.warn = (msg: string) => warnings.push(String(msg));
+
+            const { execute, configure } = await import('./translations-sort');
+            configure({
+                extractKeys: async () => new Set(['Key A', 'Key B', 'Key C']),
+                findMissingGenerated: () => [],
+            });
+
+            const result = await execute([], { locale: 'es' });
+
+            console.warn = originalWarn;
+
+            expect(result.success).toBe(true);
+            expect(warnings.join('\n')).not.toContain('Generated source tree missing');
+        });
+    });
+
     describe('edge cases', () => {
         it('should append trans-units not present in reference order at the end', async () => {
             // es.xlf has an extra unit "id_X" that is NOT in messages.en.xlf

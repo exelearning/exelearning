@@ -321,20 +321,22 @@ tmp-cleanup: check-bun
 
 # Extract new translation keys (does not clean or remove anything)
 # Usage: make translations [LOCALE=es]
+# Depends on vendor-edicuatex: the vendored tree is gitignored and only exists after a
+# build, and the extraction scans it for the equation editor strings.
 .PHONY: translations
-translations: check-bun
+translations: check-bun vendor-edicuatex
 	@$(CLI) translations --extract-only $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Clean and remove obsolete translation strings (destructive: removes trans-units not found in source)
 # Usage: make translations-cleanup [LOCALE=es]
 .PHONY: translations-cleanup
-translations-cleanup: check-bun
+translations-cleanup: check-bun vendor-edicuatex
 	@$(CLI) translations --clean-only --remove-obsolete $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Reorder trans-units in XLF files to match the order in messages.en.xlf
 # Usage: make translations-sort [LOCALE=es]
 .PHONY: translations-sort
-translations-sort: check-bun
+translations-sort: check-bun vendor-edicuatex
 	@$(CLI) translations:sort $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Add CDATA to <target> elements that need it and normalise indentation

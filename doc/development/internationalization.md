@@ -76,6 +76,50 @@ const text = c_('Page title');
 const html = `<span>${_('Save')}</span>`;
 ```
 
+## Generated Sources: Build Before Extracting
+
+The extraction scans the working tree, not the dependency graph. Some of the strings it
+must find no longer live in files the repository commits: they belong to libraries
+vendored out of a pinned npm package into a scanned path by the build, and left
+gitignored. `public/app/common/edicuatex/` is the first one — `scripts/vendor-edicuatex.ts`
+writes it as the first step of `build:all` — and **it will not be the last**, because the
+project is steadily moving third-party code from hand-maintained copies to pinned
+packages.
+
+This matters because a checkout that has not been built looks completely normal to the
+scanner. Every other source scans fine; the key set simply comes out short. That is
+harmless while only adding keys, and destructive under `--remove-obsolete`, which treats
+the extracted set as the whole truth and deletes every trans-unit outside it from every
+locale — around 675 of them, in every language, for `edicuatex` alone.
+
+Three things keep that from happening:
+
+1. `make translations`, `make translations-cleanup` and `make translations-sort` depend on
+   `vendor-edicuatex`, so the tree is regenerated before anything reads it. Running
+   through `make` is always safe.
+2. The commands warn when a registered tree is absent, and `--remove-obsolete` refuses to
+   run at all. This is what protects a direct `bun cli translations …` invocation, which
+   bypasses `make`. The refusal can be overridden with `--allow-missing-generated`, which
+   is destructive by design — use it only when you know the missing tree holds no strings.
+3. `GENERATED_SOURCE_DIRS` in `src/cli/commands/translations.ts` is the registry the
+   warning and the refusal read.
+
+### When you vendor a new library
+
+**If a library carrying translatable strings starts being vendored from an npm dependency
+into a scanned path, add it to `GENERATED_SOURCE_DIRS` in the same PR**, and add the
+`vendor-*` target to the three translation targets in the `Makefile`. Nothing detects the
+omission automatically: the symptom is the silent one above, and it surfaces as strings
+disappearing from every locale weeks later.
+
+A vendored tree does **not** belong in the registry when either is true:
+
+- It is committed to git rather than gitignored, so a checkout always has it —
+  `public/app/common/exe_math/` (MathJax), by the decision in
+  [ADR-2259-01](../architecture/adr/ADR-2259-01-generate-vendored-mathjax-tree.md).
+- It is excluded from scanning in `EXCLUDE_FILE_PATTERNS`, so its strings were never
+  extracted in the first place.
+
 ## Translation Commands
 
 ### Extract New Translation Keys
@@ -95,7 +139,9 @@ bun cli translations --extract-only
 
 ### Clean and Remove Obsolete Keys
 
-Remove entries that no longer exist in the source code (destructive — irreversible without git):
+Remove entries that no longer exist in the source code (destructive — irreversible without git).
+Read [Generated Sources](#generated-sources-build-before-extracting) first: run through `make`,
+or this command deletes every string that lives only in a tree the build generates.
 
 ```bash
 # Clean all locales
@@ -154,6 +200,9 @@ bun cli translations --clean-only
 
 # Process a specific locale
 bun cli translations --locale=es --extract-only
+
+# Force removal despite a missing generated tree (destructive; see Generated Sources)
+bun cli translations --clean-only --remove-obsolete --allow-missing-generated
 ```
 
 ### Recommended Command Order

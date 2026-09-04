@@ -15,6 +15,7 @@
 - Word Search iDevice: added the option to hide the time icon in timed activities
 - Platform integration: `PROVIDER_URLS` now supports wildcard subdomains and matches against the address host, allowing multi-tenant deployments to be authorised without widening the allow-list
 - Added `assets:conflicts` command to list and resolve asset storage conflicts, keeping either the old or new copy
+- Updated development documentation
 - Restored the French (FR) translation, recovering the strings lost during the migration from version 3 and completing the rest with automated translations pending review
 - Reviewed and completed the Spanish (ES) translation
 - Added automatic placeholder translations for new strings in incomplete translations
