@@ -6,6 +6,7 @@
 
 - New EducaBlue style, contributed by EducaMadrid: a modern responsive blue design with dark mode, whose colours and typography meet WCAG 2.2 level AA
 - Material Icons are now the default icon set for block and iDevice icons, with a clearer selected state, the current style's own icons listed first and a search that covers both catalogues
+- Math editor: new fullscreen and settings controls, a reworked menu and updated texts in its six interface languages
 - Users signed in with an eXeLearning password can now change it from the user menu, entering their current password
 - Administrators can reset the password of a local account from Admin → Users, using the new actions menu on each row
 - New `make change-password EMAIL=user@example.com` command, which asks for the new password without showing it on screen
@@ -20,9 +21,10 @@
 
 ### Changed
 
+- SCORM 1.2: the runtime shipped inside exported packages has been rewritten from scratch — same behaviour for the LMS, no `onunload` or `onbeforeunload` handlers, clear licensing and a full regression suite
 - SCORM: the status and the score of a page are now decided by the learner's interaction with its activities — a page stays `incomplete` until the activity is started, is marked `failed` while the score is below 50 and `passed` from there on, while pages with no activities are completed on entry
 - SCORM: the score is sent and committed to the LMS on every answer, so the platform index updates while the learner is still working on the page
-- SCORM 1.2: the runtime included in exported packages has been rewritten with the same behaviour for the LMS, clear licensing and full regression tests
+- SCORM: opening or leaving a page no longer decides its result on its own; only what the learner does with the activities does
 - Universal style: dark mode is now disabled by default, except when exporting as a website
 - The static distribution is now considerably smaller: unused resources, duplicated bundles and unreachable third-party files have been removed, and the largest datasets are compressed more efficiently
 - The static Docker image now serves compressed content, reducing download sizes by around 65%
@@ -31,6 +33,14 @@
 
 ### Fixed
 
+- SCORM 1.2: exported pages no longer depend on the `onunload` and `onbeforeunload` handlers that Chrome blocks and that no browser guarantees, so scores are no longer lost in Moodle; results are now saved through the current page lifecycle, including when the tab is hidden, frozen or discarded
+- SCORM: opening a page no longer marks it as started
+- SCORM: a page that was opened and left untouched no longer prevented the rest of the package from saving its results
+- SCORM: the result now reaches the platform index without having to finish the whole page
+- SCORM: the pass or fail result no longer depends on the order of the activities on the page
+- SCORM: Interactive Video now registers when the page loads, so the page score is calculated over all its activities
+- SCORM: activities that scored on their own when the page loaded no longer do so, and those that lost the score when finishing now keep it
+- SCORM: moving between the contents of a page no longer marks it as completed
 - Workarea: dragging an iDevice into the page no longer fails when the content is refreshed at the same time
 - iDevices: activities made up of several scripts, such as the 360° panorama viewer or Select media files, now load reliably
 - iDevices: closing an activity editor no longer causes errors from actions that were still in progress
@@ -42,14 +52,6 @@
 - Form iDevice: the Check button now works from the moment the activity is displayed
 - Sort iDevice: fixed its height and the count of correctly positioned items
 - iDevice editing: fixed the digit limits of the time and percentage fields in eight iDevices
-- SCORM: results are now saved when leaving a page in browsers that no longer support the previously used event, and when the tab is discarded
-- SCORM: opening a page no longer marks it as started
-- SCORM: a page that was opened and left untouched no longer prevented the rest of the package from saving its results
-- SCORM: the result now reaches the platform index without having to finish the whole page
-- SCORM: the pass or fail result no longer depends on the order of the activities on the page
-- SCORM: Interactive Video now registers when the page loads, so the page score is calculated over all its activities
-- SCORM: activities that scored on their own when the page loaded no longer do so, and those that lost the score when finishing now keep it
-- SCORM: moving between the contents of a page no longer marks it as completed
 - Export: the theme stylesheet is now loaded last in single-page exports, so it is not overridden
 - Export: the `nav=false` parameter no longer discards teacher mode, xAPI credentials or the rest of the address, and search results now keep the parameters the page was opened with
 - Effects: accordion, tab, pagination, carousel and timeline controls are no longer underlined, always show a visible focus ring and meet the contrast requirements
@@ -60,6 +62,9 @@
 - Admin panel: fixed the contrast of the Source column in Styles Management
 - Preview: PDFs embedded in a Text iDevice are now displayed correctly in Docker and static deployments
 - Math: MathJax is no longer shipped as a mix of two incompatible versions, restoring the accessibility explorer and reducing the size of every export containing formulas
+- Math editor: the formula preview is now read out by screen readers instead of being announced as an unlabelled image
+- Math editor: the menu editor no longer downloads part of its interface from external services, so it also works in offline and desktop installations
+- Mermaid: the library is now loaded while the diagram is being written, so the diagram no longer takes seconds to appear when the activity is closed or saved
 - Import: activities with damaged data now keep their original content instead of being emptied, and are reported to the author
 - Uploads: large files are now staged in the configured data directory instead of the application folder
 - Sign-in no longer slows down the rest of the server when many users log in at the same time
@@ -72,10 +77,15 @@
 - fast-xml-parser: 5.4.1 → 5.11.0
 - fast-xml-builder: 1.0.0 → 1.3.1
 - mathjax: 3.2.2 → 4.1.3
+- edicuatex: 1.5.0 → 1.5.5
+- pdfjs-dist: 6.2.108 → 6.3.289
+- mermaid: 11.17.0 → 11.17.2
 - @xmldom/xmldom: 0.9.11 → 0.9.12
 - jose: 6.2.9 → 6.2.10
 - sass: 1.103.0 → 1.103.1
-- @biomejs/biome: 2.5.9 → 2.5.10
+- electron: 43.4.1 → 44.0.0
+- @material-symbols/svg-400: 0.40.2 → 0.47.0
+- @biomejs/biome: 2.5.9 → 2.5.11
 - Several other dependencies updated to their latest compatible versions, clearing all known security advisories
 
 ### Removed
