@@ -290,8 +290,6 @@ describe('electrical-circuits iDevice export', () => {
                     numberQuestions: 4,
                     activeQuestion: 0,
                     activeCounter: true,
-                    useLives: false,
-                    livesLeft: 3,
                     showSolution: false,
                     audioFeedBach: false,
                     obtainedClue: false,
@@ -369,18 +367,6 @@ describe('electrical-circuits iDevice export', () => {
             idevice().answerQuestionBoard(true, 0);
 
             expect(flagWhenReported).toBe(true);
-
-            vi.clearAllTimers();
-            vi.useRealTimers();
-        });
-
-        it('marks the activity finished when the last life is lost', () => {
-            vi.useFakeTimers();
-            setupAnswer({ useLives: true, livesLeft: 0 });
-
-            idevice().answerQuestionBoard(true, 0);
-
-            expect(idevice().options[0].gameOver).toBe(true);
 
             vi.clearAllTimers();
             vi.useRealTimers();
@@ -474,6 +460,165 @@ describe('electrical-circuits iDevice export', () => {
 
             expect(reported[0].gameOver).toBe(true);
             expect(reported[0].scorerp).toBe(10);
+        });
+    });
+
+    // The code opens both modes, but only one of them can be started by it.
+    describe('opening with an access code', () => {
+        const instance = 0;
+        const idevice = () => global.$eXeEC;
+        let reported;
+
+        function setupCoded(activityMode, typed) {
+            document.body.innerHTML = `
+                <div id="elcpMainContainer-${instance}">
+                    <div id="elcpCodeAccessDiv-${instance}"></div>
+                    <div id="elcpMesajeAccesCodeE-${instance}"></div>
+                    <a id="elcpLinkMaximize-${instance}" href="#"></a>
+                    <input id="elcpCodeAccessE-${instance}" value="${typed}">
+                </div>`;
+            idevice().options[instance] = {
+                main: `elcpMainContainer-${instance}`,
+                isScorm: 1,
+                activityMode,
+                // initShowMode raises this at load in presentation mode; the
+                // quiz waits for its start.
+                gameStarted: activityMode === 'show',
+                gameOver: false,
+                visiteds: 0,
+                showCurrentIndex: 0,
+                selectsGame: [{}, {}],
+                itinerary: { codeAccess: 'abre', showCodeAccess: true },
+                msgs: { msgYouScore: 'Score' },
+            };
+            reported = [];
+            vi.spyOn(idevice(), 'showCubiertaOptions').mockImplementation(
+                () => {}
+            );
+            vi.spyOn(idevice(), 'startGame').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'sendScore').mockImplementation((auto, i) => {
+                reported.push({
+                    auto,
+                    gameOver: idevice().options[i].gameOver,
+                    scorerp: idevice().getScoreRP(i),
+                });
+            });
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('starts the quiz, which publishes its own opening zero', () => {
+            setupCoded('quiz', 'AbrE');
+
+            idevice().enterCodeAccess(instance);
+
+            expect(idevice().startGame).toHaveBeenCalledWith(instance);
+        });
+
+        // startGame returns early on a presentation — that early return is what
+        // keeps the quiz interface off it — so the report has to come from here.
+        it('publishes the opening mark of a presentation itself', () => {
+            setupCoded('show', 'abre');
+
+            idevice().enterCodeAccess(instance);
+
+            expect(idevice().startGame).not.toHaveBeenCalled();
+            expect(reported).toEqual([
+                // One circuit of two seen, and nothing finished yet.
+                { auto: true, gameOver: false, scorerp: 5 },
+            ]);
+        });
+
+        it('reports nothing when the code is wrong', () => {
+            setupCoded('show', 'nope');
+
+            idevice().enterCodeAccess(instance);
+
+            expect(reported).toEqual([]);
+            expect($(`#elcpCodeAccessE-${instance}`).val()).toBe('');
+        });
+
+        it('does not auto-report a presentation in manual SCORM mode', () => {
+            setupCoded('show', 'abre');
+            idevice().options[instance].isScorm = 2;
+
+            idevice().enterCodeAccess(instance);
+
+            expect(reported).toEqual([]);
+        });
+    });
+
+    // gameOver() renames the same button to New game, so the replay comes back
+    // through startGame carrying the finished attempt's flag.
+    describe('replaying a finished attempt', () => {
+        const instance = 0;
+        const idevice = () => global.$eXeEC;
+
+        function setupReplay() {
+            document.body.innerHTML = `
+                <div id="elcpMainContainer-${instance}">
+                    <div id="elcpGameContainer-${instance}">
+                        <div class="ELCP-StartGame"></div>
+                    </div>
+                    <div id="elcpQuestionDiv-${instance}"></div>
+                    <div id="elcpWordDiv-${instance}"></div>
+                    <div id="elcpShowClue-${instance}"></div>
+                    <div id="elcpPNumber-${instance}"></div>
+                    <div id="elcpPHits-${instance}"></div>
+                    <div id="elcpPErrors-${instance}"></div>
+                    <div id="elcpPScore-${instance}"></div>
+                    <div id="elcpGamerOver-${instance}"></div>
+                </div>`;
+            idevice().options[instance] = {
+                main: `elcpMainContainer-${instance}`,
+                isScorm: 1,
+                activityMode: 'quiz',
+                // What gameOver() left behind: finished, with a grade.
+                gameStarted: false,
+                gameOver: true,
+                hits: 4,
+                errors: 0,
+                score: 10,
+                scoreGame: 4,
+                scoreTotal: 4,
+                numberQuestions: 4,
+                questionsRandom: false,
+                selectsGame: [{}, {}, {}, {}],
+                itinerary: { showClue: false },
+                msgs: { msgYouScore: 'Score' },
+            };
+            vi.spyOn(idevice(), 'updateTime').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'sendScore').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports the replay as unfinished, with the counts cleared', () => {
+            setupReplay();
+            let stateWhenReported;
+            idevice().sendScore.mockImplementation(() => {
+                const { hits, errors, gameOver, gameStarted } =
+                    idevice().options[instance];
+                stateWhenReported = { hits, errors, gameOver, gameStarted };
+            });
+
+            idevice().startGame(instance);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                // The whole point: sendScoreNew reads gameOver as "the learner
+                // finished", and a replay has not.
+                gameOver: false,
+                gameStarted: true,
+            });
         });
     });
 });

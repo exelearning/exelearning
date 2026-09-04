@@ -167,14 +167,6 @@ var $eXeEC = {
                         <div class="exeQuextIcons exeQuextIcons-Score" title="${msgs.msgScore}"></div>
                         <p><span class="sr-av">${msgs.msgScore}: </span><span id="elcpPScore-${instance}">0</span></p>
                     </div>
-                    <div class="ELCP-LifesGame" id="elcpLifesGame-${instance}">
-                        ${$eXeEC.createLives(msgs)}
-                    </div>
-                    <div class="ELCP-NumberLifesGame" id="elcpNumberLivesGame-${instance}">
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life"></div>
-                        <p id="elcpPLifes-${instance}">0</p>
-                    </div>
                     <div class="ELCP-TimeNumber">
                         <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
                         <div class="exeQuextIcons exeQuextIcons-Time" title="${msgs.msgTime}"></div>
@@ -206,7 +198,6 @@ var $eXeEC = {
                     <div class="ELCP-GameOver" id="elcpGamerOver-${instance}">
                         <div class="ELCP-DataImage">
                             <img src="${path}exequextscore.svg" class="ELCP-HistGGame" id="elcpHistGame-${instance}" alt="${msgs.msgAllQuestions}" />
-                            <img src="${path}exequextlost.png" class="ELCP-LostGGame" id="elcpLostGame-${instance}" alt="${msgs.msgLostLives}" />
                         </div>
                         <div class="ELCP-DataScore">
                             <p id="elcpOverScore-${instance}">Score: 0</p>
@@ -287,18 +278,6 @@ var $eXeEC = {
         return html;
     },
 
-    createLives: function (msgs) {
-        let lives = [...Array(5)]
-            .map(
-                () => `
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life" title="${msgs.msgLive}"></div>
-                    `
-            )
-            .join('');
-        return lives;
-    },
-
     createOptions: function (msgs, instance) {
         let optionss = ['A', 'B', 'C', 'D']
             .map(
@@ -377,7 +356,6 @@ var $eXeEC = {
             typeof mOptions.percentajeFB != 'undefined'
                 ? mOptions.percentajeFB
                 : 100;
-        mOptions.useLives = mOptions.gameMode != 0 ? false : mOptions.useLives;
         mOptions.gameOver = false;
         mOptions.evaluation =
             typeof mOptions.evaluation == 'undefined'
@@ -517,7 +495,6 @@ var $eXeEC = {
             return true;
         });
 
-        mOptions.livesLeft = mOptions.numberLives;
 
         $(`#elcpOptionsDiv-${instance}`)
             .find('.ELCP-Options')
@@ -548,7 +525,6 @@ var $eXeEC = {
         );
 
         $eXeEC.updateFullscreenLayout(instance);
-        $eXeEC.updateLives(instance);
         $(`#elcpInstructions-${instance}`).text(mOptions.instructions);
         $(`#elcpPNumber-${instance}`).text(mOptions.numberQuestions);
         $(`#elcpGameContainer-${instance} .ELCP-StartGame`).show();
@@ -909,7 +885,18 @@ var $eXeEC = {
 
         if (codeEntered === correctCode) {
             $eXeEC.showCubiertaOptions(false, instance);
-            $eXeEC.startGame(instance);
+            // Quiz mode starts here, and startGame publishes the opening zero.
+            // Presentation mode cannot: it was already started by initShowMode
+            // behind the cover, so startGame returns early — which is what
+            // stops it laying the quiz interface over the presentation, and
+            // also what left the LMS hearing nothing. Report it here instead.
+            if (mOptions.activityMode === 'show') {
+                if (mOptions.isScorm === 1) {
+                    $eXeEC.sendScore(true, instance);
+                }
+            } else {
+                $eXeEC.startGame(instance);
+            }
             $(`#elcpLinkMaximize-${instance}`).trigger('click');
         } else {
             $(`#elcpMesajeAccesCodeE-${instance}`)
@@ -925,7 +912,6 @@ var $eXeEC = {
         const mOptions = $eXeEC.options[instance],
             msgs = mOptions.msgs,
             $histGame = $(`#elcpHistGame-${instance}`),
-            $lostGame = $(`#elcpLostGame-${instance}`),
             $overPoint = $(`#elcpOverScore-${instance}`),
             $overHits = $(`#elcpOverHits-${instance}`),
             $overErrors = $(`#elcpOverErrors-${instance}`),
@@ -949,29 +935,6 @@ var $eXeEC = {
                 if (mOptions.itinerary.showClue) {
                     if (mOptions.obtainedClue) {
                         message = msgs.msgAllQuestions;
-                        $showClue
-                            .text(
-                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
-                            )
-                            .show();
-                    } else {
-                        $showClue
-                            .text(
-                                msgs.msgTryAgain.replace(
-                                    '%s',
-                                    mOptions.itinerary.percentageClue
-                                )
-                            )
-                            .show();
-                    }
-                }
-                break;
-            case 1:
-                message = msgs.msgLostLives;
-                messageColor = 1;
-                $lostGame.show();
-                if (mOptions.itinerary.showClue) {
-                    if (mOptions.obtainedClue) {
                         $showClue
                             .text(
                                 `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
@@ -1048,9 +1011,13 @@ var $eXeEC = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
-        mOptions.livesLeft = mOptions.numberLives;
+        // gameOver() leaves this true and renames the same button to New game;
+        // a replay starts as unfinished before the automatic zero-score report
+        // below. Without it that report carries the finished attempt's flag and
+        // sendScoreNew reads the replay as a completed one, so the activity
+        // stayed complete in the LMS instead of going back to incomplete.
+        mOptions.gameOver = false;
 
-        $eXeEC.updateLives(instance);
         $(`#elcpPNumber-${instance}`).text(mOptions.numberQuestions);
 
         mOptions.selectsGame.forEach((question) => {
@@ -1144,10 +1111,7 @@ var $eXeEC = {
 
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        const message =
-            type === 0
-                ? mOptions.msgs.msgAllQuestions
-                : mOptions.msgs.msgLostLives;
+        const message = mOptions.msgs.msgAllQuestions;
         $eXeEC.showMessage(2, message, instance);
         $eXeEC.showScoreGame(type, instance);
         $eXeEC.clearQuestions(instance);
@@ -1355,30 +1319,8 @@ var $eXeEC = {
         $eXeEC.saveEvaluation(instance);
     },
 
-    updateLives: function (instance) {
-        const mOptions = $eXeEC.options[instance];
-        $(`#elcpPLifes-${instance}`).text(mOptions.livesLeft);
-        const $livesIcons = $(`#elcpLifesGame-${instance}`).find(
-            '.exeQuextIcons-Life'
-        );
-
-        if (mOptions.useLives) {
-            $livesIcons.each((index, element) => {
-                $(element).toggle(index < mOptions.livesLeft);
-            });
-        } else {
-            $livesIcons.hide();
-            $(`#elcpNumberLivesGame-${instance}`).hide();
-        }
-    },
-
     newQuestion: function (instance) {
         const mOptions = $eXeEC.options[instance];
-
-        if (mOptions.useLives && mOptions.livesLeft <= 0) {
-            $eXeEC.gameOver(1, instance);
-            return;
-        }
 
         const mActiveQuestion =
             $eXeEC.updateNumberQuestion(
@@ -1485,14 +1427,11 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(correct, instance);
-        // Answering the last question ends the attempt — either the questions
-        // ran out or the lives did. Raise the flag before the report so it
-        // carries the completion, and so a learner who leaves during the reveal
-        // delay below still has the activity recorded as finished.
-        if (
-            mOptions.activeQuestion + 1 >= mOptions.numberQuestions ||
-            (mOptions.useLives && mOptions.livesLeft <= 0)
-        ) {
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
             mOptions.gameOver = true;
         }
         $eXeEC.saveScormScore(instance);
@@ -1561,14 +1500,11 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(value, instance);
-        // Answering the last question ends the attempt — either the questions
-        // ran out or the lives did. Raise the flag before the report so it
-        // carries the completion, and so a learner who leaves during the reveal
-        // delay below still has the activity recorded as finished.
-        if (
-            mOptions.activeQuestion + 1 >= mOptions.numberQuestions ||
-            (mOptions.useLives && mOptions.livesLeft <= 0)
-        ) {
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
             mOptions.gameOver = true;
         }
         $eXeEC.saveScormScore(instance);
@@ -1669,10 +1605,6 @@ var $eXeEC = {
             } else {
                 obtainedPoints = -330 * question.customScore;
                 points = obtainedPoints;
-                if (mOptions.useLives) {
-                    mOptions.livesLeft--;
-                    $eXeEC.updateLives(instance);
-                }
             }
         }
 
@@ -1717,9 +1649,7 @@ var $eXeEC = {
             question = mOptions.selectsGame[mOptions.activeQuestion];
         let message = '';
 
-        message = mOptions.useLives
-                ? `${messageError} ${mOptions.msgs.msgLoseLive}`
-                : `${messageError} ${npts} ${pts}`;
+        message = `${messageError} ${npts} ${pts}`;
             if (mOptions.gameMode > 0) {
                 message = messageError;
             }

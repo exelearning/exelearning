@@ -180,14 +180,6 @@ var $eXe3Dmol = {
                         <div class="exeQuextIcons exeQuextIcons-Score" title="${msgs.msgScore}"></div>
                         <p><span class="sr-av">${msgs.msgScore}: </span><span id="dmolpPScore-${instance}">0</span></p>
                     </div>
-                    <div class="DMOLP-LifesGame" id="dmolpLifesGame-${instance}">
-                        ${$eXe3Dmol.createLives(msgs)}
-                    </div>
-                    <div class="DMOLP-NumberLifesGame" id="dmolpNumberLivesGame-${instance}">
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life"></div>
-                        <p id="dmolpPLifes-${instance}">0</p>
-                    </div>
                     <div class="DMOLP-TimeNumber">
                         <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
                         <div class="exeQuextIcons exeQuextIcons-Time" title="${msgs.msgTime}"></div>
@@ -214,7 +206,6 @@ var $eXe3Dmol = {
                     <div class="DMOLP-GameOver" id="dmolpGamerOver-${instance}">
                         <div class="DMOLP-DataImage">
                             <img src="${path}exequextwon.png" class="DMOLP-HistGGame" id="dmolpHistGame-${instance}" alt="${msgs.msgAllQuestions}" />
-                            <img src="${path}exequextlost.png" class="DMOLP-LostGGame" id="dmolpLostGame-${instance}" alt="${msgs.msgLostLives}" />
                         </div>
                         <div class="DMOLP-DataScore">
                             <p id="dmolpOverScore-${instance}">Score: 0</p>
@@ -316,18 +307,6 @@ var $eXe3Dmol = {
          ${$exeDevices.iDevice.gamification.scorm.addButtonScoreNew(mOptions, this.isInExe)}
         `;
         return html;
-    },
-
-    createLives: function (msgs) {
-        let lives = [...Array(5)]
-            .map(
-                () => `
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life" title="${msgs.msgLive}"></div>
-                    `
-            )
-            .join('');
-        return lives;
     },
 
     createOptions: function (msgs, instance) {
@@ -469,7 +448,6 @@ var $eXe3Dmol = {
             typeof mOptions.percentajeFB != 'undefined'
                 ? mOptions.percentajeFB
                 : 100;
-        mOptions.useLives = mOptions.gameMode != 0 ? false : mOptions.useLives;
         mOptions.gameOver = false;
         mOptions.evaluation =
             typeof mOptions.evaluation == 'undefined'
@@ -729,7 +707,6 @@ var $eXe3Dmol = {
         $eXe3Dmol.applyModelViewportScale(instance);
         $eXe3Dmol.updateFullscreenLayout(instance);
 
-        mOptions.livesLeft = mOptions.numberLives;
 
         $(`#dmolpOptionsDiv-${instance}`)
             .find('.DMOLP-Options')
@@ -761,7 +738,6 @@ var $eXe3Dmol = {
             );
         });
 
-        $eXe3Dmol.updateLives(instance);
         $(`#dmolpPNumber-${instance}`).text(mOptions.numberQuestions);
         $(`#dmolpGameContainer-${instance} .DMOLP-StartGame`).show();
         $(`#dmolpQuestionDiv-${instance}`).hide();
@@ -1504,7 +1480,6 @@ var $eXe3Dmol = {
         const mOptions = $eXe3Dmol.options[instance],
             msgs = mOptions.msgs,
             $histGame = $(`#dmolpHistGame-${instance}`),
-            $lostGame = $(`#dmolpLostGame-${instance}`),
             $overPoint = $(`#dmolpOverScore-${instance}`),
             $overHits = $(`#dmolpOverHits-${instance}`),
             $overErrors = $(`#dmolpOverErrors-${instance}`),
@@ -1528,29 +1503,6 @@ var $eXe3Dmol = {
                 if (mOptions.itinerary.showClue) {
                     if (mOptions.obtainedClue) {
                         message = msgs.msgAllQuestions;
-                        $showClue
-                            .text(
-                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
-                            )
-                            .show();
-                    } else {
-                        $showClue
-                            .text(
-                                msgs.msgTryAgain.replace(
-                                    '%s',
-                                    mOptions.itinerary.percentageClue
-                                )
-                            )
-                            .show();
-                    }
-                }
-                break;
-            case 1:
-                message = msgs.msgLostLives;
-                messageColor = 1;
-                $lostGame.show();
-                if (mOptions.itinerary.showClue) {
-                    if (mOptions.obtainedClue) {
                         $showClue
                             .text(
                                 `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
@@ -1630,9 +1582,7 @@ var $eXe3Dmol = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
-        mOptions.livesLeft = mOptions.numberLives;
 
-        $eXe3Dmol.updateLives(instance);
         $(`#dmolpPNumber-${instance}`).text(mOptions.numberQuestions);
 
         mOptions.selectsGame.forEach((question) => {
@@ -1726,10 +1676,7 @@ var $eXe3Dmol = {
 
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        const message =
-            type === 0
-                ? mOptions.msgs.msgAllQuestions
-                : mOptions.msgs.msgLostLives;
+        const message = mOptions.msgs.msgAllQuestions;
         $eXe3Dmol.showMessage(2, message, instance);
         $eXe3Dmol.showScoreGame(type, instance);
         $eXe3Dmol.clearQuestions(instance);
@@ -1947,30 +1894,8 @@ var $eXe3Dmol = {
         $eXe3Dmol.saveEvaluation(instance);
     },
 
-    updateLives: function (instance) {
-        const mOptions = $eXe3Dmol.options[instance];
-        $(`#dmolpPLifes-${instance}`).text(mOptions.livesLeft);
-        const $livesIcons = $(`#dmolpLifesGame-${instance}`).find(
-            '.exeQuextIcons-Life'
-        );
-
-        if (mOptions.useLives) {
-            $livesIcons.each((index, element) => {
-                $(element).toggle(index < mOptions.livesLeft);
-            });
-        } else {
-            $livesIcons.hide();
-            $(`#dmolpNumberLivesGame-${instance}`).hide();
-        }
-    },
-
     newQuestion: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
-
-        if (mOptions.useLives && mOptions.livesLeft <= 0) {
-            $eXe3Dmol.gameOver(1, instance);
-            return;
-        }
 
         const mActiveQuestion =
             $eXe3Dmol.updateNumberQuestion(
@@ -2267,10 +2192,6 @@ var $eXe3Dmol = {
             } else {
                 obtainedPoints = -330 * question.customScore;
                 points = obtainedPoints;
-                if (mOptions.useLives) {
-                    mOptions.livesLeft--;
-                    $eXe3Dmol.updateLives(instance);
-                }
             }
         }
 
@@ -2314,9 +2235,7 @@ var $eXe3Dmol = {
             pts = mOptions.msgs.msgPoints || 'puntos';
         let message = '';
 
-        message = mOptions.useLives
-                ? `${messageError} ${mOptions.msgs.msgLoseLive}`
-                : `${messageError} ${npts} ${pts}`;
+        message = `${messageError} ${npts} ${pts}`;
             if (mOptions.gameMode > 0) {
                 message = messageError;
             }

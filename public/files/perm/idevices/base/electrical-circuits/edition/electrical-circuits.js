@@ -129,13 +129,10 @@ var $exeDevice = {
             msgMinimize: c_('Minimize'),
             msgMaximize: c_('Maximize'),
             msgTime: c_('Time per question'),
-            msgLive: c_('Life'),
             msgFullScreen: c_('Full Screen'),
             msgNumQuestions: c_('Number of questions'),
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
-            msgLoseLive: c_('You lost one life'),
-            msgLostLives: c_('You lost all your lives!'),
             msgAllQuestions: c_('You answered all the questions.'),
             msgSuccesses: c_(
                 'Right! | Excellent! | Great! | Very good! | Perfect!'
@@ -2067,8 +2064,6 @@ var $exeDevice = {
             questionsRandom: questionsRandom,
             showSolution: showSolution,
             timeShowSolution: timeShowSolution,
-            useLives: false,
-            numberLives: 3,
             itinerary: itinerary,
             selectsGame: selectsGame,
             isScorm: scorm.isScorm,
