@@ -366,4 +366,102 @@ describe('map iDevice export — completion signal', () => {
             expect(calls[0].game.gameOver).toBe(true);
         });
     });
+
+    // The access code stood in for nothing: it dismissed its own dialog and
+    // left the LMS holding the previous attempt's grade. What it should do
+    // depends on the mode, because only four of them have a start link.
+    describe('opening the map with an access code', () => {
+        /**
+         * A covered map waiting on its code, in the given mode.
+         *
+         * @param {number} evaluationG the game mode
+         * @param {string} typed what the learner puts in the code field
+         * @returns {number} the instance index
+         */
+        function givenCodedMap(evaluationG, typed) {
+            const instance = 0;
+            document.body.innerHTML = `
+                <div id="mapaMainContainer-${instance}">
+                    <div id="mapaCheckOrder-${instance}"></div>
+                    <div id="mapaMessageFindP-${instance}"></div>
+                    <div id="mapaStartGame-${instance}"></div>
+                    <div id="mapaMesajeAccesCodeE-${instance}"></div>
+                    <input id="mapaCodeAccessE-${instance}" value="${typed}" />
+                </div>`;
+            m.options[instance] = {
+                main: `mapaMainContainer-${instance}`,
+                isScorm: 1,
+                evaluationG,
+                // Visited points and quiz are live from load; the rest wait
+                // for their start link (loadDataGame decides this).
+                gameStarted: evaluationG === 0 || evaluationG === 4,
+                gameOver: false,
+                showData: true,
+                hits: 0,
+                errors: 0,
+                score: 0,
+                numberQuestions: 4,
+                visiteds: [],
+                order: [],
+                itinerary: { codeAccess: 'abre' },
+                msgs: { msgYouScore: 'Score' },
+            };
+            vi.spyOn(m, 'hideCover').mockImplementation(() => {});
+            vi.spyOn(m, 'showFind').mockImplementation(() => {});
+            return instance;
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        // Visited points has no start link — the map is already live — so the
+        // code is the only explicit opening the learner ever gives it.
+        it('publishes a zero and an unfinished attempt in visited-points mode', () => {
+            m.enterCodeAccess(givenCodedMap(0, 'abre'));
+
+            expect(calls).toHaveLength(1);
+            expect(calls[0].auto).toBe(true);
+            expect(Number(calls[0].game.scorerp)).toBe(0);
+            expect(calls[0].game.gameOver).toBe(false);
+        });
+
+        // The modes that carry the link: the code has to do its job, which is
+        // more than reporting — each mode's board is set up in startGame.
+        it.each([
+            ['Identify Spot', 1],
+            ['Identify', 2],
+            ['Find', 3],
+            ['Order', 5],
+        ])('presses start for the learner in %s mode', (_name, evaluationG) => {
+            const i = givenCodedMap(evaluationG, 'abre');
+            vi.spyOn(m, 'startGame');
+
+            m.enterCodeAccess(i);
+
+            expect(m.startGame).toHaveBeenCalledWith(i);
+            expect(m.options[i].gameStarted).toBe(true);
+            expect(calls).toHaveLength(1);
+            expect(calls[0].game.gameOver).toBe(false);
+        });
+
+        it('reports nothing when the code is wrong', () => {
+            const i = givenCodedMap(0, 'nope');
+
+            m.enterCodeAccess(i);
+
+            expect(calls).toHaveLength(0);
+            expect($(`#mapaCodeAccessE-${i}`).val()).toBe('');
+        });
+
+        it('does not auto-report in manual SCORM mode', () => {
+            const i = givenCodedMap(0, 'abre');
+            m.options[i].isScorm = 2;
+
+            m.enterCodeAccess(i);
+
+            expect(calls).toHaveLength(0);
+        });
+    });
 });

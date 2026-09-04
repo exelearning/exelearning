@@ -5148,6 +5148,19 @@ var $eXeMapa = {
         ) {
             $eXeMapa.hideCover(instance);
             mOptions.showData = false;
+            if (mOptions.evaluationG == 1 || mOptions.evaluationG == 2 || mOptions.evaluationG == 3 || mOptions.evaluationG == 5) {
+                // These are the modes that carry the "click here to start"
+                // link, and a valid code stands in for pressing it: startGame
+                // sets each mode's board up and publishes the opening zero.
+                $eXeMapa.startGame(instance);
+            } else {
+                // Visited points and quiz have no such link — loadDataGame
+                // raises gameStarted for them, so the map is live from the
+                // moment the page loads and there is nothing to start. What
+                // was missing is the report: accepting the code is the
+                // learner opening the activity.
+                $eXeMapa.saveScormScore(instance);
+            }
         } else {
             $('#mapaMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
