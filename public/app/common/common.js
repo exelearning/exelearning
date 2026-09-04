@@ -1504,6 +1504,13 @@ var $exeDevices = {
                         const formattedScore = Number.isFinite(scoreNumber) ? scoreNumber.toFixed(2) : '0';
                         game.scorerp = formattedScore;
 
+                        // Read across updateActivity, which is what writes the
+                        // status. A report that moves it is the one whose icon
+                        // the learner is waiting on, and it gets a second,
+                        // later retry (see triggerMoodleDetection).
+                        const statusBefore =
+                            $exeDevices.iDevice.gamification.scorm.readLessonStatus();
+
                         if (!auto) {
                             $sendScore.show();
                             if (!game.repeatActivity && previousScore !== '') {
@@ -1534,7 +1541,11 @@ var $exeDevices = {
                         // updateActivity committed synchronously above; this
                         // schedules the deferred retry that carries whatever
                         // settles after it. See triggerMoodleDetection.
-                        $exeDevices.iDevice.gamification.scorm.triggerMoodleDetection();
+                        const statusAfter =
+                            $exeDevices.iDevice.gamification.scorm.readLessonStatus();
+                        $exeDevices.iDevice.gamification.scorm.triggerMoodleDetection(
+                            statusBefore !== statusAfter
+                        );
 
                     } else {
                         message = game.msgs.msgEndGameScore;
@@ -1638,16 +1649,57 @@ var $exeDevices = {
                  */
                 moodleDetectionDelay: 1200,
 
-                triggerMoodleDetection: function () {
+                /**
+                 * Second, later attempt, for the report that moves the status.
+                 *
+                 * Every report gets the 1200 ms retry above, and that margin is
+                 * usually enough. When it is not, an intermediate score simply
+                 * shows stale in the menu until the next answer commits again —
+                 * a self-correcting miss. The report that turns the page
+                 * passed or failed has no next answer behind it: if its refresh
+                 * loses the race, the icon stays wrong for the rest of the
+                 * visit. That one is worth a second look, far enough out to
+                 * clear a beacon that was slower than the first margin.
+                 *
+                 * Only on a status change, so the extra request rides on the
+                 * one report per attempt that needs it rather than on every
+                 * answer.
+                 */
+                moodleStatusRetryDelay: 4000,
+
+                /**
+                 * @returns {string} cmi.core.lesson_status, or '' when the API
+                 * is absent or refuses the read — callers only compare it with
+                 * itself, so an unreadable status simply reports no change.
+                 */
+                readLessonStatus: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) return '';
+                    try {
+                        return pipwerks.SCORM.get('cmi.core.lesson_status') || '';
+                    } catch (e) {
+                        return '';
+                    }
+                },
+
+                /**
+                 * @param {boolean} [statusChanged] True when this report moved
+                 * cmi.core.lesson_status, which buys it the later second try.
+                 */
+                triggerMoodleDetection: function (statusChanged) {
                     if (typeof setTimeout !== 'function') return;
-                    setTimeout(function () {
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    const retry = function () {
                         try {
-                            $exeDevices.iDevice.gamification.scorm.commitSession();
+                            scorm.commitSession();
                         } catch (e) {
                             // The API may not be in a committable state; the
                             // synchronous commit is the guarantee, not this.
                         }
-                    }, $exeDevices.iDevice.gamification.scorm.moodleDetectionDelay);
+                    };
+                    setTimeout(retry, scorm.moodleDetectionDelay);
+                    if (statusChanged === true) {
+                        setTimeout(retry, scorm.moodleStatusRetryDelay);
+                    }
                 },
 
                 updateActivity: function (game, lmsData, completed) {

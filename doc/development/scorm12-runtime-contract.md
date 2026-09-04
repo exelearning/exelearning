@@ -432,6 +432,22 @@ menu again on the way out (unconditionally — it does not check `hidetoc`), so 
 missed window heals when the learner leaves the page. The retry can never make
 things worse than not running at all.
 
+**The report that moves the status gets a second attempt**, at
+`moodleStatusRetryDelay` (4000 ms), on top of the first one. The two cases are
+not equally costly to miss. An intermediate score that loses the race shows
+stale in the menu until the learner's next answer, whose own commit repairs it —
+the miss is self-correcting. The report that turns the page `passed` or `failed`
+has no next answer behind it: if its refresh loses the race, the icon stays
+wrong for the rest of the visit. `sendScoreNew` reads `cmi.core.lesson_status`
+on both sides of `updateActivity` — the call that writes it — and passes the
+comparison to `triggerMoodleDetection`, so the extra request rides on the one
+report per attempt that needs it rather than on every answer.
+
+Confirmed against a live Moodle (September 2025): with the icon left stale, the
+same console trace showed `cmi.core.lesson_status` already `failed`, the policy
+deciding `failed` from `threshold-evaluated`, and every required activity
+complete. Nothing about the write was wrong — only the redraw.
+
 Deliberately **not** done: clearing `window.mod_scorm_useBeaconAPI` on the
 player window to force Moodle back onto its synchronous XHR. It would make the
 ordering deterministic — `window.event` is unset outside an event dispatch, so

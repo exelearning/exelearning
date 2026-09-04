@@ -2203,6 +2203,72 @@ describe('common.js $exeDevices', () => {
       window.alert = originalAlert;
     });
 
+    // The status is read on both sides of updateActivity, which is what writes
+    // it. Only the report that moves it earns the second, later retry.
+    it.each([
+      ['asks for a late retry when the status moved', 'incomplete', 'failed', true],
+      ['does not when the status stood still', 'failed', 'failed', false],
+    ])('sendScoreNew %s', (_label, before, after, expected) => {
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      vi.spyOn(getScorm(), 'readLessonStatus')
+        .mockReturnValueOnce(before)
+        .mockReturnValueOnce(after);
+      const trigger = vi
+        .spyOn(getScorm(), 'triggerMoodleDetection')
+        .mockImplementation(() => {});
+      const game = {
+        ideviceId: 'id-1',
+        ideviceNumber: 1,
+        isScorm: 1,
+        weighted: 1,
+        scorerp: 7,
+        gameOver: true,
+        gameStarted: true,
+        main: 'game-main',
+        title: 'Quiz',
+        userName: '',
+        msgs: {
+          msgScore: 'Score',
+          msgWeight: 'Weight',
+          msgYouScore: 'Score',
+          msgEndGameScore: 'end',
+          msgOnlySaveScore: 'only',
+          msgSaveAuto: 'auto',
+          msgPlaySeveralTimes: 'again',
+          msgActityComply: 'ok',
+          msgYouLastScore: 'last',
+          msgScoreScorm: 'scorm',
+        },
+      };
+      const container = document.createElement('div');
+      container.id = 'game-main';
+      container.className = 'idevice_node';
+      document.body.appendChild(container);
+
+      getScorm().sendScoreNew(true, game);
+
+      expect(trigger).toHaveBeenCalledWith(expected);
+      container.remove();
+      vi.restoreAllMocks();
+    });
+
+    it('readLessonStatus reports no status rather than throwing', () => {
+      global.pipwerks = {
+        SCORM: {
+          get: () => {
+            throw new Error('not initialised');
+          },
+          set: vi.fn(),
+        },
+      };
+
+      expect(getScorm().readLessonStatus()).toBe('');
+
+      global.pipwerks = undefined;
+      expect(getScorm().readLessonStatus()).toBe('');
+    });
+
     it('showFinalScore delegates score and status to the SCORM 1.2 runtime', () => {
       const set = vi.fn(() => true);
       global.pipwerks = { SCORM: { get: () => '', set } };
@@ -2668,6 +2734,66 @@ describe('common.js $exeDevices', () => {
           expect(() =>
             vi.advanceTimersByTime(getScorm().moodleDetectionDelay)
           ).not.toThrow();
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
+      // An intermediate score that misses the race corrects itself: the next
+      // answer commits again and the menu catches up. The report that turns
+      // the page passed or failed has no next answer behind it, so a missed
+      // refresh there leaves the icon wrong for the rest of the visit. That
+      // one, and only that one, gets a second attempt further out.
+      it('tries again later when the report moved the status', () => {
+        vi.useFakeTimers();
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        try {
+          getScorm().triggerMoodleDetection(true);
+          vi.advanceTimersByTime(getScorm().moodleDetectionDelay);
+          const afterFirst = api
+            .callNames()
+            .filter((name) => name === 'LMSCommit').length;
+
+          expect(getScorm().moodleStatusRetryDelay).toBeGreaterThan(
+            getScorm().moodleDetectionDelay
+          );
+          vi.advanceTimersByTime(getScorm().moodleStatusRetryDelay);
+
+          expect(
+            api.callNames().filter((name) => name === 'LMSCommit').length
+          ).toBe(afterFirst + 1);
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
+      // Every answer reports, so a second attempt on each of them would double
+      // the traffic for a miss that the next answer already repairs.
+      it('does not try again when the status did not move', () => {
+        vi.useFakeTimers();
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        try {
+          getScorm().triggerMoodleDetection(false);
+          vi.advanceTimersByTime(getScorm().moodleDetectionDelay);
+          const afterFirst = api
+            .callNames()
+            .filter((name) => name === 'LMSCommit').length;
+
+          vi.advanceTimersByTime(getScorm().moodleStatusRetryDelay);
+
+          expect(
+            api.callNames().filter((name) => name === 'LMSCommit').length
+          ).toBe(afterFirst);
         } finally {
           vi.clearAllTimers();
           vi.useRealTimers();
