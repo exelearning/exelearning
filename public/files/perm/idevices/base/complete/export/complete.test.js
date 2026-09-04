@@ -950,5 +950,47 @@ describe('complete iDevice export', () => {
       expect(reports[0].gameOver).toBe(false);
       expect(reports[1].gameOver).toBe(true);
     });
+
+    // While the clock runs and attempts remain, offering another try is the
+    // whole point of a check.
+    it('keeps the retry on an intermediate check', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      expect($(`#cmptReloadPhrase-${instance}`).css('display')).not.toBe(
+        'none'
+      );
+    });
+
+    // Time up ends the attempt, so the retry has to go with it. The forced
+    // check gets there first and offers one, because attempts were left, and
+    // reloadGame would re-enable the gaps and bring back a Check that no
+    // longer does anything — checkPhrase returns on a game that is not started.
+    it('takes the retry away when the clock runs out', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+      const mOptions = $eXeCompleta.options[instance];
+      mOptions.time = 1;
+      mOptions.gameStarted = false;
+
+      vi.useFakeTimers();
+      try {
+        $eXeCompleta.startGame(instance);
+        vi.advanceTimersByTime(60000);
+      } finally {
+        clearInterval(mOptions.counterClock);
+        vi.useRealTimers();
+      }
+
+      expect($(`#cmptReloadPhrase-${instance}`).css('display')).toBe('none');
+    });
   });
 });

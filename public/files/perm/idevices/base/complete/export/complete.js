@@ -639,6 +639,12 @@ var $eXeCompleta = {
         let typem = mOptions.hits >= mOptions.errors ? 2 : 1;
         message = '';
         $(`#cmptButonsDiv-${instance}`).hide();
+        // The attempt is over, so the retry goes with it. Time running out
+        // reaches here through checkPhrase, which had already offered another
+        // try because attempts were left — and reloadGame re-enables the gaps
+        // and brings back Check, a button that then does nothing, since
+        // checkPhrase returns on a game that is no longer started.
+        $(`#cmptReloadPhrase-${instance}`).hide();
 
         clearInterval(mOptions.counterClock);
 
