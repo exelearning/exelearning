@@ -15,7 +15,7 @@
 - Word Search iDevice: added the option to hide the time icon in timed activities
 - Platform integration: `PROVIDER_URLS` now supports wildcard subdomains and matches against the address host, allowing multi-tenant deployments to be authorised without widening the allow-list
 - Added `assets:conflicts` command to list and resolve asset storage conflicts, keeping either the old or new copy
-- Restored the French (FR) translation lost during the migration from version 3
+- Restored the French (FR) translation, recovering the strings lost during the migration from version 3 and completing the rest with automated translations pending review
 - Reviewed and completed the Spanish (ES) translation
 - Added automatic placeholder translations for new strings in incomplete translations
 
@@ -70,7 +70,8 @@
 - Uploads: large files are now staged in the configured data directory instead of the application folder
 - Sign-in no longer slows down the rest of the server when many users log in simultaneously
 - Collaboration: closed connections are now released, preventing servers from accumulating them
-- German (DE): fixed nine misaligned translations that caused True and False to display unrelated texts
+- German (DE): fixed misaligned translations that made True and False display unrelated texts and mismatched the delimiter labels in the math editor
+- Basque (EU): fixed typos and wording in the interface, including a misspelling in the "Made with eXeLearning" link label and the wording of the image optimiser columns
 
 ### Upgraded
 
