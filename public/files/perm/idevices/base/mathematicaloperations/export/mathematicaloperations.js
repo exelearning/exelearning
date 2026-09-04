@@ -1761,6 +1761,12 @@ var $eXeMathOperations = {
             if (mOptions.time > 0) {
                 mOptions.gameStarted = false;
                 $eXeMathOperations.startGame(instance);
+            } else {
+                // Untimed there is nothing to start — the load path already
+                // raised gameStarted and hid the play button, which only
+                // belongs to a timed activity — so the code is the last chance
+                // to publish the opening zero, and nothing was taking it.
+                $eXeMathOperations.saveScormScore(instance);
             }
             $('#mthoLinkMaximize-' + instance).trigger('click');
         } else {

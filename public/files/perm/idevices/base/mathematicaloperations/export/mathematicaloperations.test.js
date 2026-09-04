@@ -231,6 +231,67 @@ describe('mathematicaloperations iDevice export', () => {
 
       expect($eXeMathOperations.sendScore).not.toHaveBeenCalled();
     });
+
+    /** The code field and the maximize link the entry drives. */
+    function addCodeAccessDom(typed) {
+      $('#mthoMainContainer-0').append(`
+        <div id="mthoCodeAccessDiv-0"></div>
+        <div id="mthoMesajeAccesCodeE-0"></div>
+        <div id="mthoCubierta-0"></div>
+        <a id="mthoLinkMaximize-0" href="#"></a>
+        <input id="mthoCodeAccessE-0" value="${typed}" />`);
+      $eXeMathOperations.options[0].itinerary = {
+        showCodeAccess: true,
+        codeAccess: 'abre',
+      };
+      vi.spyOn($eXeMathOperations, 'showCubiertaOptions').mockImplementation(
+        () => {}
+      );
+    }
+
+    // Untimed, the activity is live from the moment the page loads and the
+    // play button stays hidden — it belongs to a timed activity. So the code
+    // is the last chance to publish the opening zero.
+    it('publishes the opening zero when an untimed activity is opened by code', () => {
+      setupGame({ time: 0, gameStarted: true, hits: 3, score: 10 });
+      addCodeAccessDom('AbrE');
+
+      $eXeMathOperations.enterCodeAccess(0);
+
+      expect($eXeMathOperations.sendScore).toHaveBeenCalledWith(true, 0);
+    });
+
+    // With a clock the code already stands in for the play button: it lowers
+    // the flag and starts the game, and startGame publishes from there. A
+    // second report here would put the same zero on the wire twice.
+    it('starts a timed activity exactly once when opened by code', () => {
+      setupGame({ time: 1, gameStarted: false });
+      addCodeAccessDom('abre');
+
+      $eXeMathOperations.enterCodeAccess(0);
+
+      expect($eXeMathOperations.sendScore).toHaveBeenCalledTimes(1);
+      expect($eXeMathOperations.options[0].gameStarted).toBe(true);
+    });
+
+    it('reports nothing when the code is wrong', () => {
+      setupGame({ time: 0, gameStarted: true });
+      addCodeAccessDom('nope');
+
+      $eXeMathOperations.enterCodeAccess(0);
+
+      expect($eXeMathOperations.sendScore).not.toHaveBeenCalled();
+      expect($('#mthoCodeAccessE-0').val()).toBe('');
+    });
+
+    it('does not auto-report in manual SCORM mode', () => {
+      setupGame({ time: 0, gameStarted: true, isScorm: 2 });
+      addCodeAccessDom('abre');
+
+      $eXeMathOperations.enterCodeAccess(0);
+
+      expect($eXeMathOperations.sendScore).not.toHaveBeenCalled();
+    });
   });
 
   describe('reporting the end of the attempt', () => {
