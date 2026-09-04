@@ -2,6 +2,7 @@
  * Tests for Update Licenses Command
  */
 import { describe, it, expect, afterEach } from 'bun:test';
+import * as path from 'path';
 import {
     execute,
     printHelp,
@@ -11,6 +12,7 @@ import {
     extractAuthorFromPackageJson,
     extractCopyrightFromLicense,
     getPackageInfo,
+    COPYRIGHT_OVERRIDES,
     getDependencies,
     generateServerSideSection,
     updateReadme,
@@ -98,6 +100,34 @@ describe('Update Licenses Command', () => {
             expect(extractCopyrightFromLicense(content)).toBe('John Doe');
         });
 
+        it('should ignore the Apache-2.0 boilerplate definition of "Licensor"', () => {
+            const content = [
+                '                                 Apache License',
+                '                           Version 2.0, January 2004',
+                '',
+                '      "Licensor" shall mean the copyright owner or entity authorized by',
+                '      the copyright owner that is granting the License.',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should ignore the unfilled Apache-2.0 copyright placeholder', () => {
+            const content = 'Copyright [yyyy] [name of copyright owner]';
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should still extract a real holder from a filled Apache-2.0 notice', () => {
+            const content = 'Copyright 2023 Acme Foundation\n\nLicensed under the Apache License...';
+            expect(extractCopyrightFromLicense(content)).toBe('Acme Foundation');
+        });
+
+        it('should handle an open-ended year range and drop the contributors pointer', () => {
+            const content =
+                'Copyright 2019 - present Christopher J. Brody and other contributors, ' +
+                'as listed in: https://github.com/xmldom/xmldom/graphs/contributors';
+            expect(extractCopyrightFromLicense(content)).toBe('Christopher J. Brody and other contributors');
+        });
+
         it('should return null when no copyright found', () => {
             const content = 'MIT License\n\nPermission is hereby granted...';
             expect(extractCopyrightFromLicense(content)).toBeNull();
@@ -127,6 +157,57 @@ describe('Update Licenses Command', () => {
             expect(info?.version).toBe('1.0.0');
             expect(info?.license).toBe('MIT');
             expect(info?.copyright).toBe('Test Author');
+        });
+
+        it('should use the copyright override when the package has no metadata', () => {
+            const name = '@mathjax/mathjax-newcm-font';
+            const mockFiles: Record<string, string> = {
+                [path.join('/test', 'node_modules', name, 'package.json')]: JSON.stringify({
+                    name,
+                    version: '4.1.3',
+                    license: 'Apache-2.0',
+                }),
+            };
+
+            configure({
+                projectRoot: '/test',
+                existsSync: (p: string) => p in mockFiles,
+                readFile: (p: string) => mockFiles[p] || '',
+            });
+
+            const info = getPackageInfo(name);
+            expect(info?.copyright).toBe('MathJax Consortium');
+            expect(info?.license).toBe('Apache-2.0');
+        });
+
+        it('should prefer the copyright override over extracted metadata', () => {
+            const name = '@mathjax/mathjax-dsfont-font-extension';
+            const mockFiles: Record<string, string> = {
+                [path.join('/test', 'node_modules', name, 'package.json')]: JSON.stringify({
+                    name,
+                    version: '4.1.3',
+                    license: 'Apache-2.0',
+                    author: 'Someone Else',
+                }),
+            };
+
+            configure({
+                projectRoot: '/test',
+                existsSync: (p: string) => p in mockFiles,
+                readFile: (p: string) => mockFiles[p] || '',
+            });
+
+            expect(getPackageInfo(name)?.copyright).toBe('MathJax Consortium');
+        });
+
+        it('should override the copyright of every package without usable metadata', () => {
+            expect(COPYRIGHT_OVERRIDES).toEqual({
+                '@material-symbols/svg-400': 'Google LLC',
+                '@mathjax/mathjax-dsfont-font-extension': 'MathJax Consortium',
+                '@mathjax/mathjax-mhchem-font-extension': 'MathJax Consortium',
+                '@mathjax/mathjax-newcm-font': 'MathJax Consortium',
+                'pdfjs-dist': 'Mozilla Foundation',
+            });
         });
 
         it('should return null for non-existent package', () => {

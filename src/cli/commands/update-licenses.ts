@@ -18,6 +18,27 @@ const README_PATH = path.join(PROJECT_ROOT, 'public', 'libs', 'README.md');
 const PACKAGE_JSON_PATH = path.join(PROJECT_ROOT, 'package.json');
 const NODE_MODULES_PATH = path.join(PROJECT_ROOT, 'node_modules');
 
+/**
+ * Copyright holders that cannot be derived from package metadata.
+ *
+ * Some packages ship no `author`/`maintainers` field, and either no LICENSE file or a
+ * verbatim license text with no copyright line, so the automatic extraction cannot
+ * identify the holder. The MathJax font packages are
+ * published by the MathJax Consortium (see the `@mathjax/src` package, whose
+ * maintainers field states it explicitly) from the shared MathJax-fonts
+ * repository, and are distributed under Apache-2.0.
+ */
+export const COPYRIGHT_OVERRIDES: Record<string, string> = {
+    // Icon set authored by Google (see the package README and
+    // https://github.com/google/material-design-icons); repackaged for npm by Ravindra Marella.
+    '@material-symbols/svg-400': 'Google LLC',
+    '@mathjax/mathjax-dsfont-font-extension': 'MathJax Consortium',
+    '@mathjax/mathjax-mhchem-font-extension': 'MathJax Consortium',
+    '@mathjax/mathjax-newcm-font': 'MathJax Consortium',
+    // pdf.js ships only the bare Apache-2.0 text, with no copyright line of its own.
+    'pdfjs-dist': 'Mozilla Foundation',
+};
+
 /** Package metadata extracted from node_modules */
 export interface PackageInfo {
     name: string;
@@ -103,26 +124,39 @@ export function extractAuthorFromPackageJson(pkg: Record<string, unknown>): stri
 }
 
 /**
+ * Matches the standard license boilerplate that mentions "copyright" without naming a holder,
+ * such as the Apache-2.0 definitions ("Licensor shall mean the copyright owner or entity
+ * authorized by...") or the unfilled `Copyright [yyyy] [name of copyright owner]` placeholder.
+ * Without this guard a verbatim Apache-2.0 LICENSE yields nonsense like
+ * "owner or entity authorized by" as the copyright holder.
+ */
+const BOILERPLATE_COPYRIGHT = /^(?:(?:owner|holder|notice)\b|\[)/i;
+
+/**
  * Extract copyright from LICENSE file content
  * Looks for patterns like "Copyright (c) YYYY Author" or "(c) YYYY Author"
  */
 export function extractCopyrightFromLicense(content: string): string | null {
+    // Year, optionally a range such as "2020-2023" or "2019 - present"
+    const year = String.raw`\d{4}(?:\s*[,-]\s*(?:\d{4}|present))?`;
     // Common copyright patterns - capture everything until newline, period, or end
     const patterns = [
-        /Copyright\s*(?:\(c\)|©)?\s*\d{4}(?:[,-]\d{4})?\s+(.+)/i,
-        /\(c\)\s*\d{4}(?:[,-]\d{4})?\s+(.+)/i,
-        /©\s*\d{4}(?:[,-]\d{4})?\s+(.+)/i,
+        new RegExp(String.raw`Copyright\s*(?:\(c\)|©)?\s*${year}\s+(.+)`, 'i'),
+        new RegExp(String.raw`\(c\)\s*${year}\s+(.+)`, 'i'),
+        new RegExp(String.raw`©\s*${year}\s+(.+)`, 'i'),
         /Copyright\s+(.+)/i,
     ];
 
     for (const pattern of patterns) {
         const match = content.match(pattern);
-        if (match) {
+        if (match && !BOILERPLATE_COPYRIGHT.test(match[1])) {
             // Get first line only
             let author = match[1].split('\n')[0];
             // Clean up the result - remove "All rights reserved", email, etc.
             author = author
                 .replace(/all rights reserved\.?/gi, '')
+                .replace(/,?\s*as listed in:.*$/i, '') // Drop pointers to a contributors page
+                .replace(/\s+https?:\/\/\S+/gi, '') // Drop trailing URLs
                 .replace(/<[^>]+>/g, '') // Remove emails in <brackets>
                 .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical notes
                 .replace(/\s+/g, ' ') // Normalize whitespace
@@ -168,8 +202,13 @@ export function getPackageInfo(packageName: string): PackageInfo | null {
             }
         }
 
-        // Get copyright - try package.json author first
-        let copyright = extractAuthorFromPackageJson(pkg);
+        // Get copyright - manual overrides win over automatic extraction
+        let copyright: string | null = COPYRIGHT_OVERRIDES[packageName] ?? null;
+
+        // Otherwise try package.json author first
+        if (!copyright) {
+            copyright = extractAuthorFromPackageJson(pkg);
+        }
 
         // If no author in package.json, try LICENSE file
         if (!copyright) {
