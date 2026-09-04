@@ -783,11 +783,11 @@
       </trans-unit>
       <trans-unit id="lMJfqi8" resname="any digit from 0 to 3 for single-choice (up to 4 options)">
         <source>any digit from 0 to 3 for single-choice (up to 4 options)</source>
-        <target>Aukera bakarreko galderetarako, 0tik 3ra arteko edozein digitu (gehienez 4 aukera)</target>
+        <target>aukera bakarreko galderetarako, 0tik 3ra arteko edozein digitu (gehienez 4 aukera)</target>
       </trans-unit>
       <trans-unit id="gBXtx0s" resname="any combination of A-D for multiple-choice (up to 4 options).">
         <source>any combination of A-D for multiple-choice (up to 4 options).</source>
-        <target>Aukera anitzeko galderetarako, A eta D letren arteko edozein konbinazio (gehienez 4 aukera).</target>
+        <target>aukera anitzeko galderetarako, A eta D letren arteko edozein konbinazio (gehienez 4 aukera).</target>
       </trans-unit>
       <trans-unit id="3mCQkiK" resname="Provide a similar number of questions for each type.">
         <source>Provide a similar number of questions for each type.</source>
@@ -3603,7 +3603,7 @@
       </trans-unit>
       <trans-unit id="QL4hapV" resname="E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...">
         <source>E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...</source>
-        <target>Adibidez: Kategoria 3 sortu 5 formula bana. Edo sortu 8 elementu ...ri buruz</target>
+        <target>~Adibidez: sortu 3 kategoria 5 formula bana. Edo sortu 8 elementu ...ri buruz</target>
       </trans-unit>
       <trans-unit id="crgTovz" resname="Category topic:">
         <source>Category topic:</source>
@@ -3935,7 +3935,7 @@
       </trans-unit>
       <trans-unit id="tsxZze5" resname="Delete iDevice">
         <source>Delete iDevice</source>
-        <target>iDevicea ezabatu</target>
+        <target>~Ezabatu iDevicea</target>
       </trans-unit>
       <trans-unit id="VBZ1ogU" resname="Delete this iDevice: %s?">
         <source>Delete this iDevice: %s?</source>
@@ -4203,7 +4203,7 @@
       </trans-unit>
       <trans-unit id="fMxz8c4" resname="Search iDevices">
         <source>Search iDevices</source>
-        <target>iDeviceak bilatu</target>
+        <target>~Bilatu iDeviceak</target>
       </trans-unit>
       <trans-unit id="wtVkNXt" resname="Default iDevices">
         <source>Default iDevices</source>
@@ -4467,7 +4467,7 @@
       </trans-unit>
       <trans-unit id="dOPZCVW" resname="Move iDevice to page">
         <source>Move iDevice to page</source>
-        <target>iDevicea orrira mugitu</target>
+        <target>~Mugitu iDevicea orrira</target>
       </trans-unit>
       <trans-unit id="qMGbqBh" resname="Select the page where you want to move the iDevice. It will be placed at the end of the page.">
         <source>Select the page where you want to move the iDevice. It will be placed at the end of the page.</source>
@@ -6171,7 +6171,7 @@
       </trans-unit>
       <trans-unit id="7AQwApM" resname="incorrect">
         <source>incorrect</source>
-        <target>Okerra</target>
+        <target>okerra</target>
       </trans-unit>
       <trans-unit id="A.2D9iI" resname="Right. That's the card.">
         <source>Right. That's the card.</source>
@@ -8419,7 +8419,7 @@
       </trans-unit>
       <trans-unit id="eP0k3XT" resname="This iDevice is compatible with all game iDevices and all interactive activities.">
         <source>This iDevice is compatible with all game iDevices and all interactive activities.</source>
-        <target>iDevice hau, joko iDevice eta jarduera interaktibo guztiekin bateragarria da.</target>
+        <target>~iDevice hau joko iDevice eta jarduera interaktibo guztiekin bateragarria da.</target>
       </trans-unit>
       <trans-unit id="N0bCogy" resname="Puzzle">
         <source>Puzzle</source>
@@ -9911,7 +9911,7 @@
       </trans-unit>
       <trans-unit id="4EAKDGp" resname="Image optimizer">
         <source>Image optimizer</source>
-        <target>Irudiaren optimizatzailea</target>
+        <target>~Irudi-optimizatzailea</target>
       </trans-unit>
       <trans-unit id="HCwVQp." resname="Alternative description">
         <source>Alternative description</source>
@@ -12479,7 +12479,7 @@
       </trans-unit>
       <trans-unit id="nv8t9ha" resname="Savings">
         <source>Savings</source>
-        <target>Aurrezkiak</target>
+        <target>~Aurreztutakoa</target>
       </trans-unit>
       <trans-unit id="6c74i5w" resname="Selected">
         <source>Selected</source>
@@ -14959,7 +14959,7 @@
       </trans-unit>
       <trans-unit id="bculw28" resname="Key Comp.">
         <source>Key Comp.</source>
-        <target>~Gait. Gakoa</target>
+        <target>Gait. Gakoa</target>
       </trans-unit>
       <trans-unit id="p75mse1" resname="Operational descriptors">
         <source>Operational descriptors</source>
@@ -15003,7 +15003,7 @@
       </trans-unit>
       <trans-unit id="sfe2kxo" resname="Eval. Criteria">
         <source>Eval. Criteria</source>
-        <target>~Ebaluazio Irizp.</target>
+        <target>Ebaluazio Irizp.</target>
       </trans-unit>
       <trans-unit id="wuy0158" resname="partial">
         <source>partial</source>
