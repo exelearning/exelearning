@@ -954,6 +954,16 @@ var $eXeSopa = {
         ) {
             $eXeSopa.showCubiertaOptions(false, instanceId);
             $container.find('#sopaLinkMaximize-' + instanceId).trigger('click');
+            if (mOptions.time === 0) {
+                // Nothing to start: an untimed grid is live from the moment the
+                // page loads, and it has no play button either — that one only
+                // appears with a clock. So the code is the last chance to
+                // publish the opening zero, and nothing was taking it.
+                //
+                // Timed grids are left alone: the play button the code reveals
+                // is the real start, and startGame publishes from there.
+                $eXeSopa.saveScormScore(instanceId);
+            }
         } else {
             $container
                 .find('#sopaMesajeAccesCodeE-' + instanceId)

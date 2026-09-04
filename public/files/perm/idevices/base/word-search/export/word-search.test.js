@@ -243,5 +243,61 @@ describe('word-search iDevice export', () => {
 
             expect($eXeSopa.sendScore).not.toHaveBeenCalled();
         });
+
+        /** The code field and the maximize link the entry drives. */
+        function addCodeAccessDom(typed) {
+            $('#sopaMainContainer-0').append(`
+                <div id="sopaCodeAccessDiv-0"></div>
+                <div id="sopaMesajeAccesCodeE-0"></div>
+                <div id="sopaCubierta-0"></div>
+                <div id="sopaGameContainer-0"></div>
+                <a id="sopaLinkMaximize-0" href="#"></a>
+                <input id="sopaCodeAccessE-0" value="${typed}" />`);
+            $eXeSopa.instances[0].itinerary.showCodeAccess = true;
+            $eXeSopa.instances[0].itinerary.codeAccess = 'abre';
+        }
+
+        // Without a clock the grid is live from the moment the page loads and
+        // there is no play button — that one only appears with a timer — so the
+        // code is the last chance to publish the opening zero.
+        it('publishes the opening zero when an untimed grid is opened by code', () => {
+            setupInstance({ time: 0, gameStarted: true, hits: 2, score: 10 });
+            addCodeAccessDom('AbrE');
+
+            $eXeSopa.enterCodeAccess(0);
+
+            expect($eXeSopa.sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+        // With a clock the code only uncovers: the play button it reveals is
+        // the real start, and startGame publishes from there. Reporting here
+        // too would put the same zero on the wire twice.
+        it('leaves a timed grid to its play button', () => {
+            setupInstance({ time: 1, gameStarted: false });
+            addCodeAccessDom('abre');
+
+            $eXeSopa.enterCodeAccess(0);
+
+            expect($eXeSopa.sendScore).not.toHaveBeenCalled();
+        });
+
+        it('reports nothing when the code is wrong', () => {
+            setupInstance({ time: 0, gameStarted: true });
+            addCodeAccessDom('nope');
+
+            $eXeSopa.enterCodeAccess(0);
+
+            expect($eXeSopa.sendScore).not.toHaveBeenCalled();
+            expect($('#sopaCodeAccessE-0').val()).toBe('');
+        });
+
+        it('does not auto-report in manual SCORM mode', () => {
+            setupInstance({ time: 0, gameStarted: true, isScorm: 2 });
+            addCodeAccessDom('abre');
+
+            $eXeSopa.enterCodeAccess(0);
+
+            expect($eXeSopa.sendScore).not.toHaveBeenCalled();
+        });
     });
 });
