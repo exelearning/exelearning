@@ -1243,39 +1243,39 @@
       </trans-unit>
       <trans-unit id="cnzcOY5" resname="Text">
         <source>Text</source>
-        <target>~Trennzeichen</target>
+        <target>~Text</target>
       </trans-unit>
       <trans-unit id="TEJoYtI" resname="Delimiters">
         <source>Delimiters</source>
-        <target>~Eckige Klammern</target>
+        <target>~Trennzeichen</target>
       </trans-unit>
       <trans-unit id="1Iql3OZ" resname="Square brackets">
         <source>Square brackets</source>
-        <target>~Geschweifte Klammern</target>
+        <target>~Eckige Klammern</target>
       </trans-unit>
       <trans-unit id="T7evgVP" resname="Curly braces">
         <source>Curly braces</source>
-        <target>~Norm</target>
+        <target>~Geschweifte Klammern</target>
       </trans-unit>
       <trans-unit id="0zze4jf" resname="Norm">
         <source>Norm</source>
-        <target>~Bodenfunktion</target>
+        <target>~Norm</target>
       </trans-unit>
       <trans-unit id="iYn1Wmo" resname="Floor function">
         <source>Floor function</source>
-        <target>~Deckenfunktion</target>
+        <target>~Bodenfunktion</target>
       </trans-unit>
       <trans-unit id="hhIKD3K" resname="Ceiling function">
         <source>Ceiling function</source>
-        <target>~Betrag</target>
+        <target>~Deckenfunktion</target>
       </trans-unit>
       <trans-unit id="DiYvbWw" resname="Absolute value">
         <source>Absolute value</source>
-        <target>~Winkel</target>
+        <target>~Betrag</target>
       </trans-unit>
       <trans-unit id="4.bzzOJ" resname="Angle">
         <source>Angle</source>
-        <target>~Gruppierung</target>
+        <target>~Winkel</target>
       </trans-unit>
       <trans-unit id="NMoOWkS" resname="Grouping">
         <source>Grouping</source>
@@ -6167,43 +6167,43 @@
       </trans-unit>
       <trans-unit id="t9h1YOO" resname="Unable to display an iframe loaded over HTTP on a website that uses HTTPS.">
         <source>Unable to display an iframe loaded over HTTP on a website that uses HTTPS.</source>
-        <target>~Unable to display an iframe loaded over HTTP on a website that uses HTTPS.</target>
+        <target>~iframe kann nicht angezeigt werden, da es über HTTP geladen wurde, während die Website HTTPS verwendet.</target>
       </trans-unit>
       <trans-unit id="i3DCptU" resname="empty field">
         <source>empty field</source>
-        <target>~iframe kann nicht angezeigt werden, da es über HTTP geladen wurde, während die Website HTTPS verwendet.</target>
+        <target>~leeres Feld</target>
       </trans-unit>
       <trans-unit id="7AQwApM" resname="incorrect">
         <source>incorrect</source>
-        <target>~empty field</target>
+        <target>~falsch</target>
       </trans-unit>
       <trans-unit id="A.2D9iI" resname="Right. That's the card.">
         <source>Right. That's the card.</source>
-        <target>~leeres Feld</target>
+        <target>~Richtig. Das ist die Karte.</target>
       </trans-unit>
       <trans-unit id="RHxPCTE" resname="You're wrong. That's not the card.">
         <source>You're wrong. That's not the card.</source>
-        <target>~incorrect</target>
+        <target>~Du liegst falsch. Das ist nicht die Karte.</target>
       </trans-unit>
       <trans-unit id="OaXY85n" resname="Right. That's not the card.">
         <source>Right. That's not the card.</source>
-        <target>~falsch</target>
+        <target>~Richtig. Das ist nicht die Karte.</target>
       </trans-unit>
       <trans-unit id="lxrcn1d" resname="You're wrong. That's the card.">
         <source>You're wrong. That's the card.</source>
-        <target>~Right. That's the card.</target>
+        <target>~Du liegst falsch. Das ist die Karte.</target>
       </trans-unit>
       <trans-unit id="n.n5hj5" resname="Memory cards">
         <source>Memory cards</source>
-        <target>~Richtig. Das ist die Karte.</target>
+        <target>~Memory-Karten</target>
       </trans-unit>
       <trans-unit id="HWekgRg" resname="True">
         <source>True</source>
-        <target>~You're wrong. That's not the card.</target>
+        <target>~Wahr</target>
       </trans-unit>
       <trans-unit id="BdNA23t" resname="False">
         <source>False</source>
-        <target>~Du liegst falsch. Das ist nicht die Karte.</target>
+        <target>~Falsch</target>
       </trans-unit>
       <trans-unit id="DeMiozc" resname="Click on the card">
         <source>Click on the card</source>
