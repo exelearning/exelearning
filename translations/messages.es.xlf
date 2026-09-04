@@ -15583,111 +15583,111 @@
       </trans-unit>
       <trans-unit id="no56d8k" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
-        <target></target>
+        <target>Las fórmulas se muestran aunque esta opción esté desactivada. Actívala para incluir la biblioteca MathJax completa en las exportaciones. Eso añade su menú contextual y sus funciones interactivas.</target>
       </trans-unit>
       <trans-unit id="3146zp4" resname="Change password">
         <source>Change password</source>
-        <target></target>
+        <target>Cambiar contraseña</target>
       </trans-unit>
       <trans-unit id="bh4dmnh" resname="Current password">
         <source>Current password</source>
-        <target></target>
+        <target>Contraseña actual</target>
       </trans-unit>
       <trans-unit id="rbh33rg" resname="New password">
         <source>New password</source>
-        <target></target>
+        <target>Nueva contraseña</target>
       </trans-unit>
       <trans-unit id="473dyg0" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
         <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
-        <target></target>
+        <target>Al menos 4 caracteres. Las contraseñas largas que combinan letras, números y símbolos son más seguras.</target>
       </trans-unit>
       <trans-unit id="frtm7ga" resname="Confirm new password">
         <source>Confirm new password</source>
-        <target></target>
+        <target>Confirmar la nueva contraseña</target>
       </trans-unit>
       <trans-unit id="t4sbhx7" resname="Damaged activities">
         <source>Damaged activities</source>
-        <target></target>
+        <target>Actividades dañadas</target>
       </trans-unit>
       <trans-unit id="c6us81i" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
         <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
-        <target></target>
+        <target>Los datos de estas actividades están dañados y no se han podido leer. Se han importado sin cambios: se sigue mostrando su último contenido, pero no se pueden editar sin crearlas de nuevo.</target>
       </trans-unit>
       <trans-unit id="aud8cgb" resname="Import warnings">
         <source>Import warnings</source>
-        <target></target>
+        <target>Avisos de importación</target>
       </trans-unit>
       <trans-unit id="n366xho" resname="Search icon">
         <source>Search icon</source>
-        <target></target>
+        <target>Buscar icono</target>
       </trans-unit>
       <trans-unit id="mxdk9zq" resname="Choose image from file manager">
         <source>Choose image from file manager</source>
-        <target></target>
+        <target>Elegir imagen desde el gestor de archivos</target>
       </trans-unit>
       <trans-unit id="eaevuse" resname="Icon">
         <source>Icon</source>
-        <target></target>
+        <target>Icono</target>
       </trans-unit>
       <trans-unit id="r9otlv0" resname="Style icons">
         <source>Style icons</source>
-        <target></target>
+        <target>Iconos del estilo</target>
       </trans-unit>
       <trans-unit id="7me10rn" resname="General icons">
         <source>General icons</source>
-        <target></target>
+        <target>Iconos generales</target>
       </trans-unit>
       <trans-unit id="sivy34q" resname="Password strength: too short">
         <source>Password strength: too short</source>
-        <target></target>
+        <target>Seguridad de la contraseña: demasiado corta</target>
       </trans-unit>
       <trans-unit id="a4j06qj" resname="Password strength: weak">
         <source>Password strength: weak</source>
-        <target></target>
+        <target>Seguridad de la contraseña: débil</target>
       </trans-unit>
       <trans-unit id="mg2u8ds" resname="Password strength: fair">
         <source>Password strength: fair</source>
-        <target></target>
+        <target>Seguridad de la contraseña: aceptable</target>
       </trans-unit>
       <trans-unit id="40hlbwv" resname="Password strength: good">
         <source>Password strength: good</source>
-        <target></target>
+        <target>Seguridad de la contraseña: buena</target>
       </trans-unit>
       <trans-unit id="t7vk398" resname="Password strength: strong">
         <source>Password strength: strong</source>
-        <target></target>
+        <target>Seguridad de la contraseña: fuerte</target>
       </trans-unit>
       <trans-unit id="26bgcn7" resname="Current password is incorrect">
         <source>Current password is incorrect</source>
-        <target></target>
+        <target>La contraseña actual no es correcta</target>
       </trans-unit>
       <trans-unit id="q3b5ljt" resname="The new password cannot be empty.">
         <source>The new password cannot be empty.</source>
-        <target></target>
+        <target>La nueva contraseña no puede estar vacía.</target>
       </trans-unit>
       <trans-unit id="0cty7hp" resname="Passwords do not match">
         <source>Passwords do not match</source>
-        <target></target>
+        <target>Las contraseñas no coinciden</target>
       </trans-unit>
       <trans-unit id="di7mgqt" resname="Password changed successfully">
         <source>Password changed successfully</source>
-        <target></target>
+        <target>Contraseña cambiada correctamente</target>
       </trans-unit>
       <trans-unit id="mfjk53p" resname="An error occurred. Please try again.">
         <source>An error occurred. Please try again.</source>
-        <target></target>
+        <target>Se ha producido un error. Por favor, inténtalo de nuevo.</target>
       </trans-unit>
       <trans-unit id="hcqm5mq" resname="Password changes are not available for this account.">
         <source>Password changes are not available for this account.</source>
-        <target></target>
+        <target>Esta cuenta no permite cambiar la contraseña.</target>
       </trans-unit>
       <trans-unit id="6zlucmf" resname="The new password is not valid.">
         <source>The new password is not valid.</source>
-        <target></target>
+        <target>La nueva contraseña no es válida.</target>
       </trans-unit>
       <trans-unit id="hzo4adf" resname="Huger text">
         <source>Huger text</source>
-        <target></target>
+        <target>~Texto más enorme</target>
       </trans-unit>
     </body>
   </file>
