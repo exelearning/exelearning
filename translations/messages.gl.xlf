@@ -2055,7 +2055,7 @@
       </trans-unit>
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
-        <target>Texto moi grande</target>
+        <target>~Texto enorme</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
@@ -15583,111 +15583,111 @@
       </trans-unit>
       <trans-unit id="6j2cajg" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
-        <target></target>
+        <target>~As fórmulas móstranse aínda que esta opción estea desactivada. Actívaa para incluír a biblioteca MathJax completa nas exportacións. Iso engade o seu menú contextual e as súas funcións interactivas.</target>
       </trans-unit>
       <trans-unit id="bg3z8te" resname="Change password">
         <source>Change password</source>
-        <target></target>
+        <target>~Cambiar o contrasinal</target>
       </trans-unit>
       <trans-unit id="k3rj2bw" resname="Current password">
         <source>Current password</source>
-        <target></target>
+        <target>~Contrasinal actual</target>
       </trans-unit>
       <trans-unit id="hr7z5gs" resname="New password">
         <source>New password</source>
-        <target></target>
+        <target>~Novo contrasinal</target>
       </trans-unit>
       <trans-unit id="bzxjqwj" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
         <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
-        <target></target>
+        <target>~Polo menos 4 caracteres. Os contrasinais longos que combinan letras, números e símbolos son máis seguros.</target>
       </trans-unit>
       <trans-unit id="r03hdzk" resname="Confirm new password">
         <source>Confirm new password</source>
-        <target></target>
+        <target>~Confirmar o novo contrasinal</target>
       </trans-unit>
       <trans-unit id="iv1ahd2" resname="Damaged activities">
         <source>Damaged activities</source>
-        <target></target>
+        <target>~Actividades danadas</target>
       </trans-unit>
       <trans-unit id="hhr7h87" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
         <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
-        <target></target>
+        <target>~Os datos destas actividades están danados e non se puideron ler. Importáronse sen cambios: aínda se mostra o seu último contido, pero non se poden editar sen crealas de novo.</target>
       </trans-unit>
       <trans-unit id="ddqrc1t" resname="Import warnings">
         <source>Import warnings</source>
-        <target></target>
+        <target>~Avisos de importación</target>
       </trans-unit>
       <trans-unit id="4ddesuo" resname="Search icon">
         <source>Search icon</source>
-        <target></target>
+        <target>~Buscar icona</target>
       </trans-unit>
       <trans-unit id="gz9vftz" resname="Choose image from file manager">
         <source>Choose image from file manager</source>
-        <target></target>
+        <target>~Escoller imaxe do xestor de ficheiros</target>
       </trans-unit>
       <trans-unit id="itmsku9" resname="Icon">
         <source>Icon</source>
-        <target></target>
+        <target>~Icona</target>
       </trans-unit>
       <trans-unit id="4s786ij" resname="Style icons">
         <source>Style icons</source>
-        <target></target>
+        <target>~Iconas do estilo</target>
       </trans-unit>
       <trans-unit id="5ww31ln" resname="General icons">
         <source>General icons</source>
-        <target></target>
+        <target>~Iconas xerais</target>
       </trans-unit>
       <trans-unit id="jz8witj" resname="Password strength: too short">
         <source>Password strength: too short</source>
-        <target></target>
+        <target>~Seguridade do contrasinal: demasiado curto</target>
       </trans-unit>
       <trans-unit id="4b5seka" resname="Password strength: weak">
         <source>Password strength: weak</source>
-        <target></target>
+        <target>~Seguridade do contrasinal: feble</target>
       </trans-unit>
       <trans-unit id="wynu198" resname="Password strength: fair">
         <source>Password strength: fair</source>
-        <target></target>
+        <target>~Seguridade do contrasinal: aceptable</target>
       </trans-unit>
       <trans-unit id="t9rpeo6" resname="Password strength: good">
         <source>Password strength: good</source>
-        <target></target>
+        <target>~Seguridade do contrasinal: boa</target>
       </trans-unit>
       <trans-unit id="7rpnjus" resname="Password strength: strong">
         <source>Password strength: strong</source>
-        <target></target>
+        <target>~Seguridade do contrasinal: forte</target>
       </trans-unit>
       <trans-unit id="sma90rn" resname="Current password is incorrect">
         <source>Current password is incorrect</source>
-        <target></target>
+        <target>~O contrasinal actual non é correcto</target>
       </trans-unit>
       <trans-unit id="rnzj4rq" resname="The new password cannot be empty.">
         <source>The new password cannot be empty.</source>
-        <target></target>
+        <target>~O novo contrasinal non pode estar baleiro.</target>
       </trans-unit>
       <trans-unit id="ubemotk" resname="Passwords do not match">
         <source>Passwords do not match</source>
-        <target></target>
+        <target>~Os contrasinais non coinciden</target>
       </trans-unit>
       <trans-unit id="wo6b7db" resname="Password changed successfully">
         <source>Password changed successfully</source>
-        <target></target>
+        <target>~Contrasinal cambiado correctamente</target>
       </trans-unit>
       <trans-unit id="b81xwq2" resname="An error occurred. Please try again.">
         <source>An error occurred. Please try again.</source>
-        <target></target>
+        <target>~Produciuse un erro. Por favor, inténtao de novo.</target>
       </trans-unit>
       <trans-unit id="46k673j" resname="Password changes are not available for this account.">
         <source>Password changes are not available for this account.</source>
-        <target></target>
+        <target>~Esta conta non permite cambiar o contrasinal.</target>
       </trans-unit>
       <trans-unit id="l48vm6w" resname="The new password is not valid.">
         <source>The new password is not valid.</source>
-        <target></target>
+        <target>~O novo contrasinal non é válido.</target>
       </trans-unit>
       <trans-unit id="xzx0b1a" resname="Huger text">
         <source>Huger text</source>
-        <target></target>
+        <target>~Texto aínda máis enorme</target>
       </trans-unit>
     </body>
   </file>

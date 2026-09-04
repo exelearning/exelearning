@@ -15583,111 +15583,111 @@
       </trans-unit>
       <trans-unit id="yiwn80c" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
-        <target></target>
+        <target>~Formulele sunt afișate chiar dacă această opțiune este dezactivată. Activați-o pentru a include biblioteca MathJax completă în exporturi. Aceasta adaugă meniul său contextual și funcțiile sale interactive.</target>
       </trans-unit>
       <trans-unit id="zf33oav" resname="Change password">
         <source>Change password</source>
-        <target></target>
+        <target>~Schimbare parolă</target>
       </trans-unit>
       <trans-unit id="uxmcuvu" resname="Current password">
         <source>Current password</source>
-        <target></target>
+        <target>~Parola actuală</target>
       </trans-unit>
       <trans-unit id="5bobb51" resname="New password">
         <source>New password</source>
-        <target></target>
+        <target>~Parola nouă</target>
       </trans-unit>
       <trans-unit id="0kirkdf" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
         <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
-        <target></target>
+        <target>~Cel puțin 4 caractere. Parolele lungi care combină litere, cifre și simboluri sunt mai sigure.</target>
       </trans-unit>
       <trans-unit id="7qt2v14" resname="Confirm new password">
         <source>Confirm new password</source>
-        <target></target>
+        <target>~Confirmă parola nouă</target>
       </trans-unit>
       <trans-unit id="3cfj1r6" resname="Damaged activities">
         <source>Damaged activities</source>
-        <target></target>
+        <target>~Activități deteriorate</target>
       </trans-unit>
       <trans-unit id="8brt4c5" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
         <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
-        <target></target>
+        <target>~Datele acestor activități sunt deteriorate și nu au putut fi citite. Au fost importate nemodificate: ultimul lor conținut este încă afișat, dar nu pot fi editate decât după ce sunt create din nou.</target>
       </trans-unit>
       <trans-unit id="4q7n57t" resname="Import warnings">
         <source>Import warnings</source>
-        <target></target>
+        <target>~Avertizări de import</target>
       </trans-unit>
       <trans-unit id="ppni83y" resname="Search icon">
         <source>Search icon</source>
-        <target></target>
+        <target>~Caută pictogramă</target>
       </trans-unit>
       <trans-unit id="93a9udm" resname="Choose image from file manager">
         <source>Choose image from file manager</source>
-        <target></target>
+        <target>~Alege o imagine din managerul de fișiere</target>
       </trans-unit>
       <trans-unit id="9o3wzg6" resname="Icon">
         <source>Icon</source>
-        <target></target>
+        <target>~Pictogramă</target>
       </trans-unit>
       <trans-unit id="aujbna9" resname="Style icons">
         <source>Style icons</source>
-        <target></target>
+        <target>~Pictogramele stilului</target>
       </trans-unit>
       <trans-unit id="svlzr0n" resname="General icons">
         <source>General icons</source>
-        <target></target>
+        <target>~Pictograme generale</target>
       </trans-unit>
       <trans-unit id="6np6bae" resname="Password strength: too short">
         <source>Password strength: too short</source>
-        <target></target>
+        <target>~Puterea parolei: prea scurtă</target>
       </trans-unit>
       <trans-unit id="wm3kh0w" resname="Password strength: weak">
         <source>Password strength: weak</source>
-        <target></target>
+        <target>~Puterea parolei: slabă</target>
       </trans-unit>
       <trans-unit id="wjxetml" resname="Password strength: fair">
         <source>Password strength: fair</source>
-        <target></target>
+        <target>~Puterea parolei: acceptabilă</target>
       </trans-unit>
       <trans-unit id="rjpsueq" resname="Password strength: good">
         <source>Password strength: good</source>
-        <target></target>
+        <target>~Puterea parolei: bună</target>
       </trans-unit>
       <trans-unit id="ir2lwxm" resname="Password strength: strong">
         <source>Password strength: strong</source>
-        <target></target>
+        <target>~Puterea parolei: puternică</target>
       </trans-unit>
       <trans-unit id="mcnk8zl" resname="Current password is incorrect">
         <source>Current password is incorrect</source>
-        <target></target>
+        <target>~Parola actuală este incorectă</target>
       </trans-unit>
       <trans-unit id="vb842oo" resname="The new password cannot be empty.">
         <source>The new password cannot be empty.</source>
-        <target></target>
+        <target>~Parola nouă nu poate fi goală.</target>
       </trans-unit>
       <trans-unit id="p79xbwy" resname="Passwords do not match">
         <source>Passwords do not match</source>
-        <target></target>
+        <target>~Parolele nu coincid</target>
       </trans-unit>
       <trans-unit id="oy5jj7t" resname="Password changed successfully">
         <source>Password changed successfully</source>
-        <target></target>
+        <target>~Parola a fost schimbată cu succes</target>
       </trans-unit>
       <trans-unit id="o1c5cfg" resname="An error occurred. Please try again.">
         <source>An error occurred. Please try again.</source>
-        <target></target>
+        <target>~A apărut o eroare. Vă rugăm să încercați din nou.</target>
       </trans-unit>
       <trans-unit id="cv8e7s3" resname="Password changes are not available for this account.">
         <source>Password changes are not available for this account.</source>
-        <target></target>
+        <target>~Acest cont nu permite schimbarea parolei.</target>
       </trans-unit>
       <trans-unit id="ejwji5s" resname="The new password is not valid.">
         <source>The new password is not valid.</source>
-        <target></target>
+        <target>~Parola nouă nu este validă.</target>
       </trans-unit>
       <trans-unit id="roywrlb" resname="Huger text">
         <source>Huger text</source>
-        <target></target>
+        <target>~Text gigantic</target>
       </trans-unit>
     </body>
   </file>

@@ -15583,111 +15583,111 @@
       </trans-unit>
       <trans-unit id="uehbk9s" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
-        <target></target>
+        <target>~Les fórmules es mostren encara que esta opció estiga desactivada. Activa-la per a incloure la biblioteca MathJax completa en les exportacions. Això hi afig el menú contextual i les funcions interactives.</target>
       </trans-unit>
       <trans-unit id="oj2fqbi" resname="Change password">
         <source>Change password</source>
-        <target></target>
+        <target>~Canviar la contrasenya</target>
       </trans-unit>
       <trans-unit id="2p7xfsv" resname="Current password">
         <source>Current password</source>
-        <target></target>
+        <target>~Contrasenya actual</target>
       </trans-unit>
       <trans-unit id="rgtx1ge" resname="New password">
         <source>New password</source>
-        <target></target>
+        <target>~Contrasenya nova</target>
       </trans-unit>
       <trans-unit id="kw9knwd" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
         <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
-        <target></target>
+        <target>~Com a mínim 4 caràcters. Les contrasenyes llargues que combinen lletres, xifres i símbols són més segures.</target>
       </trans-unit>
       <trans-unit id="iahcxz2" resname="Confirm new password">
         <source>Confirm new password</source>
-        <target></target>
+        <target>~Confirmar la contrasenya nova</target>
       </trans-unit>
       <trans-unit id="ndsislu" resname="Damaged activities">
         <source>Damaged activities</source>
-        <target></target>
+        <target>~Activitats danyades</target>
       </trans-unit>
       <trans-unit id="91m12gz" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
         <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
-        <target></target>
+        <target>~Les dades d’estes activitats estan danyades i no s’han pogut llegir. S’han importat sense canvis: encara es mostra el seu últim contingut, però no es poden editar sense crear-les de nou.</target>
       </trans-unit>
       <trans-unit id="zvtco2k" resname="Import warnings">
         <source>Import warnings</source>
-        <target></target>
+        <target>~Avisos d’importació</target>
       </trans-unit>
       <trans-unit id="6jds7ce" resname="Search icon">
         <source>Search icon</source>
-        <target></target>
+        <target>~Cercar una icona</target>
       </trans-unit>
       <trans-unit id="4rtwvqw" resname="Choose image from file manager">
         <source>Choose image from file manager</source>
-        <target></target>
+        <target>~Triar una imatge del gestor de fitxers</target>
       </trans-unit>
       <trans-unit id="r65ndkd" resname="Icon">
         <source>Icon</source>
-        <target></target>
+        <target>~Icona</target>
       </trans-unit>
       <trans-unit id="2912xu3" resname="Style icons">
         <source>Style icons</source>
-        <target></target>
+        <target>~Icones de l’estil</target>
       </trans-unit>
       <trans-unit id="f36bc5l" resname="General icons">
         <source>General icons</source>
-        <target></target>
+        <target>~Icones generals</target>
       </trans-unit>
       <trans-unit id="v1uv6x8" resname="Password strength: too short">
         <source>Password strength: too short</source>
-        <target></target>
+        <target>~Seguretat de la contrasenya: massa curta</target>
       </trans-unit>
       <trans-unit id="e4use2f" resname="Password strength: weak">
         <source>Password strength: weak</source>
-        <target></target>
+        <target>~Seguretat de la contrasenya: feble</target>
       </trans-unit>
       <trans-unit id="llwfi19" resname="Password strength: fair">
         <source>Password strength: fair</source>
-        <target></target>
+        <target>~Seguretat de la contrasenya: acceptable</target>
       </trans-unit>
       <trans-unit id="45m5qr1" resname="Password strength: good">
         <source>Password strength: good</source>
-        <target></target>
+        <target>~Seguretat de la contrasenya: bona</target>
       </trans-unit>
       <trans-unit id="754lrse" resname="Password strength: strong">
         <source>Password strength: strong</source>
-        <target></target>
+        <target>~Seguretat de la contrasenya: forta</target>
       </trans-unit>
       <trans-unit id="cff37js" resname="Current password is incorrect">
         <source>Current password is incorrect</source>
-        <target></target>
+        <target>~La contrasenya actual no és correcta</target>
       </trans-unit>
       <trans-unit id="qhmwuxr" resname="The new password cannot be empty.">
         <source>The new password cannot be empty.</source>
-        <target></target>
+        <target>~La contrasenya nova no pot estar buida.</target>
       </trans-unit>
       <trans-unit id="d7gqrbc" resname="Passwords do not match">
         <source>Passwords do not match</source>
-        <target></target>
+        <target>~Les contrasenyes no coincidixen</target>
       </trans-unit>
       <trans-unit id="2zarjkq" resname="Password changed successfully">
         <source>Password changed successfully</source>
-        <target></target>
+        <target>~Contrasenya canviada correctament</target>
       </trans-unit>
       <trans-unit id="0j1i5px" resname="An error occurred. Please try again.">
         <source>An error occurred. Please try again.</source>
-        <target></target>
+        <target>~S’ha produït un error. Torna-ho a provar.</target>
       </trans-unit>
       <trans-unit id="fwtw4p2" resname="Password changes are not available for this account.">
         <source>Password changes are not available for this account.</source>
-        <target></target>
+        <target>~Este compte no permet canviar la contrasenya.</target>
       </trans-unit>
       <trans-unit id="20qrdnp" resname="The new password is not valid.">
         <source>The new password is not valid.</source>
-        <target></target>
+        <target>~La contrasenya nova no és vàlida.</target>
       </trans-unit>
       <trans-unit id="pbrnpdo" resname="Huger text">
         <source>Huger text</source>
-        <target></target>
+        <target>~Text més enorme</target>
       </trans-unit>
     </body>
   </file>

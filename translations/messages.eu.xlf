@@ -15583,111 +15583,111 @@
       </trans-unit>
       <trans-unit id="gnkvovk" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
-        <target></target>
+        <target>~Formulak bistaratzen dira aukera hau desaktibatuta egon arren. Aktibatu MathJax liburutegi osoa esportazioetan sartzeko. Horrek bere laster-menua eta funtzio interaktiboak eransten ditu.</target>
       </trans-unit>
       <trans-unit id="3v4lpp8" resname="Change password">
         <source>Change password</source>
-        <target></target>
+        <target>~Aldatu pasahitza</target>
       </trans-unit>
       <trans-unit id="z40ks2f" resname="Current password">
         <source>Current password</source>
-        <target></target>
+        <target>~Uneko pasahitza</target>
       </trans-unit>
       <trans-unit id="3vmqw3t" resname="New password">
         <source>New password</source>
-        <target></target>
+        <target>~Pasahitz berria</target>
       </trans-unit>
       <trans-unit id="9y9tx9g" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
         <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
-        <target></target>
+        <target>~Gutxienez 4 karaktere. Letrak, zenbakiak eta ikurrak konbinatzen dituzten pasahitz luzeak seguruagoak dira.</target>
       </trans-unit>
       <trans-unit id="88u2tzv" resname="Confirm new password">
         <source>Confirm new password</source>
-        <target></target>
+        <target>~Berretsi pasahitz berria</target>
       </trans-unit>
       <trans-unit id="ceb1el9" resname="Damaged activities">
         <source>Damaged activities</source>
-        <target></target>
+        <target>~Hondatutako jarduerak</target>
       </trans-unit>
       <trans-unit id="wunk0aq" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
         <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
-        <target></target>
+        <target>~Jarduera hauen datuak hondatuta daude eta ezin izan dira irakurri. Aldaketarik gabe inportatu dira: haien azken edukia bistaratzen da oraindik, baina ezin dira editatu berriro sortu arte.</target>
       </trans-unit>
       <trans-unit id="oziq6jt" resname="Import warnings">
         <source>Import warnings</source>
-        <target></target>
+        <target>~Inportazio-abisuak</target>
       </trans-unit>
       <trans-unit id="pzlihzj" resname="Search icon">
         <source>Search icon</source>
-        <target></target>
+        <target>~Bilatu ikonoa</target>
       </trans-unit>
       <trans-unit id="n79kffr" resname="Choose image from file manager">
         <source>Choose image from file manager</source>
-        <target></target>
+        <target>~Hautatu irudia fitxategi kudeatzailetik</target>
       </trans-unit>
       <trans-unit id="lwydt1s" resname="Icon">
         <source>Icon</source>
-        <target></target>
+        <target>~Ikonoa</target>
       </trans-unit>
       <trans-unit id="g6qx9wn" resname="Style icons">
         <source>Style icons</source>
-        <target></target>
+        <target>~Estiloaren ikonoak</target>
       </trans-unit>
       <trans-unit id="23wzx1i" resname="General icons">
         <source>General icons</source>
-        <target></target>
+        <target>~Ikono orokorrak</target>
       </trans-unit>
       <trans-unit id="tx77k6h" resname="Password strength: too short">
         <source>Password strength: too short</source>
-        <target></target>
+        <target>~Pasahitzaren segurtasuna: laburregia</target>
       </trans-unit>
       <trans-unit id="03kpts8" resname="Password strength: weak">
         <source>Password strength: weak</source>
-        <target></target>
+        <target>~Pasahitzaren segurtasuna: ahula</target>
       </trans-unit>
       <trans-unit id="8vxypou" resname="Password strength: fair">
         <source>Password strength: fair</source>
-        <target></target>
+        <target>~Pasahitzaren segurtasuna: onargarria</target>
       </trans-unit>
       <trans-unit id="93qocrc" resname="Password strength: good">
         <source>Password strength: good</source>
-        <target></target>
+        <target>~Pasahitzaren segurtasuna: ona</target>
       </trans-unit>
       <trans-unit id="a2420lq" resname="Password strength: strong">
         <source>Password strength: strong</source>
-        <target></target>
+        <target>~Pasahitzaren segurtasuna: sendoa</target>
       </trans-unit>
       <trans-unit id="3gyxkt1" resname="Current password is incorrect">
         <source>Current password is incorrect</source>
-        <target></target>
+        <target>~Uneko pasahitza ez da zuzena</target>
       </trans-unit>
       <trans-unit id="cq8u2va" resname="The new password cannot be empty.">
         <source>The new password cannot be empty.</source>
-        <target></target>
+        <target>~Pasahitz berria ezin da hutsik egon.</target>
       </trans-unit>
       <trans-unit id="sj1mau2" resname="Passwords do not match">
         <source>Passwords do not match</source>
-        <target></target>
+        <target>~Pasahitzak ez datoz bat</target>
       </trans-unit>
       <trans-unit id="p1mrvny" resname="Password changed successfully">
         <source>Password changed successfully</source>
-        <target></target>
+        <target>~Pasahitza behar bezala aldatu da</target>
       </trans-unit>
       <trans-unit id="lx2oxf0" resname="An error occurred. Please try again.">
         <source>An error occurred. Please try again.</source>
-        <target></target>
+        <target>~Errore bat gertatu da. Saiatu berriro.</target>
       </trans-unit>
       <trans-unit id="7nk9zi7" resname="Password changes are not available for this account.">
         <source>Password changes are not available for this account.</source>
-        <target></target>
+        <target>~Kontu honek ez du pasahitza aldatzeko aukerarik ematen.</target>
       </trans-unit>
       <trans-unit id="gmmil15" resname="The new password is not valid.">
         <source>The new password is not valid.</source>
-        <target></target>
+        <target>~Pasahitz berria ez da baliozkoa.</target>
       </trans-unit>
       <trans-unit id="bd512t2" resname="Huger text">
         <source>Huger text</source>
-        <target></target>
+        <target>~Testu erraldoia</target>
       </trans-unit>
     </body>
   </file>
