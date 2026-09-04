@@ -7,11 +7,10 @@
 - iDevice boxes: you can now choose between the icons provided by the current style and the new General icons catalogue (Google's Material Icons); included styles have been updated to support both icon catalogues
 - Math editor: added fullscreen and settings controls, reworked the menu and updated texts
 - New EducaBlue style: a modern responsive blue design with dark mode and colours and typography meeting WCAG 2.2 level AA
-- Base and Universal styles: fully revised for accessibility, presentation and third-party licences, meeting WCAG 2.2 level AA
-- Local users can now change their password from the user menu; guest and externally authenticated users must change it through their identity provider
+- Local users can now change their password from the user menu
 - Administrators can now reset local account passwords from Admin → Users
-- Added `make change-password EMAIL=user@example.com` command to change a user's password
-- Effects: improved accessibility and presentation of accordion, tab, pagination, carousel and timeline controls, including focus indicators and contrast
+- Added `make change-password EMAIL=user@example.com` command to change a user's password without showing it on screen
+- Password changes are unavailable for guest accounts; users signed in through CAS, OpenID Connect or SAML change their password with their identity provider
 - True/False iDevice: added configurable number of attempts
 - Word Search iDevice: added the option to hide the time icon in timed activities
 - Platform integration: `PROVIDER_URLS` now supports wildcard subdomains and matches against the address host, allowing multi-tenant deployments to be authorised without widening the allow-list
@@ -23,22 +22,27 @@
 ### Changed
 
 - Project assets are now stored in sharded folders with paths relative to the data directory, improving scalability and allowing the data directory to be moved, remounted or restored without invalidating projects; existing installations are converted automatically at startup
-- SCORM 1.2: rewritten the runtime shipped in exported packages, keeping the same LMS behaviour while removing `onunload` and `onbeforeunload` handlers
-- SCORM: page status and score are now based on learner interaction with its activities; pages remain incomplete until an activity is started, while pages without activities are completed on entry
+- SCORM 1.2: rewritten the runtime shipped in exported packages, with clear licensing and a full regression suite, keeping the same LMS behaviour while removing `onunload` and `onbeforeunload` handlers
+- SCORM: page status and score are now based on learner interaction with its activities; pages remain incomplete until every activity has been started, are marked failed while the score is below 50 and passed from there on, while pages without activities are completed on entry
+- SCORM: the score is sent and committed to the LMS on every answer, so the platform index updates while the learner is still working on the page
+- SCORM: opening or leaving a page no longer decides its result on its own; only what the learner does with the activities does
+- Base and Universal styles: fully revised for accessibility, presentation and third-party licences, meeting WCAG 2.2 level AA
+- Effects: improved accessibility and presentation of accordion, tab, pagination, carousel and timeline controls, with clearer focus indicators and improved contrast
 - Universal style: dark mode is now disabled by default, except when exporting as a website
+- Math: accessibility is now provided through browser MathML support, with hidden MathML always enabled so screen readers can announce formulas; removed the non-functional expression explorer, braille and read-aloud options from the MathJax menu
 - Static distribution: removed unused resources, duplicated bundles and unreachable third-party files, and improved compression of the largest datasets
 - Static Docker image: compressed content is now served, reducing download sizes by around 65%
 - The "Import iDevice" button is now hidden until the feature is available
 
 ### Fixed
 
-- SCORM 1.2: exported pages no longer rely on browser `onunload` and `onbeforeunload` handlers, preventing scores from being lost in Moodle
+- SCORM 1.2: exported pages no longer rely on browser `onunload` and `onbeforeunload` handlers, preventing scores from being lost in Moodle; results are now saved through the page lifecycle, including when the tab is hidden, frozen or discarded
 - SCORM: opening a page no longer marks it as started
 - SCORM: leaving an untouched page no longer prevents the rest of the package from saving its results
 - SCORM: results now reach the platform index without requiring the whole page to be completed
 - SCORM: pass or fail results no longer depend on the order of activities on the page
 - SCORM: Interactive Video now registers when the page loads, so the page score includes all its activities
-- SCORM: activities no longer gain or lose their score incorrectly when the page loads or is completed
+- SCORM: activities no longer score on their own when the page loads, and no longer lose their score when they finish
 - SCORM: moving between the contents of a page no longer marks it as completed
 - Workarea: fixed failures when dragging an iDevice into a page while its content is being refreshed
 - iDevices: activities made up of several scripts, such as the 360° panorama viewer and Select media files, now load correctly
@@ -54,13 +58,13 @@
 - Export: the theme stylesheet is now loaded last in single-page exports, preventing it from being overridden
 - Export: the `nav=false` parameter no longer discards teacher mode, xAPI credentials or other URL parameters, and search results now preserve the parameters used to open the page
 - Effects: fixed the timeline opening and closing again on a single click
-- Styles: reviewed the licences of third-party materials used in styles and updated their credits accordingly
+- Styles: reviewed the licences of third-party materials used in styles, updated their credits and include the required licences with every style
 - File → Open: fixed the colours of the Delete button
 - Admin panel: fixed the contrast of the Source column in Styles Management
 - Preview: PDFs embedded in a Text iDevice are now displayed correctly in Docker and static deployments
 - Math: fixed inconsistencies caused by mixing incompatible MathJax versions and reduced the size of exports containing formulas
 - Math editor: formula previews are now announced correctly by screen readers instead of as unlabelled images
-- Math editor: the menu editor no longer downloads part of its interface from external services
+- Math editor: the menu editor no longer downloads part of its interface from external services, so it also works in offline and desktop installations
 - Mermaid: the library is now loaded while the diagram is being edited, preventing delays when the activity is closed or saved
 - Import: activities with damaged data now retain their original content instead of being emptied, and the user is notified
 - Uploads: large files are now staged in the configured data directory instead of the application folder
