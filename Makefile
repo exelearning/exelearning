@@ -461,10 +461,9 @@ fix: check-bun fix-ts fix-js fix-tests
 vendor-mathjax: check-bun
 	bun run scripts/vendor-mathjax.ts
 
-# Regenerate public/app/common/edicuatex/ from the pinned `edicuatex` package (the
-# tree is committed because the static build, Electron and offline installs need the
-# editor on disk), so run this after bumping the dependency. vendor-edicuatex.spec.ts
-# fails if the committed tree and the package disagree.
+# Regenerate public/app/common/edicuatex/ from the pinned `edicuatex` package. The
+# tree is gitignored and build:all regenerates it, so this is only needed to refresh
+# it without a full build; `--check` reports a tree left stale by an interrupted one.
 .PHONY: vendor-edicuatex
 vendor-edicuatex: check-bun
 	bun run scripts/vendor-edicuatex.ts

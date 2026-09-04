@@ -4,18 +4,22 @@
  * Regenerates the vendored EdiCuaTeX editor at public/app/common/edicuatex/ from
  * the pinned `edicuatex` npm package.
  *
- * The tree is committed to git because the static PWA build, the Electron app and
- * offline installations all need the editor on disk with no network. It used to be
- * copied by hand, and that is exactly how it drifted: within a single day the copy
- * here and the upstream source disagreed on which MathJax components to load, and
- * the accessibility fix that closed the gap arrived through a code review instead of
- * a version bump. Deriving the tree from one pinned package makes that impossible --
- * a hand-edit to the vendored copy now fails CI.
+ * The tree is not committed: it is generated into a gitignored path as the first
+ * step of build:all, like every other artefact this repo builds into public/. The
+ * static PWA build, the Electron app and offline installations all need the editor
+ * on disk with no network, and they get it from that build.
+ *
+ * It used to be copied by hand, and that is exactly how it drifted: within a single
+ * day the copy here and the upstream source disagreed on which MathJax components to
+ * load, and the accessibility fix that closed the gap arrived through a code review
+ * instead of a version bump. Deriving the tree from one pinned package removes the
+ * second copy that could disagree.
  *
  *   bun scripts/vendor-edicuatex.ts            # rewrite the tree
  *   bun scripts/vendor-edicuatex.ts --check    # fail if the tree has drifted
  *
- * The --check mode backs vendor-edicuatex.spec.ts, so CI catches drift.
+ * --check verifies a build rather than a checkout: it catches a tree left stale by an
+ * interrupted build, which is why the Dockerfile runs it as a build assertion.
  */
 
 import { createHash } from 'node:crypto';

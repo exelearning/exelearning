@@ -173,9 +173,6 @@
 
 ## Client-side libraries
 
-*   Files: /public/app/common/edicuatex/\* (except js/DOMPurify/*)
-    *   Copyright: Juan José de Haro
-    *   License: CC-BY-SA-4.0
 *   Files: /public/app/common/edicuatex/js/DOMPurify\*
     *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
     *   License: Apache License 2.0 / Mozilla Public License Version 2.0
