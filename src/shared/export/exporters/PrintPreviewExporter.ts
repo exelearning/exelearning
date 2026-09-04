@@ -51,6 +51,25 @@ export interface PrintPreviewOptions {
      * If true, enables auto-print mode (injects print scripts and onload handler).
      */
     printMode?: boolean;
+    /**
+     * If true, adds page numbers to printed pages via @page CSS.
+     * Only visible in actual print output, not in screen preview.
+     * Defaults to true.
+     */
+    showPageNumbers?: boolean;
+    /**
+     * If true, adds "Created with eXeLearning" watermark to printed pages.
+     * Only visible in actual print output, not in screen preview.
+     * Defaults to false.
+     */
+    showWatermark?: boolean;
+    /**
+     * If true, shows URLs inline after external links in printed output.
+     * E.g., "Cedec" becomes "Cedec [https://cedec.intef.es]".
+     * Only visible in actual print output, not in screen preview.
+     * Defaults to true.
+     */
+    showLinkUrls?: boolean;
 }
 
 /**
@@ -213,7 +232,7 @@ export class PrintPreviewExporter {
             };
 
             const logoUrl = getPath('app/common/exe_powered_logo/exe_powered_logo.png');
-            html = this.injectPreviewStyles(html, logoUrl);
+            html = this.injectPreviewStyles(html, logoUrl, options);
 
             // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {
@@ -259,13 +278,52 @@ export class PrintPreviewExporter {
     /**
      * Inject styles to force content to fit within the page width
      */
-    private injectPreviewStyles(html: string, logoUrl?: string): string {
+    private injectPreviewStyles(html: string, logoUrl?: string, options: PrintPreviewOptions = {}): string {
         const logoCss = logoUrl
             ? `
 /* Fix for eXe logo 404 */
 #made-with-eXe a {
     background-image: url("${logoUrl}") !important;
 }`
+            : '';
+
+        // Resolve print option defaults: page numbers and link URLs default to ON
+        const showPageNumbers = options.showPageNumbers !== false;
+        const showWatermark = options.showWatermark === true;
+        const showLinkUrls = options.showLinkUrls !== false;
+
+        // Build conditional @page rules for page numbers and watermark
+        let pageRules = '';
+        if (showPageNumbers || showWatermark) {
+            pageRules = '\n@page {';
+            if (showPageNumbers) {
+                pageRules += `\n    @bottom-center {\n        content: counter(page);\n        font-size: 9pt;\n        color: #666;\n    }`;
+            }
+            if (showWatermark) {
+                pageRules += `\n    @bottom-right {\n        content: "Created with eXeLearning (https://exelearning.net)";\n        font-size: 7pt;\n        color: #999;\n    }`;
+            }
+            pageRules += '\n}';
+        }
+
+        // Build conditional link URL display CSS
+        const linkUrlsCss = showLinkUrls
+            ? `
+    /* Show URLs inline after external links for print */
+    a[href^="http"]::after,
+    a[href^="https"]::after {
+        content: " [" attr(href) "]";
+        font-size: 0.85em;
+        word-break: break-all;
+        color: #666;
+    }
+    /* Don't show URL for links whose text IS the URL */
+    a[href^="http"]:-moz-only-whitespace::after,
+    a[href^="https"]:-moz-only-whitespace::after { content: none; }
+    /* Don't show URL for image-only links */
+    a[href^="http"]:has(img:only-child)::after,
+    a[href^="https"]:has(img:only-child)::after { content: none; }
+    /* Show external iframe source URLs in print */
+    .external-iframe-src { display: block !important; font-size: 0.85em; color: #666; }`
             : '';
 
         const styles = `
@@ -381,6 +439,23 @@ figure img {
         break-inside: avoid;
         border-bottom: none;
     }
+
+    /* Hide toggle content buttons — these are interactive-only controls */
+    .box-toggle { display: none !important; }
+
+    /* Hide teacher-only mode indicators */
+    .teacher-only { display: none !important; }
+
+    /* Hide map iDevice image overlays that are js-hidden */
+    .mapa-IDevice img.js-hidden { display: none !important; }
+
+    /* Ensure links are styled for PDF interactivity */
+    a[href] {
+        color: inherit;
+        text-decoration: underline;
+    }
+${linkUrlsCss}
+${pageRules}
 }
 
 /* Force visibility for feedback elements even if JS tries to hide them */
