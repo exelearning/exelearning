@@ -15581,6 +15581,114 @@
         <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
         <target>~Queste attività fanno riferimento a file non inclusi nel pacchetto importato. I riferimenti sono stati mantenuti, quindi aggiungendo di nuovo i file verranno ripristinati.</target>
       </trans-unit>
+      <trans-unit id="rxu9e5d" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fyc32ke" resname="Change password">
+        <source>Change password</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="adiiwzo" resname="Current password">
+        <source>Current password</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ls99ojo" resname="New password">
+        <source>New password</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1oa7koj" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ztubh5y" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="o48qtn0" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1tou4ph" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2iebmzt" resname="Import warnings">
+        <source>Import warnings</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kaxte4l" resname="Search icon">
+        <source>Search icon</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zdctzh1" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="n1u9trl" resname="Icon">
+        <source>Icon</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tufuxx4" resname="Style icons">
+        <source>Style icons</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bajp8jo" resname="General icons">
+        <source>General icons</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hr9wt51" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1xafxqb" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r9n5a40" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="g6q3jzs" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ndl0v3b" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="lpugbyq" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kr03282" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f480qzy" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3hmoju7" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wpojpyx" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8ou3aza" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="i09yh6p" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5425xpc" resname="Huger text">
+        <source>Huger text</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
