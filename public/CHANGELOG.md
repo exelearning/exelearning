@@ -58,6 +58,7 @@
 - Export: the theme stylesheet is now loaded last in single-page exports, preventing it from being overridden
 - Export: the `nav=false` parameter no longer discards teacher mode, xAPI credentials or other URL parameters, and search results now preserve the parameters used to open the page
 - Effects: fixed the timeline opening and closing again on a single click
+- Styles: fixed a misnamed icon in Neo; all styles except Universal now provide the same 50 icons under the same names
 - Styles: reviewed the licences of third-party materials used in styles, updated their credits and include the required licences with every style
 - File → Open: fixed the colours of the Delete button
 - Admin panel: fixed the contrast of the Source column in Styles Management
