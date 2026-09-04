@@ -461,6 +461,13 @@ fix: check-bun fix-ts fix-js fix-tests
 vendor-mathjax: check-bun
 	bun run scripts/vendor-mathjax.ts
 
+# Regenerate public/app/common/edicuatex/ from the pinned `edicuatex` package. The
+# tree is gitignored and build:all regenerates it, so this is only needed to refresh
+# it without a full build; `--check` reports a tree left stale by an interrupted one.
+.PHONY: vendor-edicuatex
+vendor-edicuatex: check-bun
+	bun run scripts/vendor-edicuatex.ts
+
 # Print the architecture record index, derived from document frontmatter.
 # Deliberately not a committed file: it would conflict on every concurrent branch.
 .PHONY: architecture-records
