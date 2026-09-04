@@ -122,6 +122,47 @@ describe('classify iDevice export', () => {
     });
   });
 
+  // sendScore and saveEvaluation carried the same formula written twice, and
+  // the same 0/0 in it. One function now, and the edge cases with it.
+  describe('computeScore', () => {
+    it('scores a solved board out of ten', () => {
+      expect($eXeClasifica.computeScore(4, 4, 4, 2)).toBe(10);
+    });
+
+    it('scores half a board at five', () => {
+      expect($eXeClasifica.computeScore(2, 2, 4, 2)).toBe(5);
+    });
+
+    // The essential level is the only one that weighs how many moves the board
+    // took: the same four hits are worth less if they took eight drops.
+    it('penalises the moves it took, at the essential level only', () => {
+      expect($eXeClasifica.computeScore(4, 8, 4, 0)).toBe(5);
+      expect($eXeClasifica.computeScore(4, 8, 4, 1)).toBe(10);
+      expect($eXeClasifica.computeScore(4, 8, 4, 2)).toBe(10);
+    });
+
+    it('gives a flawless essential board the full mark', () => {
+      expect($eXeClasifica.computeScore(4, 4, 4, 0)).toBe(10);
+    });
+
+    // The opening report: nothing moved, so hits and attempts are both zero.
+    // This used to be 0 * (0/0) — NaN — and only sendScoreNew's non-finite
+    // guard kept it from travelling to the LMS as the learner's grade.
+    it('returns a finite zero before the learner has moved anything', () => {
+      const score = $eXeClasifica.computeScore(0, 0, 4, 0);
+
+      expect(Number.isFinite(score)).toBe(true);
+      expect(score).toBe(0);
+    });
+
+    // An activity saved with no cards: the divisor used to be numberQuestions,
+    // undefended, so this was 0/0 as well.
+    it('survives a deck with no cards', () => {
+      expect($eXeClasifica.computeScore(0, 0, 0, 0)).toBe(0);
+      expect($eXeClasifica.computeScore(0, 0, 0, 2)).toBe(0);
+    });
+  });
+
   describe('init', () => {
     it('exists as a function', () => {
       expect(typeof $eXeClasifica.init).toBe('function');

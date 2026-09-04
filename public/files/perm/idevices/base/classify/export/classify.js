@@ -287,18 +287,41 @@ var $eXeClasifica = {
         return html;
     },
 
+    /**
+     * The mark the activity reports, on the 0-10 scale the LMS and the local
+     * evaluation report share.
+     *
+     * The essential level scores accuracy, not just hits: a board solved in
+     * more moves than it has cards is worth less than one solved in the
+     * minimum. Every divisor is defended here, because none of them was
+     * before — with nothing moved yet, hits and attempts are both 0, so
+     * `hits / attempts` was 0/0 and the whole product came out NaN. That
+     * opening report reached sendScoreNew as a non-finite score and only its
+     * guard kept it out of the LMS.
+     *
+     * @param {number} hits - Cards sitting in their own group.
+     * @param {number} attempts - Cards dropped so far, right or wrong.
+     * @param {number} totalCards - Cards in play; a deck of 0 counts as 1.
+     * @param {number} gameLevel - 0 essential, 1 medium, 2 advanced.
+     * @returns {number} A finite mark from 0 to 10.
+     */
+    computeScore: function (hits, attempts, totalCards, gameLevel) {
+        const total = totalCards > 0 ? totalCards : 1;
+        const base = (hits * 10) / total;
+        if (gameLevel !== 0) return base;
+        const accuracy = attempts > 0 ? hits / attempts : 0;
+        return base * accuracy;
+    },
+
     saveEvaluation: function (instance) {
-        const mOptions = $eXeClasifica.options[instance],
-            hits = mOptions.hits || 0,
-            attempts = mOptions.attempts || 0,
-            totalCards = mOptions.cardsGame.length || 1;
+        const mOptions = $eXeClasifica.options[instance];
 
-        let score = (hits * 10) / totalCards;
-        if (mOptions.gameLevel === 0)
-            score =
-                ((hits * 10) / mOptions.numberQuestions) * (hits / attempts);
-
-        mOptions.scorerp = score;
+        mOptions.scorerp = $eXeClasifica.computeScore(
+            mOptions.hits || 0,
+            mOptions.attempts || 0,
+            mOptions.cardsGame.length,
+            mOptions.gameLevel
+        );
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $eXeClasifica.isInExe
@@ -306,17 +329,14 @@ var $eXeClasifica = {
     },
 
     sendScore: function (auto, instance) {
-        const mOptions = $eXeClasifica.options[instance],
-            hits = mOptions.hits || 0,
-            attempts = mOptions.attempts || 0,
-            totalCards = mOptions.cardsGame.length || 1;
+        const mOptions = $eXeClasifica.options[instance];
 
-        let score = (hits * 10) / totalCards;
-        if (mOptions.gameLevel === 0)
-            score =
-                ((hits * 10) / mOptions.numberQuestions) * (hits / attempts);
-
-        mOptions.scorerp = score;
+        mOptions.scorerp = $eXeClasifica.computeScore(
+            mOptions.hits || 0,
+            mOptions.attempts || 0,
+            mOptions.cardsGame.length,
+            mOptions.gameLevel
+        );
 
         mOptions.previousScore = $eXeClasifica.previousScore;
         mOptions.userName = $eXeClasifica.userName;

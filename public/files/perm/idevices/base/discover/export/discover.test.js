@@ -492,4 +492,86 @@ describe('discover iDevice export', () => {
       expect(flagWhenReported).toBe(true);
     });
   });
+
+  // Entering the code opens the level panel, not a round: the learner still
+  // has to pick a level (or press the single start button when the activity
+  // has only one). The LMS hears about the opening all the same.
+  describe('opening the activity with an access code', () => {
+    function setupCodeAccess(typed, overrides) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreCodeAccessDiv-0"></div>
+          <div id="descubreMesajeAccesCodeE-0"></div>
+          <div id="descubreCubierta-0"></div>
+          <div id="descubreStartLevels-0"></div>
+          <a id="descubreLinkMaximize-0" href="#"></a>
+          <input id="descubreCodeAccessE-0" value="${typed}" />
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: false,
+          gameOver: false,
+          hits: 0,
+          wordsGame: [{}, {}, {}],
+          itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('publishes a zero and an unfinished attempt on a valid code', () => {
+      setupCodeAccess('AbrE');
+      let stateWhenReported;
+      $eXeDescubre.sendScore.mockImplementation(() => {
+        const { hits, gameOver, gameStarted } = $eXeDescubre.options[0];
+        stateWhenReported = { hits, gameOver, gameStarted };
+      });
+
+      $eXeDescubre.enterCodeAccess(0);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        // Up only for the report: sendScoreNew drops a game that is neither
+        // started nor over.
+        gameStarted: true,
+      });
+    });
+
+    // The flag has to come back down, or startGame's early return would make
+    // every level button dead and the activity unplayable.
+    it('leaves the game unstarted, so the level buttons still work', () => {
+      setupCodeAccess('abre');
+
+      $eXeDescubre.enterCodeAccess(0);
+
+      expect($eXeDescubre.options[0].gameStarted).toBe(false);
+    });
+
+    it('reports nothing when the code is wrong', () => {
+      setupCodeAccess('nope');
+
+      $eXeDescubre.enterCodeAccess(0);
+
+      expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+      expect($('#descubreCodeAccessE-0').val()).toBe('');
+    });
+
+    it('does not auto-report in manual SCORM mode', () => {
+      setupCodeAccess('abre', { isScorm: 2 });
+
+      $eXeDescubre.enterCodeAccess(0);
+
+      expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+    });
+  });
 });
