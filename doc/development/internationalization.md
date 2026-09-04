@@ -15,6 +15,7 @@ The application supports these interface languages:
 | `ca` | Català |
 | `va` | Valencià |
 | `eu` | Euskara |
+| `fr` | Français |
 | `gl` | Galego |
 | `pt` | Português |
 | `eo` | Esperanto |
@@ -32,6 +33,7 @@ translations/
 ├── messages.es.xlf
 ├── messages.ca.xlf
 ├── messages.eu.xlf
+├── messages.fr.xlf
 ├── messages.gl.xlf
 ├── messages.pt.xlf
 ├── messages.eo.xlf
