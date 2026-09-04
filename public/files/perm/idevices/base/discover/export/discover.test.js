@@ -284,6 +284,46 @@ describe('discover iDevice export', () => {
         global.$exeDevices.iDevice.gamification.media.playSound
       ).toHaveBeenCalledWith('sound.mp3');
     });
+
+    // cardClick used to silence the player on the way in, unconditionally. The
+    // icon's own handler runs first — it is nearer the click target — so the
+    // clip started and cardClick killed it microseconds later, which is
+    // exactly what "the speaker does nothing" looked like.
+    it('does not silence the clip the icon has just started', () => {
+      setupCard();
+
+      $eXeDescubre.cardClick($('.DescubreQP-CardContainer')[0], 0, false);
+
+      expect(
+        global.$exeDevices.iDevice.gamification.media.stopSound
+      ).not.toHaveBeenCalled();
+    });
+
+    it('still silences a previous clip when the card itself is clicked', () => {
+      setupCard();
+
+      $eXeDescubre.cardClick($('.DescubreQP-CardContainer')[0], 0);
+
+      expect(
+        global.$exeDevices.iDevice.gamification.media.stopSound
+      ).toHaveBeenCalled();
+    });
+
+    // End to end through the real handlers: the icon must both sound and
+    // select, and nothing in the chain may cut the sound off.
+    it('sounds and selects when the icon itself is clicked', () => {
+      setupCard({ time: 0, author: '', fullscreen: false });
+      $exeDevices.iDevice.gamification.scorm = { registerActivity: vi.fn() };
+      $exeDevices.iDevice.gamification.helpers.getTimeToString = () => '00:00';
+      $eXeDescubre.addEvents(0);
+
+      $('.DescubreQP-LinkAudio .DescubreQP-Audio').trigger('click');
+
+      const media = global.$exeDevices.iDevice.gamification.media;
+      expect(media.playSound).toHaveBeenCalledWith('sound.mp3');
+      expect(media.stopSound).not.toHaveBeenCalled();
+      expect($('.DescubreQP-CardContainer').data('state')).toBe('1');
+    });
   });
 
   describe('the countdown across attempts', () => {

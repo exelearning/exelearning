@@ -329,4 +329,75 @@ describe('select-media-files iDevice export', () => {
             expect($(`#slcmpCodeAccessE-${instance}`).val()).toBe('');
         });
     });
+
+    // The speaker played the clip and the card did not, so a learner who
+    // clicked the picture heard nothing. checkAudio was written for this and
+    // called from nowhere — and it read a data-audio the link never carried,
+    // because the URL only lived in the icon handler's closure.
+    describe('playing a card sound', () => {
+        const instance = 0;
+
+        function setupCards(audio = 'card.mp3') {
+            document.body.innerHTML = `
+                <div id="slcmpMainContainer-${instance}">
+                    <div id="slcmpMultimedia-${instance}">
+                        <div class="SLCMP-Card SLCMP-GridItem">
+                            <img class="SLCMP-Image" />
+                            <a href="#" class="SLCMP-LinkAudio" data-audio="${audio}">
+                                <img class="SLCMP-AudioIcon" />
+                            </a>
+                        </div>
+                    </div>
+                </div>`;
+            dmedia.activateHover(instance);
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+        });
+
+        it('plays the clip when the card itself is clicked', () => {
+            setupCards();
+
+            $('.SLCMP-Image').trigger('click');
+
+            expect(media.playSound).toHaveBeenCalledWith('card.mp3');
+        });
+
+        it('selects the card as well', () => {
+            setupCards();
+
+            $('.SLCMP-Image').trigger('click');
+
+            expect($('.SLCMP-Card').hasClass('SLCMP-Select')).toBe(true);
+        });
+
+        // The icon carries its own handler, bound where the card is built, so
+        // the card handler has to stand aside: what this pins is that it adds
+        // no second start for the same click.
+        it('leaves the speaker click to the icon handler', () => {
+            setupCards();
+
+            $('.SLCMP-AudioIcon').trigger('click');
+
+            expect(media.playSound).not.toHaveBeenCalled();
+        });
+
+        it('stays quiet on a card with no sound', () => {
+            document.body.innerHTML = `
+                <div id="slcmpMainContainer-${instance}">
+                    <div id="slcmpMultimedia-${instance}">
+                        <div class="SLCMP-Card SLCMP-GridItem">
+                            <img class="SLCMP-Image" />
+                        </div>
+                    </div>
+                </div>`;
+            dmedia.activateHover(instance);
+
+            $('.SLCMP-Image').trigger('click');
+
+            expect(media.playSound).not.toHaveBeenCalled();
+            expect($('.SLCMP-Card').hasClass('SLCMP-Select')).toBe(true);
+        });
+    });
 });

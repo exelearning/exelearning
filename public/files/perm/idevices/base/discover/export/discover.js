@@ -1180,7 +1180,14 @@ var $eXeDescubre = {
         } else if (mOptions.gameMode == 2) {
             maxsel = 3;
         }
-        $exeDevices.iDevice.gamification.media.stopSound();
+        // Not when the click came from the audio link. That link has already
+        // started the clip the learner asked for, and playSound stops whatever
+        // was playing before it, so there is nothing left here to silence —
+        // only the new sound, a few microseconds after it began. That is why
+        // the speaker icon looked mute while clicking the card worked.
+        if (playAudio !== false) {
+            $exeDevices.iDevice.gamification.media.stopSound();
+        }
 
         if (
             !mOptions.gameActived ||

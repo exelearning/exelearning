@@ -607,6 +607,10 @@ var $eXeSeleccionaMedias = {
                 $sonidoEnlace = $('<a>', {
                     href: '#',
                     class: 'SLCMP-LinkAudio',
+                    // Also on the element, not only in the closure below:
+                    // checkAudio reads it from here when the learner clicks
+                    // the card rather than the speaker.
+                    'data-audio': card.audio,
                 }).append(
                     $('<img>', {
                         src: `${$eXeSeleccionaMedias.idevicePath}exequextplayaudio.svg`,
@@ -779,6 +783,13 @@ var $eXeSeleccionaMedias = {
             function (e) {
                 e.preventDefault();
                 $(this).toggleClass('SLCMP-Select');
+                // The speaker sits inside the card, so its own click reaches
+                // here too — and it has already started the clip. Only the
+                // rest of the card has to start it, or the learner would get
+                // the same sound twice from one click.
+                if ($(e.target).closest('.SLCMP-LinkAudio').length === 0) {
+                    $eXeSeleccionaMedias.checkAudio(this);
+                }
             }
         );
     },
