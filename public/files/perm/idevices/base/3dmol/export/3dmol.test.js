@@ -570,4 +570,61 @@ describe('3dmol iDevice export', () => {
             expect(reported).toEqual([]);
         });
     });
+
+    // Dropping the lives option took the panel and the variable holding it,
+    // but left the hide() call at the top of showScoreGame. Every game-over
+    // threw ReferenceError there, before a single figure was painted — and
+    // the throw came from inside gameOver, so it took the report with it.
+    describe('the end-of-game panel', () => {
+        const instance = 0;
+
+        function setupPanel(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <div id="dmolpGameContainer-${instance}"></div>
+                    <div id="dmolpHistGame-${instance}"></div>
+                    <div id="dmolpOverScore-${instance}"></div>
+                    <div id="dmolpOverHits-${instance}"></div>
+                    <div id="dmolpOverErrors-${instance}"></div>
+                    <div id="dmolpShowClue-${instance}"></div>
+                    <div id="dmolpGamerOver-${instance}"></div>
+                </div>`;
+            dmol.options[instance] = Object.assign(
+                {
+                    main: `dmolpMainContainer-${instance}`,
+                    gameMode: 1,
+                    score: 7.5,
+                    hits: 3,
+                    errors: 1,
+                    obtainedClue: false,
+                    itinerary: { showClue: false, percentageClue: 0, clueGame: '' },
+                    msgs: {
+                        msgCool: 'Bien',
+                        msgAllQuestions: 'Todas',
+                        msgScore: 'Score',
+                        msgHits: 'Hits',
+                        msgErrors: 'Errors',
+                        msgInformationLooking: 'Mira',
+                    },
+                },
+                overrides
+            );
+            vi.spyOn(dmol, 'showMessage').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        // 0 is finishing every question, 2 is running out of time.
+        it.each([0, 2])('paints the totals when the game ends with type %i', type => {
+            setupPanel();
+
+            expect(() => dmol.showScoreGame(type, instance)).not.toThrow();
+
+            expect($(`#dmolpOverHits-${instance}`).html()).toBe('Hits: 3');
+            expect($(`#dmolpOverErrors-${instance}`).html()).toBe('Errors: 1');
+        });
+    });
 });

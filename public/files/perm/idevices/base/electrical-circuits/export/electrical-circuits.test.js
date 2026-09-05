@@ -621,4 +621,62 @@ describe('electrical-circuits iDevice export', () => {
             });
         });
     });
+
+    // Dropping the lives option took the panel and the variable holding it,
+    // but left the hide() call at the top of showScoreGame. Every game-over
+    // threw ReferenceError there, before a single figure was painted — and
+    // the throw came from inside gameOver, so it took the report with it.
+    describe('the end-of-game panel', () => {
+        const instance = 0;
+        const idevice = () => global.$eXeEC;
+
+        function setupPanel(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="elcpMainContainer-${instance}">
+                    <div id="elcpGameContainer-${instance}"></div>
+                    <div id="elcpHistGame-${instance}"></div>
+                    <div id="elcpOverScore-${instance}"></div>
+                    <div id="elcpOverHits-${instance}"></div>
+                    <div id="elcpOverErrors-${instance}"></div>
+                    <div id="elcpShowClue-${instance}"></div>
+                    <div id="elcpGamerOver-${instance}"></div>
+                </div>`;
+            idevice().options[instance] = Object.assign(
+                {
+                    main: `elcpMainContainer-${instance}`,
+                    gameMode: 1,
+                    score: 7.5,
+                    hits: 3,
+                    errors: 1,
+                    obtainedClue: false,
+                    itinerary: { showClue: false, percentageClue: 0, clueGame: '' },
+                    msgs: {
+                        msgCool: 'Bien',
+                        msgAllQuestions: 'Todas',
+                        msgScore: 'Score',
+                        msgHits: 'Hits',
+                        msgErrors: 'Errors',
+                        msgInformationLooking: 'Mira',
+                    },
+                },
+                overrides
+            );
+            vi.spyOn(idevice(), 'showMessage').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        // 0 is finishing every question, 2 is running out of time.
+        it.each([0, 2])('paints the totals when the game ends with type %i', type => {
+            setupPanel();
+
+            expect(() => idevice().showScoreGame(type, instance)).not.toThrow();
+
+            expect($(`#elcpOverHits-${instance}`).html()).toBe('Hits: 3');
+            expect($(`#elcpOverErrors-${instance}`).html()).toBe('Errors: 1');
+        });
+    });
 });

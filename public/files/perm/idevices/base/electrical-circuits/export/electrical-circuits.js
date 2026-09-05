@@ -922,7 +922,6 @@ var $eXeEC = {
             messageColor = 2;
 
         $histGame.hide();
-        $lostGame.hide();
         $overPoint.show();
         $overHits.show();
         $overErrors.show();

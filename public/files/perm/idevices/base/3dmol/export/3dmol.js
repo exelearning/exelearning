@@ -1490,7 +1490,6 @@ var $eXe3Dmol = {
             messageColor = 2;
 
         $histGame.hide();
-        $lostGame.hide();
         $overPoint.show();
         $overHits.show();
         $overErrors.show();
