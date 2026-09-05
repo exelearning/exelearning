@@ -1,6 +1,6 @@
 ---
 id: ADR-2302-02
-title: "Retire the current xAPI emitter"
+title: "Retire xAPI emission from exports"
 status: Proposed
 date: 2026-09-03
 tracking_issue: 2302
@@ -17,7 +17,7 @@ ai_assistance:
   model: "gpt-5.6-sol"
 ---
 
-# ADR-2302-02: Retire the current xAPI emitter
+# ADR-2302-02: Retire xAPI emission from exports
 
 ## Context
 
@@ -29,9 +29,7 @@ Keeping the existing xAPI implementation would therefore mean maintaining a stat
 
 ## Decision
 
-Retire the current xAPI emitter implementation.
-
-The historical `libs/xapi/exe_xapi.js` path is temporarily kept as a no-op compatibility shim so exporter code that still references the asset does not generate a broken package while the remaining exporter plumbing is removed.
+Retire xAPI emission from eXeLearning exports, in full and in one step: the emitter library, the `window.exeXapi` identity config, the `XapiConfig` type, the base-library and resource-copy entries, and the `gamification.track()` dispatch hop all go. No compatibility shim is left behind — a stub asset that nothing reads is plumbing without a consumer, which is the very thing this decision retires.
 
 xAPI is not rejected as a future capability. A future implementation should be treated as a new feature and should require a concrete consumer, an explicit statement contract, clear attempt/session semantics, an identity and trust model, and end-to-end interoperability tests.
 
@@ -40,4 +38,5 @@ xAPI is not rejected as a future capability. A future implementation should be t
 - New exports no longer emit xAPI statements.
 - Existing already-exported packages are unaffected because they contain their own bundled runtime.
 - SCORM tracking and grading remain unchanged.
-- The compatibility shim and remaining xAPI-specific exporter plumbing can be removed once no export path references the historical asset.
+- `libs/xapi/exe_xapi.js` is no longer produced, referenced or copied by any export path, and integration tests assert that it stays gone.
+- `PageRenderer.serializeForScript()` is removed with its only caller. A future feature that inlines JSON into a `<script>` element must reintroduce equivalent escaping (`<`, U+2028, U+2029); see this ADR's implementation PR for the previous version.
