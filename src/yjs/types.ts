@@ -79,6 +79,12 @@ export interface MovePageInput {
 // BLOCK TYPES
 // ============================================================================
 
+export interface BlockIconDescriptor {
+    source: 'material' | 'asset' | 'theme' | 'none';
+    value: string;
+    name?: string;
+}
+
 /**
  * Block data as returned by API
  */
@@ -87,6 +93,7 @@ export interface BlockData {
     blockId: string;
     blockName: string;
     iconName: string;
+    icon?: BlockIconDescriptor;
     blockType: string;
     order: number;
     componentCount: number;
@@ -122,6 +129,7 @@ export interface CreateBlockInput {
 export interface UpdateBlockInput {
     name?: string;
     iconName?: string;
+    icon?: BlockIconDescriptor;
     properties?: Partial<BlockProperties>;
 }
 

@@ -164,6 +164,10 @@ describe('common.js $exe helpers', () => {
   });
 
   describe('$exe.mermaid', () => {
+    beforeEach(() => {
+      global.$exe.mermaid.loading = false;
+    });
+
     it('has engine property', () => {
       expect(global.$exe.mermaid.engine).toBeDefined();
     });
@@ -177,6 +181,54 @@ describe('common.js $exe helpers', () => {
       const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
       global.$exe.mermaid.loadMermaid();
       expect(appendChildSpy).toHaveBeenCalled();
+    });
+
+    it('loadMermaid does not inject the script twice while it is still loading', () => {
+      delete global.mermaid;
+      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
+      global.$exe.mermaid.loadMermaid();
+      global.$exe.mermaid.loadMermaid();
+      expect(appendChildSpy).toHaveBeenCalledTimes(1);
+      expect(global.$exe.mermaid.loading).toBe(true);
+    });
+
+    it('loadMermaid clears the loading flag when the download fails, allowing a retry', () => {
+      delete global.mermaid;
+      let injected;
+      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((el) => {
+        injected = el;
+      });
+      global.$exe.mermaid.loadMermaid();
+      injected.onerror();
+      expect(global.$exe.mermaid.loading).toBe(false);
+      global.$exe.mermaid.loadMermaid();
+      expect(appendChildSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('loadMermaid clears the loading flag once the library is loaded', () => {
+      const originalInitialized = global.$exe.mermaid.initialized;
+      delete global.mermaid;
+      let injected;
+      vi.spyOn(document.head, 'appendChild').mockImplementation((el) => {
+        injected = el;
+      });
+      vi.spyOn(global.$exe.mermaid, 'renderDiagrams').mockImplementation(() => {});
+      global.$exe.mermaid.loadMermaid();
+      global.mermaid = { initialize: vi.fn(), run: vi.fn() };
+      injected.onload();
+      expect(global.$exe.mermaid.loading).toBe(false);
+      expect(global.$exe.mermaid.initialized).toBe(true);
+      global.$exe.mermaid.initialized = originalInitialized;
+    });
+
+    it('a save right after opening the dialog does not download the library twice', () => {
+      // Dialog open preloads, then the editor deactivates and init() renders
+      delete global.mermaid;
+      document.body.innerHTML = '<div class="mermaid">graph TD; A-->B;</div>';
+      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
+      global.$exe.mermaid.loadMermaid();
+      global.$exe.mermaid.init();
+      expect(appendChildSpy).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -862,6 +914,10 @@ describe('common.js $exe helpers', () => {
   });
 
   describe('$exe.mermaid edge cases', () => {
+    beforeEach(() => {
+      global.$exe.mermaid.loading = false;
+    });
+
     it('init loads mermaid when mermaid nodes exist', () => {
       document.body.innerHTML = '<div class="mermaid">graph TD; A-->B;</div>';
       const loadSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});

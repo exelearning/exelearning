@@ -173,9 +173,6 @@
 
 ## Client-side libraries
 
-*   Files: /public/app/common/edicuatex/\* (except js/DOMPurify/*)
-    *   Copyright: Juan José de Haro
-    *   License: CC-BY-SA-4.0
 *   Files: /public/app/common/edicuatex/js/DOMPurify\*
     *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
     *   License: Apache License 2.0 / Mozilla Public License Version 2.0
@@ -214,6 +211,9 @@
 *   Files: /public/app/common/mindmaps/\*
     *   Copyright: David Richard
     *   License: AGPL V3
+    *   Note: [mindmaps](https://www.mindmaps.app/) is included in eXeLearning
+        with the developer's consent. For a different use of mindmaps, read
+        its LICENSE file or contact its author.
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
@@ -306,6 +306,11 @@
 *   Files: /public/libs/fflate/\*
     *   Copyright: 101arrowz
     *   License: MIT
+*   Files: /public/libs/fzstd/\*
+    *   Copyright: 101arrowz
+    *   License: MIT
+    *   Note: also vendored (byte-identical) by the LOMLOE/DigCompEdu dataset
+        compression work; the static build uses it to decode zstd payloads.
 *   File: /public/libs/interact/\*
     *   Copyright: Taye Adeyemi
     *   License: MIT

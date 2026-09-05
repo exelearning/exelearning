@@ -52,9 +52,29 @@ export default class ApiCallManager {
             return;
         }
 
-        // Priority 2: fetch bundle.json (for dev)
-        // In static mode, bundle.json is always relative to the current HTML file
+        // Priority 2: fetch bundle.json.zst (the static build ships the bundle
+        // zstd-compressed; window.fzstd is loaded by the static index — same
+        // pattern as the LOMLOE/DigCompEdu datasets)
+        // In static mode, the bundle is always relative to the current HTML file.
         // Don't use basePath here as it may include subdirectory paths that cause double-path issues
+        if (window.fzstd) {
+            try {
+                const zstUrl = './data/bundle.json.zst';
+                console.log(`[ApiCallManager] Fetching static data from ${zstUrl}`);
+                const response = await fetch(zstUrl);
+                if (response.ok) {
+                    const compressed = new Uint8Array(await response.arrayBuffer());
+                    const json = new TextDecoder().decode(window.fzstd.decompress(compressed));
+                    this.staticData = JSON.parse(json);
+                    console.log('[ApiCallManager] Loaded static data from bundle.json.zst');
+                    return;
+                }
+            } catch (e) {
+                console.warn('[ApiCallManager] Error loading compressed static bundle:', e);
+            }
+        }
+
+        // Priority 3: fetch plain bundle.json (dev fallback / older mirrors)
         try {
             const bundleUrl = './data/bundle.json';
             console.log(`[ApiCallManager] Fetching static data from ${bundleUrl}`);
@@ -713,8 +733,17 @@ export default class ApiCallManager {
      * @returns
      */
     async postUploadIdevice(params) {
-        let url = this.endpoints.api_idevices_upload.path;
-        return await this.func.post(url, params);
+        // PROVISIONAL (issue #144): iDevice importing is not available yet. The
+        // endpoint is absent from the static/online route map, so reading its
+        // path threw an unhandled TypeError. Fail gracefully instead; remove
+        // this guard when iDevice importing is implemented.
+        const endpoint = this.endpoints.api_idevices_upload;
+        // No `error` detail: callers already show their own translated message,
+        // and an untranslated string here would duplicate it in the alert.
+        if (!endpoint || !endpoint.path) {
+            return { responseMessage: 'Error' };
+        }
+        return await this.func.post(endpoint.path, params);
     }
 
     /**
@@ -2064,6 +2093,13 @@ export default class ApiCallManager {
                 if (params.blockName !== undefined && params.blockName !== currentBlock?.blockName) {
                     updates.blockName = params.blockName;
                 }
+                if (params.icon !== undefined) {
+                    const currentIcon = currentBlock?.icon ?? null;
+                    const nextIcon = params.icon ?? null;
+                    if (JSON.stringify(nextIcon) !== JSON.stringify(currentIcon)) {
+                        updates.icon = nextIcon;
+                    }
+                }
                 if (params.iconName !== undefined && params.iconName !== currentBlock?.iconName) {
                     updates.iconName = params.iconName;
                 }
@@ -2084,6 +2120,7 @@ export default class ApiCallManager {
                         id: blockId,
                         odePagId: blockId,
                         blockName: params.blockName,
+                        icon: params.icon,
                         iconName: params.iconName,
                         order: params.order
                     }
