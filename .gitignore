@@ -121,6 +121,9 @@ public/app/app.bundle.js
 public/app/yjs/exporters.bundle.js
 public/app/yjs/importers.bundle.js
 public/app/common/i18n/
+# Vendored from the pinned `edicuatex` package by scripts/vendor-edicuatex.ts,
+# which runs as part of build:all. Not committed, like every other generated tree here.
+public/app/common/edicuatex/
 public/app/dist/
 
 ###> claude-code ###
