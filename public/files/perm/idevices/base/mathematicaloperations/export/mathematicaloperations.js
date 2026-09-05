@@ -172,6 +172,11 @@ var $eXeMathOperations = {
                 ? ''
                 : options.evaluationID;
         options.id = typeof options.id == 'undefined' ? false : options.id;
+        // This activity counts its operations in `number`; every other game
+        // iDevice calls the same thing `numberQuestions`, and that is the name
+        // registerActivity reads. Without this the activity registered with
+        // `total: 0` and the registry never knew how big it was.
+        options.numberQuestions = parseFloat(options.number) || 0;
 
         return options;
     },

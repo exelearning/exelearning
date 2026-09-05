@@ -128,6 +128,36 @@ describe('mathematicaloperations iDevice export', () => {
     });
   });
 
+  // The registry learns an activity's size from `numberQuestions`, the name
+  // every other game iDevice uses. This one counts its operations in `number`,
+  // so it registered with `total: 0` and the registry never knew how big it was.
+  describe('the question count the registry reads', () => {
+    function loaded(saved) {
+      // loadDataGame parses the saved JSON through the shared helper and fills
+      // the questions through loadQuestions; neither is what is under test.
+      global.$exeDevices.iDevice.gamification.helpers.isJsonString = (json) =>
+        JSON.parse(json);
+      vi.spyOn($eXeMathOperations, 'loadQuestions').mockImplementation(
+        (options) => options
+      );
+      const data = { text: () => JSON.stringify(saved) };
+      return $eXeMathOperations.loadDataGame(data, 0);
+    }
+
+    it('publishes the operation count under the shared name', () => {
+      expect(loaded({ number: 7, msgs: {} }).numberQuestions).toBe(7);
+    });
+
+    // The editor writes its inputs as strings often enough to matter.
+    it('accepts the count written as a string', () => {
+      expect(loaded({ number: '12', msgs: {} }).numberQuestions).toBe(12);
+    });
+
+    it('answers zero rather than NaN when the count is missing', () => {
+      expect(loaded({ msgs: {} }).numberQuestions).toBe(0);
+    });
+  });
+
   describe('SCORM reporting when a game starts or restarts', () => {
     function setupGame(overrides = {}) {
       document.body.innerHTML = `
