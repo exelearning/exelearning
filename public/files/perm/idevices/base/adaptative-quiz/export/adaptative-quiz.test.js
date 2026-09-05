@@ -1233,10 +1233,14 @@ describe('adaptative-quiz export', () => {
                 itinerary: { showCodeAccess: true },
             };
             const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+            // A coded game starts through startGame, so watching beginActivity
+            // alone would let the gate break without failing.
+            const startSpy = vi.spyOn(adq, 'startGame').mockImplementation(() => {});
 
             adq.maybeStartAfterScorm(id);
 
             expect(beginSpy).not.toHaveBeenCalled();
+            expect(startSpy).not.toHaveBeenCalled();
         });
 
         it('does not restart a game that is already running', () => {
@@ -1266,18 +1270,21 @@ describe('adaptative-quiz export', () => {
                 questions: [{ difficulty: 1 }],
                 itinerary: { showCodeAccess: true, codeAccess: 'open' },
             };
-            const beginSpy = vi.spyOn(adq, 'beginActivity').mockImplementation(() => {});
+            // A code already accepted is the learner's explicit start, so both
+            // the code and the deferred path go straight to startGame — the
+            // gating this pins is unchanged.
+            const startSpy = vi.spyOn(adq, 'startGame').mockImplementation(() => {});
 
             adq.enterCodeAccess(id);
             adq.maybeStartAfterScorm(id);
 
             expect(adq.options[id].accessUnlocked).toBe(true);
-            expect(beginSpy).not.toHaveBeenCalled();
+            expect(startSpy).not.toHaveBeenCalled();
 
             adq.options[id].scormReady = true;
             adq.maybeStartAfterScorm(id);
 
-            expect(beginSpy).toHaveBeenCalledWith(id);
+            expect(startSpy).toHaveBeenCalledWith(id);
         });
     });
 
@@ -1781,6 +1788,125 @@ describe('adaptative-quiz export', () => {
             expect(q.solutionMulti).toEqual([0, 2]);
             expect(q.solutionOrder).toEqual([2, 1, 4, 3]);
             expect(q.solutionWord).toBe('hello');
+        });
+    });
+
+    // Nothing published the opening zero — not the play button, not the access
+    // code — so the LMS kept the previous attempt's grade and status until the
+    // learner answered a question.
+    describe('the opening zero', () => {
+        const id = 'opening-zero';
+
+        function setupStart(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizShowClue-${id}"></div>
+                <div id="adaptativeQuizShowClueText-${id}"></div>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+                <div id="adaptativeQuizStartGameDiv-${id}"></div>
+                <div id="adaptativeQuizQuestionContainer-${id}"></div>
+                <div id="adaptativeQuizButtonsContainer-${id}"></div>
+                <div id="adaptativeQuizCodeAccessDiv-${id}"></div>
+                <div id="adaptativeQuizCubierta-${id}"></div>
+                <div id="adaptativeQuizMessageCodeAccess-${id}"></div>
+                <input id="adaptativeQuizCodeAccessInput-${id}" value="" />`;
+            adq.options[id] = Object.assign(
+                {
+                    id,
+                    questions: [{ typeSelect: 0, options: [{ text: 'A' }], solutionMulti: [0], difficulty: 1 }],
+                    // A finished attempt, so the reset is visible in the report.
+                    hits: 2,
+                    errors: 1,
+                    score: 40,
+                    scorerp: 4,
+                    numRound: 1,
+                    minQuestionsShown: 0,
+                    roundCount: 3,
+                    answeredIndexes: [],
+                    currentLevel: 1,
+                    initialLevel: 1,
+                    maxLevel: 3,
+                    maxLevelReached: 1,
+                    consecutiveCorrect: 0,
+                    consecutiveWrong: 0,
+                    gameStarted: false,
+                    gameOver: true,
+                    isScorm: 1,
+                    time: 0,
+                    progressSaveMarker: '3:2:1:1',
+                    itinerary: {},
+                    msgs: adq.msgs,
+                },
+                overrides
+            );
+            vi.spyOn(adq, 'pickNextQuestionIndex').mockReturnValue(0);
+            vi.spyOn(adq, 'renderCurrentQuestion').mockImplementation(() => {});
+            vi.spyOn(adq, 'setupTimer').mockImplementation(() => {});
+        }
+
+        function typeCode(typed) {
+            document.getElementById(`adaptativeQuizCodeAccessInput-${id}`).value = typed;
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports the cleared state when the game starts', () => {
+            setupStart();
+            let stateWhenReported;
+            vi.spyOn(adq, 'sendScore').mockImplementation(() => {
+                const { hits, errors, gameOver, gameStarted } = adq.options[id];
+                stateWhenReported = { hits, errors, gameOver, gameStarted };
+            });
+
+            adq.startGame(id);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                gameOver: false,
+                // sendScoreNew ignores a game that reports as neither started
+                // nor over.
+                gameStarted: true,
+            });
+        });
+
+        it('does not auto-report in manual SCORM mode', () => {
+            setupStart({ isScorm: 2 });
+            const sendScore = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+
+            adq.startGame(id);
+
+            expect(sendScore).not.toHaveBeenCalled();
+        });
+
+        // With a clock the code used to leave the learner on the start screen,
+        // with nothing reported at all.
+        it('starts a timed quiz straight from the access code', () => {
+            setupStart({ time: 5, itinerary: { showCodeAccess: true, codeAccess: 'abre' } });
+            typeCode('AbrE');
+            const sendScore = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+
+            adq.enterCodeAccess(id);
+
+            expect(adq.options[id].gameStarted).toBe(true);
+            expect(sendScore).toHaveBeenCalledWith(true, id);
+        });
+
+        it('reports nothing when the code is wrong', () => {
+            setupStart({ time: 5, itinerary: { showCodeAccess: true, codeAccess: 'abre' } });
+            typeCode('nope');
+            const sendScore = vi.spyOn(adq, 'sendScore').mockImplementation(() => {});
+
+            adq.enterCodeAccess(id);
+
+            expect(adq.options[id].gameStarted).toBe(false);
+            expect(sendScore).not.toHaveBeenCalled();
         });
     });
 });

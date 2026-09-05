@@ -1025,6 +1025,25 @@ var $adaptativequiz = {
         this.renderCurrentQuestion(id);
 
         if (opts.time > 0) this.setupTimer(id);
+
+        // After gameStarted and the cleared counters, never before: this is the
+        // opening zero. Nothing published it — not the play button, not the
+        // access code — so the LMS kept the previous attempt's grade and status
+        // until the learner answered a question. sendScoreNew also ignores a
+        // game that reports as neither started nor over, hence the position.
+        this.saveScormScore(id);
+    },
+
+    /**
+     * Publish the freshly cleared state to the LMS when a game starts.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button, and
+     * reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (id) {
+        const opts = this.options[id];
+        if (!opts || opts.isScorm !== 1) return;
+        this.sendScore(true, id);
     },
 
     /**
@@ -1532,7 +1551,12 @@ var $adaptativequiz = {
             $('#adaptativeQuizCodeAccessDiv-' + id).hide();
             $('#adaptativeQuizCubierta-' + id).hide();
             if (!opts.gameStarted && (!this.isWaitingForScorm(opts) || opts.scormReady)) {
-                this.beginActivity(id);
+                // startGame, not beginActivity: a valid code is the learner
+                // opening the attempt, so it stands in for the play button
+                // rather than revealing it — the same thing the code does in
+                // every other timed iDevice. Going through beginActivity left
+                // a timed quiz on the start screen, with nothing reported.
+                this.startGame(id);
             }
             return;
         }
@@ -1741,7 +1765,13 @@ var $adaptativequiz = {
         const hasQuestions = Array.isArray(opts.questions) && opts.questions.length > 0;
         const accessUnlocked = !itinerary.showCodeAccess || opts.accessUnlocked;
         if (accessUnlocked && !opts.gameStarted && hasQuestions) {
-            this.beginActivity(id);
+            // A code already accepted is the learner's explicit start, so the
+            // deferred path must not drop them back onto the play button.
+            if (itinerary.showCodeAccess) {
+                this.startGame(id);
+            } else {
+                this.beginActivity(id);
+            }
         }
     },
 };
