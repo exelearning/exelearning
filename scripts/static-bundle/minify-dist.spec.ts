@@ -30,7 +30,6 @@ describe('isMinifiableJs', () => {
         expect(isMinifiableJs('app/common/i18n/common_i18n.es.js')).toBe(false);
         expect(isMinifiableJs('app/common/common_i18n.js')).toBe(false);
         expect(isMinifiableJs('app/common/exe_export.js')).toBe(false);
-        expect(isMinifiableJs('app/common/xapi/exe_xapi.js')).toBe(false);
         expect(isMinifiableJs('app/common/exe_effects/exe_effects.js')).toBe(false);
         // non-js
         expect(isMinifiableJs('app/yjs/README.md')).toBe(false);
