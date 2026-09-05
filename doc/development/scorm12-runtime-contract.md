@@ -571,6 +571,20 @@ completion and success collapse onto `cmi.core.lesson_status`:
   still in force (typically `suspend`), never from the decision the LMS
   refused — reporting a normal end for a still-incomplete attempt would close
   it prematurely.
+- **The exit is cleared the moment the attempt turns terminal**, not only at
+  page unload. A resumed attempt starts with the previous visit's `suspend`
+  stored at the LMS, and writing the status alone would leave the two
+  disagreeing for the whole visit. Measured on Moodle 4.5: a page finished
+  after a resume kept the unfinished icon in the course-structure menu until
+  `cmi.core.exit` was cleared, with `cmi.core.lesson_status` sitting at
+  `passed` the whole time — Moodle redraws that menu on `LMSCommit`, which
+  happens while the stale `suspend` is still there. Only the terminal
+  direction is written mid-session; `suspend` still belongs to the exit, since
+  a page the learner is still working through is not suspended. An unchanged
+  value is not re-sent, and the check reads the **client's** write cache
+  (`client.hasWrittenValue()` / `getCachedValue()`) rather than a copy held by
+  the policy: `scorm.SetExit()` lets content write the element directly, so a
+  policy-local copy would go stale and skip the write that matters.
 - The success threshold is `cmi.student_data.mastery_score` when the LMS
   publishes one, otherwise **50**, which is the threshold eXeLearning game
   iDevices have always applied. `policy.setSuccessThreshold(null)` disables the
@@ -725,6 +739,7 @@ LMSGetValue("cmi.core.lesson_status")               → entry policy
 LMSGetValue("cmi.student_data.mastery_score")       → optional success threshold
 LMSGetValue("cmi.suspend_data")                     → restore the activity registry
 … content traffic (scores, suspend_data, explicit status) …
+[LMSSetValue("cmi.core.exit", "")]                  (once, when the attempt turns terminal)
 -- visibilitychange → hidden (any number of times) --
 [LMSGetValue("cmi.core.lesson_status")]             (reconcile, only with required work pending)
 [LMSSetValue("cmi.core.lesson_status", "incomplete")]   (only when correcting the policy's own stale verdict)

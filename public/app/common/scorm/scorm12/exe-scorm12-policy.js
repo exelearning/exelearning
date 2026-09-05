@@ -153,6 +153,51 @@
     }
 
     /**
+     * Write cmi.core.exit, skipping a value this session already sent.
+     *
+     * @param {string} exit - "" (normal end) or "suspend" (resumable).
+     * @returns {string} The value now in force for this session.
+     */
+    function writeExit(exit) {
+        var client = deps.getClient();
+        // The client's write cache is the single record of what this session
+        // has sent, and every write path updates it — including SetExit()
+        // from content, which does not go through this policy. A copy kept
+        // here would go stale the moment content set its own exit, and the
+        // skipped write would be exactly the one that matters.
+        if (client.hasWrittenValue(EXIT) && client.getCachedValue(EXIT) === exit) {
+            return exit;
+        }
+        client.setValue(EXIT, exit);
+        return exit;
+    }
+
+    /**
+     * Clear cmi.core.exit the moment the attempt turns terminal, instead of
+     * waiting for the exit policy at page unload.
+     *
+     * A resumed attempt starts with the previous visit's "suspend" stored at
+     * the LMS. Writing the status alone leaves the two disagreeing for the
+     * whole visit — the attempt reads as passed AND suspended — and Moodle
+     * redraws its course-structure menu on LMSCommit, which happens while the
+     * stale "suspend" is still there. Measured on Moodle 4.5: a page finished
+     * after a resume kept the unfinished icon until cmi.core.exit was cleared,
+     * with cmi.core.lesson_status sitting at "passed" the whole time.
+     *
+     * Only the terminal direction is handled here. Writing "suspend" as soon
+     * as a page reports progress would mark an attempt the learner is still
+     * working on as suspended; that value belongs to the exit, and
+     * applyExitPolicy still writes it.
+     *
+     * @param {string} status - The status now in force at the LMS.
+     */
+    function clearExitWhenTerminal(status) {
+        if (policy.isTerminalStatus(status)) {
+            writeExit('');
+        }
+    }
+
+    /**
      * Write a lesson_status on behalf of content (the explicit setters and
      * doContinue). Content's verdict belongs to content, not to the policy:
      * the session claim is cleared even when the value repeats what the
@@ -540,6 +585,12 @@
                 var policyOwned = current === state.policySessionStatus;
                 var lateRegistration = decision.reason === 'required-activities-pending';
                 if (!policyOwned || !lateRegistration) {
+                    // No exit sync here: this branch deliberately touches
+                    // nothing. The terminal status belongs to a previous
+                    // attempt or to content, and the learner may be working
+                    // through the page right now — claiming a normal end for
+                    // an attempt this policy declined to judge would be worse
+                    // than leaving the two disagreeing.
                     return {
                         status: current,
                         written: false,
@@ -554,17 +605,22 @@
                 // by content — agreeing with it is not the same as having
                 // written it, and only a status this policy wrote may later
                 // be downgraded.
+                clearExitWhenTerminal(current);
                 return { status: current, written: true, reason: decision.reason, effective: current };
             }
             var written = writeStatus(decision.status);
             if (written) {
                 state.policySessionStatus = decision.status;
             }
+            // The status the LMS actually holds, so a rejected write does not
+            // clear an exit the attempt still needs.
+            var effective = written ? decision.status : current;
+            clearExitWhenTerminal(effective);
             return {
                 status: decision.status,
                 written: written,
                 reason: decision.reason,
-                effective: written ? decision.status : current,
+                effective: effective,
             };
         },
 
@@ -614,8 +670,7 @@
             } else {
                 status = client.getValue(LESSON_STATUS);
             }
-            var exit = policy.isTerminalStatus(status) ? '' : 'suspend';
-            client.setValue(EXIT, exit);
+            var exit = writeExit(policy.isTerminalStatus(status) ? '' : 'suspend');
             return { status: status, exit: exit };
         },
 

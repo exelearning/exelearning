@@ -968,6 +968,69 @@ describe('exe-scorm12-policy', () => {
         });
     });
 
+    describe('cmi.core.exit while the session is still open', () => {
+        it('clears a resumed attempt\'s stale "suspend" as soon as the page turns terminal', () => {
+            // The previous visit left the attempt suspended and this one
+            // finishes it. Without the clear, the LMS holds "passed" and
+            // "suspend" together for the whole visit.
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            expect(api.data['cmi.core.exit']).toBe('');
+        });
+
+        it('leaves the exit suspended while the page is still incomplete', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+
+            policy.recordActivityOutcome();
+
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+
+        it('sends the cleared exit once, however many reports follow', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            policy.recordActivityOutcome();
+            api.resetCalls();
+
+            policy.recordActivityOutcome();
+            policy.applyExitPolicy();
+
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.exit')).toEqual([]);
+        });
+
+        it('re-sends the cleared exit after content suspended the attempt itself', () => {
+            // scorm.SetExit() writes straight through the client, bypassing
+            // this policy. A dedupe cache kept inside the policy would still
+            // read '' and skip the write, leaving the LMS holding "suspend"
+            // next to a terminal status — the very state this clears.
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            policy.recordActivityOutcome();
+            expect(api.data['cmi.core.exit']).toBe('');
+
+            client.setValue('cmi.core.exit', 'suspend');
+
+            expect(policy.applyExitPolicy()).toMatchObject({ status: 'passed', exit: '' });
+            expect(api.data['cmi.core.exit']).toBe('');
+        });
+
+        it('keeps the exit suspended when the LMS rejects the terminal status', () => {
+            startSession(
+                { 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' },
+                { elementFailures: { 'cmi.core.lesson_status': { errorCode: 101 } } },
+            );
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({ written: false, effective: 'incomplete' });
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+    });
+
     describe('exit policy', () => {
         it('completes an unscored page and ends the attempt normally', () => {
             startSession({ 'cmi.core.lesson_status': 'incomplete' });
