@@ -746,6 +746,10 @@ describe('complete iDevice export', () => {
       setupStart({
         time,
         gameStarted: false,
+        // setupStart's default is a finished game; these two cases are about a
+        // board the learner has not played yet, which is what the guard now
+        // tells apart.
+        gameOver: false,
         author: '',
         text: 'uno @@dos@@ tres',
         itinerary: { showCodeAccess: false, showClue: false },
@@ -771,6 +775,37 @@ describe('complete iDevice export', () => {
       maximizeAfterAddEvents(1);
 
       expect($eXeCompleta.startGame).toHaveBeenCalledWith(instance);
+    });
+
+    // The defect: finishing leaves gameStarted false, so testing that flag
+    // alone let restoring a minimized activity call startGame — which clears
+    // hits, errors and the score and then publishes that zero to the LMS. The
+    // learner ended with a grade, minimized, restored, and lost it.
+    it('does not restart a finished board when it is maximized', () => {
+      setupStart({
+        time: 1,
+        gameStarted: false,
+        author: '',
+        text: 'uno @@dos@@ tres',
+        itinerary: { showCodeAccess: false, showClue: false },
+      });
+      $(`#cmptMainContainer-${instance}`).append(`
+        <a id="cmptLinkMaximize-${instance}" href="#"></a>
+        <div id="cmptGameMinimize-${instance}"></div>
+        <input id="cmptSolution-${instance}" />`);
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      vi.spyOn($eXeCompleta, 'startGame').mockImplementation(() => {});
+      $eXeCompleta.addEvents(instance);
+
+      // What gameOver() leaves behind, on the same object the handler closed
+      // over. Then the learner restores the panel.
+      Object.assign($eXeCompleta.options[instance], {
+        gameStarted: false,
+        gameOver: true,
+      });
+      $(`#cmptLinkMaximize-${instance}`).trigger('click');
+
+      expect($eXeCompleta.startGame).not.toHaveBeenCalled();
     });
   });
 

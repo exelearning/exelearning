@@ -296,10 +296,13 @@ var $eXeCompleta = {
             e.preventDefault();
             $(`#cmptGameContainer-${instance}`).show();
             $(`#cmptGameMinimize-${instance}`).hide();
-            // gameStarted, not cmptStarted: nothing ever wrote that key, so
-            // the guard always passed and what actually held the line was
-            // startGame's own early return. Same outcome, decided here.
-            if (!mOptions.gameStarted) {
+            // Both flags, as dragdrop does: a finished game leaves gameStarted
+            // false, so testing it alone let restoring a minimized activity
+            // call startGame — which clears hits, errors and the score, and
+            // then publishes that zero to the LMS. The learner ended with a
+            // grade, minimized, restored, and lost it without asking to play
+            // again. Restoring must only show what is there.
+            if (!mOptions.gameStarted && !mOptions.gameOver) {
                 $eXeCompleta.startGame(instance);
             }
             $(`#cmptSolution-${instance}`).focus();
