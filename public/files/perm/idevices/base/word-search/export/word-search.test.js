@@ -269,15 +269,26 @@ describe('word-search iDevice export', () => {
             expect($eXeSopa.sendScore).toHaveBeenCalledWith(true, 0);
         });
 
-        // With a clock the code only uncovers: the play button it reveals is
-        // the real start, and startGame publishes from there. Reporting here
-        // too would put the same zero on the wire twice.
-        it('leaves a timed grid to its play button', () => {
+        // The defect: with a clock the code only uncovered the board, leaving
+        // the learner in front of a play button they had already earned. A
+        // valid code is the start, as it is in every other timed iDevice.
+        it('starts a timed grid when the code opens it', () => {
             setupInstance({ time: 1, gameStarted: false });
             addCodeAccessDom('abre');
 
             $eXeSopa.enterCodeAccess(0);
 
+            expect($eXeSopa.instances[0].gameStarted).toBe(true);
+            expect($eXeSopa.sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+        it('does not start a timed grid when the code is wrong', () => {
+            setupInstance({ time: 1, gameStarted: false });
+            addCodeAccessDom('nope');
+
+            $eXeSopa.enterCodeAccess(0);
+
+            expect($eXeSopa.instances[0].gameStarted).toBe(false);
             expect($eXeSopa.sendScore).not.toHaveBeenCalled();
         });
 

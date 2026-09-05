@@ -959,10 +959,15 @@ var $eXeSopa = {
                 // page loads, and it has no play button either — that one only
                 // appears with a clock. So the code is the last chance to
                 // publish the opening zero, and nothing was taking it.
-                //
-                // Timed grids are left alone: the play button the code reveals
-                // is the real start, and startGame publishes from there.
                 $eXeSopa.saveScormScore(instanceId);
+            } else {
+                // A valid code is the learner opening the attempt, so it stands
+                // in for the play button rather than merely uncovering it — the
+                // same thing the code does in every other timed iDevice. The
+                // code used to leave the grid waiting behind a start button the
+                // learner had already earned. startGame runs the clock and
+                // publishes the opening zero from there.
+                $eXeSopa.startGame(instanceId);
             }
         } else {
             $container
