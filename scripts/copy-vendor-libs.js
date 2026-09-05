@@ -158,9 +158,6 @@ const COPIES = [
         dest: pub('files/perm/idevices/base/rubric/export/html2canvas.js'),
     },
 
-    // DOMPurify (embedded inside edicuatex)
-    { src: nm('dompurify/dist/purify.min.js'), dest: pub('app/common/edicuatex/js/DOMPurify/purify.min.js') },
-
     // DOMPurify (slide iDevice — loaded lazily by edition/slide.js before the editor bundle)
     { src: nm('dompurify/dist/purify.min.js'), dest: pub('libs/dompurify/purify.min.js') },
 

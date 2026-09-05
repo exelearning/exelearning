@@ -62,7 +62,7 @@ jobs:
             public/app/yjs/importers.bundle.js
             public/app/common/i18n/**
             public/app/common/mermaid/mermaid.min.js
-            public/app/common/edicuatex/js/DOMPurify/purify.min.js
+            public/app/common/edicuatex/**
             public/bundles/**
             public/libs/**
             public/style/workarea/main.css
