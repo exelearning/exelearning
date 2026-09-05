@@ -1521,12 +1521,12 @@ var $exeDevices = {
                 registerActivity: function (game) {
                     if (typeof game !== 'object' || game === null) return;
 
-                    // Resolve the iDevice identity from the DOM once. This is used by
-                    // both SCORM tracking and the always-on xAPI emitter (exe_xapi.js),
-                    // so it must run in every export format, not only under SCORM.
+                    // Resolve the iDevice identity from the DOM once. SCORM tracking
+                    // and the progress report both read it, so it must run in every
+                    // export format, not only under SCORM.
                     game.mainElement = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
                     let $ideviceNode = game.mainElement.closest('.idevice_node');
-                    // The node id equals the stable odeIdeviceId, used as the xAPI object IRI.
+                    // The node id equals the stable odeIdeviceId.
                     game.ideviceId = $ideviceNode.attr('id');
                     game.title = (game.mainElement.closest('article')
                         .find('header .box-title').text() || '').replace(/"/g, ' ');
@@ -1653,11 +1653,6 @@ var $exeDevices = {
                 sendScoreNew: function (auto, game) {
                     if (typeof game !== 'object' || game === null) {
                         return;
-                    }
-                    // xAPI: emit a per-iDevice statement whenever the activity has a
-                    // score, regardless of SCORM/export format (see exe_xapi.js).
-                    if (game.gameStarted || game.gameOver) {
-                        $exeDevices.iDevice.gamification.track('answered', game);
                     }
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
                         return;
@@ -1887,45 +1882,6 @@ var $exeDevices = {
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
 
                 },
-            },
-
-            /**
-             * Transport-agnostic dispatch to the always-on xAPI emitter
-             * (exe_xapi.js). Runs in EVERY export format, independent of
-             * SCORM/pipwerks, so a published package is xAPI-compatible out
-             * of the box (it is therefore a sibling of `scorm`, not nested in
-             * it). Score math stays single-source (game.scorerp +
-             * getFinalScore); this only forwards it as an xAPI statement.
-             * See https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
-             *
-             * @param {string} eventType e.g. 'answered'
-             * @param {Object} game the iDevice game options (carries score + identity)
-             */
-            track: function (eventType, game) {
-                try {
-                    let xapi = $exeDevices.iDevice.xapi;
-                    if (!xapi || typeof xapi.emit !== 'function') return;
-                    if (typeof game !== 'object' || game === null) return;
-                    if (!game.ideviceId && game.mainElement && game.mainElement.closest) {
-                        game.ideviceId = game.mainElement.closest('.idevice_node').attr('id');
-                    }
-                    xapi.emit({
-                        type: eventType,
-                        ideviceId: game.ideviceId,
-                        // The iDevice type/class name lives on game.idevice (see the
-                        // gamification-evaluation-saved emitter, which uses
-                        // `ideviceType: game.idevice`). game.ideviceType is never
-                        // populated by the real callers, so prefer it only when a
-                        // caller explicitly sets it and fall back to game.idevice.
-                        ideviceType: game.ideviceType || game.idevice,
-                        ideviceNumber: game.ideviceNumber,
-                        title: game.title,
-                        score: parseFloat(game.scorerp),
-                        weighted: game.weighted,
-                    });
-                } catch (e) {
-                    // Never let tracking break the activity.
-                }
             },
 
             colors: {
