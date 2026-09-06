@@ -458,10 +458,17 @@ var $exeDevice = {
                 $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                     InteractiveVideo.i18n
                 );
+                // The weight too: setValues defaults it to 100 when the
+                // argument is missing, so the stored value never reached the
+                // field — and the next save read that 100 back out of the form
+                // and overwrote it. `undefined` still lands on the helper's
+                // default, which is what a game saved before the field existed
+                // needs.
                 $exeDevicesEdition.iDevice.gamification.scorm.setValues(
                     InteractiveVideo.scorm.isScorm,
                     InteractiveVideo.scorm.textButtonScorm,
-                    InteractiveVideo.scorm.repeatActivity
+                    InteractiveVideo.scorm.repeatActivity,
+                    InteractiveVideo.scorm.weighted
                 );
                 InteractiveVideo.scoreNIA =
                     typeof InteractiveVideo.scoreNIA == 'undefined'

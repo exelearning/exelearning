@@ -352,6 +352,45 @@ describe('interactive-video iDevice export', () => {
     });
   });
 
+  // The editor saves the whole SCORM tab under `scorm`
+  // (activityToSave.scorm = getValues()), so reading a root-level `weighted`
+  // never found anything and every activity weighed 100 whatever the author
+  // chose. The weight feeds the page's weighted average, so on a page with
+  // several iDevices it decided the learner's mark.
+  describe('the SCORM weight the author chose', () => {
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+      document.body.innerHTML = `
+        <article>
+          <header><h1 class="box-title">Interactive video</h1></header>
+          <div id="interactive-video-1" class="idevice_node interactive-video">
+            <div class="exe-interactive-video"></div>
+          </div>
+        </article>`;
+    });
+
+    function weightFor(scorm) {
+      return $interactivevideo.getOptions({
+        ideviceID: 'interactive-video-1',
+        scorm,
+        i18n: $interactivevideo.i18n,
+      }).weighted;
+    }
+
+    it('reads it from where the editor stores it', () => {
+      expect(weightFor({ isScorm: 1, textButtonScorm: 'Save', weighted: 40 })).toBe(40);
+    });
+
+    it('keeps a weight of 0 instead of promoting it to 100', () => {
+      expect(weightFor({ isScorm: 1, textButtonScorm: 'Save', weighted: 0 })).toBe(0);
+    });
+
+    it('defaults to 100 for an activity saved before the field existed', () => {
+      expect(weightFor({ isScorm: 1, textButtonScorm: 'Save' })).toBe(100);
+    });
+  });
+
   describe('showYoutubeFallback', () => {
     let capturedHtml;
     let capturedAfterHtml;

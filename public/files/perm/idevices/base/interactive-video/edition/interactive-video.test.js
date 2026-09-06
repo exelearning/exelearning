@@ -75,4 +75,69 @@ describe('interactive-video iDevice edition', () => {
     expect(helpIcon.getAttribute('src')).toBe(`${path}quextIEHelp.png`);
     expect(existsSync(join(__dirname, 'quextIEHelp.png'))).toBe(true);
   });
+
+  // The defect: loadPreviousValues called scorm.setValues with three
+  // arguments, so the helper's own default (100) filled the weight field
+  // instead of the stored value — and the next save read that 100 back out of
+  // the form and overwrote what the author had chosen.
+  describe('the SCORM weight reaches the form', () => {
+    let setValues;
+
+    /** The exported markup the editor parses, carrying just the SCORM block. */
+    function previousDataWith(scorm) {
+      const json = JSON.stringify({ slides: [], scorm });
+      return `<div><script id="exe-interactive-video-contents" type="application/json">${json}</script></div>`;
+    }
+
+    beforeEach(() => {
+      setValues = vi.fn();
+      $exeDevicesEdition.iDevice.gamification.scorm.setValues = setValues;
+      global.top = { interactiveVideoEditor: {} };
+    });
+
+    afterEach(() => {
+      delete global.top;
+    });
+
+    it('hands over the weight the author stored', () => {
+      $exeDevice.idevicePreviousData = previousDataWith({
+        isScorm: 1,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 40,
+      });
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValues).toHaveBeenCalledWith(1, 'Save score', true, 40);
+    });
+
+    it('passes a weight of 0 through instead of falling back to 100', () => {
+      $exeDevice.idevicePreviousData = previousDataWith({
+        isScorm: 1,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 0,
+      });
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValues.mock.calls[0][3]).toBe(0);
+    });
+
+    // Saved before the field existed: undefined must reach the helper so its
+    // own default applies, rather than the argument being dropped entirely.
+    it('leaves the helper to default an activity with no stored weight', () => {
+      $exeDevice.idevicePreviousData = previousDataWith({
+        isScorm: 1,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+      });
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValues.mock.calls[0]).toHaveLength(4);
+      expect(setValues.mock.calls[0][3]).toBeUndefined();
+    });
+  });
 });

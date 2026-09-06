@@ -2939,7 +2939,11 @@ var $interactivevideo = {
         return {
             id: IV.ideviceID,
             scorerp: 0,
-            weighted: IV.weighted != null ? IV.weighted : 100,
+            // IV.scorm.weighted, not IV.weighted: the editor saves the whole
+            // SCORM tab under `scorm` (activityToSave.scorm = getValues()), so
+            // nothing has ever written the root-level key this used to read.
+            // Every activity therefore weighed 100 whatever the author chose.
+            weighted: IV.scorm.weighted != null ? IV.scorm.weighted : 100,
             evaluation: !!IV.evaluation,
             evaluationID: IV.evaluationID || '',
             isInExe: this.isInExe,
