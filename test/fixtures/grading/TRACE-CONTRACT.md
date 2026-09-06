@@ -79,7 +79,9 @@ two engines are two pieces of evidence. v1 files have no engine segment (see
       "args": ["cmi.suspend_data", "exe12/1|ide-a;7;0;4;100;25;0;100"], "ret": "true" }
   ],
 
-  // Ordered xAPI statements captured from the exe-xapi-statement postMessage envelope,
+  // Ordered xAPI statements captured from the exe-xapi-statement postMessage envelope.
+  // Always empty for packages built after xAPI was retired (ADR-2302-02); the lane is
+  // kept so the recorded fixtures below stay readable under the same schema.
   // in emission order. Store the FULL statement object, untouched.
   "xapi": [
     { "seq": 0, "page": 0, "navPage": 0, "href": "…", "statement": { "verb": {}, "object": {}, "result": {} } }
