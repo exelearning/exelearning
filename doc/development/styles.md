@@ -146,8 +146,8 @@ the editor — that sizes the span to 40×40 and applies the mask. It loads befo
 ### Matching them to your own artwork
 
 Set `--exe-icon-color` so General icons take the same colour as your Style icons.
-Without it the tint falls back to the computed text colour of the block header, which
-may not match your artwork at all:
+This is the one declaration that makes the two groups agree — without it the tint falls
+back to the application's own `--icon-primary` green, which will not match your artwork:
 
 ```css
 .exe-content {
@@ -217,28 +217,48 @@ leave the element at `0.9 × 1.2`. If your style already uses `scale`, account f
 
 ### Which colour the icon picker actually uses
 
-The picker resolves the accent itself, in JavaScript (`getCurrentThemeIconColor()` in
+**No style is named anywhere in the application.** There is no table of per-style colours
+in the core: the picker tint comes from CSS your style declares, and a style you write
+yourself is read exactly like the seven that ship with eXeLearning. Whatever the bundled
+styles achieve, yours can achieve with the same declarations — and nothing you leave out
+is filled in for you by name.
+
+The picker resolves the accent in JavaScript (`getCurrentThemeIconColor()` in
 `public/app/workarea/project/idevices/content/blockNode.js`). It reads the block header, the
 block title and the icon element in turn, and takes the first value it finds:
 
 ```
---exe-icon-picker-color  →  --exe-icon-color  →  --icon-primary  →  computed color
-                         →  THEME_ICON_COLOR_MAP[themeId]  →  #6E9F41
+--exe-icon-picker-color  →  --exe-icon-color  →  --icon-primary  →  computed color  →  #6E9F41
 ```
 
-`THEME_ICON_COLOR_MAP` is a small table in the same file holding one tint per included
-theme (`base`, `flux`, `nova`, `neo`, `zen`, `universal`, `educablue`), each sampled from
-that theme's own Style icon artwork so the two icon groups match in the picker. **The
-included themes reach the table, not the green** — which is why the green is hard to see
-in practice, and why a custom theme behaves differently from every theme shipped with the
-application.
+Only the first two are yours to set. `--icon-primary: #6E9F41` is declared on `:root` in
+`assets/styles/abstracts/_variables.scss`, so it is inherited by every element in the editor
+and always resolves — which makes the last two steps a safety net the editor never reaches
+in practice.
 
-⚠️ **The last step is the application's own green, and only a theme outside the table can
-reach it.** A style that declares none of the three variables, leaves the header with no
-explicit colour, and is not one of the seven listed above gets `#6E9F41` in the picker,
-whatever its palette is. It is not a missing value, it is an inherited one — so declare
-`--exe-icon-color`, and sample it from your `icons/` artwork rather than guessing from the
-palette; the two are often not the same colour.
+⚠️ **A style that declares neither `--exe-icon-picker-color` nor `--exe-icon-color` gets
+the application's green**, whatever its own palette is. Green is not a missing value, it is
+an inherited one, and it will sit next to your Style icons in the same picker: pink artwork
+beside green glyphs. Declare `--exe-icon-color`, and sample it from your `icons/` artwork
+rather than guessing from the palette; the two are often not the same colour.
+
+### Checklist: owning your block icons from CSS alone
+
+Everything below lives in your `style.css`. Nothing needs a change in the application.
+
+| Goal | Declare |
+|---|---|
+| General icons match your Style artwork | `--exe-icon-color` on `.exe-content` |
+| Block header needs a light icon on a coloured band | keep `--exe-icon-color` light, add `--exe-icon-picker-color` with a tint readable on the picker's light chips |
+| Paint the header icon itself | `.exe-content .box-head .box-icon { color: var(--exe-icon-color); }` |
+| Recolour your **Style** `<img>` artwork inside the picker | a `filter` chain on `.modal #change-block-icon-modal-content .option-block-icon.exe-icon img` — never on the chip, and never on the General icons |
+| Resize the icons in exports | `.exe-content .box-icon img` and `.exe-content .box-icon .exe-material-icon` |
+| Resize them in the editor | the same pair under `#node-content-container.exe-content .box-head .exe-icon …` |
+| Multi-hued Style artwork that no single tint can match | pick one tint and declare it anyway — `neo` and `universal` do exactly this; changing your mind later is a one-line edit in your own stylesheet |
+
+The one thing CSS cannot do for you is tint an `<img>` without a filter, which is why the
+Style/General split exists at all. Everything else about the presentation of both groups —
+colour, size, scale, dark mode, picker appearance — is yours.
 
 ### The editor is a second surface, with a stronger selector
 

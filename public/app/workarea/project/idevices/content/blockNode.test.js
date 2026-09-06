@@ -1721,44 +1721,60 @@ describe('IdeviceBlockNode', () => {
             expect(block.getCurrentThemeIconColor()).toBe('#fff');
         });
 
-        it('prefers theme css variables and known theme colors when resolving modal icon color', () => {
+        it('falls back down the variable chain to --icon-primary', () => {
             block.headElement = document.createElement('div');
             document.body.appendChild(block.headElement);
+
+            block.headElement.style.setProperty('--icon-primary', '#6E9F41');
+            expect(block.getCurrentThemeIconColor()).toBe('#6E9F41');
+
             block.headElement.style.setProperty('--exe-icon-color', '#123456');
             expect(block.getCurrentThemeIconColor()).toBe('#123456');
+        });
 
-            block.headElement.style.removeProperty('--exe-icon-color');
+        it('falls back to the computed color when the block declares no icon variable', () => {
+            block.headElement = document.createElement('div');
+            document.body.appendChild(block.headElement);
+            block.headElement.style.color = 'rgb(1, 2, 3)';
+            expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
+        });
+
+        it('walks the candidate elements in order until one yields a color', () => {
+            block.headElement = null;
             block.blockNameElementText = document.createElement('h1');
             document.body.appendChild(block.blockNameElementText);
             block.blockNameElementText.style.color = 'rgb(1, 2, 3)';
             expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
 
-            block.headElement = null;
             block.blockNameElementText = null;
-            eXeLearning.app.themes.selected = { id: 'flux' };
-            expect(block.getCurrentThemeIconColor()).toBe('#eda900');
+            block.iconElement = document.createElement('div');
+            document.body.appendChild(block.iconElement);
+            block.iconElement.style.setProperty('--exe-icon-color', '#abcdef');
+            expect(block.getCurrentThemeIconColor()).toBe('#abcdef');
         });
 
-        it('falls back to each theme style-icon color so General icons match Style icons', () => {
+        it('uses the application default when getComputedStyle is unavailable', () => {
+            block.headElement = document.createElement('div');
+            document.body.appendChild(block.headElement);
+            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+
+            const original = window.getComputedStyle;
+            window.getComputedStyle = undefined;
+            try {
+                expect(block.getCurrentThemeIconColor()).toBe('#6E9F41');
+            } finally {
+                window.getComputedStyle = original;
+            }
+        });
+
+        it('uses the application default only when no element can supply a color', () => {
+            // No theme identity is consulted: a theme is described by its own stylesheet.
             block.headElement = null;
             block.blockNameElementText = null;
             block.iconElement = null;
+            eXeLearning.app.themes.selected = { id: 'flux' };
 
-            const expectedByTheme = {
-                base: '#d86e41',
-                flux: '#eda900',
-                nova: '#f5c200',
-                zen: '#d40055',
-                // Multicolor themes keep the theme accent (cannot match a single hue).
-                neo: '#e3ac3b',
-                universal: '#0d2953',
-                // Picker accent: the box head icon itself is white.
-                educablue: '#0d77d1',
-            };
-            for (const [id, color] of Object.entries(expectedByTheme)) {
-                eXeLearning.app.themes.selected = { id };
-                expect(block.getCurrentThemeIconColor()).toBe(color);
-            }
+            expect(block.getCurrentThemeIconColor()).toBe('#6E9F41');
         });
     });
 
