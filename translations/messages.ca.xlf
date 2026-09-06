@@ -11571,7 +11571,7 @@
       </trans-unit>
       <trans-unit id="cZ0oVQz" resname="Choose a file or paste a link (URL)">
         <source>Choose a file or paste a link (URL)</source>
-        <target>Reproducció automàtica silenciada (recomanat)</target>
+        <target>~Tria un fitxer o enganxa un enllaç (URL)</target>
       </trans-unit>
       <trans-unit id="poYLy27" resname="Choose a file">
         <source>Choose a file</source>

@@ -2515,7 +2515,7 @@
       </trans-unit>
       <trans-unit id="uEvZPs_" resname="Pearson\'s t-test">
         <source>Pearson\'s t-test</source>
-        <target>Distribució F de Fisher</target>
+        <target>~Prova t de Pearson</target>
       </trans-unit>
       <trans-unit id="yGn1Vxe" resname="Spearman">
         <source>Spearman</source>
@@ -4519,7 +4519,7 @@
       </trans-unit>
       <trans-unit id="_qN9nCf" resname="The box is empty. Do you want to delete it?">
         <source>The box is empty. Do you want to delete it?</source>
-        <target>Estàs editant un altre iDevice. Tanca'l abans de continuar</target>
+        <target>~La caixa està buida. Voleu eliminar-la?</target>
       </trans-unit>
       <trans-unit id="V5xJrEH" resname="This page is being edited by:">
         <source>This page is being edited by:</source>
@@ -11923,11 +11923,11 @@
       </trans-unit>
       <trans-unit id="69voHP4" resname="Image title">
         <source>Image title</source>
-        <target>La imatge és decorativa</target>
+        <target>~Títol de la imatge</target>
       </trans-unit>
       <trans-unit id="Atp3bhQ" resname="Image is decorative">
         <source>Image is decorative</source>
-        <target>Títol de la imatge</target>
+        <target>~La imatge és decorativa</target>
       </trans-unit>
       <trans-unit id="IQ79uoq" resname="Show caption">
         <source>Show caption</source>

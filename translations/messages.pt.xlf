@@ -5999,35 +5999,35 @@
       </trans-unit>
       <trans-unit id="AU6USbJ" resname="Button text:">
         <source>Button text:</source>
-        <target>~Tamanho da fonte</target>
+        <target>~Texto do botão:</target>
       </trans-unit>
       <trans-unit id="frXh8S1" resname="Font size">
         <source>Font size</source>
-        <target>~Cor de fundo</target>
+        <target>~Tamanho da fonte</target>
       </trans-unit>
       <trans-unit id="NCfQqzo" resname="Background Color">
         <source>Background Color</source>
-        <target>~Cor do texto</target>
+        <target>~Cor de fundo</target>
       </trans-unit>
       <trans-unit id="pKGMeUp" resname="Text Color">
         <source>Text Color</source>
-        <target>~Por favor, forneça algumas instruções ou informações sobre o recurso.</target>
+        <target>~Cor do texto</target>
       </trans-unit>
       <trans-unit id="EhjfdCu" resname="Please provide some instructions or information about the resource.">
         <source>Please provide some instructions or information about the resource.</source>
-        <target>~Você deve escrever o texto do botão.</target>
+        <target>~Por favor, forneça algumas instruções ou informações sobre o recurso.</target>
       </trans-unit>
       <trans-unit id="Qjzi17a" resname="You should write the button text.">
         <source>You should write the button text.</source>
-        <target>~Baixar arquivo fonte</target>
+        <target>~Você deve escrever o texto do botão.</target>
       </trans-unit>
       <trans-unit id="3boBJQz" resname="Download source file">
         <source>Download source file</source>
-        <target>~Antes de adicionar um link de download à sua página, vá até a aba Propriedades e verifique se as informações estão corretas.</target>
+        <target>~Baixar arquivo fonte</target>
       </trans-unit>
       <trans-unit id="CATCh8s" resname="Before adding a download link to your page, please go to the Properties tab and check if the information is right.">
         <source>Before adding a download link to your page, please go to the Properties tab and check if the information is right.</source>
-        <target>~Número de cartas</target>
+        <target>~Antes de adicionar um link de download à sua página, vá até a aba Propriedades e verifique se as informações estão corretas.</target>
       </trans-unit>
       <trans-unit id="nn5Bi1N" resname="Number of cards">
         <source>Number of cards</source>
@@ -8763,35 +8763,35 @@
       </trans-unit>
       <trans-unit id="rxFYMTS" resname="Spanish ">
         <source>Spanish </source>
-        <target>~Rubrica nova</target>
+        <target>~Espanhol </target>
       </trans-unit>
       <trans-unit id="jVpqXrM" resname="New rubric">
         <source>New rubric</source>
-        <target>~Nova rubrica: </target>
+        <target>~Nova rubrica</target>
       </trans-unit>
       <trans-unit id="dsEhesQ" resname="New rubric: ">
         <source>New rubric: </source>
-        <target>~Rubricas de exemplo</target>
+        <target>~Nova rubrica: </target>
       </trans-unit>
       <trans-unit id="kOCPDGr" resname="Example rubrics">
         <source>Example rubrics</source>
-        <target>~Por favor, selecione um modelo</target>
+        <target>~Rubricas de exemplo</target>
       </trans-unit>
       <trans-unit id="oaYzVph" resname="Please select a template">
         <source>Please select a template</source>
-        <target>~Rubricas do CEDEC</target>
+        <target>~Por favor, selecione um modelo</target>
       </trans-unit>
       <trans-unit id="uTccF3T" resname="CEDEC's rubrics">
         <source>CEDEC's rubrics</source>
-        <target>~Instruções de uso da rubrica (opcional)</target>
+        <target>~Rubricas do CEDEC</target>
       </trans-unit>
       <trans-unit id="WRV28cD" resname="Maximum score:">
         <source>Maximum score:</source>
-        <target>~O resultado da soma das pontuações do primeiro nível.</target>
+        <target>~Pontuação máxima:</target>
       </trans-unit>
       <trans-unit id="oYCI6Ka" resname="The result of adding the scores of the first level.">
         <source>The result of adding the scores of the first level.</source>
-        <target>~Nova coluna</target>
+        <target>~O resultado da soma das pontuações do primeiro nível.</target>
       </trans-unit>
       <trans-unit id="HymDl3i" resname="New column">
         <source>New column</source>

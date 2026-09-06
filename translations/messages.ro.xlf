@@ -1307,7 +1307,7 @@
       </trans-unit>
       <trans-unit id="JJHU27u" resname="Asymptotically equal">
         <source>Asymptotically equal</source>
-        <target>Aproximativ egal</target>
+        <target>~Asimptotic egal</target>
       </trans-unit>
       <trans-unit id="0t4ArND" resname="Asterisk">
         <source>Asterisk</source>

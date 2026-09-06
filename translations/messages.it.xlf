@@ -223,7 +223,7 @@
       </trans-unit>
       <trans-unit id="9iMmg7m" resname="Save the score">
         <source>Save the score</source>
-        <target>Salva il punteggio automaticamente</target>
+        <target>~Salva il punteggio</target>
       </trans-unit>
       <trans-unit id="qpfRXBy" resname="Automatically save the score">
         <source>Automatically save the score</source>
@@ -11583,7 +11583,7 @@
       </trans-unit>
       <trans-unit id="igvddsQ" resname="Please check the &quot;License&quot; field">
         <source>Please check the "License" field</source>
-        <target>Seleziona il file multimediale per modificarlo</target>
+        <target>~Controlla il campo "Licenza"</target>
       </trans-unit>
       <trans-unit id="a6wZFrc" resname="Please select the media file to edit it">
         <source>Please select the media file to edit it</source>

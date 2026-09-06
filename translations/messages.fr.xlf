@@ -4195,7 +4195,7 @@
       </trans-unit>
       <trans-unit id="wtVkNXt" resname="Default iDevices">
         <source>Default iDevices</source>
-        <target>~Appareils iDevices par défaut</target>
+        <target>~iDevices par défaut</target>
       </trans-unit>
       <trans-unit id="Ha6Z1ij" resname="Filter items">
         <source>Filter items</source>

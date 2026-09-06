@@ -7519,15 +7519,15 @@
       </trans-unit>
       <trans-unit id="2n0zHIr" resname="Question text:">
         <source>Question text:</source>
-        <target>~Kalkulu en kvadrataj metroj la surfacon de triangulo kun bazo de {b}m kaj alto de {h}m</target>
+        <target>~Teksto de la demando:</target>
       </trans-unit>
       <trans-unit id="oMsapmn" resname="Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m">
         <source>Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m</source>
-        <target>~Difinu la domajno de ĉiu variablo</target>
+        <target>~Kalkulu en kvadrataj metroj la surfacon de triangulo kun bazo de {b}m kaj alto de {h}m</target>
       </trans-unit>
       <trans-unit id="0vtKYu1" resname="Define the domain of each variable">
         <source>Define the domain of each variable</source>
-        <target>~Plej granda nombro:</target>
+        <target>~Difinu la domajnon de ĉiu variablo</target>
       </trans-unit>
       <trans-unit id="F7TCatN" resname="Smallest number">
         <source>Smallest number</source>
