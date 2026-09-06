@@ -95,7 +95,10 @@ locale — around 675 of them, in every language, for `edicuatex` alone.
 A tree that is *present* can be just as short. An interrupted vendor run leaves a
 directory that exists and holds some of its files, and the strings in the files it never
 wrote are exactly as invisible to the scan as if nothing were there at all — with the
-difference that an existence check reports everything is fine.
+difference that an existence check reports everything is fine. A tree can also be *stale*:
+bump the dependency and run `bun install` without `make vendor-edicuatex`, and every file
+is still there with the previous version's contents, so the strings only the new one
+carries look obsolete. Both count as incomplete.
 
 Three things keep that from happening:
 
@@ -111,8 +114,12 @@ Three things keep that from happening:
    warning and the refusal read. Each entry may carry an `inspect` hook that compares the
    tree on disk against what its generator would write; `edicuatex` uses
    `scripts/vendor-edicuatex.ts`'s own plan, the same knowledge behind
-   `vendor-edicuatex.ts --check`, rather than a second list that could disagree with it.
-   Without a hook, an entry falls back to the existence check.
+   `vendor-edicuatex.ts --check`, rather than a second list that could disagree with it —
+   files that are missing *and* files whose contents differ, since either hides strings.
+   Without a hook, an entry falls back to the existence check. A hook that cannot compare
+   at all — the package it derives from is absent or half-installed — reports nothing
+   rather than failing: `--extract-only` and `translations:sort` delete nothing and must
+   not start depending on `node_modules`.
 
 ### When you vendor a new library
 

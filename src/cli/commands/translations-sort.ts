@@ -9,7 +9,13 @@
 import { parseArgs, getString, hasHelp } from '../utils/args';
 import { success, error, warning, info, colors, EXIT_CODES } from '../utils/output';
 import { LOCALES } from '../../services/translation';
-import { extractTranslationKeys, addKeysToXlf, findUntrustedGeneratedSources, unescapeXml } from './translations';
+import {
+    extractTranslationKeys,
+    addKeysToXlf,
+    findUntrustedGeneratedSources,
+    warnUntrustedGeneratedSources,
+    unescapeXml,
+} from './translations';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -182,11 +188,7 @@ export async function execute(
 
     // Sorting cannot delete anything, so a short key set only weakens the check in
     // step 3 rather than losing work -- but say so, or the pass reads as a clean bill.
-    for (const { source, kind, detail } of deps.findUntrustedGenerated()) {
-        warning(`Generated source tree ${kind}: ${source.path} — ${detail}`);
-        warning(`  It ${source.reason}.`);
-        warning(`  Regenerate it with \`${source.regenerateWith}\`; the sync check below will be incomplete.`);
-    }
+    warnUntrustedGeneratedSources(deps.findUntrustedGenerated(), '; the sync check below will be incomplete');
 
     // Step 1: Extract all keys from source code
     info('Scanning source files for translation keys...');

@@ -8,7 +8,8 @@
  *   --extract-only       Only extract strings (skip cleanup)
  *   --clean-only         Only clean XLF files (skip extraction)
  *   --remove-obsolete    Remove trans-units not found in source code
- *   --allow-missing-generated  Extract even though a generated source tree is missing
+ *   --allow-missing-generated  Allow --remove-obsolete even though a generated source tree is
+ *                              missing or incomplete (destructive; extraction is never blocked)
  */
 import { parseArgs, getString, getBoolean, hasHelp } from '../utils/args';
 import { success, error, warning, info, colors, EXIT_CODES } from '../utils/output';
@@ -77,14 +78,31 @@ function inspectEdicuatexTree(cwd: string): { complete: boolean; detail: string 
         return null;
     }
 
-    const drift = detectDrift(buildVendorPlan(packageRoot), targetRoot);
-    if (drift.missing.length === 0) {
+    // `buildVendorPlan` walks the package's own directories, so a half-written
+    // `node_modules/edicuatex` -- an interrupted `bun install` -- makes it throw. That is the
+    // same situation as the package not being installed at all: there is nothing complete to
+    // compare against, so the check cannot be made. Reporting it as a *problem* instead would
+    // fail `translations --extract-only` and `translations:sort`, which delete nothing and did
+    // not depend on `node_modules` before this guard existed.
+    let drift: ReturnType<typeof detectDrift>;
+    try {
+        drift = detectDrift(buildVendorPlan(packageRoot), targetRoot);
+    } catch {
+        return null;
+    }
+
+    // A file that exists with different content hides strings just as effectively as one that
+    // was never written: an older `lang/en.js` is scanned without complaint and the keys only
+    // the newer one carries look obsolete. `extra` is deliberately not a trust problem -- a
+    // leftover file can only add keys to the scan, never hide one.
+    const unusable = [...drift.missing, ...drift.changed].sort();
+    if (unusable.length === 0) {
         return { complete: true, detail: 'in sync with the pinned edicuatex package' };
     }
 
-    const sample = drift.missing.slice(0, 3).join(', ');
-    const rest = drift.missing.length > 3 ? `, and ${drift.missing.length - 3} more` : '';
-    return { complete: false, detail: `${drift.missing.length} file(s) not written: ${sample}${rest}` };
+    const sample = unusable.slice(0, 3).join(', ');
+    const rest = unusable.length > 3 ? `, and ${unusable.length - 3} more` : '';
+    return { complete: false, detail: `${unusable.length} file(s) out of sync: ${sample}${rest}` };
 }
 
 /**
@@ -116,11 +134,13 @@ export const GENERATED_SOURCE_DIRS: GeneratedSource[] = [
 
 /**
  * Returns the generated source trees the extraction cannot trust: absent, or present but
- * short of the files their generator writes.
+ * not what their generator would write.
  *
  * Presence alone is not the question. An interrupted vendor run leaves a directory that
  * exists and passes any `existsSync` check while the strings in the files it never wrote
- * stay invisible to the scan -- and under `--remove-obsolete` they then look obsolete.
+ * stay invisible to the scan; a stale tree left by a dependency bump without a re-vendor
+ * has every file and the wrong contents. Under `--remove-obsolete` the strings missing in
+ * either case look obsolete.
  *
  * Takes the working directory so tests can point it at a fixture instead of the repo.
  */
@@ -140,6 +160,22 @@ export function findUntrustedGeneratedSources(cwd: string = process.cwd()): Gene
     }
 
     return problems;
+}
+
+/**
+ * Reports every generated tree the extraction cannot trust, in one voice.
+ *
+ * `translations` and `translations:sort` scan the same trees and must describe them
+ * identically; the three-line block used to be hand-copied into each command and had
+ * already drifted. `regenerateSuffix` carries the only part that legitimately differs --
+ * what the calling command goes on to do about it.
+ */
+export function warnUntrustedGeneratedSources(problems: GeneratedSourceProblem[], regenerateSuffix = ''): void {
+    for (const { source, kind, detail } of problems) {
+        warning(`Generated source tree ${kind}: ${source.path} — ${detail}`);
+        warning(`  It ${source.reason}.`);
+        warning(`  Regenerate it with \`${source.regenerateWith}\`${regenerateSuffix}.`);
+    }
 }
 
 /**
@@ -537,12 +573,7 @@ export async function execute(
     // anything looking wrong. Say so before extracting, and refuse outright to delete
     // trans-units on the strength of a short key set.
     const untrustedGenerated = findUntrustedGeneratedSources();
-    for (const { source, kind, detail } of untrustedGenerated) {
-        const headline = kind === 'missing' ? 'missing' : 'incomplete';
-        warning(`Generated source tree ${headline}: ${source.path} — ${detail}`);
-        warning(`  It ${source.reason}.`);
-        warning(`  Regenerate it with \`${source.regenerateWith}\`.`);
-    }
+    warnUntrustedGeneratedSources(untrustedGenerated);
     if (untrustedGenerated.length > 0) {
         warning('Extraction will be incomplete: strings that live only in those trees cannot be found.');
 
