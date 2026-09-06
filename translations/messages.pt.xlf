@@ -6031,7 +6031,7 @@
       </trans-unit>
       <trans-unit id="nn5Bi1N" resname="Number of cards">
         <source>Number of cards</source>
-        <target>~Você terminou o jogo. Sua pontuação é %s.</target>
+        <target>~Número de cartas</target>
       </trans-unit>
       <trans-unit id="eBiTSqv" resname="You finished the game. Your score is %s.">
         <source>You finished the game. Your score is %s.</source>
