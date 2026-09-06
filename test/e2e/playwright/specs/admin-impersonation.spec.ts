@@ -35,20 +35,45 @@ test.describe('Admin Impersonation', () => {
         const targetRow = page.locator('#usersTableBody tr').filter({ hasText: targetEmail }).first();
         await expect(targetRow).toBeVisible();
 
-        // Row actions moved behind a three-dot menu (issue #2261).
-        await targetRow.locator('button[data-action="user-actions"]').click();
-        const impersonateItem = targetRow.locator('button[data-action="impersonate"]');
+        // Row actions live in a Bootstrap dropdown (#2261). After the table
+        // re-renders from search, Firefox sometimes drops the data-api click,
+        // so open the menu through the Bootstrap API if it stays closed.
+        const actionsToggle = targetRow.locator('button[data-action="user-actions"]');
+        await expect(actionsToggle).toBeVisible();
+        await actionsToggle.click();
+        const actionsMenu = targetRow.locator('.user-actions-menu');
+        if (!(await actionsMenu.evaluate(el => el.classList.contains('show')))) {
+            await actionsToggle.evaluate(el => {
+                (
+                    window as unknown as {
+                        bootstrap: { Dropdown: { getOrCreateInstance: (node: Element) => { show: () => void } } };
+                    }
+                ).bootstrap.Dropdown.getOrCreateInstance(el).show();
+            });
+        }
+        await expect(actionsMenu).toBeVisible();
+        const impersonateItem = actionsMenu.locator('button[data-action="impersonate"]');
         await expect(impersonateItem).toBeVisible();
 
         page.once('dialog', dialog => dialog.accept());
         await impersonateItem.click();
 
-        await page.waitForURL(/\/workarea/);
+        // Impersonation redirects to /workarea, which in online mode lands on the
+        // /projects page; the banner (rendered by base.njk) is visible there too.
+        await page.waitForURL(/\/(workarea|projects)/);
         const banner = page.locator('#impersonation-banner');
         await expect(banner).toBeVisible();
         await expect(banner).toContainText(targetEmail);
 
-        await page.goto('/workarea');
+        // Confirm the banner also persists inside an actual workarea.
+        const projectResponse = await page.request.post('/api/project/create-quick', {
+            data: { title: 'Impersonation Workarea' },
+            headers: { 'Content-Type': 'application/json' },
+        });
+        expect(projectResponse.ok()).toBeTruthy();
+        const { uuid: impersonationProjectUuid } = await projectResponse.json();
+        await page.goto(`/workarea?project=${impersonationProjectUuid}`);
+        await page.waitForURL(/\/workarea/);
         await expect(page.locator('#impersonation-banner')).toBeVisible();
 
         await page.locator('#impersonation-return-button').click();

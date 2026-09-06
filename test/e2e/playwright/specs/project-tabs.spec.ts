@@ -15,8 +15,9 @@ test.describe('Open Project Modal - Tabs', () => {
      * Helper to open the Open Project modal
      */
     async function openModal(page: any): Promise<void> {
-        // Navigate to workarea first
-        await page.goto('/workarea');
+        // authenticatedPage already lands in a fully-loaded workarea (online mode
+        // redirects a bare /workarea to /projects, so we must not re-navigate there).
+        // Wait for the app to initialize
         await waitForAppReady(page);
 
         // Click File menu > Open when the menu is present in this build, else

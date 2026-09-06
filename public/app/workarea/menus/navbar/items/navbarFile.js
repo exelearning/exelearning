@@ -536,7 +536,7 @@ export default class NavbarFile {
         }
 
         const basePath = window.eXeLearning?.config?.basePath || '';
-        return `${window.location.origin}${basePath}/workarea`;
+        return `${window.location.origin}${basePath}/projects`;
     }
 
     /**
