@@ -15,9 +15,9 @@
 - Word Search iDevice: added the option to hide the time icon in timed activities
 - Platform integration: `PROVIDER_URLS` now supports wildcard subdomains and matches against the address host, allowing multi-tenant deployments to be authorised without widening the allow-list
 - Added `assets:conflicts` command to list and resolve asset storage conflicts, keeping either the old or new copy
-- Updated development documentation
-- Restored the French (FR) translation, recovering the strings lost during the migration from version 3 and completing the rest with automated translations pending review
+- Updated development documentation and improved development tools
 - Reviewed and completed the Spanish (ES) translation
+- Restored the French (FR) translation from version 3, corrected its errors and added new automatic placeholder translations for previously untranslated strings
 - Added automatic placeholder translations for new strings in incomplete translations
 
 ### Changed
@@ -73,14 +73,15 @@
 - Sign-in no longer slows down the rest of the server when many users log in simultaneously
 - Collaboration: closed connections are now released, preventing servers from accumulating them
 - German (DE): fixed misaligned translations that made True and False display unrelated texts and mismatched the delimiter labels in the math editor
-- Basque (EU): fixed typos and wording in the interface, including a misspelling in the "Made with eXeLearning" link label and the wording of the image optimiser columns
+- Basque (EU) translation: fixed typos, wording and missing formatting placeholders
+- Italian (IT) and Portuguese (PT) translations: restored missing formatting placeholders
 
 ### Upgraded
 
 - fast-xml-parser: 5.4.1 → 5.11.0
 - fast-xml-builder: 1.0.0 → 1.3.1
 - mathjax: 3.2.2 → 4.1.3
-- edicuatex: 1.5.0 → 1.5.5
+- edicuatex: 1.4.1 → 1.5.5
 - pdfjs-dist: 6.2.108 → 6.3.289
 - mermaid: 11.17.0 → 11.17.2
 - @xmldom/xmldom: 0.9.11 → 0.9.12
