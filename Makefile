@@ -352,7 +352,9 @@ update-licenses: check-bun
 	@$(CLI) update-licenses $(if $(DRY_RUN),--dry-run,)
 
 # Fail if public/libs/README.md is not what update-licenses would generate.
-# Attribution is legal metadata, so drift is a build failure, not a warning.
+# Attribution is legal metadata, so drift is a build failure, not a warning: this
+# target is part of `make lint`, which ci.yml already runs with node_modules
+# installed, the same way `architecture-check` is.
 .PHONY: update-licenses-check
 update-licenses-check: check-bun
 	@$(CLI) update-licenses --check
@@ -456,7 +458,7 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests architecture-check
+lint: check-bun lint-ts lint-js lint-tests architecture-check update-licenses-check
 
 .PHONY: fix
 fix: check-bun fix-ts fix-js fix-tests

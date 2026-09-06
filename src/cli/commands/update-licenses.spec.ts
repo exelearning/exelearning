@@ -15,7 +15,7 @@ import {
     COPYRIGHT_OVERRIDES,
     getDependencies,
     generateServerSideSection,
-    parseRecordedPackages,
+    attributionFromOverride,
     updateReadme,
     type UpdateLicensesDependencies,
     type PackageInfo,
@@ -153,47 +153,78 @@ describe('Update Licenses Command', () => {
             const content = 'MIT License\n\nPermission is hereby granted...';
             expect(extractCopyrightFromLicense(content)).toBeNull();
         });
+
+        it('should ignore the Apache-2.0 grant of copyright license', () => {
+            // Section 2 of the verbatim text. It is what pdfjs-dist, @material-symbols/svg-400
+            // and @mathjax/src would otherwise be attributed to, and generation and --check
+            // share this function, so a wrong holder would be confirmed as correct forever.
+            const content = [
+                '   2. Grant of Copyright License. Subject to the terms and conditions of',
+                '      this License, each Contributor hereby grants to You a perpetual,',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should ignore the MIT liability clause naming the copyright holders', () => {
+            // `holder\b` does not match the plural the MIT text actually uses.
+            const content = [
+                'Permission is hereby granted, free of charge, to any person obtaining',
+                'IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,',
+                'DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should still accept a holder whose name opens with a boilerplate word', () => {
+            // The year anchors the match, so the prose guard must not apply to it.
+            expect(extractCopyrightFromLicense('Copyright (c) 2023 License Author')).toBe('License Author');
+        });
+
+        it('should drop the year from the common "YYYY, Holder" form', () => {
+            // The most common BSD/MIT shape. Without the separator it fell through to the
+            // year-less pattern and public/libs/README.md recorded "2015, Scott Motte".
+            expect(extractCopyrightFromLicense('Copyright (c) 2015, Scott Motte')).toBe('Scott Motte');
+        });
+
+        it('should drop an enumeration of years', () => {
+            expect(extractCopyrightFromLicense('Copyright 2013, 2014, 2015 Joyent, Inc')).toBe('Joyent, Inc');
+        });
+
+        it('should drop a year followed by a full stop', () => {
+            expect(extractCopyrightFromLicense('Copyright (c) 2023. Acme Ltd')).toBe('Acme Ltd');
+        });
+
+        it('should drop an en-dash year range', () => {
+            const content = 'Copyright 2019 \u2013 present Acme Ltd';
+            expect(extractCopyrightFromLicense(content)).toBe('Acme Ltd');
+        });
     });
 
-    describe('parseRecordedPackages', () => {
-        it('should read back the package entries already in the generated section', () => {
-            const readme = `# THIRD PARTY CODE
-
-## Server-side packages
-
-*   Runtime: Bun
-    *   Copyright: Oven (Jarred Sumner)
-    *   License: MIT
-*   Package: @codecov/bundle-analyzer
-    *   Copyright: Codecov
-    *   License: MIT
-*   Package: pdfjs-dist
-    *   Copyright: Mozilla Foundation
-    *   License: Apache-2.0
-
-## Client-side libraries
-
-*   Package: not-a-server-package
-    *   Copyright: Nobody
-    *   License: MIT
-`;
-
-            const recorded = parseRecordedPackages(readme);
-
-            expect(recorded.size).toBe(2);
-            expect(recorded.get('@codecov/bundle-analyzer')).toEqual({
+    describe('attributionFromOverride', () => {
+        it('should stand in for a package this platform can never install', () => {
+            // linux/darwin only, so no run on Windows can read it out of node_modules.
+            expect(attributionFromOverride('@codecov/bundle-analyzer')).toEqual({
                 name: '@codecov/bundle-analyzer',
                 version: 'unknown',
                 copyright: 'Codecov',
                 license: 'MIT',
             });
-            expect(recorded.get('pdfjs-dist')?.license).toBe('Apache-2.0');
-            // The client-side section is a separate list this command does not generate.
-            expect(recorded.has('not-a-server-package')).toBe(false);
         });
 
-        it('should return nothing when the section markers are absent', () => {
-            expect(parseRecordedPackages('# THIRD PARTY CODE\n').size).toBe(0);
+        it('should stand in for nothing when the override records no license', () => {
+            // A copyright-only override sharpens what node_modules already says; it is not a
+            // substitute for a package that cannot be read at all.
+            expect(attributionFromOverride('pdfjs-dist')).toBeNull();
+        });
+
+        it('should stand in for nothing when the package is not recorded at all', () => {
+            expect(attributionFromOverride('never-seen-pkg')).toBeNull();
+        });
+
+        it('should not resolve an Object.prototype member as an attribution', () => {
+            for (const name of ['constructor', 'toString', 'hasOwnProperty']) {
+                expect(attributionFromOverride(name)).toBeNull();
+            }
         });
     });
 
@@ -269,7 +300,7 @@ describe('Update Licenses Command', () => {
             // wrong holder as readily as a right one.
             expect(Object.keys(COPYRIGHT_OVERRIDES).length).toBeGreaterThan(0);
 
-            for (const [name, holder] of Object.entries(COPYRIGHT_OVERRIDES)) {
+            for (const [name, override] of Object.entries(COPYRIGHT_OVERRIDES)) {
                 const mockFiles: Record<string, string> = {
                     [at('node_modules', name, 'package.json')]: JSON.stringify({
                         name,
@@ -285,7 +316,7 @@ describe('Update Licenses Command', () => {
                     readFile: (p: string) => mockFiles[p] || '',
                 });
 
-                expect(getPackageInfo(name)?.copyright).toBe(holder);
+                expect(getPackageInfo(name)?.copyright).toBe(override.copyright);
             }
         });
 
@@ -714,26 +745,14 @@ describe('Update Licenses Command', () => {
             expect(result.packages).toBeDefined();
         });
 
-        it('should carry over the recorded attribution of a package it cannot read', async () => {
+        it('should emit the recorded attribution of a package it cannot read', async () => {
             // bun install skips a package whose "os" excludes the host, so a declared
             // dependency can be unreadable on one platform and readable on another. Its
             // attribution must survive a run on the platform that cannot see it.
-            const readmeWithRecord = `# THIRD PARTY CODE
-
-## Server-side packages
-
-*   Package: platform-only-pkg
-    *   Copyright: Someone Ltd
-    *   License: MIT
-
-## Client-side libraries
-
-*   Client lib
-`;
             let writtenContent = '';
             const mockFiles: Record<string, string> = {
                 [at('package.json')]: JSON.stringify({
-                    dependencies: { 'existing-pkg': '1.0.0', 'platform-only-pkg': '1.0.0' },
+                    dependencies: { 'existing-pkg': '1.0.0', '@codecov/bundle-analyzer': '1.0.0' },
                 }),
                 [at('node_modules', 'existing-pkg', 'package.json')]: JSON.stringify({
                     name: 'existing-pkg',
@@ -741,7 +760,7 @@ describe('Update Licenses Command', () => {
                     license: 'MIT',
                     author: 'Author',
                 }),
-                [at('public', 'libs', 'README.md')]: readmeWithRecord,
+                [at('public', 'libs', 'README.md')]: mockReadme,
             };
 
             configure({
@@ -757,8 +776,44 @@ describe('Update Licenses Command', () => {
 
             expect(result.success).toBe(true);
             expect(result.packages).toHaveLength(2);
-            expect(writtenContent).toContain('*   Package: platform-only-pkg');
-            expect(writtenContent).toContain('*   Copyright: Someone Ltd');
+            expect(writtenContent).toContain('*   Package: @codecov/bundle-analyzer');
+            expect(writtenContent).toContain('*   Copyright: Codecov');
+        });
+
+        it('should emit the same attribution whether or not the package can be read', async () => {
+            // The point of recording it in the source: a Linux run reads the package and a
+            // Windows run reads the override, and both must produce the same line. A
+            // carry-over read back out of the generated file could only agree with itself.
+            const name = '@codecov/bundle-analyzer';
+
+            const runWith = async (readable: boolean): Promise<string> => {
+                const mockFiles: Record<string, string> = {
+                    [at('package.json')]: JSON.stringify({ dependencies: { [name]: '1.0.0' } }),
+                    [at('public', 'libs', 'README.md')]: mockReadme,
+                };
+                if (readable) {
+                    mockFiles[at('node_modules', name, 'package.json')] = JSON.stringify({
+                        name,
+                        version: '2.0.1',
+                        license: 'MIT',
+                    });
+                }
+
+                let written = '';
+                configure({
+                    projectRoot: '/test',
+                    existsSync: (p: string) => p in mockFiles,
+                    readFile: (p: string) => mockFiles[p] || '',
+                    writeFile: (_p: string, content: string) => {
+                        written = content;
+                    },
+                });
+
+                expect((await execute([], {})).success).toBe(true);
+                return written;
+            };
+
+            expect(await runWith(true)).toBe(await runWith(false));
         });
 
         it('should refuse to write when a declared dependency has neither metadata nor a record', async () => {
@@ -796,7 +851,7 @@ describe('Update Licenses Command', () => {
             // sends the operator round a loop with no exit.
             expect(result.message).toContain('make deps');
             expect(result.message).toContain('"os"/"cpu"');
-            expect(result.message).toContain('git checkout public/libs/README.md');
+            expect(result.message).toContain('COPYRIGHT_OVERRIDES');
         });
 
         it('should report drift with --check without writing', async () => {
