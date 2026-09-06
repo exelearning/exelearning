@@ -76,6 +76,25 @@ describe('blockIconRuntime', () => {
     expect(runtime.deriveBlockIcon(null)).toEqual({ source: 'none', value: '' });
   });
 
+  it('deriveBlockIcon maps theme icon names a shipped style has since renamed', () => {
+    const runtime = require('./blockIconRuntime.js');
+
+    // Both names shipped in v4.0.0-v4.0.3, so saved projects still store them.
+    expect(runtime.deriveBlockIcon('objetives')).toEqual({ source: 'theme', value: 'objectives' });
+    expect(runtime.deriveBlockIcon('think-alt')).toEqual({ source: 'theme', value: 'think_alt' });
+  });
+
+  it('resolveRenamedThemeIcon leaves untouched names and prototype members alone', () => {
+    const runtime = require('./blockIconRuntime.js');
+
+    for (const [stored, current] of Object.entries(runtime.RENAMED_THEME_ICONS)) {
+      expect(runtime.resolveRenamedThemeIcon(stored)).toBe(current);
+    }
+    expect(runtime.resolveRenamedThemeIcon('objectives')).toBe('objectives');
+    expect(runtime.resolveRenamedThemeIcon('constructor')).toBe('constructor');
+    expect(runtime.resolveRenamedThemeIcon('')).toBe('');
+  });
+
   it('renderMaterialMaskIcon emits a placeholder before the sprite is loaded', () => {
     const runtime = require('./blockIconRuntime.js');
     const html = runtime.renderMaterialMaskIcon('alarm');

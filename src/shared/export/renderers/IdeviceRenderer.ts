@@ -18,7 +18,7 @@ import type {
     ExportComponentProperties,
 } from '../interfaces';
 import { getIdeviceConfig, getIdeviceExportFiles, isIdeviceJsModule } from '../../../services/idevice-config';
-import { deriveBlockIcon } from '../../block-icon';
+import { deriveBlockIcon, resolveRenamedThemeIcon } from '../../block-icon';
 import { HELP_ICON_FALLBACK_DATA_URI, MATERIAL_ICON_FALLBACK } from '../../material-icons/spriteParser';
 
 /**
@@ -70,12 +70,24 @@ export class IdeviceRenderer {
     /**
      * Resolve icon baseName to filename with extension.
      * Returns baseName + '.png' as fallback if not found (backwards compatibility).
+     *
+     * A project can store a name a theme has since renamed its file away from, and this is
+     * the point where the export would silently emit a 404 for it, so the rename table is
+     * consulted before giving up. `deriveBlockIcon` covers legacy `iconName` strings; a block
+     * whose structured descriptor was stored back then reaches the renderer untouched.
      */
     private resolveIconName(baseName: string): string {
         const resolved = this.iconResolutionMap.get(baseName);
         if (resolved) {
             return resolved;
         }
+
+        const renamed = resolveRenamedThemeIcon(baseName);
+        const resolvedRenamed = renamed === baseName ? undefined : this.iconResolutionMap.get(renamed);
+        if (resolvedRenamed) {
+            return resolvedRenamed;
+        }
+
         // Fallback to .png for backwards compatibility with legacy themes
         return `${baseName}.png`;
     }

@@ -6,6 +6,7 @@
  * Usage: bun cli update-licenses [options]
  * Options:
  *   --dry-run     Show what would be written without modifying files
+ *   --check       Fail if the committed file is not what this command would write
  *   --json        Output package info as JSON (for debugging)
  */
 import { getBoolean, hasHelp, parseArgs } from '../utils/args';
@@ -17,6 +18,47 @@ const PROJECT_ROOT = process.cwd();
 const README_PATH = path.join(PROJECT_ROOT, 'public', 'libs', 'README.md');
 const PACKAGE_JSON_PATH = path.join(PROJECT_ROOT, 'package.json');
 const NODE_MODULES_PATH = path.join(PROJECT_ROOT, 'node_modules');
+
+/** A hand-recorded attribution. `license` is only needed when the package cannot be read here. */
+export interface AttributionOverride {
+    copyright: string;
+    /** Set only for packages this machine can never install; otherwise package.json wins. */
+    license?: string;
+}
+
+/**
+ * Attributions that cannot be derived from package metadata on this machine.
+ *
+ * Two causes, both of which leave the generator with nothing to read:
+ *
+ * - The package ships no `author`/`maintainers` field, and either no LICENSE file or a
+ *   verbatim license text with no copyright line. The MathJax font packages are published
+ *   by the MathJax Consortium (see the `@mathjax/src` package, whose maintainers field
+ *   states it explicitly) from the shared MathJax-fonts repository, under Apache-2.0.
+ * - The package declares an `os`/`cpu` that excludes this platform, so `bun install` skips
+ *   it and no run here can ever read it. `@codecov/bundle-analyzer` is linux/darwin only.
+ *   Recording it here is what makes the generated file identical on every OS. Reading the
+ *   entry back out of our own output instead would make `--check` self-referential on the
+ *   one platform that cannot verify it: a stale or hand-edited line would pass forever.
+ *
+ * An entry stays reviewable in the diff, which a carry-over from the output never is.
+ *
+ * Null-prototype on purpose: the key is an arbitrary package name off package.json, and a
+ * plain object would answer `constructor` or `toString` with an inherited Object.prototype
+ * member -- a function where a copyright holder is expected.
+ */
+export const COPYRIGHT_OVERRIDES: Record<string, AttributionOverride> = Object.assign(Object.create(null), {
+    // linux/darwin only: never installed on Windows, so the license comes from here too.
+    '@codecov/bundle-analyzer': { copyright: 'Codecov', license: 'MIT' },
+    // Icon set authored by Google (see the package README and
+    // https://github.com/google/material-design-icons); repackaged for npm by Ravindra Marella.
+    '@material-symbols/svg-400': { copyright: 'Google LLC' },
+    '@mathjax/mathjax-dsfont-font-extension': { copyright: 'MathJax Consortium' },
+    '@mathjax/mathjax-mhchem-font-extension': { copyright: 'MathJax Consortium' },
+    '@mathjax/mathjax-newcm-font': { copyright: 'MathJax Consortium' },
+    // pdf.js ships only the bare Apache-2.0 text, with no copyright line of its own.
+    'pdfjs-dist': { copyright: 'Mozilla Foundation' },
+}) as Record<string, AttributionOverride>;
 
 /** Package metadata extracted from node_modules */
 export interface PackageInfo {
@@ -103,33 +145,103 @@ export function extractAuthorFromPackageJson(pkg: Record<string, unknown>): stri
 }
 
 /**
+ * Matches the standard license boilerplate that says "copyright" without naming a holder.
+ *
+ * Each word is one a license template puts immediately after "Copyright", so the capture
+ * starts with it and what follows is a clause rather than a person:
+ *
+ * - `owner`   -- Apache-2.0 definitions ("the copyright owner or entity authorized by")
+ * - `holders` -- the MIT liability clause ("COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM")
+ * - `notice`  -- "copyright notice and this permission notice shall be included"
+ * - `[`       -- the unfilled `Copyright [yyyy] [name of copyright owner]` placeholder
+ *
+ * The plural is not optional: `holder\b` does not match `HOLDERS`, the form the MIT text uses,
+ * so `minimist` was attributed to "HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER...".
+ */
+const BOILERPLATE_COPYRIGHT = /^(?:(?:owner|holder|notice)s?\b|\[)/i;
+
+/**
+ * Boilerplate that only a year-less capture can start with.
+ *
+ * "Grant of Copyright License. Subject to the terms and conditions of" is Apache-2.0 section
+ * 2. It is kept apart from BOILERPLATE_COPYRIGHT because a holder legitimately *can* be named
+ * "License ..." after a year, and no license template writes a four-digit year in front of its
+ * own prose -- so the word is only evidence of boilerplate where no year was matched.
+ *
+ * This is a backstop, not the main defence: the year-less pattern is anchored to the start of
+ * a line, which is what actually rules out license prose (see `extractCopyrightFromLicense`).
+ */
+const BOILERPLATE_YEARLESS_COPYRIGHT = /^(?:licen[sc]es?|licensors?)\b/i;
+
+/**
  * Extract copyright from LICENSE file content
  * Looks for patterns like "Copyright (c) YYYY Author" or "(c) YYYY Author"
  */
 export function extractCopyrightFromLicense(content: string): string | null {
-    // Common copyright patterns - capture everything until newline, period, or end
-    const patterns = [
-        /Copyright\s*(?:\(c\)|©)?\s*\d{4}(?:[,-]\d{4})?\s+(.+)/i,
-        /\(c\)\s*\d{4}(?:[,-]\d{4})?\s+(.+)/i,
-        /©\s*\d{4}(?:[,-]\d{4})?\s+(.+)/i,
-        /Copyright\s+(.+)/i,
+    // A year, a comma-separated enumeration ("2013, 2014, 2015"), or a range
+    // ("2020-2023", "2019 - present", and the same with an en or em dash).
+    const singleYear = String.raw`\d{4}`;
+    const year =
+        String.raw`${singleYear}(?:\s*,\s*${singleYear})*` +
+        String.raw`(?:\s*[-\u2013\u2014]\s*(?:${singleYear}|present))?`;
+    // What separates the year from the holder. `Copyright (c) 2015, Scott Motte` is the most
+    // common BSD/MIT form and `2023. Foo` is not rare; without these the notice falls through
+    // to the year-less pattern, which keeps the year as part of the name.
+    //
+    // `[^\S\n]` and not `\s`: a notice lives on one line. With `\s+` here, the MIT template
+    // left unfilled -- `Copyright (c) 2020 ` with no holder, as `@peculiar/asn1-schema` and
+    // `webcrypto-core` ship it -- matched across the blank line and attributed the package to
+    // "Permission is hereby granted, free of charge, to any person obtaining a copy".
+    const inlineSpace = String.raw`[^\S\n]`;
+    const yearSeparator = String.raw`${inlineSpace}*[,.]?${inlineSpace}+`;
+    // Common copyright patterns - capture everything until newline, period, or end.
+    // Global on purpose: an Apache-2.0 LICENSE states the boilerplate definition of the
+    // "copyright owner" long before it names the real holder, so a rejected match must not
+    // end the search for that pattern - the notice that matters is further down the file.
+    const yearAnchored = [
+        new RegExp(String.raw`Copyright${inlineSpace}*(?:\(c\)|©)?${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
+        new RegExp(String.raw`\(c\)${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
+        new RegExp(String.raw`©${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
     ];
+    // Last resort for a notice that carries no year.
+    //
+    // Anchored to the start of a line, because that is what separates a notice from prose that
+    // merely contains the word. Enumerating the prose does not work -- Apache-2.0 alone says
+    // "the copyright owner or entity" (definitions), "Grant of Copyright License. Subject to"
+    // (section 2) and "You may add Your own copyright statement to Your modifications"
+    // (section 4d), and the MIT text says "COPYRIGHT HOLDERS BE LIABLE"; every one of those
+    // sits mid-sentence, while a real notice starts its own line. Section 4d is how
+    // `pdfjs-dist`, `@material-symbols/svg-400` and `@mathjax/src` were still being attributed
+    // to "statement to Your modifications and" after the section-2 wording was blocked.
+    //
+    // It matters for release metadata: generation and `--check` run the same extraction, so a
+    // wrong holder is not just written, it is then confirmed as correct forever.
+    const yearLess = /^[^\S\n]*Copyright[^\S\n]+(.+)$/gim;
 
-    for (const pattern of patterns) {
-        const match = content.match(pattern);
-        if (match) {
+    for (const pattern of [...yearAnchored, yearLess]) {
+        for (const match of content.matchAll(pattern)) {
+            if (BOILERPLATE_COPYRIGHT.test(match[1])) {
+                continue;
+            }
+            if (pattern === yearLess && BOILERPLATE_YEARLESS_COPYRIGHT.test(match[1])) {
+                continue;
+            }
             // Get first line only
             let author = match[1].split('\n')[0];
             // Clean up the result - remove "All rights reserved", email, etc.
             author = author
                 .replace(/all rights reserved\.?/gi, '')
+                .replace(/,?\s*as listed in:.*$/i, '') // Drop pointers to a contributors page
+                .replace(/\s+https?:\/\/\S+/gi, '') // Drop trailing URLs
                 .replace(/<[^>]+>/g, '') // Remove emails in <brackets>
                 .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical notes
                 .replace(/\s+/g, ' ') // Normalize whitespace
                 .trim();
             // Remove trailing punctuation
             author = author.replace(/[,.:;]+$/, '').trim();
-            if (author) {
+            // A holder has a name in it. What is left over otherwise is a stray year or a
+            // symbol from a template nobody filled in, and "2020" is not an attribution.
+            if (author && /\p{L}/u.test(author)) {
                 return author;
             }
         }
@@ -168,8 +280,13 @@ export function getPackageInfo(packageName: string): PackageInfo | null {
             }
         }
 
-        // Get copyright - try package.json author first
-        let copyright = extractAuthorFromPackageJson(pkg);
+        // Get copyright - manual overrides win over automatic extraction
+        let copyright: string | null = COPYRIGHT_OVERRIDES[packageName]?.copyright ?? null;
+
+        // Otherwise try package.json author first
+        if (!copyright) {
+            copyright = extractAuthorFromPackageJson(pkg);
+        }
 
         // If no author in package.json, try LICENSE file
         if (!copyright) {
@@ -272,6 +389,26 @@ export function generateServerSideSection(packages: PackageInfo[]): string {
 }
 
 /**
+ * The attribution for a dependency that is declared but absent from `node_modules`.
+ *
+ * `bun install` skips a package whose `os`/`cpu` excludes the current platform, so
+ * `@codecov/bundle-analyzer` (linux/darwin only) is never installed on Windows. Dropping it
+ * because this machine cannot see it would quietly shorten a legal attribution list, so the
+ * hand-recorded entry stands in and the output is the same on every OS.
+ *
+ * Returns `null` when nothing is recorded: the caller must then refuse to write rather than
+ * emit a short list.
+ */
+export function attributionFromOverride(packageName: string): PackageInfo | null {
+    const override = COPYRIGHT_OVERRIDES[packageName];
+    if (!override?.license) {
+        return null;
+    }
+
+    return { name: packageName, version: 'unknown', copyright: override.copyright, license: override.license };
+}
+
+/**
  * Update the README file with new server-side packages section
  */
 export function updateReadme(newServerSection: string, dryRun: boolean): { updated: boolean; content: string } {
@@ -319,6 +456,7 @@ export async function execute(
     flags: Record<string, string | boolean | string[]>,
 ): Promise<UpdateLicensesResult> {
     const dryRun = getBoolean(flags, 'dry-run', false);
+    const checkOnly = getBoolean(flags, 'check', false);
     const jsonOutput = getBoolean(flags, 'json', false);
 
     try {
@@ -330,19 +468,53 @@ export async function execute(
         // Get package info for each dependency
         info('Scanning node_modules for package metadata...');
         const packages: PackageInfo[] = [];
-        let skipped = 0;
+        const carriedOver: string[] = [];
+        const unresolved: string[] = [];
 
         for (const name of dependencyNames) {
             const pkgInfo = getPackageInfo(name);
             if (pkgInfo) {
                 packages.push(pkgInfo);
-            } else {
-                skipped++;
-                warning(`Could not read package: ${name}`);
+                continue;
             }
+
+            const recorded = attributionFromOverride(name);
+            if (recorded) {
+                packages.push(recorded);
+                carriedOver.push(name);
+                continue;
+            }
+
+            unresolved.push(name);
         }
 
-        info(`Processed ${packages.length} packages (${skipped} skipped)`);
+        for (const name of carriedOver) {
+            warning(`Could not read package: ${name} — using the attribution recorded in COPYRIGHT_OVERRIDES`);
+        }
+
+        // A declared dependency with no metadata and no recorded entry would silently
+        // shorten a legal attribution list. Say so and write nothing.
+        //
+        // Both causes have to be named, because only one of them is fixable here: a
+        // package whose `os`/`cpu` excludes this platform is skipped by every
+        // `bun install` on this machine, so telling the operator to install again would
+        // send them round a loop they cannot leave.
+        if (unresolved.length > 0) {
+            const plural = unresolved.length === 1 ? 'dependency' : 'dependencies';
+            return {
+                success: false,
+                message:
+                    `Cannot attribute ${unresolved.length} declared ${plural}: ${unresolved.join(', ')}. ` +
+                    'Absent from node_modules, and COPYRIGHT_OVERRIDES records nothing to stand in, so the ' +
+                    'generated list would be incomplete and nothing was written. Either the dependencies ' +
+                    'are not installed here — run `make deps` — or the package declares an "os"/"cpu" that ' +
+                    'excludes this platform, in which case no run on this machine can ever read it: add its ' +
+                    'copyright and license to COPYRIGHT_OVERRIDES in src/cli/commands/update-licenses.ts, or ' +
+                    'regenerate on a platform the package supports.',
+            };
+        }
+
+        info(`Processed ${packages.length} packages (${carriedOver.length} carried over)`);
 
         // JSON output mode for debugging
         if (jsonOutput) {
@@ -356,6 +528,25 @@ export async function execute(
 
         // Generate new server-side section
         const serverSection = generateServerSideSection(packages);
+
+        // Drift check for CI: report, never write.
+        if (checkOnly) {
+            const { updated } = updateReadme(serverSection, true);
+            if (updated) {
+                return {
+                    success: false,
+                    message:
+                        'public/libs/README.md is not what update-licenses would generate. ' +
+                        'Run `make update-licenses` and commit the result.',
+                    packages,
+                };
+            }
+            return {
+                success: true,
+                message: `public/libs/README.md is up to date (${packages.length} packages)`,
+                packages,
+            };
+        }
 
         // Update README
         info(`${dryRun ? '[DRY RUN] Would update' : 'Updating'} public/libs/README.md...`);
@@ -400,6 +591,7 @@ ${colors.cyan('Usage:')}
 
 ${colors.cyan('Options:')}
   --dry-run     Show what would be written without modifying files
+  --check       Fail if the committed file differs from what would be generated
   --json        Output package info as JSON (for debugging)
   -h, --help    Show this help message
 
@@ -411,6 +603,13 @@ ${colors.cyan('Description:')}
   - Package name and version
   - License (from package.json)
   - Copyright/author (from package.json author, LICENSE file, or README)
+
+  A declared dependency that is not in node_modules is attributed from
+  COPYRIGHT_OVERRIDES - bun install skips packages whose "os" field excludes the
+  current platform, and those must not vanish from a legal attribution list.
+  Recording them in the source keeps the generated file identical on every OS.
+  A dependency with neither metadata nor a recorded override aborts the run: an
+  incomplete attribution file is never written.
 
 ${colors.cyan('Output format:')}
   *   Package: package-name

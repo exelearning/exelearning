@@ -32,6 +32,21 @@
 *   Package: @elysiajs/swagger
     *   Copyright: saltyAom
     *   License: MIT
+*   Package: @material-symbols/svg-400
+    *   Copyright: Google LLC
+    *   License: Apache-2.0
+*   Package: @mathjax/mathjax-dsfont-font-extension
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
+*   Package: @mathjax/mathjax-mhchem-font-extension
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
+*   Package: @mathjax/mathjax-newcm-font
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
+*   Package: @mathjax/src
+    *   Copyright: MathJax Consortium
+    *   License: Apache-2.0
 *   Package: @playwright/test
     *   Copyright: Microsoft Corporation
     *   License: Apache-2.0
@@ -57,10 +72,10 @@
     *   Copyright: Anthony Fu
     *   License: MIT
 *   Package: @vitest/ui
-    *   Copyright: 2021-Present VoidZero Inc. and Vitest contributors
+    *   Copyright: VoidZero Inc. and Vitest contributors
     *   License: MIT
 *   Package: @xmldom/xmldom
-    *   Copyright: - present Christopher J. Brody and other contributors, as listed in: https://github.com/xmldom/xmldom/graphs/contributors
+    *   Copyright: Christopher J. Brody and other contributors
     *   License: MIT
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
@@ -72,8 +87,11 @@
     *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
     *   License: (MPL-2.0 OR Apache-2.0)
 *   Package: dotenv
-    *   Copyright: 2015, Scott Motte
+    *   Copyright: Scott Motte
     *   License: BSD-2-Clause
+*   Package: edicuatex
+    *   Copyright: Juan José de Haro
+    *   License: AGPL-3.0-or-later
 *   Package: electron
     *   Copyright: Electron Community
     *   License: MIT
@@ -94,6 +112,9 @@
     *   License: MIT
 *   Package: fs-extra
     *   Copyright: JP Richardson
+    *   License: MIT
+*   Package: fzstd
+    *   Copyright: Arjun Barrett
     *   License: MIT
 *   Package: happy-dom
     *   Copyright: David Ortner
@@ -125,8 +146,8 @@
 *   Package: lib0
     *   Copyright: Kevin Jahns
     *   License: MIT
-*   Package: mathjax-full
-    *   Copyright: owner or entity authorized by
+*   Package: mathjax
+    *   Copyright: MathJax Consortium
     *   License: Apache-2.0
 *   Package: mermaid
     *   Copyright: Knut Sveidqvist
@@ -141,10 +162,13 @@
     *   Copyright: James Long
     *   License: BSD-2-Clause
 *   Package: pdfjs-dist
-    *   Copyright: owner or entity authorized by
+    *   Copyright: Mozilla Foundation
     *   License: Apache-2.0
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
+    *   License: MIT
+*   Package: scorm-again
+    *   Copyright: Jonathan Putney
     *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.

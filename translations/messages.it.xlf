@@ -223,7 +223,7 @@
       </trans-unit>
       <trans-unit id="9iMmg7m" resname="Save the score">
         <source>Save the score</source>
-        <target>Salva il punteggio automaticamente</target>
+        <target>~Salva il punteggio</target>
       </trans-unit>
       <trans-unit id="qpfRXBy" resname="Automatically save the score">
         <source>Automatically save the score</source>
@@ -2057,10 +2057,6 @@
         <source>Huge text</source>
         <target>Testo enorme</target>
       </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>Testo massimo</target>
-      </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
         <target>Grassetto effetto lavagna</target>
@@ -3728,14 +3724,6 @@
       <trans-unit id="RmnBdRa" resname="Info">
         <source>Info</source>
         <target>Informazioni</target>
-      </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>Mostra o nascondi i figli del nodo</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>Crea una nuova mappa mentale</target>
       </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
@@ -5487,7 +5475,7 @@
       </trans-unit>
       <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
         <source>You need at least %s% of correct answers to get the information. Please try again.</source>
-        <target>Hai bisogno di almeno una percentuale di risposte corrette per ottenere le informazioni. riprova.</target>
+        <target>Hai bisogno di almeno %s% di risposte corrette per ottenere le informazioni. Riprova.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5527,7 +5515,7 @@
       </trans-unit>
       <trans-unit id="hog1PqN" resname="Great job! You have solved this activity in %s attempts. Surely you can do it faster!">
         <source>Great job! You have solved this activity in %s attempts. Surely you can do it faster!</source>
-        <target>Ottimo lavoro! Hai risolto questa attività in pochi tentativi. Sicuramente puoi farlo più velocemente!</target>
+        <target>Ottimo lavoro! Hai risolto questa attività in %s tentativi. Sicuramente puoi farlo più velocemente!</target>
       </trans-unit>
       <trans-unit id="YMXcmYC" resname="You placed %s cards in the wrong place. Please try again!">
         <source>You placed %s cards in the wrong place. Please try again!</source>
@@ -8323,7 +8311,7 @@
       </trans-unit>
       <trans-unit id="dqR555d" resname="Average score of completed activities: %s">
         <source>Average score of completed activities: %s</source>
-        <target>Punteggio medio delle attività completate: percentuali</target>
+        <target>Punteggio medio delle attività completate: %s</target>
       </trans-unit>
       <trans-unit id="j494f4m" resname="This will eliminate the stored scores of all activities. Are you sure you want to continue?">
         <source>This will eliminate the stored scores of all activities. Are you sure you want to continue?</source>
@@ -10705,102 +10693,6 @@
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>Cambia il testo delle schede aggiungendo un titolo a ogni Header 2 con l'opzione "Inserisci/Modifica attributi":</target>
       </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>Da Wikipedia, l'enciclopedia libera.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>Reindirizzato da</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>Wikipedia non ha un articolo con questo nome esatto.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>Cerca</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>nella Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>per controllare titoli o ortografia alternative.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>Articolo di Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>Articolo</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>Inglese</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>Basco</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>Catalano</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>Cinese</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>Holandés</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>Francese</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>Galiziano</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>Tedesco</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>Italiano</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>Giapponese</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>Ungherese</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>Polacco</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>Portoghese</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>Sloveno</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>Spagnolo</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>Svedese</target>
-      </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
         <target>Evidenziazione</target>
@@ -11691,7 +11583,7 @@
       </trans-unit>
       <trans-unit id="igvddsQ" resname="Please check the &quot;License&quot; field">
         <source>Please check the "License" field</source>
-        <target>Seleziona il file multimediale per modificarlo</target>
+        <target>~Controlla il campo "Licenza"</target>
       </trans-unit>
       <trans-unit id="a6wZFrc" resname="Please select the media file to edit it">
         <source>Please select the media file to edit it</source>
@@ -13640,10 +13532,6 @@
       <trans-unit id="8pqhfep" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
         <target>Il tuo accesso a questo progetto è stato revocato.</target>
-      </trans-unit>
-      <trans-unit id="gxn74i6" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>Mappa mentale salvata</target>
       </trans-unit>
       <trans-unit id="562k8fg" resname="source">
         <source>source</source>
@@ -15692,6 +15580,114 @@
       <trans-unit id="jfjteg7" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
         <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
         <target>~Queste attività fanno riferimento a file non inclusi nel pacchetto importato. I riferimenti sono stati mantenuti, quindi aggiungendo di nuovo i file verranno ripristinati.</target>
+      </trans-unit>
+      <trans-unit id="rxu9e5d" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~Le formule vengono visualizzate anche se questa opzione è disattivata. Attivala per includere la libreria MathJax completa nelle esportazioni. Questo aggiunge il suo menu contestuale e le sue funzioni interattive.</target>
+      </trans-unit>
+      <trans-unit id="fyc32ke" resname="Change password">
+        <source>Change password</source>
+        <target>~Cambia password</target>
+      </trans-unit>
+      <trans-unit id="adiiwzo" resname="Current password">
+        <source>Current password</source>
+        <target>~Password attuale</target>
+      </trans-unit>
+      <trans-unit id="ls99ojo" resname="New password">
+        <source>New password</source>
+        <target>~Nuova password</target>
+      </trans-unit>
+      <trans-unit id="1oa7koj" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Almeno 4 caratteri. Le password lunghe che combinano lettere, numeri e simboli sono più sicure.</target>
+      </trans-unit>
+      <trans-unit id="ztubh5y" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Conferma la nuova password</target>
+      </trans-unit>
+      <trans-unit id="o48qtn0" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Attività danneggiate</target>
+      </trans-unit>
+      <trans-unit id="1tou4ph" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~I dati di queste attività sono danneggiati e non è stato possibile leggerli. Sono state importate senza modifiche: viene ancora mostrato il loro ultimo contenuto, ma non si possono modificare senza ricrearle.</target>
+      </trans-unit>
+      <trans-unit id="2iebmzt" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Avvisi di importazione</target>
+      </trans-unit>
+      <trans-unit id="kaxte4l" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Cerca icona</target>
+      </trans-unit>
+      <trans-unit id="zdctzh1" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Scegli un'immagine dal gestore file</target>
+      </trans-unit>
+      <trans-unit id="n1u9trl" resname="Icon">
+        <source>Icon</source>
+        <target>~Icona</target>
+      </trans-unit>
+      <trans-unit id="tufuxx4" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Icone dello stile</target>
+      </trans-unit>
+      <trans-unit id="bajp8jo" resname="General icons">
+        <source>General icons</source>
+        <target>~Icone generali</target>
+      </trans-unit>
+      <trans-unit id="hr9wt51" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Sicurezza della password: troppo corta</target>
+      </trans-unit>
+      <trans-unit id="1xafxqb" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Sicurezza della password: debole</target>
+      </trans-unit>
+      <trans-unit id="r9n5a40" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Sicurezza della password: accettabile</target>
+      </trans-unit>
+      <trans-unit id="g6q3jzs" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Sicurezza della password: buona</target>
+      </trans-unit>
+      <trans-unit id="ndl0v3b" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Sicurezza della password: forte</target>
+      </trans-unit>
+      <trans-unit id="lpugbyq" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~La password attuale non è corretta</target>
+      </trans-unit>
+      <trans-unit id="kr03282" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~La nuova password non può essere vuota.</target>
+      </trans-unit>
+      <trans-unit id="f480qzy" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~Le password non coincidono</target>
+      </trans-unit>
+      <trans-unit id="3hmoju7" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~Password modificata correttamente</target>
+      </trans-unit>
+      <trans-unit id="wpojpyx" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~Si è verificato un errore. Riprova.</target>
+      </trans-unit>
+      <trans-unit id="8ou3aza" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Questo account non consente di cambiare la password.</target>
+      </trans-unit>
+      <trans-unit id="i09yh6p" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~La nuova password non è valida.</target>
+      </trans-unit>
+      <trans-unit id="5425xpc" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Testo gigantesco</target>
       </trans-unit>
     </body>
   </file>

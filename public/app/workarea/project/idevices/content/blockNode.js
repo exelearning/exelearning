@@ -35,6 +35,14 @@ const THEME_ICON_COLOR_MAP = {
     educablue: '#0d77d1', // picker accent; the box head icon itself is white
 };
 
+// Theme icons whose file was renamed after a release shipped it, old name -> current name.
+// Mirrors RENAMED_THEME_ICONS in src/shared/block-icon.ts, which documents why entries are
+// added and never removed. Only used on the degraded path where the shared runtime is absent.
+const RENAMED_THEME_ICONS = {
+    objetives: 'objectives', // neo, misspelt in every release from v4.0.0 to v4.0.3
+    'think-alt': 'think_alt', // educablue, hyphenated; only in v4.0.4 pre-release projects
+};
+
 const localBlockIconRuntime = {
     resolveAppAssetUrl(path, options = {}) {
         const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -58,6 +66,11 @@ const localBlockIconRuntime = {
         return cleanBasePath ? `${cleanBasePath}${normalizedPath}` : normalizedPath;
     },
 
+    // JS twin of src/shared/block-icon.ts (RENAMED_THEME_ICONS / resolveRenamedThemeIcon).
+    resolveRenamedThemeIcon(value) {
+        return Object.hasOwn(RENAMED_THEME_ICONS, value) ? RENAMED_THEME_ICONS[value] : value;
+    },
+
     // JS twin of src/shared/block-icon.ts (deriveBlockIcon). Mirrors the shared
     // runtime so the degraded fallback path (no window.eXeBlockIconRuntime) keeps
     // deriving icons identically.
@@ -66,7 +79,7 @@ const localBlockIconRuntime = {
         if (!name) return { source: 'none', value: '' };
         if (name.startsWith('mi-')) return { source: 'material', value: name.slice(3) };
         if (name.startsWith('asset://') || name.startsWith('/')) return { source: 'asset', value: name };
-        return { source: 'theme', value: name };
+        return { source: 'theme', value: this.resolveRenamedThemeIcon(name) };
     },
 
     renderMaterialMaskIcon(iconName, options = {}) {
@@ -213,11 +226,16 @@ export default class IdeviceBlockNode {
     normalizeIconDescriptor(iconData, legacyIconName = '') {
         if (iconData && typeof iconData === 'object' && iconData.source) {
             if (iconData.source === 'none') return { source: 'none', value: '' };
-            return {
-                source: iconData.source,
-                value: iconData.value || '',
-                name: iconData.name || iconData.value || '',
-            };
+            // A descriptor stored before a theme renamed one of its icon files still carries
+            // the old name; map it here so the picker, the block and the export all agree.
+            const value =
+                iconData.source === 'theme'
+                    ? blockIconRuntime.resolveRenamedThemeIcon(iconData.value || '')
+                    : iconData.value || '';
+            // `name` follows `value`: keeping the old spelling here would put it back on
+            // `this.iconName` in setParams() and re-save the name the styles no longer ship.
+            const name = value === iconData.value ? iconData.name || value || '' : value;
+            return { source: iconData.source, value, name };
         }
 
         const legacy = legacyIconName || '';
@@ -234,14 +252,17 @@ export default class IdeviceBlockNode {
         // Only fall back to the legacy → Material mapping when the active style
         // does not ship that icon, so style icons selected from the picker keep
         // their identity (e.g. through undo/redo block reconstruction).
-        if (this.resolveThemeIconData(legacy)) {
-            return { source: 'theme', value: legacy, name: legacy };
+        // `derived.value` rather than `legacy`: a name the style has since renamed must
+        // normalise to the current one here, or the picker cannot match the block's icon
+        // against the entry it lists.
+        if (this.resolveThemeIconData(derived.value)) {
+            return { source: 'theme', value: derived.value, name: derived.value };
         }
         if (LEGACY_ICON_MAP[legacy]) {
             const mapped = LEGACY_ICON_MAP[legacy];
             return { source: 'material', value: mapped, name: mapped };
         }
-        return { source: 'theme', value: legacy, name: legacy };
+        return { source: 'theme', value: derived.value, name: derived.value };
     }
 
     getEffectiveIcon() {
@@ -311,12 +332,13 @@ export default class IdeviceBlockNode {
 
     resolveThemeIconData(iconValue) {
         const themeIcons = eXeLearning?.app?.themes?.getThemeIcons?.() || {};
-        if (themeIcons[iconValue]) {
-            return themeIcons[iconValue];
+        const name = blockIconRuntime.resolveRenamedThemeIcon(iconValue);
+        if (themeIcons[name]) {
+            return themeIcons[name];
         }
 
         return Object.values(themeIcons).find(
-            (themeIcon) => themeIcon.id === iconValue || themeIcon.value === iconValue
+            (themeIcon) => themeIcon.id === name || themeIcon.value === name
         );
     }
 

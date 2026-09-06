@@ -1630,6 +1630,40 @@ describe('IdeviceBlockNode', () => {
             });
         });
 
+        it('normalizes a stored icon name the style has since renamed', () => {
+            // 'objetives' is what neo shipped from v4.0.0 to v4.0.3, so projects saved then
+            // still store it. The descriptor has to come out under the current name, or the
+            // picker cannot match the block's icon against the entry it lists.
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                objectives: { id: 'objectives', value: '/icons/objectives.png', title: 'Objectives' },
+            }));
+
+            expect(block.normalizeIconDescriptor(null, 'objetives')).toEqual({
+                source: 'theme',
+                value: 'objectives',
+                name: 'objectives',
+            });
+
+            // Same for a descriptor that was already structured when it was saved.
+            expect(block.normalizeIconDescriptor({ source: 'theme', value: 'objetives' })).toEqual({
+                source: 'theme',
+                value: 'objectives',
+                name: 'objectives',
+            });
+        });
+
+        it('finds the style icon behind a renamed stored name', () => {
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                think_alt: { id: 'think_alt', value: '/icons/think_alt.svg', title: 'Think' },
+            }));
+
+            expect(block.resolveThemeIconData('think-alt')).toEqual({
+                id: 'think_alt',
+                value: '/icons/think_alt.svg',
+                title: 'Think',
+            });
+        });
+
         it('resolves app asset URLs using composeUrl and basePath fallbacks', () => {
             eXeLearning.app.composeUrl = vi.fn((path) => `/composed${path}`);
             expect(block.resolveAppAssetUrl('/libs/material-icons/icons/alarm.svg')).toBe(

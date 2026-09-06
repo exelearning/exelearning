@@ -9,7 +9,13 @@
 import { parseArgs, getString, hasHelp } from '../utils/args';
 import { success, error, warning, info, colors, EXIT_CODES } from '../utils/output';
 import { LOCALES } from '../../services/translation';
-import { extractTranslationKeys, addKeysToXlf, unescapeXml } from './translations';
+import {
+    extractTranslationKeys,
+    addKeysToXlf,
+    findUntrustedGeneratedSources,
+    warnUntrustedGeneratedSources,
+    unescapeXml,
+} from './translations';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -17,11 +23,14 @@ interface Deps {
     extractKeys: () => Promise<Set<string>>;
     /** Used to re-read messages.en.xlf during post-sort verification. Injectable for testing. */
     readFileForVerification: (filePath: string) => string;
+    /** Generated source trees the extraction cannot trust. Injectable for testing. */
+    findUntrustedGenerated: () => ReturnType<typeof findUntrustedGeneratedSources>;
 }
 
 const defaultDeps: Deps = {
     extractKeys: extractTranslationKeys,
     readFileForVerification: (filePath: string) => fs.readFileSync(filePath, 'utf-8'),
+    findUntrustedGenerated: () => findUntrustedGeneratedSources(),
 };
 
 let deps = defaultDeps;
@@ -176,6 +185,10 @@ export async function execute(
     if (!fs.existsSync(EN_XLF)) {
         return { success: false, message: `Reference file not found: ${EN_XLF}` };
     }
+
+    // Sorting cannot delete anything, so a short key set only weakens the check in
+    // step 3 rather than losing work -- but say so, or the pass reads as a clean bill.
+    warnUntrustedGeneratedSources(deps.findUntrustedGenerated(), '; the sync check below will be incomplete');
 
     // Step 1: Extract all keys from source code
     info('Scanning source files for translation keys...');
