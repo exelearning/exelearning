@@ -12939,7 +12939,7 @@
       </trans-unit>
       <trans-unit id="aby2ghl" resname="Are you sure you want to delete %s projects?">
         <source>Are you sure you want to delete %s projects?</source>
-        <target>Ziur zaude %a proiektu ezabatu nahi duzula?</target>
+        <target>Ziur zaude %s proiektu ezabatu nahi duzula?</target>
       </trans-unit>
       <trans-unit id="jalbrvv" resname="Delete projects">
         <source>Delete projects</source>
@@ -13651,7 +13651,7 @@
       </trans-unit>
       <trans-unit id="wvpk6dg" resname="You made %s errors. You have %s attempts left. Do you want to try again?">
         <source>You made %s errors. You have %s attempts left. Do you want to try again?</source>
-        <target>%  errore izan dituzu. % saiakera gelditzen zaizkizu. Saiatu nahi duzu berriro?</target>
+        <target>%s errore izan dituzu. %s saiakera gelditzen zaizkizu. Saiatu nahi duzu berriro?</target>
       </trans-unit>
       <trans-unit id="b4mkkc2" resname="You must close the edited questionnaire before saving the activity.">
         <source>You must close the edited questionnaire before saving the activity.</source>
