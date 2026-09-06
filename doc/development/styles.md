@@ -92,6 +92,29 @@ drawing changes.
 style. A name only your style has does work, but it turns into a missing icon the moment the
 author switches style.
 
+### Renaming an icon a release already shipped
+
+Don't. A project stores the base name its author picked, and that name lives on in `.elp`
+files you will never see again, so renaming the file makes those blocks resolve to nothing.
+
+When a name has to change anyway — a misspelling, or an outlier that breaks the shared set —
+the old name has to keep working. Add it to **`RENAMED_THEME_ICONS`** in
+`src/shared/block-icon.ts`, and to its JS twins in `public/app/common/blockIconRuntime.js` and
+`public/app/workarea/project/idevices/content/blockNode.js`:
+
+```ts
+export const RENAMED_THEME_ICONS = {
+    objetives: 'objectives',   // neo, misspelt from v4.0.0 to v4.0.3
+    'think-alt': 'think_alt',  // educablue, hyphenated from v4.0.0 to v4.0.3
+};
+```
+
+Every point that turns a stored name into a file goes through it: `deriveBlockIcon()` for a
+legacy `iconName`, `resolveIconName()` in the export renderer for a stored descriptor, and
+`normalizeIconDescriptor()` / `resolveThemeIconData()` in the workarea. **Entries are added,
+never removed** — an entry is the document format's memory of a name it once wrote, and only a
+project migration that rewrites stored icon names on open could retire one.
+
 ### The exception: `universal`
 
 `universal` deliberately does not use the shared set. It ships **85 icons**, all `.svg`, from
