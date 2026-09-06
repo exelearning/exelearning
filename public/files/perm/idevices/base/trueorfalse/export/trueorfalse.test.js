@@ -184,11 +184,29 @@ describe('trueorfalse iDevice export', () => {
       expect(typeof $trueorfalse.msgsdefault).toBe('object');
     });
 
-    it('has required messages', () => {
-      expect($trueorfalse.msgsdefault.msgTrue).toBe('Verdadero');
-      expect($trueorfalse.msgsdefault.msgFalse).toBe('Falso');
-      expect($trueorfalse.msgsdefault.msgOk).toBe('Correcto');
-      expect($trueorfalse.msgsdefault.msgKO).toBe('Incorrecto');
+    // English, not Spanish: these are the fallback for content that arrives
+    // without a translated `msgs`, so they have to be the source language.
+    // Spanish here imposed Spanish on every project, whatever its language —
+    // issue #2263.
+    it('has required messages, in the source language', () => {
+      expect($trueorfalse.msgsdefault.msgTrue).toBe('True');
+      expect($trueorfalse.msgsdefault.msgFalse).toBe('False');
+      expect($trueorfalse.msgsdefault.msgOk).toBe('Correct');
+      expect($trueorfalse.msgsdefault.msgKO).toBe('Incorrect');
+    });
+
+    it('carries the SCORM button caption the edition now translates', () => {
+      expect($trueorfalse.msgsdefault.textButtonScorm).toBe('Save score');
+    });
+
+    // The fallback is only useful if it is the same text the translator sees,
+    // so no default may be left in another language. Accented characters are a
+    // cheap, reliable proxy for the Spanish this replaced.
+    it('leaves no default in another language', () => {
+      const nonEnglish = Object.entries($trueorfalse.msgsdefault).filter(
+        ([, value]) => typeof value === 'string' && /[áéíóúñ¿¡]/i.test(value)
+      );
+      expect(nonEnglish).toEqual([]);
     });
   });
 

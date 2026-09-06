@@ -280,4 +280,23 @@ describe('trueorfalse iDevice', () => {
       expect($exeDevice.questionsGame).toEqual([]);
     });
   });
+
+  // Issue #2263: textButtonScorm had no c_() counterpart here, so nothing ever
+  // translated the SCORM send button and the export's own default — Spanish —
+  // was the only caption that reached the page.
+  describe('the message keys the export expects', () => {
+    it('translates the SCORM button caption', () => {
+      $exeDevice.refreshTranslations();
+
+      expect($exeDevice.ci18n.textButtonScorm).toBe('Save score');
+    });
+
+    it('routes it through c_ rather than inlining it', () => {
+      c_.mockClear();
+
+      $exeDevice.refreshTranslations();
+
+      expect(c_).toHaveBeenCalledWith('Save score');
+    });
+  });
 });

@@ -141,6 +141,10 @@ var $exeDevice = {
             msgWeight: c_('Weight'),
             msgNext: c_('Next'),
             msgPrevious: c_('Previous'),
+            // The SCORM send button's caption. Missing here, it never went
+            // through c_() and the export's own default was the only value that
+            // ever reached the page — in Spanish, whatever the project language.
+            textButtonScorm: c_('Save score'),
         };
     },
     setMessagesInfo: function () {

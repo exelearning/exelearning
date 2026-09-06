@@ -1056,24 +1056,33 @@ var $trueorfalse = {
         }
     },
 
+    /**
+     * Fallback texts for any key the saved content does not carry.
+     *
+     * English, and word for word the source strings the edition passes through
+     * c_() (edition/trueorfalse.js refreshTranslations). Literals because this
+     * file runs inside the exported package, where c_() does not exist, so the
+     * source language is the only honest fallback. They used to be Spanish,
+     * which imposed Spanish on every project whose content missed a key.
+     */
     msgsdefault: {
-        msgNoImage: 'Sin imagen',
-        msgFeedback: 'Retroalimentación',
-        msgSuggestion: 'Sugerencia',
-        msgSolution: 'Respuesta',
-        msgQuestion: 'Pregunta',
-        msgTrue: 'Verdadero',
-        msgFalse: 'Falso',
-        msgOk: 'Correcto',
-        msgKO: 'Incorrecto',
-        msgShow: 'Mostrar',
-        msgHide: 'Ocultar',
-        msgReboot: 'Volver a intentar',
-        msgCheck: 'Comprobar',
-        msgStartGame: 'Haz clic aquí para comenzar',
-        msgYouScore: 'Tu puntuación',
-        textButtonScorm: 'Guardar puntuación',
-        msgNext: 'Siguiente',
-        msgPrevious: 'Anterior',
+        msgNoImage: 'No picture question',
+        msgFeedback: 'Feedback',
+        msgSuggestion: 'Suggestion',
+        msgSolution: 'Solution',
+        msgQuestion: 'Question',
+        msgTrue: 'True',
+        msgFalse: 'False',
+        msgOk: 'Correct',
+        msgKO: 'Incorrect',
+        msgShow: 'Show',
+        msgHide: 'Hide',
+        msgReboot: 'Try again!',
+        msgCheck: 'Check',
+        msgStartGame: 'Click here to start',
+        msgYouScore: 'Your score',
+        textButtonScorm: 'Save score',
+        msgNext: 'Next',
+        msgPrevious: 'Previous',
     },
 };

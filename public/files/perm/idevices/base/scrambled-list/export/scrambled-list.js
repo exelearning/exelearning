@@ -1005,31 +1005,41 @@ var $scrambledlist = {
         delete $scrambledlist._touchHandlers[listOrder];
     },
 
+    /**
+     * Fallback texts, used when the saved content carries no `msgs` at all.
+     *
+     * English, and word for word the source strings the edition passes through
+     * c_() (edition/scrambled-list.js refreshTranslations). Literals because
+     * this file runs inside the exported package, where c_() does not exist, so
+     * the source language is the only honest fallback. They used to be Spanish,
+     * which imposed Spanish on every project whose content missed them.
+     *
+     * @returns {object} The default message set.
+     */
     getMessages: function () {
         let msgs = {
             msgScoreScorm:
-                'La puntuación no se puede guardar porque esta página no forma parte de un paquete SCORM.',
-            msgYouLastScore: 'La última puntuación guardada es',
-            msgOnlySaveScore: '¡Solo puedes guardar la puntuación una vez!',
-            msgOnlySave: 'Solo puedes guardar una vez',
+                "The score can't be saved because this page is not part of a SCORM package.",
+            msgYouLastScore: 'The last score saved is',
+            msgOnlySaveScore: 'You can only save the score once!',
+            msgOnlySave: 'You can only save once',
             msgOnlySaveAuto:
-                'Tu puntuación se guardará después de cada pregunta. Solo puedes jugar una vez.',
+                'Your score will be saved after each question. You can only play once.',
             msgSaveAuto:
-                'Tu puntuación se guardará automáticamente después de cada pregunta.',
-            msgSeveralScore:
-                'Puedes guardar la puntuación tantas veces como quieras',
+                'Your score will be automatically saved after each question.',
+            msgSeveralScore: 'You can save the score as many times as you want',
             msgPlaySeveralTimes:
-                'Puedes realizar esta actividad tantas veces como quieras',
-            msgActityComply: 'Ya has realizado esta actividad.',
-            msgUncompletedActivity: 'Actividad no completada',
-            msgSuccessfulActivity: 'Actividad: Superada. Puntuación: %s',
-            msgUnsuccessfulActivity: 'Actividad: No superada. Puntuación: %s',
-            msgStartGame: 'Haz clic aquí para comenzar',
-            msgSaveScore: 'Guardar puntuación',
-            msgSubmit: 'Enviar',
-            msgTime: 'Tiempo',
-            msgCheck: 'Comprobar',
-            msgTestFailed: 'No has superado la prueba. Inténtalo de nuevo.',
+                'You can do this activity as many times as you want',
+            msgActityComply: 'You have already done this activity.',
+            msgUncompletedActivity: 'Incomplete activity',
+            msgSuccessfulActivity: 'Activity: Passed. Score: %s',
+            msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
+            msgStartGame: 'Click here to start',
+            msgSaveScore: 'Save score',
+            msgSubmit: 'Submit',
+            msgTime: 'Time per question',
+            msgCheck: 'Check',
+            msgTestFailed: "You didn't pass the test. Please try again",
         };
         return msgs;
     },

@@ -578,4 +578,27 @@ describe('scrambled-list iDevice export', () => {
       }
     });
   });
+
+  // Issue #2263: getMessages() was Spanish, and it is what content without a
+  // saved `msgs` falls back to — so the activity spoke Spanish whatever the
+  // project language.
+  describe('getMessages fallback texts', () => {
+    it('is in the source language', () => {
+      const msgs = $scrambledlist.getMessages();
+
+      expect(msgs.msgCheck).toBe('Check');
+      expect(msgs.msgSubmit).toBe('Submit');
+      expect(msgs.msgTestFailed).toBe("You didn't pass the test. Please try again");
+    });
+
+    // The fallback is only useful if it is the same text the translator sees,
+    // so no default may be left in another language. Accented characters are a
+    // cheap, reliable proxy for the Spanish this replaced.
+    it('leaves no default in another language', () => {
+      const nonEnglish = Object.entries($scrambledlist.getMessages()).filter(
+        ([, value]) => typeof value === 'string' && /[áéíóúñ¿¡]/i.test(value)
+      );
+      expect(nonEnglish).toEqual([]);
+    });
+  });
 });

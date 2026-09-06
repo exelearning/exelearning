@@ -226,6 +226,16 @@ var $exeDevice = {
             msgNext: c_('Next'),
             msgPrevious: c_('Previous'),
             msgSuggestion: c_('Suggestion'),
+            // The per-question feedback (form.js export, showFeedback). Missing
+            // here, it never went through c_() and the export's own default was
+            // the only value that ever reached the page — in Spanish, whatever
+            // the project language.
+            msgOk: c_('Correct'),
+            msgKO: c_('Incorrect'),
+            // The suggestion toggle's alt text, which the export used to spell
+            // out as a literal 'Ocultar' when the key was absent — and it
+            // always was.
+            msgHide: c_('Hide'),
         };
     },
 

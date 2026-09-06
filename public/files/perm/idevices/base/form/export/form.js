@@ -21,51 +21,59 @@ var $form = {
     iconTrueFalse: 'rule',
     iconDropdown: 'expand_more',
     iconFill: 'horizontal_rule',
+    /**
+     * Fallback texts, used by mergeFields() for any key the saved content does
+     * not carry — and for all of them when it carries no `msgs` at all.
+     *
+     * English, and word for word the source strings the edition passes through
+     * c_() (edition/form.js refreshTranslations). These are literals because
+     * this file runs inside the exported package, where c_() does not exist; so
+     * the source language is the only honest fallback. They used to be Spanish,
+     * which imposed Spanish on every project whose content missed a key.
+     */
     msgs: {
         msgScoreScorm:
-            'La puntuación no se puede guardar porque esta página no forma parte de un paquete SCORM.',
-        msgYouScore: 'Tu puntuación es',
-        msgScore: 'Puntuación',
-        msgWeight: 'Peso',
-        msgYouLastScore: 'La última puntuación guardada es',
-        msgOnlySaveScore: '¡Solo puedes guardar la puntuación una vez!',
-        msgOnlySave: 'Solo puedes guardar una vez',
+            "The score can't be saved because this page is not part of a SCORM package.",
+        msgYouScore: 'You scores is',
+        msgScore: 'Score',
+        msgWeight: 'Weight',
+        msgYouLastScore: 'The last score saved is',
+        msgOnlySaveScore: 'You can only save the score once!',
+        msgOnlySave: 'You can only save once',
         msgOnlySaveAuto:
-            'Tu puntuación se guardará después de cada pregunta. Solo puedes jugar una vez.',
+            'Your score will be saved after each question. You can only play once.',
         msgSaveAuto:
-            'Tu puntuación se guardará automáticamente después de cada pregunta.',
-        msgSeveralScore:
-            'Puedes guardar la puntuación tantas veces como quieras',
+            'Your score will be automatically saved after each question.',
+        msgSeveralScore: 'You can save the score as many times as you want',
         msgPlaySeveralTimes:
-            'Puedes realizar esta actividad tantas veces como quieras',
-        msgActityComply: 'Ya has realizado esta actividad.',
-        msgUncompletedActivity: 'Actividad incompleta',
-        msgSuccessfulActivity: 'Actividad: Superada. Puntuación: %s',
-        msgUnsuccessfulActivity: 'Actividad: No superada. Puntuación: %s',
-        msgTypeGame: 'Formulario',
-        msgStartGame: 'Haz clic aquí para empezar',
-        msgTime: 'Tiempo por pregunta',
-        msgSaveScore: 'Guardar puntuación',
-        msgResult: 'Resultado',
-        msgCheck: 'Comprobar',
-        msgReset: 'Reiniciar',
-        msgShowAnswers: 'Mostrar respuestas',
-        msgTestResultPass: '¡Enhorabuena! Has superado la prueba',
-        msgTestResultNotPass: 'Lo siento. No has superado la prueba',
-        msgTrueFalseHelp: 'Selecciona si la afirmación es verdadera o falsa',
-        msgDropdownHelp:
-            'Elige la respuesta correcta entre las opciones propuestas',
-        msgFillHelp: 'Rellena los espacios en blanco con la palabra adecuada',
-        msgSingleSelectionHelp:
-            'Opción múltiple con una sola respuesta correcta',
+            'You can do this activity as many times as you want',
+        msgActityComply: 'You have already done this activity.',
+        msgUncompletedActivity: 'Incomplete activity',
+        msgSuccessfulActivity: 'Activity: Passed. Score: %s',
+        msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
+        msgTypeGame: 'Form',
+        msgStartGame: 'Click here to start',
+        msgTime: 'Time per question',
+        msgSaveScore: 'Save score',
+        msgResult: 'Result',
+        msgCheck: 'Check',
+        msgReset: 'Reset',
+        msgShowAnswers: 'Show answers',
+        msgTestResultPass: 'Congratulations! You passed the test',
+        msgTestResultNotPass: 'Sorry. You failed the test',
+        msgTrueFalseHelp: 'Select whether the statement is true or false',
+        msgDropdownHelp: 'Choose the correct answer among the options proposed',
+        msgFillHelp: 'Fill in the blanks with the appropriate word',
+        msgSingleSelectionHelp: 'Multiple choice with only one correct answer',
         msgMultipleSelectionHelp:
-            'Opción múltiple con varias respuestas correctas',
-        msgPlayStart: 'Pulse aquí para comenzar',
-        msgTrue: 'Verdadero',
-        msgFalse: 'Falso',
-        msgOk: 'Correcto',
-        msgKO: 'Incorrecto',
-        msgSuggestion: 'Sugerencia',
+            'Multiple choice with multiple corrects answers',
+        msgPlayStart: 'Click here to start',
+        msgTrue: 'True',
+        msgFalse: 'False',
+        msgOk: 'Correct',
+        msgKO: 'Incorrect',
+        msgSuggestion: 'Suggestion',
+        msgHide: 'Hide',
     },
 
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
@@ -283,7 +291,7 @@ var $form = {
                                 .attr('src')
                                 .replace('showsuggestion', 'hidesuggestion')
                         );
-                        $icon.attr('alt', ldata.msgs.msgHide || 'Ocultar');
+                        $icon.attr('alt', ldata.msgs.msgHide);
                     } else {
                         $icon.attr(
                             'src',

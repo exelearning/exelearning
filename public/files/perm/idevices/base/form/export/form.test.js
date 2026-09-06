@@ -746,4 +746,37 @@ describe('form iDevice export', () => {
       expect($form.gameOver).toHaveBeenCalledWith(data);
     });
   });
+
+  // Issue #2263: these defaults were Spanish, and mergeFields hands them to any
+  // key the saved content lacks — the whole block when it carries no `msgs` at
+  // all. A Polish project got Spanish buttons and feedback.
+  describe('the fallback texts', () => {
+    it('is in the source language', () => {
+      expect($form.msgs.msgCheck).toBe('Check');
+      expect($form.msgs.msgTestResultNotPass).toBe('Sorry. You failed the test');
+      expect($form.msgs.msgYouScore).toBe('You scores is');
+    });
+
+    // These two had no c_() counterpart in the edition, so the default was the
+    // only value that ever reached the page: per-question feedback was Spanish
+    // for everyone, in every language.
+    it('covers the per-question feedback the edition now translates', () => {
+      expect($form.msgs.msgOk).toBe('Correct');
+      expect($form.msgs.msgKO).toBe('Incorrect');
+    });
+
+    it('covers the suggestion toggle that used an inline literal', () => {
+      expect($form.msgs.msgHide).toBe('Hide');
+    });
+
+    // The fallback is only useful if it is the same text the translator sees,
+    // so no default may be left in another language. Accented characters are a
+    // cheap, reliable proxy for the Spanish this replaced.
+    it('leaves no default in another language', () => {
+      const nonEnglish = Object.entries($form.msgs).filter(
+        ([, value]) => typeof value === 'string' && /[áéíóúñ¿¡]/i.test(value)
+      );
+      expect(nonEnglish).toEqual([]);
+    });
+  });
 });
