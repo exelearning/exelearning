@@ -1275,6 +1275,67 @@ describe('IdeviceRenderer', () => {
             expect(html).not.toMatch(/theme\/icons\/activity["']/);
         });
 
+        it('should resolve a stored icon name the style has since renamed', () => {
+            // `objetives` is what neo shipped from v4.0.0 to v4.0.3, so projects saved then
+            // store that name. Without the rename table the export emits
+            // theme/icons/objetives.png, which 404s in preview and in every package.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'objetives',
+            };
+
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/objectives.png', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/objectives.png');
+            expect(html).not.toContain('theme/icons/objetives.png');
+        });
+
+        it('should resolve a renamed icon held in an already-structured descriptor', () => {
+            // A block saved back then carries the old name in `icon`, not only in `iconName`,
+            // so it never passes through deriveBlockIcon.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                icon: { source: 'theme', value: 'think-alt' },
+            } as ExportBlock;
+
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/think_alt.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/think_alt.svg');
+        });
+
+        it('should keep the stored name when the current style ships neither spelling', () => {
+            // A style that never had the icon must not be handed the renamed file either.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'objetives',
+            };
+
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/objectives.png');
+        });
+
         it('should fall back to iconName when theme does not contain the icon', () => {
             const block: ExportBlock = {
                 id: 'block-1',
