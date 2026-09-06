@@ -37,13 +37,14 @@ Available languages and their files:
 | `de` | German     | `messages.de.xlf`           |
 | `eo` | Esperanto  | `messages.eo.xlf`           |
 | `eu` | Basque     | `messages.eu.xlf`           |
+| `fr` | French     | `messages.fr.xlf`           |
 | `gl` | Galician   | `messages.gl.xlf`           |
 | `it` | Italian    | `messages.it.xlf`           |
 | `pt` | Portuguese | `messages.pt.xlf`           |
 | `ro` | Romanian   | `messages.ro.xlf`           |
 
 Accept any of:
-- `"all"` → all ten languages above
+- `"all"` → all eleven languages above
 - `"all except es"` (or any variant) → the list minus the excluded ones
 - An explicit list: `"es, ca, va"`
 
@@ -268,7 +269,7 @@ After applying all translations:
 
 ```powershell
 # Count remaining empty targets in each processed file
-$langs = @('es','ca','va','de','eo','eu','gl','it','pt','ro')
+$langs = @('es','ca','va','de','eo','eu','fr','gl','it','pt','ro')
 foreach ($lang in $langs) {
     $file = "C:\...\translations\messages.$lang.xlf"
     $count = (Select-String -Path $file -Pattern '<target></target>' -SimpleMatch).Count
