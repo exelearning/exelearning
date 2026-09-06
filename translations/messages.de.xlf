@@ -883,43 +883,43 @@
       </trans-unit>
       <trans-unit id="QCl9NKh" resname="Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.">
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
-        <target>~Carnivores#Lion#Tiger#Eagle#Shark  </target>
+        <target>~Geben Sie 4 Elemente für jede dieser Gruppen an: Fleischfresser, 0, und Pflanzenfresser, 1. Trennen Sie die Gruppennummer und das Element mit dem Symbol #.</target>
       </trans-unit>
       <trans-unit id="xHJHwx9" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target>~0#Rock#Water#Cloud#Sand  </target>
+        <target>~Generieren Sie 10 Wahr-oder-Falsch-Fragen. Jede Frage muss die Lösung (0 = falsch, 1 = wahr), einen Vorschlag und ein Feedback enthalten, alles durch # getrennt. Außerdem darf das Feedback nicht ausdrücklich angeben, ob die Antwort richtig oder falsch ist</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
-        <target>~Herbivores#Deer#Rabbit#Cow#Elephant  </target>
+        <target>~Generieren Sie 10 Fragen. Die 'Lösung' kann 0/1 für Wahr/Falsch, 0-3 für Einzelauswahl oder A-D (oder Kombinationen) für Mehrfachauswahl sein. Geben Sie anschließend die Frage und die Antwortoptionen (2 bis 4) an, alles durch '#' getrennt.</target>
       </trans-unit>
       <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
-        <target>~</target>
+        <target>~Geben Sie nur eine geordnete Liste von Schritten oder Elementen an, jeweils durch '#' getrennt.</target>
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition</source>
-        <target>~1. True#Using visual cues can help improve memory.#Try associating images with information.#Visual aids can enhance learning and recall.  </target>
+        <target>~Generieren Sie 10 Wörter gefolgt von ihren Definitionen, getrennt durch #. Fügen Sie das # Zeichen weder im Wort noch in der Definition ein</target>
       </trans-unit>
       <trans-unit id="wmZAGDi" resname="EdiCuaTeX - LaTeX Equation Editor">
         <source>EdiCuaTeX - LaTeX Equation Editor</source>
-        <target>~0. False#All questions should have only one correct answer.#Ensure questions are clear and unambiguous.#Multiple correct answers can confuse users.  </target>
+        <target>~EdiCuaTeX - LaTeX-Gleichungseditor</target>
       </trans-unit>
       <trans-unit id="3xt7SvG" resname="Educational Applications Laboratory">
         <source>Educational Applications Laboratory</source>
-        <target>~1. True#Adding images to the interface can improve user experience.#Use relevant icons to guide users.#Visual elements can make navigation easier.  </target>
+        <target>~Labor für Bildungsanwendungen</target>
       </trans-unit>
       <trans-unit id="oTIGqj3" resname="Application created by Juan José de Haro">
         <source>Application created by Juan José de Haro</source>
-        <target>~0. False#Complex language always improves understanding.#Simplify language for clarity.#Overly technical terms can hinder comprehension.  </target>
+        <target>~Anwendung erstellt von Juan José de Haro</target>
       </trans-unit>
       <trans-unit id="BSDT0ZB" resname="Could not get code from parent dialog:">
         <source>Could not get code from parent dialog:</source>
-        <target>~1. True#Consistent layout helps users learn the application faster.#Maintain uniform design elements.#Consistency reduces cognitive load.  </target>
+        <target>~Code konnte nicht aus dem übergeordneten Dialog abgerufen werden:</target>
       </trans-unit>
       <trans-unit id="7WKfC9x" resname="Recent">
         <source>Recent</source>
-        <target>~0. False#More options always mean better usability.#Limit choices to avoid overwhelming users.#Too many options can cause confusion.  </target>
+        <target>~Zuletzt verwendet</target>
       </trans-unit>
       <trans-unit id="vMqqN1e" resname="Error loading menu">
         <source>Error loading menu</source>
