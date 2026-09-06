@@ -165,6 +165,35 @@ describe('Update Licenses Command', () => {
             expect(extractCopyrightFromLicense(content)).toBeNull();
         });
 
+        it('should ignore the Apache-2.0 permission to add your own copyright statement', () => {
+            // Section 4(d) of the verbatim text. Blocking the section-2 wording alone left this
+            // one, and it is what pdfjs-dist, @material-symbols/svg-400 and @mathjax/src were
+            // still being attributed to ("statement to Your modifications and").
+            const content = [
+                '      (d) If the Work includes a "NOTICE" text file as part of its',
+                '          distribution, then any Derivative Works that You distribute must',
+                '',
+                '      You may add Your own copyright statement to Your modifications and',
+                '      may provide additional or different license terms and conditions',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should ignore an MIT template whose holder was never filled in', () => {
+            // Shipped exactly like this by @peculiar/asn1-schema and webcrypto-core. The year
+            // is there and the holder is not, so a separator that can cross a newline reaches
+            // into the next paragraph and attributes the package to the permission grant.
+            const content = [
+                'MIT License',
+                '',
+                'Copyright (c) 2020 ',
+                '',
+                'Permission is hereby granted, free of charge, to any person obtaining a copy',
+                'of this software and associated documentation files (the "Software"), to deal',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
         it('should ignore the MIT liability clause naming the copyright holders', () => {
             // `holder\b` does not match the plural the MIT text actually uses.
             const content = [

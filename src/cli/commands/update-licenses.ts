@@ -164,14 +164,12 @@ const BOILERPLATE_COPYRIGHT = /^(?:(?:owner|holder|notice)s?\b|\[)/i;
  * Boilerplate that only a year-less capture can start with.
  *
  * "Grant of Copyright License. Subject to the terms and conditions of" is Apache-2.0 section
- * 2, and it is what `pdfjs-dist`, `@material-symbols/svg-400` and `@mathjax/src` would each be
- * attributed to without this. It is kept apart from BOILERPLATE_COPYRIGHT because a holder
- * legitimately *can* be named "License ..." after a year, and no license template writes a
- * four-digit year in front of its own prose -- so the word is only evidence of boilerplate
- * where no year was matched.
+ * 2. It is kept apart from BOILERPLATE_COPYRIGHT because a holder legitimately *can* be named
+ * "License ..." after a year, and no license template writes a four-digit year in front of its
+ * own prose -- so the word is only evidence of boilerplate where no year was matched.
  *
- * Both guards matter for release metadata: generation and `--check` run the same extraction,
- * so a wrong holder is not just written, it is then confirmed as correct forever.
+ * This is a backstop, not the main defence: the year-less pattern is anchored to the start of
+ * a line, which is what actually rules out license prose (see `extractCopyrightFromLicense`).
  */
 const BOILERPLATE_YEARLESS_COPYRIGHT = /^(?:licen[sc]es?|licensors?)\b/i;
 
@@ -188,20 +186,37 @@ export function extractCopyrightFromLicense(content: string): string | null {
         String.raw`(?:\s*[-\u2013\u2014]\s*(?:${singleYear}|present))?`;
     // What separates the year from the holder. `Copyright (c) 2015, Scott Motte` is the most
     // common BSD/MIT form and `2023. Foo` is not rare; without these the notice falls through
-    // to the generic `Copyright (.+)` pattern, which keeps the year as part of the name.
-    const yearSeparator = String.raw`\s*[,.]?\s+`;
+    // to the year-less pattern, which keeps the year as part of the name.
+    //
+    // `[^\S\n]` and not `\s`: a notice lives on one line. With `\s+` here, the MIT template
+    // left unfilled -- `Copyright (c) 2020 ` with no holder, as `@peculiar/asn1-schema` and
+    // `webcrypto-core` ship it -- matched across the blank line and attributed the package to
+    // "Permission is hereby granted, free of charge, to any person obtaining a copy".
+    const inlineSpace = String.raw`[^\S\n]`;
+    const yearSeparator = String.raw`${inlineSpace}*[,.]?${inlineSpace}+`;
     // Common copyright patterns - capture everything until newline, period, or end.
     // Global on purpose: an Apache-2.0 LICENSE states the boilerplate definition of the
     // "copyright owner" long before it names the real holder, so a rejected match must not
     // end the search for that pattern - the notice that matters is further down the file.
     const yearAnchored = [
-        new RegExp(String.raw`Copyright\s*(?:\(c\)|©)?\s*${year}${yearSeparator}(.+)`, 'gi'),
-        new RegExp(String.raw`\(c\)\s*${year}${yearSeparator}(.+)`, 'gi'),
-        new RegExp(String.raw`©\s*${year}${yearSeparator}(.+)`, 'gi'),
+        new RegExp(String.raw`Copyright${inlineSpace}*(?:\(c\)|©)?${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
+        new RegExp(String.raw`\(c\)${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
+        new RegExp(String.raw`©${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
     ];
-    // Last resort for a notice that carries no year, and the only pattern the license prose
-    // can reach: it takes the extra BOILERPLATE_YEARLESS_COPYRIGHT guard on top.
-    const yearLess = /Copyright\s+(.+)/gi;
+    // Last resort for a notice that carries no year.
+    //
+    // Anchored to the start of a line, because that is what separates a notice from prose that
+    // merely contains the word. Enumerating the prose does not work -- Apache-2.0 alone says
+    // "the copyright owner or entity" (definitions), "Grant of Copyright License. Subject to"
+    // (section 2) and "You may add Your own copyright statement to Your modifications"
+    // (section 4d), and the MIT text says "COPYRIGHT HOLDERS BE LIABLE"; every one of those
+    // sits mid-sentence, while a real notice starts its own line. Section 4d is how
+    // `pdfjs-dist`, `@material-symbols/svg-400` and `@mathjax/src` were still being attributed
+    // to "statement to Your modifications and" after the section-2 wording was blocked.
+    //
+    // It matters for release metadata: generation and `--check` run the same extraction, so a
+    // wrong holder is not just written, it is then confirmed as correct forever.
+    const yearLess = /^[^\S\n]*Copyright[^\S\n]+(.+)$/gim;
 
     for (const pattern of [...yearAnchored, yearLess]) {
         for (const match of content.matchAll(pattern)) {
@@ -224,7 +239,9 @@ export function extractCopyrightFromLicense(content: string): string | null {
                 .trim();
             // Remove trailing punctuation
             author = author.replace(/[,.:;]+$/, '').trim();
-            if (author) {
+            // A holder has a name in it. What is left over otherwise is a stray year or a
+            // symbol from a template nobody filled in, and "2020" is not an attribution.
+            if (author && /\p{L}/u.test(author)) {
                 return author;
             }
         }
