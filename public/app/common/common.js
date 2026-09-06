@@ -1322,7 +1322,16 @@ var $exeDevices = {
                                 // required: it must never hold the page at
                                 // "incomplete".
                                 completionRequired: evaluable,
-                                weight: Number.isNaN(weight) || weight <= 0 ? 1 : weight,
+                                // No usable weight means 100, the same default
+                                // the editor writes into the form. It used to
+                                // be 1, and 28 of the 35 game iDevices never
+                                // default `weighted` when they load for
+                                // playback — so an activity that had never been
+                                // through the editor weighed a hundredth of one
+                                // that had, on the same page. Merely opening and
+                                // saving an iDevice re-weighted the page without
+                                // the author changing anything.
+                                weight: Number.isNaN(weight) || weight <= 0 ? 100 : weight,
                                 minimumScore: 0,
                                 maximumScore: 100,
                             },
@@ -1533,7 +1542,15 @@ var $exeDevices = {
                     keys.forEach(key => {
                         const activity = lmsData[key] || {};
                         const score = clamp(parseFloat(activity.score) || 0, 0, 100);
-                        const weight = clamp(parseFloat(activity.weighted) || 1, 1, 100);
+                        // Same rule as reportActivity: no usable weight is 100,
+                        // not 1. The two aggregations must stay arithmetically
+                        // identical, so their defaults cannot differ either.
+                        const storedWeight = parseFloat(activity.weighted);
+                        const weight = clamp(
+                            Number.isNaN(storedWeight) || storedWeight <= 0 ? 100 : storedWeight,
+                            1,
+                            100
+                        );
                         sumWeighted += score * weight;
                         sumWeights += weight;
                     });

@@ -2058,7 +2058,7 @@ describe('common.js $exeDevices', () => {
 
       expect(registry.register).toHaveBeenCalledWith(
         'id-2',
-        expect.objectContaining({ evaluable: false, completionRequired: false, weight: 1 })
+        expect.objectContaining({ evaluable: false, completionRequired: false, weight: 100 })
       );
     });
 
@@ -2090,12 +2090,67 @@ describe('common.js $exeDevices', () => {
       expect(getScorm().getFinalScore({ 1: { score: 80, weighted: 1 } })).toBe(0);
     });
 
-    it('reportActivity falls back to weight 1 for a missing or invalid weight', () => {
+    // The legacy aggregation (SCORM 2004 and pre-rewrite packages, where there
+    // is no registry) must stay arithmetically identical to the registry's, so
+    // its default for a missing weight has to be 100 as well.
+    describe('the legacy aggregation, with no registry', () => {
+      let previousGetRegistry;
+
+      beforeEach(() => {
+        previousGetRegistry = getScorm().getActivityRegistry;
+        getScorm().getActivityRegistry = () => null;
+      });
+
+      // Restored, or every later test in the file would run without a registry.
+      afterEach(() => {
+        getScorm().getActivityRegistry = previousGetRegistry;
+      });
+
+      it('weighs an entry with no stored weight the same as an explicit 100', () => {
+        const missing = getScorm().getFinalScore({
+          1: { score: 100 },
+          2: { score: 0, weighted: 100 },
+        });
+
+        expect(missing).toBe(50);
+        expect(missing).toBe(
+          getScorm().getFinalScore({
+            1: { score: 100, weighted: 100 },
+            2: { score: 0, weighted: 100 },
+          })
+        );
+      });
+
+      it('still honours a weight the author chose', () => {
+        expect(
+          getScorm().getFinalScore({
+            1: { score: 100, weighted: 1 },
+            2: { score: 0, weighted: 100 },
+          })
+        ).toBe(0.99);
+      });
+    });
+
+    // 100, not 1: it is the default the editor writes, and 28 of the 35 game
+    // iDevices never set `weighted` when they load for playback. At 1, an
+    // activity that had never been through the editor weighed a hundredth of
+    // one that had, on the same page.
+    it('reportActivity falls back to weight 100 for a missing or invalid weight', () => {
       getScorm().reportActivity({ ideviceId: 'id-3', isScorm: 1, weighted: 'x' });
       getScorm().reportActivity({ ideviceId: 'id-4', isScorm: 1, weighted: -2 });
+      getScorm().reportActivity({ ideviceId: 'id-5', isScorm: 1 });
 
-      expect(registry.register).toHaveBeenNthCalledWith(1, 'id-3', expect.objectContaining({ weight: 1 }));
-      expect(registry.register).toHaveBeenNthCalledWith(2, 'id-4', expect.objectContaining({ weight: 1 }));
+      expect(registry.register).toHaveBeenNthCalledWith(1, 'id-3', expect.objectContaining({ weight: 100 }));
+      expect(registry.register).toHaveBeenNthCalledWith(2, 'id-4', expect.objectContaining({ weight: 100 }));
+      expect(registry.register).toHaveBeenNthCalledWith(3, 'id-5', expect.objectContaining({ weight: 100 }));
+    });
+
+    it('reportActivity keeps a weight the author actually chose', () => {
+      getScorm().reportActivity({ ideviceId: 'id-6', isScorm: 1, weighted: 1 });
+      getScorm().reportActivity({ ideviceId: 'id-7', isScorm: 1, weighted: 40 });
+
+      expect(registry.register).toHaveBeenNthCalledWith(1, 'id-6', expect.objectContaining({ weight: 1 }));
+      expect(registry.register).toHaveBeenNthCalledWith(2, 'id-7', expect.objectContaining({ weight: 40 }));
     });
 
     it('reportActivity passes the legacy page position through for migration claims', () => {
