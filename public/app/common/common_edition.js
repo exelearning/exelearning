@@ -1587,6 +1587,7 @@ var $exeDevicesEdition = {
                         onSelect: function(result) {
                             $input.val(result.assetUrl);
                             $input.data('blobUrl', result.blobUrl);
+                            $exeDevicesEdition.iDevice.filePicker.seedDeclaredTargets($input, $button, result.asset);
                             $input.trigger('change');
                         }
                     });
@@ -1594,6 +1595,45 @@ var $exeDevicesEdition = {
 
                 // Initialize recorder controls for fields marked with data-voice-recorder.
                 $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
+            },
+            /**
+             * Seed edition fields from the centralized File Manager metadata of the
+             * asset the user just picked. Opt-in: the picker input (or its generated
+             * button) declares a CSS selector in data-author-target / data-license-target.
+             * Only EMPTY targets are filled — a value the user already typed is never
+             * overwritten (same contract as image-gallery's seedAttributionFromAsset) —
+             * and alternative-text fields are never touched (alt is per-instance by
+             * design). Targets resolve at selection time, scoped to the picker's
+             * .idevice_node first and the document as fallback, so rows re-rendered by
+             * the games keep working; a declared target that no longer resolves is a
+             * silent no-op.
+             * @param {jQuery} $input - the picker text input
+             * @param {jQuery} $button - the generated "Select a file" button
+             * @param {Object} asset - centralized asset metadata ({ author, license, ... })
+             */
+            seedDeclaredTargets: function ($input, $button, asset) {
+                if (!asset) return;
+
+                var resolveTarget = function (selector) {
+                    if (!selector) return $();
+                    var $scope = $input.closest('.idevice_node');
+                    var $target = $scope.length ? $scope.find(selector) : $();
+                    if (!$target.length) $target = $(selector);
+                    return $target.first();
+                };
+
+                var fill = function (attr, value) {
+                    var selector = $input.attr(attr) || ($button && $button.attr(attr));
+                    if (!selector || !value) return;
+                    var $target = resolveTarget(selector);
+                    if (!$target.length) return;
+                    var current = $target.val();
+                    if (current != null && String(current).trim() !== '') return;
+                    $target.val(value).trigger('change');
+                };
+
+                fill('data-author-target', asset.author);
+                fill('data-license-target', asset.license);
             },
             openFilePicker: function (e) {
                 // Legacy fallback - should not be called anymore

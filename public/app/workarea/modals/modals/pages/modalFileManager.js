@@ -1,4 +1,7 @@
 import Modal from '../modal.js';
+import { getLicenseOptions } from '../../../../common/licenseOptions.js';
+import { buildFigureCaption } from '../../../../common/figureCaption.js';
+import { debounce } from '../../../../search/SearchEngine.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -42,6 +45,13 @@ export default class ModalFilemanager extends Modal {
         this.currentPage = 1;
         this.itemsPerPage = 50;
 
+        // Sidebar state: active tab (metadata | details | usage), whether the large
+        // preview is expanded, and the asset currently shown (to tell a fresh
+        // selection apart from a remote refresh of the same asset).
+        this.activeTab = 'metadata';
+        this.previewOpen = false;
+        this._sidebarAssetId = null;
+
         // DOM references (set in initElements)
         this.grid = null;
         this.listTable = null;
@@ -76,6 +86,7 @@ export default class ModalFilemanager extends Modal {
         this.listTbody = this.listTable?.querySelector('tbody');
         this.emptyState = this.modalElement.querySelector('.media-library-empty');
         this.sidebar = this.modalElement.querySelector('.media-library-sidebar');
+        this.sheetCloseBtn = this.modalElement.querySelector('.media-library-sheet-close');
         this.sidebarEmpty = this.modalElement.querySelector('.media-library-sidebar-empty');
         this.sidebarContent = this.modalElement.querySelector('.media-library-sidebar-content');
         this.uploadBtn = this.modalElement.querySelector('.media-library-upload-btn');
@@ -94,9 +105,13 @@ export default class ModalFilemanager extends Modal {
         this.moreBtn = footer?.querySelector('.media-library-more-btn');
 
         // More options dropdown items
+        this.replaceBtn = footer?.querySelector('.media-library-replace-btn');
         this.extractBtn = footer?.querySelector('.media-library-extract-btn');
         this.dropdownCopyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
         this.fullSizeBtn = footer?.querySelector('.media-library-fullsize-btn');
+
+        // Hidden input used by the "Replace file" action
+        this.replaceInput = this.modalElement.querySelector('.media-library-replace-input');
 
         // Mobile-only collapsed actions dropdown
         this.mobileActionsWrapper = footer?.querySelector('.media-library-mobile-actions');
@@ -117,6 +132,12 @@ export default class ModalFilemanager extends Modal {
                 if (!item) return;
                 event.preventDefault();
                 if (item.classList.contains('disabled') || item.classList.contains('d-none')) return;
+                // "Edit metadata" has no footer-button equivalent: open the metadata
+                // section (and the bottom sheet on mobile) and focus the first field.
+                if (item.dataset.mobileAction === 'edit-metadata') {
+                    this.openMetadataEditor();
+                    return;
+                }
                 const target = this.mobileActionTargets[item.dataset.mobileAction];
                 if (target && !target.disabled) {
                     target.click();
@@ -133,8 +154,20 @@ export default class ModalFilemanager extends Modal {
         this.viewBtns = this.modalElement.querySelectorAll('.media-library-view-btn');
         this.sortSelect = this.modalElement.querySelector('.media-library-sort');
         this.filterSelect = this.modalElement.querySelector('.media-library-filter');
-        this.showRefCountCheckbox = this.modalElement.querySelector('.media-library-show-refcount');
-        this.showRefCount = false; // Badge visibility state (off by default)
+
+        // Sidebar file header (compact thumbnail + name + technical summary)
+        this.headerThumbImg = this.modalElement.querySelector('.media-library-header-thumb-img');
+        this.headerThumbIcon = this.modalElement.querySelector('.media-library-header-thumb-icon');
+        this.headerName = this.modalElement.querySelector('.media-library-header-name');
+        this.headerMeta = this.modalElement.querySelector('.media-library-header-meta');
+        this.previewToggle = this.modalElement.querySelector('.media-library-preview-toggle');
+        this.previewWrap = this.modalElement.querySelector('.media-library-preview-wrap');
+
+        // Sidebar tabs (Metadata / Details / Usage)
+        this.sidebarTabs = this.modalElement.querySelector('.media-library-tabs');
+        this.tabButtons = this.modalElement.querySelectorAll('.media-library-tab');
+        this.tabPanes = this.modalElement.querySelectorAll('.media-library-tab-pane');
+        this.usageTabCount = this.modalElement.querySelector('.media-library-usage-tab-count');
 
         // Preview elements
         this.previewImg = this.modalElement.querySelector('.media-library-preview-img');
@@ -189,21 +222,89 @@ export default class ModalFilemanager extends Modal {
         this.dimensionsRow = this.modalElement.querySelector('.media-library-dimensions-row');
         this.dimensionsSpan = this.modalElement.querySelector('.media-library-dimensions');
         this.dateSpan = this.modalElement.querySelector('.media-library-date');
-        this.usageRow = this.modalElement.querySelector('.media-library-usage-row');
-        this.usageSpan = this.modalElement.querySelector('.media-library-usage');
+        this.usageLocationsRow = this.modalElement.querySelector('.media-library-usage-locations-row');
+        this.usageLocations = this.modalElement.querySelector('.media-library-usage-locations');
         this.urlInput = this.modalElement.querySelector('.media-library-url');
         this.locationRow = this.modalElement.querySelector('.media-library-location-row');
         this.locationValue = this.modalElement.querySelector('.media-library-location-value');
         this.openFolderBtn = this.modalElement.querySelector('.media-library-open-folder-btn');
+        this.replaceInlineBtn = this.modalElement.querySelector('.media-library-replace-inline-btn');
+        this.replaceHint = this.modalElement.querySelector('.media-library-replace-hint');
+        this.usageIntro = this.modalElement.querySelector('.media-library-usage-intro');
 
         // List view location column header (for toggling visibility in search mode)
         this.locationColumnHeader = this.listTable?.querySelector('th.col-location');
+
+        // Editable centralized metadata (images only)
+        this.editMetadataForm = this.modalElement.querySelector('.media-library-edit-metadata');
+        this.metaDescriptionInput = this.modalElement.querySelector('.media-library-meta-description');
+        this.metaTitleInput = this.modalElement.querySelector('.media-library-meta-title');
+        this.metaLicenseSelect = this.modalElement.querySelector('.media-library-meta-license');
+        this.metaAuthorInput = this.modalElement.querySelector('.media-library-meta-author');
+        this.metaAuthorUrlInput = this.modalElement.querySelector('.media-library-meta-author-url');
+        this.metaSourceUrlInput = this.modalElement.querySelector('.media-library-meta-source-url');
+        this.metaStatus = this.modalElement.querySelector('.media-library-meta-status');
+        // Live "resulting caption" preview fed by the shared figure-caption builder.
+        this.captionPreviewBox = this.modalElement.querySelector('.media-library-caption-preview');
+        this.captionPreviewText = this.modalElement.querySelector('.media-library-caption-preview-text');
+
+        // Autosave state: fields edited since the last populate (field-level updates).
+        this._metaDirty = new Set();
+        // Id of the asset currently populated in the form (to distinguish a fresh
+        // selection — full repopulate — from a remote refresh — preserve pending edits).
+        this._metaPopulatedId = null;
+        // Debounced autosave; flushes pending field changes after the user pauses typing.
+        this.scheduleMetadataSave = debounce(() => {
+            this.flushPendingMetadata();
+        }, 600);
+
+        this.populateLicenseOptions();
+    }
+
+    /**
+     * Map of editable metadata field key -> input element. Used to wire autosave
+     * events and to collect the patch of changed fields.
+     * @returns {Array<[string, HTMLElement]>}
+     */
+    getMetadataFieldEntries() {
+        return [
+            ['title', this.metaTitleInput],
+            ['description', this.metaDescriptionInput],
+            ['author', this.metaAuthorInput],
+            ['authorUrl', this.metaAuthorUrlInput],
+            ['sourceUrl', this.metaSourceUrlInput],
+        ];
+    }
+
+    /**
+     * Populate the license <select> from the shared license vocabulary
+     * (reuses the existing LICENSE_REGISTRY labels; introduces no new registry).
+     */
+    populateLicenseOptions() {
+        if (!this.metaLicenseSelect) return;
+        this.metaLicenseSelect.innerHTML = '';
+        for (const { value, label } of getLicenseOptions()) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = label;
+            this.metaLicenseSelect.appendChild(option);
+        }
     }
 
     /**
      * Set up event handlers
      */
     initBehaviour() {
+        // Centralized metadata autosaves: there is no explicit "Save" button.
+        this.bindMetadataInputs();
+
+        // Mobile bottom sheet: dismiss the asset detail panel.
+        if (this.sheetCloseBtn) {
+            this.sheetCloseBtn.addEventListener('click', () => {
+                this.sidebar?.classList.remove('is-open');
+            });
+        }
+
         // Upload button click
         if (this.uploadBtn && this.uploadInput) {
             this.uploadBtn.addEventListener('click', () => {
@@ -310,11 +411,30 @@ export default class ModalFilemanager extends Modal {
             });
         }
 
-        // Show reference count checkbox
-        if (this.showRefCountCheckbox) {
-            this.showRefCountCheckbox.addEventListener('change', (e) => {
-                this.showRefCount = e.target.checked;
-                this.applyFiltersAndRender();
+        // Sidebar tabs (Metadata / Details / Usage)
+        if (this.tabButtons) {
+            this.tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.mediaTab;
+                    if (tab) this.setActiveTab(tab);
+                });
+            });
+        }
+
+        // Expand/collapse the large preview from the sidebar file header
+        if (this.previewToggle) {
+            this.previewToggle.addEventListener('click', () => {
+                this.setPreviewOpen(!this.previewOpen);
+            });
+        }
+
+        // Inline "Replace file…" button in the Details tab (same flow as the
+        // dropdown action: preserves asset identity, references and metadata).
+        if (this.replaceInlineBtn) {
+            this.replaceInlineBtn.addEventListener('click', () => {
+                if (this.replaceInput && this.selectedAsset) {
+                    this.replaceInput.click();
+                }
             });
         }
 
@@ -389,6 +509,25 @@ export default class ModalFilemanager extends Modal {
         if (this.moveBtn) {
             this.moveBtn.addEventListener('click', () => {
                 this.showMoveDialog();
+            });
+        }
+
+        // Replace file action (preserves asset identity + references + metadata)
+        if (this.replaceBtn) {
+            this.replaceBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (this.replaceInput && this.selectedAsset) {
+                    this.replaceInput.click();
+                }
+            });
+        }
+        if (this.replaceInput) {
+            this.replaceInput.addEventListener('change', async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                    await this.replaceSelectedAsset(file);
+                }
+                this.replaceInput.value = '';
             });
         }
 
@@ -497,6 +636,126 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Activate one of the sidebar tabs (metadata | details | usage) and reveal its
+     * pane. `remember` distinguishes a user choice (persisted for the session) from
+     * an internal forcing (e.g. folders only have details).
+     * @param {'metadata'|'details'|'usage'} tab
+     * @param {boolean} remember
+     */
+    setActiveTab(tab, remember = true) {
+        if (remember) this.activeTab = tab;
+        if (this.tabButtons) {
+            this.tabButtons.forEach(btn => {
+                const active = btn.dataset.mediaTab === tab;
+                btn.classList.toggle('active', active);
+                btn.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+        }
+        if (this.tabPanes) {
+            this.tabPanes.forEach(pane => {
+                pane.classList.toggle('active', pane.dataset.mediaPane === tab);
+            });
+        }
+    }
+
+    /**
+     * Expand or collapse the large preview under the sidebar file header.
+     * @param {boolean} open
+     */
+    setPreviewOpen(open) {
+        this.previewOpen = open;
+        if (this.previewWrap) this.previewWrap.hidden = !open;
+        if (this.previewToggle) {
+            this.previewToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            const icon = this.previewToggle.querySelector('.exe-icon');
+            if (icon) icon.textContent = open ? 'close_fullscreen' : 'open_in_full';
+        }
+    }
+
+    /**
+     * Populate the compact sidebar file header: thumbnail (image or type icon),
+     * name and one-line technical summary.
+     * @param {{name: string, metaLine: string, thumbUrl?: string|null, icon?: string}} info
+     */
+    updateSidebarHeader({ name, metaLine, thumbUrl = null, icon = 'description' }) {
+        if (this.headerName) {
+            this.headerName.textContent = name;
+            this.headerName.title = name;
+        }
+        if (this.headerMeta) this.headerMeta.textContent = metaLine;
+        if (this.headerThumbImg) {
+            if (thumbUrl) {
+                this.headerThumbImg.src = thumbUrl;
+                this.headerThumbImg.style.display = 'block';
+            } else {
+                this.headerThumbImg.removeAttribute('src');
+                this.headerThumbImg.style.display = 'none';
+            }
+        }
+        if (this.headerThumbIcon) {
+            this.headerThumbIcon.style.display = thumbUrl ? 'none' : '';
+            this.headerThumbIcon.textContent = icon;
+        }
+    }
+
+    /**
+     * Adapt the sidebar to what is selected. Files get the full tab set (restoring
+     * the user's last active tab); folders and multi-selections only have technical
+     * details, so the tab bar is hidden and the details pane is forced.
+     * @param {'file'|'folder'|'multi'} mode
+     */
+    setSidebarMode(mode) {
+        const isFile = mode === 'file';
+        if (this.sidebarTabs) this.sidebarTabs.style.display = isFile ? '' : 'none';
+        this.setActiveTab(isFile ? this.activeTab : 'details', false);
+    }
+
+    /**
+     * Show or hide the inline "Replace file…" action (and its hint) in the Details
+     * tab. Only single selected files can be replaced.
+     * @param {boolean} visible
+     */
+    setReplaceInlineVisible(visible) {
+        if (this.replaceInlineBtn) this.replaceInlineBtn.style.display = visible ? '' : 'none';
+        if (this.replaceHint) this.replaceHint.style.display = visible ? '' : 'none';
+    }
+
+    /**
+     * Human label for an asset's reference count ("Not used" / "1 use" / "N uses").
+     * @param {number} count
+     * @returns {string}
+     */
+    getUsageLabel(count) {
+        if (!count) return _('Not used');
+        if (count === 1) return _('1 use');
+        return _('%1 uses').replace('%1', count);
+    }
+
+    /**
+     * Rebuild the live "resulting caption" preview from the current form values via
+     * the shared figure-caption builder, so what the user sees here is exactly the
+     * caption inserted images get in the authoring view and in exports.
+     */
+    updateCaptionPreview() {
+        if (!this.captionPreviewText) return;
+        const meta = {
+            title: (this.metaTitleInput?.value || '').trim(),
+            author: (this.metaAuthorInput?.value || '').trim(),
+            authorUrl: (this.metaAuthorUrlInput?.value || '').trim(),
+            sourceUrl: (this.metaSourceUrlInput?.value || '').trim(),
+            license: this.metaLicenseSelect?.value || '',
+        };
+        const { caption } = buildFigureCaption(meta, {});
+        if (caption) {
+            this.captionPreviewText.innerHTML = caption;
+            this.captionPreviewBox?.classList.remove('is-empty');
+        } else {
+            this.captionPreviewText.textContent = _('No metadata yet — the caption will be empty.');
+            this.captionPreviewBox?.classList.add('is-empty');
+        }
+    }
+
+    /**
      * Show the modal
      * @param {Object} data - Optional configuration
      * @param {Function} data.onSelect - Callback when asset is inserted
@@ -534,11 +793,11 @@ export default class ModalFilemanager extends Modal {
                 this.initBehaviour();
             }
 
-            // Reset reference count toggle (off by default) - after initElements
-            this.showRefCount = false;
-            if (this.showRefCountCheckbox) {
-                this.showRefCountCheckbox.checked = false;
-            }
+            // Reset sidebar state (default tab, collapsed preview) - after initElements
+            this.activeTab = 'metadata';
+            this.setActiveTab('metadata');
+            this.setPreviewOpen(false);
+            this._sidebarAssetId = null;
 
             // Clear usage count cache so it's recalculated fresh
             this.assetUsageCounts.clear();
@@ -645,6 +904,9 @@ export default class ModalFilemanager extends Modal {
             this.assets = await this.assetManager.getProjectAssets();
             Logger.log(`[MediaLibrary] Loaded ${this.assets.length} assets`);
             this.currentPage = 1;
+            // Refresh usage counts once (single project traversal) so badges and the
+            // "sort by references" option are accurate and don't rescan per asset.
+            this.calculateAllAssetUsages();
             this.updateFilterOptions();
             this.loadFolderContents(this.currentPath);
         } catch (err) {
@@ -912,10 +1174,16 @@ export default class ModalFilemanager extends Modal {
                 const category = this.getAssetTypeCategory(asset.mime, asset.filename);
                 if (category !== this.typeFilter) return false;
             }
-            // Filter by search term
+            // Filter by search term across filename + all centralized metadata
+            // (image name/title, description, author, license) — case-insensitive.
             if (!searchTerm) return true;
-            const filename = (asset.filename || '').toLowerCase();
-            return filename.includes(searchTerm);
+            return [
+                asset.filename,
+                asset.title,
+                asset.description,
+                asset.author,
+                asset.license,
+            ].some(field => (field || '').toLowerCase().includes(searchTerm));
         });
 
         // Update file count
@@ -1006,6 +1274,14 @@ export default class ModalFilemanager extends Modal {
                     valA = (a.mime || '').toLowerCase();
                     valB = (b.mime || '').toLowerCase();
                     return valA.localeCompare(valB) * modifier;
+                case 'references':
+                    valA = this.getAssetUsageCount(a.id);
+                    valB = this.getAssetUsageCount(b.id);
+                    // Tie-break by filename so order is stable among equal usage counts
+                    if (valA === valB) {
+                        return (a.filename || '').toLowerCase().localeCompare((b.filename || '').toLowerCase());
+                    }
+                    return (valA - valB) * modifier;
                 default:
                     return 0;
             }
@@ -1191,10 +1467,16 @@ export default class ModalFilemanager extends Modal {
         item.dataset.folderName = folderName;
 
         item.innerHTML = `
-            <div class="media-thumbnail folder-thumbnail">
+            <div class="item-thumb folder-thumbnail">
                 <span class="exe-icon folder-icon">folder</span>
-                <span class="media-label">${this.escapeHtml(folderName)}</span>
+            </div>
+            <div class="item-info">
+                <span class="item-name text-truncate">${this.escapeHtml(folderName)}</span>
+                <span class="item-usage is-folder">${_('Folder')}</span>
             </div>`;
+        // Tooltip with the full name; set via DOM so quotes in folder names stay inert.
+        const folderNameSpan = item.querySelector('.item-name');
+        if (folderNameSpan) folderNameSpan.title = folderName;
 
         // Double-click to enter folder
         item.addEventListener('dblclick', () => {
@@ -1230,6 +1512,11 @@ export default class ModalFilemanager extends Modal {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
 
+        // Folders only have technical details: hide the tab bar, force the details pane
+        this.setSidebarMode('folder');
+        this._sidebarAssetId = null;
+        this.setPreviewOpen(false);
+
         // Hide all preview elements
         if (this.previewImg) this.previewImg.style.display = 'none';
         if (this.previewVideo) this.previewVideo.style.display = 'none';
@@ -1251,13 +1538,22 @@ export default class ModalFilemanager extends Modal {
             return path === folderPath || path.startsWith(folderPath + '/');
         }).length;
 
+        const itemsLabel = `${filesInFolder} ${_('items')}`;
+        this.updateSidebarHeader({
+            name: folderName,
+            metaLine: `${_('Folder')} · ${itemsLabel}`,
+            icon: 'folder',
+        });
+
         // Update metadata
         if (this.filenameSpan) this.filenameSpan.textContent = folderName;
         if (this.typeSpan) this.typeSpan.textContent = _('Folder');
-        if (this.sizeSpan) this.sizeSpan.textContent = `${filesInFolder} ${_('items')}`;
+        if (this.sizeSpan) this.sizeSpan.textContent = itemsLabel;
         if (this.dimensionsRow) this.dimensionsRow.style.display = 'none';
         if (this.dateSpan) this.dateSpan.textContent = '-';
         if (this.urlInput) this.urlInput.value = folderPath;
+        if (this.editMetadataForm) this.editMetadataForm.style.display = 'none';
+        this.setReplaceInlineVisible(false);
 
         // Store selected folder info for operations
         this.selectedFolder = folderName;
@@ -1415,16 +1711,12 @@ export default class ModalFilemanager extends Modal {
         }
         row.appendChild(thumbCell);
 
-        // Name cell (with optional usage badge)
+        // Name cell with the always-visible usage label ("Not used" / "N uses")
         const nameCell = document.createElement('td');
         nameCell.className = 'col-name';
-        if (this.showRefCount) {
-            const usageCount = this.getAssetUsageCount(asset.id);
-            const badgeClass = usageCount > 0 ? 'bg-primary' : 'bg-danger';
-            nameCell.innerHTML = `<span class="filename">${this.escapeHtml(asset.filename || _('Unknown'))}</span> <span class="badge rounded-pill ${badgeClass} badge-sm">${usageCount}</span>`;
-        } else {
-            nameCell.textContent = asset.filename || _('Unknown');
-        }
+        const usageCount = this.getAssetUsageCount(asset.id);
+        const usageClass = usageCount > 0 ? 'is-used' : 'is-unused';
+        nameCell.innerHTML = `<span class="filename">${this.escapeHtml(asset.filename || _('Unknown'))}</span> <span class="item-usage ${usageClass}">${this.escapeHtml(this.getUsageLabel(usageCount))}</span>`;
         row.appendChild(nameCell);
 
         // Location cell (only visible in search mode)
@@ -1806,14 +2098,6 @@ export default class ModalFilemanager extends Modal {
             this.assetManager.reverseBlobCache.set(blobUrl, asset.id);
         }
 
-        // Get usage count badge (only when showRefCount is enabled)
-        let usageBadge = '';
-        if (this.showRefCount) {
-            const usageCount = this.getAssetUsageCount(asset.id);
-            const badgeClass = usageCount > 0 ? 'bg-primary' : 'bg-danger';
-            usageBadge = `<span class="position-absolute top-0 end-0 badge rounded-pill ${badgeClass} m-2 shadow-sm">${usageCount}</span>`;
-        }
-
         // Path badge (only in search mode)
         let pathBadgeHtml = '';
         if (this.isSearchMode) {
@@ -1827,46 +2111,37 @@ export default class ModalFilemanager extends Modal {
                 </span>`;
         }
 
-        // Determine content based on type
+        // Thumbnail area: image, or a type icon for other files.
         // Add data-asset-id for loading images so updateDomImagesForAsset can update them when asset arrives
         const loadingAttrs = isLoading ? ` data-asset-id="${asset.id}" data-asset-loading="true"` : '';
+        const displayName = this.escapeHtml(asset.filename || _('File'));
+        let thumbHtml;
         if (asset.mime && asset.mime.startsWith('image/')) {
-            if (this.isSearchMode) {
-                // In search mode: show image with info overlay
-                item.innerHTML = `
-                    <img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || _('Image'))}" loading="lazy"${loadingAttrs}>
-                    ${usageBadge}
-                    <div class="item-info">
-                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || _('Image'))}</span>
-                        ${pathBadgeHtml}
-                    </div>`;
-            } else {
-                // Normal mode: just image
-                item.innerHTML = `<img src="${blobUrl}" alt="${this.escapeHtml(asset.filename || _('Image'))}" loading="lazy"${loadingAttrs}>${usageBadge}`;
-            }
+            thumbHtml = `
+                <div class="item-thumb">
+                    <img src="${blobUrl}" alt="${displayName}" loading="lazy"${loadingAttrs}>
+                </div>`;
         } else {
-            // Use icon for non-image files
             const icon = this.getFileIcon(asset.mime, asset.filename);
-            if (this.isSearchMode) {
-                // In search mode: show with info overlay
-                item.innerHTML = `
-                    <div class="media-thumbnail file-thumbnail">
-                        <span class="exe-icon">${icon}</span>
-                    </div>
-                    ${usageBadge}
-                    <div class="item-info">
-                        <span class="item-name text-truncate">${this.escapeHtml(asset.filename || _('File'))}</span>
-                        ${pathBadgeHtml}
-                    </div>`;
-            } else {
-                // Normal mode: icon with label
-                item.innerHTML = `
-                    <div class="media-thumbnail file-thumbnail">
-                        <span class="exe-icon">${icon}</span>
-                        <span class="media-label">${this.escapeHtml(asset.filename || _('File'))}</span>
-                    </div>${usageBadge}`;
-            }
+            thumbHtml = `
+                <div class="item-thumb file-thumbnail">
+                    <span class="exe-icon">${icon}</span>
+                </div>`;
         }
+
+        // Card footer: name + always-visible usage label ("Not used" / "N uses").
+        const usageCount = this.getAssetUsageCount(asset.id);
+        const usageClass = usageCount > 0 ? 'is-used' : 'is-unused';
+        item.innerHTML = `
+            ${thumbHtml}
+            <div class="item-info">
+                <span class="item-name text-truncate">${displayName}</span>
+                <span class="item-usage ${usageClass}">${this.escapeHtml(this.getUsageLabel(usageCount))}</span>
+                ${pathBadgeHtml}
+            </div>`;
+        // Tooltip with the full name; set via DOM so quotes in filenames stay inert.
+        const nameSpan = item.querySelector('.item-name');
+        if (nameSpan) nameSpan.title = asset.filename || _('File');
 
         // Path badge click handler (navigate to folder)
         const pathBadge = item.querySelector('.item-path-badge');
@@ -2000,6 +2275,9 @@ export default class ModalFilemanager extends Modal {
     showSidebarEmpty() {
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'block';
         if (this.sidebarContent) this.sidebarContent.style.display = 'none';
+        this._sidebarAssetId = null;
+        // Close the mobile bottom sheet when nothing is selected.
+        this.sidebar?.classList.remove('is-open');
         this.updateButtonStates();
     }
 
@@ -2014,6 +2292,15 @@ export default class ModalFilemanager extends Modal {
 
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
+        // Slide up the mobile bottom sheet to reveal the selected asset's details.
+        this.sidebar?.classList.add('is-open');
+
+        // Full tab set for files; collapse the preview only on a fresh selection so a
+        // remote refresh of the same asset never folds what the user just expanded.
+        this.setSidebarMode('file');
+        const isNewSelection = this._sidebarAssetId !== asset.id;
+        this._sidebarAssetId = asset.id;
+        if (isNewSelection) this.setPreviewOpen(false);
 
         // Get blob URL (using synced method to ensure reverseBlobCache consistency)
         let blobUrl = this.assetManager.getBlobURLSynced?.(asset.id) ?? this.assetManager.blobURLCache.get(asset.id);
@@ -2095,22 +2382,36 @@ export default class ModalFilemanager extends Modal {
             }
         }
 
+        // Compact file header: thumbnail + name + "type · size" summary (the date
+        // does not fit here; it stays in the Details tab).
+        const sizeLabel = this.assetManager.formatFileSize(asset.size || 0);
+        const date = asset.createdAt ? new Date(asset.createdAt) : null;
+        const dateLabel = date ? date.toLocaleDateString() : _('Unknown');
+        this.updateSidebarHeader({
+            name: asset.filename || _('Unknown'),
+            metaLine: `${asset.mime || _('Unknown')} · ${sizeLabel}`,
+            thumbUrl: asset.mime && asset.mime.startsWith('image/') ? blobUrl : null,
+            icon: this.getFileIcon(asset.mime, asset.filename),
+        });
+
         // Update metadata
         if (this.filenameSpan) this.filenameSpan.textContent = asset.filename || _('Unknown');
         if (this.typeSpan) this.typeSpan.textContent = asset.mime || _('Unknown');
-        if (this.sizeSpan) this.sizeSpan.textContent = this.assetManager.formatFileSize(asset.size || 0);
+        if (this.sizeSpan) this.sizeSpan.textContent = sizeLabel;
 
         // Date
         if (this.dateSpan) {
-            const date = asset.createdAt ? new Date(asset.createdAt) : null;
-            this.dateSpan.textContent = date ? date.toLocaleDateString() : _('Unknown');
+            this.dateSpan.textContent = dateLabel;
         }
 
-        // Usage count
-        if (this.usageSpan) {
+        // Usage count in the Usage tab label — "Usage (n)"
+        if (this.usageTabCount) {
             const usageCount = this.getAssetUsageCount(asset.id);
-            this.usageSpan.textContent = _('%1 iDevices').replace('%1', usageCount);
+            this.usageTabCount.textContent = usageCount > 0 ? ` (${usageCount})` : '';
         }
+
+        // Usage locations ("Used in")
+        this.renderUsageLocations(asset);
 
         // URL
         if (this.urlInput) {
@@ -2144,8 +2445,194 @@ export default class ModalFilemanager extends Modal {
             this.locationValue.title = displayPath;
         }
 
+        // Single files can be replaced from the Details tab
+        this.setReplaceInlineVisible(true);
+
+        // Editable centralized metadata (images only)
+        this.populateEditMetadata(asset);
+
         // Update footer button states
         this.updateButtonStates();
+    }
+
+    /**
+     * Populate (and show) the editable metadata form for the selected asset.
+     * Available for every file type. Reads the asset's centralized metadata
+     * (image name/title, description, license, author, author link, image URL) from
+     * Yjs. Per-instance values (alt text, accessibility title) are NOT edited here —
+     * they live on each insertion.
+     *
+     * When this is a refresh of the asset already shown (e.g. a remote collaborator
+     * edited it), fields the local user is currently editing — focused or with a
+     * pending unsaved change — are preserved so their input is never clobbered.
+     * @param {Object} asset
+     */
+    populateEditMetadata(asset) {
+        if (!this.editMetadataForm) return;
+
+        // Metadata applies to all asset types.
+        this.editMetadataForm.style.display = 'block';
+
+        // Distinguish a fresh selection (full repopulate, reset dirty/status) from a
+        // refresh of the same asset (preserve fields the user is actively editing).
+        const sameAsset = this._metaPopulatedId === asset.id;
+        const preserve = sameAsset && this._metaDirty && this._metaDirty.size > 0;
+        if (!preserve) {
+            this._metaDirty = new Set();
+            this.setMetaStatus('', '');
+        }
+        this._metaPopulatedId = asset.id;
+
+        // Set a field unless the user is actively editing it (focused or dirty).
+        const setField = (key, el, value) => {
+            if (!el) return;
+            if (preserve && (this._metaDirty.has(key) || document.activeElement === el)) return;
+            el.value = value;
+        };
+        setField('title', this.metaTitleInput, asset.title || '');
+        setField('description', this.metaDescriptionInput, asset.description || '');
+        setField('author', this.metaAuthorInput, asset.author || '');
+        setField('authorUrl', this.metaAuthorUrlInput, asset.authorUrl || '');
+        setField('sourceUrl', this.metaSourceUrlInput, asset.sourceUrl || '');
+        if (this.metaLicenseSelect) {
+            const license = asset.license || '';
+            // If the stored license is not one of the known options, add it so the
+            // existing value is preserved and visible rather than silently reset.
+            const known = Array.from(this.metaLicenseSelect.options).some(o => o.value === license);
+            if (license && !known) {
+                const option = document.createElement('option');
+                option.value = license;
+                option.textContent = license;
+                this.metaLicenseSelect.appendChild(option);
+            }
+            if (!(preserve && (this._metaDirty.has('license') || document.activeElement === this.metaLicenseSelect))) {
+                this.metaLicenseSelect.value = license;
+            }
+        }
+
+        // Keep the live caption preview in sync with the populated values.
+        this.updateCaptionPreview();
+    }
+
+    /**
+     * Wire autosave for the editable metadata fields: typing schedules a debounced
+     * save, losing focus (blur) or changing the license flushes immediately. There
+     * is no explicit "Save" button — Insert is the single primary action.
+     */
+    bindMetadataInputs() {
+        for (const [key, el] of this.getMetadataFieldEntries()) {
+            if (!el) continue;
+            el.addEventListener('input', () => {
+                this._metaDirty.add(key);
+                this.setMetaStatus(_('Saving…'), 'saving');
+                this.updateCaptionPreview();
+                this.scheduleMetadataSave();
+            });
+            el.addEventListener('blur', () => {
+                this.flushPendingMetadata();
+            });
+        }
+        if (this.metaLicenseSelect) {
+            this.metaLicenseSelect.addEventListener('change', () => {
+                this._metaDirty.add('license');
+                this.setMetaStatus(_('Saving…'), 'saving');
+                this.updateCaptionPreview();
+                this.flushPendingMetadata();
+            });
+        }
+    }
+
+    /**
+     * Update the small non-intrusive autosave status indicator. State is conveyed by
+     * an icon + text (not colour alone) for accessibility; aria-live announces it.
+     * @param {string} text - status text ('' clears the indicator)
+     * @param {'saving'|'saved'|'error'|''} state
+     */
+    setMetaStatus(text, state) {
+        if (!this.metaStatus) return;
+        this.metaStatus.classList.remove('is-saving', 'is-saved', 'is-error');
+        if (!text) {
+            this.metaStatus.textContent = '';
+            return;
+        }
+        const icons = { saving: 'sync', saved: 'check', error: 'error' };
+        const icon = icons[state];
+        this.metaStatus.classList.add(`is-${state}`);
+        this.metaStatus.innerHTML = '';
+        if (icon) {
+            const iconEl = document.createElement('span');
+            iconEl.className = 'exe-icon';
+            iconEl.setAttribute('aria-hidden', 'true');
+            iconEl.textContent = icon;
+            this.metaStatus.appendChild(iconEl);
+        }
+        this.metaStatus.appendChild(document.createTextNode(` ${text}`));
+    }
+
+    /**
+     * Collect the patch of metadata fields the user has changed since the last
+     * populate (field-level updates). Returns an empty object when nothing is dirty
+     * so a flush with no pending changes is a no-op.
+     * @returns {{description?: string, title?: string, license?: string, author?: string, authorUrl?: string, sourceUrl?: string}}
+     */
+    collectMetadataPatch() {
+        if (!this._metaDirty || this._metaDirty.size === 0) return {};
+        const values = {
+            description: (this.metaDescriptionInput?.value || '').trim(),
+            title: (this.metaTitleInput?.value || '').trim(),
+            license: this.metaLicenseSelect?.value || '',
+            author: (this.metaAuthorInput?.value || '').trim(),
+            authorUrl: (this.metaAuthorUrlInput?.value || '').trim(),
+            sourceUrl: (this.metaSourceUrlInput?.value || '').trim(),
+        };
+        const patch = {};
+        for (const key of this._metaDirty) {
+            patch[key] = values[key];
+        }
+        return patch;
+    }
+
+    /**
+     * Flush any pending metadata edits to the Yjs-backed AssetManager. Cancels the
+     * debounce timer, writes only the changed fields (so concurrent remote edits to
+     * other fields are not clobbered), refreshes local state and shows a status.
+     * Idempotent and safe to call when nothing is pending (e.g. before Insert).
+     * @returns {Promise<void>}
+     */
+    async flushPendingMetadata() {
+        if (this.scheduleMetadataSave?.cancel) this.scheduleMetadataSave.cancel();
+        const asset = this.selectedAsset;
+        if (!asset || !this.assetManager) return;
+
+        const patch = this.collectMetadataPatch();
+        if (Object.keys(patch).length === 0) return;
+
+        try {
+            await this.assetManager.updateAssetMetadata(asset.id, patch);
+            // Reflect the change in the local list + selected asset so search and
+            // the panel stay in sync without a full reload.
+            Object.assign(asset, patch);
+            const listed = this.assets.find(a => a.id === asset.id);
+            if (listed) Object.assign(listed, patch);
+            this._metaDirty.clear();
+            this.setMetaStatus(_('Saved'), 'saved');
+        } catch (e) {
+            Logger.warn('[MediaLibrary] Failed to save asset metadata:', e?.message || e);
+            this.setMetaStatus(_('Error saving metadata'), 'error');
+        }
+    }
+
+    /**
+     * Open the editable metadata section and focus its first field. On small screens
+     * this also opens the sidebar bottom sheet so the form is reachable.
+     */
+    openMetadataEditor() {
+        if (this.sidebar) this.sidebar.classList.add('is-open');
+        this.setActiveTab('metadata');
+        const firstField = this.getMetadataFieldEntries()
+            .map(([, el]) => el)
+            .find(el => el && el.offsetParent !== null);
+        if (firstField) firstField.focus();
     }
 
     /**
@@ -2157,6 +2644,11 @@ export default class ModalFilemanager extends Modal {
 
         if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
         if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
+
+        // Multi-selections only aggregate technical details: hide tabs, force details
+        this.setSidebarMode('multi');
+        this._sidebarAssetId = null;
+        this.setPreviewOpen(false);
 
         // Hide all preview elements except generic file preview
         if (this.previewImg) this.previewImg.style.display = 'none';
@@ -2171,15 +2663,24 @@ export default class ModalFilemanager extends Modal {
 
         const totalSize = assets.reduce((sum, current) => sum + (current?.size || 0), 0);
         const countLabel = _('%1 files selected').replace('%1', assets.length);
+        const totalSizeLabel = this.assetManager?.formatFileSize?.(totalSize) || `${totalSize}`;
+
+        this.updateSidebarHeader({
+            name: countLabel,
+            metaLine: `${_('Multiple files')} · ${totalSizeLabel}`,
+            icon: 'collections',
+        });
 
         if (this.filenameSpan) this.filenameSpan.textContent = countLabel;
         if (this.typeSpan) this.typeSpan.textContent = _('Multiple files');
-        if (this.sizeSpan) this.sizeSpan.textContent = this.assetManager?.formatFileSize?.(totalSize) || `${totalSize}`;
+        if (this.sizeSpan) this.sizeSpan.textContent = totalSizeLabel;
         if (this.dimensionsRow) this.dimensionsRow.style.display = 'none';
         if (this.dateSpan) this.dateSpan.textContent = '-';
-        if (this.usageSpan) this.usageSpan.textContent = '-';
+        if (this.usageLocationsRow) this.usageLocationsRow.style.display = 'none';
         if (this.urlInput) this.urlInput.value = '';
         if (this.locationRow) this.locationRow.style.display = 'none';
+        if (this.editMetadataForm) this.editMetadataForm.style.display = 'none';
+        this.setReplaceInlineVisible(false);
 
         // Ensure folder selection is cleared
         this.selectedFolder = null;
@@ -2558,94 +3059,12 @@ export default class ModalFilemanager extends Modal {
      * @returns {number} Number of iDevices referencing this asset
      */
     countAssetReferences(assetId) {
-        if (!assetId) return 0;
-
-        try {
-            const yjsBridge = window.eXeLearning?.app?.project?._yjsBridge;
-            if (!yjsBridge?.documentManager?.ydoc) return 0;
-
-            const navigation = yjsBridge.documentManager.ydoc.getArray('navigation');
-            if (!navigation) return 0;
-
-            let count = 0;
-            const assetRegex = new RegExp(`asset://${assetId}`, 'gi');
-
-            // Traverse all pages
-            for (let i = 0; i < navigation.length; i++) {
-                const pageMap = navigation.get(i);
-                if (!pageMap) continue;
-
-                const blocks = pageMap.get('blocks');
-                if (!blocks) continue;
-
-                // Traverse all blocks in the page
-                for (let j = 0; j < blocks.length; j++) {
-                    const blockMap = blocks.get(j);
-                    if (!blockMap) continue;
-
-                    const components = blockMap.get('components');
-                    if (!components) continue;
-
-                    // Traverse all components (iDevices) in the block
-                    for (let k = 0; k < components.length; k++) {
-                        const compMap = components.get(k);
-                        if (!compMap) continue;
-
-                        let found = false;
-
-                        // Check htmlContent (Y.Text or string) or htmlView (legacy fallback).
-                        // htmlContent is refreshed on every save; htmlView is only populated
-                        // during initial ELP import and never updated after edits, so reading
-                        // it first causes stale reference counts after image deletion in
-                        // iDevices whose save path only touches jsonProperties/htmlContent
-                        // (issue #1674).
-                        const htmlContent = compMap.get('htmlContent') || compMap.get('htmlView');
-                        if (htmlContent) {
-                            const content = htmlContent.toString ? htmlContent.toString() : String(htmlContent);
-                            if (assetRegex.test(content)) {
-                                found = true;
-                            }
-                            assetRegex.lastIndex = 0; // Reset for reuse
-                        }
-
-                        // Check jsonProperties or ideviceProperties (Y.Map)
-                        if (!found) {
-                            const ideviceProperties = compMap.get('jsonProperties') || compMap.get('ideviceProperties');
-                            if (ideviceProperties) {
-                                const propsStr = JSON.stringify(
-                                    ideviceProperties.toJSON ? ideviceProperties.toJSON() : ideviceProperties
-                                );
-                                if (assetRegex.test(propsStr)) {
-                                    found = true;
-                                }
-                                assetRegex.lastIndex = 0; // Reset for reuse
-                            }
-                        }
-
-                        // Also check properties (another possible location)
-                        if (!found) {
-                            const properties = compMap.get('properties');
-                            if (properties) {
-                                const propsStr = JSON.stringify(
-                                    properties.toJSON ? properties.toJSON() : properties
-                                );
-                                if (assetRegex.test(propsStr)) {
-                                    found = true;
-                                }
-                                assetRegex.lastIndex = 0; // Reset for reuse
-                            }
-                        }
-
-                        if (found) count++;
-                    }
-                }
-            }
-
-            return count;
-        } catch (err) {
-            Logger.warn('[MediaLibrary] Error counting asset references:', err);
-            return 0;
+        // Delegate to AssetManager — the single source of truth for asset-reference
+        // scanning (also consumed by the Resource Report iDevice "used" filter).
+        if (this.assetManager?.countAssetReferences) {
+            return this.assetManager.countAssetReferences(assetId);
         }
+        return 0;
     }
 
     /**
@@ -2653,10 +3072,13 @@ export default class ModalFilemanager extends Modal {
      */
     calculateAllAssetUsages() {
         this.assetUsageCounts.clear();
+        // Single project traversal for ALL assets (avoids one scan per asset).
+        const counts = this.assetManager?.getAllAssetReferenceCounts
+            ? this.assetManager.getAllAssetReferenceCounts()
+            : new Map();
         for (const asset of this.assets) {
             if (asset.id) {
-                const count = this.countAssetReferences(asset.id);
-                this.assetUsageCounts.set(asset.id, count);
+                this.assetUsageCounts.set(asset.id, counts.get(asset.id) || 0);
             }
         }
     }
@@ -2673,6 +3095,121 @@ export default class ModalFilemanager extends Modal {
         const count = this.countAssetReferences(assetId);
         this.assetUsageCounts.set(assetId, count);
         return count;
+    }
+
+    /**
+     * Render the "Used in" list for the selected asset, reusing the centralized
+     * usage-location scanner in AssetManager. Each location is a small card with the
+     * page title and the iDevice/block context, capped at 10 entries with a
+     * "+ N more" line, or a "Not used" message.
+     * @param {Object} asset
+     */
+    renderUsageLocations(asset) {
+        if (!this.usageLocations) return;
+        if (this.usageLocationsRow) this.usageLocationsRow.style.display = '';
+        this.usageLocations.innerHTML = '';
+
+        const locations = this.assetManager?.getAssetUsageLocations
+            ? this.assetManager.getAssetUsageLocations(asset.id)
+            : [];
+
+        if (this.usageIntro) this.usageIntro.style.display = locations.length ? '' : 'none';
+
+        if (!locations.length) {
+            const li = document.createElement('li');
+            li.className = 'media-library-usage-empty';
+            li.textContent = _('Not used in this project');
+            this.usageLocations.appendChild(li);
+            return;
+        }
+
+        const MAX = 10;
+        for (const loc of locations.slice(0, MAX)) {
+            const li = document.createElement('li');
+            li.className = 'media-library-usage-location';
+
+            const pageSpan = document.createElement('span');
+            pageSpan.className = 'usage-page';
+            pageSpan.textContent = loc.pageTitle || _('Untitled');
+            li.appendChild(pageSpan);
+
+            const placeParts = [];
+            if (loc.ideviceTitle) placeParts.push(`${_('iDevice')} ${loc.ideviceTitle}`);
+            if (loc.blockTitle) placeParts.push(`${_('Block')} ${loc.blockTitle}`);
+            if (placeParts.length) {
+                const placeSpan = document.createElement('span');
+                placeSpan.className = 'usage-place';
+                placeSpan.textContent = placeParts.join(' · ');
+                li.appendChild(placeSpan);
+            }
+
+            this.usageLocations.appendChild(li);
+        }
+
+        if (locations.length > MAX) {
+            const li = document.createElement('li');
+            li.className = 'media-library-usage-more';
+            li.textContent = _('+ %1 more').replace('%1', locations.length - MAX);
+            this.usageLocations.appendChild(li);
+        }
+    }
+
+    /**
+     * Replace the binary content of the selected asset while preserving its identity,
+     * references and centralized metadata. Validates that the replacement is the same
+     * broad file type, then delegates to AssetManager.replaceAssetContent and refreshes
+     * the File Manager. Shows a success/error toast.
+     * @param {File} file
+     */
+    async replaceSelectedAsset(file) {
+        const asset = this.selectedAsset;
+        if (!asset || !file || !this.assetManager?.replaceAssetContent) return;
+
+        // Keep references/previews coherent: only allow same broad category.
+        const oldCategory = this.getAssetTypeCategory(asset.mime, asset.filename);
+        const newCategory = this.getAssetTypeCategory(file.type, file.name);
+        if (oldCategory !== newCategory) {
+            eXeLearning.app.toasts.createToast({
+                title: _('Could not replace file'),
+                body: _('Only files of the same type can be used as replacement'),
+                icon: 'error',
+                modal: true,
+                remove: 5000,
+            });
+            return;
+        }
+
+        try {
+            const result = await this.assetManager.replaceAssetContent(asset.id, file);
+            if (!result || !result.success) {
+                throw new Error(result?.error || 'replace-failed');
+            }
+
+            // Refresh local state + UI (recomputes usage counts in one pass).
+            await this.loadAssets();
+            const updated = this.assets.find((a) => a.id === asset.id);
+            if (updated) {
+                this.selectedAsset = updated;
+                await this.showSidebarContent(updated);
+            }
+
+            eXeLearning.app.toasts.createToast({
+                title: _('Success'),
+                body: _('File replaced successfully'),
+                icon: 'success',
+                modal: true,
+                remove: 4000,
+            });
+        } catch (e) {
+            Logger.warn('[MediaLibrary] Replace failed:', e?.message || e);
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Could not replace file'),
+                icon: 'error',
+                modal: true,
+                remove: 5000,
+            });
+        }
     }
 
     /**
@@ -3068,6 +3605,12 @@ export default class ModalFilemanager extends Modal {
      * Insert selected asset(s) into editor
      */
     async insertSelectedAsset() {
+        // Flush any pending (debounced) metadata edits first so Insert never loses
+        // unsaved changes and the inserted asset carries up-to-date metadata.
+        if (this._metaDirty && this._metaDirty.size > 0) {
+            await this.flushPendingMetadata();
+        }
+
         const assetsToInsert = this.multiSelect ? this.selectedAssets : (this.selectedAsset ? [this.selectedAsset] : []);
         if (assetsToInsert.length === 0) return;
 

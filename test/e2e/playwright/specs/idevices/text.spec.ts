@@ -1679,7 +1679,7 @@ test.describe('Text iDevice', () => {
             await page.waitForTimeout(500);
 
             // 15. Fill in alt text to avoid accessibility warning dialog
-            const altTextInput = page.getByLabel(/Alternative description|Descripción alternativa/i);
+            const altTextInput = page.getByLabel(/alternativ/i);
             if ((await altTextInput.count()) > 0) {
                 const currentAlt = await altTextInput.inputValue().catch(() => '');
                 if (!currentAlt) {
@@ -1820,7 +1820,7 @@ test.describe('Text iDevice', () => {
             await page.waitForTimeout(500);
 
             // 13. Fill in alt text to avoid accessibility warning dialog
-            const altTextInput = page.getByLabel(/Alternative description|Descripción alternativa/i);
+            const altTextInput = page.getByLabel(/alternativ/i);
             if ((await altTextInput.count()) > 0) {
                 const currentAlt = await altTextInput.inputValue().catch(() => '');
                 if (!currentAlt) {

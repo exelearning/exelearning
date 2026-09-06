@@ -220,6 +220,9 @@ export class Html5Exporter extends BaseExporter {
             const { files: materialIconFiles, dataUris: materialIconDataUris } =
                 await this.resolveMaterialIconDataUris(pages);
 
+            // Bake image captions from the current centralized metadata (see IdeviceRenderer).
+            this.pageRenderer.setAssetCaptionMetadataMap(await this.buildAssetCaptionMetadataMap());
+
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
 
@@ -677,6 +680,9 @@ export class Html5Exporter extends BaseExporter {
             const assetExportPathMap = await this.buildAssetExportPathMap();
             const { files: materialIconFiles, dataUris: materialIconDataUris } =
                 await this.resolveMaterialIconDataUris(pages);
+
+            // Bake image captions from the current centralized metadata (see IdeviceRenderer).
+            this.pageRenderer.setAssetCaptionMetadataMap(await this.buildAssetCaptionMetadataMap());
 
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);

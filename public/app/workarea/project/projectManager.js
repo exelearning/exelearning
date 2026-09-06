@@ -2874,18 +2874,28 @@ export default class projectManager {
     }
 
     /**
-     *
-     * @return {boolean} - True if at least one iDevice is in edition mode, false otherwise.
+     * Pure state check: is at least one iDevice in edition mode? No UI side
+     * effects — safe to call from async continuations where popping an alert
+     * would blame the user for something they never did.
+     * @return {boolean}
      */
-    checkOpenIdevice() {
+    hasOpenIdevice() {
         const container = document.getElementById('node-content');
         if (!container) {
             return false;
         }
-        const element = container.querySelector(
-            'div.idevice_node[mode="edition"]'
+        return (
+            container.querySelector('div.idevice_node[mode="edition"]') !== null
         );
-        if (element !== null) {
+    }
+
+    /**
+     * Guard for user actions that require all iDevice editors to be closed:
+     * when one is open it warns the user with an alert and returns true.
+     * @return {boolean} - True if at least one iDevice is in edition mode, false otherwise.
+     */
+    checkOpenIdevice() {
+        if (this.hasOpenIdevice()) {
             eXeLearning.app.modals.alert.show({
                 title: _('Info'),
                 body: _(
@@ -2894,6 +2904,7 @@ export default class projectManager {
             });
             return true;
         }
+        return false;
     }
 
     // TODO It cannot be implemented to cover all the causes, it requires real persistence.

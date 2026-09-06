@@ -141,6 +141,47 @@ export async function findAllAssetsForProject(db: Kysely<Database>, projectId: n
         .execute();
 }
 
+/**
+ * Search assets in a project by filename, description, title, author or license
+ * (case-insensitive) so educators can find "everything by X" or "everything under
+ * license Y". An empty/blank term returns every asset (same as findAllAssetsForProject),
+ * so the caller can use a single endpoint for both listing and searching.
+ *
+ * Implemented with a normalized comparison so it behaves the same across SQLite,
+ * PostgreSQL and MariaDB without relying on dialect-specific case folding.
+ */
+export async function searchAssetsForProject(db: Kysely<Database>, projectId: number, term: string): Promise<Asset[]> {
+    const trimmed = (term || '').trim();
+    if (!trimmed) {
+        return findAllAssetsForProject(db, projectId);
+    }
+
+    // LIKE wildcards in the user's term (% _) must match literally, so they are
+    // escaped and the query declares the escape character explicitly — without an
+    // ESCAPE clause SQLite treats the escape prefix as a literal character and the
+    // search silently matches nothing (e.g. "report_2024"). '!' is used instead of
+    // the conventional backslash because a backslash inside a SQL string literal is
+    // itself dialect-sensitive (MariaDB escape sequences), while '!' is plain text
+    // on SQLite, PostgreSQL and MariaDB alike.
+    const pattern = `%${trimmed.toLowerCase().replace(/[!%_]/g, '!$&')}%`;
+
+    return db
+        .selectFrom('assets')
+        .selectAll()
+        .where('project_id', '=', projectId)
+        .where(eb =>
+            eb.or([
+                sql<boolean>`lower(${eb.ref('filename')}) like ${pattern} escape '!'`,
+                sql<boolean>`lower(coalesce(${eb.ref('description')}, '')) like ${pattern} escape '!'`,
+                sql<boolean>`lower(coalesce(${eb.ref('title')}, '')) like ${pattern} escape '!'`,
+                sql<boolean>`lower(coalesce(${eb.ref('author')}, '')) like ${pattern} escape '!'`,
+                sql<boolean>`lower(coalesce(${eb.ref('license')}, '')) like ${pattern} escape '!'`,
+            ]),
+        )
+        .orderBy('created_at', 'desc')
+        .execute();
+}
+
 // ============================================================================
 // FOLDER QUERIES
 // ============================================================================
@@ -409,6 +450,52 @@ export async function updateAssetFilenameByClientId(
             filename: newFilename,
             updated_at: now(),
         })
+        .where('client_id', '=', clientId)
+        .where('project_id', '=', projectId)
+        .execute();
+
+    return result.length > 0 && Number(result[0].numUpdatedRows) > 0;
+}
+
+/**
+ * Editable centralized metadata fields for an asset. Every field is optional;
+ * only the provided keys are updated. Pass an empty string to clear a field.
+ */
+export interface AssetMetadataPatch {
+    description?: string;
+    title?: string;
+    license?: string;
+    author?: string;
+    authorUrl?: string;
+    sourceUrl?: string;
+}
+
+/**
+ * Update centralized metadata for an asset identified by client_id (UUID) within a
+ * project. Mirrors updateAssetFilenameByClientId so the File Manager / external API
+ * can persist reusable metadata via the same client-id addressing used elsewhere.
+ *
+ * Strings are trimmed; empty strings are stored as empty (clearing the field).
+ * Unknown keys are ignored by virtue of the explicit mapping below.
+ * Returns false when no asset matched (so callers can return 404).
+ */
+export async function updateAssetMetadataByClientId(
+    db: Kysely<Database>,
+    clientId: string,
+    projectId: number,
+    patch: AssetMetadataPatch,
+): Promise<boolean> {
+    const update: AssetUpdate = { updated_at: now() };
+    if (patch.description !== undefined) update.description = patch.description.trim();
+    if (patch.title !== undefined) update.title = patch.title.trim();
+    if (patch.license !== undefined) update.license = patch.license.trim();
+    if (patch.author !== undefined) update.author = patch.author.trim();
+    if (patch.authorUrl !== undefined) update.author_url = patch.authorUrl.trim();
+    if (patch.sourceUrl !== undefined) update.source_url = patch.sourceUrl.trim();
+
+    const result = await db
+        .updateTable('assets')
+        .set(update)
         .where('client_id', '=', clientId)
         .where('project_id', '=', projectId)
         .execute();

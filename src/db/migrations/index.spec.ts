@@ -113,7 +113,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('007_activity_log');
+            expect(result.rolledBack).toBe('008_asset_metadata');
         });
 
         it('should report no migrations to rollback on fresh database', async () => {
@@ -194,9 +194,9 @@ describe('Database Migrations', () => {
 
             const status = await getMigrationStatus(db);
 
-            // After one rollback, 007_activity_log should be pending
+            // After one rollback, 008_asset_metadata should be pending
             // All prior migrations are still executed
-            expect(status.pending).toContain('007_activity_log');
+            expect(status.pending).toContain('008_asset_metadata');
             expect(status.executed).toContain('001_initial');
             expect(status.executed).toContain('000_legacy_symfony');
             expect(status.executed).toContain('002_asset_folder_path');
@@ -204,6 +204,7 @@ describe('Database Migrations', () => {
             expect(status.executed).toContain('004_fix_user_foreign_keys');
             expect(status.executed).toContain('005_user_id_nullable');
             expect(status.executed).toContain('006_impersonation_audit_log');
+            expect(status.executed).toContain('007_activity_log');
         });
     });
 
@@ -220,16 +221,17 @@ describe('Database Migrations', () => {
             expect(up1.executedMigrations).toContain('005_user_id_nullable');
             expect(up1.executedMigrations).toContain('006_impersonation_audit_log');
             expect(up1.executedMigrations).toContain('007_activity_log');
+            expect(up1.executedMigrations).toContain('008_asset_metadata');
 
-            // Down - rolls back the last migration (007_activity_log)
+            // Down - rolls back the last migration (008_asset_metadata)
             const down = await migrateDown(db);
             expect(down.success).toBe(true);
-            expect(down.rolledBack).toBe('007_activity_log');
+            expect(down.rolledBack).toBe('008_asset_metadata');
 
-            // Up again - should re-apply 007_activity_log
+            // Up again - should re-apply 008_asset_metadata
             const up2 = await migrateToLatest(db);
             expect(up2.success).toBe(true);
-            expect(up2.executedMigrations).toContain('007_activity_log');
+            expect(up2.executedMigrations).toContain('008_asset_metadata');
         });
     });
 

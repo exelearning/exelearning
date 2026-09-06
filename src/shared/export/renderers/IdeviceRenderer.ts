@@ -16,8 +16,10 @@ import type {
     BlockRenderOptions,
     ExportBlockProperties,
     ExportComponentProperties,
+    AssetExportMetadata,
 } from '../interfaces';
 import { getIdeviceConfig, getIdeviceExportFiles, isIdeviceJsModule } from '../../../services/idevice-config';
+import { bakeFigureCaptions } from '../figure-caption';
 import { deriveBlockIcon } from '../../block-icon';
 import { HELP_ICON_FALLBACK_DATA_URI, MATERIAL_ICON_FALLBACK } from '../../material-icons/spriteParser';
 
@@ -47,6 +49,21 @@ export class IdeviceRenderer {
      * Configured via setThemeIconFiles() before rendering
      */
     private iconResolutionMap: Map<string, string> = new Map();
+
+    /**
+     * Centralized asset metadata (assetId → metadata) used to re-derive image captions
+     * at export. Set once via setAssetCaptionMetadataMap() before rendering; per-call
+     * options.assetCaptionMetadataMap takes precedence when provided.
+     */
+    private assetCaptionMetadataMap: Map<string, AssetExportMetadata> | null = null;
+
+    /**
+     * Configure the centralized asset metadata used to bake image captions, mirroring
+     * setThemeIconFiles(). Call once before rendering blocks/pages.
+     */
+    setAssetCaptionMetadataMap(map: Map<string, AssetExportMetadata> | null): void {
+        this.assetCaptionMetadataMap = map;
+    }
 
     /**
      * Configure icon resolution from theme files.
@@ -137,7 +154,7 @@ export class IdeviceRenderer {
         component: ExportComponent,
         options: ComponentRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const { basePath = '', includeDataAttributes = true, assetExportPathMap } = options;
+        const { basePath = '', includeDataAttributes = true, assetExportPathMap, assetCaptionMetadataMap } = options;
 
         const type = component.type || 'text';
         const config = getIdeviceConfig(type);
@@ -217,8 +234,14 @@ export class IdeviceRenderer {
         const isPreviewMode = basePath.startsWith('/') || basePath.includes('://');
         const fixedContent = this.fixAssetUrls(htmlContent, basePath, isPreviewMode, assetExportPathMap);
 
+        // Re-derive image captions from the current centralized metadata so exported
+        // packages reflect the File Manager even if the stored caption snapshot is stale.
+        // Per-call option wins; otherwise fall back to the instance map set by the exporter.
+        const captionMap = assetCaptionMetadataMap || this.assetCaptionMetadataMap;
+        const captionedContent = captionMap ? bakeFigureCaptions(fixedContent, captionMap) : fixedContent;
+
         // Escape HTML entities inside <pre><code> blocks to display code examples correctly
-        const escapedContent = this.escapePreCodeContent(fixedContent);
+        const escapedContent = this.escapePreCodeContent(captionedContent);
 
         // Ensure YouTube/Vimeo iframes carry referrerpolicy so they play when the package
         // is embedded in a host with a restrictive Referrer-Policy (YouTube Error 153).
@@ -283,6 +306,7 @@ ${contentHtml}
             includeDataAttributes = true,
             themeIconBasePath,
             assetExportPathMap,
+            assetCaptionMetadataMap,
             materialIconDataUris,
         } = options;
 
@@ -382,7 +406,12 @@ ${iconHtml}${titleHtml}${toggleHtml}</header>`;
         // Render all iDevices in the block
         let contentHtml = '';
         for (const component of components) {
-            contentHtml += this.render(component, { basePath, includeDataAttributes, assetExportPathMap });
+            contentHtml += this.render(component, {
+                basePath,
+                includeDataAttributes,
+                assetExportPathMap,
+                assetCaptionMetadataMap,
+            });
         }
 
         return `<article id="${this.escapeAttr(blockId)}" class="${classes.join(' ')}">
