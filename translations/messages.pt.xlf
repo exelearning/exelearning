@@ -883,43 +883,43 @@
       </trans-unit>
       <trans-unit id="QCl9NKh" resname="Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.">
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
-        <target>~Carnivores#1, Lion#1, Tiger#1, Eagle#1, Shark#1  </target>
+        <target>~Forneça 4 elementos para cada um destes grupos: carnívoros, 0, e herbívoros, 1. Separe o número do grupo e o elemento usando o símbolo #.</target>
       </trans-unit>
       <trans-unit id="xHJHwx9" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target>~0#2, 3#2, 4#2, 5#2  </target>
+        <target>~Gerar 10 perguntas de verdadeiro ou falso. Cada pergunta deve incluir a solução (0 = falso, 1 = verdadeiro), uma sugestão e um feedback, tudo separado por #. Além disso, o feedback não deve indicar explicitamente se a resposta está correta ou incorreta</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
-        <target>~Herbivores#1, Deer#1, Rabbit#1, Cow#1, Horse#1  </target>
+        <target>~Gerar 10 perguntas. A 'Solução' pode ser 0/1 para Verdadeiro/Falso, 0-3 para escolha única, ou A-D (ou combinações) para escolha múltipla. Em seguida, forneça a pergunta e as opções de resposta (2 a 4), tudo separado por '#'.</target>
       </trans-unit>
       <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
-        <target>~</target>
+        <target>~Forneça apenas uma lista ordenada de etapas ou itens, cada uma separada por '#'.</target>
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition</source>
-        <target>~Verdadeiro ou Falso#1, A afirmação é verdadeira#1, Considere a fonte da informação#1  </target>
+        <target>~Gerar 10 palavras seguidas de suas definições, separadas por #. Não inclua o caractere # em nenhuma das palavras ou definições</target>
       </trans-unit>
       <trans-unit id="wmZAGDi" resname="EdiCuaTeX - LaTeX Equation Editor">
         <source>EdiCuaTeX - LaTeX Equation Editor</source>
-        <target>~Falso#0, A afirmação é falsa#0, Verifique os detalhes#0  </target>
+        <target>~EdiCuaTeX - Editor de Equações LaTeX</target>
       </trans-unit>
       <trans-unit id="3xt7SvG" resname="Educational Applications Laboratory">
         <source>Educational Applications Laboratory</source>
-        <target>~Verdadeiro#1, A declaração está correta#1, Pense na lógica por trás#1  </target>
+        <target>~Laboratório de Aplicações Educacionais</target>
       </trans-unit>
       <trans-unit id="oTIGqj3" resname="Application created by Juan José de Haro">
         <source>Application created by Juan José de Haro</source>
-        <target>~Falso#0, A declaração está incorreta#0, Reavalie os dados#0  </target>
+        <target>~Aplicação criada por Juan José de Haro</target>
       </trans-unit>
       <trans-unit id="BSDT0ZB" resname="Could not get code from parent dialog:">
         <source>Could not get code from parent dialog:</source>
-        <target>~Verdadeiro#1, O enunciado é verdadeiro#1, Analise o contexto#1  </target>
+        <target>~Não foi possível obter o código da caixa de diálogo pai:</target>
       </trans-unit>
       <trans-unit id="7WKfC9x" resname="Recent">
         <source>Recent</source>
-        <target>~Falso#0, O enunciado é falso#0, Consulte as referências#0  </target>
+        <target>~Recentes</target>
       </trans-unit>
       <trans-unit id="vMqqN1e" resname="Error loading menu">
         <source>Error loading menu</source>
