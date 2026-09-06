@@ -19,6 +19,7 @@ import {
     findPreference as findPreferenceDefault,
     setPreference as setPreferenceDefault,
     findProjectByUuid as findProjectByUuidDefault,
+    findProjectByPublicViewId as findProjectByPublicViewIdDefault,
     findProjectByPlatformId as findProjectByPlatformIdDefault,
     checkProjectAccess as checkProjectAccessDefault,
     createProject as createProjectDefault,
@@ -26,6 +27,13 @@ import {
 import { db as dbDefault } from '../db/client';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
+import { getPublicViewFile } from '../services/public-view-content';
+import {
+    PUBLIC_VIEW_SANDBOX,
+    publicViewCspHeader,
+    publicViewPermissionsPolicy,
+    resolvePublicViewCspProfile,
+} from '../shared/security/publicViewSandbox';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { isOfflineMode } from '../utils/offline.util';
 import { getAppVersion } from '../utils/version';
@@ -113,6 +121,7 @@ export interface PagesQueriesDeps {
     findPreference: typeof findPreferenceDefault;
     setPreference: typeof setPreferenceDefault;
     findProjectByUuid: typeof findProjectByUuidDefault;
+    findProjectByPublicViewId: typeof findProjectByPublicViewIdDefault;
     findProjectByPlatformId: typeof findProjectByPlatformIdDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
     createProject: typeof createProjectDefault;
@@ -179,6 +188,7 @@ const defaultQueries: PagesQueriesDeps = {
     findPreference: findPreferenceDefault,
     setPreference: setPreferenceDefault,
     findProjectByUuid: findProjectByUuidDefault,
+    findProjectByPublicViewId: findProjectByPublicViewIdDefault,
     findProjectByPlatformId: findProjectByPlatformIdDefault,
     checkProjectAccess: checkProjectAccessDefault,
     createProject: createProjectDefault,
@@ -245,6 +255,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         findPreference,
         setPreference,
         findProjectByUuid,
+        findProjectByPublicViewId,
         findProjectByPlatformId,
         checkProjectAccess,
         createProject,
@@ -592,6 +603,109 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const html = renderTemplate('security/login', viewModel);
                 return new Response(html, {
                     headers: { 'Content-Type': 'text/html; charset=utf-8' },
+                });
+            })
+
+            // =====================================================
+            // Public viewer loader (opaque-origin sandbox host page)
+            // =====================================================
+            // Renders the shell page that hosts the untrusted author content in a
+            // sandboxed iframe. The actual content bytes are served separately by
+            // the isolated `/view/:publicViewId/_/*` content route below.
+            .get('/view/:publicViewId', async ({ params, currentUser, request, set, impersonation }) => {
+                const { publicViewId } = params;
+
+                // Public viewer: look up strictly by the opaque public view id.
+                // The internal project UUID is never accepted here, and the
+                // project must have the public read-only link enabled (this is
+                // independent of edit visibility). We return 404 (not 403) for
+                // missing or disabled projects so the route does not reveal
+                // whether a private project exists.
+                const project = await findProjectByPublicViewId(db, publicViewId);
+                if (!project || !project.public_view_enabled) {
+                    set.status = 404;
+                    const html = renderTemplate('workarea/error', {
+                        basePath: getBasePath(),
+                        locale: 'en',
+                        impersonation,
+                        error: 'Project not found.',
+                    });
+                    set.headers['Content-Type'] = 'text/html';
+                    return html;
+                }
+
+                // Get preferred locale
+                let userLocale = null;
+                if (currentUser) {
+                    const pref = await findPreference(db, currentUser.id, 'locale');
+                    if (pref) userLocale = pref.value;
+                }
+
+                const appLocale = process.env.APP_LOCALE;
+                const acceptLanguage = request.headers.get('accept-language');
+                const browserLocale = detectLocaleFromHeader(acceptLanguage);
+                const locale = userLocale || appLocale || browserLocale || DEFAULT_LOCALE;
+
+                setRenderLocale(locale);
+
+                const viewModel = {
+                    basePath: getBasePath(),
+                    publicViewId,
+                    title: project.title || 'Untitled Project',
+                    lang: locale,
+                    impersonation,
+                    // Tokens for the isolating iframe (opaque origin: no
+                    // allow-same-origin). Single source of truth shared with the
+                    // CSP emitted on the content responses below.
+                    sandboxTokens: PUBLIC_VIEW_SANDBOX,
+                };
+
+                const html = renderTemplate('viewer/viewer', viewModel);
+                set.headers['Content-Type'] = 'text/html';
+                return html;
+            })
+
+            // =====================================================
+            // Public viewer content (isolated, opaque origin)
+            // =====================================================
+            // Serves the individual files of a public project's HTML5 export so
+            // the untrusted author content runs inside a sandboxed iframe with an
+            // opaque origin. The `sandbox` directive is emitted in the response
+            // CSP (not only in the iframe attribute) so the document stays opaque
+            // even if the content URL is opened directly (new tab, fullscreen,
+            // raw URL). It must never reach the authenticated session.
+            .get('/view/:publicViewId/_/*', async ({ params, set }) => {
+                const { publicViewId } = params;
+                const relPath = (params as Record<string, string>)['*'] ?? '';
+
+                const project = await findProjectByPublicViewId(db, publicViewId);
+                if (!project || !project.public_view_enabled) {
+                    set.status = 404;
+                    return 'Not found';
+                }
+
+                let file;
+                try {
+                    file = await getPublicViewFile(project, relPath);
+                } catch (err) {
+                    console.error('[Public viewer content] Error building export:', err);
+                    set.status = 500;
+                    return 'Error building preview';
+                }
+
+                if (!file) {
+                    set.status = 404;
+                    return 'Not found';
+                }
+
+                return new Response(file.content, {
+                    headers: {
+                        'Content-Type': file.contentType,
+                        'Content-Security-Policy': publicViewCspHeader(resolvePublicViewCspProfile()),
+                        'Permissions-Policy': publicViewPermissionsPolicy(),
+                        'X-Content-Type-Options': 'nosniff',
+                        'Cache-Control': 'no-store',
+                    },
                 });
             })
 

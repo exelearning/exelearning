@@ -33,46 +33,109 @@
                     <div id="share-people-list"></div>
                 </div>
 
-                {# General Access Section #}
-                <div id="share-general-access-section" class="mb-4">
-                    <h6>{{ 'General access' | trans }}</h6>
-                    <div class="share-visibility-wrapper d-flex align-items-center gap-2">
+                {# Edit Access Card #}
+                <div id="share-edit-access-section" class="share-access-card share-access-card-edit mb-3">
+                    <div class="share-access-card-header">
                         <img id="share-visibility-icon"
+                             class="share-access-card-icon"
                              src="{{ basePath }}/style/workarea/images/icons/exe-lock-icon-green.svg"
                              alt=""
-                             width="16"
-                             height="16"
+                             width="20"
+                             height="20"
                              aria-hidden="true">
-                        <select id="share-visibility-select"
-                                class="form-select flex-grow-1"
-                                aria-label="{{ 'General access' | trans }}"
-                                data-icon-private="{{ basePath }}/style/workarea/images/icons/exe-lock-icon-green.svg"
-                                data-icon-public="{{ basePath }}/style/workarea/images/icons/exe-globe-icon-green.svg">
-                            <option value="private">{{ 'Restricted (Private)' | trans }}</option>
-                            <option value="public">{{ 'Anyone with the link (Public)' | trans }}</option>
-                        </select>
+                        <h6>{{ 'Edit access' | trans }}</h6>
                     </div>
-                    <small id="share-visibility-help" class="form-text text-muted d-none">
-                        {{ 'Anyone who has the link can view and edit in real time' | trans }}
+                    <select id="share-visibility-select"
+                            class="form-select"
+                            aria-label="{{ 'Edit access' | trans }}"
+                            data-icon-private="{{ basePath }}/style/workarea/images/icons/exe-lock-icon-green.svg"
+                            data-icon-public="{{ basePath }}/style/workarea/images/icons/exe-globe-icon-green.svg">
+                        <option value="private">{{ 'Only invited people' | trans }}</option>
+                        <option value="public">{{ 'Anyone with the edit link' | trans }}</option>
+                    </select>
+                    <small id="share-visibility-help" class="form-text text-muted">
+                        {{ 'Only the people added above can open and edit this resource.' | trans }}
                     </small>
-                </div>
 
-                {# Link Section #}
-                <div id="share-link-section">
-                    <h6>{{ 'Link' | trans }}</h6>
+                    <label class="share-access-link-label">{{ 'Edit link' | trans }}</label>
                     <div class="input-group">
                         <input type="text"
                                id="share-link-input"
                                class="form-control"
                                readonly
-                               aria-label="{{ 'Share link' | trans }}">
+                               aria-label="{{ 'Edit link' | trans }}">
                         <button id="share-copy-button"
                                 class="btn btn-outline-secondary"
                                 type="button"
                                 aria-label="{{ 'Copy link' | trans }}">
                             <div class="auto-icon" aria-hidden="true">content_copy</div>
-                            <span>{{ 'Copy link' | trans }}</span>
+                            <span>{{ 'Copy' | trans }}</span>
                         </button>
+                    </div>
+                </div>
+
+                {# Public Read-Only Link Card #}
+                <div id="share-public-view-section" class="share-access-card share-access-card-view mb-3">
+                    <div class="share-access-card-header">
+                        <img class="share-access-card-icon"
+                             src="{{ basePath }}/style/workarea/images/icons/exe-globe-icon-green.svg"
+                             alt=""
+                             width="20"
+                             height="20"
+                             aria-hidden="true">
+                        <h6>{{ 'Public read-only link' | trans }}</h6>
+                    </div>
+                    <select id="share-public-view-select"
+                            class="form-select"
+                            aria-label="{{ 'Public read-only link' | trans }}">
+                        <option value="disabled">{{ 'Disabled' | trans }}</option>
+                        <option value="enabled">{{ 'Enabled' | trans }}</option>
+                    </select>
+                    <small id="share-public-view-help" class="form-text text-muted">
+                        {{ 'This resource has no public read-only link.' | trans }}
+                    </small>
+
+                    <div id="public-link-section" class="d-none">
+                        <label class="share-access-link-label">{{ 'Public link' | trans }}</label>
+                        <div class="input-group">
+                            <input type="text"
+                                   id="public-link-input"
+                                   class="form-control"
+                                   readonly
+                                   aria-label="{{ 'Public viewer link' | trans }}">
+                            <button id="public-copy-button"
+                                    class="btn btn-outline-secondary"
+                                    type="button"
+                                    aria-label="{{ 'Copy link' | trans }}">
+                                <div class="auto-icon" aria-hidden="true">content_copy</div>
+                                <span>{{ 'Copy' | trans }}</span>
+                            </button>
+                        </div>
+                        <button id="public-regenerate-button"
+                                class="btn btn-outline-danger btn-sm mt-2"
+                                type="button">
+                            <div class="auto-icon" aria-hidden="true">autorenew</div>
+                            <span>{{ 'Regenerate link' | trans }}</span>
+                        </button>
+
+                        {# Inline confirmation, kept inside this modal so it never closes it #}
+                        <div id="public-regenerate-confirm" class="d-none" role="alertdialog" aria-live="polite">
+                            <span class="public-regenerate-confirm-text">
+                                {{ 'Regenerate the public link? The previous link will stop working.' | trans }}
+                            </span>
+                            <div class="public-regenerate-confirm-actions">
+                                <button id="public-regenerate-confirm-yes"
+                                        class="btn btn-danger btn-sm"
+                                        type="button">
+                                    {{ 'Yes, regenerate' | trans }}
+                                </button>
+                                <button id="public-regenerate-confirm-no"
+                                        class="btn btn-outline-secondary btn-sm"
+                                        type="button">
+                                    {{ 'Cancel' | trans }}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
