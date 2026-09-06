@@ -14,12 +14,12 @@ import os from 'os';
  * - --project=chromium/firefox → only dynamic server (port 3001)
  * - No --project (run all) → both servers start
  */
-const projectArgs = process.argv.filter((arg) => arg.startsWith('--project='));
-const requestedProjects = projectArgs.map((arg) => arg.replace('--project=', ''));
+const projectArgs = process.argv.filter(arg => arg.startsWith('--project='));
+const requestedProjects = projectArgs.map(arg => arg.replace('--project=', ''));
 
-const isRunningOnlyStatic = requestedProjects.length > 0 && requestedProjects.every((p) => p === 'static');
+const isRunningOnlyStatic = requestedProjects.length > 0 && requestedProjects.every(p => p === 'static');
 const isRunningOnlyDynamic =
-    requestedProjects.length > 0 && requestedProjects.every((p) => p === 'chromium' || p === 'firefox');
+    requestedProjects.length > 0 && requestedProjects.every(p => p === 'chromium' || p === 'firefox');
 const isRunningMixed = !isRunningOnlyStatic && !isRunningOnlyDynamic;
 
 // Set STATIC_MODE env var for test helpers when running static-only tests
@@ -39,6 +39,14 @@ const dynamicServerEnv = {
     APP_AUTH_METHODS: 'password,guest',
     ADMIN_EMAIL: 'admin@exelearning.test',
     ADMIN_PASSWORD: 'AdminPass123!',
+    // Exercise the app in production mode (the default .env now ships APP_ENV=dev
+    // for local onboarding). The production boot guard refuses to start with a
+    // missing/default API_JWT_SECRET or APP_SECRET (security audit), so provide
+    // real, non-default test values — irrelevant to the tests, which authenticate
+    // through the real API.
+    APP_ENV: 'prod',
+    API_JWT_SECRET: 'e2e-test-jwt-secret-not-for-production-use',
+    APP_SECRET: 'e2e-test-app-secret-not-for-production-use',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
 };
 

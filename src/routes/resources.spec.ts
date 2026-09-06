@@ -1095,4 +1095,79 @@ describe('Resources Routes', () => {
             });
         });
     });
+
+    describe('path traversal protection (security audit: unauth dir traversal)', () => {
+        // Theme/iDevice/library names are slugs ([A-Za-z0-9_-]). Every endpoint
+        // that joins a route param onto a base directory must reject traversal
+        // segments BEFORE touching the filesystem, otherwise an unauthenticated
+        // attacker can escape the public/ base (Elysia decodes `%2F`/`%2E` to
+        // real separators) and have `scanDirectory` enumerate — or the
+        // `bundle/theme` route exfiltrate — arbitrary directories the process
+        // can read. These encoded forms survive WHATWG URL parsing and reach the
+        // handler with separators intact (a bare `..` segment is collapsed first).
+        const TRAVERSAL_NAMES = ['..%2F..', '..%2F..%2F..%2F..%2Fetc', '%2E%2E%2Fsecret', 'foo%2Fbar'];
+
+        const ENDPOINTS = [
+            (name: string) => `http://localhost/api/resources/theme/${name}`,
+            (name: string) => `http://localhost/api/resources/idevice/${name}`,
+            (name: string) => `http://localhost/api/resources/libs/directory/${name}`,
+            (name: string) => `http://localhost/api/resources/bundle/theme/${name}`,
+        ];
+
+        function spyFs(): { touched: string[] } {
+            const touched: string[] = [];
+            const record = (p: unknown): void => {
+                if (typeof p === 'string') {
+                    touched.push(p);
+                }
+            };
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        record(p);
+                        return fs.existsSync(p);
+                    },
+                    readdirSync: ((p: string, options?: { withFileTypes: boolean }) => {
+                        record(p);
+                        return fs.readdirSync(p, options);
+                    }) as typeof fs.readdirSync,
+                    statSync: ((p: string) => {
+                        record(p);
+                        return fs.statSync(p);
+                    }) as typeof fs.statSync,
+                    readFileSync: ((p: string, encoding?: BufferEncoding) => {
+                        record(p);
+                        return fs.readFileSync(p, encoding);
+                    }) as typeof fs.readFileSync,
+                },
+            });
+            app = new Elysia().use(resourcesRoutes);
+            return { touched };
+        }
+
+        for (const makeUrl of ENDPOINTS) {
+            for (const name of TRAVERSAL_NAMES) {
+                it(`rejects traversal and reads nothing outside the base for ${makeUrl('<name>')} = ${name}`, async () => {
+                    const { touched } = spyFs();
+                    const res = await app.handle(new Request(makeUrl(name)));
+                    expect(res.status).toBe(404);
+                    const body = await res.json();
+                    if (Array.isArray(body)) {
+                        expect(body).toHaveLength(0);
+                    } else {
+                        expect(body.error).toBe('Not Found');
+                    }
+                    expect(touched).toHaveLength(0);
+                });
+            }
+        }
+
+        it('still resolves a legitimate slug theme name (no false positives)', async () => {
+            const res = await app.handle(new Request('http://localhost/api/resources/theme/base'));
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(Array.isArray(body)).toBe(true);
+            expect(body.length).toBeGreaterThan(0);
+        });
+    });
 });

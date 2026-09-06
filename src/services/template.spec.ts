@@ -312,6 +312,58 @@ describe('Template Service', () => {
         });
     });
 
+    describe('jsonScript filter (XSS-safe inline JSON for <script>)', () => {
+        // Mirrors how views/workarea/workarea.njk embeds server data into the inline
+        // <script>: a single-quoted JS string literal that public/app/app.js later
+        // JSON.parse()s. Evaluating the rendered snippet proves attacker-controlled
+        // values (e.g. a user's locale preference) cannot break out and execute.
+        function evalSink(rendered: string): { executed: boolean; win: Record<string, unknown>; config: string } {
+            let executed = false;
+            const win: Record<string, unknown> = {};
+            const factory = new Function('fetch', 'window', `const o = { ${rendered} }; return o;`);
+            const o = factory(() => {
+                executed = true;
+                return {};
+            }, win) as { config: string };
+            return { executed, win, config: o.config };
+        }
+
+        it('witness: the current backtick+dump sink executes an attacker template substitution', () => {
+            const oldSink = 'config: `{{ config | dump | safe }}`,';
+            // biome-ignore lint/suspicious/noTemplateCurlyInString: literal ${...} is the XSS payload under test
+            const rendered = env.renderString(oldSink, { config: { locale: '${(fetch(),0)}' } });
+            expect(evalSink(rendered).executed).toBe(true);
+        });
+
+        const XSS_PAYLOADS = [
+            // biome-ignore lint/suspicious/noTemplateCurlyInString: literal ${...} is the XSS payload under test
+            '${(fetch(),(window.__xss=1))}', // template-literal substitution
+            '`+fetch()+`', // backtick break-out
+            "'-fetch()-'", // single-quote break-out
+            '</script><img src=x onerror=fetch()>', // script-tag break-out
+            'a"b\\c', // quotes + backslash must round-trip
+            'es-ES', // benign value must survive untouched
+        ];
+
+        for (const payload of XSS_PAYLOADS) {
+            it(`jsonScript embeds ${JSON.stringify(payload)} without execution and round-trips it`, () => {
+                const newSink = "config: '{{ config | jsonScript | safe }}',";
+                const rendered = env.renderString(newSink, { config: { locale: payload } });
+
+                // The literal </script> must never appear in the emitted markup.
+                expect(rendered).not.toContain('</script>');
+
+                const { executed, win, config } = evalSink(rendered);
+                expect(executed).toBe(false);
+                expect(win.__xss).toBeUndefined();
+
+                // Frontend parse path (public/app/app.js parseExelearningConfig).
+                const parsed = JSON.parse(config.replace(/&quot;/g, '"'));
+                expect(parsed.locale).toBe(payload);
+            });
+        }
+    });
+
     describe('workarea/modals/pages/filemanager.njk (issue #2034)', () => {
         it('renders the media library upload input allowing .srt and .vtt subtitle files', () => {
             const html = renderTemplate('workarea/modals/pages/filemanager.njk', {});

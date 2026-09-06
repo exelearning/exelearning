@@ -314,6 +314,14 @@ export function isAllowedProviderUrl(url: string): boolean {
         return false;
     }
 
+    // Reject embedded credentials (userinfo). `https://allowed.example@evil/...`
+    // parses to host `evil` while a naive `url.startsWith('https://allowed.example')`
+    // would be true — a classic allow-list bypass that lets a valid-JWT holder
+    // point the server's outbound request at an internal host (SSRF).
+    if (parsed.username !== '' || parsed.password !== '') {
+        return false;
+    }
+
     // Both http(s) schemes are special, so a parsed URL always carries a
     // non-empty host — the entry matcher can rely on that.
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
@@ -360,6 +368,12 @@ export function isSafeReturnUrl(url: string): boolean {
     }
 
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return false;
+    }
+
+    // Reject embedded credentials: `https://allowed@internal/...` routes to
+    // `internal` while masquerading as `allowed` (SSRF / allow-list bypass).
+    if (parsed.username !== '' || parsed.password !== '') {
         return false;
     }
 

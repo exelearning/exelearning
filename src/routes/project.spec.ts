@@ -76,7 +76,8 @@ function createMockSessionManager(): SessionManagerDeps {
             }
         },
         deleteSession: (id: string) => mockSessions.delete(id),
-        getAllSessions: () => Array.from(mockSessions.values()),
+        getSessionsByUser: (userId: number) =>
+            Array.from(mockSessions.values()).filter((s: any) => s.userId === userId),
         generateSessionId: () => `session-${Date.now()}-${Math.random().toString(36).substring(7)}`,
     };
 }
@@ -410,8 +411,17 @@ describe('Project Routes', () => {
     });
 
     describe('GET /api/project/sessions', () => {
+        // These endpoints are now authenticated and scoped to the caller
+        // (security audit: unauth cross-tenant session enumeration/delete).
+        let sessToken: string;
+        beforeEach(async () => {
+            sessToken = await createAuthToken(1);
+        });
+
         it('should return empty list when no sessions', async () => {
-            const res = await app.handle(new Request('http://localhost/api/project/sessions'));
+            const res = await app.handle(
+                new Request('http://localhost/api/project/sessions', { headers: { Cookie: `auth=${sessToken}` } }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -423,11 +433,14 @@ describe('Project Routes', () => {
             mockSessions.set('session-1', {
                 sessionId: 'session-1',
                 fileName: 'test.elp',
+                userId: 1,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
             });
 
-            const res = await app.handle(new Request('http://localhost/api/project/sessions'));
+            const res = await app.handle(
+                new Request('http://localhost/api/project/sessions', { headers: { Cookie: `auth=${sessToken}` } }),
+            );
 
             const body = await res.json();
             expect(body.count).toBe(1);
@@ -436,16 +449,26 @@ describe('Project Routes', () => {
     });
 
     describe('GET /api/project/sessions/:id', () => {
+        let sessToken: string;
+        beforeEach(async () => {
+            sessToken = await createAuthToken(1);
+        });
+
         it('should return session details', async () => {
             mockSessions.set('session-1', {
                 sessionId: 'session-1',
                 fileName: 'test.elp',
                 filePath: '/tmp/test',
+                userId: 1,
                 createdAt: new Date().toISOString(),
                 structure: { title: 'Test' },
             });
 
-            const res = await app.handle(new Request('http://localhost/api/project/sessions/session-1'));
+            const res = await app.handle(
+                new Request('http://localhost/api/project/sessions/session-1', {
+                    headers: { Cookie: `auth=${sessToken}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -455,22 +478,33 @@ describe('Project Routes', () => {
         });
 
         it('should return 404 for non-existent session', async () => {
-            const res = await app.handle(new Request('http://localhost/api/project/sessions/non-existent'));
+            const res = await app.handle(
+                new Request('http://localhost/api/project/sessions/non-existent', {
+                    headers: { Cookie: `auth=${sessToken}` },
+                }),
+            );
 
             expect(res.status).toBe(404);
         });
     });
 
     describe('DELETE /api/project/sessions/:id', () => {
+        let sessToken: string;
+        beforeEach(async () => {
+            sessToken = await createAuthToken(1);
+        });
+
         it('should delete session', async () => {
             mockSessions.set('session-to-delete', {
                 sessionId: 'session-to-delete',
                 fileName: 'delete.elp',
+                userId: 1,
             });
 
             const res = await app.handle(
                 new Request('http://localhost/api/project/sessions/session-to-delete', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${sessToken}` },
                 }),
             );
 
@@ -484,6 +518,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/sessions/non-existent', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${sessToken}` },
                 }),
             );
 
@@ -2388,11 +2423,16 @@ describe('Project Routes', () => {
     });
 
     describe('Used Files Report (usedfiles)', () => {
+        let usedFilesToken: string;
+        beforeEach(async () => {
+            usedFilesToken = await createAuthToken(1);
+        });
+
         it('should return no files for empty content', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({ idevices: [] }),
                 }),
             );
@@ -2407,7 +2447,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2432,7 +2472,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2467,7 +2507,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2504,7 +2544,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -2909,10 +2949,16 @@ describe('Project Routes', () => {
     });
 
     describe('Cleanup Import', () => {
+        let cleanupToken: string;
+        beforeEach(async () => {
+            cleanupToken = await createAuthToken(1);
+        });
+
         it('should reject path outside allowed directory', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/cleanup-import?path=/etc/passwd', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${cleanupToken}` },
                 }),
             );
 
@@ -2925,6 +2971,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/cleanup-import?path=/files/tmp/test/file.txt', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${cleanupToken}` },
                 }),
             );
 
@@ -2937,6 +2984,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/cleanup-import', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${cleanupToken}` },
                 }),
             );
 
@@ -2954,6 +3002,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/cleanup-import?path=/files/tmp/test-session/test.elp', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${cleanupToken}` },
                 }),
             );
 
@@ -3323,15 +3372,22 @@ describe('Project Routes', () => {
     });
 
     describe('Project Session Delete', () => {
+        let sessToken: string;
+        beforeEach(async () => {
+            sessToken = await createAuthToken(1);
+        });
+
         it('should delete session and cleanup', async () => {
             mockSessions.set('delete-session', {
                 sessionId: 'delete-session',
                 fileName: 'test.elp',
+                userId: 1,
             });
 
             const res = await app.handle(
                 new Request('http://localhost/api/project/sessions/delete-session', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${sessToken}` },
                 }),
             );
 
@@ -3343,6 +3399,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/sessions/non-existent-delete', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${sessToken}` },
                 }),
             );
 
@@ -3351,17 +3408,26 @@ describe('Project Routes', () => {
     });
 
     describe('Session List Endpoints', () => {
+        let sessToken: string;
+        beforeEach(async () => {
+            sessToken = await createAuthToken(1);
+        });
+
         it('should return sessions list with count', async () => {
             mockSessions.set('list-session-1', {
                 sessionId: 'list-session-1',
                 fileName: 'file1.elp',
+                userId: 1,
             });
             mockSessions.set('list-session-2', {
                 sessionId: 'list-session-2',
                 fileName: 'file2.elp',
+                userId: 1,
             });
 
-            const res = await app.handle(new Request('http://localhost/api/project/sessions'));
+            const res = await app.handle(
+                new Request('http://localhost/api/project/sessions', { headers: { Cookie: `auth=${sessToken}` } }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -3373,9 +3439,14 @@ describe('Project Routes', () => {
             mockSessions.set('detail-session', {
                 sessionId: 'detail-session',
                 fileName: 'detail.elp',
+                userId: 1,
             });
 
-            const res = await app.handle(new Request('http://localhost/api/project/sessions/detail-session'));
+            const res = await app.handle(
+                new Request('http://localhost/api/project/sessions/detail-session', {
+                    headers: { Cookie: `auth=${sessToken}` },
+                }),
+            );
 
             expect(res.status).toBe(200);
             const body = await res.json();
@@ -4037,8 +4108,9 @@ describe('Project Routes', () => {
                 }),
             );
 
-            // Should return 200 with null user (unauthenticated access allowed for listing)
-            expect(res.status).toBe(200);
+            // Session listing now requires a valid user (security audit): an
+            // invalid token resolves to no currentUser and must be rejected.
+            expect(res.status).toBe(401);
         });
 
         it('should handle JWT verify returning false', async () => {
@@ -4051,7 +4123,7 @@ describe('Project Routes', () => {
                 }),
             );
 
-            expect(res.status).toBe(200);
+            expect(res.status).toBe(401);
         });
 
         it('should handle upload-chunk with Buffer type file', async () => {
@@ -4325,11 +4397,17 @@ describe('Project Routes', () => {
     });
 
     describe('Import Cleanup Error Handling', () => {
+        let cleanupToken: string;
+        beforeEach(async () => {
+            cleanupToken = await createAuthToken(1);
+        });
+
         it('should return success false for path outside allowed directory', async () => {
             // Test with a path outside the allowed tmp directory
             const res = await app.handle(
                 new Request('http://localhost/api/project/cleanup-import?path=/outside/path/file.elp', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${cleanupToken}` },
                 }),
             );
 
@@ -4344,6 +4422,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/cleanup-import?path=tmp/nonexistent-file.elp', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${cleanupToken}` },
                 }),
             );
 
@@ -4356,6 +4435,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/project/cleanup-import', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${cleanupToken}` },
                 }),
             );
 
@@ -5204,11 +5284,16 @@ describe('Project Routes', () => {
     });
 
     describe('Used Files Edge Cases', () => {
+        let usedFilesToken: string;
+        beforeEach(async () => {
+            usedFilesToken = await createAuthToken(1);
+        });
+
         it('should return null for non-existent file', async () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5231,7 +5316,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5258,7 +5343,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5299,7 +5384,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5331,7 +5416,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5363,7 +5448,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5390,7 +5475,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5421,7 +5506,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5450,7 +5535,7 @@ describe('Project Routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${usedFilesToken}` },
                     body: JSON.stringify({
                         idevices: [
                             {
@@ -5520,6 +5605,175 @@ describe('Project Routes', () => {
 
             expect(res.status).toBe(200);
             // The URL parser should catch this and return error
+        });
+    });
+
+    describe('Used Files Report — auth & path safety (security audit)', () => {
+        // usedfiles performs server-side file existence/size lookups, so it must
+        // require auth and must not escape FILES_DIR (path-traversal size oracle).
+        let authToken: string;
+
+        beforeEach(async () => {
+            authToken = await createAuthToken(1);
+        });
+
+        it('should require authentication', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idevices: [] }),
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        it('should not leak files outside FILES_DIR via path traversal', async () => {
+            // Plant a sentinel one level ABOVE the mock FILES_DIR (testDir/files).
+            const secretPath = path.join(testDir, 'secret-oracle.txt');
+            await fs.writeFile(secretPath, 'top-secret-contents');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
+                    body: JSON.stringify({
+                        idevices: [{ html: '<img src="files/../secret-oracle.txt">' }],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles).toEqual([]);
+        });
+
+        it('should report files that live inside FILES_DIR', async () => {
+            const filesDir = path.join(testDir, 'files');
+            await fs.ensureDir(filesDir);
+            await fs.writeFile(path.join(filesDir, 'image.png'), 'pngdata');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${authToken}` },
+                    body: JSON.stringify({
+                        idevices: [{ html: '<img src="files/image.png">' }],
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.usedFiles.length).toBe(1);
+            expect(body.usedFiles[0].usedFiles).toBe('image.png');
+        });
+    });
+
+    describe('Session endpoints — cross-tenant access control (security audit)', () => {
+        it('rejects unauthenticated session listing with 401', async () => {
+            mockSessions.set('user1-session', { sessionId: 'user1-session', fileName: 'User1.elp', userId: 1 });
+            mockSessions.set('user2-session', { sessionId: 'user2-session', fileName: 'Secret Exam.elp', userId: 2 });
+
+            const res = await app.handle(new Request('http://localhost/api/project/sessions'));
+
+            // Vulnerable code returns 200 with every user's session (cross-tenant
+            // enumeration + project-title disclosure).
+            expect(res.status).toBe(401);
+        });
+
+        it('scopes GET /sessions to the authenticated caller only', async () => {
+            mockSessions.set('user1-session', { sessionId: 'user1-session', fileName: 'User1.elp', userId: 1 });
+            mockSessions.set('user2-session', { sessionId: 'user2-session', fileName: 'Secret Exam.elp', userId: 2 });
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/project/sessions', { headers: { Cookie: `auth=${token}` } }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            const ids = body.sessions.map((s: { sessionId: string }) => s.sessionId);
+            expect(ids).toContain('user1-session');
+            expect(ids).not.toContain('user2-session');
+        });
+
+        it("does not allow deleting another user's session (IDOR)", async () => {
+            mockSessions.set('user2-session', { sessionId: 'user2-session', fileName: 'Secret Exam.elp', userId: 2 });
+
+            const token = await createAuthToken(1); // user 1 attacks user 2's session
+            const res = await app.handle(
+                new Request('http://localhost/api/project/sessions/user2-session', {
+                    method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            // Vulnerable code returns 200 and removes the victim's live session.
+            expect(res.status).toBe(404);
+            expect(mockSessions.has('user2-session')).toBe(true);
+        });
+
+        it("blocks reading another user's session details (404, no oracle)", async () => {
+            mockSessions.set('user2-session', {
+                sessionId: 'user2-session',
+                fileName: 'Secret Exam.elp',
+                filePath: '/data/tmp/secret/path.elp',
+                userId: 2,
+            });
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/project/sessions/user2-session', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(404); // must not disclose filePath/hasStructure
+        });
+    });
+
+    describe('Cleanup Import — authorization (security audit)', () => {
+        it('requires authentication and does not delete files when unauthenticated', async () => {
+            // Pre-create a victim's in-flight import temp file under FILES_DIR/tmp.
+            const tmpDir = path.join(testDir, 'files', 'tmp', 'victim-session');
+            await fs.ensureDir(tmpDir);
+            const victimFile = path.join(tmpDir, 'import.elp');
+            await fs.writeFile(victimFile, 'PK victim');
+
+            // Anonymous DELETE (no auth cookie/header) must be rejected with 401...
+            const res = await app.handle(
+                new Request('http://localhost/api/project/cleanup-import?path=/files/tmp/victim-session/import.elp', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(401);
+            const body = await res.json();
+            expect(body.success).toBe(false);
+
+            // ...and the victim's file must still be on disk.
+            expect(await fs.pathExists(victimFile)).toBe(true);
+        });
+
+        it('still cleans up a valid ELP file when authenticated', async () => {
+            const token = await createAuthToken(1);
+            const tmpDir = path.join(testDir, 'files', 'tmp', 'auth-session');
+            await fs.ensureDir(tmpDir);
+            await fs.writeFile(path.join(tmpDir, 'test.elp'), 'PK content');
+
+            const res = await app.handle(
+                new Request('http://localhost/api/project/cleanup-import?path=/files/tmp/auth-session/test.elp', {
+                    method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(await fs.pathExists(path.join(tmpDir, 'test.elp'))).toBe(false);
         });
     });
 });
