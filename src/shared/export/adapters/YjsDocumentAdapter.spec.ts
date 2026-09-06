@@ -298,6 +298,33 @@ describe('YjsDocumentAdapter', () => {
             expect(metadata.license).toBe('');
             expect(metadata.licenseUrl).toBe('');
         });
+
+        it('should default addKeyboardNavigation to false when not set', () => {
+            manager = new MockYjsDocumentManager({});
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.addKeyboardNavigation).toBe(false);
+        });
+
+        it('should read addKeyboardNavigation=true from Yjs metadata', () => {
+            manager = new MockYjsDocumentManager({ addKeyboardNavigation: true });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.addKeyboardNavigation).toBe(true);
+        });
+
+        it('should read addKeyboardNavigation="true" (stringified boolean) from Yjs metadata', () => {
+            manager = new MockYjsDocumentManager({ addKeyboardNavigation: 'true' });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.addKeyboardNavigation).toBe(true);
+        });
     });
 
     describe('getNavigation', () => {

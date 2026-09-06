@@ -2148,4 +2148,54 @@ describe('PageRenderer', () => {
             expect(renderer.replaceSinglePageInternalLinks('', allPages)).toBe('');
         });
     });
+
+    describe('addKeyboardNavigation export option', () => {
+        it('should NOT set window.exeKeyboardNavEnabled by default (render)', () => {
+            const page = createTestPage();
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).not.toContain('window.exeKeyboardNavEnabled');
+        });
+
+        it('should set window.exeKeyboardNavEnabled=true before exe_export.js when enabled (render)', () => {
+            const page = createTestPage();
+            const options = createDefaultOptions({ allPages: [page], addKeyboardNavigation: true });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('window.exeKeyboardNavEnabled=true;');
+            // Must come before exe_export.js loads, so keyboardNav.init() can read it.
+            expect(html.indexOf('window.exeKeyboardNavEnabled=true;')).toBeLessThan(html.indexOf('libs/exe_export.js'));
+        });
+
+        it('should NOT set window.exeKeyboardNavEnabled by default (renderHead)', () => {
+            const head = renderer.renderHead({ pageTitle: 'Test', basePath: '', usedIdevices: [] });
+            expect(head).not.toContain('window.exeKeyboardNavEnabled');
+        });
+
+        it('should set window.exeKeyboardNavEnabled=true when enabled (renderHead)', () => {
+            const head = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '',
+                usedIdevices: [],
+                addKeyboardNavigation: true,
+            });
+            expect(head).toContain('window.exeKeyboardNavEnabled=true;');
+        });
+
+        it('should NOT set window.exeKeyboardNavEnabled by default (renderSinglePage)', () => {
+            const pages: ExportPage[] = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, { projectTitle: 'Test' });
+            expect(html).not.toContain('window.exeKeyboardNavEnabled');
+        });
+
+        it('should set window.exeKeyboardNavEnabled=true when enabled (renderSinglePage)', () => {
+            const pages: ExportPage[] = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, { projectTitle: 'Test', addKeyboardNavigation: true });
+            expect(html).toContain('window.exeKeyboardNavEnabled=true;');
+            expect(html.indexOf('window.exeKeyboardNavEnabled=true;')).toBeLessThan(html.indexOf('libs/exe_export.js'));
+        });
+    });
 });

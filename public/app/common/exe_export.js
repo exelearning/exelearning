@@ -42,6 +42,11 @@ window.$exeExport = {
             console.error('Error: Failed to initialize box toggle events');
         }
         try {
+            this.keyboardNav.init();
+        } catch (err) {
+            console.error('Error: Failed to initialize keyboard navigation');
+        }
+        try {
             this.setExe();
             this.initExe();
             this.initJsonIdevices();
@@ -600,6 +605,269 @@ window.$exeExport = {
         const params = new URLSearchParams(window.location.search);
         if (params.get('print') === '1' && typeof window.print === 'function') {
             window.print();
+        }
+    },
+
+    /**
+     * Keyboard navigation for exported/previewed content, inspired by the
+     * legacy eXeLearning 2.9 "Presentation" style. Works with any theme that
+     * exposes the standard nav elements (#siteNav, .nav-buttons,
+     * #siteNavToggler, #searchBarTogger, #teacher-mode-toggler) and is a
+     * no-op when they are absent.
+     *
+     * "t" toggles the Teacher Mode content layer, but only where it is
+     * already active (i.e. only when #teacher-mode-toggler exists — see
+     * teacherMode above); it never shadows Ctrl/Cmd+T (new browser tab).
+     *
+     * Off by default: it changes standard page navigation and may conflict
+     * with other keyboard-driven content (e.g. lightbox galleries), so
+     * authors must opt in via the "Keyboard navigation" export option
+     * (window.exeKeyboardNavEnabled, set by PageRenderer.renderHead()).
+     *
+     * Opt-out (once enabled by the author): `?keyboard-navigation=false`
+     * query param, or a `exeKeyboardNavigationDisabled` value in localStorage.
+     */
+    keyboardNav: {
+        _initialized: false,
+        _boundHandleKeydown: null,
+
+        init: function () {
+            if (this._initialized || !this.isEnabled() || this.isShortcutDisabled()) return;
+            this._boundHandleKeydown = this.handleKeydown.bind(this);
+            document.addEventListener('keydown', this._boundHandleKeydown);
+            this._initialized = true;
+        },
+
+        destroy: function () {
+            if (this._boundHandleKeydown) {
+                document.removeEventListener('keydown', this._boundHandleKeydown);
+                this._boundHandleKeydown = null;
+            }
+            this._initialized = false;
+        },
+
+        // Author opt-in via the "Keyboard navigation" export option.
+        isEnabled: function () {
+            return window.exeKeyboardNavEnabled === true;
+        },
+
+        isShortcutDisabled: function () {
+            try {
+                var params = new URLSearchParams(window.location.search);
+                if (params.get('keyboard-navigation') === 'false') return true;
+            } catch (err) {
+                // Malformed URL: fall through to the localStorage check
+            }
+            try {
+                if (window.localStorage && window.localStorage.getItem('exeKeyboardNavigationDisabled') === 'true') {
+                    return true;
+                }
+            } catch (err) {
+                // localStorage unavailable (privacy mode, sandboxed iframe)
+            }
+            return false;
+        },
+
+        // Never hijack shortcuts while the user is typing or composing text.
+        isTypingTarget: function (target) {
+            if (!target || typeof target.closest !== 'function') return false;
+            return !!target.closest(
+                'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]'
+            );
+        },
+
+        getPreviousLink: function () {
+            return document.querySelector('a.nav-button-left');
+        },
+
+        getNextLink: function () {
+            return document.querySelector('a.nav-button-right');
+        },
+
+        getFirstNavLink: function () {
+            return document.querySelector('#siteNav a[href]');
+        },
+
+        getLastNavLink: function () {
+            var links = document.querySelectorAll('#siteNav a[href]');
+            return links.length ? links[links.length - 1] : null;
+        },
+
+        toggleMenu: function () {
+            var toggler = document.getElementById('siteNavToggler');
+            if (!toggler) return false;
+            toggler.click();
+            return true;
+        },
+
+        isHidden: function (el) {
+            if (!el) return true;
+            if (el.hidden) return true;
+            var style = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(el) : el.style;
+            return style.display === 'none';
+        },
+
+        // Single source of truth for "some overlay/lightbox widget currently
+        // owns the keyboard, so we must not" (an open image-gallery lightbox
+        // must fully prevail over our shortcuts — see PR #2020 review from
+        // @ignaciogros). Add one entry here to cover a future overlay/widget;
+        // nothing else in this module needs to change.
+        overlaySignals: [
+            {
+                name: 'exe_lightbox (prettyPhoto, rel="lightbox[...]")',
+                // public/app/common/exe_lightbox/exe_lightbox.js — the
+                // .pp_pic_holder node is created once on first open and never
+                // removed; open/closed is toggled via jQuery show/hide, so
+                // existence alone is NOT enough — must also check visibility.
+                isActive: function (kbNav) {
+                    var el = document.querySelector('.pp_pic_holder');
+                    return !!el && !kbNav.isHidden(el);
+                }
+            },
+            {
+                name: 'SimpleLightbox (Image Gallery iDevice)',
+                // public/libs/simplelightbox — .sl-wrapper is inserted into
+                // the DOM only while open and removed again on close, so
+                // existence alone is a reliable, sufficient signal. Note:
+                // SimpleLightbox's own nav uses `keyup`, not `keydown` — if
+                // we don't suppress here, our keydown navigates the page
+                // before its keyup handler ever runs.
+                isActive: function () {
+                    return !!document.querySelector('.sl-wrapper');
+                }
+            },
+            {
+                name: 'Fullscreen image overlay (Magnifier + other Games-* iDevices)',
+                // public/app/common/common.js, showFullscreenImage() —
+                // .Games-OverlayImage is appended only while shown and
+                // removed on click-to-close. No keyboard handler of its own,
+                // but a full-screen visual overlay, so still suppress.
+                isActive: function () {
+                    return !!document.querySelector('.Games-OverlayImage');
+                }
+            },
+            {
+                name: 'MediaElement.js fullscreen video (Interactive Video iDevice)',
+                // public/app/common/exe_media/exe_media.js — .mejs-container-
+                // fullscreen is added to the player container only while in
+                // fullscreen and removed on exit.
+                isActive: function () {
+                    return !!document.querySelector('.mejs-container-fullscreen');
+                }
+            }
+        ],
+
+        isOverlayActive: function () {
+            var kbNav = this;
+            return this.overlaySignals.some(function (signal) {
+                try {
+                    return signal.isActive(kbNav);
+                } catch (err) {
+                    // A single broken probe must never mask the others.
+                    return false;
+                }
+            });
+        },
+
+        focusSearch: function () {
+            var toggler = document.getElementById('searchBarTogger');
+            if (!toggler) return false;
+            var bar = document.getElementById('exe-client-search');
+            if (this.isHidden(bar)) {
+                // Reuse the theme's own toggler handler so it shows the bar
+                // consistently with a real click (state classes, layout, etc.)
+                toggler.click();
+            }
+            var input = document.getElementById('exe-client-search-text');
+            if (input) input.focus();
+            return true;
+        },
+
+        // `m` and Alt+M both toggle the menu: KeyboardEvent.code identifies the
+        // physical M key regardless of layout or whether Alt changes `.key`
+        // (e.g. Option+M produces "µ" on macOS).
+        isMenuToggleShortcut: function (event) {
+            if (event.ctrlKey || event.metaKey) return false;
+            if (event.code) return event.code === 'KeyM';
+            return event.key === 'm' || event.key === 'M';
+        },
+
+        // Alt+/ opens/focuses search without ever shadowing Ctrl/Cmd+F.
+        isSearchShortcut: function (event) {
+            if (!event.altKey || event.ctrlKey || event.metaKey) return false;
+            if (event.code) return event.code === 'Slash';
+            return event.key === '/';
+        },
+
+        // Toggle the Teacher Mode content layer by clicking the real
+        // #teacher-mode-toggler checkbox (see teacherMode.init() above), so the
+        // existing change handler stays the single source of truth for the
+        // reveal/hide + localStorage persistence logic. The toggler only exists
+        // in the DOM when Teacher Mode is active on this page (opted in via the
+        // ?exe-teacher URL parameter and the page has teacher-only content), so
+        // this is naturally a no-op — and never calls preventDefault() —
+        // everywhere else.
+        toggleTeacherMode: function () {
+            var toggler = document.getElementById('teacher-mode-toggler');
+            if (!toggler) return false;
+            toggler.click();
+            return true;
+        },
+
+        // Plain "t" only: never matches Ctrl/Cmd+T (new browser tab) or Alt+T.
+        isTeacherModeShortcut: function (event) {
+            if (event.ctrlKey || event.metaKey || event.altKey) return false;
+            if (event.code) return event.code === 'KeyT';
+            return event.key === 't' || event.key === 'T';
+        },
+
+        activateLink: function (link, event) {
+            if (!link) return;
+            link.click();
+            if (event.cancelable) event.preventDefault();
+        },
+
+        handleKeydown: function (event) {
+            if (event.defaultPrevented || event.isComposing) return;
+            if (this.isOverlayActive()) return;
+            if (this.isTypingTarget(event.target)) return;
+
+            if (this.isMenuToggleShortcut(event)) {
+                if (this.toggleMenu() && event.cancelable) event.preventDefault();
+                return;
+            }
+
+            if (this.isSearchShortcut(event)) {
+                if (this.focusSearch() && event.cancelable) event.preventDefault();
+                return;
+            }
+
+            if (this.isTeacherModeShortcut(event)) {
+                if (this.toggleTeacherMode() && event.cancelable) event.preventDefault();
+                return;
+            }
+
+            // Remaining shortcuts are plain, unmodified arrow keys only, so we
+            // never shadow Alt/Ctrl/Cmd combinations reserved by the browser
+            // (e.g. Alt+Left/Right for browser back/forward history).
+            if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+
+            switch (event.key) {
+                case 'ArrowLeft':
+                    this.activateLink(this.getPreviousLink(), event);
+                    break;
+                case 'ArrowRight':
+                    this.activateLink(this.getNextLink(), event);
+                    break;
+                case 'ArrowUp':
+                    this.activateLink(this.getFirstNavLink(), event);
+                    break;
+                case 'ArrowDown':
+                    this.activateLink(this.getLastNavLink(), event);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }

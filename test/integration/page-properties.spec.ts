@@ -1069,4 +1069,83 @@ describe('Page Properties Integration', () => {
             expect(html).toContain('No math content here');
         });
     });
+
+    describe('addKeyboardNavigation metadata property', () => {
+        const createMockDocumentWithKeyboardNav = (addKeyboardNavigation?: boolean): ExportDocument => ({
+            getMetadata: (): ExportMetadata => ({
+                title: 'Keyboard Navigation Test Project',
+                author: 'Test',
+                description: '',
+                language: 'en',
+                license: 'CC-BY-SA',
+                keywords: '',
+                theme: 'base',
+                addKeyboardNavigation,
+            }),
+            getNavigation: (): ExportPage[] => [
+                {
+                    id: 'page-1',
+                    title: 'First Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>Some content</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        it('does not set window.exeKeyboardNavEnabled when the option is not set (default off)', async () => {
+            const document = createMockDocumentWithKeyboardNav(undefined);
+            const resources = createMockResourceProvider();
+            const assets = createMockAssetProvider();
+            const zip = new FflateZipProvider();
+
+            const exporter = new Html5Exporter(document, resources, assets, zip);
+            const files = await exporter.generateForPreview();
+            const html = getHtmlFromPreviewFiles(files, 'index.html');
+
+            expect(html).not.toContain('window.exeKeyboardNavEnabled');
+        });
+
+        it('does not set window.exeKeyboardNavEnabled when explicitly false', async () => {
+            const document = createMockDocumentWithKeyboardNav(false);
+            const resources = createMockResourceProvider();
+            const assets = createMockAssetProvider();
+            const zip = new FflateZipProvider();
+
+            const exporter = new Html5Exporter(document, resources, assets, zip);
+            const files = await exporter.generateForPreview();
+            const html = getHtmlFromPreviewFiles(files, 'index.html');
+
+            expect(html).not.toContain('window.exeKeyboardNavEnabled');
+        });
+
+        it('sets window.exeKeyboardNavEnabled=true before exe_export.js when enabled', async () => {
+            const document = createMockDocumentWithKeyboardNav(true);
+            const resources = createMockResourceProvider();
+            const assets = createMockAssetProvider();
+            const zip = new FflateZipProvider();
+
+            const exporter = new Html5Exporter(document, resources, assets, zip);
+            const files = await exporter.generateForPreview();
+            const html = getHtmlFromPreviewFiles(files, 'index.html');
+
+            expect(html).toContain('window.exeKeyboardNavEnabled=true;');
+            expect(html.indexOf('window.exeKeyboardNavEnabled=true;')).toBeLessThan(html.indexOf('libs/exe_export.js'));
+        });
+    });
 });
