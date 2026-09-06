@@ -1243,39 +1243,39 @@
       </trans-unit>
       <trans-unit id="cnzcOY5" resname="Text">
         <source>Text</source>
-        <target>~Trennzeichen</target>
+        <target>~Text</target>
       </trans-unit>
       <trans-unit id="TEJoYtI" resname="Delimiters">
         <source>Delimiters</source>
-        <target>~Eckige Klammern</target>
+        <target>~Trennzeichen</target>
       </trans-unit>
       <trans-unit id="1Iql3OZ" resname="Square brackets">
         <source>Square brackets</source>
-        <target>~Geschweifte Klammern</target>
+        <target>~Eckige Klammern</target>
       </trans-unit>
       <trans-unit id="T7evgVP" resname="Curly braces">
         <source>Curly braces</source>
-        <target>~Norm</target>
+        <target>~Geschweifte Klammern</target>
       </trans-unit>
       <trans-unit id="0zze4jf" resname="Norm">
         <source>Norm</source>
-        <target>~Bodenfunktion</target>
+        <target>~Norm</target>
       </trans-unit>
       <trans-unit id="iYn1Wmo" resname="Floor function">
         <source>Floor function</source>
-        <target>~Deckenfunktion</target>
+        <target>~Bodenfunktion</target>
       </trans-unit>
       <trans-unit id="hhIKD3K" resname="Ceiling function">
         <source>Ceiling function</source>
-        <target>~Betrag</target>
+        <target>~Deckenfunktion</target>
       </trans-unit>
       <trans-unit id="DiYvbWw" resname="Absolute value">
         <source>Absolute value</source>
-        <target>~Winkel</target>
+        <target>~Betrag</target>
       </trans-unit>
       <trans-unit id="4.bzzOJ" resname="Angle">
         <source>Angle</source>
-        <target>~Gruppierung</target>
+        <target>~Winkel</target>
       </trans-unit>
       <trans-unit id="NMoOWkS" resname="Grouping">
         <source>Grouping</source>
@@ -2056,10 +2056,6 @@
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
         <target>~Riesiger Text</target>
-      </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>~Extra large text</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
@@ -3728,14 +3724,6 @@
       <trans-unit id="RmnBdRa" resname="Info">
         <source>Info</source>
         <target>~Info</target>
-      </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>~Zeige oder verstecke die Kinder des Knotens</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>~Beginne mit einer neuen Mindmap</target>
       </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
@@ -6167,43 +6155,43 @@
       </trans-unit>
       <trans-unit id="t9h1YOO" resname="Unable to display an iframe loaded over HTTP on a website that uses HTTPS.">
         <source>Unable to display an iframe loaded over HTTP on a website that uses HTTPS.</source>
-        <target>~Unable to display an iframe loaded over HTTP on a website that uses HTTPS.</target>
+        <target>~iframe kann nicht angezeigt werden, da es über HTTP geladen wurde, während die Website HTTPS verwendet.</target>
       </trans-unit>
       <trans-unit id="i3DCptU" resname="empty field">
         <source>empty field</source>
-        <target>~iframe kann nicht angezeigt werden, da es über HTTP geladen wurde, während die Website HTTPS verwendet.</target>
+        <target>~leeres Feld</target>
       </trans-unit>
       <trans-unit id="7AQwApM" resname="incorrect">
         <source>incorrect</source>
-        <target>~empty field</target>
+        <target>~falsch</target>
       </trans-unit>
       <trans-unit id="A.2D9iI" resname="Right. That's the card.">
         <source>Right. That's the card.</source>
-        <target>~leeres Feld</target>
+        <target>~Richtig. Das ist die Karte.</target>
       </trans-unit>
       <trans-unit id="RHxPCTE" resname="You're wrong. That's not the card.">
         <source>You're wrong. That's not the card.</source>
-        <target>~incorrect</target>
+        <target>~Du liegst falsch. Das ist nicht die Karte.</target>
       </trans-unit>
       <trans-unit id="OaXY85n" resname="Right. That's not the card.">
         <source>Right. That's not the card.</source>
-        <target>~falsch</target>
+        <target>~Richtig. Das ist nicht die Karte.</target>
       </trans-unit>
       <trans-unit id="lxrcn1d" resname="You're wrong. That's the card.">
         <source>You're wrong. That's the card.</source>
-        <target>~Right. That's the card.</target>
+        <target>~Du liegst falsch. Das ist die Karte.</target>
       </trans-unit>
       <trans-unit id="n.n5hj5" resname="Memory cards">
         <source>Memory cards</source>
-        <target>~Richtig. Das ist die Karte.</target>
+        <target>~Memory-Karten</target>
       </trans-unit>
       <trans-unit id="HWekgRg" resname="True">
         <source>True</source>
-        <target>~You're wrong. That's not the card.</target>
+        <target>~Wahr</target>
       </trans-unit>
       <trans-unit id="BdNA23t" resname="False">
         <source>False</source>
-        <target>~Du liegst falsch. Das ist nicht die Karte.</target>
+        <target>~Falsch</target>
       </trans-unit>
       <trans-unit id="DeMiozc" resname="Click on the card">
         <source>Click on the card</source>
@@ -10705,102 +10693,6 @@
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>~Ändern Sie den Text der Registerkarten, indem Sie jedem eine Überschrift der Ebene 2 mit der Option "Attribute einfügen/bearbeiten" hinzufügen: </target>
       </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>~Aus Wikipedia, der freien Enzyklopädie.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>~Weitergeleitet von</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>~Wikipedia hat keinen Artikel mit genau diesem Namen.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>~Suche nach</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>~in Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>~um nach alternativen Titeln oder Schreibweisen zu suchen.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>~Wikipedia-Artikel</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>~Artikel</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>~Englisch</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>~Baskisch</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>~Katalanisch</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>~Chinesisch</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>~Niederländisch</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>~Französisch</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>~Galicisch</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>~Deutsch</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>~Italienisch</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>~Japanisch</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>~Magyar</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>~Polnisch</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>~Portugiesisch</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>~Slowenisch</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>~Spanisch</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>~Schwedisch</target>
-      </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
         <target>~Hervorhebung</target>
@@ -13641,10 +13533,6 @@
         <source>Your access to this project has been revoked.</source>
         <target>~Ihr Zugriff auf dieses Projekt wurde widerrufen.</target>
       </trans-unit>
-      <trans-unit id="q30iy28" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>~Gedächtniskarte gespeichert</target>
-      </trans-unit>
       <trans-unit id="r4mkt9t" resname="source">
         <source>source</source>
         <target>~Quelle</target>
@@ -15692,6 +15580,114 @@
       <trans-unit id="slz72c4" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
         <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
         <target>~Diese Aktivitäten verweisen auf Dateien, die nicht im importierten Paket enthalten sind. Die Verweise wurden beibehalten, sodass die Dateien durch erneutes Hinzufügen wiederhergestellt werden.</target>
+      </trans-unit>
+      <trans-unit id="ezmnqtr" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~Formeln werden auch dann dargestellt, wenn diese Option deaktiviert ist. Aktivieren Sie sie, um die vollständige MathJax-Bibliothek in die Exporte einzubinden. Das fügt ihr Kontextmenü und ihre interaktiven Funktionen hinzu.</target>
+      </trans-unit>
+      <trans-unit id="kt2769t" resname="Change password">
+        <source>Change password</source>
+        <target>~Passwort ändern</target>
+      </trans-unit>
+      <trans-unit id="fid5iv7" resname="Current password">
+        <source>Current password</source>
+        <target>~Aktuelles Passwort</target>
+      </trans-unit>
+      <trans-unit id="3nx8say" resname="New password">
+        <source>New password</source>
+        <target>~Neues Passwort</target>
+      </trans-unit>
+      <trans-unit id="00s0t1l" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Mindestens 4 Zeichen. Längere Passwörter, die Buchstaben, Zahlen und Symbole kombinieren, sind sicherer.</target>
+      </trans-unit>
+      <trans-unit id="5a7vdj5" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Neues Passwort bestätigen</target>
+      </trans-unit>
+      <trans-unit id="hruhthm" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Beschädigte Aktivitäten</target>
+      </trans-unit>
+      <trans-unit id="ph6q11c" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~Die Daten dieser Aktivitäten sind beschädigt und konnten nicht gelesen werden. Sie wurden unverändert importiert: Ihr letzter Inhalt wird weiterhin angezeigt, sie lassen sich aber erst nach einer Neuerstellung bearbeiten.</target>
+      </trans-unit>
+      <trans-unit id="ixyb6xe" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Importwarnungen</target>
+      </trans-unit>
+      <trans-unit id="l31lref" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Symbol suchen</target>
+      </trans-unit>
+      <trans-unit id="rd7vbfj" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Bild aus dem Dateimanager auswählen</target>
+      </trans-unit>
+      <trans-unit id="yrr5b60" resname="Icon">
+        <source>Icon</source>
+        <target>~Symbol</target>
+      </trans-unit>
+      <trans-unit id="75epl3a" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Symbole des Stils</target>
+      </trans-unit>
+      <trans-unit id="6lc0xoc" resname="General icons">
+        <source>General icons</source>
+        <target>~Allgemeine Symbole</target>
+      </trans-unit>
+      <trans-unit id="d7iybub" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Passwortstärke: zu kurz</target>
+      </trans-unit>
+      <trans-unit id="c0a81s5" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Passwortstärke: schwach</target>
+      </trans-unit>
+      <trans-unit id="5o6a7hj" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Passwortstärke: mittelmäßig</target>
+      </trans-unit>
+      <trans-unit id="sf9xiob" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Passwortstärke: gut</target>
+      </trans-unit>
+      <trans-unit id="t2a9rkq" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Passwortstärke: stark</target>
+      </trans-unit>
+      <trans-unit id="6tf48zd" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~Das aktuelle Passwort ist nicht korrekt</target>
+      </trans-unit>
+      <trans-unit id="cnnccdt" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~Das neue Passwort darf nicht leer sein.</target>
+      </trans-unit>
+      <trans-unit id="qc6ukzb" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~Die Passwörter stimmen nicht überein</target>
+      </trans-unit>
+      <trans-unit id="ycy9qaf" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~Passwort erfolgreich geändert</target>
+      </trans-unit>
+      <trans-unit id="69d2h5l" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.</target>
+      </trans-unit>
+      <trans-unit id="g4zrueq" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Für dieses Konto ist keine Passwortänderung möglich.</target>
+      </trans-unit>
+      <trans-unit id="zlzvm29" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~Das neue Passwort ist ungültig.</target>
+      </trans-unit>
+      <trans-unit id="mc46j2u" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Gigantischer Text</target>
       </trans-unit>
     </body>
   </file>

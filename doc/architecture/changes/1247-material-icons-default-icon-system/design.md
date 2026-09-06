@@ -98,6 +98,7 @@ Rendering and tinting (ADR-1247-04):
 - Export renderer `src/shared/export/renderers/IdeviceRenderer.ts` (`renderBlock`) branches on `icon.source`: `material` → `<span class="exe-material-icon" style="--exe-material-icon-url:url('<data URI>')" aria-hidden="true">`; `asset`/`theme` → `<img>`.
 - CSS mask + `currentColor` fill + `1.2×` scale in `assets/styles/layout/_execontent.scss`, `assets/styles/components/_modals.scss`, exported theme CSS `public/files/perm/themes/base/*/style.css`, and `public/style/workarea/base.css`.
 - Per-theme tint via `--exe-icon-color` / `--icon-primary` / `--modal-icon-color` with `THEME_ICON_COLOR_MAP` fallback and default `#6E9F41` (`blockNode.js` `getCurrentThemeIconColor`; default var in `assets/styles/abstracts/_variables.scss`). The picker browses Material icons via a sprite `<use>` variant (`renderMaterialSpriteIcon`) while applied icons use the mask `data:` URI (`renderMaterialMaskIcon`).
+  > Note (issue #2363): `THEME_ICON_COLOR_MAP` was later removed. The tint is now resolved entirely from theme CSS — `--exe-icon-picker-color` / `--exe-icon-color` / `--icon-primary` / computed `color`, then `#6E9F41`. See ADR-1247-04.
 
 ## Data model
 

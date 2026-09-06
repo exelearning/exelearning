@@ -2057,10 +2057,6 @@
         <source>Huge text</source>
         <target>Text uriaș</target>
       </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>Text enorm</target>
-      </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
         <target>Blackboard bold</target>
@@ -3728,14 +3724,6 @@
       <trans-unit id="RmnBdRa" resname="Info">
         <source>Info</source>
         <target>Informații</target>
-      </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>Afișează sau ascunde copiii nodului</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>Începe să lucrezi la o hartă mentală nouă</target>
       </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
@@ -10701,102 +10689,6 @@
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>Schimbă textul taburilor adăugând un titlu fiecărui antet de nivel 2 cu opțiunea „Inserează/Editare Atribute”: </target>
       </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>Din Wikipedia, enciclopedia liberă.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>Redirecționat de la</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>Wikipedia nu are un articol cu acest nume exact.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>căutați</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>pe Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>pentru a verifica titluri alternative sau ortografii.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>Articol Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>Articol</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>Engleză</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>Basque</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>Catalan</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>Chineză</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>Olandez</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>Franceză</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>Galiciană</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>Germană</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>Italiană</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>Japoneză</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>Maghiară</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>Poloneză</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>Portugueză</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>Slovenă</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>Spaniolă</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>Suedeză</target>
-      </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
         <target>Accent</target>
@@ -13641,10 +13533,6 @@
         <source>Your access to this project has been revoked.</source>
         <target>Accesul tău la acest proiect a fost revocat.</target>
       </trans-unit>
-      <trans-unit id="qmyd880" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>Hartă mentală salvată</target>
-      </trans-unit>
       <trans-unit id="ogtaqry" resname="source">
         <source>source</source>
         <target>sursă</target>
@@ -15692,6 +15580,114 @@
       <trans-unit id="nxr31oi" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
         <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
         <target>~Aceste activități fac referire la fișiere care nu sunt incluse în pachetul importat. Referințele au fost păstrate, așa că adăugarea din nou a fișierelor le va restaura.</target>
+      </trans-unit>
+      <trans-unit id="yiwn80c" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~Formulele sunt afișate chiar dacă această opțiune este dezactivată. Activați-o pentru a include biblioteca MathJax completă în exporturi. Aceasta adaugă meniul său contextual și funcțiile sale interactive.</target>
+      </trans-unit>
+      <trans-unit id="zf33oav" resname="Change password">
+        <source>Change password</source>
+        <target>~Schimbare parolă</target>
+      </trans-unit>
+      <trans-unit id="uxmcuvu" resname="Current password">
+        <source>Current password</source>
+        <target>~Parola actuală</target>
+      </trans-unit>
+      <trans-unit id="5bobb51" resname="New password">
+        <source>New password</source>
+        <target>~Parola nouă</target>
+      </trans-unit>
+      <trans-unit id="0kirkdf" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Cel puțin 4 caractere. Parolele lungi care combină litere, cifre și simboluri sunt mai sigure.</target>
+      </trans-unit>
+      <trans-unit id="7qt2v14" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Confirmă parola nouă</target>
+      </trans-unit>
+      <trans-unit id="3cfj1r6" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Activități deteriorate</target>
+      </trans-unit>
+      <trans-unit id="8brt4c5" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~Datele acestor activități sunt deteriorate și nu au putut fi citite. Au fost importate nemodificate: ultimul lor conținut este încă afișat, dar nu pot fi editate decât după ce sunt create din nou.</target>
+      </trans-unit>
+      <trans-unit id="4q7n57t" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Avertizări de import</target>
+      </trans-unit>
+      <trans-unit id="ppni83y" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Caută pictogramă</target>
+      </trans-unit>
+      <trans-unit id="93a9udm" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Alege o imagine din managerul de fișiere</target>
+      </trans-unit>
+      <trans-unit id="9o3wzg6" resname="Icon">
+        <source>Icon</source>
+        <target>~Pictogramă</target>
+      </trans-unit>
+      <trans-unit id="aujbna9" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Pictogramele stilului</target>
+      </trans-unit>
+      <trans-unit id="svlzr0n" resname="General icons">
+        <source>General icons</source>
+        <target>~Pictograme generale</target>
+      </trans-unit>
+      <trans-unit id="6np6bae" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Puterea parolei: prea scurtă</target>
+      </trans-unit>
+      <trans-unit id="wm3kh0w" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Puterea parolei: slabă</target>
+      </trans-unit>
+      <trans-unit id="wjxetml" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Puterea parolei: acceptabilă</target>
+      </trans-unit>
+      <trans-unit id="rjpsueq" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Puterea parolei: bună</target>
+      </trans-unit>
+      <trans-unit id="ir2lwxm" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Puterea parolei: puternică</target>
+      </trans-unit>
+      <trans-unit id="mcnk8zl" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~Parola actuală este incorectă</target>
+      </trans-unit>
+      <trans-unit id="vb842oo" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~Parola nouă nu poate fi goală.</target>
+      </trans-unit>
+      <trans-unit id="p79xbwy" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~Parolele nu coincid</target>
+      </trans-unit>
+      <trans-unit id="oy5jj7t" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~Parola a fost schimbată cu succes</target>
+      </trans-unit>
+      <trans-unit id="o1c5cfg" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~A apărut o eroare. Vă rugăm să încercați din nou.</target>
+      </trans-unit>
+      <trans-unit id="cv8e7s3" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Acest cont nu permite schimbarea parolei.</target>
+      </trans-unit>
+      <trans-unit id="ejwji5s" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~Parola nouă nu este validă.</target>
+      </trans-unit>
+      <trans-unit id="roywrlb" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Text gigantic</target>
       </trans-unit>
     </body>
   </file>

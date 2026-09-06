@@ -20,6 +20,7 @@ export const LOCALES: Record<string, string> = {
     eo: 'Esperanto',
     es: 'Español',
     eu: 'Euskara',
+    fr: 'Français',
     gl: 'Galego',
     it: 'Italiano',
     pt: 'Português',

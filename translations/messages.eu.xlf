@@ -783,11 +783,11 @@
       </trans-unit>
       <trans-unit id="lMJfqi8" resname="any digit from 0 to 3 for single-choice (up to 4 options)">
         <source>any digit from 0 to 3 for single-choice (up to 4 options)</source>
-        <target>Aukera bakarreko galderetarako, 0tik 3ra arteko edozein digitu (gehienez 4 aukera)</target>
+        <target>aukera bakarreko galderetarako, 0tik 3ra arteko edozein digitu (gehienez 4 aukera)</target>
       </trans-unit>
       <trans-unit id="gBXtx0s" resname="any combination of A-D for multiple-choice (up to 4 options).">
         <source>any combination of A-D for multiple-choice (up to 4 options).</source>
-        <target>Aukera anitzeko galderetarako, A eta D letren arteko edozein konbinazio (gehienez 4 aukera).</target>
+        <target>aukera anitzeko galderetarako, A eta D letren arteko edozein konbinazio (gehienez 4 aukera).</target>
       </trans-unit>
       <trans-unit id="3mCQkiK" resname="Provide a similar number of questions for each type.">
         <source>Provide a similar number of questions for each type.</source>
@@ -2056,10 +2056,6 @@
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
         <target>Testu izugarri handia</target>
-      </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>Testu erraldoia (Huger)</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
@@ -3603,7 +3599,7 @@
       </trans-unit>
       <trans-unit id="QL4hapV" resname="E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...">
         <source>E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...</source>
-        <target>Adibidez: Kategoria 3 sortu 5 formula bana. Edo sortu 8 elementu ...ri buruz</target>
+        <target>~Adibidez: sortu 3 kategoria 5 formula bana. Edo sortu 8 elementu ...ri buruz</target>
       </trans-unit>
       <trans-unit id="crgTovz" resname="Category topic:">
         <source>Category topic:</source>
@@ -3728,14 +3724,6 @@
       <trans-unit id="RmnBdRa" resname="Info">
         <source>Info</source>
         <target>Info</target>
-      </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>Nodoaren seme-alabak erakutsi edo ezkutatu</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>Hasi buru-mapa berri batean lanean</target>
       </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
@@ -3935,7 +3923,7 @@
       </trans-unit>
       <trans-unit id="tsxZze5" resname="Delete iDevice">
         <source>Delete iDevice</source>
-        <target>iDevicea ezabatu</target>
+        <target>~Ezabatu iDevicea</target>
       </trans-unit>
       <trans-unit id="VBZ1ogU" resname="Delete this iDevice: %s?">
         <source>Delete this iDevice: %s?</source>
@@ -4203,7 +4191,7 @@
       </trans-unit>
       <trans-unit id="fMxz8c4" resname="Search iDevices">
         <source>Search iDevices</source>
-        <target>iDeviceak bilatu</target>
+        <target>~Bilatu iDeviceak</target>
       </trans-unit>
       <trans-unit id="wtVkNXt" resname="Default iDevices">
         <source>Default iDevices</source>
@@ -4467,7 +4455,7 @@
       </trans-unit>
       <trans-unit id="dOPZCVW" resname="Move iDevice to page">
         <source>Move iDevice to page</source>
-        <target>iDevicea orrira mugitu</target>
+        <target>~Mugitu iDevicea orrira</target>
       </trans-unit>
       <trans-unit id="qMGbqBh" resname="Select the page where you want to move the iDevice. It will be placed at the end of the page.">
         <source>Select the page where you want to move the iDevice. It will be placed at the end of the page.</source>
@@ -6171,7 +6159,7 @@
       </trans-unit>
       <trans-unit id="7AQwApM" resname="incorrect">
         <source>incorrect</source>
-        <target>Okerra</target>
+        <target>okerra</target>
       </trans-unit>
       <trans-unit id="A.2D9iI" resname="Right. That's the card.">
         <source>Right. That's the card.</source>
@@ -8419,7 +8407,7 @@
       </trans-unit>
       <trans-unit id="eP0k3XT" resname="This iDevice is compatible with all game iDevices and all interactive activities.">
         <source>This iDevice is compatible with all game iDevices and all interactive activities.</source>
-        <target>iDevice hau, joko iDevice eta jarduera interaktibo guztiekin bateragarria da.</target>
+        <target>~iDevice hau joko iDevice eta jarduera interaktibo guztiekin bateragarria da.</target>
       </trans-unit>
       <trans-unit id="N0bCogy" resname="Puzzle">
         <source>Puzzle</source>
@@ -9911,7 +9899,7 @@
       </trans-unit>
       <trans-unit id="4EAKDGp" resname="Image optimizer">
         <source>Image optimizer</source>
-        <target>Irudiaren optimizatzailea</target>
+        <target>~Irudi-optimizatzailea</target>
       </trans-unit>
       <trans-unit id="HCwVQp." resname="Alternative description">
         <source>Alternative description</source>
@@ -10700,102 +10688,6 @@
       <trans-unit id="cpeFILa" resname="Change the text of the tabs adding a title to each Heading 2 with the &quot;Insert/Edit Attributes&quot; option: ">
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>Erlaitzetako testua aldatu Goiburua 2 izenburu bat gehituz "Atributuak txertatu/editatu" aukerarekin. </target>
-      </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>Wikipediatik, entziklopedia askea.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>Beste helbide batetik birbideratua</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>Wikipediak ez du izen zehatz hau duen artikulurik.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>bilatu</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>Wikipedia-n</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>Ordezko izenburu edo ortografia egiaztatzeko.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>Wikipedia Artikulua</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>Artikulua</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>Ingelesa</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>Euskara</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>Katalana</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>Txinera</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>Nederlandera</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>Frantsesa</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>Galiziera</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>Alemana</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>Italiera</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>Japoniera</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>Magiarra</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>Poloniera</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>Portugalera</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>Esloveniera</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>Gaztelania</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>Suediera</target>
       </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
@@ -12479,7 +12371,7 @@
       </trans-unit>
       <trans-unit id="nv8t9ha" resname="Savings">
         <source>Savings</source>
-        <target>Aurrezkiak</target>
+        <target>~Aurreztutakoa</target>
       </trans-unit>
       <trans-unit id="6c74i5w" resname="Selected">
         <source>Selected</source>
@@ -13047,7 +12939,7 @@
       </trans-unit>
       <trans-unit id="aby2ghl" resname="Are you sure you want to delete %s projects?">
         <source>Are you sure you want to delete %s projects?</source>
-        <target>Ziur zaude %a proiektu ezabatu nahi duzula?</target>
+        <target>Ziur zaude %s proiektu ezabatu nahi duzula?</target>
       </trans-unit>
       <trans-unit id="jalbrvv" resname="Delete projects">
         <source>Delete projects</source>
@@ -13641,10 +13533,6 @@
         <source>Your access to this project has been revoked.</source>
         <target>Zure sarbidea proiektu honetan bertan behera geratu da.</target>
       </trans-unit>
-      <trans-unit id="db91cum" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>Burumapa gorde da</target>
-      </trans-unit>
       <trans-unit id="wdqlbi8" resname="source">
         <source>source</source>
         <target>iturria</target>
@@ -13763,7 +13651,7 @@
       </trans-unit>
       <trans-unit id="wvpk6dg" resname="You made %s errors. You have %s attempts left. Do you want to try again?">
         <source>You made %s errors. You have %s attempts left. Do you want to try again?</source>
-        <target>%  errore izan dituzu. % saiakera gelditzen zaizkizu. Saiatu nahi duzu berriro?</target>
+        <target>%s errore izan dituzu. %s saiakera gelditzen zaizkizu. Saiatu nahi duzu berriro?</target>
       </trans-unit>
       <trans-unit id="b4mkkc2" resname="You must close the edited questionnaire before saving the activity.">
         <source>You must close the edited questionnaire before saving the activity.</source>
@@ -14959,7 +14847,7 @@
       </trans-unit>
       <trans-unit id="bculw28" resname="Key Comp.">
         <source>Key Comp.</source>
-        <target>~Gait. Gakoa</target>
+        <target>Gait. Gakoa</target>
       </trans-unit>
       <trans-unit id="p75mse1" resname="Operational descriptors">
         <source>Operational descriptors</source>
@@ -15003,7 +14891,7 @@
       </trans-unit>
       <trans-unit id="sfe2kxo" resname="Eval. Criteria">
         <source>Eval. Criteria</source>
-        <target>~Ebaluazio Irizp.</target>
+        <target>Ebaluazio Irizp.</target>
       </trans-unit>
       <trans-unit id="wuy0158" resname="partial">
         <source>partial</source>
@@ -15692,6 +15580,114 @@
       <trans-unit id="sj7jfai" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
         <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
         <target>~Jarduera hauek inportatutako paketean sartuta ez dauden fitxategiei egiten diete erreferentzia. Erreferentziak gorde egin dira, beraz, fitxategiak berriro gehitzean leheneratuko dira.</target>
+      </trans-unit>
+      <trans-unit id="gnkvovk" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~Formulak bistaratzen dira aukera hau desaktibatuta egon arren. Aktibatu MathJax liburutegi osoa esportazioetan sartzeko. Horrek bere laster-menua eta funtzio interaktiboak eransten ditu.</target>
+      </trans-unit>
+      <trans-unit id="3v4lpp8" resname="Change password">
+        <source>Change password</source>
+        <target>~Aldatu pasahitza</target>
+      </trans-unit>
+      <trans-unit id="z40ks2f" resname="Current password">
+        <source>Current password</source>
+        <target>~Uneko pasahitza</target>
+      </trans-unit>
+      <trans-unit id="3vmqw3t" resname="New password">
+        <source>New password</source>
+        <target>~Pasahitz berria</target>
+      </trans-unit>
+      <trans-unit id="9y9tx9g" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Gutxienez 4 karaktere. Letrak, zenbakiak eta ikurrak konbinatzen dituzten pasahitz luzeak seguruagoak dira.</target>
+      </trans-unit>
+      <trans-unit id="88u2tzv" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Berretsi pasahitz berria</target>
+      </trans-unit>
+      <trans-unit id="ceb1el9" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Hondatutako jarduerak</target>
+      </trans-unit>
+      <trans-unit id="wunk0aq" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~Jarduera hauen datuak hondatuta daude eta ezin izan dira irakurri. Aldaketarik gabe inportatu dira: haien azken edukia bistaratzen da oraindik, baina ezin dira editatu berriro sortu arte.</target>
+      </trans-unit>
+      <trans-unit id="oziq6jt" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Inportazio-abisuak</target>
+      </trans-unit>
+      <trans-unit id="pzlihzj" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Bilatu ikonoa</target>
+      </trans-unit>
+      <trans-unit id="n79kffr" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Hautatu irudia fitxategi kudeatzailetik</target>
+      </trans-unit>
+      <trans-unit id="lwydt1s" resname="Icon">
+        <source>Icon</source>
+        <target>~Ikonoa</target>
+      </trans-unit>
+      <trans-unit id="g6qx9wn" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Estiloaren ikonoak</target>
+      </trans-unit>
+      <trans-unit id="23wzx1i" resname="General icons">
+        <source>General icons</source>
+        <target>~Ikono orokorrak</target>
+      </trans-unit>
+      <trans-unit id="tx77k6h" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Pasahitzaren segurtasuna: laburregia</target>
+      </trans-unit>
+      <trans-unit id="03kpts8" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Pasahitzaren segurtasuna: ahula</target>
+      </trans-unit>
+      <trans-unit id="8vxypou" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Pasahitzaren segurtasuna: onargarria</target>
+      </trans-unit>
+      <trans-unit id="93qocrc" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Pasahitzaren segurtasuna: ona</target>
+      </trans-unit>
+      <trans-unit id="a2420lq" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Pasahitzaren segurtasuna: sendoa</target>
+      </trans-unit>
+      <trans-unit id="3gyxkt1" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~Uneko pasahitza ez da zuzena</target>
+      </trans-unit>
+      <trans-unit id="cq8u2va" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~Pasahitz berria ezin da hutsik egon.</target>
+      </trans-unit>
+      <trans-unit id="sj1mau2" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~Pasahitzak ez datoz bat</target>
+      </trans-unit>
+      <trans-unit id="p1mrvny" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~Pasahitza behar bezala aldatu da</target>
+      </trans-unit>
+      <trans-unit id="lx2oxf0" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~Errore bat gertatu da. Saiatu berriro.</target>
+      </trans-unit>
+      <trans-unit id="7nk9zi7" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Kontu honek ez du pasahitza aldatzeko aukerarik ematen.</target>
+      </trans-unit>
+      <trans-unit id="gmmil15" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~Pasahitz berria ez da baliozkoa.</target>
+      </trans-unit>
+      <trans-unit id="bd512t2" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Testu erraldoia</target>
       </trans-unit>
     </body>
   </file>
