@@ -92,23 +92,34 @@ harmless while only adding keys, and destructive under `--remove-obsolete`, whic
 the extracted set as the whole truth and deletes every trans-unit outside it from every
 locale — around 675 of them, in every language, for `edicuatex` alone.
 
+A tree that is *present* can be just as short. An interrupted vendor run leaves a
+directory that exists and holds some of its files, and the strings in the files it never
+wrote are exactly as invisible to the scan as if nothing were there at all — with the
+difference that an existence check reports everything is fine.
+
 Three things keep that from happening:
 
 1. `make translations`, `make translations-cleanup` and `make translations-sort` depend on
    `vendor-edicuatex`, so the tree is regenerated before anything reads it. Running
    through `make` is always safe.
-2. The commands warn when a registered tree is absent, and `--remove-obsolete` refuses to
-   run at all. This is what protects a direct `bun cli translations …` invocation, which
-   bypasses `make`. The refusal can be overridden with `--allow-missing-generated`, which
-   is destructive by design — use it only when you know the missing tree holds no strings.
+2. The commands warn when a registered tree is absent **or incomplete**, and
+   `--remove-obsolete` refuses to run at all. This is what protects a direct
+   `bun cli translations …` invocation, which bypasses `make`. The refusal can be
+   overridden with `--allow-missing-generated`, which is destructive by design — use it
+   only when you know the missing tree holds no strings.
 3. `GENERATED_SOURCE_DIRS` in `src/cli/commands/translations.ts` is the registry the
-   warning and the refusal read.
+   warning and the refusal read. Each entry may carry an `inspect` hook that compares the
+   tree on disk against what its generator would write; `edicuatex` uses
+   `scripts/vendor-edicuatex.ts`'s own plan, the same knowledge behind
+   `vendor-edicuatex.ts --check`, rather than a second list that could disagree with it.
+   Without a hook, an entry falls back to the existence check.
 
 ### When you vendor a new library
 
 **If a library carrying translatable strings starts being vendored from an npm dependency
-into a scanned path, add it to `GENERATED_SOURCE_DIRS` in the same PR**, and add the
-`vendor-*` target to the three translation targets in the `Makefile`. Nothing detects the
+into a scanned path, add it to `GENERATED_SOURCE_DIRS` in the same PR**, give the entry an
+`inspect` hook built on the vendoring script's own file plan, and add the `vendor-*` target
+to the three translation targets in the `Makefile`. Nothing detects the
 omission automatically: the symptom is the silent one above, and it surfaces as strings
 disappearing from every locale weeks later.
 
