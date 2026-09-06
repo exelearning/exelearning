@@ -149,11 +149,13 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const player = new Audio(selectFile);
+        $exeDevice.playerAudio = player;
+        // Playback and its network activity stop when the editor closes.
+        this.$lifecycle.ownMedia(player);
+        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
+            player.play();
         });
     },
 
@@ -1287,7 +1289,10 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        const initToggle = function ($input) {
+        // Captured lexically so the deferred file-reader callback below stays
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
+        const initToggle = $input => {
             const checked = $input.is(':checked');
             $input
                 .closest('.toggle-item[role="switch"]')
@@ -1305,8 +1310,10 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on document, so the edition lifecycle owns it: the handler
+        // is removed when the editor closes.
+        this.$lifecycle.on(document, 'change', '.toggle-input', e => {
+            initToggle($(e.currentTarget));
         });
         $('#idfEPaste, #idfEAuthorAlt').hide();
         $('#idfEAuthorAlt').removeClass('d-flex').addClass('d-none');
@@ -1400,6 +1407,7 @@ var $exeDevice = {
                 .eq(0)
                 .text(`${_('Supported formats')}: txt`);
             $('#eXeGameExportImport').show();
+
             $('#eXeGameImportGame')
                 .attr('accept', '.txt')
                 .on('change', function (e) {
@@ -1419,8 +1427,12 @@ var $exeDevice = {
                         return;
                     }
                     const reader = new FileReader();
-                    reader.onload = (e) =>
-                        $exeDevice.importGame(e.target.result, file.type);
+                    // The read is aborted and its result discarded if the
+                    // editor closes before it completes.
+                    self.$lifecycle.ownFileReader(reader);
+                    reader.onload = self.$lifecycle.bind(function (event) {
+                        this.importGame(event.target.result, file.type);
+                    });
                     reader.readAsText(file);
                 });
             $('#eXeGameExportQuestions').on('click', () => {

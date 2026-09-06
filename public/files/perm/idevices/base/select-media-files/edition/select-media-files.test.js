@@ -593,4 +593,174 @@ describe('select-media-files iDevice', () => {
             });
         });
     });
+
+    // -------------------------------------------------------------------------
+    // Edition lifecycle teardown
+    // -------------------------------------------------------------------------
+    /**
+     * The editor previews audio with `new Audio()` and imports games with a
+     * FileReader. Both used to survive the form: the sound kept playing after
+     * the editor closed, and a late `onload` resolved `$exeDevice` from the
+     * global — by then a different iDevice.
+     */
+    describe('edition lifecycle teardown', () => {
+        /** Audio double: the platform element does nothing useful under happy-dom. */
+        class FakeAudio {
+            constructor(src) {
+                FakeAudio.instances.push(this);
+                this.src = src;
+                this.pause = vi.fn();
+                this.load = vi.fn();
+                this.removeAttribute = vi.fn(() => {
+                    this.src = '';
+                });
+                this.play = vi.fn(() => Promise.resolve());
+            }
+        }
+
+        /** FileReader double that only fires when a test says so. */
+        class FakeFileReader {
+            constructor() {
+                FakeFileReader.instances.push(this);
+                this.readyState = 0;
+                this.onload = null;
+                this.abort = vi.fn(() => {
+                    this.readyState = 2;
+                });
+            }
+
+            readAsText() {
+                this.readyState = 1;
+            }
+
+            fire(result) {
+                this.readyState = 2;
+                if (this.onload) this.onload({ target: { result } });
+            }
+        }
+
+        let originalAudio;
+        let originalFileReader;
+        let originalMedia;
+        let originalItinerary;
+
+        beforeEach(() => {
+            FakeAudio.instances = [];
+            FakeFileReader.instances = [];
+
+            originalAudio = global.Audio;
+            originalFileReader = global.FileReader;
+            originalMedia = $exeDevices.iDevice.gamification.media;
+            originalItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+
+            global.Audio = FakeAudio;
+            window.Audio = FakeAudio;
+            global.FileReader = FakeFileReader;
+            window.FileReader = FakeFileReader;
+            $exeDevices.iDevice.gamification.media = { extractURLGD: u => u };
+            $exeDevicesEdition.iDevice.gamification.itinerary = { addEvents: vi.fn() };
+        });
+
+        afterEach(() => {
+            global.Audio = originalAudio;
+            window.Audio = originalAudio;
+            global.FileReader = originalFileReader;
+            window.FileReader = originalFileReader;
+            $exeDevices.iDevice.gamification.media = originalMedia;
+            $exeDevicesEdition.iDevice.gamification.itinerary = originalItinerary;
+        });
+
+        it('stops the audio preview when the edition closes', () => {
+            $exeDevice.playSound('song.mp3');
+            const audio = FakeAudio.instances[0];
+            expect(audio.play).toHaveBeenCalled();
+            expect(audio.pause).not.toHaveBeenCalled();
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(audio.pause).toHaveBeenCalledTimes(1);
+            expect(audio.removeAttribute).toHaveBeenCalledWith('src');
+            expect(audio.load).toHaveBeenCalledTimes(1);
+        });
+
+        it('stops every audio preview the edition created', () => {
+            $exeDevice.playSound('one.mp3');
+            $exeDevice.playSound('two.mp3');
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(FakeAudio.instances).toHaveLength(2);
+            FakeAudio.instances.forEach(audio => {
+                expect(audio.pause).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        describe('game import', () => {
+            const selectFile = () => {
+                const input = document.getElementById('eXeGameImportGame');
+                Object.defineProperty(input, 'files', {
+                    value: [{ name: 'game.json', type: 'application/json' }],
+                    configurable: true,
+                });
+                $(input).trigger('change');
+            };
+
+            beforeEach(() => {
+                ['eXeGameImportGame', 'eXeGameExportQuestions', 'eXeGameExportImport'].forEach(id => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.id = id;
+                    document.body.appendChild(input);
+                });
+                $exeDevice.phrasesGame = [];
+                $exeDevice.addEvents();
+            });
+
+            it('imports the game while the edition is open', () => {
+                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+
+                selectFile();
+                FakeFileReader.instances[0].fire('{"x":1}');
+
+                expect(importGame).toHaveBeenCalledWith('{"x":1}');
+                importGame.mockRestore();
+            });
+
+            it('aborts an in-flight read when the edition closes', () => {
+                selectFile();
+                const reader = FakeFileReader.instances[0];
+                expect(reader.readyState).toBe(1);
+
+                $exeDevice.$lifecycle.destroy();
+
+                expect(reader.abort).toHaveBeenCalledTimes(1);
+            });
+
+            it('ignores a late read callback instead of importing into a closed edition', () => {
+                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+
+                selectFile();
+                const reader = FakeFileReader.instances[0];
+                $exeDevice.$lifecycle.destroy();
+                reader.fire('{"x":1}');
+
+                expect(importGame).not.toHaveBeenCalled();
+                importGame.mockRestore();
+            });
+
+            it('never imports into the iDevice that replaced this one', () => {
+                const first = $exeDevice;
+                selectFile();
+                const reader = FakeFileReader.instances[0];
+                first.$lifecycle.destroy();
+
+                const second = { importGame: vi.fn() };
+                global.$exeDevice = second;
+                reader.fire('{"x":1}');
+
+                expect(second.importGame).not.toHaveBeenCalled();
+                global.$exeDevice = first;
+            });
+        });
+    });
 });

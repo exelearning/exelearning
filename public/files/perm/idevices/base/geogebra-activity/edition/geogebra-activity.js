@@ -195,6 +195,7 @@ var $exeDevice = {
 
     loadData: function (id, lurl) {
         if (id == '') return;
+        const lifecycle = this.$lifecycle;
         let data = {
             request: {
                 '-api': '1.0.0',
@@ -243,11 +244,14 @@ var $exeDevice = {
         $('#geogebraActivityURL').addClass('loading');
         $('#geogebraActivityURL').css('color', '#228B22');
 
-        $.ajax({
+        // The GeoGebra lookup can answer long after the editor is gone: the
+        // request is aborted with the edition and both callbacks are bound to
+        // it, so a late answer never writes into another iDevice's form.
+        const request = $.ajax({
             type: 'POST',
             url: 'https://www.geogebra.org/api/json.php',
             data: JSON.stringify(data),
-            success: function (res) {
+            success: lifecycle.bind(function (res) {
                 if (
                     res &&
                     res.responses &&
@@ -279,13 +283,14 @@ var $exeDevice = {
                         '<a href="' + murl + '">' + title + '</a>'
                     );
                 } else {
-                    $exeDevice.errorMessage(false);
+                    this.errorMessage(false);
                 }
-            },
-            error: function () {
-                $exeDevice.errorMessage(false);
-            },
+            }),
+            error: lifecycle.bind(function () {
+                this.errorMessage(false);
+            }),
         });
+        lifecycle.ownInstance(request, 'abort');
     },
 
     errorMessage: function (tipo) {

@@ -23,6 +23,8 @@ function loadIdevice(code) {
     // Execute the modified code using eval in global context
     // eslint-disable-next-line no-eval
     (0, eval)(modifiedCode);
+    // Give the edition the lifecycle IdeviceNode publishes in the real workarea.
+    global.attachEditionLifecycle(global.$exeDevice);
     return global.$exeDevice;
 }
 
@@ -714,6 +716,154 @@ describe('three-d-viewer iDevice (edition)', () => {
 
         it('preserves files/ prefix', () => {
             expect($exeDevice.resolveModelPath('files/temp/model.glb')).toBe('files/temp/model.glb');
+        });
+    });
+
+    /**
+     * Closing the editor has to release what the preview owns: the shared
+     * runtime's WebGL instance, the document-level fullscreen listeners, the
+     * model-viewer retry timer and the AssetManager poll. Before the edition
+     * lifecycle only a *re-open* destroyed the runtime instance, so cancelling
+     * the form leaked a live WebGL context and a running RAF loop.
+     */
+    describe('edition lifecycle teardown', () => {
+        let destroyCalls;
+        let originalRuntime;
+
+        beforeEach(() => {
+            destroyCalls = [];
+            originalRuntime = global.eXe3DViewer;
+            global.eXe3DViewer = {
+                destroy: wrapper => destroyCalls.push(wrapper),
+                init: () => {},
+                getInstance: () => null,
+            };
+            global.window = global.window || global;
+            global.window.eXe3DViewer = global.eXe3DViewer;
+        });
+
+        afterEach(() => {
+            global.eXe3DViewer = originalRuntime;
+            if (global.window) global.window.eXe3DViewer = originalRuntime;
+        });
+
+        it('destroys the runtime instance when the edition closes', async () => {
+            const wrapper = document.createElement('div');
+            $exeDevice.previewContainer = wrapper;
+            // Registered the way init() does, before any preview exists.
+            $exeDevice.$lifecycle.own(() => $exeDevice.disposeThreeJSScene());
+
+            expect(destroyCalls).toEqual([]);
+            $exeDevice.$lifecycle.destroy();
+
+            expect(destroyCalls).toEqual([wrapper]);
+        });
+
+        it('removes the document fullscreen listeners when the edition closes', () => {
+            const container = document.createElement('div');
+            const fsBtn = document.createElement('button');
+            fsBtn.setAttribute('data-fullscreen', '');
+            container.appendChild(fsBtn);
+            document.body.appendChild(container);
+            $exeDevice.previewContainer = container;
+
+            $exeDevice.setupControls();
+            document.dispatchEvent(new Event('fullscreenchange'));
+            expect(fsBtn.getAttribute('aria-label')).toBe('Fullscreen');
+
+            fsBtn.setAttribute('aria-label', 'untouched');
+            $exeDevice.$lifecycle.destroy();
+            document.dispatchEvent(new Event('fullscreenchange'));
+
+            expect(fsBtn.getAttribute('aria-label')).toBe('untouched');
+            container.remove();
+        });
+
+        it('keeps unrelated document listeners working after teardown', () => {
+            const container = document.createElement('div');
+            const fsBtn = document.createElement('button');
+            fsBtn.setAttribute('data-fullscreen', '');
+            container.appendChild(fsBtn);
+            document.body.appendChild(container);
+            $exeDevice.previewContainer = container;
+            $exeDevice.setupControls();
+
+            let unrelated = 0;
+            const other = () => {
+                unrelated += 1;
+            };
+            document.addEventListener('fullscreenchange', other);
+
+            try {
+                $exeDevice.$lifecycle.destroy();
+                document.dispatchEvent(new Event('fullscreenchange'));
+                expect(unrelated).toBe(1);
+            } finally {
+                document.removeEventListener('fullscreenchange', other);
+                container.remove();
+            }
+        });
+
+        it('does not retry the preview after the edition closes', async () => {
+            vi.useFakeTimers();
+            try {
+                const container = document.createElement('div');
+                document.body.appendChild(container);
+                $exeDevice.previewContainer = container;
+                $exeDevice.state = { src: 'asset://model.glb' };
+                $exeDevice.previewRetryCount = 0;
+                $exeDevice.ensureModelViewerLoaded = () => Promise.resolve();
+                let updates = 0;
+                $exeDevice.updatePreview = () => {
+                    updates += 1;
+                };
+
+                await $exeDevice.createModelViewer();
+                $exeDevice.modelViewer.dispatchEvent(new Event('error'));
+                expect($exeDevice.previewRetryCount).toBe(1);
+
+                $exeDevice.$lifecycle.destroy();
+                vi.advanceTimersByTime(5000);
+
+                expect(updates).toBe(0);
+                container.remove();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('stops polling for the AssetManager once the edition closes', async () => {
+            $exeDevice.getAssetManager = () => null;
+            $exeDevice.$lifecycle.destroy();
+
+            const started = Date.now();
+            const result = await $exeDevice.waitForAssetManager(5000);
+
+            expect(result).toBeNull();
+            // A closed edition must not sit through the whole 5s timeout.
+            expect(Date.now() - started).toBeLessThan(1000);
+        });
+
+        it('never builds a viewer for an edition that closed while the runtime loaded', async () => {
+            const container = document.createElement('div');
+            document.body.appendChild(container);
+            $exeDevice.previewContainer = container;
+            $exeDevice.state = { src: 'blob:http://model.stl', modelColor: '#888888' };
+            $exeDevice.getModelViewerUrl = () => 'blob:http://model.stl';
+            $exeDevice.toggleEmptyState = () => {};
+            $exeDevice.ensureThreeJSLoaded = () => Promise.resolve();
+            // The shared runtime promise settles only after the editor closed.
+            $exeDevice.ensureRuntimeLoaded = () => Promise.resolve().then(() => $exeDevice.$lifecycle.destroy());
+
+            let inits = 0;
+            global.window.eXe3DViewer.init = () => {
+                inits += 1;
+            };
+
+            await $exeDevice.renderSTLWithThreeJS(true);
+
+            expect(inits).toBe(0);
+            container.remove();
         });
     });
 });

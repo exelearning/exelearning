@@ -723,6 +723,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         // Inicializar toggles (ARIA y targets) y manejarlos en cambios
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
@@ -742,8 +743,8 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        lifecycle.on(document, 'change', '.toggle-input', event => {
+            initToggle($(event.currentTarget));
         });
 
         $('#ptEHasFeedBack').on('change', function () {

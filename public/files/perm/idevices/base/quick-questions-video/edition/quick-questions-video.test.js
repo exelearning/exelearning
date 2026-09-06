@@ -84,7 +84,7 @@ describe('quick-questions-video edition: $exeDevice guards (#2271)', () => {
         global.$exeDevices.iDevice.gamification.media = {
             getIDYoutube: vi.fn(() => false),
             getURLVideoMediaTeca: vi.fn(() => false),
-            extractURLGD: vi.fn((url) => url),
+            extractURLGD: vi.fn(url => url),
         };
         global.$exeDevicesEdition.iDevice.gamification.itinerary = {
             getTab: vi.fn(() => ''),
@@ -92,9 +92,7 @@ describe('quick-questions-video edition: $exeDevice guards (#2271)', () => {
             getValues: vi.fn(() => ({})),
             setValues: vi.fn(),
         };
-        $exeDevice = global.loadIdevice(
-            join(__dirname, 'quick-questions-video.js')
-        );
+        $exeDevice = global.loadIdevice(join(__dirname, 'quick-questions-video.js'));
         $exeDevice.addEvents();
     });
 
@@ -108,45 +106,30 @@ describe('quick-questions-video edition: $exeDevice guards (#2271)', () => {
             global.$exeDevice = undefined;
         });
 
-        it.each([...delegatedHandlers, ...guardedHandlers])(
-            'does not throw on %s %s',
-            (selector, event) => {
-                expect(() => $(selector).trigger(event)).not.toThrow();
-            }
-        );
+        it.each([...delegatedHandlers, ...guardedHandlers])('does not throw on %s %s', (selector, event) => {
+            expect(() => $(selector).trigger(event)).not.toThrow();
+        });
 
         it('does not throw on question number Enter keyup', () => {
-            expect(() =>
-                $('#vquextNumberQuestion').trigger(
-                    $.Event('keyup', { keyCode: 13 })
-                )
-            ).not.toThrow();
+            expect(() => $('#vquextNumberQuestion').trigger($.Event('keyup', { keyCode: 13 }))).not.toThrow();
         });
 
         it('does not throw in detached player/media callbacks', () => {
-            const { clickPlay, onPlayerReady, onPlayerStateChange } =
-                $exeDevice;
+            const { clickPlay, onPlayerReady, onPlayerStateChange } = $exeDevice;
             const getDataVideoLocal = $exeDevice.getDataVideoLocal;
             expect(() => clickPlay()).not.toThrow();
             expect(() => onPlayerReady()).not.toThrow();
             expect(() => onPlayerStateChange()).not.toThrow();
-            expect(() =>
-                getDataVideoLocal.call({ duration: 10 })
-            ).not.toThrow();
+            expect(() => getDataVideoLocal.call({ duration: 10 })).not.toThrow();
         });
     });
 
     describe('with $exeDevice still active', () => {
-        it.each(delegatedHandlers)(
-            '%s %s still calls %s',
-            (selector, event, method) => {
-                const spy = vi
-                    .spyOn($exeDevice, method)
-                    .mockImplementation(() => {});
-                $(selector).trigger(event);
-                expect(spy).toHaveBeenCalled();
-            }
-        );
+        it.each(delegatedHandlers)('%s %s still calls %s', (selector, event, method) => {
+            const spy = vi.spyOn($exeDevice, method).mockImplementation(() => {});
+            $(selector).trigger(event);
+            expect(spy).toHaveBeenCalled();
+        });
 
         it('start time click still records the focused field', () => {
             $('#vquextEVIStart').trigger('click');
@@ -160,25 +143,19 @@ describe('quick-questions-video edition: $exeDevice guards (#2271)', () => {
         });
 
         it('URL change still loads the video', () => {
-            const spy = vi
-                .spyOn($exeDevice, 'loadVideo')
-                .mockImplementation(() => {});
+            const spy = vi.spyOn($exeDevice, 'loadVideo').mockImplementation(() => {});
             $('#vquextEVIURL').trigger('change');
             expect(spy).toHaveBeenCalledWith('video.mp4');
         });
 
         it('play start click still loads the video', () => {
-            const spy = vi
-                .spyOn($exeDevice, 'loadVideo')
-                .mockImplementation(() => {});
+            const spy = vi.spyOn($exeDevice, 'loadVideo').mockImplementation(() => {});
             $('#vquextEPlayStart').trigger('click');
             expect(spy).toHaveBeenCalledWith('video.mp4');
         });
 
         it('focusout still validates the time format', () => {
-            const spy = vi
-                .spyOn($exeDevice, 'validTime')
-                .mockReturnValue(true);
+            const spy = vi.spyOn($exeDevice, 'validTime').mockReturnValue(true);
             $('#vquextEVIStart').trigger('focusout');
             expect(spy).toHaveBeenCalledWith('00:00:00');
         });
@@ -186,20 +163,270 @@ describe('quick-questions-video edition: $exeDevice guards (#2271)', () => {
         it('global time button still updates every question', () => {
             $exeDevice.questionsGame = [{ time: 0 }, { time: 5 }];
             $('#vquextGlobalTimeButton').trigger('click');
-            expect($exeDevice.questionsGame.map((q) => q.time)).toEqual([
-                30, 30,
-            ]);
+            expect($exeDevice.questionsGame.map(q => q.time)).toEqual([30, 30]);
         });
 
         it('question number Enter keyup still validates the question', () => {
-            const spy = vi
-                .spyOn($exeDevice, 'validateQuestion')
-                .mockReturnValue(false);
-            $('#vquextNumberQuestion').trigger(
-                $.Event('keyup', { keyCode: 13 })
-            );
+            const spy = vi.spyOn($exeDevice, 'validateQuestion').mockReturnValue(false);
+            $('#vquextNumberQuestion').trigger($.Event('keyup', { keyCode: 13 }));
             expect(spy).toHaveBeenCalled();
             expect($('#vquextNumberQuestion').val()).toBe('1');
+        });
+    });
+});
+
+/**
+ * Edition lifecycle teardown (#2293).
+ *
+ * The YouTube player, the polling clock, the local <video> listeners and the
+ * asset-resolution continuation all outlive the edition form unless the
+ * lifecycle owns them.
+ */
+describe('quick-questions-video edition: lifecycle teardown (#2293)', () => {
+    let $exeDevice;
+    let players;
+    let originalYT;
+    let originalReady;
+    let originalHelpers;
+    let originalResolver;
+    let scriptTag;
+
+    function fakeYouTubeApi() {
+        players = [];
+        global.YT = {
+            Player: function (id, options) {
+                this.id = id;
+                this.options = options || {};
+                this.destroy = vi.fn();
+                players.push(this);
+            },
+        };
+    }
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        global.$exeDevice = undefined;
+        buildForm();
+        document.body.insertAdjacentHTML('beforeend', '<video id="vquextEVideoLocal"></video>');
+        // loadYoutubeApi inserts its tag before the first script of the page.
+        scriptTag = document.createElement('script');
+        document.head.appendChild(scriptTag);
+        originalYT = global.YT;
+        originalReady = window.onYouTubeIframeAPIReady;
+        originalResolver = window.eXeLearningAssetResolver;
+        originalHelpers = global.$exeDevices.iDevice.gamification.helpers;
+        global.$exeDevices.iDevice.gamification.helpers = {
+            ...originalHelpers,
+            hourToSeconds: vi.fn(() => 0),
+            secondsToHour: vi.fn(seconds => String(seconds)),
+        };
+        global.$exeDevices.iDevice.gamification.media = {
+            getIDYoutube: vi.fn(() => false),
+            getURLVideoMediaTeca: vi.fn(() => false),
+            extractURLGD: vi.fn((url) => url),
+        };
+        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
+            getTab: vi.fn(() => ''),
+            addEvents: vi.fn(),
+            getValues: vi.fn(() => ({})),
+            setValues: vi.fn(),
+        };
+        $exeDevice = global.loadIdevice(join(__dirname, 'quick-questions-video.js'));
+    });
+
+    afterEach(() => {
+        if ($exeDevice && $exeDevice.$lifecycle) {
+            $exeDevice.$lifecycle.destroy();
+        }
+        global.YT = originalYT;
+        window.onYouTubeIframeAPIReady = originalReady;
+        window.eXeLearningAssetResolver = originalResolver;
+        global.$exeDevices.iDevice.gamification.helpers = originalHelpers;
+        scriptTag.remove();
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+        vi.useRealTimers();
+    });
+
+    describe('YouTube player', () => {
+        it('destroys the player created by loadPlayerYoutube', () => {
+            fakeYouTubeApi();
+            $exeDevice.loadPlayerYoutube();
+            expect(players).toHaveLength(1);
+
+            $exeDevice.$lifecycle.destroy();
+            expect(players[0].destroy).toHaveBeenCalledTimes(1);
+        });
+
+        it('destroys the player created when the API becomes ready', () => {
+            fakeYouTubeApi();
+            $exeDevice.youTubeReady();
+            expect(players).toHaveLength(1);
+
+            $exeDevice.$lifecycle.destroy();
+            expect(players[0].destroy).toHaveBeenCalledTimes(1);
+        });
+
+        it('ignores a player event delivered after the edition closed', () => {
+            fakeYouTubeApi();
+            const spy = vi.spyOn($exeDevice, 'clickPlay').mockImplementation(() => {});
+            $exeDevice.loadPlayerYoutube();
+            const onReady = players[0].options.events.onReady;
+
+            onReady();
+            expect(spy).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            onReady();
+            expect(spy).toHaveBeenCalledTimes(1);
+        });
+
+        it('restores the global API ready callback on teardown', () => {
+            const previous = vi.fn();
+            window.onYouTubeIframeAPIReady = previous;
+            global.YT = undefined;
+            const spy = vi.spyOn($exeDevice, 'youTubeReady').mockImplementation(() => {});
+
+            $exeDevice.loadYoutubeApi();
+            const bound = window.onYouTubeIframeAPIReady;
+            expect(bound).not.toBe(previous);
+            bound();
+            expect(spy).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            expect(window.onYouTubeIframeAPIReady).toBe(previous);
+            bound();
+            expect(spy).toHaveBeenCalledTimes(1);
+            expect(previous).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('clock', () => {
+        it('stops polling the YouTube time when the edition closes', () => {
+            const spy = vi.spyOn($exeDevice, 'updateTimerDisplayYT').mockImplementation(() => {});
+            $exeDevice.videoType = 0;
+            $exeDevice.initClock(0);
+
+            vi.advanceTimersByTime(2000);
+            expect(spy).toHaveBeenCalledTimes(2);
+
+            $exeDevice.$lifecycle.destroy();
+            vi.advanceTimersByTime(3000);
+            expect(spy).toHaveBeenCalledTimes(2);
+        });
+
+        it('never polls the iDevice opened after it', () => {
+            const spy = vi.spyOn($exeDevice, 'updateTimerDisplayYT').mockImplementation(() => {});
+            $exeDevice.videoType = 0;
+            $exeDevice.initClock(0);
+
+            const laterDevice = { videoType: 0, updateTimerDisplayYT: vi.fn() };
+            global.$exeDevice = laterDevice;
+            vi.advanceTimersByTime(1000);
+
+            expect(spy).toHaveBeenCalledTimes(1);
+            expect(laterDevice.updateTimerDisplayYT).not.toHaveBeenCalled();
+        });
+
+        it('detaches the local player listeners when the edition closes', () => {
+            const player = document.getElementById('vquextEVideoLocal');
+            $exeDevice.localPlayer = player;
+            $exeDevice.videoType = 1;
+            const spy = vi.spyOn($exeDevice, 'updateTimerDisplayLocal').mockImplementation(() => {});
+            $exeDevice.initClock(1);
+
+            player.dispatchEvent(new Event('timeupdate'));
+            expect(spy).toHaveBeenCalledTimes(1);
+
+            $exeDevice.$lifecycle.destroy();
+            player.dispatchEvent(new Event('timeupdate'));
+            expect(spy).toHaveBeenCalledTimes(1);
+        });
+
+        it('keeps the media element as `this` for loadedmetadata', () => {
+            const player = document.getElementById('vquextEVideoLocal');
+            $exeDevice.localPlayer = player;
+            $exeDevice.videoType = 1;
+            Object.defineProperty(player, 'duration', {
+                value: 42,
+                configurable: true,
+            });
+
+            $exeDevice.initClock(1);
+            player.dispatchEvent(new Event('loadedmetadata'));
+
+            expect($exeDevice.durationVideo).toBe(42);
+        });
+
+        it('releaseClock detaches the listeners before teardown', () => {
+            const player = document.getElementById('vquextEVideoLocal');
+            $exeDevice.localPlayer = player;
+            $exeDevice.videoType = 1;
+            const spy = vi.spyOn($exeDevice, 'updateTimerDisplayLocal').mockImplementation(() => {});
+            $exeDevice.initClock(1);
+
+            $exeDevice.releaseClock();
+            player.dispatchEvent(new Event('timeupdate'));
+
+            expect(spy).not.toHaveBeenCalled();
+            expect($exeDevice.timeUpdateInterval).toBeNull();
+        });
+    });
+
+    describe('local video', () => {
+        it('stops the local player on teardown', () => {
+            $exeDevice.questionsGame = [{}];
+            vi.spyOn($exeDevice, 'showTypeQuestion').mockImplementation(() => {});
+            $exeDevice.initQuestions();
+
+            const player = $exeDevice.localPlayer;
+            player.setAttribute('src', 'question.mp4');
+            const pause = vi.spyOn(player, 'pause');
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(pause).toHaveBeenCalledTimes(1);
+            expect(player.getAttribute('src')).toBeNull();
+        });
+
+        it('drops the canplay listener of a resolved asset on teardown', async () => {
+            const player = document.getElementById('vquextEVideoLocal');
+            $exeDevice.localPlayer = player;
+            const play = vi.spyOn(player, 'play').mockImplementation(() => Promise.resolve());
+            window.eXeLearningAssetResolver = {
+                resolve: vi.fn(() => Promise.resolve('blob:ready')),
+            };
+
+            $exeDevice.startVideoLocal('asset://media/video.mp4', 5, 10);
+            await Promise.resolve();
+            await Promise.resolve();
+            expect(player.getAttribute('src')).toBe('blob:ready');
+
+            $exeDevice.$lifecycle.destroy();
+            player.dispatchEvent(new Event('canplay'));
+            expect(play).not.toHaveBeenCalled();
+        });
+
+        it('ignores an asset that resolves after the edition closed', async () => {
+            const player = document.getElementById('vquextEVideoLocal');
+            $exeDevice.localPlayer = player;
+            let resolveAsset;
+            window.eXeLearningAssetResolver = {
+                resolve: vi.fn(
+                    () =>
+                        new Promise(resolve => {
+                            resolveAsset = resolve;
+                        }),
+                ),
+            };
+
+            $exeDevice.startVideoLocal('asset://media/video.mp4', 5, 10);
+            $exeDevice.$lifecycle.destroy();
+            resolveAsset('blob:late');
+            await Promise.resolve();
+            await Promise.resolve();
+
+            expect(player.getAttribute('src')).toBeNull();
         });
     });
 });

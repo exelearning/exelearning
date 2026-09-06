@@ -27,6 +27,9 @@ function loadIdevice(code) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  // The edition scripts register their timers, handlers and disposers through
+  // `this.$lifecycle`, exactly as IdeviceNode provides it in the workarea.
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
 }
 
@@ -269,6 +272,71 @@ describe('hidden-image iDevice', () => {
   describe('validateData', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
+    });
+  });
+
+  describe('edition lifecycle', () => {
+    let savedGamification;
+    let savedMedia;
+
+    beforeEach(() => {
+      savedGamification = global.$exeDevicesEdition.iDevice.gamification;
+      global.$exeDevicesEdition.iDevice.gamification = {
+        ...savedGamification,
+        progressBar: { addEvents: vi.fn() },
+        itinerary: { addEvents: vi.fn() },
+        share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
+        helpers: { stopSound: vi.fn(), playSound: vi.fn() },
+      };
+      savedMedia = global.$exeDevices.iDevice.gamification.media;
+      global.$exeDevices.iDevice.gamification.media = {
+        extractURLGD: (url) => url,
+      };
+
+      document.body.innerHTML = `
+        <div id="hiIdeviceForm">
+        </div>
+      `;
+
+      $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+      // Close the edition the test opened, so its document handlers cannot
+      // leak into the next one.
+      $exeDevice.$lifecycle.destroy();
+      document.body.innerHTML = '';
+      global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+      global.$exeDevices.iDevice.gamification.media = savedMedia;
+    });
+
+    describe('preview audio', () => {
+      it('stops playback and releases the stream when the edition closes', () => {
+        $exeDevice.playSound('files/beep.mp3');
+        const player = $exeDevice.playerAudio;
+        const pause = vi.spyOn(player, 'pause');
+
+        $exeDevice.$lifecycle.destroy();
+
+        expect(pause).toHaveBeenCalledTimes(1);
+        expect(player.hasAttribute('src')).toBe(false);
+        pause.mockRestore();
+      });
+
+      it('plays on canplaythrough while open, and stays silent afterwards', () => {
+        $exeDevice.playSound('files/beep.mp3');
+        const player = $exeDevice.playerAudio;
+        const play = vi.spyOn(player, 'play').mockReturnValue(undefined);
+
+        player.dispatchEvent(new Event('canplaythrough'));
+        expect(play).toHaveBeenCalledTimes(1);
+
+        $exeDevice.$lifecycle.destroy();
+        player.dispatchEvent(new Event('canplaythrough'));
+
+        expect(play).toHaveBeenCalledTimes(1);
+        play.mockRestore();
+      });
     });
   });
 });
