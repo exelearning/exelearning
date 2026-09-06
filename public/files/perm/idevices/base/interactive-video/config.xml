@@ -8,6 +8,9 @@
         <url>interactive-video-icon.svg</url>
         <type>img</type>
     </icon>
+    <version>2.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
     <edition-js>
         <filename>interactive-video.js</filename>
     </edition-js>
@@ -20,5 +23,6 @@
     <export-css>
         <filename>interactive-video.css</filename>
     </export-css>
+    <export-template-filename>interactive-video.html</export-template-filename>
     <downloadable>0</downloadable>
 </idevice>

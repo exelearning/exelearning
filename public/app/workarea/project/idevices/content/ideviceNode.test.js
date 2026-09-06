@@ -296,6 +296,20 @@ describe('IdeviceNode', () => {
             expect(idevice.getJsonProperties(true)).toBe(malformedJson);
             expect(idevice.htmlView).toBe('<p>Previously rendered activity</p>');
         });
+
+        it('preserves a legacy interactive-video htmlView island (#2147)', () => {
+            const island =
+                '<div class="exe-interactive-video"><p id="exe-interactive-video-file">' +
+                '<a href="https://www.youtube.com/watch?v=uGNFMMn-U8M">v</a></p></div>';
+            idevice.setParams({ htmlView: island });
+            // Captured before any export render can overwrite this.htmlView.
+            expect(idevice.legacyJsonIslandHtml).toBe(island);
+        });
+
+        it('does not preserve a non-island htmlView (#2147)', () => {
+            idevice.setParams({ htmlView: '<p>Plain rendered content</p>' });
+            expect(idevice.legacyJsonIslandHtml).toBeUndefined();
+        });
     });
 
     describe('setProperties', () => {
@@ -1295,6 +1309,35 @@ describe('IdeviceNode', () => {
 
             const result = idevice.getSavedData();
             expect(result).toBe('<p>Default</p>');
+        });
+
+        it('augments pre-migration json with the preserved legacy island so the URL can be recovered (#2147)', () => {
+            idevice.idevice = { componentType: 'json' };
+            idevice.jsonProperties = { slides: [{ type: 'text', startTime: 5 }] };
+            idevice.legacyJsonIslandHtml =
+                '<div class="exe-interactive-video"><p id="exe-interactive-video-file">' +
+                '<a href="https://www.youtube.com/watch?v=uGNFMMn-U8M">v</a></p></div>';
+
+            const result = idevice.getSavedData();
+
+            // Slides preserved AND the island carried alongside for URL recovery.
+            expect(result.slides).toBeDefined();
+            expect(result.htmlView).toContain('exe-interactive-video-file');
+            // The stored jsonProperties object itself is not mutated.
+            expect(idevice.jsonProperties.htmlView).toBeUndefined();
+        });
+
+        it('does not augment an already-migrated (schemaVersion) json doc (#2147)', () => {
+            idevice.idevice = { componentType: 'json' };
+            idevice.jsonProperties = { schemaVersion: 2, video: { url: 'resources/clip.mp4' } };
+            idevice.legacyJsonIslandHtml =
+                '<div id="exe-interactive-video-file"><a href="https://youtu.be/STALE">stale</a></div>';
+
+            const result = idevice.getSavedData();
+
+            // Modern payloads are returned untouched — no rendered/legacy HTML leaks in.
+            expect(result.htmlView).toBeUndefined();
+            expect(result).toEqual({ schemaVersion: 2, video: { url: 'resources/clip.mp4' } });
         });
     });
 
@@ -3140,6 +3183,27 @@ describe('IdeviceNode', () => {
             vi.useRealTimers();
         });
 
+        it('suppresses the database-error modal when the device refused the save (validation)', async () => {
+            // $exeDevice.save() === false means the device already alerted the
+            // author with the real reason and stays in edition; the deferred
+            // generic alert would land after that one closes and block the page.
+            vi.useFakeTimers();
+            idevice.saveIdeviceProcess.mockImplementation(async () => {
+                idevice.saveRefusedByDevice = true;
+                return false;
+            });
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            eXeLearning.app.modals.alert.modal = { _isShown: false };
+            eXeLearning.app.modals.confirm.modal = { _isShown: false };
+
+            await idevice.save(false);
+            vi.advanceTimersByTime(500);
+
+            expect(idevice.toogleIdeviceButtonsState).toHaveBeenCalledWith(false);
+            expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
+            vi.useRealTimers();
+        });
+
         it('releases lock in Yjs when enabled', async () => {
             eXeLearning.app.project._yjsEnabled = true;
             idevice.yjsComponentId = 'yjs-comp';
@@ -3202,6 +3266,16 @@ describe('IdeviceNode', () => {
     });
 
     describe('saveIdeviceProcess', () => {
+        it('starts every attempt with a clean device-refusal flag', async () => {
+            idevice.idevice = { componentType: 'json' };
+            idevice.saveRefusedByDevice = true;
+            idevice.apiSaveIdeviceJson = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            await idevice.saveIdeviceProcess();
+
+            expect(idevice.saveRefusedByDevice).toBe(false);
+        });
+
         it('calls apiSaveIdeviceJson for json type', async () => {
             idevice.idevice = { componentType: 'json' };
             idevice.apiSaveIdeviceJson = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
@@ -3237,6 +3311,17 @@ describe('IdeviceNode', () => {
             idevice.htmlView = '<p>HTML to save</p>';
             idevice.ideviceBody = document.createElement('div');
             idevice.apiSendDataService = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        it('marks a device refusal when $exeDevice.save() returns false', async () => {
+            global.$exeDevice = { save: vi.fn().mockReturnValue(false) };
+
+            const result = await idevice.apiSaveIdeviceViewHTML(true);
+
+            expect(result).toBe(false);
+            expect(idevice.saveRefusedByDevice).toBe(true);
+            expect(idevice.ideviceBody.classList.contains('save-error')).toBe(true);
+            delete global.$exeDevice;
         });
 
         it('sends htmlView params to service', async () => {
@@ -3331,6 +3416,17 @@ describe('IdeviceNode', () => {
             expect(global.$exeDevice.save).not.toHaveBeenCalled();
             expect(idevice.apiSendDataService).not.toHaveBeenCalled();
             expect(idevice.getJsonProperties(true)).toBe('{"broken":');
+            delete global.$exeDevice;
+        });
+
+        it('marks a device refusal when $exeDevice.save() returns false', async () => {
+            global.$exeDevice = { save: vi.fn().mockReturnValue(false) };
+
+            const result = await idevice.apiSaveIdeviceJson(true);
+
+            expect(result).toBe(false);
+            expect(idevice.saveRefusedByDevice).toBe(true);
+            expect(idevice.ideviceBody.classList.contains('save-error')).toBe(true);
             delete global.$exeDevice;
         });
     });

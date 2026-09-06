@@ -1,0 +1,79 @@
+{
+    "schemaVersion": 2,
+    "title": "",
+    "description": "",
+    "video": {
+        "provider": "youtube",
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "videoId": "dQw4w9WgXcQ",
+        "assetId": null,
+        "captions": [],
+        "start": 0
+    },
+    "interactions": [
+        {
+            "id": "iv-cover",
+            "type": "cover",
+            "time": 0,
+            "duration": null,
+            "pause": false,
+            "title": "Opener",
+            "body": "<p>Welcome</p>"
+        },
+        {
+            "id": "iv-0",
+            "type": "note",
+            "time": 5,
+            "duration": null,
+            "pause": true,
+            "body": "<p>A note</p>"
+        },
+        {
+            "id": "iv-1",
+            "type": "question",
+            "time": 12,
+            "duration": null,
+            "pause": true,
+            "question": {
+                "kind": "singleChoice",
+                "prompt": "Pick one",
+                "answers": [
+                    [
+                        "right",
+                        1
+                    ],
+                    [
+                        "wrong",
+                        0
+                    ]
+                ],
+                "score": 1,
+                "retry": true
+            }
+        },
+        {
+            "id": "iv-2",
+            "type": "jump",
+            "time": 20,
+            "duration": null,
+            "pause": true,
+            "jump": {
+                "toTime": 3
+            }
+        }
+    ],
+    "completion": {
+        "mode": "none",
+        "requiredScore": null
+    },
+    "scorm": {
+        "enabled": false,
+        "weight": 100,
+        "repeatActivity": true,
+        "showResults": true
+    },
+    "meta": {
+        "legacy": {}
+    },
+    "customTexts": {}
+}

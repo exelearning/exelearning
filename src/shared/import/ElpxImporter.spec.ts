@@ -469,6 +469,92 @@ describe('ElpxImporter', () => {
 
             ydoc.destroy();
         });
+
+        it('splits interactive-video contentBefore/contentAfter into sibling Text iDevices', async () => {
+            const ivProperties = JSON.stringify({
+                schemaVersion: 2,
+                video: { provider: 'local', url: 'movie.mp4', videoId: null, assetId: null, captions: [], start: 0 },
+                interactions: [],
+                contentBefore: '<p>Intro before the video</p>',
+                contentAfter: '<p>Outro after the video</p>',
+            });
+            const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<userPreferences></userPreferences>
+<odeResources></odeResources>
+<odeProperties>
+  <odeProperty>
+    <key>pp_title</key>
+    <value>Interactive Video Split Test</value>
+  </odeProperty>
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odeNavStructureProperties></odeNavStructureProperties>
+    <odePagStructures>
+      <odePagStructure>
+        <odePageId>page-1</odePageId>
+        <odeBlockId>block-1</odeBlockId>
+        <blockName>Video</blockName>
+        <iconName></iconName>
+        <odePagStructureOrder>0</odePagStructureOrder>
+        <odePagStructureProperties></odePagStructureProperties>
+        <odeComponents>
+          <odeComponent>
+            <odePageId>page-1</odePageId>
+            <odeBlockId>block-1</odeBlockId>
+            <odeIdeviceId>component-1</odeIdeviceId>
+            <odeIdeviceTypeName>interactive-video</odeIdeviceTypeName>
+            <htmlView><![CDATA[]]></htmlView>
+            <jsonProperties><![CDATA[${ivProperties}]]></jsonProperties>
+            <odeComponentsOrder>0</odeComponentsOrder>
+            <odeComponentsProperties></odeComponentsProperties>
+          </odeComponent>
+        </odeComponents>
+      </odePagStructure>
+    </odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            await importer.importFromZipContents({
+                'content.xml': new TextEncoder().encode(contentXml),
+            });
+
+            const navigation = ydoc.getArray('navigation');
+            const page = navigation.get(0) as Y.Map<unknown>;
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const components = block.get('components') as Y.Array<unknown>;
+            expect(components.length).toBe(3);
+
+            const kinds: string[] = [];
+            const orders: number[] = [];
+            for (let i = 0; i < components.length; i++) {
+                const componentMap = components.get(i) as Y.Map<unknown>;
+                kinds.push(componentMap.get('ideviceType') as string);
+                orders.push(componentMap.get('order') as number);
+            }
+            expect(kinds).toEqual(['text', 'interactive-video', 'text']);
+            expect(orders).toEqual([0, 1, 2]);
+
+            const beforeProps = JSON.parse((components.get(0) as Y.Map<unknown>).get('jsonProperties') as string);
+            const videoProps = JSON.parse((components.get(1) as Y.Map<unknown>).get('jsonProperties') as string);
+            const afterProps = JSON.parse((components.get(2) as Y.Map<unknown>).get('jsonProperties') as string);
+            expect(beforeProps.textTextarea).toBe('<p>Intro before the video</p>');
+            expect(afterProps.textTextarea).toBe('<p>Outro after the video</p>');
+            expect('contentBefore' in videoProps).toBe(false);
+            expect('contentAfter' in videoProps).toBe(false);
+
+            ydoc.destroy();
+        });
     });
 
     describe('damaged jsonProperties preservation (#2190)', () => {
