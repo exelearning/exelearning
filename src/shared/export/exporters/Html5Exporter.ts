@@ -525,8 +525,6 @@ export class Html5Exporter extends BaseExporter {
             materialIconDataUris,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
-            xapi: { odeId: meta.odeIdentifier || '', packageTitle: meta.title || '', language: meta.language || 'en' },
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
         });
