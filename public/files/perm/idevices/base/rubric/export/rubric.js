@@ -139,7 +139,7 @@ var $rubric = {
             isScorm: parseInt(stored.isScorm) || 0,
             textButtonScorm: stored.textButtonScorm || '',
             repeatActivity: stored.repeatActivity !== false,
-            weighted: stored.weighted || 100,
+            weighted: $rubric.normalizeWeight(stored.weighted),
         };
     },
 
@@ -357,6 +357,24 @@ var $rubric = {
         });
 
         return strings;
+    },
+
+    /**
+     * The SCORM weight, held to the 1-100 range the editor offers.
+     *
+     * Anything outside it, or unreadable, is the 100 default — the same rule
+     * common.js applies to an activity with no usable weight. The previous
+     * `value || 100` did not enforce the range at all: 0 and NaN fell back
+     * because they are falsy, but -1 and 150 are truthy and travelled
+     * straight into the page's weighted average.
+     *
+     * @param {number|string} value - Stored weight.
+     * @returns {number} A weight between 1 and 100.
+     */
+    normalizeWeight: function (value) {
+        var weight = parseFloat(value);
+        if (Number.isNaN(weight) || weight < 1 || weight > 100) return 100;
+        return weight;
     },
 
     stripTags: function (value) {
@@ -1446,7 +1464,7 @@ var $rubric = {
             isScorm: data.isScorm || 0,
             textButtonScorm: data.textButtonScorm || '',
             repeatActivity: data.repeatActivity !== false,
-            weighted: data.weighted || 100,
+            weighted: $rubric.normalizeWeight(data.weighted),
             scorerp: 0,
             gameStarted: false,
             gameOver: false,

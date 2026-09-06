@@ -1370,4 +1370,37 @@ describe('rubric iDevice SCORM integration', () => {
       expect(data.repeatActivity).toBe(true);
       expect(data.weighted).toBe(100);
     });
+
+    // The weight feeds the page's weighted average, so a value outside the
+    // 1-100 the editor offers would skew every other activity on the page. The
+    // previous `value || 100` only caught the falsy ones: -1 and 150 went
+    // straight through.
+    describe('normalizeWeight', () => {
+      it('keeps every weight inside the range, including the ends', () => {
+        expect($rubric.normalizeWeight(1)).toBe(1);
+        expect($rubric.normalizeWeight(40)).toBe(40);
+        expect($rubric.normalizeWeight(100)).toBe(100);
+        expect($rubric.normalizeWeight('40')).toBe(40);
+        expect($rubric.normalizeWeight(40.5)).toBe(40.5);
+      });
+
+      it('falls back to 100 below the range', () => {
+        expect($rubric.normalizeWeight(0)).toBe(100);
+        expect($rubric.normalizeWeight(-1)).toBe(100);
+        expect($rubric.normalizeWeight(0.5)).toBe(100);
+      });
+
+      it('falls back to 100 above the range', () => {
+        expect($rubric.normalizeWeight(101)).toBe(100);
+        expect($rubric.normalizeWeight(1000)).toBe(100);
+      });
+
+      it('falls back to 100 for anything unreadable', () => {
+        expect($rubric.normalizeWeight(undefined)).toBe(100);
+        expect($rubric.normalizeWeight(null)).toBe(100);
+        expect($rubric.normalizeWeight('')).toBe(100);
+        expect($rubric.normalizeWeight('abc')).toBe(100);
+        expect($rubric.normalizeWeight(NaN)).toBe(100);
+      });
+    });
 });
