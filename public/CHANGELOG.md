@@ -72,7 +72,7 @@
 - Uploads: large files are now staged in the configured data directory instead of the application folder
 - Sign-in no longer slows down the rest of the server when many users log in simultaneously
 - Collaboration: closed connections are now released, preventing servers from accumulating them
-- German (DE) and Portuguese (PT): fixed misaligned translations that showed unrelated texts in True/False activities, the AI question generator and the math editor
+- Fixed misaligned translations that showed unrelated texts in Catalan (CA), German (DE), Esperanto (EO), Galician (GL), Italian (IT), Portuguese (PT), Romanian (RO) and Valencian (VA), affecting True/False activities, the AI question generator, the math editor, rubrics and download blocks
 - Basque (EU) translation: fixed typos, wording and missing formatting placeholders
 - Italian (IT) and Portuguese (PT) translations: restored missing formatting placeholders
 
