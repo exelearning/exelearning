@@ -14,6 +14,9 @@
 *   Package: @biomejs/biome
     *   Copyright: Emanuele Stoppa
     *   License: MIT OR Apache-2.0
+*   Package: @codecov/bundle-analyzer
+    *   Copyright: Codecov
+    *   License: MIT
 *   Package: @electron/notarize
     *   Copyright: Samuel Attard
     *   License: MIT
