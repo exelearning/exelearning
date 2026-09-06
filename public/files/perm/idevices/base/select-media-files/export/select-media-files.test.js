@@ -289,6 +289,59 @@ describe('select-media-files iDevice export', () => {
             expect(dmedia.options[instance].gameStarted).toBe(true);
         });
 
+        // The two above call enterCodeAccess with nothing bound, so its
+        // maximize trigger does nothing and they passed while the shipped
+        // iDevice reported nothing at all. With the real handlers attached,
+        // that click reaches a maximize handler that also starts the game —
+        // without the reporting flag — so the entry's own startGame hit its
+        // `if (gameStarted) return` and the opening zero was lost. Wiring
+        // addEvents is the whole point of these two.
+        describe.each([
+            ['untimed', 0],
+            ['timed', 1],
+        ])('with the real handlers bound, %s', (_label, time) => {
+            beforeEach(() => {
+                setupStart({
+                    time,
+                    // A fresh attempt, which is what makes the maximize
+                    // handler start the game: it needs !gameStarted AND
+                    // !gameOver. setupStart's default of gameOver: true would
+                    // hide the defect these two exist to catch.
+                    gameOver: false,
+                    itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+                });
+                addCodeAccessDom('abre');
+                $(`#slcmpMainContainer-${instance}`).append(
+                    `<div id="slcmpGameMinimize-${instance}"></div>
+                     <div id="slcmpAuthorGame-${instance}"></div>
+                     <div id="slcmpNextPhrase-${instance}"></div>`
+                );
+                dmedia.options[instance].active = -1;
+                dmedia.options[instance].author = '';
+                dmedia.showImage = () => {};
+                dmedia.saveEvaluation = () => {};
+                $exeDevices.iDevice.gamification.scorm = { registerActivity: vi.fn() };
+
+                dmedia.addEvents(instance);
+            });
+
+            it('publishes the opening zero when the code opens it', () => {
+                dmedia.enterCodeAccess(instance);
+
+                expect(dmedia.sendScore).toHaveBeenCalledWith(true, instance);
+                expect(dmedia.options[instance].gameStarted).toBe(true);
+            });
+
+            it('reports nothing when the code is wrong', () => {
+                $(`#slcmpCodeAccessE-${instance}`).val('nope');
+
+                dmedia.enterCodeAccess(instance);
+
+                expect(dmedia.sendScore).not.toHaveBeenCalled();
+                expect(dmedia.options[instance].gameStarted).toBe(false);
+            });
+        });
+
         // The timed case: no code, so the learner presses the play button and
         // that is the explicit start the LMS has to hear about.
         it('reports when the play button starts a timed activity', () => {

@@ -1150,7 +1150,12 @@ var $eXeSeleccionaMedias = {
         ) {
             $('#slcmpCodeAccessDiv-' + instance).hide();
             $('#slcmpCubierta-' + instance).hide();
-            $('#slcmpLinkMaximize-' + instance).trigger('click');
+            // Before the maximize click, not after. That handler starts the
+            // game too, without the reporting flag, so triggering it first
+            // raised gameStarted and the call below returned at its own
+            // `if (mOptions.gameStarted) return` — the opening zero was never
+            // published, with or without a timer.
+            //
             // Unconditionally, and reporting: the load path only starts an
             // untimed game when there is no code, so gating this on the timer
             // left a coded, untimed activity with nobody to start it — no
@@ -1158,6 +1163,7 @@ var $eXeSeleccionaMedias = {
             // the only place that shows the button bar addEvents hid. A valid
             // code is the learner opening the activity, so it publishes.
             $eXeSeleccionaMedias.startGame(instance, true);
+            $('#slcmpLinkMaximize-' + instance).trigger('click');
         } else {
             $('#slcmpMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
