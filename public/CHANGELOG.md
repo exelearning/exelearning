@@ -79,17 +79,15 @@
 ### Upgraded
 
 - fast-xml-parser: 5.4.1 → 5.11.0
-- fast-xml-builder: 1.0.0 → 1.3.1
 - mathjax: 3.2.2 → 4.1.3
 - edicuatex: 1.4.1 → 1.5.5
 - pdfjs-dist: 6.2.108 → 6.3.289
-- mermaid: 11.17.0 → 11.17.2
-- @xmldom/xmldom: 0.9.11 → 0.9.12
-- jose: 6.2.9 → 6.2.10
-- sass: 1.103.0 → 1.103.1
-- electron: 43.4.1 → 44.0.0
-- @material-symbols/svg-400: 0.40.2 → 0.47.0
-- @biomejs/biome: 2.5.9 → 2.5.11
+- mermaid: 11.12.3 → 11.17.2
+- @xmldom/xmldom: 0.9.10 → 0.9.12
+- jose: 6.1.3 → 6.2.10
+- sass: 1.97.3 → 1.103.1
+- electron: 43.2.0 → 44.0.0
+- @biomejs/biome: 2.4.5 → 2.5.11
 - Several other dependencies updated to their latest compatible versions, clearing all known security advisories
 
 ### Removed
