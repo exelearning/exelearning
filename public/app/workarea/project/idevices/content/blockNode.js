@@ -35,6 +35,14 @@ const THEME_ICON_COLOR_MAP = {
     educablue: '#0d77d1', // picker accent; the box head icon itself is white
 };
 
+// Theme icons whose file was renamed after a release shipped it, old name -> current name.
+// Mirrors RENAMED_THEME_ICONS in src/shared/block-icon.ts, which documents why entries are
+// added and never removed. Only used on the degraded path where the shared runtime is absent.
+const RENAMED_THEME_ICONS = {
+    objetives: 'objectives', // neo, misspelt from v4.0.0 to v4.0.3
+    'think-alt': 'think_alt', // educablue, hyphenated from v4.0.0 to v4.0.3
+};
+
 const localBlockIconRuntime = {
     resolveAppAssetUrl(path, options = {}) {
         const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -58,6 +66,11 @@ const localBlockIconRuntime = {
         return cleanBasePath ? `${cleanBasePath}${normalizedPath}` : normalizedPath;
     },
 
+    // JS twin of src/shared/block-icon.ts (RENAMED_THEME_ICONS / resolveRenamedThemeIcon).
+    resolveRenamedThemeIcon(value) {
+        return Object.hasOwn(RENAMED_THEME_ICONS, value) ? RENAMED_THEME_ICONS[value] : value;
+    },
+
     // JS twin of src/shared/block-icon.ts (deriveBlockIcon). Mirrors the shared
     // runtime so the degraded fallback path (no window.eXeBlockIconRuntime) keeps
     // deriving icons identically.
@@ -66,7 +79,7 @@ const localBlockIconRuntime = {
         if (!name) return { source: 'none', value: '' };
         if (name.startsWith('mi-')) return { source: 'material', value: name.slice(3) };
         if (name.startsWith('asset://') || name.startsWith('/')) return { source: 'asset', value: name };
-        return { source: 'theme', value: name };
+        return { source: 'theme', value: this.resolveRenamedThemeIcon(name) };
     },
 
     renderMaterialMaskIcon(iconName, options = {}) {
@@ -213,10 +226,16 @@ export default class IdeviceBlockNode {
     normalizeIconDescriptor(iconData, legacyIconName = '') {
         if (iconData && typeof iconData === 'object' && iconData.source) {
             if (iconData.source === 'none') return { source: 'none', value: '' };
+            // A descriptor stored before a theme renamed one of its icon files still carries
+            // the old name; map it here so the picker, the block and the export all agree.
+            const value =
+                iconData.source === 'theme'
+                    ? blockIconRuntime.resolveRenamedThemeIcon(iconData.value || '')
+                    : iconData.value || '';
             return {
                 source: iconData.source,
-                value: iconData.value || '',
-                name: iconData.name || iconData.value || '',
+                value,
+                name: iconData.name || value || '',
             };
         }
 
@@ -311,12 +330,13 @@ export default class IdeviceBlockNode {
 
     resolveThemeIconData(iconValue) {
         const themeIcons = eXeLearning?.app?.themes?.getThemeIcons?.() || {};
-        if (themeIcons[iconValue]) {
-            return themeIcons[iconValue];
+        const name = blockIconRuntime.resolveRenamedThemeIcon(iconValue);
+        if (themeIcons[name]) {
+            return themeIcons[name];
         }
 
         return Object.values(themeIcons).find(
-            (themeIcon) => themeIcon.id === iconValue || themeIcon.value === iconValue
+            (themeIcon) => themeIcon.id === name || themeIcon.value === name
         );
     }
 
