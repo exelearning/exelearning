@@ -843,19 +843,19 @@
       </trans-unit>
       <trans-unit id="dN_TtRg" resname="You must return only the questions without numbering and without classification or bullet points">
         <source>You must return only the questions without numbering and without classification or bullet points</source>
-        <target>~Vous ne pouvez pas générer les questions</target>
+        <target>~Vous ne devez renvoyer que les questions, sans numérotation ni classification ni puces</target>
       </trans-unit>
       <trans-unit id="7jkX2cG" resname="The questions could not be generated">
         <source>The questions could not be generated</source>
-        <target>~Les questions n'ont pas pu être générées. Mauvais format</target>
+        <target>~Les questions n'ont pas pu être générées</target>
       </trans-unit>
       <trans-unit id="Hh35OKu" resname="The questions could not be generated. Incorrect format">
         <source>The questions could not be generated. Incorrect format</source>
-        <target>~Une erreur est survenue lors de la récupération des questions. Veuillez réessayer.</target>
+        <target>~Les questions n'ont pas pu être générées. Format incorrect</target>
       </trans-unit>
       <trans-unit id="E35eLN_" resname="An error occurred while retrieving the questions. Please try again.">
         <source>An error occurred while retrieving the questions. Please try again.</source>
-        <target>~Générez 10 mots suivis de leurs définitions, séparés par #. N'incluez pas le caractère # dans le mot ou la définition.</target>
+        <target>~Une erreur est survenue lors de la récupération des questions. Veuillez réessayer.</target>
       </trans-unit>
       <trans-unit id="X70Hq6M" resname="Sorry, wrong file format">
         <source>Sorry, wrong file format</source>
@@ -863,19 +863,19 @@
       </trans-unit>
       <trans-unit id="tWpnRhI" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.</source>
-        <target>~Générez 30 mots et leurs définitions séparés par #.</target>
+        <target>~Générez 10 mots suivis de leurs définitions, séparés par #. N'incluez pas le caractère # dans le mot ni dans la définition.</target>
       </trans-unit>
       <trans-unit id="rK1Tq78" resname="Generate 30 words and their definitions separated by #.">
         <source>Generate 30 words and their definitions separated by #.</source>
-        <target>~Créez 10 questions à choix multiples avec 2 à 4 options. Commencez par la réponse correcte (0, 1, 2 ou 3), suivie de la question et de chaque option, tous séparés par #.</target>
+        <target>~Générez 30 mots et leurs définitions séparés par #.</target>
       </trans-unit>
       <trans-unit id="jRrGoMe" resname="Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.">
         <source>Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.</source>
-        <target>~Générez 10 questions à choix multiples. Fournissez la réponse correcte sous forme de lettres (par ex., A, AB), suivie de la question et des options, tous séparés par #.</target>
+        <target>~Créez 10 questions à choix multiples avec 2 à 4 options. Commencez par la solution correcte (0, 1, 2 ou 3), suivie de la question et de chaque option, le tout séparé par #.</target>
       </trans-unit>
       <trans-unit id="iEm_hXE" resname="Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.">
         <source>Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.</source>
-        <target>~Créez 5 mots solutions suivis de 3 à 9 indices décrivant chacun. Séparez chaque indice par #.</target>
+        <target>~Générez 10 questions à choix multiples. Indiquez la réponse correcte sous forme de lettres (par ex. A, AB), suivie de la question et des options, le tout séparé par #.</target>
       </trans-unit>
       <trans-unit id="0bgCBr1" resname="Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.">
         <source>Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.</source>
@@ -883,43 +883,43 @@
       </trans-unit>
       <trans-unit id="QCl9NKh" resname="Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.">
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
-        <target>~Carnivores#Lion#Tiger#Eagle#Shark</target>
+        <target>~Fournissez 4 éléments pour chacun de ces groupes : carnivores, 0, et herbivores, 1. Séparez le numéro du groupe et l'élément par le symbole #.</target>
       </trans-unit>
       <trans-unit id="xHJHwx9" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target>~0#0#0#0</target>
+        <target>~Générez 10 questions vrai ou faux. Chaque question doit comporter la solution (0 = faux, 1 = vrai), une suggestion et un retour d'information, le tout séparé par #. De plus, le retour d'information ne doit pas indiquer explicitement si la réponse est correcte ou incorrecte</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
-        <target>~Herbivores#Elephant#Giraffe#Rabbit#Koala</target>
+        <target>~Générez 10 questions. La 'Solution' peut être 0/1 pour Vrai/Faux, 0-3 pour un choix unique, ou A-D (ou des combinaisons) pour un choix multiple. Indiquez ensuite la question et les options de réponse (2 à 4), le tout séparé par '#'.</target>
       </trans-unit>
       <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
-        <target>~</target>
+        <target>~Fournissez une seule liste ordonnée d'étapes ou d'éléments, séparés par '#'.</target>
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition</source>
-        <target>~1. True#The sun rises in the east.#Consider geographic directions.#The sun indeed rises in the east.</target>
+        <target>~Générez 10 mots suivis de leurs définitions, séparés par #. N'incluez pas le caractère # dans le mot ni dans la définition</target>
       </trans-unit>
       <trans-unit id="wmZAGDi" resname="EdiCuaTeX - LaTeX Equation Editor">
         <source>EdiCuaTeX - LaTeX Equation Editor</source>
-        <target>~0. False#Water boils at 90°C at standard pressure.#Check boiling points of water.#Water boils at 100°C at standard pressure.</target>
+        <target>~EdiCuaTeX - Éditeur d'équations LaTeX</target>
       </trans-unit>
       <trans-unit id="3xt7SvG" resname="Educational Applications Laboratory">
         <source>Educational Applications Laboratory</source>
-        <target>~1. True#The capital of France is Paris.#Recall European capitals.#Paris is the capital of France.</target>
+        <target>~Laboratoire d'applications éducatives</target>
       </trans-unit>
       <trans-unit id="oTIGqj3" resname="Application created by Juan José de Haro">
         <source>Application created by Juan José de Haro</source>
-        <target>~0. False#Mount Everest is the tallest mountain in Africa.#Think about mountain heights.#Mount Everest is in Asia, not Africa.</target>
+        <target>~Application créée par Juan José de Haro</target>
       </trans-unit>
       <trans-unit id="BSDT0ZB" resname="Could not get code from parent dialog:">
         <source>Could not get code from parent dialog:</source>
-        <target>~1. True#Humans need oxygen to survive.#Understand basic human biology.#Oxygen is essential for human respiration.</target>
+        <target>~Impossible d'obtenir le code depuis la boîte de dialogue parente :</target>
       </trans-unit>
       <trans-unit id="7WKfC9x" resname="Recent">
         <source>Recent</source>
-        <target>~0. False#The Earth is the third planet from Mars.#Review planetary positions.#Earth is the third planet from the Sun, not Mars.</target>
+        <target>~Récents</target>
       </trans-unit>
       <trans-unit id="vMqqN1e" resname="Error loading menu">
         <source>Error loading menu</source>
@@ -4203,7 +4203,7 @@
       </trans-unit>
       <trans-unit id="yIQeeyS" resname="Import iDevice">
         <source>Import iDevice</source>
-        <target>Importation d'outils pédagogiques</target>
+        <target>~Importer un iDevice</target>
       </trans-unit>
       <trans-unit id="dRNHWgg" resname="Activate">
         <source>Activate</source>
@@ -4211,7 +4211,7 @@
       </trans-unit>
       <trans-unit id="F.0jKf8" resname="You can only select 5 iDevices as favourites. Please remove an iDevice so you can add another one.">
         <source>You can only select 5 iDevices as favourites. Please remove an iDevice so you can add another one.</source>
-        <target>~Vous ne pouvez sélectionner que 5 appareils iDevices comme favoris. Veuillez supprimer un appareil pour en ajouter un autre.</target>
+        <target>~Vous ne pouvez sélectionner que 5 iDevices comme favoris. Veuillez en supprimer un pour pouvoir en ajouter un autre.</target>
       </trans-unit>
       <trans-unit id="1Ntsh7c" resname="Legal notes">
         <source>Legal notes</source>
@@ -8407,7 +8407,7 @@
       </trans-unit>
       <trans-unit id="Ep4G9EC" resname="Available iDevices">
         <source>Available iDevices</source>
-        <target>Outils pédagogiques disponibles</target>
+        <target>~iDevices disponibles</target>
       </trans-unit>
       <trans-unit id="eP0k3XT" resname="This iDevice is compatible with all game iDevices and all interactive activities.">
         <source>This iDevice is compatible with all game iDevices and all interactive activities.</source>
@@ -9375,7 +9375,7 @@
       </trans-unit>
       <trans-unit id="gNC320b" resname="About this iDevice">
         <source>About this iDevice</source>
-        <target>À propos de cet outil pédagogique</target>
+        <target>~À propos de cet iDevice</target>
       </trans-unit>
       <trans-unit id="xGrroVc" resname="Cofinanced by:">
         <source>Cofinanced by:</source>
@@ -10979,7 +10979,7 @@
       </trans-unit>
       <trans-unit id="4Y_yO11" resname="iDevices">
         <source>iDevices</source>
-        <target>Outils pédagogiques</target>
+        <target>~iDevices</target>
       </trans-unit>
       <trans-unit id="5Kb4IIZ" resname="Toggle panels">
         <source>Toggle panels</source>
@@ -11839,7 +11839,7 @@
       </trans-unit>
       <trans-unit id="v5ZRdyM" resname="Show the content of the first Free Text iDevice in the specified page.">
         <source>Show the content of the first Free Text iDevice in the specified page.</source>
-        <target>~Montrer le contenu du premier outil pédagogique de texte libre dans la page spécifiée.</target>
+        <target>~Afficher le contenu du premier iDevice Texte libre dans la page spécifiée.</target>
       </trans-unit>
       <trans-unit id="k_kZsMw" resname="Term">
         <source>Term</source>
