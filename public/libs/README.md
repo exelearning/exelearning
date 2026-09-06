@@ -87,7 +87,7 @@
     *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
     *   License: (MPL-2.0 OR Apache-2.0)
 *   Package: dotenv
-    *   Copyright: 2015, Scott Motte
+    *   Copyright: Scott Motte
     *   License: BSD-2-Clause
 *   Package: edicuatex
     *   Copyright: Juan José de Haro
