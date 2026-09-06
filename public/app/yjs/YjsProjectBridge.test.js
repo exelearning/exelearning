@@ -3437,6 +3437,58 @@ describe('YjsProjectBridge', () => {
       expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
     });
 
+    it('maps a renamed theme icon name arriving in a structured descriptor', async () => {
+      // A collaborator on a project saved before neo renamed objetives.png sends the old
+      // name. Left as-is it misses getThemeIcons() and the block renders without an icon.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'objetives', icon: { source: 'theme', value: 'objetives' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'objectives', name: 'objectives' });
+    });
+
+    it('leaves a theme icon name that was never renamed untouched', async () => {
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'activity', icon: { source: 'theme', value: 'activity' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'activity' });
+    });
+
     it('updates block icon from structured icon data for remote collaborators', async () => {
       const mockBlockNode = {
         blockName: 'Block',

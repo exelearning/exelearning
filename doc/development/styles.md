@@ -110,8 +110,10 @@ export const RENAMED_THEME_ICONS = {
 ```
 
 Every point that turns a stored name into a file goes through it: `deriveBlockIcon()` for a
-legacy `iconName`, `resolveIconName()` in the export renderer for a stored descriptor, and
-`normalizeIconDescriptor()` / `resolveThemeIconData()` in the workarea. **Entries are added,
+legacy `iconName`, `resolveIconName()` in the export renderer for a stored descriptor,
+`normalizeIconDescriptor()` / `resolveThemeIconData()` in the workarea, and
+`normalizeBlockIcon()` in `public/app/yjs/YjsProjectBridge.js` for a descriptor arriving from
+a collaborator or replayed by undo/redo. **Entries are added,
 never removed** — an entry is the document format's memory of a name it once wrote, and only a
 project migration that rewrites stored icon names on open could retire one.
 
