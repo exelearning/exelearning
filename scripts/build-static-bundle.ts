@@ -822,6 +822,7 @@ export function generateModalsHtml(): string {
         'pages/odeusedfiles.njk',
         'pages/lopd.njk',
         'pages/assistant.njk',
+        'pages/connectmcp.njk',
         'pages/releasenotes.njk',
         'pages/legalnotes.njk',
         'pages/about.njk',
