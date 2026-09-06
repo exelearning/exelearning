@@ -5475,7 +5475,7 @@
       </trans-unit>
       <trans-unit id="3EmhqPa" resname="You need at least %s% of correct answers to get the information. Please try again.">
         <source>You need at least %s% of correct answers to get the information. Please try again.</source>
-        <target>Hai bisogno di almeno una percentuale di risposte corrette per ottenere le informazioni. riprova.</target>
+        <target>Hai bisogno di almeno %s% di risposte corrette per ottenere le informazioni. Riprova.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5515,7 +5515,7 @@
       </trans-unit>
       <trans-unit id="hog1PqN" resname="Great job! You have solved this activity in %s attempts. Surely you can do it faster!">
         <source>Great job! You have solved this activity in %s attempts. Surely you can do it faster!</source>
-        <target>Ottimo lavoro! Hai risolto questa attività in pochi tentativi. Sicuramente puoi farlo più velocemente!</target>
+        <target>Ottimo lavoro! Hai risolto questa attività in %s tentativi. Sicuramente puoi farlo più velocemente!</target>
       </trans-unit>
       <trans-unit id="YMXcmYC" resname="You placed %s cards in the wrong place. Please try again!">
         <source>You placed %s cards in the wrong place. Please try again!</source>
@@ -8311,7 +8311,7 @@
       </trans-unit>
       <trans-unit id="dqR555d" resname="Average score of completed activities: %s">
         <source>Average score of completed activities: %s</source>
-        <target>Punteggio medio delle attività completate: percentuali</target>
+        <target>Punteggio medio delle attività completate: %s</target>
       </trans-unit>
       <trans-unit id="j494f4m" resname="This will eliminate the stored scores of all activities. Are you sure you want to continue?">
         <source>This will eliminate the stored scores of all activities. Are you sure you want to continue?</source>
