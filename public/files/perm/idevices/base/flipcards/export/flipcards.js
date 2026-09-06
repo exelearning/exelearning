@@ -788,7 +788,28 @@ var $eXeFlipCards = {
             $noImage.hide();
         }
     },
-    startGameMemory: function (instance) {
+    /**
+     * Publish the freshly reset state to the LMS.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     *
+     * @param {number} instance - Activity index.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeFlipCards.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeFlipCards.sendScore(true, instance);
+    },
+
+    /**
+     * @param {number} instance - Activity index.
+     * @param {boolean} [reportScorm] - Publish the opening zero. Only the
+     * learner's own start does: the play button and a valid access code. The
+     * automatic start an untimed memory game gets while the page loads must
+     * stay silent, or merely opening the page would score it.
+     */
+    startGameMemory: function (instance, reportScorm = false) {
         const mOptions = $eXeFlipCards.options[instance];
         if (mOptions.gameStarted) return;
 
@@ -854,6 +875,11 @@ var $eXeFlipCards = {
         );
         $eXeFlipCards.refreshCards(instance);
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        if (reportScorm) {
+            $eXeFlipCards.saveScormScore(instance);
+        }
     },
 
     showActivity: function (instance) {
@@ -1609,7 +1635,9 @@ var $eXeFlipCards = {
 
         $('#flcdsStartGame-' + instance).on('click', (e) => {
             e.preventDefault();
-            $eXeFlipCards.startGameMemory(instance);
+            // The learner pressing play is the start of the attempt, so it
+            // publishes the opening zero.
+            $eXeFlipCards.startGameMemory(instance, true);
         });
 
         $('#flcdsGameOver-' + instance).hide();
@@ -2207,11 +2235,20 @@ var $eXeFlipCards = {
         ) {
             $('#flcdsCodeAccessDiv-' + instance).hide();
             $('#flcdsCubierta-' + instance).hide();
-            if (mOptions.type === 3 && mOptions.time === 0) {
-                // The start the load path had to skip: an untimed memory game
-                // has no level panel and no play button, so the code is the
-                // only thing left that can begin it.
-                $eXeFlipCards.startGameMemory(instance);
+            if (mOptions.type === 3) {
+                // A valid code is the learner opening the attempt, so it
+                // stands in for the play button — the same thing the code does
+                // in every other timed iDevice. Untimed there is no button at
+                // all and the load path deliberately skipped the start, so the
+                // code is the only thing left that can begin the game.
+                $eXeFlipCards.startGameMemory(instance, true);
+            } else {
+                // Every other mode is live from the moment the page loads, so
+                // there is nothing to start. The code is still the learner's
+                // first interaction, and nothing was publishing the opening
+                // zero for it: the LMS kept the previous attempt's grade until
+                // a card was turned.
+                $eXeFlipCards.saveScormScore(instance);
             }
         } else {
             $('#flcdsMesajeAccesCodeE-' + instance)

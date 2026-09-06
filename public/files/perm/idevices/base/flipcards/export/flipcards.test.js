@@ -293,10 +293,13 @@ describe('flipcards iDevice export', () => {
       vi.restoreAllMocks();
     });
 
-    it('starts the game when the code is accepted', () => {
+    it('starts the game when the code is accepted, and publishes', () => {
       $eXeFlipCards.enterCodeAccess(givenMemoryGame());
 
-      expect($eXeFlipCards.startGameMemory).toHaveBeenCalledWith(instance);
+      // The second argument is the whole point: without it startGameMemory
+      // starts the game silently and the LMS keeps the previous attempt's
+      // grade until a card is turned.
+      expect($eXeFlipCards.startGameMemory).toHaveBeenCalledWith(instance, true);
       expect($(`#flcdsCodeAccessDiv-${instance}`).css('display')).toBe('none');
       expect($(`#flcdsCubierta-${instance}`).css('display')).toBe('none');
     });
@@ -311,12 +314,13 @@ describe('flipcards iDevice export', () => {
       expect($(`#flcdsCodeAccessE-${i}`).val()).toBe('');
     });
 
-    // With a clock the level panel is what starts the game, so the code only
-    // has to get out of the way.
-    it('leaves a timed memory game to its level panel', () => {
+    // A valid code stands in for the play button, as it does in every other
+    // timed iDevice. It used to only uncover the board, leaving the learner in
+    // front of a button they had already earned and the LMS with nothing.
+    it('starts a timed memory game too, rather than revealing its play button', () => {
       $eXeFlipCards.enterCodeAccess(givenMemoryGame({ time: 2 }));
 
-      expect($eXeFlipCards.startGameMemory).not.toHaveBeenCalled();
+      expect($eXeFlipCards.startGameMemory).toHaveBeenCalledWith(instance, true);
     });
 
     // The load path is where the defect lived: it started the game itself and
@@ -341,6 +345,107 @@ describe('flipcards iDevice export', () => {
       $eXeFlipCards.addEvents(i);
 
       expect($eXeFlipCards.startGameMemory).toHaveBeenCalledWith(i);
+    });
+
+    // Only the memory mode waits to be started. Every other mode is live from
+    // the moment the page loads, so the code has nothing to start — but it is
+    // still the learner's first interaction, and nothing published for it.
+    it.each([1, 2])('publishes the opening zero for a live mode %i', (type) => {
+      const i = givenMemoryGame({ type, isScorm: 1 });
+      const sendScore = vi.spyOn($eXeFlipCards, 'sendScore').mockImplementation(() => {});
+
+      $eXeFlipCards.enterCodeAccess(i);
+
+      expect(sendScore).toHaveBeenCalledWith(true, i);
+      expect($eXeFlipCards.startGameMemory).not.toHaveBeenCalled();
+    });
+
+    it('publishes nothing for a live mode outside automatic SCORM', () => {
+      const i = givenMemoryGame({ type: 1, isScorm: 2 });
+      const sendScore = vi.spyOn($eXeFlipCards, 'sendScore').mockImplementation(() => {});
+
+      $eXeFlipCards.enterCodeAccess(i);
+
+      expect(sendScore).not.toHaveBeenCalled();
+    });
+  });
+
+  // The report has to come from the learner's own start, never from the
+  // automatic one an untimed memory game gets while the page loads: that would
+  // score a page the learner has merely opened.
+  describe('the opening zero of a memory game', () => {
+    const instance = 0;
+
+    function givenStartableGame(overrides) {
+      document.body.innerHTML = `
+        <div id="flcdsMainContainer-${instance}">
+          <div id="flcdsMultimedia-${instance}"></div>
+          <div id="flcdsStartLevels-${instance}"></div>
+          <div id="flcdsCubierta-${instance}"></div>
+          <div id="flcdsGameOver-${instance}"></div>
+          <div id="flcdsMessage-${instance}"></div>
+          <div id="flcdsPHits-${instance}"></div>
+          <div id="flcdsPNumber-${instance}"></div>
+          <div id="flcdsPShowClue-${instance}"></div>
+          <div id="flcdsShowClue-${instance}"></div>
+          <div id="flcdsPTime-${instance}"></div>
+        </div>`;
+      $eXeFlipCards.options[instance] = Object.assign(
+        {
+          id: instance,
+          type: 3,
+          time: 0,
+          isScorm: 1,
+          gameStarted: false,
+          cardsGame: [],
+          realNumberCards: 0,
+          showCards: false,
+          itinerary: {},
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeFlipCards, 'addCardsMemory').mockImplementation(() => {});
+      vi.spyOn($eXeFlipCards, 'initCardsMemory').mockImplementation(() => {});
+      vi.spyOn($eXeFlipCards, 'refreshCards').mockImplementation(() => {});
+      vi.spyOn($eXeFlipCards, 'showMessageMemory').mockImplementation(() => {});
+      vi.spyOn($eXeFlipCards, 'updateTimeMemory').mockImplementation(() => {});
+      return instance;
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('is published when the start was asked for', () => {
+      const i = givenStartableGame();
+      const sendScore = vi.spyOn($eXeFlipCards, 'sendScore').mockImplementation(() => {});
+
+      $eXeFlipCards.startGameMemory(i, true);
+
+      expect(sendScore).toHaveBeenCalledWith(true, i);
+    });
+
+    it('stays silent when the page started the game by itself', () => {
+      const i = givenStartableGame();
+      const sendScore = vi.spyOn($eXeFlipCards, 'sendScore').mockImplementation(() => {});
+
+      $eXeFlipCards.startGameMemory(i);
+
+      expect(sendScore).not.toHaveBeenCalled();
+      // Silent, but started: the board is playable and the first card's report
+      // will carry, since sendScoreNew drops an unstarted game.
+      expect($eXeFlipCards.options[i].gameStarted).toBe(true);
+    });
+
+    it('does not report in manual SCORM mode', () => {
+      const i = givenStartableGame({ isScorm: 2 });
+      const sendScore = vi.spyOn($eXeFlipCards, 'sendScore').mockImplementation(() => {});
+
+      $eXeFlipCards.startGameMemory(i, true);
+
+      expect(sendScore).not.toHaveBeenCalled();
     });
   });
 });
