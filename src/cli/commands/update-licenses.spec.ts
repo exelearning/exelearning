@@ -15,10 +15,19 @@ import {
     COPYRIGHT_OVERRIDES,
     getDependencies,
     generateServerSideSection,
+    parseRecordedPackages,
     updateReadme,
     type UpdateLicensesDependencies,
     type PackageInfo,
 } from './update-licenses';
+
+/**
+ * Builds a mock path under the fake project root with the separator of the host OS.
+ *
+ * The command joins paths with `path.join`, so a mock key written with forward slashes
+ * never matches on Windows and every lookup misses there.
+ */
+const at = (...parts: string[]): string => path.join('/test', ...parts);
 
 describe('Update Licenses Command', () => {
     afterEach(() => {
@@ -128,16 +137,70 @@ describe('Update Licenses Command', () => {
             expect(extractCopyrightFromLicense(content)).toBe('Christopher J. Brody and other contributors');
         });
 
+        it('should keep looking past a boilerplate line for the real notice', () => {
+            // A rejected match must not abandon the pattern that produced it: licences state
+            // the definition of "copyright owner" before naming the holder, and the notice
+            // that matters is the one further down.
+            const content = [
+                'Copyright (c) 2004 owner or entity authorized by the copyright owner',
+                '',
+                'Copyright (c) 2021 Real Holder',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBe('Real Holder');
+        });
+
         it('should return null when no copyright found', () => {
             const content = 'MIT License\n\nPermission is hereby granted...';
             expect(extractCopyrightFromLicense(content)).toBeNull();
         });
     });
 
+    describe('parseRecordedPackages', () => {
+        it('should read back the package entries already in the generated section', () => {
+            const readme = `# THIRD PARTY CODE
+
+## Server-side packages
+
+*   Runtime: Bun
+    *   Copyright: Oven (Jarred Sumner)
+    *   License: MIT
+*   Package: @codecov/bundle-analyzer
+    *   Copyright: Codecov
+    *   License: MIT
+*   Package: pdfjs-dist
+    *   Copyright: Mozilla Foundation
+    *   License: Apache-2.0
+
+## Client-side libraries
+
+*   Package: not-a-server-package
+    *   Copyright: Nobody
+    *   License: MIT
+`;
+
+            const recorded = parseRecordedPackages(readme);
+
+            expect(recorded.size).toBe(2);
+            expect(recorded.get('@codecov/bundle-analyzer')).toEqual({
+                name: '@codecov/bundle-analyzer',
+                version: 'unknown',
+                copyright: 'Codecov',
+                license: 'MIT',
+            });
+            expect(recorded.get('pdfjs-dist')?.license).toBe('Apache-2.0');
+            // The client-side section is a separate list this command does not generate.
+            expect(recorded.has('not-a-server-package')).toBe(false);
+        });
+
+        it('should return nothing when the section markers are absent', () => {
+            expect(parseRecordedPackages('# THIRD PARTY CODE\n').size).toBe(0);
+        });
+    });
+
     describe('getPackageInfo', () => {
         it('should return package info when package exists', () => {
             const mockFiles: Record<string, string> = {
-                '/test/node_modules/test-pkg/package.json': JSON.stringify({
+                [at('node_modules', 'test-pkg', 'package.json')]: JSON.stringify({
                     name: 'test-pkg',
                     version: '1.0.0',
                     license: 'MIT',
@@ -200,14 +263,53 @@ describe('Update Licenses Command', () => {
             expect(getPackageInfo(name)?.copyright).toBe('MathJax Consortium');
         });
 
-        it('should override the copyright of every package without usable metadata', () => {
-            expect(COPYRIGHT_OVERRIDES).toEqual({
-                '@material-symbols/svg-400': 'Google LLC',
-                '@mathjax/mathjax-dsfont-font-extension': 'MathJax Consortium',
-                '@mathjax/mathjax-mhchem-font-extension': 'MathJax Consortium',
-                '@mathjax/mathjax-newcm-font': 'MathJax Consortium',
-                'pdfjs-dist': 'Mozilla Foundation',
-            });
+        it('should apply every declared override, whatever the package metadata says', () => {
+            // Asserts the behaviour each entry buys rather than the literal table: a copy of
+            // the constant in the spec only re-states the implementation, and passes for a
+            // wrong holder as readily as a right one.
+            expect(Object.keys(COPYRIGHT_OVERRIDES).length).toBeGreaterThan(0);
+
+            for (const [name, holder] of Object.entries(COPYRIGHT_OVERRIDES)) {
+                const mockFiles: Record<string, string> = {
+                    [at('node_modules', name, 'package.json')]: JSON.stringify({
+                        name,
+                        version: '1.0.0',
+                        license: 'Apache-2.0',
+                        author: 'Whoever npm happens to list',
+                    }),
+                };
+
+                configure({
+                    projectRoot: '/test',
+                    existsSync: (p: string) => p in mockFiles,
+                    readFile: (p: string) => mockFiles[p] || '',
+                });
+
+                expect(getPackageInfo(name)?.copyright).toBe(holder);
+            }
+        });
+
+        it('should not resolve an Object.prototype member as a copyright holder', () => {
+            // The lookup key is an arbitrary package name off package.json. A package really
+            // named "constructor" must fall through to its own metadata, not to a function.
+            for (const name of ['constructor', 'toString', 'hasOwnProperty']) {
+                const mockFiles: Record<string, string> = {
+                    [at('node_modules', name, 'package.json')]: JSON.stringify({
+                        name,
+                        version: '1.0.0',
+                        license: 'MIT',
+                        author: 'Real Author',
+                    }),
+                };
+
+                configure({
+                    projectRoot: '/test',
+                    existsSync: (p: string) => p in mockFiles,
+                    readFile: (p: string) => mockFiles[p] || '',
+                });
+
+                expect(getPackageInfo(name)?.copyright).toBe('Real Author');
+            }
         });
 
         it('should return null for non-existent package', () => {
@@ -223,12 +325,12 @@ describe('Update Licenses Command', () => {
 
         it('should fallback to LICENSE file for copyright', () => {
             const mockFiles: Record<string, string> = {
-                '/test/node_modules/test-pkg/package.json': JSON.stringify({
+                [at('node_modules', 'test-pkg', 'package.json')]: JSON.stringify({
                     name: 'test-pkg',
                     version: '2.0.0',
                     license: 'Apache-2.0',
                 }),
-                '/test/node_modules/test-pkg/LICENSE': 'Copyright (c) 2023 License Author\n\nLicense text...',
+                [at('node_modules', 'test-pkg', 'LICENSE')]: 'Copyright (c) 2023 License Author\n\nLicense text...',
             };
 
             configure({
@@ -243,7 +345,7 @@ describe('Update Licenses Command', () => {
 
         it('should handle license as object', () => {
             const mockFiles: Record<string, string> = {
-                '/test/node_modules/test-pkg/package.json': JSON.stringify({
+                [at('node_modules', 'test-pkg', 'package.json')]: JSON.stringify({
                     name: 'test-pkg',
                     version: '1.0.0',
                     license: { type: 'BSD-3-Clause', url: 'https://...' },
@@ -263,7 +365,7 @@ describe('Update Licenses Command', () => {
 
         it('should handle licenses array', () => {
             const mockFiles: Record<string, string> = {
-                '/test/node_modules/test-pkg/package.json': JSON.stringify({
+                [at('node_modules', 'test-pkg', 'package.json')]: JSON.stringify({
                     name: 'test-pkg',
                     version: '1.0.0',
                     licenses: [{ type: 'MIT' }, { type: 'Apache-2.0' }],
@@ -283,7 +385,7 @@ describe('Update Licenses Command', () => {
 
         it('should set unknown for missing license', () => {
             const mockFiles: Record<string, string> = {
-                '/test/node_modules/test-pkg/package.json': JSON.stringify({
+                [at('node_modules', 'test-pkg', 'package.json')]: JSON.stringify({
                     name: 'test-pkg',
                     version: '1.0.0',
                     author: 'Test Author',
@@ -302,7 +404,7 @@ describe('Update Licenses Command', () => {
 
         it('should set unknown for missing copyright', () => {
             const mockFiles: Record<string, string> = {
-                '/test/node_modules/test-pkg/package.json': JSON.stringify({
+                [at('node_modules', 'test-pkg', 'package.json')]: JSON.stringify({
                     name: 'test-pkg',
                     version: '1.0.0',
                     license: 'MIT',
@@ -323,7 +425,7 @@ describe('Update Licenses Command', () => {
     describe('getDependencies', () => {
         it('should return sorted list of dependencies', () => {
             const mockFiles: Record<string, string> = {
-                '/test/package.json': JSON.stringify({
+                [at('package.json')]: JSON.stringify({
                     dependencies: { zlib: '1.0.0', axios: '2.0.0' },
                     devDependencies: { jest: '3.0.0', babel: '4.0.0' },
                 }),
@@ -341,7 +443,7 @@ describe('Update Licenses Command', () => {
 
         it('should handle missing dependencies sections', () => {
             const mockFiles: Record<string, string> = {
-                '/test/package.json': JSON.stringify({ name: 'test' }),
+                [at('package.json')]: JSON.stringify({ name: 'test' }),
             };
 
             configure({
@@ -418,7 +520,7 @@ describe('Update Licenses Command', () => {
         it('should update server-side section', () => {
             let writtenContent = '';
             const mockFiles: Record<string, string> = {
-                '/test/public/libs/README.md': existingReadme,
+                [at('public', 'libs', 'README.md')]: existingReadme,
             };
 
             configure({
@@ -445,7 +547,7 @@ describe('Update Licenses Command', () => {
         it('should not write in dry-run mode', () => {
             let writeCount = 0;
             const mockFiles: Record<string, string> = {
-                '/test/public/libs/README.md': existingReadme,
+                [at('public', 'libs', 'README.md')]: existingReadme,
             };
 
             configure({
@@ -518,20 +620,20 @@ describe('Update Licenses Command', () => {
         it('should successfully update README', async () => {
             let writtenContent = '';
             const mockFiles: Record<string, string> = {
-                '/test/package.json': mockPackageJson,
-                '/test/node_modules/test-dep/package.json': JSON.stringify({
+                [at('package.json')]: mockPackageJson,
+                [at('node_modules', 'test-dep', 'package.json')]: JSON.stringify({
                     name: 'test-dep',
                     version: '1.0.0',
                     license: 'MIT',
                     author: 'Dep Author',
                 }),
-                '/test/node_modules/test-dev-dep/package.json': JSON.stringify({
+                [at('node_modules', 'test-dev-dep', 'package.json')]: JSON.stringify({
                     name: 'test-dev-dep',
                     version: '2.0.0',
                     license: 'Apache-2.0',
                     author: 'Dev Author',
                 }),
-                '/test/public/libs/README.md': mockReadme,
+                [at('public', 'libs', 'README.md')]: mockReadme,
             };
 
             configure({
@@ -554,20 +656,20 @@ describe('Update Licenses Command', () => {
         it('should handle dry-run mode', async () => {
             let writeCount = 0;
             const mockFiles: Record<string, string> = {
-                '/test/package.json': mockPackageJson,
-                '/test/node_modules/test-dep/package.json': JSON.stringify({
+                [at('package.json')]: mockPackageJson,
+                [at('node_modules', 'test-dep', 'package.json')]: JSON.stringify({
                     name: 'test-dep',
                     version: '1.0.0',
                     license: 'MIT',
                     author: 'Author',
                 }),
-                '/test/node_modules/test-dev-dep/package.json': JSON.stringify({
+                [at('node_modules', 'test-dev-dep', 'package.json')]: JSON.stringify({
                     name: 'test-dev-dep',
                     version: '2.0.0',
                     license: 'MIT',
                     author: 'Author',
                 }),
-                '/test/public/libs/README.md': mockReadme,
+                [at('public', 'libs', 'README.md')]: mockReadme,
             };
 
             configure({
@@ -588,14 +690,14 @@ describe('Update Licenses Command', () => {
 
         it('should output JSON when --json flag is set', async () => {
             const mockFiles: Record<string, string> = {
-                '/test/package.json': JSON.stringify({ dependencies: { 'test-pkg': '1.0.0' } }),
-                '/test/node_modules/test-pkg/package.json': JSON.stringify({
+                [at('package.json')]: JSON.stringify({ dependencies: { 'test-pkg': '1.0.0' } }),
+                [at('node_modules', 'test-pkg', 'package.json')]: JSON.stringify({
                     name: 'test-pkg',
                     version: '1.0.0',
                     license: 'MIT',
                     author: 'Test Author',
                 }),
-                '/test/public/libs/README.md': mockReadme,
+                [at('public', 'libs', 'README.md')]: mockReadme,
             };
 
             configure({
@@ -612,18 +714,128 @@ describe('Update Licenses Command', () => {
             expect(result.packages).toBeDefined();
         });
 
-        it('should handle missing packages gracefully', async () => {
+        it('should carry over the recorded attribution of a package it cannot read', async () => {
+            // bun install skips a package whose "os" excludes the host, so a declared
+            // dependency can be unreadable on one platform and readable on another. Its
+            // attribution must survive a run on the platform that cannot see it.
+            const readmeWithRecord = `# THIRD PARTY CODE
+
+## Server-side packages
+
+*   Package: platform-only-pkg
+    *   Copyright: Someone Ltd
+    *   License: MIT
+
+## Client-side libraries
+
+*   Client lib
+`;
+            let writtenContent = '';
             const mockFiles: Record<string, string> = {
-                '/test/package.json': JSON.stringify({
-                    dependencies: { 'existing-pkg': '1.0.0', 'missing-pkg': '1.0.0' },
+                [at('package.json')]: JSON.stringify({
+                    dependencies: { 'existing-pkg': '1.0.0', 'platform-only-pkg': '1.0.0' },
                 }),
-                '/test/node_modules/existing-pkg/package.json': JSON.stringify({
+                [at('node_modules', 'existing-pkg', 'package.json')]: JSON.stringify({
                     name: 'existing-pkg',
                     version: '1.0.0',
                     license: 'MIT',
                     author: 'Author',
                 }),
-                '/test/public/libs/README.md': mockReadme,
+                [at('public', 'libs', 'README.md')]: readmeWithRecord,
+            };
+
+            configure({
+                projectRoot: '/test',
+                existsSync: (p: string) => p in mockFiles,
+                readFile: (p: string) => mockFiles[p] || '',
+                writeFile: (_p: string, content: string) => {
+                    writtenContent = content;
+                },
+            });
+
+            const result = await execute([], {});
+
+            expect(result.success).toBe(true);
+            expect(result.packages).toHaveLength(2);
+            expect(writtenContent).toContain('*   Package: platform-only-pkg');
+            expect(writtenContent).toContain('*   Copyright: Someone Ltd');
+        });
+
+        it('should refuse to write when a declared dependency has neither metadata nor a record', async () => {
+            let writeCount = 0;
+            const mockFiles: Record<string, string> = {
+                [at('package.json')]: JSON.stringify({
+                    dependencies: { 'existing-pkg': '1.0.0', 'never-seen-pkg': '1.0.0' },
+                }),
+                [at('node_modules', 'existing-pkg', 'package.json')]: JSON.stringify({
+                    name: 'existing-pkg',
+                    version: '1.0.0',
+                    license: 'MIT',
+                    author: 'Author',
+                }),
+                [at('public', 'libs', 'README.md')]: mockReadme,
+            };
+
+            configure({
+                projectRoot: '/test',
+                existsSync: (p: string) => p in mockFiles,
+                readFile: (p: string) => mockFiles[p] || '',
+                writeFile: () => {
+                    writeCount++;
+                },
+            });
+
+            const result = await execute([], {});
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('never-seen-pkg');
+            expect(writeCount).toBe(0);
+        });
+
+        it('should report drift with --check without writing', async () => {
+            let writeCount = 0;
+            const mockFiles: Record<string, string> = {
+                [at('package.json')]: JSON.stringify({ dependencies: { 'existing-pkg': '1.0.0' } }),
+                [at('node_modules', 'existing-pkg', 'package.json')]: JSON.stringify({
+                    name: 'existing-pkg',
+                    version: '1.0.0',
+                    license: 'MIT',
+                    author: 'Author',
+                }),
+                [at('public', 'libs', 'README.md')]: mockReadme,
+            };
+
+            configure({
+                projectRoot: '/test',
+                existsSync: (p: string) => p in mockFiles,
+                readFile: (p: string) => mockFiles[p] || '',
+                writeFile: () => {
+                    writeCount++;
+                },
+            });
+
+            const result = await execute([], { check: true });
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('make update-licenses');
+            expect(writeCount).toBe(0);
+        });
+
+        it('should pass --check when the recorded file already matches', async () => {
+            const generated = generateServerSideSection([
+                { name: 'existing-pkg', version: '1.0.0', license: 'MIT', copyright: 'Author' },
+            ]);
+            const inSyncReadme = `# THIRD PARTY CODE\n\n${generated}\n\n## Client-side libraries\n\n*   Client lib\n`;
+
+            const mockFiles: Record<string, string> = {
+                [at('package.json')]: JSON.stringify({ dependencies: { 'existing-pkg': '1.0.0' } }),
+                [at('node_modules', 'existing-pkg', 'package.json')]: JSON.stringify({
+                    name: 'existing-pkg',
+                    version: '1.0.0',
+                    license: 'MIT',
+                    author: 'Author',
+                }),
+                [at('public', 'libs', 'README.md')]: inSyncReadme,
             };
 
             configure({
@@ -633,10 +845,10 @@ describe('Update Licenses Command', () => {
                 writeFile: () => {},
             });
 
-            const result = await execute([], {});
+            const result = await execute([], { check: true });
 
             expect(result.success).toBe(true);
-            expect(result.packages).toHaveLength(1);
+            expect(result.message).toContain('up to date');
         });
 
         it('should return error when package.json not found', async () => {
@@ -675,8 +887,8 @@ describe('Update Licenses Command', () => {
 
     describe('runCli', () => {
         const mockFiles: Record<string, string> = {
-            '/test/package.json': JSON.stringify({ dependencies: {} }),
-            '/test/public/libs/README.md': `# THIRD PARTY CODE
+            [at('package.json')]: JSON.stringify({ dependencies: {} }),
+            [at('public', 'libs', 'README.md')]: `# THIRD PARTY CODE
 
 ## Server-side packages
 
@@ -747,8 +959,8 @@ describe('Update Licenses Command', () => {
 
             const badDeps: Partial<UpdateLicensesDependencies> = {
                 projectRoot: '/test',
-                existsSync: (p: string) => p === '/test/package.json',
-                readFile: (p: string) => (p === '/test/package.json' ? JSON.stringify({ dependencies: {} }) : ''),
+                existsSync: (p: string) => p === at('package.json'),
+                readFile: (p: string) => (p === at('package.json') ? JSON.stringify({ dependencies: {} }) : ''),
                 writeFile: () => {},
             };
 
