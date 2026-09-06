@@ -222,11 +222,20 @@ The picker resolves the accent itself, in JavaScript (`getCurrentThemeIconColor(
 block title and the icon element in turn, and takes the first value it finds:
 
 ```
---exe-icon-picker-color  →  --exe-icon-color  →  --icon-primary  →  computed color  →  #6E9F41
+--exe-icon-picker-color  →  --exe-icon-color  →  --icon-primary  →  computed color
+                         →  THEME_ICON_COLOR_MAP[themeId]  →  #6E9F41
 ```
 
-⚠️ **The last step is the application's own green.** A style that declares none of the three
-variables and leaves the header with no explicit colour gets `#6E9F41` in the picker,
+`THEME_ICON_COLOR_MAP` is a small table in the same file holding one tint per included
+theme (`base`, `flux`, `nova`, `neo`, `zen`, `universal`, `educablue`), each sampled from
+that theme's own Style icon artwork so the two icon groups match in the picker. **The
+included themes reach the table, not the green** — which is why the green is hard to see
+in practice, and why a custom theme behaves differently from every theme shipped with the
+application.
+
+⚠️ **The last step is the application's own green, and only a theme outside the table can
+reach it.** A style that declares none of the three variables, leaves the header with no
+explicit colour, and is not one of the seven listed above gets `#6E9F41` in the picker,
 whatever its palette is. It is not a missing value, it is an inherited one — so declare
 `--exe-icon-color`, and sample it from your `icons/` artwork rather than guessing from the
 palette; the two are often not the same colour.
