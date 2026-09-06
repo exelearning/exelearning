@@ -613,5 +613,117 @@ describe('discover iDevice export', () => {
 
       expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
     });
+
+    // What the code does next depends on the level count and on nothing else,
+    // the clock included: one level means the panel is a single play button
+    // and the code stands in for it; two or three mean the learner still has a
+    // choice to make, so the code only publishes and gets out of the way.
+    describe('what the code does after opening the activity', () => {
+      it('starts the round itself when there is only one level', () => {
+        setupCodeAccess('abre', { time: 2, gameLevels: 1 });
+        const startGame = vi
+          .spyOn($eXeDescubre, 'startGame')
+          .mockImplementation(() => {});
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        // Level 2 is what the single play button passes.
+        expect(startGame).toHaveBeenCalledWith(0, 2);
+        // Not reported twice: startGame publishes the opening zero itself, so
+        // reporting here as well would put the same zero on the wire twice.
+        // The test below proves that zero really does go out.
+        expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+      });
+
+      // The one above only proves startGame was called. This runs the real
+      // one, because what was asked for is that BOTH paths publish 0 and an
+      // unfinished attempt — and on this path the publication belongs to
+      // startGame, which could stop doing it without that test noticing.
+      it('publishes a zero and an unfinished attempt for the single level too', () => {
+        setupCodeAccess('abre', {
+          time: 2,
+          gameLevels: 1,
+          hits: 7,
+          errors: 3,
+          score: 40,
+          attempts: 0,
+          showCards: false,
+          gameMode: 0,
+          wordsGameFix: [{}, {}],
+          msgs: { mgsGameStart: '', msgRookie: '', msgMaster: '' },
+        });
+        $('#descubreMainContainer-0').append(
+          `<div id="descubreMultimedia-0"></div>
+           <div id="descubreGameOver-0"></div>
+           <div id="descubreMessage-0"></div>
+           <div id="descubrePHits-0"></div>
+           <div id="descubrePErrors-0"></div>
+           <div id="descubrePShowClue-0"></div>
+           <div id="descubreShowClue-0"></div>
+           <div id="descubrePTime-0"></div>
+           <div id="descubreImgTime-0"></div>
+           <div id="descubreInfo-0"></div>`
+        );
+        vi.spyOn($eXeDescubre, 'createCardsData').mockReturnValue([]);
+        vi.spyOn($eXeDescubre, 'addCards').mockImplementation(() => {});
+        vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
+        vi.spyOn($eXeDescubre, 'uptateTime').mockImplementation(() => {});
+        let stateWhenReported;
+        $eXeDescubre.sendScore.mockImplementation(() => {
+          const { hits, errors, score, gameOver, gameStarted } =
+            $eXeDescubre.options[0];
+          stateWhenReported = { hits, errors, score, gameOver, gameStarted };
+        });
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        expect(stateWhenReported).toEqual({
+          hits: 0,
+          errors: 0,
+          score: 0,
+          gameOver: false,
+          // sendScoreNew drops a game that is neither started nor over.
+          gameStarted: true,
+        });
+      });
+
+      it.each([2, 3])('only publishes and shows the panel for %i levels', (gameLevels) => {
+        setupCodeAccess('abre', { time: 2, gameLevels });
+        const startGame = vi
+          .spyOn($eXeDescubre, 'startGame')
+          .mockImplementation(() => {});
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        expect(startGame).not.toHaveBeenCalled();
+        expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0);
+        expect($eXeDescubre.options[0].gameStarted).toBe(false);
+      });
+
+      // The clock does not enter into it: what decides is whether the learner
+      // has a level to choose. One level is one play button either way.
+      it('starts an untimed single-level game as well', () => {
+        setupCodeAccess('abre', { time: 0, gameLevels: 1 });
+        const startGame = vi
+          .spyOn($eXeDescubre, 'startGame')
+          .mockImplementation(() => {});
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        expect(startGame).toHaveBeenCalledWith(0, 2);
+      });
+
+      it.each([2, 3])('leaves an untimed game with %i levels to its panel', (gameLevels) => {
+        setupCodeAccess('abre', { time: 0, gameLevels });
+        const startGame = vi
+          .spyOn($eXeDescubre, 'startGame')
+          .mockImplementation(() => {});
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        expect(startGame).not.toHaveBeenCalled();
+        expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0);
+      });
+    });
   });
 });

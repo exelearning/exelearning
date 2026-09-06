@@ -1670,20 +1670,33 @@ var $eXeDescubre = {
         ) {
             $('#descubreCodeAccessDiv-' + instance).hide();
             $('#descubreCubierta-' + instance).hide();
-            $('#descubreStartLevels-' + instance).show();
             $('#descubreLinkMaximize-' + instance).trigger('click');
-            // A valid code is the learner opening the activity, and the LMS
-            // should hear that even though no round is running yet: what comes
-            // next is the level panel, not the game.
-            //
-            // Raised and lowered around the report on purpose. sendScoreNew
-            // drops a game that reports as neither started nor over, so the
-            // zero needs the flag up to travel — but startGame returns early
-            // on a game it believes is already running, so leaving it up would
-            // make every level button dead and the activity unplayable.
-            mOptions.gameStarted = true;
-            $eXeDescubre.saveScormScore(instance);
-            mOptions.gameStarted = false;
+
+            if (mOptions.gameLevels == 1) {
+                // A single level, with a clock or without one: the panel
+                // behind the code is one play button, so there is nothing for
+                // the learner to choose and the code stands in for it. No
+                // report here — startGame publishes the opening zero itself,
+                // at its end, and doing it twice would put the same zero on
+                // the wire twice.
+                $eXeDescubre.startGame(instance, 2);
+            } else {
+                $('#descubreStartLevels-' + instance).show();
+                // A valid code is the learner opening the activity, and the
+                // LMS should hear that even though no round is running yet:
+                // with more than one level, what comes next is the panel, not
+                // the game.
+                //
+                // Raised and lowered around the report on purpose.
+                // sendScoreNew drops a game that reports as neither started
+                // nor over, so the zero needs the flag up to travel — but
+                // startGame returns early on a game it believes is already
+                // running, so leaving it up would make every level button dead
+                // and the activity unplayable.
+                mOptions.gameStarted = true;
+                $eXeDescubre.saveScormScore(instance);
+                mOptions.gameStarted = false;
+            }
         } else {
             $('#descubreMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
