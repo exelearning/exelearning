@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { Capabilities } from './Capabilities.js';
 import { RuntimeConfig } from './RuntimeConfig.js';
+import { PREVIEW_TRANSPORTS, resolvePreviewTransport } from '../utils/previewContentPolicy.js';
 
 describe('Capabilities', () => {
     describe('server mode', () => {
@@ -207,5 +208,57 @@ describe('Capabilities', () => {
             expect(capabilities.fileManager.serverBacked).toBe(false);
             expect(capabilities.fileManager.localBacked).toBe(true);
         });
+    });
+});
+
+describe('preview capabilities (trust-boundary transports)', () => {
+    afterEach(() => delete window.electronAPI);
+
+    const build = (mode, isEmbedded) =>
+        new Capabilities(
+            new RuntimeConfig({ mode, baseUrl: 'http://localhost', wsUrl: null, staticDataPath: null, isEmbedded }),
+        );
+
+    it('web/server offers the self-hosted opaque snapshot transport', () => {
+        const capabilities = build('server', false);
+        expect(capabilities.preview.selfHostedOpaqueSnapshot).toBe(true);
+        expect(capabilities.preview.hostOpaqueSnapshot).toBe(false);
+        expect(capabilities.preview.consentSameOrigin).toBe(false);
+    });
+
+    it('embedded runtimes use the host snapshot transport', () => {
+        for (const mode of ['server', 'static']) {
+            const capabilities = build(mode, true);
+            expect(capabilities.preview.selfHostedOpaqueSnapshot).toBe(false);
+            expect(capabilities.preview.hostOpaqueSnapshot).toBe(true);
+            expect(capabilities.preview.consentSameOrigin).toBe(false);
+        }
+    });
+
+    it('static/PWA only has the consent path (no backend to mint capability URLs)', () => {
+        const capabilities = build('static', false);
+        expect(capabilities.preview.selfHostedOpaqueSnapshot).toBe(false);
+        expect(capabilities.preview.hostOpaqueSnapshot).toBe(false);
+        expect(capabilities.preview.consentSameOrigin).toBe(true);
+    });
+
+    it('agrees with resolvePreviewTransport for every non-Electron runtime', () => {
+        const cases = [
+            ['server', false, PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE, 'selfHostedOpaqueSnapshot'],
+            ['server', true, PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE, 'hostOpaqueSnapshot'],
+            ['static', true, PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE, 'hostOpaqueSnapshot'],
+            ['static', false, PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN, 'consentSameOrigin'],
+        ];
+        for (const [mode, isEmbedded, transport, flag] of cases) {
+            const runtime = new RuntimeConfig({ mode, baseUrl: 'x', wsUrl: null, staticDataPath: null, isEmbedded });
+            expect(resolvePreviewTransport(runtime)).toBe(transport);
+            expect(build(mode, isEmbedded).preview[flag]).toBe(true);
+        }
+    });
+
+    it('Electron resolves to the blocked transport (capabilities stay static-shaped)', () => {
+        window.electronAPI = {};
+        const runtime = new RuntimeConfig({ mode: 'static', baseUrl: 'x', wsUrl: null, staticDataPath: null });
+        expect(resolvePreviewTransport(runtime)).toBe(PREVIEW_TRANSPORTS.ELECTRON_BLOCKED);
     });
 });

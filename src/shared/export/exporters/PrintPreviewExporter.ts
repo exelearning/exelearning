@@ -13,6 +13,8 @@ import type {
     AssetProvider,
     LatexPreRenderResult,
     MermaidPreRenderResult,
+    PreviewContentPolicy,
+    PreviewContentReport,
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
@@ -51,6 +53,8 @@ export interface PrintPreviewOptions {
      * If true, enables auto-print mode (injects print scripts and onload handler).
      */
     printMode?: boolean;
+    /** Preview-only author-content policy supplied by the browser UI. */
+    previewContentPolicy?: PreviewContentPolicy;
 }
 
 /**
@@ -60,6 +64,7 @@ export interface PrintPreviewResult {
     success: boolean;
     html?: string;
     error?: string;
+    activeContentReport?: PreviewContentReport;
 }
 
 /**

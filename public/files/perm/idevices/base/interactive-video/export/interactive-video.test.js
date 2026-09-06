@@ -560,4 +560,220 @@ describe('interactive-video iDevice export', () => {
       expect(typeof $interactivevideo.controls.seek).toBe('function');
     });
   });
+
+  /**
+   * YouTube, driven by the host instead of by a player this iDevice mounts itself.
+   *
+   * A package runs inside an iframe sandboxed WITHOUT `allow-same-origin` on every host
+   * that matters, so its document has a null origin. YouTube's iframe API cannot work
+   * from there twice over: the content CSP blocks `youtube.com/iframe_api`, and even if
+   * the script did load it could not satisfy the `origin` check that `enablejsapi`
+   * requires, because there is no origin to send. Switching to the SDK does not help —
+   * the SDK IS a postMessage client with the same requirement.
+   *
+   * So the video is opened by the trusted page over the external-media bridge, and this
+   * iDevice's job is to ask for it and listen. The symptom this replaces: after pressing
+   * start the panel stayed blank, the node never mounted, and the only trace was a CSP
+   * error inside a frame nobody reads.
+   */
+  describe('YouTube through the external-media bridge', () => {
+    let bridge;
+    let controller;
+    let listeners;
+
+    /** A stand-in for the host's controller; its contract is covered by controller.spec.ts. */
+    function makeController() {
+      listeners = new Map();
+      return {
+        on: (event, fn) => {
+          listeners.set(event, [...(listeners.get(event) || []), fn]);
+          return controller;
+        },
+        emit: (event, payload) => {
+          for (const fn of listeners.get(event) || []) fn(payload);
+        },
+        play: vi.fn(),
+        pause: vi.fn(),
+        seek: vi.fn(),
+        close: vi.fn(),
+      };
+    }
+
+    beforeEach(() => {
+      controller = makeController();
+      bridge = { openMedia: vi.fn(() => Promise.resolve(controller)) };
+
+      $interactivevideo.type = 'youtube';
+      $interactivevideo.id = 'aqz-KE-bpKQ';
+      $interactivevideo.complete = vi.fn();
+      $interactivevideo.checkSlides = vi.fn();
+      $interactivevideo.track = vi.fn();
+      $interactivevideo.showYoutubeFallback = vi.fn();
+      $interactivevideo.orderSlides = vi.fn();
+
+      // The SDK path inserts itself before the first script, so there has to be one.
+      document.head.innerHTML = '<script></script>';
+    });
+
+    afterEach(() => {
+      delete window.exeMediaBridge;
+      delete window.exeExternalMediaChild;
+      document.head.innerHTML = '';
+    });
+
+    it('asks the host to open the video instead of loading the YouTube SDK', async () => {
+      window.exeExternalMediaChild = { media: bridge };
+
+      await $interactivevideo.startYoutube();
+
+      expect(bridge.openMedia).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: 'youtube', videoId: 'aqz-KE-bpKQ' })
+      );
+      expect(document.querySelector('script[src*="iframe_api"]')).toBeNull();
+    });
+
+    it('accepts the legacy bridge global when the canonical one is absent', async () => {
+      window.exeMediaBridge = bridge;
+
+      await $interactivevideo.startYoutube();
+
+      expect(bridge.openMedia).toHaveBeenCalled();
+    });
+
+    /**
+     * The bug this whole change exists for: with no clock arriving, `track()` was never
+     * called, so no slide ever became due and the questions simply did not fire.
+     */
+    it('feeds the slide scheduler from the host clock', async () => {
+      window.exeExternalMediaChild = { media: bridge };
+
+      await $interactivevideo.startYoutube();
+      controller.emit('timeupdate', { currentTime: 12.5, duration: 60 });
+
+      expect($interactivevideo.track).toHaveBeenCalledWith(12.5);
+    });
+
+    /**
+     * `ready()` orders the slides before a self-mounted player starts reporting, and the
+     * bridged path needs it just as much: against an unordered list nothing is ever due,
+     * so the clock would advance past questions that never become eligible to fire.
+     */
+    it('orders the slides before the host clock starts arriving', async () => {
+      window.exeExternalMediaChild = { media: bridge };
+
+      await $interactivevideo.startYoutube();
+
+      expect($interactivevideo.orderSlides).toHaveBeenCalled();
+    });
+
+    it('shows the fallback when the host reports a fatal player error', async () => {
+      window.exeExternalMediaChild = { media: bridge };
+
+      await $interactivevideo.startYoutube();
+      controller.emit('error', { code: '150', fatal: true });
+
+      expect($interactivevideo.showYoutubeFallback).toHaveBeenCalled();
+    });
+
+    it('reports the video as playing so the slides are checked', async () => {
+      window.exeExternalMediaChild = { media: bridge };
+
+      await $interactivevideo.startYoutube();
+      controller.emit('play', {});
+
+      expect($interactivevideo.hasPlayed).toBe(true);
+      expect($interactivevideo.checkSlides).toHaveBeenCalled();
+    });
+
+    it('completes once the host reports the player ready', async () => {
+      window.exeExternalMediaChild = { media: bridge };
+
+      await $interactivevideo.startYoutube();
+      controller.emit('ready', {});
+
+      expect($interactivevideo.complete).toHaveBeenCalled();
+    });
+
+    /**
+     * The three methods the runtime already calls on `player`. Keeping exactly this shape
+     * is what lets every existing call site stay as it is.
+     */
+    it('keeps the controls the runtime already calls working over the bridge', async () => {
+      window.exeExternalMediaChild = { media: bridge };
+
+      await $interactivevideo.startYoutube();
+
+      $interactivevideo.controls.play();
+      expect(controller.play).toHaveBeenCalled();
+
+      $interactivevideo.controls.pause();
+      expect(controller.pause).toHaveBeenCalled();
+
+      $interactivevideo.controls.seek(30);
+      expect(controller.seek).toHaveBeenCalledWith(30);
+    });
+
+    /**
+     * Not every context is opaque: a package opened straight from disk, or served by a
+     * host with no media half, has no bridge to talk to. That path predates this change
+     * and must keep working, so the absence of a host is a fallback rather than a failure.
+     */
+    it('still loads the YouTube SDK when there is no host to ask', async () => {
+      await $interactivevideo.startYoutube();
+
+      expect(document.querySelector('script[src*="iframe_api"]')).not.toBeNull();
+    });
+
+    /**
+     * A host that answers LATE is the dangerous case, not the one that never answers.
+     *
+     * `openMedia` only sends `open` once the handshake completes, and the host opens its
+     * modal and starts loading the real player the moment it receives that. So a reply
+     * arriving after the local wait gave up leaves a modal playing on the host page while
+     * this iDevice has already mounted a second player of its own — two videos, one of them
+     * unreachable. Giving up has to mean telling the host so.
+     */
+    it('closes a controller that arrives after the wait gave up', async () => {
+      vi.useFakeTimers();
+      try {
+        let answer;
+        window.exeExternalMediaChild = {
+          media: { openMedia: () => new Promise(resolve => { answer = resolve; }) },
+        };
+
+        const started = $interactivevideo.startYoutube();
+        await vi.advanceTimersByTimeAsync(10000);
+        await started;
+
+        // The host replies late, after the fallback has already been taken.
+        answer(controller);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(controller.close).toHaveBeenCalled();
+        expect(document.querySelector('script[src*="iframe_api"]')).not.toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    /**
+     * A host that never answers leaves the handshake promise unsettled by design, so an
+     * unbounded wait would show the learner a blank panel forever. Bounded, it degrades
+     * into the same fallback as "no host at all".
+     */
+    it('falls back when a bridge is present but no host answers', async () => {
+      vi.useFakeTimers();
+      try {
+        window.exeExternalMediaChild = { media: { openMedia: () => new Promise(() => {}) } };
+
+        const started = $interactivevideo.startYoutube();
+        await vi.advanceTimersByTimeAsync(10000);
+        await started;
+
+        expect(document.querySelector('script[src*="iframe_api"]')).not.toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
 });

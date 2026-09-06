@@ -447,24 +447,7 @@ var $interactivevideo = {
             );
             return;
         } else if (this.type == 'youtube') {
-            // For file: protocol, show fallback since YouTube requires HTTP/HTTPS
-            if (window.location.protocol === 'file:') {
-                $interactivevideo.showYoutubeFallback();
-                return;
-            }
-
-            isYTready = setInterval(function () {
-                if (typeof YT !== 'undefined') {
-                    onYouTubeIframeAPIReady = $interactivevideo.ready();
-                    clearInterval(isYTready);
-                }
-            }, 500);
-
-            // Load the IFrame Player API code asynchronously
-            var tag = document.createElement('script');
-            tag.src = 'https://www.youtube.com/iframe_api';
-            var firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            $interactivevideo.startYoutube();
         } else if (this.type == 'local') {
             // Get MIME type based on extension for proper video playback (especially with blob URLs)
             var mimeTypes = {
@@ -484,6 +467,165 @@ var $interactivevideo = {
             );
         }
         // $interactivevideo.ready();
+    },
+
+    /**
+     * How long to wait for a host to answer the media handshake.
+     *
+     * The handshake announces and waits, and a document with no host listening never gets
+     * a reply — the promise stays unsettled by design. Unbounded, that is a blank panel
+     * for the life of the page; bounded, it degrades into the same path as "no host here".
+     */
+    bridgeTimeout: 4000,
+
+    /**
+     * The external-media child bridge, if this document has one.
+     *
+     * Canonical name first: `exeMediaBridge` is a legacy alias whose every use raises a
+     * deprecation notice, which is not something to trigger on each video.
+     */
+    mediaBridge: function () {
+        var child = window.exeExternalMediaChild;
+        if (child && child.media && typeof child.media.openMedia === 'function') {
+            return child.media;
+        }
+        var legacy = window.exeMediaBridge;
+        if (legacy && typeof legacy.openMedia === 'function') return legacy;
+        return null;
+    },
+
+    /**
+     * Adapt a host media controller to the three methods this runtime calls on `player`.
+     *
+     * Keeping exactly that shape is the point: the difference between a player mounted
+     * here and one driven by the host stops at this object, so `controls.play/stop/pause/
+     * seek` need no knowledge of which one they are talking to.
+     */
+    bridgedPlayer: function (media) {
+        return {
+            isBridged: true,
+            playVideo: function () {
+                media.play();
+            },
+            pauseVideo: function () {
+                media.pause();
+            },
+            seekTo: function (sec) {
+                media.seek(sec);
+            },
+        };
+    },
+
+    /**
+     * Ask the host to open the video and wire its clock to the slide scheduler.
+     * @returns a promise for whether a host took the video.
+     */
+    attachBridgedPlayer: function (bridge) {
+        var opening = bridge.openMedia({
+            provider: 'youtube',
+            videoId: $interactivevideo.id,
+            autoplay: false,
+        });
+
+        var giveUp = new Promise(function (resolve) {
+            setTimeout(function () {
+                resolve(null);
+            }, $interactivevideo.bridgeTimeout);
+        });
+
+        return Promise.race([opening, giveUp]).then(function (media) {
+            if (!media) {
+                // A late answer is worse than none. `openMedia` sends `open` as soon as the
+                // handshake completes, and the host opens its modal and starts loading the
+                // real player on receiving it — so a reply arriving after this gave up would
+                // leave a video playing on the host page while the fallback below mounts a
+                // second one here. Tell the host we are no longer driving.
+                opening
+                    .then(function (late) {
+                        if (late) late.close();
+                    })
+                    .catch(function () {
+                        // No host ever answered, which is the case this branch already covers.
+                    });
+                return false;
+            }
+
+            // What `ready()` does for a self-mounted player, and just as required here:
+            // an unordered slide list has nothing due at any time, so the clock below
+            // would advance against questions that never become eligible to fire.
+            $interactivevideo.orderSlides();
+
+            $interactivevideo.player = $interactivevideo.bridgedPlayer(media);
+
+            media.on('ready', function () {
+                $interactivevideo.complete();
+            });
+
+            media.on('timeupdate', function (event) {
+                var currentTime = event ? event.currentTime : undefined;
+                if (typeof currentTime !== 'number' || !isFinite(currentTime)) return;
+                $interactivevideo.track(currentTime);
+            });
+
+            media.on('play', function () {
+                $interactivevideo.hasPlayed = true;
+                $interactivevideo.checkSlides();
+            });
+
+            media.on('error', function (event) {
+                // Same outcome the self-mounted player gives an unembeddable video: say so,
+                // rather than leave a dead frame the learner cannot act on.
+                if (event && event.fatal) $interactivevideo.showYoutubeFallback();
+            });
+
+            return true;
+        });
+    },
+
+    /** Load YouTube's iframe API and hand over to `ready()` once it arrives. */
+    loadYoutubeSdk: function () {
+        isYTready = setInterval(function () {
+            if (typeof YT !== 'undefined') {
+                onYouTubeIframeAPIReady = $interactivevideo.ready();
+                clearInterval(isYTready);
+            }
+        }, 500);
+
+        // Load the IFrame Player API code asynchronously
+        var tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    },
+
+    /**
+     * Start a YouTube video, preferring the host over a player of our own.
+     *
+     * Inside an opaque document the host is the ONLY way this can work: the content CSP
+     * blocks YouTube's iframe API, and a null origin cannot satisfy the `origin` check
+     * `enablejsapi` requires — which is equally true of the SDK, since the SDK is a
+     * postMessage client with the same requirement. Where there is no host, the player is
+     * mounted here exactly as before.
+     *
+     * @returns a promise for whether the host took the video.
+     */
+    startYoutube: function () {
+        // For file: protocol, show fallback since YouTube requires HTTP/HTTPS
+        if (window.location.protocol === 'file:') {
+            $interactivevideo.showYoutubeFallback();
+            return Promise.resolve(false);
+        }
+
+        var bridge = $interactivevideo.mediaBridge();
+        if (!bridge) {
+            $interactivevideo.loadYoutubeSdk();
+            return Promise.resolve(false);
+        }
+
+        return $interactivevideo.attachBridgedPlayer(bridge).then(function (attached) {
+            if (!attached) $interactivevideo.loadYoutubeSdk();
+            return attached;
+        });
     },
 
     saveEvaluation: function () {

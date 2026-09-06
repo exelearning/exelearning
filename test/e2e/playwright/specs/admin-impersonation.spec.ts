@@ -35,9 +35,24 @@ test.describe('Admin Impersonation', () => {
         const targetRow = page.locator('#usersTableBody tr').filter({ hasText: targetEmail }).first();
         await expect(targetRow).toBeVisible();
 
-        // Row actions moved behind a three-dot menu (issue #2261).
-        await targetRow.locator('button[data-action="user-actions"]').click();
-        const impersonateItem = targetRow.locator('button[data-action="impersonate"]');
+        // Row actions live in a Bootstrap dropdown (#2261). After the table
+        // re-renders from search, Firefox sometimes drops the data-api click,
+        // so open the menu through the Bootstrap API if it stays closed.
+        const actionsToggle = targetRow.locator('button[data-action="user-actions"]');
+        await expect(actionsToggle).toBeVisible();
+        await actionsToggle.click();
+        const actionsMenu = targetRow.locator('.user-actions-menu');
+        if (!(await actionsMenu.evaluate(el => el.classList.contains('show')))) {
+            await actionsToggle.evaluate(el => {
+                (
+                    window as unknown as {
+                        bootstrap: { Dropdown: { getOrCreateInstance: (node: Element) => { show: () => void } } };
+                    }
+                ).bootstrap.Dropdown.getOrCreateInstance(el).show();
+            });
+        }
+        await expect(actionsMenu).toBeVisible();
+        const impersonateItem = actionsMenu.locator('button[data-action="impersonate"]');
         await expect(impersonateItem).toBeVisible();
 
         page.once('dialog', dialog => dialog.accept());
