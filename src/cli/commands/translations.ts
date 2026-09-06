@@ -13,6 +13,7 @@
 import { parseArgs, getString, getBoolean, hasHelp } from '../utils/args';
 import { success, error, warning, info, colors, EXIT_CODES } from '../utils/output';
 import { LOCALES } from '../../services/translation';
+import { buildVendorPlan, detectDrift, resolvePaths } from '../../../scripts/vendor-edicuatex';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Glob } from 'bun';
@@ -42,6 +43,48 @@ export interface GeneratedSource {
     regenerateWith: string;
     /** Why the extraction needs it, for the operator reading the warning. */
     reason: string;
+    /**
+     * Deeper check for a tree that *is* on disk: does it hold everything the generator
+     * writes? A directory can exist and still be short of files -- an interrupted vendor
+     * run leaves exactly that -- and the strings in the files it never wrote are then
+     * just as invisible to the scan as if the whole tree were absent.
+     *
+     * Returns `null` when the check cannot be made (the package the tree derives from is
+     * not installed, so there is nothing to compare against).
+     */
+    inspect?: (cwd: string) => { complete: boolean; detail: string } | null;
+}
+
+/** A generated tree the extraction cannot trust, and why. */
+export interface GeneratedSourceProblem {
+    source: GeneratedSource;
+    /** `missing`: no tree at all. `incomplete`: a tree that does not match the generator's output. */
+    kind: 'missing' | 'incomplete';
+    /** One line naming what is wrong, shown to the operator. */
+    detail: string;
+}
+
+/**
+ * Compares the vendored EdiCuaTeX tree against what `vendor-edicuatex` would write.
+ *
+ * Reuses the vendoring script's own plan rather than a second list that could disagree
+ * with it: the script already knows which files belong in the tree, and `--check` is the
+ * build assertion built on that knowledge.
+ */
+function inspectEdicuatexTree(cwd: string): { complete: boolean; detail: string } | null {
+    const { packageRoot, targetRoot } = resolvePaths(cwd);
+    if (!fs.existsSync(packageRoot)) {
+        return null;
+    }
+
+    const drift = detectDrift(buildVendorPlan(packageRoot), targetRoot);
+    if (drift.missing.length === 0) {
+        return { complete: true, detail: 'in sync with the pinned edicuatex package' };
+    }
+
+    const sample = drift.missing.slice(0, 3).join(', ');
+    const rest = drift.missing.length > 3 ? `, and ${drift.missing.length - 3} more` : '';
+    return { complete: false, detail: `${drift.missing.length} file(s) not written: ${sample}${rest}` };
 }
 
 /**
@@ -67,16 +110,36 @@ export const GENERATED_SOURCE_DIRS: GeneratedSource[] = [
         path: 'public/app/common/edicuatex',
         regenerateWith: 'make vendor-edicuatex',
         reason: 'holds the EdiCuaTeX equation editor strings, vendored from the pinned edicuatex package',
+        inspect: inspectEdicuatexTree,
     },
 ];
 
 /**
- * Returns the generated source trees that are not on disk.
+ * Returns the generated source trees the extraction cannot trust: absent, or present but
+ * short of the files their generator writes.
+ *
+ * Presence alone is not the question. An interrupted vendor run leaves a directory that
+ * exists and passes any `existsSync` check while the strings in the files it never wrote
+ * stay invisible to the scan -- and under `--remove-obsolete` they then look obsolete.
  *
  * Takes the working directory so tests can point it at a fixture instead of the repo.
  */
-export function findMissingGeneratedSources(cwd: string = process.cwd()): GeneratedSource[] {
-    return GENERATED_SOURCE_DIRS.filter(source => !fs.existsSync(path.join(cwd, ...source.path.split('/'))));
+export function findUntrustedGeneratedSources(cwd: string = process.cwd()): GeneratedSourceProblem[] {
+    const problems: GeneratedSourceProblem[] = [];
+
+    for (const source of GENERATED_SOURCE_DIRS) {
+        if (!fs.existsSync(path.join(cwd, ...source.path.split('/')))) {
+            problems.push({ source, kind: 'missing', detail: 'the directory is not on disk' });
+            continue;
+        }
+
+        const inspection = source.inspect?.(cwd);
+        if (inspection && !inspection.complete) {
+            problems.push({ source, kind: 'incomplete', detail: inspection.detail });
+        }
+    }
+
+    return problems;
 }
 
 /**
@@ -469,24 +532,28 @@ export async function execute(
         };
     }
 
-    // A generated source tree that has not been built is invisible to the scan, so the
-    // key set comes out short without anything looking wrong. Say so before extracting,
-    // and refuse outright to delete trans-units on the strength of a short key set.
-    const missingGenerated = findMissingGeneratedSources();
-    for (const source of missingGenerated) {
-        warning(`Generated source tree missing: ${source.path} — ${source.reason}`);
+    // A generated source tree that has not been built -- or was left half-written by an
+    // interrupted build -- is invisible to the scan, so the key set comes out short without
+    // anything looking wrong. Say so before extracting, and refuse outright to delete
+    // trans-units on the strength of a short key set.
+    const untrustedGenerated = findUntrustedGeneratedSources();
+    for (const { source, kind, detail } of untrustedGenerated) {
+        const headline = kind === 'missing' ? 'missing' : 'incomplete';
+        warning(`Generated source tree ${headline}: ${source.path} — ${detail}`);
+        warning(`  It ${source.reason}.`);
         warning(`  Regenerate it with \`${source.regenerateWith}\`.`);
     }
-    if (missingGenerated.length > 0) {
+    if (untrustedGenerated.length > 0) {
         warning('Extraction will be incomplete: strings that live only in those trees cannot be found.');
 
         if (removeObsolete && !allowMissingGenerated) {
             return {
                 success: false,
                 message:
-                    'Refusing to remove obsolete trans-units while generated source trees are missing: every ' +
-                    'string that lives only in them would be deleted from every locale. Regenerate them as ' +
-                    'shown above, or pass --allow-missing-generated to proceed anyway (destructive).',
+                    'Refusing to remove obsolete trans-units while generated source trees are missing or ' +
+                    'incomplete: every string that lives only in them would be deleted from every locale. ' +
+                    'Regenerate them as shown above, or pass --allow-missing-generated to proceed anyway ' +
+                    '(destructive).',
             };
         }
     }
@@ -545,10 +612,10 @@ ${colors.cyan('Options:')}
   --clean-only         Only clean XLF files (skip extraction)
   --remove-obsolete    Remove trans-units not found in source code (destructive)
   --allow-missing-generated
-                       Proceed even though a generated source tree is missing. Only
-                       meaningful with --remove-obsolete, which otherwise refuses to
-                       run: the key set would be short and the missing strings would
-                       be deleted from every locale.
+                       Proceed even though a generated source tree is missing or
+                       incomplete. Only meaningful with --remove-obsolete, which
+                       otherwise refuses to run: the key set would be short and the
+                       missing strings would be deleted from every locale.
   -h, --help           Show this help message
 
 ${colors.cyan('Available Locales:')}
@@ -574,7 +641,9 @@ ${colors.cyan('Extraction:')}
 ${colors.cyan('Generated sources:')}
   public/app/common/edicuatex is vendored from the pinned edicuatex package by
   build:all and is gitignored, so a checkout that has not been built does not have
-  it. Extraction warns when it is absent; --remove-obsolete refuses to run.
+  it. The tree is also compared against what vendor-edicuatex would write, so a
+  half-written one is caught too. Extraction warns in either case;
+  --remove-obsolete refuses to run.
 
 ${colors.cyan('Cleanup:')}
   - Replaces <target>__...</target> with <target></target>

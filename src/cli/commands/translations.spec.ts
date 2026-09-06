@@ -796,20 +796,71 @@ describe('Translations Command', () => {
         });
 
         it('should report a generated tree that is not on disk', async () => {
-            const { findMissingGeneratedSources } = await import('./translations');
+            const { findUntrustedGeneratedSources } = await import('./translations');
 
             await fs.remove(generatedSourceDir);
-            const missing = findMissingGeneratedSources(testDir);
+            const problems = findUntrustedGeneratedSources(testDir);
 
-            expect(missing).toHaveLength(1);
-            expect(missing[0].path).toBe('public/app/common/edicuatex');
-            expect(missing[0].regenerateWith).toBe('make vendor-edicuatex');
+            expect(problems).toHaveLength(1);
+            expect(problems[0].kind).toBe('missing');
+            expect(problems[0].source.path).toBe('public/app/common/edicuatex');
+            expect(problems[0].source.regenerateWith).toBe('make vendor-edicuatex');
         });
 
         it('should report nothing when every generated tree is on disk', async () => {
-            const { findMissingGeneratedSources } = await import('./translations');
+            const { findUntrustedGeneratedSources } = await import('./translations');
 
-            expect(findMissingGeneratedSources(testDir)).toEqual([]);
+            expect(findUntrustedGeneratedSources(testDir)).toEqual([]);
+        });
+
+        it('should report a generated tree that exists but is short of the files its generator writes', async () => {
+            const { GENERATED_SOURCE_DIRS, findUntrustedGeneratedSources } = await import('./translations');
+
+            // The vendored edicuatex tree is compared against the pinned package, which the
+            // fixture does not carry. Stand a package in whose plan the tree cannot satisfy:
+            // an interrupted vendor run leaves exactly this shape.
+            const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
+            await fs.ensureDir(path.join(packageRoot, 'lang'));
+            await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html>');
+            await fs.writeFile(path.join(packageRoot, 'favicon.svg'), '<svg/>');
+            await fs.writeFile(path.join(packageRoot, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+            await fs.writeFile(path.join(packageRoot, 'lang', 'en.js'), 'export default {};');
+            for (const directory of ['css', 'icons', 'js', 'menus']) {
+                await fs.ensureDir(path.join(packageRoot, directory));
+            }
+
+            // The tree holds the licence but never received the language file.
+            await fs.writeFile(path.join(generatedSourceDir, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+
+            const problems = findUntrustedGeneratedSources(testDir);
+
+            expect(problems).toHaveLength(1);
+            expect(problems[0].kind).toBe('incomplete');
+            expect(problems[0].detail).toContain('lang/en.js');
+
+            // The registry entry is what carries the recovery instruction.
+            expect(GENERATED_SOURCE_DIRS[0].regenerateWith).toBe('make vendor-edicuatex');
+        });
+
+        it('should refuse to remove obsolete trans-units when a generated tree is incomplete', async () => {
+            const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
+            await fs.ensureDir(path.join(packageRoot, 'lang'));
+            await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html>');
+            await fs.writeFile(path.join(packageRoot, 'favicon.svg'), '<svg/>');
+            await fs.writeFile(path.join(packageRoot, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+            await fs.writeFile(path.join(packageRoot, 'lang', 'en.js'), 'export default {};');
+            for (const directory of ['css', 'icons', 'js', 'menus']) {
+                await fs.ensureDir(path.join(packageRoot, directory));
+            }
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('--allow-missing-generated');
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('only.in.generated.tree');
         });
 
         it('should refuse to remove obsolete trans-units when a generated tree is missing', async () => {
