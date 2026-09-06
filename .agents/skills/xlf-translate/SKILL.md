@@ -27,28 +27,24 @@ Accept:
 **2. Which languages?**
 > Which language files should I fill in? (English is never modified.)
 
-Available languages and their files:
+**Read the list off disk, never from this document.** Locales are added and removed, and a
+list written here goes stale silently — the failure is a language quietly skipped on every
+run. The set is every `translations/messages.<code>.xlf` **except `messages.en.xlf`**, which
+is the source catalogue:
 
-| Code | Language   | File                        |
-|------|------------|-----------------------------|
-| `es` | Spanish    | `messages.es.xlf`           |
-| `ca` | Catalan    | `messages.ca.xlf`           |
-| `va` | Valencian  | `messages.va.xlf`           |
-| `de` | German     | `messages.de.xlf`           |
-| `eo` | Esperanto  | `messages.eo.xlf`           |
-| `eu` | Basque     | `messages.eu.xlf`           |
-| `fr` | French     | `messages.fr.xlf`           |
-| `gl` | Galician   | `messages.gl.xlf`           |
-| `it` | Italian    | `messages.it.xlf`           |
-| `pt` | Portuguese | `messages.pt.xlf`           |
-| `ro` | Romanian   | `messages.ro.xlf`           |
+```bash
+ls translations/messages.*.xlf | sed 's|.*messages\.||; s|\.xlf$||' | grep -v '^en$'
+```
+
+Offer that list to the user, and derive `$langs` from the same command everywhere below.
 
 Accept any of:
-- `"all"` → all eleven languages above
-- `"all except es"` (or any variant) → the list minus the excluded ones
+- `"all"` → every locale the command above prints
+- `"all except es"` (or any variant) → that list minus the excluded ones
 - An explicit list: `"es, ca, va"`
 
-> **`messages.en.xlf` is never touched under any circumstance.**
+> **`messages.en.xlf` is never touched under any circumstance.** It holds the English source
+> strings; there is nothing in it to translate.
 
 ---
 
@@ -77,23 +73,29 @@ translate against it:
    appear in your sources — e.g. `Password`, `Icon`, `Image`, `File manager`, `Activity`,
    `Activities`, `Search`, `Warning`, `Style`, `Confirm`, `Cancel`, `Import`.
 
+   Run it over **every locale in scope**, including any that already has targets: a locale
+   with existing translations is exactly the one a from-scratch translation drifts away
+   from.
+
    ```bash
-   for l in ca va de eo eu gl it pt ro; do echo "--- $l ---"
+   langs=$(ls translations/messages.*.xlf | sed 's|.*messages\.||; s|\.xlf$||' | grep -v '^en$')
+   for l in $langs; do echo "--- $l ---"
      for s in "Password" "File manager" "Activities"; do
        grep -A1 "<source>$s</source>" translations/messages.$l.xlf | grep '<target>'
      done
    done
    ```
 
-2. **Register (formal vs informal).** Languages that mark it (`de`, `ro`, `pt`, `it`, `eo`)
-   must match what the file already does. Read a full existing sentence with an imperative
-   rather than guessing — e.g. look up `You didn't pass the test. Please try again`. A file
-   can be internally inconsistent; match the closest analogue (system errors with system
-   errors, button labels with button labels).
+2. **Register (formal vs informal).** Where the language marks it, match what the file
+   already does. Read a full existing sentence with an imperative rather than guessing —
+   e.g. look up `You didn't pass the test. Please try again`. A file can be internally
+   inconsistent; match the closest analogue (system errors with system errors, button
+   labels with button labels).
 
-3. **Regional variant.** Check which one the file is written in before choosing vocabulary:
-   `pt` in this project is Brazilian (`Senha`, `arquivos`, `Gerenciador`, `você`), not
-   European Portuguese.
+3. **Regional variant.** Check which one the file is written in before choosing vocabulary,
+   by reading its existing targets rather than assuming the standard variant. `pt`, for
+   instance, is Brazilian here (`Senha`, `arquivos`, `Gerenciador`, `você`), not European
+   Portuguese.
 
 4. **Enumerated scales.** When a string belongs to a graded series (text sizes, strength
    levels, difficulty), dump the **whole** series first and pick a term that is still free.
@@ -103,10 +105,11 @@ translate against it:
    `messages.gl.xlf` had `Very large text` and `Huge text` both as `Texto moi grande`.
 
 5. **Upstream vendored libraries.** Some strings originate in a bundled library that ships
-   its own translations — `public/app/common/edicuatex/lang/*.js` covers `ca`, `de`, `es`,
-   `eu`, `gl`. Prefer the upstream term so the editor and the surrounding UI agree, **but
-   verify it does not collide** with a term the XLF already uses for a different source. For
-   `Huger text`, upstream collides in `de`, `eu` and `gl`, and must not be copied there.
+   its own translations, for a subset of the locales — `public/app/common/edicuatex/lang/*.js`
+   is one; list what it actually covers rather than assuming. Prefer the upstream term so the
+   editor and the surrounding UI agree, **but verify it does not collide** with a term the XLF
+   already uses for a different source; for `Huger text` the upstream term collides in several
+   locales and must not be copied into them.
 
 ---
 
@@ -121,13 +124,17 @@ For every unique source text, produce a translation for each target language. Ru
   that one still needs a decision. Never remove a `~` yourself.
 - Translate faithfully. Keep the same tone, punctuation, and placeholders as the source.
 - Ellipsis (`...`) stays as-is; do not convert to `…`.
-- Do not translate proper nouns: `eXeLearning`, `iDevice`, `SCORM`, `Yjs`.
-- Valencian (`va`) and Catalan (`ca`) are distinct — do not reuse one for the other.
-  Real markers to apply: `esta`/`este` vs `aquesta`/`aquest`, `ací` vs `aquí`, `estiga` vs
-  `estigui`, `afig` vs `afegeix`, `coincidixen` vs `coincideixen`, infinitive (`Canviar`) vs
-  imperative (`Canvia`), and the typographic apostrophe `’` in `va` against the straight `'`
-  that predominates in `ca`. Strings where the two languages genuinely coincide may be
-  identical — that is not the same as copying one into the other.
+- Do not translate proper nouns: `eXeLearning`, `iDevice`, `SCORM`, `Yjs`. This holds in
+  every locale, including the ones that already translate them somewhere — a name rendered
+  as a common noun (`iDevice` → "outil pédagogique") ends up next to the untranslated form
+  in the same menu. Check what the majority of the file does before adding another.
+- **Closely related locale pairs are distinct languages, not variants of one another.** The
+  pair in this catalogue is Valencian (`va`) and Catalan (`ca`); do not reuse one for the
+  other. Real markers to apply: `esta`/`este` vs `aquesta`/`aquest`, `ací` vs `aquí`,
+  `estiga` vs `estigui`, `afig` vs `afegeix`, `coincidixen` vs `coincideixen`, infinitive
+  (`Canviar`) vs imperative (`Canvia`), and the typographic apostrophe `’` in `va` against
+  the straight `'` that predominates in `ca`. Strings where the two genuinely coincide may
+  be identical — that is not the same as copying one into the other.
 - **Resolve ambiguous UI strings from the source code, not from intuition.** `Search icon`
   is a search-field placeholder (`blockNode.js`: `search.placeholder = _('Search icon')`),
   not "icon for searching"; `Style icons` and `General icons` are section headings. One
@@ -203,8 +210,8 @@ succeed. Keep inline batches to about 4–5 short strings, or use the data-file 
 
 ### Data-file route (for a full run across many languages)
 
-27 strings × 10 languages does not fit in inline batches. Write the translations to a **JSON
-data file** and apply it with one short command:
+A full run — every empty target across every locale in scope — does not fit in inline
+batches. Write the translations to a **JSON data file** and apply it with one short command:
 
 ```powershell
 $enc = New-Object System.Text.UTF8Encoding $false
@@ -268,13 +275,13 @@ $content = [regex]::Replace($content, $pattern, $replacement)
 After applying all translations:
 
 ```powershell
-# Count remaining empty targets in each processed file
-$langs = @('es','ca','va','de','eo','eu','fr','gl','it','pt','ro')
-foreach ($lang in $langs) {
-    $file = "C:\...\translations\messages.$lang.xlf"
-    $count = (Select-String -Path $file -Pattern '<target></target>' -SimpleMatch).Count
-    Write-Host "$lang: $count empty"
-}
+# Count remaining empty targets in every locale file except the English source
+Get-ChildItem translations\messages.*.xlf |
+    Where-Object { $_.Name -ne 'messages.en.xlf' } |
+    ForEach-Object {
+        $count = (Select-String -Path $_.FullName -Pattern '<target></target>' -SimpleMatch).Count
+        Write-Host ("{0}: {1} empty" -f $_.Name, $count)
+    }
 ```
 
 Expected: `0` for every language in scope. If any remain, they were at a line before the specified start line (expected) or the pattern did not match (investigate).
