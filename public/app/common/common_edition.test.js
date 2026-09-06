@@ -1028,6 +1028,385 @@ describe('common_edition.js', () => {
       expect(result).toContain('eXeSpecialtyIA');
     });
 
+    describe('createIAButtonsHtml layout', () => {
+      const html = () =>
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml();
+
+      function fieldOf(markup, id) {
+        // The <input> tag for `id`, so per-field classes can be asserted.
+        return markup.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`))?.[0] ?? '';
+      }
+
+      it('lays the fields out with the Bootstrap grid, not the misspelled "dd-flex"', () => {
+        const markup = html();
+        expect(markup).not.toContain('dd-flex');
+        expect(markup).toContain('class="row g-3 mb-3"');
+      });
+
+      it('stacks every input under its own label so they line up vertically', () => {
+        const markup = html();
+        for (const id of ['eXeSpecialtyIA', 'eXeCourseIA', 'eXeNumberOfQuestionsIA', 'eXeThemeIA']) {
+          // label ... for="id" ... </label> immediately followed by the input.
+          expect(markup).toMatch(
+            new RegExp(`<label[^>]*for="${id}"[^>]*>[^<]*</label>\\s*<input[^>]*id="${id}"`)
+          );
+        }
+      });
+
+      it('makes every input full-width via form-control, with no inline widths', () => {
+        const markup = html();
+        expect(markup).not.toMatch(/style="[^"]*width/);
+        for (const id of ['eXeSpecialtyIA', 'eXeCourseIA', 'eXeNumberOfQuestionsIA', 'eXeThemeIA']) {
+          expect(fieldOf(markup, id)).toContain('form-control form-control-sm w-100');
+        }
+      });
+
+      it('forces the labels to be block-level so no inherited rule inlines them', () => {
+        // .modal label / .form-properties label style labels globally; d-block keeps
+        // each field stacked under its own label regardless of that context.
+        const markup = html();
+        for (const id of ['eXeSpecialtyIA', 'eXeCourseIA', 'eXeNumberOfQuestionsIA', 'eXeThemeIA']) {
+          expect(markup).toMatch(
+            new RegExp(`<label class="form-label d-block mb-1" for="${id}"`)
+          );
+        }
+      });
+
+      it('gives Course a narrower column than Specialty', () => {
+        const markup = html();
+        const colOf = (id) =>
+          markup.match(new RegExp(`<div class="(col[^"]*)">\\s*<label[^>]*for="${id}"`))?.[1];
+        expect(colOf('eXeSpecialtyIA')).toBe('col-12 col-md-5');
+        expect(colOf('eXeCourseIA')).toBe('col-12 col-md-4');
+        expect(colOf('eXeNumberOfQuestionsIA')).toBe('col-12 col-md-3');
+      });
+
+      it('puts Topic in a fluid column with a primary Create button to its right', () => {
+        const markup = html();
+        expect(markup).toMatch(
+          /<div class="col">[\s\S]*id="eXeThemeIA"[\s\S]*<div class="col-auto">\s*<button id="eXeIAButton" class="btn btn-primary"/
+        );
+      });
+
+      it('keeps the message paragraph hidden inline so jQuery show\/hide works', () => {
+        expect(html()).toMatch(/<p id="eXeIAMessage"[^>]*style="display:none"/);
+      });
+    });
+
+    describe('AI behaviour matrix (aiSettings / getTabIA)', () => {
+      const share = () => globalThis.$exeDevicesEdition.iDevice.gamification.share;
+      function setAi(ai) {
+        globalThis.eXeLearning.app.api.parameters = ai ? { ai } : undefined;
+      }
+      afterEach(() => {
+        // Reset so other tests observe the external-default behaviour.
+        if (globalThis.eXeLearning?.app?.api) {
+          delete globalThis.eXeLearning.app.api.parameters;
+        }
+      });
+
+      it('aiSettings defaults to enabled/external when no config is present', () => {
+        setAi(null);
+        expect(share().aiSettings()).toEqual({ enabled: true, mode: 'external' });
+      });
+
+      it('aiSettings reflects a managed provider', () => {
+        setAi({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        expect(share().aiSettings()).toEqual({ enabled: true, mode: 'managed' });
+      });
+
+      it('aiSettings reflects disabled AI', () => {
+        setAi({ enabled: false, provider: 'external', mode: 'external', configured: true });
+        expect(share().aiSettings().enabled).toBe(false);
+      });
+
+      it('disabled mode renders prompt + Copy but no provider controls', () => {
+        setAi({ enabled: false, provider: 'external', mode: 'external', configured: true });
+        const html = share().getTabIA(0);
+        expect(html).toContain('eXeEPromptArea');
+        expect(html).toContain('eXeECopyButton');
+        expect(html).not.toContain('eXeEIASelect');
+        expect(html).not.toContain('eXeEOpenChatGPTButton');
+        expect(html).not.toContain('eXeETabIA');
+        expect(html).not.toContain('eXeEIADiv');
+      });
+
+      it('external mode renders the assistant selector and "Send to AI", not the Generate tab', () => {
+        setAi({ enabled: true, provider: 'external', mode: 'external', configured: true });
+        const html = share().getTabIA(0);
+        expect(html).toContain('eXeEIASelect');
+        expect(html).toContain('eXeEOpenChatGPTButton');
+        expect(html).not.toContain('eXeETabIA');
+        expect(html).not.toContain('eXeEIADiv');
+      });
+
+      it('managed mode renders the Generate tab + Create surface, not the external selector', () => {
+        setAi({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        const html = share().getTabIA(0);
+        expect(html).toContain('eXeETabIA');
+        expect(html).toContain('eXeEIADiv');
+        expect(html).toContain('eXeFormIAContainer');
+        expect(html).not.toContain('eXeEIASelect');
+        expect(html).not.toContain('eXeEOpenChatGPTButton');
+      });
+
+      it('managed mode drops the Prompt tab and lands on Generate', () => {
+        // The Prompt tab shows a prompt the server never sends, so it is not
+        // offered when the managed generator is available.
+        setAi({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        const html = share().getTabIA(0);
+        expect(html).not.toContain('eXeETabPrompt');
+        expect(html).toMatch(/<a id="eXeETabIA" class="[^"]*\bactive\b/);
+        // The textarea stays in the DOM (refreshIAPrompt writes into it) but hidden,
+        // and the Create surface is the one visible on open.
+        expect(html).toMatch(/id="eXeEPromptArea"/);
+        expect(html).toMatch(/style="min-height:350px;display:none;" id="eXeEPromptArea"/);
+        expect(html).not.toMatch(/id="eXeEIADiv"[^>]*display:none/);
+      });
+
+      it('non-managed modes keep the Prompt tab active', () => {
+        for (const ai of [
+          { enabled: true, provider: 'external', mode: 'external', configured: true },
+          { enabled: false, provider: 'external', mode: 'external', configured: true },
+        ]) {
+          setAi(ai);
+          const html = share().getTabIA(0);
+          expect(html).toMatch(/<a id="eXeETabPrompt" class="[^"]*\bactive\b/);
+          expect(html).not.toContain('eXeETabIA');
+          expect(html).toMatch(/style="min-height:350px;" id="eXeEPromptArea"/);
+        }
+      });
+
+      it('gives eXeEIADiv an automatic height so its content is not clipped', () => {
+        // .form-control:not(textarea) is pinned to 36px in _reset.scss; h-auto
+        // releases it so the Create form is not cut off (see #1998).
+        setAi({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        const html = share().getTabIA(0);
+        expect(html).toMatch(/<div[^>]*class="[^"]*h-auto[^"]*"[^>]*id="eXeEIADiv"/);
+      });
+    });
+
+    describe('addEvents landing tab', () => {
+      const share = () => globalThis.$exeDevicesEdition.iDevice.gamification.share;
+      // jQuery's :visible is useless under jsdom (every box is 0x0), so assert
+      // the inline display that .show()/.hide() actually write.
+      const hidden = (id) => document.getElementById(id).style.display === 'none';
+
+      function mount(ai) {
+        globalThis.eXeLearning.app.api.parameters = { ai };
+        document.body.innerHTML = share().getTabIA(0);
+        share().addEvents(0, vi.fn(), {});
+      }
+
+      afterEach(() => {
+        delete globalThis.eXeLearning.app.api.parameters;
+        document.body.innerHTML = '';
+      });
+
+      it('opens on the Create surface in managed mode', () => {
+        mount({ enabled: true, provider: 'ollama', mode: 'managed', configured: true });
+        expect(hidden('eXeEIADiv')).toBe(false);
+        expect(hidden('eXeEPromptArea')).toBe(true);
+        // Copy belongs to the Prompt tab, which is not offered in this mode.
+        expect(hidden('eXeECopyButton')).toBe(true);
+      });
+
+      it('opens on the prompt in external mode', () => {
+        mount({ enabled: true, provider: 'external', mode: 'external', configured: true });
+        expect(hidden('eXeEPromptArea')).toBe(false);
+        expect(hidden('eXeECopyButton')).toBe(false);
+        expect(document.getElementById('eXeEIADiv')).toBeNull();
+      });
+
+      it('opens on the prompt when AI is disabled', () => {
+        mount({ enabled: false, provider: 'external', mode: 'external', configured: true });
+        expect(hidden('eXeEPromptArea')).toBe(false);
+        expect(hidden('eXeECopyButton')).toBe(false);
+      });
+    });
+
+    describe('genarateIAQuestons (managed mode result handling)', () => {
+      let savedEXe;
+      beforeEach(() => {
+        savedEXe = globalThis.eXeLearning;
+        document.body.innerHTML = `
+          <div id="eXeFormIAContainer"><input id="eXeNumberOfQuestionsIA" value="3"></div>
+          <p id="eXeIAMessage" style="display:block"></p>
+          <textarea id="eXeEQuestionsArea"></textarea>
+          <a id="eXeETabQuestions"></a>`;
+      });
+      afterEach(() => {
+        globalThis.eXeLearning = savedEXe;
+        document.body.innerHTML = '';
+      });
+
+      describe('prompt assembly', () => {
+        async function capturePrompt(type = 0, options = {}) {
+          const getGenerateQuestions = vi.fn().mockResolvedValue({ questions: [] });
+          globalThis.eXeLearning = { app: { api: { getGenerateQuestions } } };
+          await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(
+            type,
+            vi.fn(),
+            options
+          );
+          return getGenerateQuestions.mock.calls[0][0];
+        }
+
+        it('separates every appended sentence with a space', async () => {
+          const prompt = await capturePrompt();
+          // Used to read "...topic: X.Generate 3 questionsWith the following formats:".
+          expect(prompt).not.toMatch(/\w\.\w/);
+        });
+
+        it('states the requested count once, inside the per-game instruction', async () => {
+          const prompt = await capturePrompt(0);
+          expect(prompt).toContain('Generate 3 words followed by their definitions');
+          // No second, contradictory figure anywhere.
+          expect(prompt).not.toContain('Generate 10 words');
+          expect(prompt).not.toMatch(/Generate \d+ questions\./);
+        });
+
+        it('introduces the format block even when the count field is absent', async () => {
+          document.getElementById('eXeNumberOfQuestionsIA').remove();
+          const prompt = await capturePrompt();
+          expect(prompt).toContain('Formats:');
+          // Falls back to the game's own default.
+          expect(prompt).toContain('Generate 10 words');
+        });
+
+        it('falls back to 10 questions when the count field is empty', async () => {
+          document.getElementById('eXeNumberOfQuestionsIA').value = '';
+          const prompt = await capturePrompt();
+          expect(prompt).toContain('Generate 10 words');
+        });
+
+        it('sends exactly what buildIAPromptText produces for the same context', async () => {
+          // The single-source-of-truth guarantee: no second prompt assembled
+          // anywhere. Break the builder and this fails with the sent prompt.
+          document.getElementById('eXeFormIAContainer').insertAdjacentHTML(
+            'beforeend',
+            `<input id="eXeSpecialtyIA" value="Biology">
+             <input id="eXeCourseIA" value="3rd ESO">
+             <input id="eXeThemeIA" value="Photosynthesis">`
+          );
+          const share = globalThis.$exeDevicesEdition.iDevice.gamification.share;
+          const expected = share.buildIAPromptText(0, {}, share.readIAContext());
+
+          expect(await capturePrompt(0)).toBe(expected);
+          expect(expected).toContain('Specialty: Biology.');
+          expect(expected).toContain('For students of 3rd ESO.');
+          expect(expected).toContain('on the following topic: Photosynthesis.');
+        });
+      });
+
+      it('surfaces the backend error message instead of a generic "Incorrect format"', async () => {
+        globalThis.eXeLearning = {
+          app: {
+            api: {
+              getGenerateQuestions: vi.fn().mockResolvedValue({
+                error: 'AI_NOT_CONFIGURED',
+                message: 'The AI provider is not fully configured.',
+              }),
+            },
+          },
+        };
+        const saveQuestions = vi.fn();
+        await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(0, saveQuestions, {});
+        expect(saveQuestions).not.toHaveBeenCalled();
+        expect(document.getElementById('eXeIAMessage').textContent).toContain('not fully configured');
+      });
+
+      it('stages the generated questions in the Questions tab for review instead of inserting them', async () => {
+        globalThis.eXeLearning = {
+          app: { api: { getGenerateQuestions: vi.fn().mockResolvedValue({ questions: ['Word1#Definition1', 'Word2#Definition2'] }) } },
+        };
+        const tabClicked = vi.fn();
+        $('#eXeETabQuestions').on('click', tabClicked);
+        document.getElementById('eXeIAMessage').style.display = 'block';
+
+        const saveQuestions = vi.fn();
+        await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(0, saveQuestions, {});
+
+        // The teacher reviews and fixes the questions before saving, so nothing is
+        // inserted yet; inserting here as well would add each question twice (#1998).
+        expect(saveQuestions).not.toHaveBeenCalled();
+        expect(document.getElementById('eXeEQuestionsArea').value).toBe('Word1#Definition1\nWord2#Definition2');
+        expect(tabClicked).toHaveBeenCalled();
+        expect(document.getElementById('eXeIAMessage').style.display).toBe('none');
+      });
+
+      it('stages malformed lines too, so Save can report them for correction', async () => {
+        // Type 0 requires Word#Definition; "NoSeparator" and the 3-field line are
+        // rejected by the regex. They must still reach the Questions tab.
+        globalThis.eXeLearning = {
+          app: {
+            api: {
+              getGenerateQuestions: vi.fn().mockResolvedValue({
+                questions: ['Word1#Definition1', 'NoSeparator', 'Word2#Definition2'],
+              }),
+            },
+          },
+        };
+        await globalThis.$exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(0, vi.fn(), {});
+
+        const staged = document.getElementById('eXeEQuestionsArea').value;
+        expect(staged.split('\n')).toHaveLength(3);
+        expect(staged).toContain('NoSeparator');
+      });
+    });
+
+    describe('managed Create does not lead the user into double-inserting (#1998)', () => {
+      let savedEXe;
+      const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+      beforeEach(() => {
+        savedEXe = globalThis.eXeLearning;
+        document.body.innerHTML = `
+          <div id="eXeFormIAContainer"><input id="eXeNumberOfQuestionsIA" value="2"></div>
+          <p id="eXeIAMessage" style="display:block"></p>
+          <textarea id="eXeEQuestionsArea"></textarea>
+          <button id="eXeESaveButton"></button>
+          <a id="eXeETabQuestions"></a>`;
+        globalThis.eXeLearning = {
+          app: {
+            api: {
+              getGenerateQuestions: vi
+                .fn()
+                .mockResolvedValue({ questions: ['Word1#Definition1', 'Word2#Definition2'] }),
+            },
+          },
+        };
+      });
+      afterEach(() => {
+        globalThis.eXeLearning = savedEXe;
+        document.body.innerHTML = '';
+      });
+
+      it('inserts each generated question exactly once even if Save is clicked afterwards', async () => {
+        const share = globalThis.$exeDevicesEdition.iDevice.gamification.share;
+
+        // Mirror the real iDevice callback (insertAIContent): every call appends its
+        // lines to the questions collection. Both the managed Create flow and the Save
+        // button reuse this exact same callback in production.
+        const questionsGame = [];
+        const insertAIContent = vi.fn((content) => {
+          const lines = Array.isArray(content) ? content : [];
+          for (const line of lines) questionsGame.push(line);
+        });
+
+        // Wire the Save button (as the workarea does) and run the managed Create flow.
+        share.addEvents(0, insertAIContent);
+        await share.genarateIAQuestons(0, insertAIContent, {});
+
+        // The user clicks Save on whatever surface the Create flow navigates them to.
+        $('#eXeESaveButton').trigger('click');
+        await flushAsync();
+
+        // Each generated question must be inserted once, never twice (N, not 2N).
+        expect(questionsGame).toEqual(['Word1#Definition1', 'Word2#Definition2']);
+      });
+    });
+
     it('getAllowedFormats returns formats for each gameId', () => {
       // Test each game type
       for (let i = 0; i <= 9; i++) {
@@ -1194,6 +1573,58 @@ describe('common_edition.js', () => {
         expect(text).toContain('4 (master)');
         expect(text).toContain('Difficulty must increase with the level');
         expect(text).toContain('level 4 (master) must contain the hardest');
+      });
+
+      it('buildIAPromptText omits every context sentence when no context is given', () => {
+        // The editable Prompt tab calls it with no context: the game's default
+        // count is what the teacher reads, and no context sentence appears.
+        const text = share().buildIAPromptText(0);
+        expect(text.split('\n')[0]).toBe('Act as a highly experienced teacher.');
+        expect(text).not.toContain('Specialty:');
+        expect(text).not.toContain('For students of');
+        expect(text).not.toContain('on the following topic');
+        expect(text).toContain('Generate 10 words followed by their definitions');
+      });
+
+      it('buildIAPromptText folds the teacher context into the opening line', () => {
+        const text = share().buildIAPromptText(0, {}, {
+          specialty: 'Biology',
+          course: '3rd ESO',
+          topic: 'Photosynthesis',
+          numQuestions: 5,
+        });
+        expect(text.split('\n')[0]).toBe(
+          'Act as a highly experienced teacher. Specialty: Biology. For students of 3rd ESO. on the following topic: Photosynthesis.'
+        );
+      });
+
+      it('states the count exactly once, defaulting per game and overridable', () => {
+        // Each game carries its own default; the Generate form's value replaces it.
+        const defaults = { 0: 10, 1: 30, 2: 10, 3: 10, 4: 5, 5: 4, 6: 10, 7: 10, 9: 10, 11: 5 };
+        for (const [gameId, fallback] of Object.entries(defaults)) {
+          const id = Number(gameId);
+          expect(share().getAllowedFormats(id).prompt).toContain(String(fallback));
+          expect(share().getAllowedFormats(id).prompt).not.toContain('%questions%');
+          expect(share().getAllowedFormats(id, { numQuestions: 7 }).prompt).toContain('7');
+        }
+        // Game 8 has no count at all; nothing to substitute.
+        expect(share().getAllowedFormats(8).prompt).not.toContain('%questions%');
+      });
+
+      it('recomputes the adaptative-quiz per-level figure from an overridden total', () => {
+        // 30 questions across 3 levels => 10 per level, both figures coherent.
+        const text = share().buildIAPromptText(10, { numLevels: 3 }, { numQuestions: 30 });
+        expect(text).toContain('Create 30 mixed adaptative-quiz questions');
+        expect(text).toContain('around 10 questions per level');
+      });
+
+      it('readIAContext returns empty fields when the Generate form is absent', () => {
+        expect(share().readIAContext()).toEqual({
+          specialty: '',
+          course: '',
+          topic: '',
+          numQuestions: '',
+        });
       });
 
       it('refreshIAPrompt writes the current prompt into #eXeEPromptArea and updates on re-call', () => {

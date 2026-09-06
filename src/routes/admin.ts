@@ -53,6 +53,7 @@ import {
 } from '../db/queries/admin-analytics';
 import { getConnectedClientsDetail } from '../websocket/yjs-websocket';
 import { createFileHelper, type FileHelper } from '../services/file-helper';
+import { AI_PROVIDERS, AI_SECRET_KEYS, isAiProvider } from '../services/ai';
 import * as pathModule from 'path';
 import {
     ElpxExporter,
@@ -393,6 +394,49 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
             {},
             locale,
         ),
+        // AI configuration
+        ai: trans('AI', {}, locale),
+        ai_settings: trans('AI Settings', {}, locale),
+        ai_intro: trans(
+            'Configure how AI assistance is offered in game-generation activities. With the external provider, users pick a public AI assistant (ChatGPT, Claude...). With a managed provider, eXeLearning generates questions through your own server-side AI and no public AI options are shown.',
+            {},
+            locale,
+        ),
+        ai_features_enabled: trans('Enable AI features', {}, locale),
+        ai_features_enabled_help: trans(
+            'When disabled, all AI buttons and AI preferences are hidden everywhere.',
+            {},
+            locale,
+        ),
+        ai_provider: trans('Provider', {}, locale),
+        ai_provider_help: trans(
+            'External keeps the public AI assistant links. Azure, Ollama and OpenAI-compatible route generation through your configured server-side provider.',
+            {},
+            locale,
+        ),
+        ai_provider_external: trans('External public assistants', {}, locale),
+        ai_provider_azure: trans('Azure OpenAI', {}, locale),
+        ai_provider_ollama: trans('Ollama', {}, locale),
+        ai_provider_openai_compat: trans('OpenAI-compatible', {}, locale),
+        ai_azure_group: trans('Azure OpenAI', {}, locale),
+        ai_ollama_group: trans('Ollama', {}, locale),
+        ai_compat_group: trans('OpenAI-compatible', {}, locale),
+        ai_common_group: trans('Generation options', {}, locale),
+        ai_endpoint: trans('Endpoint', {}, locale),
+        ai_api_key: trans('API key', {}, locale),
+        ai_api_key_help: trans('Stored on the server only. Leave blank to keep the current key.', {}, locale),
+        ai_api_key_set: trans('A key is currently configured.', {}, locale),
+        ai_api_key_unset: trans('No key configured.', {}, locale),
+        ai_deployment: trans('Deployment', {}, locale),
+        ai_api_version: trans('API version', {}, locale),
+        ai_model: trans('Model', {}, locale),
+        ai_request_timeout_ms: trans('Request timeout (ms)', {}, locale),
+        ai_max_output_tokens: trans('Max output tokens', {}, locale),
+        ai_temperature: trans('Temperature', {}, locale),
+        ai_test_connection: trans('Test connection', {}, locale),
+        ai_test_ok: trans('Connection successful', {}, locale),
+        ai_test_failed: trans('Connection failed', {}, locale),
+        ai_testing: trans('Testing...', {}, locale),
     };
 }
 
@@ -663,7 +707,37 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     APP_NAME: { value: '', type: 'string' },
     APP_FAVICON_PATH: { value: '', type: 'string' },
     MAINTENANCE_MODE: { value: process.env.MAINTENANCE_MODE ?? 'false', type: 'boolean' },
+    // AI (server-managed generation). Secrets (API keys) are write-only: never
+    // returned by GET (masked) and a blank value on PUT keeps the stored secret.
+    AI_FEATURES_ENABLED: { value: process.env.AI_FEATURES_ENABLED ?? 'true', type: 'boolean' },
+    AI_PROVIDER: { value: process.env.AI_PROVIDER || 'external', type: 'string' },
+    AI_AZURE_ENDPOINT: { value: process.env.AI_AZURE_ENDPOINT || '', type: 'string' },
+    AI_AZURE_API_KEY: { value: process.env.AI_AZURE_API_KEY || '', type: 'string' },
+    AI_AZURE_DEPLOYMENT: { value: process.env.AI_AZURE_DEPLOYMENT || '', type: 'string' },
+    AI_AZURE_API_VERSION: { value: process.env.AI_AZURE_API_VERSION || '', type: 'string' },
+    AI_OLLAMA_ENDPOINT: { value: process.env.AI_OLLAMA_ENDPOINT || 'http://localhost:11434', type: 'string' },
+    AI_OLLAMA_MODEL: { value: process.env.AI_OLLAMA_MODEL || '', type: 'string' },
+    AI_COMPAT_ENDPOINT: { value: process.env.AI_COMPAT_ENDPOINT || '', type: 'string' },
+    AI_COMPAT_API_KEY: { value: process.env.AI_COMPAT_API_KEY || '', type: 'string' },
+    AI_COMPAT_MODEL: { value: process.env.AI_COMPAT_MODEL || '', type: 'string' },
+    AI_REQUEST_TIMEOUT_MS: { value: process.env.AI_REQUEST_TIMEOUT_MS ?? '60000', type: 'number' },
+    AI_MAX_OUTPUT_TOKENS: { value: process.env.AI_MAX_OUTPUT_TOKENS ?? '4096', type: 'number' },
+    // Stored as a string so fractional temperatures (e.g. 0.2) survive round-trips.
+    AI_TEMPERATURE: { value: process.env.AI_TEMPERATURE ?? '0.2', type: 'string' },
 };
+
+/** AI endpoint keys validated as http(s) URLs on save. */
+const AI_ENDPOINT_KEYS = new Set<string>(['AI_AZURE_ENDPOINT', 'AI_OLLAMA_ENDPOINT', 'AI_COMPAT_ENDPOINT']);
+
+/** True when `value` parses as an absolute http(s) URL. */
+export function isValidHttpUrl(value: string): boolean {
+    try {
+        const url = new URL(value);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+        return false;
+    }
+}
 
 // ============================================================================
 // FACTORY FUNCTION
@@ -798,13 +872,24 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 const stored = await queries.getAllSettings(db as unknown as AppSettingsDb);
                 const storedMap = new Map(stored.map(item => [item.key, item]));
 
-                const settings: Record<string, { value: string | number | boolean; type: string }> = {};
+                const settings: Record<string, { value: string | number | boolean; type: string; isSet?: boolean }> =
+                    {};
                 for (const [key, def] of Object.entries(ADMIN_SETTINGS_DEFAULTS)) {
                     const override = storedMap.get(key);
-                    settings[key] = {
-                        value: override ? override.value : def.value,
-                        type: override ? override.type : def.type,
-                    };
+                    const rawValue = override ? override.value : def.value;
+                    const type = override ? override.type : def.type;
+
+                    // Secrets are never returned. Expose only whether a value is set.
+                    if (AI_SECRET_KEYS.has(key)) {
+                        settings[key] = {
+                            value: '',
+                            type,
+                            isSet: Boolean(rawValue !== undefined && rawValue !== null && String(rawValue) !== ''),
+                        };
+                        continue;
+                    }
+
+                    settings[key] = { value: rawValue, type };
                 }
 
                 return { settings };
@@ -850,6 +935,31 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                                     message: `APP_AUTH_METHODS has invalid values: ${invalid.join(', ')}`,
                                 };
                             }
+                        }
+
+                        // Write-only secrets: a blank value means "keep the stored secret".
+                        if (AI_SECRET_KEYS.has(setting.key) && setting.value.trim() === '') {
+                            continue;
+                        }
+
+                        if (setting.key === 'AI_PROVIDER' && !isAiProvider(setting.value.trim())) {
+                            set.status = 400;
+                            return {
+                                error: 'Bad Request',
+                                message: `AI_PROVIDER must be one of: ${AI_PROVIDERS.join(', ')}`,
+                            };
+                        }
+
+                        if (
+                            AI_ENDPOINT_KEYS.has(setting.key) &&
+                            setting.value.trim() !== '' &&
+                            !isValidHttpUrl(setting.value.trim())
+                        ) {
+                            set.status = 400;
+                            return {
+                                error: 'Bad Request',
+                                message: `${setting.key} must be a valid http(s) URL`,
+                            };
                         }
 
                         try {
