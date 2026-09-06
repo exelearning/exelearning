@@ -539,6 +539,10 @@ endif
 .PHONY: test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
 
+.PHONY: test-scripts
+test-scripts: check-bun ## Run scripts/ unit tests (build & vendor helpers)
+	$(TEST_ENV) bun test:scripts
+
 .PHONY: test-unit
 test-unit: check-bun check-tests check-env bundle ## Run unit tests (src/) with coverage and 90% threshold
 	@echo "Running unit tests with coverage..."

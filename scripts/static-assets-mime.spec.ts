@@ -24,12 +24,17 @@ const PDFJS_CONSUMERS = [
 ];
 
 describe('vendored PDF.js bundles', () => {
-    it('ships the display and worker bundles with a .js extension', () => {
-        expect(fs.existsSync(path.join(pdfjsDir, 'pdf.min.js'))).toBe(true);
-        expect(fs.existsSync(path.join(pdfjsDir, 'pdf.worker.min.js'))).toBe(true);
+    const copyScript = fs.readFileSync(path.join(projectRoot, 'scripts/copy-vendor-libs.js'), 'utf-8');
+
+    it('copies the display and worker bundles to a .js extension', () => {
+        // Bundles are generated from pdfjs-dist at build time, not committed.
+        expect(copyScript).toContain("dest: pub('libs/pdfjs/pdf.min.js')");
+        expect(copyScript).toContain("dest: pub('libs/pdfjs/pdf.worker.min.js')");
+        expect(copyScript).not.toContain("dest: pub('libs/pdfjs/pdf.min.mjs')");
+        expect(copyScript).not.toContain("dest: pub('libs/pdfjs/pdf.worker.min.mjs')");
     });
 
-    it('ships no .mjs file, which servers serve as application/octet-stream', () => {
+    it('ships no committed .mjs file, which servers serve as application/octet-stream', () => {
         const mjsFiles = fs.readdirSync(pdfjsDir).filter((f) => f.endsWith('.mjs'));
         expect(mjsFiles).toEqual([]);
     });

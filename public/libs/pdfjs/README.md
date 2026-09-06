@@ -32,11 +32,11 @@ not from the filename.
 
 ## Updating
 
-1. Copy `build/pdf.min.mjs` → `pdf.min.js` and `build/pdf.worker.min.mjs` →
-   `pdf.worker.min.js` from the new `pdfjs-dist` release.
-2. Update the version above.
-3. Keep the `.js` extension. `scripts/static-assets-mime.spec.ts` fails the
-   build if a `.mjs` file reappears here.
+`scripts/copy-vendor-libs.js` copies `pdfjs-dist/build/pdf.min.mjs` (and the
+worker) to `public/libs/pdfjs/pdf.min.js` at build time. Bump the `pdfjs-dist`
+version in `package.json` and re-run `bun run bundle:vendor`. Keep the `.js`
+destination; `scripts/static-assets-mime.spec.ts` fails the build if the copy
+step targets `.mjs`.
 
 `GlobalWorkerOptions.workerSrc` is always set explicitly by the callers
 (`public/preview-sw.js`, `public/app/workarea/interface/elements/previewPanel.js`),
