@@ -125,8 +125,8 @@
   // removed: see the note on RENAMED_THEME_ICONS in src/shared/block-icon.ts, of which this
   // is the JS twin — keep both in sync.
   const RENAMED_THEME_ICONS = {
-    objetives: 'objectives', // neo, misspelt from v4.0.0 to v4.0.3
-    'think-alt': 'think_alt', // educablue, hyphenated from v4.0.0 to v4.0.3
+    objetives: 'objectives', // neo, misspelt in every release from v4.0.0 to v4.0.3
+    'think-alt': 'think_alt', // educablue, hyphenated; only in v4.0.4 pre-release projects
   };
 
   // Map a stored theme-icon name onto the file the themes ship today.

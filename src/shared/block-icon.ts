@@ -41,9 +41,11 @@ export type BlockIconSource = 'material' | 'asset' | 'theme' | 'none';
  * Kept in sync with the JS twin in `public/app/common/blockIconRuntime.js`.
  */
 export const RENAMED_THEME_ICONS: Readonly<Record<string, string>> = Object.freeze({
-    // neo, misspelt from v4.0.0 to v4.0.3.
+    // neo, misspelt in every release from v4.0.0 to v4.0.3.
     objetives: 'objectives',
-    // educablue, hyphenated from v4.0.0 to v4.0.3; every other style uses an underscore.
+    // educablue, hyphenated while every other style used an underscore. educablue arrived
+    // after v4.0.3, so no tagged release carries this name -- only projects saved against a
+    // v4.0.4 pre-release can hold it, which is still enough to be worth one line.
     'think-alt': 'think_alt',
 });
 

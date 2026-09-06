@@ -39,8 +39,8 @@ const THEME_ICON_COLOR_MAP = {
 // Mirrors RENAMED_THEME_ICONS in src/shared/block-icon.ts, which documents why entries are
 // added and never removed. Only used on the degraded path where the shared runtime is absent.
 const RENAMED_THEME_ICONS = {
-    objetives: 'objectives', // neo, misspelt from v4.0.0 to v4.0.3
-    'think-alt': 'think_alt', // educablue, hyphenated from v4.0.0 to v4.0.3
+    objetives: 'objectives', // neo, misspelt in every release from v4.0.0 to v4.0.3
+    'think-alt': 'think_alt', // educablue, hyphenated; only in v4.0.4 pre-release projects
 };
 
 const localBlockIconRuntime = {
@@ -232,11 +232,10 @@ export default class IdeviceBlockNode {
                 iconData.source === 'theme'
                     ? blockIconRuntime.resolveRenamedThemeIcon(iconData.value || '')
                     : iconData.value || '';
-            return {
-                source: iconData.source,
-                value,
-                name: iconData.name || value || '',
-            };
+            // `name` follows `value`: keeping the old spelling here would put it back on
+            // `this.iconName` in setParams() and re-save the name the styles no longer ship.
+            const name = value === iconData.value ? iconData.name || value || '' : value;
+            return { source: iconData.source, value, name };
         }
 
         const legacy = legacyIconName || '';

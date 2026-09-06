@@ -1317,8 +1317,10 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('theme/icons/think_alt.svg');
         });
 
-        it('should keep the stored name when the current style ships neither spelling', () => {
-            // A style that never had the icon must not be handed the renamed file either.
+        it('should fall back on the current spelling when the style ships neither', () => {
+            // The name is mapped before it reaches the theme's file list, so a style that
+            // ships neither spelling falls back to <current name>.png -- not to the stored
+            // one. That is what the other styles would have on disk if they had the icon.
             const block: ExportBlock = {
                 id: 'block-1',
                 name: 'Test Block',
