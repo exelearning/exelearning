@@ -253,14 +253,17 @@ export default class IdeviceBlockNode {
         // Only fall back to the legacy → Material mapping when the active style
         // does not ship that icon, so style icons selected from the picker keep
         // their identity (e.g. through undo/redo block reconstruction).
-        if (this.resolveThemeIconData(legacy)) {
-            return { source: 'theme', value: legacy, name: legacy };
+        // `derived.value` rather than `legacy`: a name the style has since renamed must
+        // normalise to the current one here, or the picker cannot match the block's icon
+        // against the entry it lists.
+        if (this.resolveThemeIconData(derived.value)) {
+            return { source: 'theme', value: derived.value, name: derived.value };
         }
         if (LEGACY_ICON_MAP[legacy]) {
             const mapped = LEGACY_ICON_MAP[legacy];
             return { source: 'material', value: mapped, name: mapped };
         }
-        return { source: 'theme', value: legacy, name: legacy };
+        return { source: 'theme', value: derived.value, name: derived.value };
     }
 
     getEffectiveIcon() {
