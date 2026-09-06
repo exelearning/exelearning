@@ -29,9 +29,11 @@
 ### Changed
 
 - Collaboration: improved the autosave status indicator and reduced the autosave delay
+- SCORM, IMS: exported packages now group every page under a single root entry named after the project. Table of contents in an LMS shows that entry above the pages, and re-uploading a package over an existing activity moves its entries one level deeper
 
 ### Fixed
 
+- SCORM: the buttons that jump to the previous or next page at the same level now work in Moodle's standard SCORM activity when the project has nested pages
 - The unsaved-changes warning no longer appears when closing a project immediately after saving
 - Rubric iDevice: restored cell editing from the pencil button and prevented edit dialogs from blocking the rest of the work area
 - iDevices: fixed activity data corruption caused by image references stored in HTML attributes

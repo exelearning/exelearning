@@ -69,10 +69,10 @@ describe('Scorm2004ManifestGenerator', () => {
         it('should include sequencing for items with children', () => {
             const xml = generator.generate();
 
-            // Chapter 1 has a child (Section 1.1), so it should have sequencing
-            // Count the number of imsss:sequencing elements (should be 2: organization + Chapter 1)
+            // Three clusters carry sequencing: the organization, the root item
+            // wrapping every page, and Chapter 1 (which has Section 1.1).
             const sequencingMatches = xml.match(/<imsss:sequencing>/g);
-            expect(sequencingMatches?.length).toBe(2);
+            expect(sequencingMatches?.length).toBe(3);
         });
     });
 
@@ -115,6 +115,15 @@ describe('Scorm2004ManifestGenerator', () => {
             const section11Index = xml.indexOf('identifier="ITEM-page-3"');
 
             expect(section11Index).toBeGreaterThan(chapter1Index);
+        });
+
+        it('should wrap every page in a non-launchable root item (#2222)', () => {
+            const xml = generator.generate();
+
+            const rootTag = /<item identifier="ITEM-ROOT-test-project-123"[^>]*>/.exec(xml)?.[0];
+            expect(rootTag).toBeDefined();
+            expect(rootTag).not.toContain('identifierref');
+            expect(xml.indexOf('identifier="ITEM-page-1"')).toBeGreaterThan(xml.indexOf('ITEM-ROOT-test-project-123'));
         });
     });
 

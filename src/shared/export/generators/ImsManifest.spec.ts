@@ -172,6 +172,15 @@ describe('ImsManifestGenerator', () => {
 
             expect(xml).toContain('isvisible="true"');
         });
+
+        it('should wrap every page in a non-launchable root item (#2222)', () => {
+            const xml = generator.generate();
+
+            const rootTag = /<item identifier="ITEM-ROOT-test-project-123"[^>]*>/.exec(xml)?.[0];
+            expect(rootTag).toBeDefined();
+            expect(rootTag).not.toContain('identifierref');
+            expect(xml.indexOf('identifier="ITEM-page-1"')).toBeGreaterThan(xml.indexOf('ITEM-ROOT-test-project-123'));
+        });
     });
 
     describe('escapeXml', () => {
