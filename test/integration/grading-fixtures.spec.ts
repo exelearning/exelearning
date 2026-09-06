@@ -3,7 +3,7 @@
  *
  * Proves that `test/helpers/grading-fixtures.ts` produces projects that really survive
  * a full export: the gradable iDevices keep their ids, their weights reach the emitted
- * package, each type's runtime ships, and the xAPI identity config is injected.
+ * package, and each type's runtime ships.
  *
  * The printed `.idevice_node` ordering at the end is the input the trace recorder
  * (Tier 1) needs: index i on a page is SCORM suspend_data slot i+1.
@@ -31,7 +31,6 @@ import {
     Scorm12Exporter,
     unzipSync,
 } from '../../src/shared/export';
-import { BaseExporter } from '../../src/shared/export/exporters/BaseExporter';
 
 import {
     buildGradingStructure,
@@ -105,23 +104,6 @@ const EXPECTED: Record<string, { id: string; type: GradableType; weighted: numbe
         ),
     ]),
 );
-
-/**
- * Build capability probe: `BaseExporter.buildXapiConfig()`.
- *
- * Builds that have it inject `window.exeXapi` from EVERY exporter (html5, scorm12,
- * scorm2004, ims, epub3) and carry per-page identity (`pageId`). Builds without it
- * inject the config only from `Html5Exporter` / `PageExporter`, with the package
- * keys `{odeId, packageTitle, language}` alone — a SCORM package then ships the
- * emitter script but no config, so the emitter falls back to the served URL for its
- * base IRI.
- *
- * Probing the method keeps this spec honest on both instead of asserting values a
- * build cannot emit. Verified against core@64df99f22 (absent) and the xAPI branch
- * at 642738cd0 (present).
- */
-const BUILD_SHIPS_XAPI_CONFIG_EVERYWHERE =
-    typeof (BaseExporter.prototype as unknown as Record<string, unknown>).buildXapiConfig === 'function';
 
 interface ExportedPackage {
     files: Record<string, Uint8Array>;
@@ -293,13 +275,6 @@ function ideviceNodeSlice(html: string, id: string): string {
     nextRe.lastIndex = start + 1;
     const next = nextRe.exec(html);
     return html.slice(start, next ? next.index : undefined);
-}
-
-/** The parsed `window.exeXapi={...}` config injected into a page's <head>. */
-function xapiConfig(html: string): Record<string, unknown> {
-    const match = /window\.exeXapi=(\{.*?\});/.exec(html);
-    expect(match).not.toBeNull();
-    return JSON.parse(match![1]) as Record<string, unknown>;
 }
 
 describe('grading fixtures', () => {
@@ -485,27 +460,15 @@ describe('grading fixtures', () => {
             expect(runtime).toContain('sendScore');
         });
 
-        it('injects the xAPI identity config on every page', () => {
+        // xAPI was retired (ADR-2302-02): no emitter library, no script tag and no
+        // `window.exeXapi` config may reappear in an export.
+        it('ships no xAPI emitter, script tag or identity config', () => {
+            expect(pkg.files['libs/xapi/exe_xapi.js']).toBeUndefined();
             for (const page of pkg.htmlPages) {
-                const cfg = xapiConfig(pkg.text(page));
-                expect(cfg.odeId).toBe('GRADING-FIXTURE-0001');
-                expect(cfg.packageTitle).toBe('Grading Fixture 25/75');
-                expect(cfg.language).toBe('en');
-
-                if (BUILD_SHIPS_XAPI_CONFIG_EVERYWHERE) {
-                    // Per-page identity: only the exporter knows which page a
-                    // document renders, so a statement cannot carry it otherwise.
-                    expect(cfg.pageId).toBeTruthy();
-                } else {
-                    // This build's exporters inject package identity only.
-                    expect(cfg.pageId).toBeUndefined();
-                }
+                const html = pkg.text(page);
+                expect(html).not.toContain('exe_xapi.js');
+                expect(html).not.toContain('window.exeXapi=');
             }
-        });
-
-        it('loads the xAPI emitter library', () => {
-            expect(pkg.files['libs/xapi/exe_xapi.js']).toBeDefined();
-            expect(pkg.text(pkg.htmlPages[0])).toContain('libs/xapi/exe_xapi.js');
         });
     });
 
@@ -535,25 +498,12 @@ describe('grading fixtures', () => {
             expect(pkg.files['imsmanifest.xml']).toBeDefined();
         });
 
-        it('always ships the xAPI emitter library and its script tag', () => {
-            expect(pkg.files['libs/xapi/exe_xapi.js']).toBeDefined();
-            for (const page of pkg.htmlPages) {
-                expect(pkg.text(page)).toContain('libs/xapi/exe_xapi.js');
-            }
-        });
-
-        it('injects the xAPI identity config only on builds that build it centrally', () => {
+        it('ships no xAPI emitter, script tag or identity config', () => {
+            expect(pkg.files['libs/xapi/exe_xapi.js']).toBeUndefined();
             for (const page of pkg.htmlPages) {
                 const html = pkg.text(page);
-                if (BUILD_SHIPS_XAPI_CONFIG_EVERYWHERE) {
-                    const cfg = xapiConfig(html);
-                    expect(cfg.odeId).toBe('GRADING-FIXTURE-0001');
-                    expect(cfg.pageId).toBeTruthy();
-                } else {
-                    // Scorm12Exporter on this build passes no `xapi` to the renderer,
-                    // so the emitter runs without an odeId in a SCORM package.
-                    expect(html).not.toContain('window.exeXapi=');
-                }
+                expect(html).not.toContain('exe_xapi.js');
+                expect(html).not.toContain('window.exeXapi=');
             }
         });
     });
@@ -699,8 +649,6 @@ describe('grading fixtures', () => {
             console.log(JSON.stringify(observed, null, 2));
             console.log('--- answer key ---');
             console.log(JSON.stringify(gradingAnswerKey(SPEC), null, 2));
-            console.log('--- xapi config (index.html) ---');
-            console.log(JSON.stringify(xapiConfig(pkg.text('index.html'))));
 
             expect(observed.map(page => page.ideviceNodes)).toEqual(gradingIdeviceOrder(SPEC));
         });

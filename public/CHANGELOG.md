@@ -9,6 +9,10 @@
 - New `make change-password EMAIL=user@example.com` command, which asks for the new password without showing it on screen
 - Password changes are unavailable for guest accounts and for users signed in through CAS, OpenID Connect or SAML; those users change their password with their identity provider
 
+### Removed
+
+- Exported packages no longer emit xAPI statements. The emitter had no known consumer after Moodle tracking was consolidated on SCORM; SCORM tracking and grading are unchanged, and already-exported packages keep working because they bundle their own runtime
+
 ## v4.0.3 – 2026-08-06
 
 ### Added

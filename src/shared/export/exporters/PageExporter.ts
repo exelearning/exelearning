@@ -280,8 +280,6 @@ export class PageExporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
-            xapi: { odeId: meta.odeIdentifier || '', packageTitle: meta.title || '', language: meta.language || 'en' },
             detectedLibraries,
             linkToElp: meta.exportSource !== false,
             addMathJax,
