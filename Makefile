@@ -351,6 +351,12 @@ translations-format: check-bun
 update-licenses: check-bun
 	@$(CLI) update-licenses $(if $(DRY_RUN),--dry-run,)
 
+# Fail if public/libs/README.md is not what update-licenses would generate.
+# Attribution is legal metadata, so drift is a build failure, not a warning.
+.PHONY: update-licenses-check
+update-licenses-check: check-bun
+	@$(CLI) update-licenses --check
+
 
 # =============================================================================
 # ELPX PROCESSING
@@ -914,6 +920,7 @@ help:
 	@echo "  make translations-sort [LOCALE=es]            Sort trans-units to match messages.en.xlf"
 	@echo "  make translations-format [LOCALE=es]          Add CDATA where needed and normalise indentation"
 	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
+	@echo "  make update-licenses-check                    Fail if license info has drifted"
 	@echo ""
 	@echo "ELPX Processing:"
 	@echo "  make convert-elp INPUT=x OUTPUT=y             Convert ELP v2.x to v3.0 (elpx)"

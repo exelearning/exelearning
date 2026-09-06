@@ -447,14 +447,23 @@ export async function execute(
 
         // A declared dependency with no metadata and no recorded entry would silently
         // shorten a legal attribution list. Say so and write nothing.
+        //
+        // Both causes have to be named, because only one of them is fixable here: a
+        // package whose `os`/`cpu` excludes this platform is skipped by every
+        // `bun install` on this machine, so telling the operator to install again would
+        // send them round a loop they cannot leave.
         if (unresolved.length > 0) {
+            const plural = unresolved.length === 1 ? 'dependency' : 'dependencies';
             return {
                 success: false,
                 message:
-                    `Cannot attribute ${unresolved.length} declared dependency/dependencies: ` +
-                    `${unresolved.join(', ')}. They are absent from node_modules and public/libs/README.md ` +
-                    'records nothing for them, so the generated list would be incomplete. Run `make deps` ' +
-                    'and try again.',
+                    `Cannot attribute ${unresolved.length} declared ${plural}: ${unresolved.join(', ')}. ` +
+                    'Absent from node_modules, and public/libs/README.md records nothing to carry over, ' +
+                    'so the generated list would be incomplete and nothing was written. Either the ' +
+                    'dependencies are not installed here — run `make deps` — or the package declares an ' +
+                    '"os"/"cpu" that excludes this platform, in which case no run on this machine can ever ' +
+                    'read it: restore its entry in public/libs/README.md (`git checkout public/libs/README.md`) ' +
+                    'or regenerate on a platform the package supports.',
             };
         }
 
@@ -553,6 +562,12 @@ ${colors.cyan('Description:')}
   the current platform, and those must not vanish from a legal attribution list.
   A dependency with neither metadata nor a recorded entry aborts the run: an
   incomplete attribution file is never written.
+
+  That is why the recorded entries of platform-excluded packages must not be
+  deleted by hand. Deleting one leaves the command with nothing to read and
+  nothing to carry over, and no install on this machine can supply it; restore
+  the file (git checkout public/libs/README.md) or regenerate on a platform
+  where the package installs.
 
 ${colors.cyan('Output format:')}
   *   Package: package-name

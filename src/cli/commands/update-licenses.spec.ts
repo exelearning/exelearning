@@ -790,6 +790,13 @@ describe('Update Licenses Command', () => {
             expect(result.success).toBe(false);
             expect(result.message).toContain('never-seen-pkg');
             expect(writeCount).toBe(0);
+
+            // Both causes have to be named. A package excluded by its "os" is skipped by
+            // every install on this machine, so an install-and-retry instruction on its own
+            // sends the operator round a loop with no exit.
+            expect(result.message).toContain('make deps');
+            expect(result.message).toContain('"os"/"cpu"');
+            expect(result.message).toContain('git checkout public/libs/README.md');
         });
 
         it('should report drift with --check without writing', async () => {
