@@ -180,7 +180,7 @@ may not match your artwork at all:
 }
 
 .exe-content .box-head .box-icon {
-    color: var(--exe-icon-color, #d86e41);
+    color: var(--exe-icon-color);
 }
 ```
 
