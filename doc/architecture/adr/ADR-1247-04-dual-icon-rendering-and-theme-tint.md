@@ -11,7 +11,7 @@ reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  prs: [1497]
+  prs: [1497, 2365]
   changes: ["1247-material-icons-default-icon-system"]
   adrs: [ADR-1247-01, ADR-1247-02, ADR-1247-03]
 supersedes: []
@@ -53,7 +53,7 @@ How should each icon source be rendered in HTML/CSS, and how should Material gly
 
 ### Option 2: Dual rendering — CSS-mask for Material, `<img>` for style/asset (chosen)
 
-Render Material glyphs as a masked element whose fill is `currentColor` and whose `mask-image` is the glyph's inlined `data:` URI, so the glyph ink takes the surrounding `color`. Render theme "Style" icons and asset images as plain `<img>` so they keep their own colors. Tint Material glyphs per theme by setting `color`/`currentColor` from the theme (via CSS variables and per-theme fallbacks).
+Render Material glyphs as a masked element whose fill is `currentColor` and whose `mask-image` is the glyph's inlined `data:` URI, so the glyph ink takes the surrounding `color`. Render theme "Style" icons and asset images as plain `<img>` so they keep their own colors. Tint Material glyphs per theme by setting `color`/`currentColor` from the theme (via CSS variables the theme declares itself).
 
 - Pros: Material glyphs adopt any theme color via one CSS property; colored artwork is untouched; works in exports with zero JS (pure CSS mask + inlined `data:` URI); one masking CSS shared by editor, picker and exports.
 - Cons: CSS mask needs vendor prefixes; multi-hued themes cannot be matched by a single tint, so those keep the theme accent; the 20/24 live area needs a 1.2× optical scale.
@@ -68,7 +68,7 @@ Render Material glyphs as a masked element whose fill is `currentColor` and whos
 - **Material glyph rendering (mask + currentColor)**: the export renderer emits `<span class="exe-material-icon" style="--exe-material-icon-url:url('<data URI>');" aria-hidden="true">` inside `<div class="box-icon exe-icon">` — `src/shared/export/renderers/IdeviceRenderer.ts` (`renderBlock`, `icon.source === 'material'`). The editor runtime emits the same markup: `renderMaterialMaskIcon` in `public/app/common/blockIconRuntime.js` (and `MATERIAL_ICON_MASK_STYLE`).
 - **CSS mask + currentColor fill**: `.exe-material-icon { background-color: currentColor; mask-image: var(--exe-material-icon-url); … }` in `assets/styles/layout/_execontent.scss` (editor content) and mirrored in the exported theme CSS, e.g. `public/files/perm/themes/base/neo/style.css` and `.../base/base/style.css` (`.exe-export .box-icon .exe-material-icon`). The editor workarea build carries the same rule at `public/style/workarea/base.css`.
 - **`<img>` for asset and theme icons**: `IdeviceRenderer.renderBlock` renders `icon.source === 'asset'` and the theme branch as `<img src="…" alt="" style="display:block;object-fit:contain;">`. In the editor, `blockNode.js` `renderIconPreviewHtml` renders assets as `<img>` and theme icons via `makeIconValueElement` (an `<img>`).
-- **Per-theme tint**: Material glyphs inherit the surrounding `color`. In the editor, `blockNode.js` `getCurrentThemeIconColor()` reads `--exe-icon-color` / `--icon-primary` / computed `color`, with a `THEME_ICON_COLOR_MAP` fallback (`base #d86e41`, `flux #eda900`, `nova #f5c200`, `neo #e3ac3b`, `zen #d40055`, `universal #0d2953`) and a default `#6E9F41`. The comment records that multicolor themes (neo, universal) keep the theme accent because a single tint cannot match multi-hued style icons. The picker uses `--modal-icon-color` / `--icon-primary` (`assets/styles/components/_modals.scss`); the default `--icon-primary: #6E9F41` is in `assets/styles/abstracts/_variables.scss`.
+- **Per-theme tint**: Material glyphs inherit the surrounding `color`, which each theme declares on `.exe-content` via `--exe-icon-color` (`base #d86e41`, `flux #eda900`, `nova #f5c200`, `neo #1a7d1e`, `zen #d40055`, `universal #0d2953`, `educablue #fff`). For the picker, `blockNode.js` `getCurrentThemeIconColor()` reads `--exe-icon-picker-color` then `--exe-icon-color` off the block header, title or icon element and sets `--modal-icon-color` on the modal body only when one of them is declared; `educablue` declares `--exe-icon-picker-color: #0d77d1` because its header icon is white and the picker chip is not. No theme is named in the application code. When a theme declares neither variable the modal is left untouched and `assets/styles/components/_modals.scss` resolves `var(--modal-icon-color, var(--icon-primary))`, with `--icon-primary: #6E9F41` declared on `:root` in `assets/styles/abstracts/_variables.scss`. Multicolor themes (neo, universal) cannot be matched by a single tint, so each simply declares the one it wants — `universal` its accent, `neo` its own forest green.
 - **Optical scale**: `.exe-material-icon { transform: scale(1.2); }` with a comment explaining Material Symbols fill only their 20/24 (~83.3%) live area, so 24/20 = 1.2 matches edge-to-edge Style icons — `assets/styles/layout/_execontent.scss`, `assets/styles/components/_modals.scss`, and the exported theme CSS.
 - **Picker uses a sprite `<use>` variant**: in the modal, Material options render via `renderMaterialSpriteIcon` (`<svg class="exe-material-icon-sprite"><use href="…/material-icons.svg#<name>">`, styled with `fill: currentColor`) while applied/content icons use the mask `data:` URI (`renderMaterialMaskIcon`) — `public/app/workarea/project/idevices/content/blockNode.js`, styled in `_modals.scss`.
 - **Accessibility**: masked Material spans carry `aria-hidden="true"`; asset `<img>` carry `alt`.
@@ -77,7 +77,7 @@ Render Material glyphs as a masked element whose fill is `currentColor` and whos
 
 ## Decision
 
-We will render block icons with **two techniques chosen per source**: Material "General" glyphs render as a `<span class="exe-material-icon">` whose `background-color` is `currentColor` and whose `mask-image` is the glyph's inlined `data:` URI, so the glyph ink takes the surrounding `color`; theme "Style" icons and author asset images render as plain `<img>` preserving their own colors. Material glyphs are **tinted per theme** by driving `color`/`currentColor` from theme CSS variables (`--exe-icon-color` / `--icon-primary` / `--modal-icon-color`) with per-theme fallbacks, and are scaled `1.2×` to optically match edge-to-edge theme artwork; multi-hued themes keep the theme accent. This works identically in the editor, the picker, and in exports (pure CSS mask over an inlined `data:` URI, no runtime JS).
+We will render block icons with **two techniques chosen per source**: Material "General" glyphs render as a `<span class="exe-material-icon">` whose `background-color` is `currentColor` and whose `mask-image` is the glyph's inlined `data:` URI, so the glyph ink takes the surrounding `color`; theme "Style" icons and author asset images render as plain `<img>` preserving their own colors. Material glyphs are **tinted per theme** by driving `color`/`currentColor` from theme CSS variables (`--exe-icon-picker-color` / `--exe-icon-color`, resolving to `--modal-icon-color` / `--icon-primary` in the picker) declared by the theme itself — the application names no theme — and are scaled `1.2×` to optically match edge-to-edge theme artwork; multi-hued themes keep the theme accent. This works identically in the editor, the picker, and in exports (pure CSS mask over an inlined `data:` URI, no runtime JS).
 
 ## Consequences
 
@@ -87,6 +87,7 @@ We will render block icons with **two techniques chosen per source**: Material "
 - Theme and asset artwork render untouched with their own colors.
 - Coloring works offline in every export with no JavaScript (CSS mask + inlined `data:` URI).
 - One masking CSS and one optical-scale constant are shared by editor, picker and exports.
+- Themes are self-describing: a theme states its tint in its own stylesheet, and a third-party theme is treated exactly like a bundled one.
 
 ### Negative
 
@@ -102,7 +103,7 @@ We will render block icons with **two techniques chosen per source**: Material "
 
 - **Mask support gaps**: browsers without CSS mask show a solid tinted block. Low risk on supported targets; acceptable as graceful degradation.
 - **Scale-constant drift**: the `1.2` factor lives in several CSS files; a change must be applied everywhere. Mitigated by shared comments documenting the 24/20 rationale.
-- **Tint mismatch on custom themes**: a theme that sets neither `--exe-icon-color` nor `--icon-primary` and is not in `THEME_ICON_COLOR_MAP` falls back to `#6E9F41`. Acceptable default.
+- **Tint mismatch on custom themes**: a theme that declares neither `--exe-icon-picker-color` nor `--exe-icon-color` falls back in the picker to `--icon-primary: #6E9F41`. Acceptable default, and a custom theme is now treated exactly like a bundled one: the fix for both is to declare `--exe-icon-color`.
 
 ## Validation
 
@@ -118,6 +119,6 @@ We will render block icons with **two techniques chosen per source**: Material "
 
 ## References
 
-- PR #1497, Issue #1247, the change design.
+- PR #1497, Issue #1247, the change design. Issue #2363 (PR #2365) removed `THEME_ICON_COLOR_MAP` from `blockNode.js` — a table of one tint per bundled theme, duplicating what each theme's CSS already declared — so the tint is now read only from theme CSS, and set `neo` to its own forest green.
 - ADR-1247-01 (Material Symbols default set), ADR-1247-02 (structured descriptor), ADR-1247-03 (single sprite).
 - `src/shared/export/renderers/IdeviceRenderer.ts` (+ `.spec.ts`), `public/app/common/blockIconRuntime.js`, `public/app/workarea/project/idevices/content/blockNode.js` (+ `.test.js`), `assets/styles/layout/_execontent.scss`, `assets/styles/components/_modals.scss`, `assets/styles/abstracts/_variables.scss`, `public/files/perm/themes/base/*/style.css`, `src/shared/material-icons/spriteParser.ts`.
