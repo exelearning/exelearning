@@ -321,20 +321,22 @@ tmp-cleanup: check-bun
 
 # Extract new translation keys (does not clean or remove anything)
 # Usage: make translations [LOCALE=es]
+# Depends on vendor-edicuatex: the vendored tree is gitignored and only exists after a
+# build, and the extraction scans it for the equation editor strings.
 .PHONY: translations
-translations: check-bun
+translations: check-bun vendor-edicuatex
 	@$(CLI) translations --extract-only $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Clean and remove obsolete translation strings (destructive: removes trans-units not found in source)
 # Usage: make translations-cleanup [LOCALE=es]
 .PHONY: translations-cleanup
-translations-cleanup: check-bun
+translations-cleanup: check-bun vendor-edicuatex
 	@$(CLI) translations --clean-only --remove-obsolete $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Reorder trans-units in XLF files to match the order in messages.en.xlf
 # Usage: make translations-sort [LOCALE=es]
 .PHONY: translations-sort
-translations-sort: check-bun
+translations-sort: check-bun vendor-edicuatex
 	@$(CLI) translations:sort $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Add CDATA to <target> elements that need it and normalise indentation
@@ -348,6 +350,14 @@ translations-format: check-bun
 .PHONY: update-licenses
 update-licenses: check-bun
 	@$(CLI) update-licenses $(if $(DRY_RUN),--dry-run,)
+
+# Fail if public/libs/README.md is not what update-licenses would generate.
+# Attribution is legal metadata, so drift is a build failure, not a warning: this
+# target is part of `make lint`, which ci.yml already runs with node_modules
+# installed, the same way `architecture-check` is.
+.PHONY: update-licenses-check
+update-licenses-check: check-bun
+	@$(CLI) update-licenses --check
 
 
 # =============================================================================
@@ -448,7 +458,7 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests architecture-check
+lint: check-bun lint-ts lint-js lint-tests architecture-check update-licenses-check
 
 .PHONY: fix
 fix: check-bun fix-ts fix-js fix-tests
@@ -912,6 +922,7 @@ help:
 	@echo "  make translations-sort [LOCALE=es]            Sort trans-units to match messages.en.xlf"
 	@echo "  make translations-format [LOCALE=es]          Add CDATA where needed and normalise indentation"
 	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
+	@echo "  make update-licenses-check                    Fail if license info has drifted"
 	@echo ""
 	@echo "ELPX Processing:"
 	@echo "  make convert-elp INPUT=x OUTPUT=y             Convert ELP v2.x to v3.0 (elpx)"
