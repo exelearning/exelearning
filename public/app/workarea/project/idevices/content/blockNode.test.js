@@ -1769,44 +1769,47 @@ describe('IdeviceBlockNode', () => {
             expect(block.getCurrentThemeIconColor()).toBe('#fff');
         });
 
-        it('prefers theme css variables and known theme colors when resolving modal icon color', () => {
+        it('keeps looking when an attached element declares no theme variable', () => {
+            block.headElement = document.createElement('div');
+            document.body.appendChild(block.headElement);
+            block.blockNameElementText = document.createElement('h1');
+            document.body.appendChild(block.blockNameElementText);
+            // The head is attached but declares nothing, so the walk must reach the title.
+            block.blockNameElementText.style.setProperty('--exe-icon-color', '#123456');
+
+            expect(block.getCurrentThemeIconColor()).toBe('#123456');
+        });
+
+        it('resolves no color when the theme declares neither variable', () => {
+            block.headElement = document.createElement('div');
+            document.body.appendChild(block.headElement);
+            // The block header text color is not the picker tint: an undeclared theme
+            // leaves --modal-icon-color unset so the picker CSS reaches --icon-primary.
+            block.headElement.style.color = 'rgb(1, 2, 3)';
+            block.blockNameElementText = null;
+            block.iconElement = null;
+
+            expect(block.getCurrentThemeIconColor()).toBe('');
+        });
+
+        it('sets --modal-icon-color on the picker from the theme variable', () => {
             block.headElement = document.createElement('div');
             document.body.appendChild(block.headElement);
             block.headElement.style.setProperty('--exe-icon-color', '#123456');
-            expect(block.getCurrentThemeIconColor()).toBe('#123456');
 
-            block.headElement.style.removeProperty('--exe-icon-color');
-            block.blockNameElementText = document.createElement('h1');
-            document.body.appendChild(block.blockNameElementText);
-            block.blockNameElementText.style.color = 'rgb(1, 2, 3)';
-            expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
+            const body = block.makeModalChangeIconBody();
 
-            block.headElement = null;
-            block.blockNameElementText = null;
-            eXeLearning.app.themes.selected = { id: 'flux' };
-            expect(block.getCurrentThemeIconColor()).toBe('#eda900');
+            expect(body.style.getPropertyValue('--modal-icon-color')).toBe('#123456');
         });
 
-        it('falls back to each theme style-icon color so General icons match Style icons', () => {
+        it('leaves --modal-icon-color unset when the theme declares no tint', () => {
             block.headElement = null;
             block.blockNameElementText = null;
             block.iconElement = null;
 
-            const expectedByTheme = {
-                base: '#d86e41',
-                flux: '#eda900',
-                nova: '#f5c200',
-                zen: '#d40055',
-                // Multicolor themes keep the theme accent (cannot match a single hue).
-                neo: '#e3ac3b',
-                universal: '#0d2953',
-                // Picker accent: the box head icon itself is white.
-                educablue: '#0d77d1',
-            };
-            for (const [id, color] of Object.entries(expectedByTheme)) {
-                eXeLearning.app.themes.selected = { id };
-                expect(block.getCurrentThemeIconColor()).toBe(color);
-            }
+            const body = block.makeModalChangeIconBody();
+
+            expect(body.style.getPropertyValue('--modal-icon-color')).toBe('');
         });
     });
 

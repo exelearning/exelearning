@@ -21,20 +21,6 @@ const LEGACY_ICON_MAP = {
     keypoints: 'bookmark',
 };
 
-// Fallback tint for Material ("General") icons, matched to each theme's own
-// "Style" icon artwork so both groups look identical in the picker and content.
-// Multicolor themes (neo, universal) ship multi-hued style icons that cannot be
-// matched by a single tint, so their Material icons keep the theme accent color.
-const THEME_ICON_COLOR_MAP = {
-    base: '#d86e41',
-    flux: '#eda900',
-    nova: '#f5c200',
-    neo: '#e3ac3b',
-    zen: '#d40055',
-    universal: '#0d2953',
-    educablue: '#0d77d1', // picker accent; the box head icon itself is white
-};
-
 // Theme icons whose file was renamed after a release shipped it, old name -> current name.
 // Mirrors RENAMED_THEME_ICONS in src/shared/block-icon.ts, which documents why entries are
 // added and never removed. Only used on the degraded path where the shared runtime is absent.
@@ -428,6 +414,15 @@ export default class IdeviceBlockNode {
 </svg>`;
     }
 
+    /**
+     * Tint for Material ("General") icons in the picker, so they match the theme's own
+     * "Style" artwork. The value comes from the theme's stylesheet and nowhere else:
+     * --exe-icon-picker-color, then --exe-icon-color. No theme is named here.
+     *
+     * Returns an empty string when the theme declares neither, so the caller leaves
+     * --modal-icon-color unset and the picker CSS falls back to --icon-primary
+     * (assets/styles/components/_modals.scss).
+     */
     getCurrentThemeIconColor() {
         const colorCandidates = [
             this.headElement,
@@ -438,27 +433,16 @@ export default class IdeviceBlockNode {
         for (const colorSource of colorCandidates) {
             if (!window.getComputedStyle) break;
             const styles = window.getComputedStyle(colorSource);
-            // The picker chips sit on a light background, so a style whose header needs
+            // The picker chips sit on a light background, so a theme whose header needs
             // a light --exe-icon-color declares a readable picker accent separately.
             const customColor = styles.getPropertyValue('--exe-icon-picker-color').trim()
-                || styles.getPropertyValue('--exe-icon-color').trim()
-                || styles.getPropertyValue('--icon-primary').trim();
+                || styles.getPropertyValue('--exe-icon-color').trim();
             if (customColor) {
                 return customColor;
             }
-
-            const color = styles.color;
-            if (color && color !== 'rgba(0, 0, 0, 0)') {
-                return color;
-            }
         }
 
-        const selectedThemeId = eXeLearning.app?.themes?.selected?.id;
-        if (selectedThemeId && THEME_ICON_COLOR_MAP[selectedThemeId]) {
-            return THEME_ICON_COLOR_MAP[selectedThemeId];
-        }
-
-        return '#6E9F41';
+        return '';
     }
 
     resolveAppAssetUrl(path) {
@@ -1798,7 +1782,10 @@ export default class IdeviceBlockNode {
     makeModalChangeIconBody() {
         let modalBody = document.createElement('div');
         modalBody.id = 'change-block-icon-modal-content';
-        modalBody.style.setProperty('--modal-icon-color', this.getCurrentThemeIconColor());
+        const themeIconColor = this.getCurrentThemeIconColor();
+        if (themeIconColor) {
+            modalBody.style.setProperty('--modal-icon-color', themeIconColor);
+        }
 
         const toolbar = document.createElement('div');
         toolbar.className = 'icon-picker-toolbar';
