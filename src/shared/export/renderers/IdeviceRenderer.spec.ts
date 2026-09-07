@@ -1338,6 +1338,27 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('theme/icons/objectives.png');
         });
 
+        it('should fall back on the current spelling for a structured descriptor with no theme files', () => {
+            // `PrintPreviewExporter` and `Html5Exporter` swallow a failed `fetchTheme` and
+            // carry on with an empty resolution map, so the `.png` fallback is the only branch
+            // that runs. A descriptor never passes through `deriveBlockIcon`, which makes this
+            // the one path where the old spelling could still reach the output.
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                icon: { source: 'theme', value: 'objetives' },
+            } as ExportBlock;
+
+            renderer.setThemeIconFiles(new Map<string, unknown>());
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('theme/icons/objectives.png');
+            expect(html).not.toContain('theme/icons/objetives.png');
+        });
+
         it('should fall back to iconName when theme does not contain the icon', () => {
             const block: ExportBlock = {
                 id: 'block-1',

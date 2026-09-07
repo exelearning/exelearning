@@ -82,6 +82,10 @@ export class IdeviceRenderer {
             return resolved;
         }
 
+        // The rename also has to reach the fallback. `PrintPreviewExporter` and
+        // `Html5Exporter` continue with an empty resolution map when `fetchTheme` fails, so
+        // this branch is the one that runs; emitting `objetives.png` there is a 404 next to
+        // the `objectives.png` the theme ships.
         const renamed = resolveRenamedThemeIcon(baseName);
         const resolvedRenamed = renamed === baseName ? undefined : this.iconResolutionMap.get(renamed);
         if (resolvedRenamed) {
@@ -89,7 +93,7 @@ export class IdeviceRenderer {
         }
 
         // Fallback to .png for backwards compatibility with legacy themes
-        return `${baseName}.png`;
+        return `${renamed}.png`;
     }
 
     private resolveBlockAssetIconPath(
