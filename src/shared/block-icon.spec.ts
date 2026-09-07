@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'bun:test';
+import fs from 'node:fs';
+import path from 'node:path';
 import { deriveBlockIcon, RENAMED_THEME_ICONS, resolveRenamedThemeIcon } from './block-icon';
 
 describe('deriveBlockIcon', () => {
@@ -37,7 +39,9 @@ describe('deriveBlockIcon', () => {
     });
 
     it('maps a theme icon name a shipped style has since renamed', () => {
-        // Both names shipped in v4.0.0-v4.0.3, so saved projects still store them.
+        // `objetives` shipped in every release from v4.0.0 to v4.0.3; `think-alt` only ever
+        // reached v4.0.4 pre-release projects, since educablue arrived after v4.0.3. Both are
+        // in saved projects, which is the whole reason the table exists.
         expect(deriveBlockIcon('objetives')).toEqual({ source: 'theme', value: 'objectives' });
         expect(deriveBlockIcon('think-alt')).toEqual({ source: 'theme', value: 'think_alt' });
     });
@@ -68,5 +72,29 @@ describe('resolveRenamedThemeIcon', () => {
         // The lookup key is a name off a saved project, so it is arbitrary text.
         expect(resolveRenamedThemeIcon('constructor')).toBe('constructor');
         expect(resolveRenamedThemeIcon('toString')).toBe('toString');
+    });
+});
+
+describe('the JS twins of RENAMED_THEME_ICONS', () => {
+    /** Reads a `RENAMED_THEME_ICONS = { ... }` literal out of a frontend file. */
+    function readTable(relativePath: string): Record<string, string> {
+        const source = fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8');
+        const match = source.match(/RENAMED_THEME_ICONS = \{([\s\S]*?)\n\s*\};/);
+        if (!match) throw new Error(`RENAMED_THEME_ICONS literal not found in ${relativePath}`);
+        return Object.fromEntries([...match[1].matchAll(/'?([\w-]+)'?:\s*'([\w-]+)'/g)].map(m => [m[1], m[2]]));
+    }
+
+    it('carry exactly the entries this module does', () => {
+        // Three live copies, and each is the production path somewhere: this module on the
+        // server and in the shared exporters, blockIconRuntime.js in the workarea once
+        // yjs-loader.js has run, and blockNode.js's own copy while app.bundle.js is being
+        // evaluated and `window.eXeBlockIconRuntime` does not exist yet. An entry added to one
+        // and not the others leaves the projects it covers with a missing icon on whichever
+        // path was forgotten -- silently, since a missing icon is what the bug looked like
+        // before the table existed.
+        expect(readTable('public/app/common/blockIconRuntime.js')).toEqual({ ...RENAMED_THEME_ICONS });
+        expect(readTable('public/app/workarea/project/idevices/content/blockNode.js')).toEqual({
+            ...RENAMED_THEME_ICONS,
+        });
     });
 });
