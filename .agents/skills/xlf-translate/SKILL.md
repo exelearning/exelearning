@@ -166,7 +166,7 @@ For each language file, build one inline PowerShell command that:
 
 ```powershell
 $enc = New-Object System.Text.UTF8Encoding $false
-$file = "C:\...\translations\messages.LANG.xlf"
+$file = (Resolve-Path "translations/messages.LANG.xlf").Path
 $content = [System.IO.File]::ReadAllText($file, $enc)
 $le = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
 
@@ -216,7 +216,7 @@ batches. Write the translations to a **JSON data file** and apply it with one sh
 ```powershell
 $enc = New-Object System.Text.UTF8Encoding $false
 $data = [System.IO.File]::ReadAllText($json, $enc) | ConvertFrom-Json
-$base = "C:\...\translations\messages.{0}.xlf"
+$base = (Join-Path (Resolve-Path "translations").Path "messages.{0}.xlf")
 foreach ($lang in $data.PSObject.Properties.Name) {
     $file = $base -f $lang
     $content = [System.IO.File]::ReadAllText($file, $enc)
@@ -255,7 +255,7 @@ If the output shows garbled characters (e.g., `Ã„` instead of `Ä`), the enco
 
 ```powershell
 $enc = New-Object System.Text.UTF8Encoding $false
-$file = "C:\...\translations\messages.LANG.xlf"
+$file = (Resolve-Path "translations/messages.LANG.xlf").Path
 $content = [System.IO.File]::ReadAllText($file, $enc)
 $le = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
 
