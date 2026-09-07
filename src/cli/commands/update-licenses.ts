@@ -153,12 +153,14 @@ export function extractAuthorFromPackageJson(pkg: Record<string, unknown>): stri
  * - `owner`   -- Apache-2.0 definitions ("the copyright owner or entity authorized by")
  * - `holders` -- the MIT liability clause ("COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM")
  * - `notice`  -- "copyright notice and this permission notice shall be included"
- * - `[`       -- the unfilled `Copyright [yyyy] [name of copyright owner]` placeholder
+ * - `[`/`{`  -- the unfilled `Copyright [yyyy] [name of copyright owner]` placeholder, in
+ *              both spellings the Apache-2.0 appendix is shipped with (`mhchemparser` uses
+ *              braces)
  *
  * The plural is not optional: `holder\b` does not match `HOLDERS`, the form the MIT text uses,
  * so `minimist` was attributed to "HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER...".
  */
-const BOILERPLATE_COPYRIGHT = /^(?:(?:owner|holder|notice)s?\b|\[)/i;
+const BOILERPLATE_COPYRIGHT = /^(?:(?:owner|holder|notice)s?\b|[[{])/i;
 
 /**
  * Boilerplate that only a year-less capture can start with.
@@ -188,12 +190,22 @@ export function extractCopyrightFromLicense(content: string): string | null {
     // common BSD/MIT form and `2023. Foo` is not rare; without these the notice falls through
     // to the year-less pattern, which keeps the year as part of the name.
     //
-    // `[^\S\n]` and not `\s`: a notice lives on one line. With `\s+` here, the MIT template
-    // left unfilled -- `Copyright (c) 2020 ` with no holder, as `@peculiar/asn1-schema` and
-    // `webcrypto-core` ship it -- matched across the blank line and attributed the package to
-    // "Permission is hereby granted, free of charge, to any person obtaining a copy".
+    // Two shapes, and the difference between them is the whole point:
+    //
+    // - inline (`2015, Scott Motte`) -- the holder follows on the same line;
+    // - one line break (`Copyright (c) 2023` then `  - Kevin Jahns`, as `yjs` ships it) --
+    //   the holder is the next line, which must not be blank.
+    //
+    // `\s+` allowed both *and* an unlimited run of blank lines, so the MIT template left
+    // unfilled -- `Copyright (c) 2020 ` with no holder, as `@peculiar/asn1-schema` and
+    // `webcrypto-core` ship it -- reached across the blank line and attributed the package to
+    // "Permission is hereby granted, free of charge, to any person obtaining a copy". A single
+    // `\n` keeps that shut, since the capture cannot cross a second one, while the holder on
+    // the following line is found again.
     const inlineSpace = String.raw`[^\S\n]`;
-    const yearSeparator = String.raw`${inlineSpace}*[,.]?${inlineSpace}+`;
+    const holderOnSameLine = `${inlineSpace}*[,.]?${inlineSpace}+`;
+    const holderOnNextLine = String.raw`${inlineSpace}*[,.]?${inlineSpace}*\n${inlineSpace}*`;
+    const yearSeparator = `(?:${holderOnSameLine}|${holderOnNextLine})`;
     // Common copyright patterns - capture everything until newline, period, or end.
     // Global on purpose: an Apache-2.0 LICENSE states the boilerplate definition of the
     // "copyright owner" long before it names the real holder, so a rejected match must not
@@ -201,7 +213,7 @@ export function extractCopyrightFromLicense(content: string): string | null {
     const yearAnchored = [
         new RegExp(String.raw`Copyright${inlineSpace}*(?:\(c\)|©)?${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
         new RegExp(String.raw`\(c\)${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
-        new RegExp(String.raw`©${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
+        new RegExp(`©${inlineSpace}*${year}${yearSeparator}(.+)`, 'gi'),
     ];
     // Last resort for a notice that carries no year.
     //
@@ -217,13 +229,23 @@ export function extractCopyrightFromLicense(content: string): string | null {
     // It matters for release metadata: generation and `--check` run the same extraction, so a
     // wrong holder is not just written, it is then confirmed as correct forever.
     const yearLess = /^[^\S\n]*Copyright[^\S\n]+(.+)$/gim;
+    // A qualified notice -- `Original code Copyright Julian Gruber` (`@isaacs/balanced-match`),
+    // `Port to TypeScript Copyright ...` -- sits mid-line and is still a real attribution, so
+    // the line anchor alone would lose it. What separates it from the prose is capitalisation:
+    // a notice writes `Copyright` and then a name, while the prose says `copyright` mid-
+    // sentence ("You may add Your own copyright statement", "The above copyright notice") or
+    // shouts it ("AUTHORS OR COPYRIGHT HOLDERS BE LIABLE"). No `i` flag, and `\p{Lu}` on the
+    // capture: both halves must be in the shape a notice writes them. Tried last, so an
+    // ordinary line-anchored notice in the same file always wins.
+    const yearLessQualified = /Copyright[^\S\n]+(\p{Lu}.*)$/gmu;
+    const yearLessPatterns: RegExp[] = [yearLess, yearLessQualified];
 
-    for (const pattern of [...yearAnchored, yearLess]) {
+    for (const pattern of [...yearAnchored, ...yearLessPatterns]) {
         for (const match of content.matchAll(pattern)) {
             if (BOILERPLATE_COPYRIGHT.test(match[1])) {
                 continue;
             }
-            if (pattern === yearLess && BOILERPLATE_YEARLESS_COPYRIGHT.test(match[1])) {
+            if (yearLessPatterns.includes(pattern) && BOILERPLATE_YEARLESS_COPYRIGHT.test(match[1])) {
                 continue;
             }
             // Get first line only
@@ -231,8 +253,12 @@ export function extractCopyrightFromLicense(content: string): string | null {
             // Clean up the result - remove "All rights reserved", email, etc.
             author = author
                 .replace(/all rights reserved\.?/gi, '')
+                .replace(/^[-*•]+\s*/, '') // Drop a list bullet: `yjs` lists its holders
                 .replace(/,?\s*as listed in:.*$/i, '') // Drop pointers to a contributors page
                 .replace(/\s+https?:\/\/\S+/gi, '') // Drop trailing URLs
+                // The word that introduced the URL goes with it: `fast-uri` writes
+                // `Gary Court until <commit url>`, which otherwise ends as "Gary Court until".
+                .replace(/[\s,]+(?:until|from|at|see|via|and)$/i, '')
                 .replace(/<[^>]+>/g, '') // Remove emails in <brackets>
                 .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical notes
                 .replace(/\s+/g, ' ') // Normalize whitespace
@@ -241,9 +267,16 @@ export function extractCopyrightFromLicense(content: string): string | null {
             author = author.replace(/[,.:;]+$/, '').trim();
             // A holder has a name in it. What is left over otherwise is a stray year or a
             // symbol from a template nobody filled in, and "2020" is not an attribution.
-            if (author && /\p{L}/u.test(author)) {
-                return author;
+            if (!author || !/\p{L}/u.test(author)) {
+                continue;
             }
+            // `\p{L}` alone lets a bare range through: `Copyright (c) 2015-present` on its own
+            // line reaches the year-less pattern, which keeps the year inside the capture, and
+            // "present" is a letter as far as that test is concerned. A date is not a holder.
+            if (new RegExp(`^(?:${year})$`, 'i').test(author)) {
+                continue;
+            }
+            return author;
         }
     }
 
@@ -468,12 +501,23 @@ export async function execute(
         // Get package info for each dependency
         info('Scanning node_modules for package metadata...');
         const packages: PackageInfo[] = [];
-        const carriedOver: string[] = [];
+        const fromOverrides: string[] = [];
         const unresolved: string[] = [];
+        const staleOverrides: string[] = [];
 
         for (const name of dependencyNames) {
             const pkgInfo = getPackageInfo(name);
             if (pkgInfo) {
+                // The override's `license` only stands in while the package is unreadable. When
+                // it *is* readable the two must agree, or the generated file depends on which
+                // machine ran the generator: CI on linux reads the package and writes its
+                // license, `make lint` on Windows falls back to the override and writes the
+                // recorded one, and the drift the second reports is one the first cannot
+                // reproduce.
+                const override = COPYRIGHT_OVERRIDES[name];
+                if (override?.license && override.license !== pkgInfo.license) {
+                    staleOverrides.push(`${name} (package.json: ${pkgInfo.license}, override: ${override.license})`);
+                }
                 packages.push(pkgInfo);
                 continue;
             }
@@ -481,15 +525,26 @@ export async function execute(
             const recorded = attributionFromOverride(name);
             if (recorded) {
                 packages.push(recorded);
-                carriedOver.push(name);
+                fromOverrides.push(name);
                 continue;
             }
 
             unresolved.push(name);
         }
 
-        for (const name of carriedOver) {
+        for (const name of fromOverrides) {
             warning(`Could not read package: ${name} — using the attribution recorded in COPYRIGHT_OVERRIDES`);
+        }
+
+        if (staleOverrides.length > 0) {
+            return {
+                success: false,
+                message:
+                    `COPYRIGHT_OVERRIDES records a license that the installed package contradicts: ` +
+                    `${staleOverrides.join(', ')}. The recorded license is a stand-in for a package this ` +
+                    'platform cannot install; once the package is readable its own metadata is the truth. ' +
+                    'Update the entry in src/cli/commands/update-licenses.ts, or drop its `license` field.',
+            };
         }
 
         // A declared dependency with no metadata and no recorded entry would silently
@@ -514,7 +569,7 @@ export async function execute(
             };
         }
 
-        info(`Processed ${packages.length} packages (${carriedOver.length} carried over)`);
+        info(`Processed ${packages.length} packages (${fromOverrides.length} from COPYRIGHT_OVERRIDES)`);
 
         // JSON output mode for debugging
         if (jsonOutput) {

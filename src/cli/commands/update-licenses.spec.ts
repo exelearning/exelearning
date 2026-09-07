@@ -224,8 +224,78 @@ describe('Update Licenses Command', () => {
         });
 
         it('should drop an en-dash year range', () => {
-            const content = 'Copyright 2019 \u2013 present Acme Ltd';
+            const content = 'Copyright 2019 – present Acme Ltd';
             expect(extractCopyrightFromLicense(content)).toBe('Acme Ltd');
+        });
+
+        it('should find a holder listed on the line after the year', () => {
+            // How `yjs` writes it. Restricting the separator to inline space to close the
+            // unfilled-template hole also cut this off, and the notice then fell through to
+            // the year-less pattern, which the `\p{L}` guard rejected -- so a package shipping
+            // its holders as a list ended up with no attribution at all.
+            const content = [
+                'The MIT License (MIT)',
+                '',
+                'Copyright (c) 2023',
+                '  - Kevin Jahns <kevin.jahns@protonmail.com>.',
+                '  - Chair of Computer Science 5, RWTH Aachen University, Germany',
+                '',
+                'Permission is hereby granted, free of charge, to any person obtaining a copy',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBe('Kevin Jahns');
+        });
+
+        it('should not reach past a blank line for a holder', () => {
+            // The line break is allowed once, and only onto a line that carries something.
+            // Two of them is the unfilled MIT template again, in a different disguise.
+            const content = ['Copyright (c) 2020', '', 'Permission is hereby granted'].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should reject a capture that is only a year range', () => {
+            // `2015-present` alone satisfies /\p{L}/ through the word "present", so the
+            // year-less pattern used to hand a date back as the copyright holder.
+            const content = ['Copyright (c) 2015-present', '', 'Acme Corp'].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should accept a qualified notice that does not start its line', () => {
+            // `@isaacs/balanced-match` credits the original author this way. The line anchor
+            // that keeps Apache-2.0 section 4d out also rules this out, so a notice written in
+            // the shape of a notice -- capitalised `Copyright`, then a name -- is read too.
+            const content = [
+                '(MIT)',
+                '',
+                'Original code Copyright Julian Gruber <julian@juliangruber.com>',
+                '',
+                'Port to TypeScript Copyright Isaac Z. Schlueter <i@izs.me>',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBe('Julian Gruber');
+        });
+
+        it('should still ignore Apache-2.0 section 4d, which is not capitalised', () => {
+            // The prose the qualified pattern must not re-admit: lowercase `copyright`
+            // mid-sentence, and a capture that opens on a common noun.
+            const content = [
+                '      You may add Your own copyright statement to Your modifications and',
+                '      may provide additional or different license terms and conditions',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should ignore the Apache-2.0 appendix placeholder written with braces', () => {
+            // `mhchemparser` and `detect-libc` ship the appendix verbatim; the guard knew the
+            // square-bracket spelling only, so the placeholder was recorded as the holder.
+            const content = '   Copyright {yyyy} {name of copyright owner}';
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should drop the word that introduced a stripped URL', () => {
+            // `fast-uri` scopes its first holder with `until <commit url>`; removing the URL
+            // on its own left "Gary Court until" in the attribution file.
+            const content =
+                'Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf73';
+            expect(extractCopyrightFromLicense(content)).toBe('Gary Court');
         });
     });
 
@@ -711,6 +781,90 @@ describe('Update Licenses Command', () => {
             expect(result.packages).toHaveLength(2);
             expect(writtenContent).toContain('test-dep');
             expect(writtenContent).toContain('test-dev-dep');
+        });
+
+        it('should refuse when an installed package contradicts the license in its override', async () => {
+            // `@codecov/bundle-analyzer` is the entry that carries a `license`: linux/darwin
+            // only, so it is unreadable on Windows and readable in CI. If the package is ever
+            // relicensed, CI writes the new license and `make lint` here writes the recorded
+            // one -- a drift each machine blames on the other. Say which one is stale instead.
+            let writeCount = 0;
+            const mockFiles: Record<string, string> = {
+                [at('package.json')]: JSON.stringify({ dependencies: { '@codecov/bundle-analyzer': '1.0.0' } }),
+                [at('node_modules', '@codecov/bundle-analyzer', 'package.json')]: JSON.stringify({
+                    name: '@codecov/bundle-analyzer',
+                    version: '1.0.0',
+                    license: 'Apache-2.0',
+                    author: 'Codecov',
+                }),
+                [at('public', 'libs', 'README.md')]: mockReadme,
+            };
+
+            configure({
+                projectRoot: '/test',
+                existsSync: (p: string) => p in mockFiles,
+                readFile: (p: string) => mockFiles[p] || '',
+                writeFile: () => {
+                    writeCount++;
+                },
+            });
+
+            const result = await execute([], {});
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('@codecov/bundle-analyzer');
+            expect(result.message).toContain('Apache-2.0');
+            expect(result.message).toContain('MIT');
+            expect(writeCount).toBe(0);
+        });
+
+        it('should accept an installed package whose license matches its override', async () => {
+            const mockFiles: Record<string, string> = {
+                [at('package.json')]: JSON.stringify({ dependencies: { '@codecov/bundle-analyzer': '1.0.0' } }),
+                [at('node_modules', '@codecov/bundle-analyzer', 'package.json')]: JSON.stringify({
+                    name: '@codecov/bundle-analyzer',
+                    version: '1.0.0',
+                    license: 'MIT',
+                    author: 'Codecov',
+                }),
+                [at('public', 'libs', 'README.md')]: mockReadme,
+            };
+
+            configure({
+                projectRoot: '/test',
+                existsSync: (p: string) => p in mockFiles,
+                readFile: (p: string) => mockFiles[p] || '',
+                writeFile: () => {},
+            });
+
+            const result = await execute([], {});
+
+            expect(result.success).toBe(true);
+        });
+
+        it('should not cross-check an override that records no license', async () => {
+            // `pdfjs-dist` records only a copyright: the package is installable everywhere and
+            // its own metadata is the license. Nothing to disagree with.
+            const mockFiles: Record<string, string> = {
+                [at('package.json')]: JSON.stringify({ dependencies: { 'pdfjs-dist': '1.0.0' } }),
+                [at('node_modules', 'pdfjs-dist', 'package.json')]: JSON.stringify({
+                    name: 'pdfjs-dist',
+                    version: '1.0.0',
+                    license: 'Apache-2.0',
+                }),
+                [at('public', 'libs', 'README.md')]: mockReadme,
+            };
+
+            configure({
+                projectRoot: '/test',
+                existsSync: (p: string) => p in mockFiles,
+                readFile: (p: string) => mockFiles[p] || '',
+                writeFile: () => {},
+            });
+
+            const result = await execute([], {});
+
+            expect(result.success).toBe(true);
         });
 
         it('should handle dry-run mode', async () => {
