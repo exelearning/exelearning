@@ -116,10 +116,13 @@ Three things keep that from happening:
    `scripts/vendor-edicuatex.ts`'s own plan, the same knowledge behind
    `vendor-edicuatex.ts --check`, rather than a second list that could disagree with it —
    files that are missing *and* files whose contents differ, since either hides strings.
-   Without a hook, an entry falls back to the existence check. A hook that cannot compare
-   at all — the package it derives from is absent or half-installed — reports nothing
-   rather than failing: `--extract-only` and `translations:sort` delete nothing and must
-   not start depending on `node_modules`.
+   Without a hook, an entry falls back to the existence check. A hook whose package is
+   absent altogether reports nothing: there is no pinned version to compare against, and
+   `--extract-only` and `translations:sort` delete nothing, so they must not start
+   depending on `node_modules`. A package that is *half-installed* is the opposite case —
+   the vendored tree is then whatever the previous version left behind, and nothing can
+   say whether it still matches — so it is reported as incomplete: the two non-destructive
+   commands still only warn, while `--remove-obsolete` refuses.
 
 ### When you vendor a new library
 
