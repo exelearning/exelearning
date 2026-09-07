@@ -1213,5 +1213,13 @@ export function copyBundleManifest(projectRoot: string, outputDir: string): bool
 // that importing this module for its helpers never pulls in the build itself.
 if (import.meta.main) {
     const { buildStaticBundle } = await import('./static-bundle/run-build');
-    buildStaticBundle().catch(console.error);
+    try {
+        await buildStaticBundle();
+    } catch (err) {
+        // A rejected build (e.g. pruneDistPaths throwing) used to hit
+        // `.catch(console.error)` and still exit 0, so CI uploaded a half-built
+        // dist/static and the TikZJax e2e shard failed later. Fail the process.
+        console.error(err);
+        process.exit(1);
+    }
 }
