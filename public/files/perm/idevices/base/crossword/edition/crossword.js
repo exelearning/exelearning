@@ -247,7 +247,7 @@ var $exeDevice = {
                          </div>
                         <div id="ccgmbackground" class="CCGM-Back mb-3">
                             <img class="CCGM-EMedia1" src="" id="ccgmEImageBack" alt="${_('Image')}" />
-                            <img class="CCGM-EMedia1" src="${path}ccgmbackground.jpg" id="ccgmEImageNoBack" alt="${_('No image')}" />
+                            <img class="CCGM-EMedia1" src="${path.replace(/\/edition\/?$/, '/export/')}ccgmbackground.jpg" id="ccgmEImageNoBack" alt="${_('No image')}" />
                         </div>
                         <div id="ccgmAuthorBackDiv" class="CCGM-AuthorBack d-none align-items-center gap-2 flex-nowrap mb-3">
                             <label for="ccgmAuthorBack" class="mb-0">${_('Authorship')}: </label>

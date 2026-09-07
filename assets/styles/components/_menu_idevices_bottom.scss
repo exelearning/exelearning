@@ -72,6 +72,15 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
 
 
 #modalIdeviceManagerContent {
+    // PROVISIONAL (issue #144): the "Import iDevice" feature is not available yet.
+    // There is no POST /api/idevices/upload endpoint on the server, and in
+    // static/online mode the route is not even published to the client, so
+    // clicking the button raises an unhandled TypeError. Hide the button until
+    // iDevice importing is implemented; remove this rule when #144 lands.
+    .idevices-button-import {
+        display: none !important;
+    }
+
     .modal-header {
         padding: 24px 36px;
     }

@@ -12,7 +12,6 @@
  * CAS/OIDC/SAML/guest accounts also carry a random bcrypt hash in the `password`
  * column, so "the column is not empty" is not an eligibility test.
  */
-import * as bcrypt from 'bcryptjs';
 import { parseRoles } from '../db/types';
 import { ROLES } from '../utils/guards';
 
@@ -74,13 +73,20 @@ export async function hashPassword(password: string): Promise<string> {
 
 /**
  * Verify a plaintext password against a stored bcrypt hash.
- * Uses the same comparator as the login routes so any hash accepted at login is
- * accepted here. Never throws: a malformed or empty hash simply fails.
+ *
+ * Uses Bun's native `Bun.password.verify`, not the pure-JS `bcryptjs.compare`:
+ * bcryptjs runs the comparison synchronously on the JS thread, which under
+ * concurrent login bursts serializes on Bun's single-threaded event loop and
+ * was measured to turn into multi-second/timing-out logins at a few hundred
+ * concurrent requests (issue #2255 benchmark). `Bun.password.verify` reads
+ * the algorithm from the hash itself, so it verifies bcrypt hashes from
+ * either implementation — including ones already stored by `bcryptjs.hash`
+ * before this change. Never throws: a malformed or empty hash simply fails.
  */
 export async function verifyPassword(password: string, hash: string | null | undefined): Promise<boolean> {
     if (!password || !hash) return false;
     try {
-        return await bcrypt.compare(password, hash);
+        return await Bun.password.verify(password, hash);
     } catch {
         return false;
     }

@@ -191,10 +191,10 @@ describe('GlobalFontGenerator', () => {
             const result = GlobalFontGenerator.getFontFilePaths('opendyslexic');
 
             expect(result).toHaveLength(4);
-            expect(result).toContain('fonts/global/opendyslexic/OpenDyslexic-Regular.woff');
-            expect(result).toContain('fonts/global/opendyslexic/OpenDyslexic-Bold.woff');
-            expect(result).toContain('fonts/global/opendyslexic/OpenDyslexic-Italic.woff');
-            expect(result).toContain('fonts/global/opendyslexic/OpenDyslexic-BoldItalic.woff');
+            expect(result).toContain('fonts/global/opendyslexic/OpenDyslexic-Regular.woff2');
+            expect(result).toContain('fonts/global/opendyslexic/OpenDyslexic-Bold.woff2');
+            expect(result).toContain('fonts/global/opendyslexic/OpenDyslexic-Italic.woff2');
+            expect(result).toContain('fonts/global/opendyslexic/OpenDyslexic-BoldItalic.woff2');
         });
 
         test('should return correct paths for playwrite-es', () => {

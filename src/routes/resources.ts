@@ -264,16 +264,6 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
                 srcPath: path.join(LIBS_PATH, 'bootstrap/bootstrap.min.css'),
                 url: `${basePath}/${version}/libs/bootstrap/bootstrap.min.css`,
             },
-            {
-                path: 'bootstrap/bootstrap.bundle.min.js.map',
-                srcPath: path.join(LIBS_PATH, 'bootstrap/bootstrap.bundle.min.js.map'),
-                url: `${basePath}/${version}/libs/bootstrap/bootstrap.bundle.min.js.map`,
-            },
-            {
-                path: 'bootstrap/bootstrap.min.css.map',
-                srcPath: path.join(LIBS_PATH, 'bootstrap/bootstrap.min.css.map'),
-                url: `${basePath}/${version}/libs/bootstrap/bootstrap.min.css.map`,
-            },
             // Common JS files (app/common/)
             {
                 path: 'common.js',

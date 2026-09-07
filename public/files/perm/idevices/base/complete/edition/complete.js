@@ -259,7 +259,7 @@ var $exeDevice = {
                              </div>
                             <div id="cmptbackground" class="CMPT-Back mb-3">
                                 <img class="CMPT-EMedia1" src="" id="cmptEImageBack" alt="${_('Image')}" />
-                                <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath}cmptbackground.png" id="cmptEImageNoBack" alt="${_('No image')}" />
+                                <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath.replace(/\/edition\/?$/, '/export/')}cmptbackground.webp" id="cmptEImageNoBack" alt="${_('No image')}" />
                             </div>
                             <div id="cmptFontColorDiv" class="CMPT-FontColor d-none align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="cmptEFontColor" class="mb-0">${_('Font color')}: </label>

@@ -5,25 +5,25 @@
 	font-family:opendyslexic;
 	font-style:normal;
 	font-weight:400;
-	src:local('OpenDyslexic'),url(exe_atools_od.woff) format('woff')
+	src:local('OpenDyslexic'),url(exe_atools_od.woff2) format('woff2')
 }
 @font-face {
 	font-family:opendyslexic;
 	font-style:italic;
 	font-weight:400;
-	src:local('OpenDyslexic'),url(exe_atools_od_i.woff) format('woff')
+	src:local('OpenDyslexic'),url(exe_atools_od_i.woff2) format('woff2')
 }
 @font-face {
 	font-family:opendyslexic;
 	font-style:normal;
 	font-weight:700;
-	src:local('OpenDyslexic'),url(exe_atools_od_b.woff) format('woff')
+	src:local('OpenDyslexic'),url(exe_atools_od_b.woff2) format('woff2')
 }
 @font-face {
 	font-family:opendyslexic;
 	font-style:italic;
 	font-weight:700;
-	src:local('OpenDyslexic'),url(exe_atools_od_bi.woff) format('woff')
+	src:local('OpenDyslexic'),url(exe_atools_od_bi.woff2) format('woff2')
 }
 body.exe-atools-od .exe-content{font-family:opendyslexic, serif}
 

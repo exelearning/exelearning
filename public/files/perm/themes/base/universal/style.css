@@ -96,17 +96,18 @@ body#tinymce {
     --bs-focus-ring-color: #0d70c7;
 }
 
-/* Effects: the effects stylesheet removes the outline on these controls */
+/* Effects (the carousel pagination also carries the .fx-pagination class) */
 .exe-content .fx-tabs a,
-.exe-content .fx-pagination a,
-.exe-content .fx-carousel-pagination a {
+.exe-content .fx-pagination a {
     color: #145cb1;
 }
-.exe-content .fx-tabs a:focus-visible,
-.exe-content .fx-pagination a:focus-visible,
-.exe-content .fx-carousel-pagination a:focus-visible {
-    outline: 2px solid #0d70c7;
-    outline-offset: 2px;
+/* The current page is a filled chip: it needs the pair, not just the colour */
+.exe-content .fx-pagination .fx-current a {
+    background: #145cb1;
+    color: #ffffff;
+}
+.exe-content {
+    --exe-fx-focus-color: #0d70c7;
 }
 
 /* General icons (Material Symbols) */

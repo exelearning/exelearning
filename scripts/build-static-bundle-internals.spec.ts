@@ -445,12 +445,12 @@ describe('compressJsonInDir', () => {
         expect(compressJsonInDir(path.join(os.tmpdir(), 'exe-absent-dir-xyz'))).toEqual({
             count: 0,
             origTotal: 0,
-            gzTotal: 0,
+            compressedTotal: 0,
         });
     });
 
-    it('gzips json files recursively, removes the originals and leaves other files alone', () => {
-        const tmp = makeTempDir('gzip');
+    it('zstd-compresses json files recursively, removes the originals and leaves other files alone', () => {
+        const tmp = makeTempDir('zstd');
         try {
             const payload = JSON.stringify({ data: 'x'.repeat(500) });
             fs.writeFileSync(path.join(tmp, 'a.json'), payload);
@@ -462,14 +462,14 @@ describe('compressJsonInDir', () => {
 
             expect(stats.count).toBe(2);
             expect(stats.origTotal).toBe(payload.length * 2);
-            expect(stats.gzTotal).toBeGreaterThan(0);
-            expect(stats.gzTotal).toBeLessThan(stats.origTotal);
+            expect(stats.compressedTotal).toBeGreaterThan(0);
+            expect(stats.compressedTotal).toBeLessThan(stats.origTotal);
 
             expect(fs.existsSync(path.join(tmp, 'a.json'))).toBe(false);
             expect(fs.existsSync(path.join(tmp, 'nested', 'b.json'))).toBe(false);
             expect(fs.existsSync(path.join(tmp, 'keep.txt'))).toBe(true);
 
-            const roundTripped = zlib.gunzipSync(fs.readFileSync(path.join(tmp, 'a.json.gz'))).toString();
+            const roundTripped = zlib.zstdDecompressSync(fs.readFileSync(path.join(tmp, 'a.json.zst'))).toString();
             expect(roundTripped).toBe(payload);
         } finally {
             fs.rmSync(tmp, { recursive: true, force: true });

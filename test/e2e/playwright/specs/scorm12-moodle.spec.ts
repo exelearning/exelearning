@@ -6,11 +6,11 @@
  *   MOODLE_URL=http://localhost MOODLE_USERNAME=user MOODLE_PASSWORD=1234 \
  *     bun x playwright test --project=chromium test/e2e/playwright/specs/scorm12-moodle.spec.ts
  */
-import * as path from 'node:path';
+import * as fs from 'node:fs';
 
 import { expect, type Page, test } from '@playwright/test';
 
-import { writeResumeRaceScorm12Fixture } from '../../../helpers/scorm12-resume-package';
+import { SCORM12_RESUME_FIXTURE_NAME, buildResumeRaceScorm12Package } from '../../../helpers/scorm12-resume-package';
 
 const moodleUrl = process.env.MOODLE_URL;
 const moodleUser = process.env.MOODLE_USERNAME || 'admin';
@@ -48,9 +48,11 @@ function scoFrame(page: Page) {
 test.describe('SCORM 1.2 on alpine-moodle', () => {
     test.skip(!moodleUrl, 'Set MOODLE_URL to run against a live Moodle (erseco/alpine-moodle).');
 
-    test('restores a resumed score instead of overwriting it with 0', async ({ page }) => {
+    test('restores a resumed score instead of overwriting it with 0', async ({ page }, testInfo) => {
         test.setTimeout(180000);
-        const zipPath = writeResumeRaceScorm12Fixture();
+        // Built on demand into the test's own output dir; never into the working tree.
+        const zipPath = testInfo.outputPath(SCORM12_RESUME_FIXTURE_NAME);
+        fs.writeFileSync(zipPath, buildResumeRaceScorm12Package());
         const base = moodleUrl as string;
 
         const loginHtml = await (await page.request.get(`${base}/login/index.php`)).text();
@@ -96,6 +98,5 @@ test.describe('SCORM 1.2 on alpine-moodle', () => {
         await page.goto(scormViewUrl);
         await enterSco(page);
         await expect(scoFrame(page).locator('#score-display')).toHaveText('80', { timeout: 45000 });
-        expect(path.basename(zipPath)).toBe('resume-race.scorm.zip');
     });
 });

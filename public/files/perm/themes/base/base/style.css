@@ -29,7 +29,9 @@ body.exe-web-site {
     color: #973f00;
 }
 
-.exe-content .fx-tabs a {
+/* The current page is a filled chip, so it keeps the colour of the effects */
+.exe-content .fx-tabs a,
+.exe-content .fx-pagination li:not(.fx-current) a {
     color: #b14900;
 }
 
@@ -687,6 +689,10 @@ label[for="teacher-mode-toggler"] {
 }
 
 /* Focus */
+.exe-content {
+    --exe-fx-focus-color: #054d4d;
+}
+
 .exe-content a:focus-visible,
 #siteNav a:focus-visible,
 #packageLicense a:focus-visible,

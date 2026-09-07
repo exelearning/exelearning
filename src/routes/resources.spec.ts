@@ -211,8 +211,8 @@ describe('Resources Routes', () => {
             configure({
                 fs: {
                     existsSync: (filePath: string) => {
-                        // jQuery exists, but a non-existent bootstrap map doesn't
-                        if (filePath.includes('bootstrap.bundle.min.js.map')) return false;
+                        // jQuery exists, but bootstrap.min.css is simulated as missing
+                        if (filePath.includes('bootstrap.min.css')) return false;
                         return fs.existsSync(filePath);
                     },
                     readdirSync: fs.readdirSync,
@@ -225,9 +225,18 @@ describe('Resources Routes', () => {
             const res = await app.handle(new Request('http://localhost/api/resources/libs/base'));
 
             const body = await res.json();
-            const missingFile = body.find((f: any) => f.path.includes('bootstrap.bundle.min.js.map'));
+            const missingFile = body.find((f: any) => f.path.includes('bootstrap.min.css'));
 
             expect(missingFile).toBeUndefined();
+        });
+
+        it('should not list sourcemaps among base libs (dev-only, kept out of exports and bundles)', async () => {
+            const res = await app.handle(new Request('http://localhost/api/resources/libs/base'));
+
+            const body = await res.json();
+            const maps = body.filter((f: any) => f.path.endsWith('.map'));
+
+            expect(maps).toEqual([]);
         });
 
         it('should not include content-specific libraries (they are detected via LibraryDetector)', async () => {

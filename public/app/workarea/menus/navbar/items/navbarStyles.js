@@ -998,17 +998,15 @@ export default class NavbarFile {
      */
     async downloadThemeFromBundle(theme) {
         try {
-            const basePath = eXeLearning.config?.basePath || '';
-            const bundleUrl = (theme.type === 'site' || theme.type === 'admin')
-                ? `${basePath}/api/resources/bundle/theme/${theme.dirName}`
-                : `${basePath}/bundles/themes/${theme.dirName}.zip`;
-
-            const response = await fetch(bundleUrl);
-            if (!response.ok) {
-                throw new Error(`Theme bundle not found: ${response.status}`);
+            const fetcher = eXeLearning.app?.resourceFetcher;
+            if (!fetcher) {
+                throw new Error('Theme could not be assembled from loose files');
             }
+            // Single source of truth for resolving the theme zip across modes
+            // (static assemble-from-loose, server site/admin API, server base
+            // bundle). Preserves site/admin handling via theme.type.
+            const blob = await fetcher.fetchThemeBundleBlob(theme);
 
-            const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;

@@ -260,7 +260,11 @@ export interface BuiltPackage {
     zipSha256: string;
     /** Pages in navigation order (index.html first). */
     pages: ServedPage[];
-    /** The `window.exeXapi` config parsed out of index.html (`{}` when absent). */
+    /**
+     * The `window.exeXapi` config parsed out of index.html (`{}` when absent).
+     * Current exports emit none (xAPI was retired, ADR-2302-02); this stays so the
+     * harness can still read packages recorded before the removal.
+     */
     xapiConfig: Record<string, unknown>;
     /** Which served files the iDevice patch actually changed. */
     patchedFiles: string[];
