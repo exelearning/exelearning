@@ -980,19 +980,24 @@ describe('Translations Command', () => {
             expect(content).toContain('only.in.generated.tree');
         });
 
-        it('should make no claim about the tree when the pinned package is half-installed', async () => {
+        it('should report the tree as untrusted when the pinned package is half-installed', async () => {
             const { findUntrustedGeneratedSources } = await import('./translations');
 
             // An interrupted `bun install` leaves the package root without the directories the
-            // plan walks. There is nothing complete to compare against, so the check cannot be
-            // made -- and the non-destructive commands must not fail over it.
+            // plan walks. Nothing can say whether the tree on disk still matches the package,
+            // and the tree is whatever the previous version left -- exactly the state under
+            // which `--remove-obsolete` would delete the newer strings.
             const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
             await fs.ensureDir(path.join(packageRoot, 'lang'));
             await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html>');
             await fs.writeFile(path.join(packageRoot, 'LICENSE.txt'), 'AGPL-3.0-or-later');
             await fs.writeFile(path.join(packageRoot, 'lang', 'en.js'), 'export default {};');
 
-            expect(findUntrustedGeneratedSources(testDir)).toEqual([]);
+            const problems = findUntrustedGeneratedSources(testDir);
+
+            expect(problems).toHaveLength(1);
+            expect(problems[0].kind).toBe('incomplete');
+            expect(problems[0].detail).toContain('could not be read');
         });
 
         it('should still extract with a half-installed pinned package', async () => {
@@ -1005,7 +1010,25 @@ describe('Translations Command', () => {
             const { execute } = await import('./translations');
             const result = await execute([], { locale: 'es', 'extract-only': true });
 
+            // The problem only warns here: extraction adds keys, it never deletes any.
             expect(result.success).toBe(true);
+        });
+
+        it('should refuse to remove obsolete trans-units with a half-installed pinned package', async () => {
+            const packageRoot = path.join(testDir, 'node_modules', 'edicuatex');
+            await fs.ensureDir(path.join(packageRoot, 'lang'));
+            await fs.writeFile(path.join(packageRoot, 'index.html'), '<!doctype html>');
+            await fs.writeFile(path.join(packageRoot, 'LICENSE.txt'), 'AGPL-3.0-or-later');
+            await fs.writeFile(path.join(packageRoot, 'lang', 'en.js'), 'export default {};');
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
+
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('--allow-missing-generated');
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('only.in.generated.tree');
         });
     });
 

@@ -79,16 +79,18 @@ function inspectEdicuatexTree(cwd: string): { complete: boolean; detail: string 
     }
 
     // `buildVendorPlan` walks the package's own directories, so a half-written
-    // `node_modules/edicuatex` -- an interrupted `bun install` -- makes it throw. That is the
-    // same situation as the package not being installed at all: there is nothing complete to
-    // compare against, so the check cannot be made. Reporting it as a *problem* instead would
-    // fail `translations --extract-only` and `translations:sort`, which delete nothing and did
-    // not depend on `node_modules` before this guard existed.
+    // `node_modules/edicuatex` -- an interrupted `bun install` -- makes it throw. The tree on
+    // disk is then whatever the previous version left, and no comparison can say whether it
+    // still matches. That is a *problem*, not an absence of one: `--remove-obsolete` would
+    // scan a stale `lang/en.js` and delete every string only the newer package carries. It is
+    // reported as `incomplete` rather than swallowed, which warns on `--extract-only` and
+    // `translations:sort` (neither of which fails on a warning) and blocks the deletion.
     let drift: ReturnType<typeof detectDrift>;
     try {
         drift = detectDrift(buildVendorPlan(packageRoot), targetRoot);
-    } catch {
-        return null;
+    } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        return { complete: false, detail: `the pinned package could not be read (${reason})` };
     }
 
     // A file that exists with different content hides strings just as effectively as one that
