@@ -192,19 +192,23 @@ export function extractCopyrightFromLicense(content: string): string | null {
     //
     // Two shapes, and the difference between them is the whole point:
     //
-    // - inline (`2015, Scott Motte`) -- the holder follows on the same line;
-    // - one line break (`Copyright (c) 2023` then `  - Kevin Jahns`, as `yjs` ships it) --
-    //   the holder is the next line, which must not be blank.
+    // - inline (`2015, Scott Motte`, `2015,Scott Motte`) -- the holder follows on the same
+    //   line, with a comma, a space, or both between it and the year;
+    // - a bulleted continuation (`Copyright (c) 2023` then `  - Kevin Jahns`, as `yjs` ships
+    //   it) -- the holder is listed on the next line.
     //
-    // `\s+` allowed both *and* an unlimited run of blank lines, so the MIT template left
-    // unfilled -- `Copyright (c) 2020 ` with no holder, as `@peculiar/asn1-schema` and
-    // `webcrypto-core` ship it -- reached across the blank line and attributed the package to
-    // "Permission is hereby granted, free of charge, to any person obtaining a copy". A single
-    // `\n` keeps that shut, since the capture cannot cross a second one, while the holder on
-    // the following line is found again.
+    // The bullet is what makes the second shape safe, and it is not decoration. Every license
+    // template puts prose on the line after an unfilled `Copyright (c) 2020 `, so a rule that
+    // accepts *any* non-blank next line attributes the package to that prose: the MIT template
+    // yields "Permission is hereby granted, free of charge, to any person obtaining a copy"
+    // and, when the blank line is missing, so does the shouted `THE SOFTWARE IS PROVIDED "AS
+    // IS"`. Requiring `-`, `*` or a bullet character rules that out by construction -- no
+    // license text opens a prose line with one -- while keeping the only real next-line form
+    // in the dependency tree. A notice that leaves the holder to an unbulleted next line falls
+    // through to null, and `Unknown` in a legal file is honest where license prose is not.
     const inlineSpace = String.raw`[^\S\n]`;
-    const holderOnSameLine = `${inlineSpace}*[,.]?${inlineSpace}+`;
-    const holderOnNextLine = String.raw`${inlineSpace}*[,.]?${inlineSpace}*\n${inlineSpace}*`;
+    const holderOnSameLine = `(?:${inlineSpace}*[,.]${inlineSpace}*|${inlineSpace}+)`;
+    const holderOnNextLine = String.raw`${inlineSpace}*[,.]?${inlineSpace}*\n${inlineSpace}*(?=[-*•])`;
     const yearSeparator = `(?:${holderOnSameLine}|${holderOnNextLine})`;
     // Common copyright patterns - capture everything until newline, period, or end.
     // Global on purpose: an Apache-2.0 LICENSE states the boilerplate definition of the
@@ -254,11 +258,26 @@ export function extractCopyrightFromLicense(content: string): string | null {
             author = author
                 .replace(/all rights reserved\.?/gi, '')
                 .replace(/^[-*•]+\s*/, '') // Drop a list bullet: `yjs` lists its holders
-                .replace(/,?\s*as listed in:.*$/i, '') // Drop pointers to a contributors page
-                .replace(/\s+https?:\/\/\S+/gi, '') // Drop trailing URLs
-                // The word that introduced the URL goes with it: `fast-uri` writes
-                // `Gary Court until <commit url>`, which otherwise ends as "Gary Court until".
-                .replace(/[\s,]+(?:until|from|at|see|via|and)$/i, '')
+                .replace(/,?\s*as listed in:.*$/i, ''); // Drop pointers to a contributors page
+
+            // Drop trailing URLs, and with them the preposition that introduced one:
+            // `fast-uri` writes `Gary Court until <commit url>`, which otherwise ends as
+            // "Gary Court until".
+            //
+            // Only when a URL was actually removed. These words can end a real name -- run
+            // unconditionally, the rule turned `Copyright (c) 2015 Bitmovin GmbH, AT` into
+            // "Bitmovin GmbH", and a silently shortened name is the one thing a legal
+            // attribution list must not contain.
+            //
+            // A dangling conjunction is the other way round: no holder ends in a bare "and",
+            // so `Paul Vorbach and\n[contributors]` (`clone`) sheds it either way. `[\s,]+`
+            // before it keeps `Switzerland` and `Legrand` whole -- the word has to stand alone.
+            const withoutUrls = author.replace(/\s+https?:\/\/\S+/gi, '');
+            author = (
+                withoutUrls === author ? withoutUrls : withoutUrls.replace(/[\s,]+(?:until|from|at|see|via)$/i, '')
+            ).replace(/[\s,]+(?:and|&)$/i, '');
+
+            author = author
                 .replace(/<[^>]+>/g, '') // Remove emails in <brackets>
                 .replace(/\s*\([^)]*\)/g, '') // Remove parenthetical notes
                 .replace(/\s+/g, ' ') // Normalize whitespace

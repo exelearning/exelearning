@@ -246,10 +246,54 @@ describe('Update Licenses Command', () => {
         });
 
         it('should not reach past a blank line for a holder', () => {
-            // The line break is allowed once, and only onto a line that carries something.
-            // Two of them is the unfilled MIT template again, in a different disguise.
+            // The line break is allowed once, and only onto a bulleted line. A blank line is
+            // the unfilled MIT template again, in a different disguise.
             const content = ['Copyright (c) 2020', '', 'Permission is hereby granted'].join('\n');
             expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should not take the next line of licence prose as the holder', () => {
+            // The MIT template as most packages ship it: no blank line between the unfilled
+            // `Copyright (c) YYYY` and the permission paragraph. Allowing any non-blank next
+            // line attributed the package to that paragraph, which `--check` then froze as
+            // correct on every run. `Unknown` is honest here; licence prose is not.
+            const content = [
+                'MIT License',
+                '',
+                'Copyright (c) 2020',
+                'Permission is hereby granted, free of charge, to any person obtaining a copy',
+            ].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should not take a shouted warranty clause as the holder', () => {
+            // The same hole with the other half of the MIT text. Capitalisation cannot tell
+            // these apart from a name, which is why the next line has to carry a bullet.
+            const content = ['Copyright (c) 2019', 'THE SOFTWARE IS PROVIDED "AS IS"'].join('\n');
+            expect(extractCopyrightFromLicense(content)).toBeNull();
+        });
+
+        it('should keep a holder whose name ends in a preposition', () => {
+            // The `until` strip that fixes `fast-uri` only applies when a URL was actually
+            // removed. Applied to every notice it silently shortened real names -- here the
+            // Austrian country suffix -- and a truncated holder in a legal file is worse than
+            // the trailing word it was meant to remove.
+            expect(extractCopyrightFromLicense('Copyright (c) 2015 Bitmovin GmbH, AT')).toBe('Bitmovin GmbH, AT');
+        });
+
+        it('should drop a dangling conjunction with no URL to strip', () => {
+            // `clone` credits "Paul Vorbach and\n[contributors]". No holder ends in a bare
+            // "and", so that one goes whether or not a URL was removed -- unlike the
+            // prepositions above, which can end a real name.
+            expect(extractCopyrightFromLicense('Copyright (c) 2015 Paul Vorbach and')).toBe('Paul Vorbach');
+            expect(extractCopyrightFromLicense('Copyright (c) 2015 Switzerland')).toBe('Switzerland');
+        });
+
+        it('should read a holder separated from the year by a comma alone', () => {
+            // `2015,Scott Motte` with no space fell through to the year-less pattern, which
+            // keeps the year inside the capture -- the same defect that was fixed for the
+            // spaced form, still open for the unspaced one.
+            expect(extractCopyrightFromLicense('Copyright (c) 2015,Scott Motte')).toBe('Scott Motte');
         });
 
         it('should reject a capture that is only a year range', () => {
