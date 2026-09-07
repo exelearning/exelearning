@@ -93,12 +93,9 @@
 ### Removed
 
 - Deprecated `@elysiajs/cookie` dependency and unnecessary type stub packages
+- Exported packages no longer emit xAPI statements. The emitter had no known consumer after Moodle tracking was consolidated on SCORM; SCORM tracking and grading are unchanged, and already-exported packages keep working because they bundle their own runtime
 
 ---
-
-### Removed
-
-- Exported packages no longer emit xAPI statements. The emitter had no known consumer after Moodle tracking was consolidated on SCORM; SCORM tracking and grading are unchanged, and already-exported packages keep working because they bundle their own runtime
 
 ## v4.0.3 – 2026-08-06
 
