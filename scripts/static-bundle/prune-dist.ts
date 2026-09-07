@@ -62,8 +62,6 @@ export const STATIC_ONLY_PRUNE_PATHS: string[] = [
     // libs/README.md and libs/LICENSES.md are copied individually by
     // run-build.ts and are NOT in this list).
     'app/yjs/INTEGRATION.md',
-    'app/common/edicuatex/README.md',
-    'app/common/edicuatex/README_es.md',
     'app/common/fix_webm_duration/README.md',
     'app/common/fix_webm_duration/package.json',
     'files/perm/idevices/base/lomloe/README.md',
