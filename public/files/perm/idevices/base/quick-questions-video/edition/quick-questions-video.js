@@ -1382,10 +1382,15 @@ var $exeDevice = {
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
         $exeDevice.showSelectOrder(game.customMessages);
+        // The weight too: setValues defaults it to 100 when the argument is
+        // missing, so the stored value never reached the field — and the next
+        // save read that 100 back out of the form and overwrote it. Every
+        // other iDevice passes four arguments here.
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
-            game.repeatActivity
+            game.repeatActivity,
+            game.weighted
         );
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.videoType =

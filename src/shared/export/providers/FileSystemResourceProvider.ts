@@ -140,14 +140,9 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Bootstrap
             { src: 'libs/bootstrap/bootstrap.bundle.min.js', dest: 'bootstrap/bootstrap.bundle.min.js' },
             { src: 'libs/bootstrap/bootstrap.min.css', dest: 'bootstrap/bootstrap.min.css' },
-            // Bootstrap source maps (for debugging)
-            { src: 'libs/bootstrap/bootstrap.bundle.min.js.map', dest: 'bootstrap/bootstrap.bundle.min.js.map' },
-            { src: 'libs/bootstrap/bootstrap.min.css.map', dest: 'bootstrap/bootstrap.min.css.map' },
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
-            // Always-on xAPI emitter (every export is xAPI-compatible)
-            { src: 'app/common/xapi/exe_xapi.js', dest: 'xapi/exe_xapi.js' },
             // Favicon
             { src: 'favicon.ico', dest: 'favicon.ico' },
             // Note: common_i18n.js is generated dynamically by I18nGenerator per project language

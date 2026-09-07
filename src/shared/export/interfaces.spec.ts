@@ -312,6 +312,10 @@ describe('Export Constants', () => {
             expect(BASE_LIBRARIES).toContain('common.js');
             expect(BASE_LIBRARIES).toContain('common_i18n.js');
         });
+
+        it('should not include sourcemaps (dev-only files must stay out of exported packages)', () => {
+            expect(BASE_LIBRARIES.filter(f => f.endsWith('.map'))).toEqual([]);
+        });
     });
 
     describe('SCORM_LIBRARIES', () => {

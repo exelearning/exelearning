@@ -121,6 +121,9 @@ public/app/app.bundle.js
 public/app/yjs/exporters.bundle.js
 public/app/yjs/importers.bundle.js
 public/app/common/i18n/
+# Vendored from the pinned `edicuatex` package by scripts/vendor-edicuatex.ts,
+# which runs as part of build:all. Not committed, like every other generated tree here.
+public/app/common/edicuatex/
 public/app/dist/
 
 ###> claude-code ###
@@ -140,3 +143,10 @@ test/e2e/moodle/packages/*
 !test/e2e/moodle/packages/.gitkeep
 test/e2e/moodle/plugins/*
 !test/e2e/moodle/plugins/.gitkeep
+
+# Load-test (issue #2255) run artifacts and environment-specific seed data —
+# reproducible via test/load/scripts/prepare.sh and run.sh, not committed.
+/test/load/results/*
+!/test/load/results/.gitkeep
+/test/load/data/*
+!/test/load/data/.gitkeep

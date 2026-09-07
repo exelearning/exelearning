@@ -240,6 +240,27 @@ describe('ServerLatexPreRenderer', () => {
             expect(result.html).toContain('data-latex="\\(\\mathscr{ABCdef}\\)"');
         });
 
+        it('draws the glyphs of font ranges MathJax loads on demand', async () => {
+            // The assertions above only prove the expressions were recognised: they read
+            // data-latex, which is the input echoed back. MathJax 4 keeps \mathbb,
+            // \mathcal, \mathfrak and \mathscr in font ranges outside the combined
+            // component, and a range it cannot load does not fail -- it falls back to
+            // drawing the character with an <text> element in the CSS `unknownFamily`,
+            // so data-latex, the MathML and the character counts all still look right.
+            // This is the Node counterpart of the guard in latex-rendering.spec.ts, and
+            // it is what covers `mathjax.asyncLoad`, which is the only thing making those
+            // ranges resolvable here. Without it a silent glyph loss in the CLI and the
+            // external API would reach a package with nobody watching.
+            const html = '<p>\\(\\mathbb{R} \\subset \\mathcal{L}\\)</p>';
+
+            const result = await renderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.html).toContain('<path');
+            expect(result.html).toMatch(/<path[^>]+\sd="[^"]+"/);
+            expect(result.html).not.toContain('<text');
+        });
+
         it('should handle fractions', async () => {
             const html = '<p>\\(\\frac{1}{2}\\)</p>';
             const result = await renderer.preRender(html);

@@ -30,7 +30,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            color: var(--modal-icon-color, var(--icon-primary));
+            color: var(--modal-icon-color, var(--modal-icon-default));
             cursor: pointer;
             background-color: var(--main-background-color);
             border: 1px solid var(--gray-border-light);
@@ -75,7 +75,7 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            color: var(--modal-icon-color, var(--icon-primary));
+            color: var(--modal-icon-color, var(--modal-icon-default));
             border: 1px solid var(--gray-border-light);
             background: var(--main-background-color);
 
@@ -87,8 +87,8 @@
             }
 
             &.selected {
-                border-color: var(--modal-icon-color, var(--icon-primary));
-                box-shadow: 0 0 0 2px color-mix(in srgb, var(--modal-icon-color, var(--icon-primary)) 18%, transparent);
+                border-color: var(--modal-icon-color, var(--modal-icon-default));
+                box-shadow: 0 0 0 2px color-mix(in srgb, var(--modal-icon-color, var(--modal-icon-default)) 18%, transparent);
             }
         }
 
@@ -155,23 +155,23 @@
             &[selected="true"] {
                 opacity: 1;
                 color: var(--main-background-color);
-                background-color: var(--modal-icon-color, var(--icon-primary));
-                border-color: var(--modal-icon-color, var(--icon-primary));
+                background-color: var(--modal-icon-color, var(--modal-icon-default));
+                border-color: var(--modal-icon-color, var(--modal-icon-default));
 
                 // Theme icons render as <img> with their own colors, so the
                 // invert-on-fill trick used for Material icons would hide them.
                 // Keep a light background and mark the selection with a border.
                 &.theme-block-icon {
-                    color: var(--modal-icon-color, var(--icon-primary));
+                    color: var(--modal-icon-color, var(--modal-icon-default));
                     background-color: var(--main-background-color);
-                    border: 2px solid var(--modal-icon-color, var(--icon-primary));
+                    border: 2px solid var(--modal-icon-color, var(--modal-icon-default));
                 }
 
                 // Same treatment for "no icon": the filled accent would bury its red,
                 // so mark the selection with the border instead.
                 &.empty-block-icon {
                     background-color: var(--main-background-color);
-                    border: 2px solid var(--modal-icon-color, var(--icon-primary));
+                    border: 2px solid var(--modal-icon-color, var(--modal-icon-default));
                 }
             }
 
@@ -1837,21 +1837,15 @@
     min-height: 50px;
 }
 
+// The alert sits in the flow instead of overlaying the body: as an absolutely
+// positioned box it covered the search field underneath and left no room before
+// the content, and no margin could separate them.
 :is(#modalStyleManager, #modalIdeviceManager) .modal-content .modal-body .alert-danger.show {
     padding: var(--margin-m);
-    position: absolute;
-    z-index: 2;
+    margin-bottom: var(--margin-m);
     display: flex !important;
     justify-content: space-between;
     align-items: center;
-}
-
-#modalStyleManager .modal-content .modal-body .alert-danger.show {
-    width: calc(750px - var(--margin-m) - var(--margin-m));
-}
-
-#modalIdeviceManager .modal-content .modal-body .alert-danger.show {
-    width: calc(100% - 72px);
 }
 
 :is(#modalStyleManager, #modalIdeviceManager) .modal-content .modal-body .alert-danger {
@@ -1865,17 +1859,42 @@
     }
 
     .text {
+        // Stack the paragraphs: a row layout made a two-message alert render as
+        // two columns and overflow the alert box.
         display: flex;
-        width: max-content;
+        flex-direction: column;
+        width: auto;
+        min-width: 0;
     }
 
-    button {
+    .close-alert {
         padding: 0;
         height: 24px;
         width: 24px;
         display: flex;
         justify-content: center;
         align-items: center;
+        flex-shrink: 0;
+        margin-left: var(--margin-m);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        background: url("images/icons/exe-close-icon.svg") transparent center / 16px no-repeat;
+
+        &:hover {
+            background-color: var(--gray-100);
+        }
+
+        &:focus,
+        &:focus-visible {
+            border: none;
+            outline: none;
+        }
+
+        // The icon comes from the background image, not from the &times; glyph.
+        span {
+            display: none;
+        }
     }
 }
 
@@ -2755,9 +2774,15 @@
                                             .btn-danger {
                                                 background: var(--red-600, #dc2626);
                                                 border-color: var(--red-600, #dc2626);
+                                                // .btn defaults to var(--text) (dark); force white over the red fill.
+                                                color: var(--white, #fff);
+                                                span {
+                                                    color: var(--white, #fff);
+                                                }
                                                 &:hover {
                                                     background: var(--red-700, #b91c1c);
                                                     border-color: var(--red-700, #b91c1c);
+                                                    color: var(--white, #fff);
                                                 }
                                                 &:disabled {
                                                     opacity: 0.7;

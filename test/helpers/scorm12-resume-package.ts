@@ -1,28 +1,26 @@
 /**
  * Builds a compact SCORM 1.2 package that reproduces the iDevice-ready vs
  * loadPage() race: a quiz registers on DOMContentLoaded (before body onload),
- * then the runtime's loadPage() restores cmi.suspend_data.
+ * then the runtime's loadPage() restores cmi.suspend_data. The LMS seed is
+ * `cmi.core.score.raw=80` plus an `exe12/` payload, and the SCO must not
+ * overwrite that score with `0`.
  *
  * Used as a fixture for unit/integration tests, the Playwright SCO harness,
- * and Moodle verification.
+ * and Moodle verification. The package is built in memory on demand; no zip
+ * is ever stored in the repository.
  *
  * The build is deterministic: the same runtime sources always produce the
  * same bytes, whatever the wall clock or time zone of the machine that runs
- * it, so the committed fixture can be pinned by hash and only changes when
- * the runtime does.
+ * it, so a build can be pinned by hash and only changes when the runtime
+ * does.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { zipSync } from 'fflate';
 import { buildScorm12RuntimeFiles, SCORM12_RUNTIME_SOURCE_PATHS } from '../../src/shared/export/utils/Scorm12Runtime';
 
-/** Directory the generated zip is written to for Moodle / manual inspection. */
-export const SCORM12_RESUME_FIXTURE_DIR = path.join(process.cwd(), 'test', 'fixtures', 'scorm12');
-
-/** Filename of the generated package. */
+/** Filename used when a test needs the package on disk. */
 export const SCORM12_RESUME_FIXTURE_NAME = 'resume-race.scorm.zip';
-
-export const SCORM12_RESUME_FIXTURE_PATH = path.join(SCORM12_RESUME_FIXTURE_DIR, SCORM12_RESUME_FIXTURE_NAME);
 
 /** Activity id the fixture SCO registers. */
 export const RESUME_RACE_ACTIVITY_ID = 'quiz-1';
@@ -168,15 +166,4 @@ export function buildResumeRaceScorm12Package(): Uint8Array {
         },
         { level: FIXTURE_ZIP_LEVEL, mtime: fixtureEntryMtime() },
     );
-}
-
-/**
- * Write the package to test/fixtures/scorm12/resume-race.scorm.zip.
- *
- * @returns Absolute path of the written zip.
- */
-export function writeResumeRaceScorm12Fixture(): string {
-    fs.mkdirSync(SCORM12_RESUME_FIXTURE_DIR, { recursive: true });
-    fs.writeFileSync(SCORM12_RESUME_FIXTURE_PATH, buildResumeRaceScorm12Package());
-    return SCORM12_RESUME_FIXTURE_PATH;
 }

@@ -215,7 +215,6 @@ describe('moodle-serving-model', () => {
             const pkg = await buildHtml5Package(spec, dir);
             expect(pkg.zipSha256).toMatch(/^[0-9a-f]{64}$/);
             expect(pkg.pages[0].ideviceNodes).toEqual(['ide-a']);
-            expect(pkg.xapiConfig.odeId).toBe('GRADING-FIXTURE-PROVENANCE');
         }, 30000);
     });
 

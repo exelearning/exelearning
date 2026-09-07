@@ -1,0 +1,441 @@
+/**
+ * Unit tests for the periodic-table iDevice (export/runtime).
+ *
+ * The timed game used to end by calling $periodicTable.checkAnswers(), a
+ * function that exists nowhere in this iDevice. The interval threw a
+ * TypeError instead, so a game whose clock ran out never finished, never
+ * reported a score and left the SCO incomplete.
+ */
+
+/* eslint-disable no-undef */
+import '../../../../../../../public/vitest.setup.js';
+
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+function loadExportIdevice(code) {
+    const modifiedCode = code
+        .replace(/var\s+\$periodicTable\s*=/, 'global.$periodicTable =')
+        .replace(
+            /\$\(function\s*\(\)\s*\{\s*\$periodicTable\.init\(\);\s*\}\);?/g,
+            ''
+        );
+
+    // eslint-disable-next-line no-eval
+    (0, eval)(modifiedCode);
+    return global.$periodicTable;
+}
+
+describe('periodic-table iDevice export', () => {
+    let $periodicTable;
+
+    beforeEach(() => {
+        global.$periodicTable = undefined;
+        const code = readFileSync(join(__dirname, 'periodic-table.js'), 'utf-8');
+        $periodicTable = loadExportIdevice(code);
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+    });
+
+    describe('running out of time', () => {
+        let previousReport;
+
+        afterEach(() => {
+            if (previousReport !== undefined) {
+                global.$exeDevices.iDevice.gamification.report = previousReport;
+                previousReport = undefined;
+            }
+        });
+
+        function setupTimedGame() {
+            document.body.innerHTML = `
+                <div id="ptMainContainer-0">
+                    <div id="ptGameContainer-0">
+                        <span class="exeQuextIcons-Time"></span>
+                    </div>
+                    <div id="ptPTime-0"></div>
+                    <div id="ptShowClue-0"></div>
+                    <div id="ptStartGameDiv-0"></div>
+                    <div id="ptStartGameMobileDiv-0"></div>
+                    <div id="ptImageMobile-0"></div>
+                    <div id="ptPShowClue-0"></div>
+                    <div id="ptMessageDiv-0"></div>
+                    <div id="ptQuestionP-0"></div>
+                    <div id="ptRepeatActivity-0"></div>
+                </div>`;
+            $periodicTable.options[0] = {
+                id: 0,
+                gameStarted: false,
+                gameOver: false,
+                hits: 0,
+                number: 4,
+                attempts: 0,
+                elements: [],
+                time: 1,
+                isScorm: 0,
+                itinerary: { showClue: false },
+                msgs: { msgGameOver: '%s %s %s', msgYouScore: 'Score' },
+            };
+            vi.spyOn($periodicTable, 'getRandomElements').mockReturnValue([]);
+            vi.spyOn($periodicTable, 'elements_dataf').mockReturnValue([
+                { number: 1, name: 'H', symbol: 'H', group: '1' },
+                { number: 2, name: 'He', symbol: 'He', group: '18' },
+                { number: 3, name: 'Li', symbol: 'Li', group: '1' },
+                { number: 4, name: 'Be', symbol: 'Be', group: '2' },
+                { number: 5, name: 'B', symbol: 'B', group: '13' },
+            ]);
+            vi.spyOn($periodicTable, 'showMessage').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'updateTime').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'showQuestion').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'updateGameBoard').mockImplementation(() => {});
+            // Builds the board from the real element table; irrelevant here and
+            // it needs a populated deck to run.
+            vi.spyOn($periodicTable, 'completeMode').mockImplementation(() => {});
+            // gameOver() records the attempt through the shared report helper.
+            const gamification = global.$exeDevices.iDevice.gamification;
+            previousReport = gamification.report;
+            gamification.report = {
+                saveEvaluation: vi.fn(),
+                updateEvaluationIcon: vi.fn(),
+            };
+        }
+
+        it('ends the game through gameOver instead of throwing', () => {
+            vi.useFakeTimers();
+            setupTimedGame();
+            const gameOver = vi.spyOn($periodicTable, 'gameOver');
+
+            $periodicTable.startGame(0);
+            $periodicTable.options[0].gameStarted = true;
+            // One minute of clock: the interval ticks once a second.
+            expect(() => vi.advanceTimersByTime(61000)).not.toThrow();
+
+            expect(gameOver).toHaveBeenCalledWith(0);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // gameOver() raises the flag before it reports, so the activity that
+        // ran out of time is recorded as finished rather than left pending.
+        it('marks the activity finished when the clock runs out', () => {
+            vi.useFakeTimers();
+            setupTimedGame();
+
+            $periodicTable.startGame(0);
+            $periodicTable.options[0].gameStarted = true;
+            vi.advanceTimersByTime(61000);
+
+            expect($periodicTable.options[0].gameOver).toBe(true);
+            expect($periodicTable.options[0].gameStarted).toBe(false);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // Each layout has its own ending, and only the mobile one fades out
+        // #ptlLightboxMobile and brings #ptStartGameMobileDiv back. Sending a
+        // phone through the desktop gameOver() left the learner looking at an
+        // open overlay with no way to play again.
+        it('ends a phone game through the mobile path', () => {
+            vi.useFakeTimers();
+            setupTimedGame();
+            vi.spyOn($periodicTable, 'isMobileDevice').mockReturnValue(true);
+            vi.spyOn($periodicTable, 'MobileMode').mockImplementation(() => {});
+            const desktopEnd = vi.spyOn($periodicTable, 'gameOver');
+            const mobileEnd = vi
+                .spyOn($periodicTable, 'gameMobileOver')
+                .mockImplementation(() => {});
+
+            $periodicTable.startGame(0);
+            $periodicTable.options[0].gameStarted = true;
+            vi.advanceTimersByTime(61000);
+
+            expect(mobileEnd).toHaveBeenCalledWith(0);
+            expect(desktopEnd).not.toHaveBeenCalled();
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+    });
+
+    describe('reporting before the reveal on a phone', () => {
+        function setupMobileAnswer(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="ptMainContainer-0">
+                    <input id="ptNumberInput-0" value="7">
+                    <input id="ptNameInput-0" value="">
+                    <input id="ptSymbolInput-0" value="">
+                    <button id="ptAcceptButtonMobile-0"></button>
+                    <div id="ptNumberBig-0"></div>
+                </div>`;
+            $periodicTable.options[0] = Object.assign(
+                {
+                    id: 0,
+                    isScorm: 1,
+                    gameType: 0,
+                    gameOver: false,
+                    hits: 0,
+                    errors: 0,
+                    // One question short of the end, so this answer finishes it.
+                    active: 3,
+                    number: 4,
+                    attempts: 1,
+                    attemptsGame: 1,
+                    activeQuestion: { number: 7, name: 'N', symbol: 'N' },
+                    itinerary: { showClue: false },
+                    msgs: {},
+                },
+                overrides
+            );
+            vi.spyOn($periodicTable, 'showMessage').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'updateGameBoard').mockImplementation(
+                () => {}
+            );
+            vi.spyOn($periodicTable, 'getRetroFeedMessages').mockReturnValue('');
+            vi.spyOn($periodicTable, 'gameMobileOver').mockImplementation(
+                () => {}
+            );
+            vi.spyOn($periodicTable, 'showMobileQuestion').mockImplementation(
+                () => {}
+            );
+            return vi
+                .spyOn($periodicTable, 'sendScore')
+                .mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports the last answer without waiting for the reveal', () => {
+            vi.useFakeTimers();
+            const sendScore = setupMobileAnswer();
+
+            $periodicTable.setMobileScore(0);
+
+            // No timer advanced: the mark and the completion must already be
+            // out. Inside the five-second reveal they arrived late and merely
+            // repeated what gameMobileOver reports anyway.
+            expect($periodicTable.options[0].gameOver).toBe(true);
+            expect(sendScore).toHaveBeenCalledWith(true, 0);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('leaves an intermediate answer unfinished and unreported', () => {
+            vi.useFakeTimers();
+            const sendScore = setupMobileAnswer({ active: 1 });
+
+            $periodicTable.setMobileScore(0);
+
+            expect($periodicTable.options[0].gameOver).toBe(false);
+            expect(sendScore).not.toHaveBeenCalled();
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // Running out of attempts on the last element ends the attempt just as
+        // answering it does.
+        it('reports when the last attempt on the last element is spent', () => {
+            vi.useFakeTimers();
+            const sendScore = setupMobileAnswer({
+                attemptsGame: 1,
+                activeQuestion: { number: 99, name: 'N', symbol: 'N' },
+            });
+
+            $periodicTable.setMobileScore(0);
+
+            expect($periodicTable.options[0].gameOver).toBe(true);
+            expect(sendScore).toHaveBeenCalledWith(true, 0);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+    });
+
+    // On the desktop board the correct branch already reported early; the
+    // terminal wrong-answer one did not, so a learner who spent the last
+    // attempt on the last element and left during the three-second delay lost
+    // both the mark and the completion.
+    describe('spending the last attempt on the last element', () => {
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports without waiting for the delay', () => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `
+                <div id="ptMainContainer-0">
+                    <div class="PTP-element" data-number="1">
+                        <span class="PTP-element-number"></span>
+                        <span class="PTP-element-name"></span>
+                        <span class="PTP-element-symbol"></span>
+                    </div>
+                </div>`;
+            $periodicTable.options[0] = {
+                id: 0,
+                isScorm: 1,
+                gameType: 0,
+                gameOver: false,
+                hits: 0,
+                errors: 0,
+                // The last element, with a single attempt left to spend on it.
+                active: 3,
+                number: 4,
+                attempts: 1,
+                attemptsGame: 1,
+                elements: [1, 2, 3, 5],
+                itinerary: { showClue: false },
+                msgs: {
+                    msgIsErrorAt: '%s %d',
+                    mgsNotOkClick: '%s',
+                    msgIsEndAttempts: '',
+                    msgIsOKEQ: '',
+                },
+            };
+            vi.spyOn($periodicTable, 'elements_dataf').mockReturnValue([
+                { number: 1, name: 'H', symbol: 'H' },
+                { number: 2, name: 'He', symbol: 'He' },
+                { number: 3, name: 'Li', symbol: 'Li' },
+                { number: 4, name: 'Be', symbol: 'Be' },
+                { number: 5, name: 'B', symbol: 'B' },
+            ]);
+            vi.spyOn($periodicTable, 'showElement').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'showMessage').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'updateGameBoard').mockImplementation(
+                () => {}
+            );
+            vi.spyOn($periodicTable, 'gameOver').mockImplementation(() => {});
+            const sendScore = vi
+                .spyOn($periodicTable, 'sendScore')
+                .mockImplementation(() => {});
+
+            // Clicking element 1 while the answer is element 5.
+            $periodicTable.setScore(0, $('.PTP-element[data-number="1"]'));
+
+            expect($periodicTable.options[0].gameOver).toBe(true);
+            expect(sendScore).toHaveBeenCalledWith(true, 0);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+    });
+
+    describe('SCORM reporting on start', () => {
+        function setupGame(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="ptMainContainer-0">
+                    <div id="ptShowClue-0"></div>
+                    <div id="ptStartGameDiv-0"></div>
+                    <div id="ptStartGameMobileDiv-0"></div>
+                    <div id="ptImageMobile-0"></div>
+                    <div id="ptPShowClue-0"></div>
+                    <div id="ptMessageDiv-0"></div>
+                </div>`;
+            $periodicTable.options[0] = Object.assign(
+                {
+                    id: 0,
+                    main: 'ptMainContainer-0',
+                    isScorm: 1,
+                    gameStarted: false,
+                    gameOver: false,
+                    hits: 0,
+                    errors: 0,
+                    number: 4,
+                    attempts: 0,
+                    elements: [],
+                    time: 0,
+                    itinerary: { showClue: false },
+                    msgs: { msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn($periodicTable, 'getRandomElements').mockReturnValue([]);
+            vi.spyOn($periodicTable, 'updateGameBoard').mockImplementation(
+                () => {}
+            );
+            vi.spyOn($periodicTable, 'completeMode').mockImplementation(
+                () => {}
+            );
+            vi.spyOn($periodicTable, 'gameMode').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'MobileMode').mockImplementation(() => {});
+            vi.spyOn($periodicTable, 'sendScore').mockImplementation(() => {});
+        }
+
+        it('saveScormScore reports only in automatic SCORM mode', () => {
+            setupGame({ isScorm: 1 });
+            $periodicTable.saveScormScore(0);
+            expect($periodicTable.sendScore).toHaveBeenCalledWith(true, 0);
+
+            $periodicTable.sendScore.mockClear();
+            $periodicTable.options[0].isScorm = 2;
+            $periodicTable.saveScormScore(0);
+            expect($periodicTable.sendScore).not.toHaveBeenCalled();
+        });
+
+        // The defect: clicking the play link cleared the board, but the LMS
+        // menu kept the previous attempt's grade and its terminal status.
+        it('publishes the cleared state when a finished game is restarted', () => {
+            setupGame({ hits: 3, errors: 1, gameOver: true });
+            let stateWhenReported;
+            $periodicTable.sendScore.mockImplementation(() => {
+                const { hits, errors, gameOver } = $periodicTable.options[0];
+                stateWhenReported = { hits, errors, gameOver };
+            });
+
+            $periodicTable.startGame(0);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                gameOver: false,
+            });
+        });
+
+        // updateGameBoard() reports too, but startGame() calls it one line
+        // before raising the flag, and sendScoreNew ignores a game that reports
+        // as neither started nor over.
+        it('reports with the game already marked as started', () => {
+            setupGame();
+            let startedWhenReported;
+            $periodicTable.sendScore.mockImplementation(() => {
+                startedWhenReported = $periodicTable.options[0].gameStarted;
+            });
+
+            $periodicTable.startGame(0);
+
+            expect(startedWhenReported).toBe(true);
+        });
+
+        it('does not report a game that was already running', () => {
+            setupGame({ gameStarted: true });
+
+            $periodicTable.startGame(0);
+
+            expect($periodicTable.sendScore).not.toHaveBeenCalled();
+        });
+    });
+
+    // The name is gone from the source; a reference to it is always a defect,
+    // because the function has never existed in this iDevice.
+    it('does not reference the non-existent checkAnswers()', () => {
+        const source = readFileSync(
+            join(__dirname, 'periodic-table.js'),
+            'utf-8'
+        );
+
+        expect(source).not.toContain('$periodicTable.checkAnswers');
+    });
+});

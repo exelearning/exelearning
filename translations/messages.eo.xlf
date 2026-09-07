@@ -2057,10 +2057,6 @@
         <source>Huge text</source>
         <target>~Giganta teksto</target>
       </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>~Giganta teksto</target>
-      </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
         <target>~Nigrabla grando</target>
@@ -3728,14 +3724,6 @@
       <trans-unit id="RmnBdRa" resname="Info">
         <source>Info</source>
         <target>~Informo</target>
-      </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>~Montru aŭ kaŝu la infanajn nodojn</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>~Komencu labori pri nova mensa mapo</target>
       </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
@@ -7531,15 +7519,15 @@
       </trans-unit>
       <trans-unit id="2n0zHIr" resname="Question text:">
         <source>Question text:</source>
-        <target>~Kalkulu en kvadrataj metroj la surfacon de triangulo kun bazo de {b}m kaj alto de {h}m</target>
+        <target>~Teksto de la demando:</target>
       </trans-unit>
       <trans-unit id="oMsapmn" resname="Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m">
         <source>Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m</source>
-        <target>~Difinu la domajno de ĉiu variablo</target>
+        <target>~Kalkulu en kvadrataj metroj la surfacon de triangulo kun bazo de {b}m kaj alto de {h}m</target>
       </trans-unit>
       <trans-unit id="0vtKYu1" resname="Define the domain of each variable">
         <source>Define the domain of each variable</source>
-        <target>~Plej granda nombro:</target>
+        <target>~Difinu la domajnon de ĉiu variablo</target>
       </trans-unit>
       <trans-unit id="F7TCatN" resname="Smallest number">
         <source>Smallest number</source>
@@ -10701,102 +10689,6 @@
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>~Ŝanĝu la tekston de la langetoj aldonante titolon al ĉiu Kapitolo 2 kun la opcio "Enmetu/Redaktu Atribuojn":</target>
       </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>~De Vikipedio, la libera enciklopedio.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>~Re-direktita de</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>~Vikipedio ne havas artikolon kun ĉi tiu preciza nomo.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>~serĉu por</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>~en Vikipedio</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>~por kontroli alternativajn titlojn aŭ literumojn.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>~Vikipedio Artikolo</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>~Artikolo</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>~Angla</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>~Baskona</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>~Kataluna</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>~Ĉina</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>~Nederlanda</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>~Franca</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>~Galicia</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>~Germana</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>~Italiana</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>~Japana</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>~Hungara</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>~Polanda</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>~Portugala</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>~Slovena</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>~Hispana</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>~Sveda</target>
-      </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
         <target>~Emfazo</target>
@@ -13641,10 +13533,6 @@
         <source>Your access to this project has been revoked.</source>
         <target>~Via aliro al ĉi tiu projekto estis nuligita.</target>
       </trans-unit>
-      <trans-unit id="kn5ig14" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>~Menskartoj konservitaj</target>
-      </trans-unit>
       <trans-unit id="c957e2f" resname="source">
         <source>source</source>
         <target>~fonto</target>
@@ -15692,6 +15580,114 @@
       <trans-unit id="ued0rzd" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
         <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
         <target>~Ĉi tiuj agadoj referencas dosierojn, kiuj ne estas inkluzivitaj en la importita pakaĵo. La referencoj estas konservitaj, do realdono de la dosieroj restarigos ilin.</target>
+      </trans-unit>
+      <trans-unit id="7u1m5hz" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~Formuloj estas montrataj eĉ se ĉi tiu opcio estas malŝaltita. Ŝaltu ĝin por inkluzivi la kompletan bibliotekon MathJax en la eksportojn. Tio aldonas ĝian kuntekstan menuon kaj ĝiajn interagajn funkciojn.</target>
+      </trans-unit>
+      <trans-unit id="r8ipagi" resname="Change password">
+        <source>Change password</source>
+        <target>~Ŝanĝi pasvorton</target>
+      </trans-unit>
+      <trans-unit id="544n3bw" resname="Current password">
+        <source>Current password</source>
+        <target>~Nuna pasvorto</target>
+      </trans-unit>
+      <trans-unit id="oh3bj07" resname="New password">
+        <source>New password</source>
+        <target>~Nova pasvorto</target>
+      </trans-unit>
+      <trans-unit id="735sajl" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Almenaŭ 4 signoj. Pli longaj pasvortoj, kiuj kombinas literojn, ciferojn kaj simbolojn, estas pli sekuraj.</target>
+      </trans-unit>
+      <trans-unit id="k9rgmfq" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Konfirmi la novan pasvorton</target>
+      </trans-unit>
+      <trans-unit id="wpgn4cn" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Difektitaj aktivadoj</target>
+      </trans-unit>
+      <trans-unit id="r8rnqle" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~La datumoj de ĉi tiuj aktivadoj estas difektitaj kaj ne legeblis. Ili estis importitaj senŝanĝe: ilia lasta enhavo plu montriĝas, sed ili ne redakteblas ĝis oni rekreos ilin.</target>
+      </trans-unit>
+      <trans-unit id="vxk7zv6" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Avertoj pri importado</target>
+      </trans-unit>
+      <trans-unit id="ql1n6f2" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Serĉi piktogramon</target>
+      </trans-unit>
+      <trans-unit id="3nz7tkc" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Elekti bildon el la dosiera administrilo</target>
+      </trans-unit>
+      <trans-unit id="5zb9hbn" resname="Icon">
+        <source>Icon</source>
+        <target>~Piktogramo</target>
+      </trans-unit>
+      <trans-unit id="i89gf4b" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Piktogramoj de la stilo</target>
+      </trans-unit>
+      <trans-unit id="lotr6re" resname="General icons">
+        <source>General icons</source>
+        <target>~Ĝeneralaj piktogramoj</target>
+      </trans-unit>
+      <trans-unit id="vmq43oa" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Forteco de la pasvorto: tro mallonga</target>
+      </trans-unit>
+      <trans-unit id="v6oridg" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Forteco de la pasvorto: malforta</target>
+      </trans-unit>
+      <trans-unit id="tyx7vp1" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Forteco de la pasvorto: akceptebla</target>
+      </trans-unit>
+      <trans-unit id="mt5sb7o" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Forteco de la pasvorto: bona</target>
+      </trans-unit>
+      <trans-unit id="m371l58" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Forteco de la pasvorto: forta</target>
+      </trans-unit>
+      <trans-unit id="19elp90" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~La nuna pasvorto ne estas ĝusta</target>
+      </trans-unit>
+      <trans-unit id="au1s8di" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~La nova pasvorto ne povas esti malplena.</target>
+      </trans-unit>
+      <trans-unit id="nrpgy68" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~La pasvortoj ne kongruas</target>
+      </trans-unit>
+      <trans-unit id="xtheuzk" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~La pasvorto sukcese ŝanĝiĝis</target>
+      </trans-unit>
+      <trans-unit id="gj3sfg8" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~Okazis eraro. Bonvolu reprovi.</target>
+      </trans-unit>
+      <trans-unit id="ffxoz40" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Ĉi tiu konto ne permesas ŝanĝi la pasvorton.</target>
+      </trans-unit>
+      <trans-unit id="8i97041" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~La nova pasvorto ne validas.</target>
+      </trans-unit>
+      <trans-unit id="jf93bq3" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Grandega teksto</target>
       </trans-unit>
     </body>
   </file>
