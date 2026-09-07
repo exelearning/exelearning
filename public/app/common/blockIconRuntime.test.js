@@ -76,6 +76,27 @@ describe('blockIconRuntime', () => {
     expect(runtime.deriveBlockIcon(null)).toEqual({ source: 'none', value: '' });
   });
 
+  it('deriveBlockIcon maps theme icon names a shipped style has since renamed', () => {
+    const runtime = require('./blockIconRuntime.js');
+
+    // `objetives` shipped in every release from v4.0.0 to v4.0.3; `think-alt` only ever
+    // reached v4.0.4 pre-release projects, since educablue arrived after v4.0.3. Both are
+    // in saved projects, which is the whole reason the table exists.
+    expect(runtime.deriveBlockIcon('objetives')).toEqual({ source: 'theme', value: 'objectives' });
+    expect(runtime.deriveBlockIcon('think-alt')).toEqual({ source: 'theme', value: 'think_alt' });
+  });
+
+  it('resolveRenamedThemeIcon leaves untouched names and prototype members alone', () => {
+    const runtime = require('./blockIconRuntime.js');
+
+    for (const [stored, current] of Object.entries(runtime.RENAMED_THEME_ICONS)) {
+      expect(runtime.resolveRenamedThemeIcon(stored)).toBe(current);
+    }
+    expect(runtime.resolveRenamedThemeIcon('objectives')).toBe('objectives');
+    expect(runtime.resolveRenamedThemeIcon('constructor')).toBe('constructor');
+    expect(runtime.resolveRenamedThemeIcon('')).toBe('');
+  });
+
   it('renderMaterialMaskIcon emits a placeholder before the sprite is loaded', () => {
     const runtime = require('./blockIconRuntime.js');
     const html = runtime.renderMaterialMaskIcon('alarm');
