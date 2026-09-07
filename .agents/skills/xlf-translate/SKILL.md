@@ -211,10 +211,13 @@ succeed. Keep inline batches to about 4–5 short strings, or use the data-file 
 ### Data-file route (for a full run across many languages)
 
 A full run — every empty target across every locale in scope — does not fit in inline
-batches. Write the translations to a **JSON data file** and apply it with one short command:
+batches. Write the translations to a **JSON data file** shaped
+`{ "<lang>": { "<source string>": "<target>" } }`, then point `$json` at it and apply the
+whole run with one command:
 
 ```powershell
 $enc = New-Object System.Text.UTF8Encoding $false
+$json = (Resolve-Path "translations.json").Path
 $data = [System.IO.File]::ReadAllText($json, $enc) | ConvertFrom-Json
 $base = (Join-Path (Resolve-Path "translations").Path "messages.{0}.xlf")
 foreach ($lang in $data.PSObject.Properties.Name) {
