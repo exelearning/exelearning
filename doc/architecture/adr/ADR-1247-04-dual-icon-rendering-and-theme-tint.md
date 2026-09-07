@@ -11,7 +11,7 @@ reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
 related:
-  prs: [1497, 2365]
+  prs: [1497, 2370]
   changes: ["1247-material-icons-default-icon-system"]
   adrs: [ADR-1247-01, ADR-1247-02, ADR-1247-03]
 supersedes: []
@@ -119,6 +119,6 @@ We will render block icons with **two techniques chosen per source**: Material "
 
 ## References
 
-- PR #1497, Issue #1247, the change design. Issue #2363 (PR #2365) removed `THEME_ICON_COLOR_MAP` from `blockNode.js` — a table of one tint per bundled theme, duplicating what each theme's CSS already declared — so the tint is now read only from theme CSS, and set `neo` to its own forest green.
+- PR #1497, Issue #1247, the change design. Issue #2363 (PR #2370) removed `THEME_ICON_COLOR_MAP` from `blockNode.js` — a table of one tint per bundled theme, duplicating what each theme's CSS already declared — so the tint is now read only from theme CSS, and set `neo` to its own forest green.
 - ADR-1247-01 (Material Symbols default set), ADR-1247-02 (structured descriptor), ADR-1247-03 (single sprite).
 - `src/shared/export/renderers/IdeviceRenderer.ts` (+ `.spec.ts`), `public/app/common/blockIconRuntime.js`, `public/app/workarea/project/idevices/content/blockNode.js` (+ `.test.js`), `assets/styles/layout/_execontent.scss`, `assets/styles/components/_modals.scss`, `assets/styles/abstracts/_variables.scss`, `public/files/perm/themes/base/*/style.css`, `src/shared/material-icons/spriteParser.ts`.

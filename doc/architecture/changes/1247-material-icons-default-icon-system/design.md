@@ -9,7 +9,7 @@ authors:
 reviewers:
   - "@cristinavaldera"
   - "@mnunezcedec"
-implementation_prs: [1497, 2365]
+implementation_prs: [1497, 2370]
 related_adrs: [ADR-1247-01, ADR-1247-02, ADR-1247-03, ADR-1247-04]
 supersedes: []
 superseded_by: []

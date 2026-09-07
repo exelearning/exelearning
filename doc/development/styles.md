@@ -171,8 +171,10 @@ the editor — that sizes the span to 40×40 and applies the mask. It loads befo
 ### Matching them to your own artwork
 
 Set `--exe-icon-color` so General icons take the same colour as your Style icons.
-Without it the tint falls back to the computed text colour of the block header, which
-may not match your artwork at all:
+Without it the two surfaces diverge, and neither is likely to match your artwork: in the
+content the glyphs inherit whatever colour the block header text happens to have, and in
+the icon picker they fall back to the application's own green (see *Which colour the icon
+picker actually uses*, below):
 
 ```css
 .exe-content {
