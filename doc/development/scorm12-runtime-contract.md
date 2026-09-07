@@ -298,6 +298,17 @@ count as applied.
 `"not attempted"` is never written by the runtime: SCORM 1.2 requires the LMS to
 refuse that value from a SCO **[SCORM]**.
 
+### 6.1 Writing is not storing **[SCORM] + [POLICY]**
+
+The entry policy writes the status but does not store it: writing is
+`LMSSetValue`, storing is `LMSCommit`, and the entry path never commits.
+
+The first commit comes with the first score, on hiding the tab, or on leaving
+the page (§7, §8.1). Until then the LMS's reports still show the state from
+before the visit — `not attempted` on a first one. §9.1 and §11 describe what
+the runtime reports, not what the LMS displays. Note that hiding the tab stores
+it without the learner having done anything.
+
 ## 7. Browser lifecycle **[BROWSER]**
 
 The runtime registers exactly three listeners and no unload-family handler:
@@ -308,6 +319,9 @@ The runtime registers exactly three listeners and no unload-family handler:
 | `pagehide` | `event.persisted === false` (or absent) | Full end of session: exit policy → `cmi.core.session_time` → `LMSCommit` → `LMSFinish`, exactly once. |
 | `pagehide` | `event.persisted === true` | The page is being frozen into the back/forward cache. Persist (same sequence as `hidden`) and **pause the session clock**; do **not** terminate — the page may be restored intact. |
 | `pageshow` | `event.persisted === true` | Restored from the cache. Resume the session clock. Nothing is re-initialized: the LMS session was never closed. |
+
+These are also the moments at which anything the entry policy wrote becomes
+durable, and therefore visible to a teacher reading the LMS's reports (§6.1).
 
 Why the split matters: a document frozen into the back/forward cache can be
 evicted later with **no further event of any kind**. All durable work therefore
@@ -508,6 +522,10 @@ completion and success collapse onto `cmi.core.lesson_status`:
 | All required complete, no success threshold in force | `completed` | `""` |
 | All required complete, aggregate ≥ threshold | `passed` | `""` |
 | All required complete, aggregate < threshold | `failed` | `""` |
+
+The table is the status the runtime *reports*. When it becomes visible in the
+LMS is decided by the commit points in §7 — see §6.1: a page open and untouched
+still reads `not attempted`.
 
 - **Presentation-only and exploration activities never block completion.** They
   register with `completionRequired: false`. This is the chosen policy of the
@@ -738,6 +756,7 @@ LMSGetValue("cmi.core.lesson_status")               → entry policy
 [LMSSetValue("cmi.core.lesson_status", "incomplete")]   (only when "" / "not attempted")
 LMSGetValue("cmi.student_data.mastery_score")       → optional success threshold
 LMSGetValue("cmi.suspend_data")                     → restore the activity registry
+-- nothing committed yet: everything above is in the LMS's data model only (§6.1) --
 … content traffic (scores, suspend_data, explicit status) …
 [LMSSetValue("cmi.core.exit", "")]                  (once, when the attempt turns terminal)
 -- visibilitychange → hidden (any number of times) --
