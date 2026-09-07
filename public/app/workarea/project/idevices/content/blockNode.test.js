@@ -1652,6 +1652,20 @@ describe('IdeviceBlockNode', () => {
             });
         });
 
+        it('falls back to the legacy Material mapping under the renamed name', () => {
+            // A neo project saved in v4.0.3 stores 'objetives'. Opened under a style that
+            // ships no 'objectives.*' -- universal -- it has to reach the legacy mapping, which
+            // is keyed by the current name; looked up under the stored one it found nothing
+            // and the block was left with no icon at all.
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({}));
+
+            expect(block.normalizeIconDescriptor(null, 'objetives')).toEqual({
+                source: 'material',
+                value: 'target',
+                name: 'target',
+            });
+        });
+
         it('finds the style icon behind a renamed stored name', () => {
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
                 think_alt: { id: 'think_alt', value: '/icons/think_alt.svg', title: 'Think' },

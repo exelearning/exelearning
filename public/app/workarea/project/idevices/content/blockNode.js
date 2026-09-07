@@ -234,7 +234,9 @@ export default class IdeviceBlockNode {
                     : iconData.value || '';
             // `name` follows `value`: keeping the old spelling here would put it back on
             // `this.iconName` in setParams() and re-save the name the styles no longer ship.
-            const name = value === iconData.value ? iconData.name || value || '' : value;
+            // Compared against `iconData.value || ''` rather than `iconData.value`, so a
+            // descriptor that omits `value` is read as unchanged instead of renamed.
+            const name = value === (iconData.value || '') ? iconData.name || value || '' : value;
             return { source: iconData.source, value, name };
         }
 
@@ -258,8 +260,11 @@ export default class IdeviceBlockNode {
         if (this.resolveThemeIconData(derived.value)) {
             return { source: 'theme', value: derived.value, name: derived.value };
         }
-        if (LEGACY_ICON_MAP[legacy]) {
-            const mapped = LEGACY_ICON_MAP[legacy];
+        // `derived.value` here too: a block stored with a renamed name (`objetives`) whose
+        // active style does not ship the current file must still reach the legacy Material
+        // fallback, which is keyed by the current name.
+        if (LEGACY_ICON_MAP[derived.value]) {
+            const mapped = LEGACY_ICON_MAP[derived.value];
             return { source: 'material', value: mapped, name: mapped };
         }
         return { source: 'theme', value: derived.value, name: derived.value };
