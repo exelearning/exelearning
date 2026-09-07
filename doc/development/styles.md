@@ -105,7 +105,7 @@ the old name has to keep working. Add it to **`RENAMED_THEME_ICONS`** in
 ```ts
 export const RENAMED_THEME_ICONS = {
     objetives: 'objectives',   // neo, misspelt from v4.0.0 to v4.0.3
-    'think-alt': 'think_alt',  // educablue, hyphenated from v4.0.0 to v4.0.3
+    'think-alt': 'think_alt',  // educablue, hyphenated; only in v4.0.4 pre-release projects
 };
 ```
 

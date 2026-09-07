@@ -79,7 +79,9 @@ describe('blockIconRuntime', () => {
   it('deriveBlockIcon maps theme icon names a shipped style has since renamed', () => {
     const runtime = require('./blockIconRuntime.js');
 
-    // Both names shipped in v4.0.0-v4.0.3, so saved projects still store them.
+    // `objetives` shipped in every release from v4.0.0 to v4.0.3; `think-alt` only ever
+    // reached v4.0.4 pre-release projects, since educablue arrived after v4.0.3. Both are
+    // in saved projects, which is the whole reason the table exists.
     expect(runtime.deriveBlockIcon('objetives')).toEqual({ source: 'theme', value: 'objectives' });
     expect(runtime.deriveBlockIcon('think-alt')).toEqual({ source: 'theme', value: 'think_alt' });
   });
