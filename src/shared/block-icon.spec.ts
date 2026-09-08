@@ -98,3 +98,27 @@ describe('the JS twins of RENAMED_THEME_ICONS', () => {
         });
     });
 });
+
+describe('the Material icon tint every bundled style must declare', () => {
+    // ADR-1247-04 makes the tint a theme-CSS contract: the application holds no table of
+    // per-style colours any more, so a style that stops declaring --exe-icon-color silently
+    // loses its tint twice over -- the header glyph falls back to the surrounding text colour
+    // in the content and in exports, and the picker chips drop to --modal-icon-default. Both
+    // are colour-only regressions no other test can see, so pin the invariant here.
+    const styleDir = path.join(process.cwd(), 'public/files/perm/themes/base');
+    const styles = fs
+        .readdirSync(styleDir, { withFileTypes: true })
+        .filter(entry => entry.isDirectory())
+        .map(entry => entry.name);
+
+    it('finds the bundled styles on disk', () => {
+        expect(styles.length).toBeGreaterThan(0);
+    });
+
+    it.each(styles)('%s declares --exe-icon-color', style => {
+        const css = fs.readFileSync(path.join(styleDir, style, 'style.css'), 'utf8');
+        // Strip comments first: a commented-out declaration is how the tint gets lost in the
+        // first place, and it would otherwise satisfy the match.
+        expect(css.replace(/\/\*[\s\S]*?\*\//g, '')).toMatch(/--exe-icon-color\s*:\s*\S/);
+    });
+});
