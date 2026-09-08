@@ -106,19 +106,62 @@ describe('the Material icon tint every bundled style must declare', () => {
     // in the content and in exports, and the picker chips drop to --modal-icon-default. Both
     // are colour-only regressions no other test can see, so pin the invariant here.
     const styleDir = path.join(process.cwd(), 'public/files/perm/themes/base');
-    const styles = fs
-        .readdirSync(styleDir, { withFileTypes: true })
-        .filter(entry => entry.isDirectory())
-        .map(entry => entry.name);
+
+    // `it.each` needs the list at collection time, but a throw here would take the
+    // deriveBlockIcon and resolveRenamedThemeIcon suites down with it. Swallow it and let the
+    // first test below report the unreadable directory instead.
+    let styles: string[] = [];
+    try {
+        styles = fs
+            .readdirSync(styleDir, { withFileTypes: true })
+            .filter(entry => entry.isDirectory())
+            .map(entry => entry.name);
+    } catch {
+        styles = [];
+    }
+
+    /** Strips comments, then every at-rule block, leaving the unconditional rules. */
+    function unconditionalRules(css: string): string {
+        const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+        let out = '';
+        for (let i = 0; i < withoutComments.length; i++) {
+            if (withoutComments[i] !== '@') {
+                out += withoutComments[i];
+                continue;
+            }
+            // Skip the at-rule and, if it has one, its whole brace-matched body: a
+            // declaration inside @media print or a dark-mode block does not satisfy the
+            // contract, which is about the tint the style always applies.
+            let depth = 0;
+            for (; i < withoutComments.length; i++) {
+                const char = withoutComments[i];
+                if (char === '{') depth++;
+                else if (char === '}') {
+                    if (--depth === 0) break;
+                } else if (char === ';' && depth === 0) break;
+            }
+        }
+        return out;
+    }
 
     it('finds the bundled styles on disk', () => {
         expect(styles.length).toBeGreaterThan(0);
     });
 
-    it.each(styles)('%s declares --exe-icon-color', style => {
-        const css = fs.readFileSync(path.join(styleDir, style, 'style.css'), 'utf8');
-        // Strip comments first: a commented-out declaration is how the tint gets lost in the
-        // first place, and it would otherwise satisfy the match.
-        expect(css.replace(/\/\*[\s\S]*?\*\//g, '')).toMatch(/--exe-icon-color\s*:\s*\S/);
+    it.each(styles)('%s declares --exe-icon-color on .exe-content', style => {
+        const css = unconditionalRules(fs.readFileSync(path.join(styleDir, style, 'style.css'), 'utf8'));
+
+        // Where it is declared is the contract, not just that the text appears somewhere: on
+        // .exe-content it reaches the editor, the picker and every export, because both the
+        // content wrapper and the export wrapper carry that class. Under .exe-export,
+        // body#tinymce or #node-content-container it would tint one surface and leave the
+        // others on the surrounding text colour -- the same colour-only regression, hidden
+        // behind a passing test.
+        const declaringRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, , body]) =>
+            /--exe-icon-color\s*:\s*\S/.test(body),
+        );
+        const selectors = declaringRules.flatMap(([, selector]) => selector.split(',').map(part => part.trim()));
+
+        expect(selectors).toContain('.exe-content');
     });
 });
