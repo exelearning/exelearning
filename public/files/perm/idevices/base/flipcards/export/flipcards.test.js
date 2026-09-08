@@ -461,6 +461,44 @@ describe('flipcards iDevice export', () => {
       expect($eXeFlipCards.refreshCardsMemory).toHaveBeenCalledWith(i);
       expect($eXeFlipCards.refreshCards).not.toHaveBeenCalled();
     });
+
+    // Play again is the learner's own start, like the play button and the
+    // access code, and it resets the board and the score. Rebooting silently
+    // left the LMS holding the finished attempt's mark and status while a
+    // fresh game sat at zero on screen — and a learner who walked away there
+    // left the previous grade standing.
+    describe('playing again reports the restart', () => {
+      it('memory mode reboots through the reporting start', () => {
+        const i = givenStartableGame({ gameStarted: true, hits: 4, score: 100, gameOver: true });
+        // rebootGameMemory stops any card audio on its way out.
+        $exeDevices.iDevice.gamification.media = { stopSound: vi.fn() };
+        vi.spyOn($eXeFlipCards, 'startGameMemory').mockImplementation(() => {});
+
+        $eXeFlipCards.rebootGameMemory(i);
+
+        expect($eXeFlipCards.startGameMemory).toHaveBeenCalledWith(i, true);
+      });
+
+      it('card modes report the restart themselves', () => {
+        // rebootGame does not go through startGameMemory.
+        const i = givenStartableGame({ type: 1, gameStarted: true, hits: 4, score: 100, gameOver: true });
+        document.body.innerHTML += `
+          <div id="flcdsPErrors-${i}"></div>
+          <div id="flcdsPScore-${i}"></div>
+          <div id="flcdsLinkV-${i}"></div>
+          <div id="flcdsLinkF-${i}"></div>`;
+        vi.spyOn($eXeFlipCards, 'refreshGame').mockImplementation(() => {});
+        const sendScore = vi.spyOn($eXeFlipCards, 'sendScore').mockImplementation(() => {});
+
+        $eXeFlipCards.rebootGame(i);
+
+        expect(sendScore).toHaveBeenCalledWith(true, i);
+        // The report has to describe the restart, not the attempt it replaces:
+        // sendScoreNew drops an unstarted game and derives completion from
+        // gameOver, so both flags are set before it goes out.
+        expect($eXeFlipCards.options[i]).toMatchObject({ score: 0, gameStarted: true, gameOver: false });
+      });
+    });
   });
 
   // The text of a card is sized by measurement, and every way that measurement

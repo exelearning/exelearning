@@ -635,7 +635,12 @@ var $eXeFlipCards = {
 
         $('#flcdsStartLevels-' + instance).hide();
         $('#flcdsCubierta-' + instance).hide();
-        $eXeFlipCards.startGameMemory(instance);
+        // Play again is the learner's own start, like the play button and the
+        // access code: it resets the board and the score, so it has to say so.
+        // Without the report the LMS kept the finished attempt's mark and
+        // status while a fresh game sat at zero on screen, and a learner who
+        // walked away there left the previous grade standing.
+        $eXeFlipCards.startGameMemory(instance, true);
     },
     updateTimeMemory: function (tiempo, instance) {
         const mOptions = $eXeFlipCards.options[instance];
@@ -1359,6 +1364,11 @@ var $eXeFlipCards = {
         $('#flcdsLinkF-' + instance).css('opacity', 1);
         mOptions.gameStarted = true;
         mOptions.gameOver = false;
+        // The card modes reboot without going through startGameMemory, so the
+        // report has to be made here. After the two flags, never before:
+        // sendScoreNew ignores a game that reports as neither started nor over,
+        // and it derives completion from gameOver.
+        $eXeFlipCards.saveScormScore(instance);
         $eXeFlipCards.refreshGame(instance);
     },
 
