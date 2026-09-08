@@ -591,6 +591,60 @@ describe('interactive-video iDevice export', () => {
     });
   });
 
+  describe('updateResult on the last answer', () => {
+    let scoreWhenReported;
+
+    beforeEach(() => {
+      global.$ = jquery;
+      window.$ = jquery;
+      // Two questions, the first already answered right. Answering the second
+      // is what completes the activity.
+      document.body.innerHTML = `
+        <div id="resultsSummary"></div>
+        <table id="ivResults">
+          <tr><td class="result"><span>100%</span></td></tr>
+          <tr><td class="result"><span>- </span></td></tr>
+        </table>`;
+      $interactivevideo.table = document.getElementById('ivResults');
+      $interactivevideo.score = 1;
+      $interactivevideo.numSlides = 2;
+      $interactivevideo.scoreSlides = [
+        { type: 'singleChoice', score: 1 },
+        { type: 'singleChoice', score: -1 },
+      ];
+      $interactivevideo.mOptions = {};
+      global.InteractiveVideo = {
+        scoreNIA: false,
+        scorm: { isScorm: 1 },
+        i18n: { msgYouScore: 'Your score', seen: 'seen' },
+      };
+
+      scoreWhenReported = undefined;
+      vi.spyOn($interactivevideo, 'sendScore').mockImplementation(() => {
+        scoreWhenReported = $interactivevideo.score;
+      });
+      vi.spyOn($interactivevideo, 'reportScore').mockImplementation(() => {});
+      $interactivevideo.saveEvaluation = vi.fn();
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('adds the last answer before the completed report goes out', () => {
+      $interactivevideo.updateResult(1, '100%');
+
+      expect($interactivevideo.score).toBe(2);
+      // The report that closes the attempt has to carry the full mark. Running
+      // getFinalResult() first sent (n-1)/n — 50 % here with both answers
+      // right — and left the true mark to a later report that Moodle's
+      // fire-and-forget commits can reorder past it.
+      expect(scoreWhenReported).toBe(2);
+      expect($interactivevideo.mOptions.gameOver).toBe(true);
+    });
+  });
+
   describe('controls object', () => {
     it('has play, stop, pause, and seek methods', () => {
       expect(typeof $interactivevideo.controls.play).toBe('function');

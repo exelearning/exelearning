@@ -1618,8 +1618,15 @@ var $interactivevideo = {
     updateResult: function (question, result) {
         var tds = $('.result', $interactivevideo.table);
         tds.eq(question).html('<span>' + result + '</span>');
-        $interactivevideo.resultsViewer.getFinalResult(tds);
+        // The point first. getFinalResult() closes the attempt through
+        // finalizeScorm(), and sendScore() reads $interactivevideo.score, which
+        // updateScore() is what advances: run it second and the completed
+        // report goes out one answer short — (n-1)/n with everything right —
+        // leaving the true mark to a later report that Moodle's fire-and-forget
+        // commits can reorder past it. Only the cells getFinalResult() reads
+        // matter for the order, and they are painted above.
         $interactivevideo.updateScore(question, result);
+        $interactivevideo.resultsViewer.getFinalResult(tds);
     },
 
     dropdownActivity: {
