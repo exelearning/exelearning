@@ -773,7 +773,12 @@ var $trueorfalse = {
             if (mOptions.showSlider) {
                 $trueorfalse.addEventsSlideShow(mOptions);
             }
-            $trueorfalse.startGame(mOptions);
+            // Play again is the learner's own start, like the play button
+            // below: it clears the answers and the score, so it has to say so.
+            // Restarting silently left the LMS holding the finished attempt's
+            // mark and status while a blank quiz sat at zero on screen, and a
+            // learner who walked away there left the previous grade standing.
+            $trueorfalse.startGame(mOptions, true);
         });
 
         $(`#tofPStartGame-${instance}`).val(msgs.tofPStartGame);

@@ -346,6 +346,63 @@ describe('trueorfalse iDevice export', () => {
 
       expect($trueorfalse.startGame).toHaveBeenCalledWith(options, true);
     });
+
+    // Play again is the learner's own start too, and it clears the answers and
+    // the score. Restarting silently left the LMS holding the finished
+    // attempt's mark and status while a blank quiz sat at zero on screen.
+    it('starts with SCORM reporting when the learner plays again', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      $exeDevices.iDevice.gamification.report = {
+        updateEvaluationIcon: vi.fn(),
+      };
+      document.body.innerHTML = `
+        <div class="idevice_body trueorfalseIdevice" id="tof-1">
+          <div class="exe-trueorfalse-container">
+            <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
+              <div id="tofPMultimedia-tof-1"></div>
+              <div id="tofPGameContainer-tof-1"></div>
+              <button id="tofPStartGame-tof-1"></button>
+              <button id="tofPCheckTest-tof-1"></button>
+              <button id="tofRebootTest-tof-1"></button>
+              <input id="tofPSendScore-tof-1" />
+            </div>
+          </div>
+        </div>
+      `;
+      const options = {
+        id: 'tof-1',
+        idevicePath: '/idevices/trueorfalse/',
+        msgs: { tofPStartGame: 'Start' },
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isScorm: 1,
+        showSlider: false,
+        isTest: true,
+        time: 0,
+        evaluation: false,
+        isInExe: false,
+        percentageQuestions: 100,
+        questionsRandom: false,
+        questionsGame: [{ solution: '1' }],
+        gameStarted: true,
+        gameOver: true,
+      };
+      vi.spyOn($trueorfalse, 'startGame').mockImplementation(() => {});
+      vi.spyOn($trueorfalse, 'generateTrueFalseQuizHtml').mockReturnValue('');
+
+      try {
+        $trueorfalse.addEvents(options);
+        document.getElementById('tofRebootTest-tof-1').click();
+      } finally {
+        $trueorfalse.removeEvents(options);
+        $exeDevices.iDevice.gamification.report = previousReport;
+        document.body.innerHTML = '';
+      }
+
+      expect($trueorfalse.startGame).toHaveBeenCalledWith(options, true);
+      // The report has to describe the restart, not the attempt it replaces.
+      expect(options.gameOver).toBe(false);
+    });
   });
 
   describe('SCORM reporting on start', () => {
