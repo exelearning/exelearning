@@ -395,7 +395,17 @@
             // deciding the status from a purely restored registry would rewrite
             // an attempt this session has not touched, which the entry contract
             // forbids. The score above is published either way — it always was.
+            //
+            // Persist before committing, as applyExitPolicy does. The registry
+            // now holds the restored attempt plus whatever was reported before
+            // the session opened, and only the first of those is in
+            // cmi.suspend_data. Committing the score and the status without
+            // rewriting it would store a mark the payload cannot account for,
+            // so a later visit would restore less than the LMS already shows.
+            // This was the one place in the runtime that committed without
+            // persisting first.
             if (reportedBeforeEntry) {
+                policy.persistActivities();
                 policy.applyDecidedStatus();
                 client.commit();
             }

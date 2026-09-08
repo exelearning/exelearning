@@ -114,6 +114,35 @@ describe('exe-scorm12-policy', () => {
             expect(api.callNames()).toContain('LMSCommit');
         });
 
+        // The flush commits a mark drawn from the registry, and the registry is
+        // the restored attempt plus what arrived before the session opened —
+        // only the first of which the stored payload holds. Committing without
+        // rewriting it would leave the LMS showing a score its own suspend_data
+        // cannot rebuild on the next visit.
+        it('persists the registry before the entry flush commits', () => {
+            activities.register('essay', {
+                evaluable: true,
+                completionRequired: true,
+                completed: true,
+                score: 80,
+            });
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.suspend_data': 'exe12/1|quiz;7;0;0;40;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+
+            // Both activities travel: the one restored and the one that only
+            // ever existed in this session.
+            expect(api.data['cmi.suspend_data']).toContain('essay');
+            expect(api.data['cmi.suspend_data']).toContain('quiz');
+            const names = api.callNames();
+            const suspendWrite = names.indexOf('LMSSetValue');
+            expect(suspendWrite).toBeGreaterThanOrEqual(0);
+            expect(suspendWrite).toBeLessThan(names.indexOf('LMSCommit'));
+        });
+
         // Deciding the status from a purely restored registry would rewrite an
         // attempt this session has not touched, which the entry contract forbids.
         it('does not decide a status for a registry that only came from the restore', () => {
