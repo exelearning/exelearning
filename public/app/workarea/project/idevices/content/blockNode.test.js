@@ -1787,8 +1787,9 @@ describe('IdeviceBlockNode', () => {
             // The header is the normal source: a style declares both variables once on
             // .exe-content and, since they are custom properties, the header inherits them.
             // That inheritance is what the picker E2E spec covers, because happy-dom does not
-            // resolve inherited custom properties. What is worth pinning here is the source
-            // the resolver picks while the block is still being built and headElement is null.
+            // resolve inherited custom properties. What is pinned here is only which source
+            // the resolver picks when headElement is null -- a defensive path, since a real
+            // browser returns nothing for the detached title and icon a headerless block has.
             block.headElement = null;
             block.blockNameElementText = attach(document.createElement('h1'));
             block.blockNameElementText.style.setProperty('--exe-icon-color', '#123456');
@@ -1820,6 +1821,19 @@ describe('IdeviceBlockNode', () => {
             block.headElement.style.setProperty('--exe-icon-color', 'currentColor');
 
             expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
+        });
+
+        it('leaves the picker untinted rather than throwing when getComputedStyle is missing', () => {
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+            const original = window.getComputedStyle;
+            window.getComputedStyle = undefined;
+
+            try {
+                expect(block.getCurrentThemeIconColor()).toBe('');
+            } finally {
+                window.getComputedStyle = original;
+            }
         });
 
         it('sets --modal-icon-color on the picker from the theme variable', () => {

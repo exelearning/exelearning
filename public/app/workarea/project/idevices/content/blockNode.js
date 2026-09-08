@@ -421,7 +421,9 @@ export default class IdeviceBlockNode {
      *
      * Both are custom properties, so they inherit: reading them off the block header is
      * enough. The title and the icon are its descendants and resolve to the same value,
-     * which is why there is no walk over the three elements.
+     * which is why there is no walk over the three elements. They stay only as a defensive
+     * source for a block with no header; a browser returns nothing for them anyway, since
+     * a block without a header has not attached them either.
      *
      * Returns an empty string when the theme declares neither, so the caller leaves
      * --modal-icon-color unset and the picker CSS falls back to --modal-icon-default
@@ -429,7 +431,9 @@ export default class IdeviceBlockNode {
      */
     getCurrentThemeIconColor() {
         const colorSource = this.headElement || this.blockNameElementText || this.iconElement;
-        if (!colorSource) {
+        // Returning early rather than throwing keeps a host without getComputedStyle on the
+        // untinted picker instead of failing to open it at all.
+        if (!colorSource || !window.getComputedStyle) {
             return '';
         }
 
