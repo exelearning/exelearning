@@ -138,7 +138,7 @@ var $rubric = {
             raw: stored,
             isScorm: parseInt(stored.isScorm) || 0,
             textButtonScorm: stored.textButtonScorm || '',
-            repeatActivity: stored.repeatActivity !== false,
+            repeatActivity: true,
             weighted: $rubric.normalizeWeight(stored.weighted),
         };
     },
@@ -1463,7 +1463,7 @@ var $rubric = {
             mainElement: $node.length === 1 ? $node : $scope,
             isScorm: data.isScorm || 0,
             textButtonScorm: data.textButtonScorm || '',
-            repeatActivity: data.repeatActivity !== false,
+            repeatActivity: true,
             weighted: $rubric.normalizeWeight(data.weighted),
             scorerp: 0,
             gameStarted: false,

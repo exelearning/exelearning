@@ -310,7 +310,7 @@ var $adaptativequiz = {
 
         data.isScorm = parseInt(data.isScorm) || 0;
         data.textButtonScorm = data.textButtonScorm || data.msgs.msgScore || 'Save score';
-        data.repeatActivity = data.repeatActivity !== false;
+        data.repeatActivity = true;
         data.weighted = data.weighted ?? 100;
         data.evaluation = data.evaluation ?? false;
         data.evaluationID = data.evaluationID || '';

@@ -333,7 +333,7 @@ var $exeDevice = {
         this.ideviceBody.querySelector('#frmEShowSlider').checked =
             previousData.showSlider;
         previousData.weighted = previousData.weighted ?? 100;
-        previousData.repeatActivity = previousData.repeatActivity ?? false;
+        previousData.repeatActivity = true;
         let isscore =
             previousData.exportScorm && previousData.exportScorm.saveScore
                 ? 1

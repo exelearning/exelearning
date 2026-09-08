@@ -1468,32 +1468,32 @@ var $exeDevices = {
 
                     const $sendScore = $gmain.closest('article').find(".Games-SendScore"),
                         $repeatActivity = $gmain.closest('article').find(".Games-RepeatActivity");
+                    // Every activity may be replayed. The four-way chains this
+                    // used to carry branched on `repeatActivity` too, but the
+                    // line below sets it unconditionally, so the two "you may
+                    // only do this once" arms were unreachable from here — and
+                    // from nowhere else, because this is the only place that
+                    // builds the text. What is left is the same partition the
+                    // live arms already made: whether the LMS handed back a
+                    // score from a previous visit.
+                    //
+                    // Their strings stay in every iDevice's msgsdefault and in
+                    // translations/, untouched: dropping the unreachable code
+                    // is not a decision to retire the "only once" option, and
+                    // restoring it must not mean translating them again.
                     game.repeatActivity = true;
                     let text = '';
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
                         text = game.msgs.msgScoreScorm;
                     } else if (game.isScorm === 1) {
-                        if (game.repeatActivity && previouScore !== '') {
-                            text = game.msgs.msgYouLastScore + ': ' + previouScore;
-                        } else if (game.repeatActivity && previouScore === "") {
-                            text = game.msgs.msgSaveAuto + ' ' + game.msgs.msgPlaySeveralTimes;
-                        } else if (!game.repeatActivity && previouScore === "") {
-                            text = game.msgs.msgOnlySaveAuto;
-                        } else if (!game.repeatActivity && previouScore !== "") {
-                            text = game.msgs.msgActityComply + ' ' + game.msgs.msgYouLastScore + ': ' + previouScore;
-                        }
+                        text = previouScore !== ''
+                            ? game.msgs.msgYouLastScore + ': ' + previouScore
+                            : game.msgs.msgSaveAuto + ' ' + game.msgs.msgPlaySeveralTimes;
                     } else if (game.isScorm === 2) {
                         $sendScore.show();
-                        if (game.repeatActivity && previouScore !== '') {
-                            text = game.msgs.msgYouLastScore + ': ' + previouScore;
-                        } else if (game.repeatActivity && previouScore === '') {
-                            text = game.msgs.msgSeveralScore;
-                        } else if (!game.repeatActivity && previouScore === '') {
-                            text = game.msgs.msgOnlySaveScore;
-                        } else if (!game.repeatActivity && previouScore !== '') {
-                            $sendScore.hide();
-                            text = game.msgs.msgActityComply + ' ' + game.msgs.msgYouScore + ': ' + previouScore;
-                        }
+                        text = previouScore !== ''
+                            ? game.msgs.msgYouLastScore + ': ' + previouScore
+                            : game.msgs.msgSeveralScore;
                     }
                     $repeatActivity.text(text).fadeIn();
                 },
@@ -1725,8 +1725,9 @@ var $exeDevices = {
                             : $exeDevices.iDevice.gamification.scorm.parseSuspendData(
                                   pipwerks.SCORM.get("cmi.suspend_data") || ""
                               );
-                        const scoreVal = parseFloat(lmsData[game.ideviceNumber]?.score);
-                        const previousScore = !Number.isNaN(scoreVal) ? (scoreVal / 10).toFixed(2) : '';
+                        // The restored score used to feed the "you may only save
+                        // once" arm below, which could never be taken. lmsData
+                        // is still needed: updateActivity carries it.
 
                         // Number.isFinite, not !isNaN: an iDevice computes its
                         // mark as hits over a total it reads from its own data,
@@ -1747,25 +1748,22 @@ var $exeDevices = {
                             $exeDevices.iDevice.gamification.scorm.readLessonStatus();
 
                         if (!auto) {
+                            // No "you may only save once" arm, and no hiding of
+                            // the send button: both branched on
+                            // `repeatActivity`, which the line above sets
+                            // unconditionally, so neither could ever be taken.
+                            // A manual submit always reports, and the button
+                            // stays available for the next one. msgOnlySaveScore
+                            // keeps its string and its translations.
                             $sendScore.show();
-                            if (!game.repeatActivity && previousScore !== '') {
-                                message = game.userName !== ''
-                                    ? (game.userName + ' ' + game.msgs.msgOnlySaveScore)
-                                    : game.msgs.msgOnlySaveScore;
-                            } else {
-                                game.previousScore = formattedScore;
-                                $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);
+                            game.previousScore = formattedScore;
+                            $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);
 
-                                message = game.userName !== ''
-                                    ? (game.userName + '. ' + game.msgs.msgYouScore + ': ' + formattedScore)
-                                    : (game.msgs.msgYouScore + ': ' + formattedScore);
+                            message = game.userName !== ''
+                                ? (game.userName + '. ' + game.msgs.msgYouScore + ': ' + formattedScore)
+                                : (game.msgs.msgYouScore + ': ' + formattedScore);
 
-                                if (!game.repeatActivity) {
-                                    $sendScore.hide();
-                                }
-
-                                $repeatActivity.text(game.msgs.msgYouScore + ': ' + formattedScore).show();
-                            }
+                            $repeatActivity.text(game.msgs.msgYouScore + ': ' + formattedScore).show();
                         } else {
                             game.previousScore = formattedScore;
                             $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);

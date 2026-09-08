@@ -979,7 +979,9 @@ describe('rubric iDevice SCORM integration', () => {
       expect(game.main).toBe('rubric-node-42');
       expect(game.isScorm).toBe(2);
       expect(game.textButtonScorm).toBe('Guardar');
-      expect(game.repeatActivity).toBe(false);
+      // Always true now, whatever the stored value: every activity may be
+      // replayed, and common.js forces the flag on registration anyway.
+      expect(game.repeatActivity).toBe(true);
       expect(game.weighted).toBe(75);
       expect(game.scorerp).toBe(0);
       expect(game.gameStarted).toBe(false);
@@ -1343,7 +1345,8 @@ describe('rubric iDevice SCORM integration', () => {
 
       expect(data.isScorm).toBe(2);
       expect(data.textButtonScorm).toBe('Submit');
-      expect(data.repeatActivity).toBe(false);
+      // Always true now, even with a stored false: see buildScormGame above.
+      expect(data.repeatActivity).toBe(true);
       expect(data.weighted).toBe(80);
     });
 

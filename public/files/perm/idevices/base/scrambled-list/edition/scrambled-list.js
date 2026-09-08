@@ -581,7 +581,7 @@ var $exeDevice = {
             this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1);
 
         data.weighted = data.weighted || 100;
-        data.repeatActivity = data.repeatActivity || false;
+        data.repeatActivity = true;
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 

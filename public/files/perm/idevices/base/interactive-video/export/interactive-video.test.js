@@ -220,7 +220,10 @@ describe('interactive-video iDevice export', () => {
     it('has default SCORM settings', () => {
       expect($interactivevideo.scorm.isScorm).toBe(0);
       expect($interactivevideo.scorm.textButtonScorm).toBe('Save score');
-      expect($interactivevideo.scorm.repeatActivity).toBe(false);
+      // Replayable by default, like every other iDevice. It used to default to
+      // false here, which made this the only activity an author had to opt in
+      // to letting learners repeat.
+      expect($interactivevideo.scorm.repeatActivity).toBe(true);
     });
 
     it('has SCORM library paths', () => {

@@ -76,7 +76,8 @@ var $interactivevideo = {
     scorm: {
         isScorm: 0,
         textButtonScorm: 'Save score',
-        repeatActivity: false,
+        // Activities may be replayed by default, as everywhere else.
+        repeatActivity: true,
     },
     userName: '',
     previousScore: '',

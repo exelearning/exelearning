@@ -158,7 +158,10 @@ var $form = {
         data.evaluation = data.evaluation || false;
         data.evaluationID = data.evaluationID || '';
         data.time = data.time || 0;
-        data.repeatActivity = data.repeatActivity || false;
+        // Always true: activities may be replayed, whatever an older resource
+        // stored. common.js forces it anyway on the first registration, so
+        // reading the saved value here only made the two disagree in between.
+        data.repeatActivity = true;
         data.textButtonScorm =
             data.scorm && data.scorm.buttonTextSave
                 ? data.scorm.buttonTextSave

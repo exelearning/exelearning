@@ -36,7 +36,8 @@ var $exeDevice = {
     scorm: {
         isScorm: 0,
         textButtonScorm: c_('Save score'),
-        repeatActivity: false,
+        // Activities may be replayed by default, as everywhere else.
+        repeatActivity: true,
     },
 
     refreshTranslations: function () {
