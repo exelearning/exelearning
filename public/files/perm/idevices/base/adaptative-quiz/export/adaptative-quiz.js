@@ -988,7 +988,7 @@ var $adaptativequiz = {
         }
     },
 
-    startGame: function (id) {
+    startGame: function (id, reportScorm = false) {
         const opts = this.options[id];
         opts.gameStarted = true;
         opts.gameOver = false;
@@ -1031,7 +1031,13 @@ var $adaptativequiz = {
         // access code — so the LMS kept the previous attempt's grade and status
         // until the learner answered a question. sendScoreNew also ignores a
         // game that reports as neither started nor over, hence the position.
-        this.saveScormScore(id);
+        //
+        // Only when the learner asked to start. startGame also runs unattended
+        // while the page loads — maybeStartAfterScorm reaches it through
+        // beginActivity on an activity with neither a timer nor an access code
+        // — and publishing the zero there wiped the stored grade of someone who
+        // had merely reopened the page.
+        if (reportScorm) this.saveScormScore(id);
     },
 
     /**
@@ -1068,12 +1074,12 @@ var $adaptativequiz = {
         $('#adaptativeQuizStartGameDiv-' + id).css('display', '');
     },
 
-    beginActivity: function (id) {
+    beginActivity: function (id, reportScorm = false) {
         const opts = this.options[id];
         if (opts && opts.time > 0) {
             this.showStartScreen(id);
         } else {
-            this.startGame(id);
+            this.startGame(id, reportScorm);
         }
     },
 
@@ -1556,7 +1562,7 @@ var $adaptativequiz = {
                 // rather than revealing it — the same thing the code does in
                 // every other timed iDevice. Going through beginActivity left
                 // a timed quiz on the start screen, with nothing reported.
-                this.startGame(id);
+                this.startGame(id, true);
             }
             return;
         }
@@ -1595,14 +1601,14 @@ var $adaptativequiz = {
             .off('click.adaptativeQuiz')
             .on('click.adaptativeQuiz', e => {
                 e.preventDefault();
-                this.beginActivity(id);
+                this.beginActivity(id, true);
             });
 
         $('#adaptativeQuizBtnStart-' + id)
             .off('click.adaptativeQuiz')
             .on('click.adaptativeQuiz', e => {
                 e.preventDefault();
-                this.startGame(id);
+                this.startGame(id, true);
             });
 
         $('#adaptativeQuizMainContainer-' + id)
@@ -1768,8 +1774,10 @@ var $adaptativequiz = {
             // A code already accepted is the learner's explicit start, so the
             // deferred path must not drop them back onto the play button.
             if (itinerary.showCodeAccess) {
-                this.startGame(id);
+                this.startGame(id, true);
             } else {
+                // No code and no timer: nobody asked for this start, so it
+                // publishes nothing. The learner's first answer reports.
                 this.beginActivity(id);
             }
         }

@@ -1284,7 +1284,84 @@ describe('adaptative-quiz export', () => {
             adq.options[id].scormReady = true;
             adq.maybeStartAfterScorm(id);
 
-            expect(startSpy).toHaveBeenCalledWith(id);
+            // `true`: the accepted code is the learner's explicit start, so this
+            // path is one of the few that may publish the opening zero.
+            expect(startSpy).toHaveBeenCalledWith(id, true);
+        });
+    });
+
+    describe('the opening zero is tied to an explicit start', () => {
+        /**
+         * Build a SCORM-enabled quiz with neither a timer nor an access code —
+         * the configuration that reaches startGame unattended — and return the
+         * spy that says whether the opening zero was published.
+         */
+        const buildGame = (id, extra = {}) => {
+            document.body.classList.add('exe-scorm');
+            document.body.innerHTML = `
+                <div id="adaptativeQuizHits-${id}"></div>
+                <div id="adaptativeQuizErrors-${id}"></div>
+                <div id="adaptativeQuizScore-${id}"></div>
+                <div id="adaptativeQuizShowClue-${id}"></div>
+                <div id="adaptativeQuizShowClueText-${id}"></div>
+                <button id="adaptativeQuizBtnNewGame-${id}"></button>
+                <div id="adaptativeQuizReport-${id}"></div>
+                <div id="adaptativeQuizStartGameDiv-${id}"></div>
+                <div id="adaptativeQuizQuestionContainer-${id}"></div>
+                <div id="adaptativeQuizButtonsContainer-${id}"></div>
+            `;
+            adq.options[id] = {
+                id,
+                isScorm: 1,
+                scormReady: true,
+                time: 0,
+                gameStarted: false,
+                questions: [{ difficulty: 1 }],
+                itinerary: {},
+                initialLevel: 1,
+                answeredIndexes: [],
+                ...extra,
+            };
+            vi.spyOn(adq, 'pickNextQuestionIndex').mockReturnValue(0);
+            vi.spyOn(adq, 'renderCurrentQuestion').mockImplementation(() => {});
+            return vi.spyOn(adq, 'saveScormScore').mockImplementation(() => {});
+        };
+
+        afterEach(() => {
+            document.body.className = '';
+            document.body.innerHTML = '';
+        });
+
+        it('publishes nothing when the page starts the game on its own', () => {
+            const id = 'auto-start';
+            const saveSpy = buildGame(id);
+
+            // The reported defect: with no timer and no access code the
+            // deferred path runs startGame with no learner input at all, and
+            // the zero it published wiped the grade of someone who had merely
+            // reopened the page.
+            adq.maybeStartAfterScorm(id);
+
+            expect(adq.options[id].gameStarted).toBe(true);
+            expect(saveSpy).not.toHaveBeenCalled();
+        });
+
+        it('publishes the zero when the learner presses the play button', () => {
+            const id = 'play-button';
+            const saveSpy = buildGame(id);
+
+            adq.startGame(id, true);
+
+            expect(saveSpy).toHaveBeenCalledWith(id);
+        });
+
+        it('publishes the zero when the learner asks for a new game', () => {
+            const id = 'new-game';
+            const saveSpy = buildGame(id);
+
+            adq.beginActivity(id, true);
+
+            expect(saveSpy).toHaveBeenCalledWith(id);
         });
     });
 
@@ -1864,7 +1941,7 @@ describe('adaptative-quiz export', () => {
                 stateWhenReported = { hits, errors, gameOver, gameStarted };
             });
 
-            adq.startGame(id);
+            adq.startGame(id, true);
 
             expect(stateWhenReported).toEqual({
                 hits: 0,
