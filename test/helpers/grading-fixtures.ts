@@ -68,9 +68,6 @@
  * - `gamification.helpers.getQuestions(items, percentage, random)` returns the array
  *   UNCHANGED when `percentage >= 100 && !random`. Every type below therefore pins
  *   its percentage to 100 and its random flag to false so the answer key is stable.
- * - `gamification.track('answered', game)` (the xAPI emitter hop) fires from
- *   `sendScoreNew()` regardless of SCORM, but only when `game.gameStarted ||
- *   game.gameOver`.
  *
  * ## The `body.exe-scorm` save guard (Moodle plugin patch)
  *
@@ -170,10 +167,7 @@ export interface PageSpec {
 /** The whole project. */
 export interface ProjectSpec {
     title: string;
-    /**
-     * The `<odeIdentifier>`. Without it the exported `window.exeXapi.odeId` is `''`
-     * and the emitter falls back to the served URL for its base IRI.
-     */
+    /** The `<odeIdentifier>`, surfaced in the SCORM/IMS manifests. */
     odeId?: string;
     pages: PageSpec[];
 }
@@ -251,7 +245,7 @@ export function populateGradingYDoc(ydoc: Y.Doc, spec: ProjectSpec): void {
     metadata.set('license', '');
     metadata.set('theme', 'base');
     metadata.set('keywords', '');
-    // Not part of populateYDocFromStructure()'s allow-list; without it xAPI's odeId is ''.
+    // Not part of populateYDocFromStructure()'s allow-list; set it explicitly.
     if (spec.odeId) metadata.set('odeIdentifier', spec.odeId);
 
     const navigation = ydoc.getArray('navigation');

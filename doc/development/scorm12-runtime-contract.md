@@ -644,8 +644,6 @@ the console — nothing is forwarded to the LMS.
   `getTotalScore`, `createScoreScormHtml`, `registerActivity`, `reportActivity`,
   `updateActivity`, `showFinalScore`, `endScorm`) and their `pipwerks.SCORM`
   traffic.
-- `public/app/common/xapi/exe_xapi.js` — the xAPI emitter (web export family;
-  see ADR-2302-02 once #2302 lands); binds `pagehide` only.
 - `public/files/perm/idevices/base/*/export/*.js` — per-iDevice
   `loadSCORM_API_wrapper`/`loadSCOFunctions` lazy-loaders,
   `scorm.init`/`SetScoreMax`/`SetScoreMin` usage, and their `pagehide` handlers.
@@ -718,8 +716,8 @@ made about them:
   `pagehide`.
 - SCORM 2004 behaviour beyond the shared-file changes: the 2004 exporter, its
   inline fallback and the legacy runtime files it ships (`SCOFunctions.js`,
-  `SCORM_API_wrapper.js`) are untouched — but `exe_export.js`, `exe_xapi.js`
-  and the iDevice export runtimes are **shared** between formats, and their
+  `SCORM_API_wrapper.js`) are untouched — but `exe_export.js` and the iDevice
+  export runtimes are **shared** between formats, and their
   lifecycle handling moved from `unload` to `pagehide`. For 2004 packages the
   observable effect is nil in the tested engines (those pages still carry
   `onunload`/`onbeforeunload` body attributes, so they are never bfcached and
