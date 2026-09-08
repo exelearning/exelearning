@@ -279,6 +279,102 @@ describe('map iDevice export — completion signal', () => {
         });
     });
 
+    // Play again is the learner's own start too. Every branch of the game-over
+    // dialog clears the score and lowers gameOver, so the LMS has to be told:
+    // restarting silently left it holding the finished attempt's mark and
+    // status while a fresh round sat at zero on screen.
+    describe('reporting when the learner plays again', () => {
+        let restoreHelpers = null;
+
+        /**
+         * Minimal state for a finished map showing its game-over dialog.
+         *
+         * @param {number} evaluationG the game mode
+         * @returns {number} the instance index
+         */
+        function givenFinishedGame(evaluationG) {
+            const instance = 0;
+            document.body.innerHTML = `
+                <div id="mapaMainContainer-${instance}">
+                    <div id="mapaMessageGOYes-${instance}"></div>
+                    <div id="mapaCheckOrder-${instance}"></div>
+                    <div id="mapaTest-${instance}"></div>
+                    <div id="mapaGameContainer-${instance}"></div>
+                    <div id="mapaPNumber-${instance}"></div>
+                    <div id="mapaPScore-${instance}"></div>
+                    <div id="mapaPHits-${instance}"></div>
+                    <div id="mapaPErrors-${instance}"></div>
+                    <div id="mapaShowClue-${instance}"></div>
+                    <div id="mapaGameClue-${instance}"></div>
+                </div>`;
+            m.options[instance] = {
+                main: `mapaMainContainer-${instance}`,
+                isScorm: 1,
+                evaluationG,
+                gameStarted: false,
+                gameOver: true,
+                hits: 4,
+                errors: 0,
+                score: 100,
+                numberQuestions: 4,
+                selectsGame: [],
+                orderResponse: ['a'],
+                order: [],
+                titles: [],
+                activeMap: { pts: [] },
+                msgs: { msgYouScore: 'Score' },
+            };
+            vi.spyOn(m, 'hideCover').mockImplementation(() => {});
+            // startFinds runs for real: it is what lowers gameOver in the find
+            // modes, so mocking it would hide what the report has to carry.
+            vi.spyOn(m, 'resetPoints').mockImplementation(() => {});
+            vi.spyOn(m, 'paintPoints').mockImplementation(() => {});
+            vi.spyOn(m, 'showFind').mockImplementation(() => {});
+            vi.spyOn(m, 'showQuestionaire').mockImplementation(() => {});
+            // rebootGame reshuffles the deck on its way through.
+            restoreHelpers = swapGamification('helpers', { shuffleAds: deck => deck });
+            return instance;
+        }
+
+        afterEach(() => {
+            if (restoreHelpers) {
+                restoreHelpers();
+                restoreHelpers = null;
+            }
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        // Order mode returns early, the find modes go through startFinds and
+        // the quiz modes through rebootGame: all three have to report.
+        it.each([
+            ['Order', 5],
+            ['Find', 3],
+            ['Quiz', 4],
+        ])('publishes the restart in %s mode', (_name, evaluationG) => {
+            const i = givenFinishedGame(evaluationG);
+            m.addEvents(i);
+
+            document.getElementById(`mapaMessageGOYes-${i}`).click();
+
+            expect(calls).toHaveLength(1);
+            expect(calls[0].auto).toBe(true);
+            // The report describes the restart, not the attempt it replaces.
+            expect(calls[0].game.gameOver).toBe(false);
+            expect(calls[0].game.gameStarted).toBe(true);
+        });
+
+        it('does not report outside automatic SCORM mode', () => {
+            const i = givenFinishedGame(4);
+            m.options[i].isScorm = 2;
+            m.addEvents(i);
+
+            document.getElementById(`mapaMessageGOYes-${i}`).click();
+
+            expect(calls).toHaveLength(0);
+        });
+    });
+
     describe('sendScore in exposition mode', () => {
         it('reports progress as a fraction of the points visited', () => {
             m.sendScore(true, givenExposition(['p1'], 4));

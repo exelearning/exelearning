@@ -2770,6 +2770,10 @@ var $eXeMapa = {
                 mOptions.gameOver = false;
                 mOptions.orderResponse = [];
                 mOptions.gameStarted = true;
+                // After gameStarted and gameOver above, never before:
+                // sendScoreNew ignores a game that reports as neither started
+                // nor over, and it derives completion from gameOver.
+                $eXeMapa.saveScormScore(instance);
                 $('#mapaGameContainer-' + instance).css('height', 'auto');
                 $('#mapaCheckOrder-' + instance).show();
                 return;
@@ -2792,6 +2796,13 @@ var $eXeMapa = {
                 $eXeMapa.rebootGame(instance);
             }
             mOptions.gameStarted = true;
+            // Play again is the learner's own start, like the start link: every
+            // branch above has cleared the score and lowered gameOver, so the
+            // LMS has to be told. Restarting silently left it holding the
+            // finished attempt's mark and status while a fresh round sat at
+            // zero on screen, and a learner who walked away there left the
+            // previous grade standing. After the flags, never before.
+            $eXeMapa.saveScormScore(instance);
             $('#mapaTest-' + instance).fadeOut(100);
             $('#mapaGameContainer-' + instance).css('height', 'auto');
         });
