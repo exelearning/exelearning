@@ -408,6 +408,7 @@ describe('flipcards iDevice export', () => {
       vi.spyOn($eXeFlipCards, 'addCardsMemory').mockImplementation(() => {});
       vi.spyOn($eXeFlipCards, 'initCardsMemory').mockImplementation(() => {});
       vi.spyOn($eXeFlipCards, 'refreshCards').mockImplementation(() => {});
+      vi.spyOn($eXeFlipCards, 'refreshCardsMemory').mockImplementation(() => {});
       vi.spyOn($eXeFlipCards, 'showMessageMemory').mockImplementation(() => {});
       vi.spyOn($eXeFlipCards, 'updateTimeMemory').mockImplementation(() => {});
       return instance;
@@ -446,6 +447,246 @@ describe('flipcards iDevice export', () => {
       $eXeFlipCards.startGameMemory(i, true);
 
       expect(sendScore).not.toHaveBeenCalled();
+    });
+
+    // addCardsMemory has just replaced every card, so the sizing pass that
+    // follows has to be the memory one. refreshCards looks for
+    // `.FLCDSP-CardDraw`, which this mode never builds: it matched nothing and
+    // the new cards kept the stylesheet's 2.5em, spilling over the edge.
+    it('sizes the cards it has just built', () => {
+      const i = givenStartableGame();
+
+      $eXeFlipCards.startGameMemory(i);
+
+      expect($eXeFlipCards.refreshCardsMemory).toHaveBeenCalledWith(i);
+      expect($eXeFlipCards.refreshCards).not.toHaveBeenCalled();
+    });
+  });
+
+  // The text of a card is sized by measurement, and every way that measurement
+  // can lie ends the same way: text too big for the card, clipped by the
+  // `overflow: hidden` on the box.
+  describe('fitting the text to the card', () => {
+    /**
+     * A text block standing in for `.FLCDSP-ETextDinamyc`. Neither happy-dom
+     * nor jsdom lays anything out, so the two figures the fit reads —
+     * the block's scroll width and its own height — are supplied here.
+     *
+     * @param {object} box - scrollWidth and outerHeight of the block, in px.
+     * @returns {object} Something `textOverflows` can measure.
+     */
+    function givenTextBlock({ scrollWidth = 0, outerHeight = 0 }) {
+      return { 0: { scrollWidth }, outerHeight: () => outerHeight };
+    }
+
+    describe('textOverflows', () => {
+      // The defect this replaced: the block is `width: 100%`, so outerWidth()
+      // reports the container's width no matter how far a word runs past it.
+      // "electroencefalografista" at 26px needs ~262px of a 184px card.
+      it('catches a word too long to fit, which the block width hides', () => {
+        const $text = givenTextBlock({ scrollWidth: 262, outerHeight: 30 });
+
+        expect($eXeFlipCards.textOverflows($text, 184, 134)).toBe(true);
+      });
+
+      it('catches text that has wrapped past the bottom', () => {
+        const $text = givenTextBlock({ scrollWidth: 180, outerHeight: 210 });
+
+        expect($eXeFlipCards.textOverflows($text, 184, 134)).toBe(true);
+      });
+
+      it('accepts text that fits', () => {
+        const $text = givenTextBlock({ scrollWidth: 180, outerHeight: 60 });
+
+        expect($eXeFlipCards.textOverflows($text, 184, 134)).toBe(false);
+      });
+
+      // scrollWidth is a rounded integer, so a fractional container would
+      // otherwise report a sub-pixel overflow and shrink the text for nothing.
+      it('does not read a rounded-up scroll width as overflow', () => {
+        const $text = givenTextBlock({ scrollWidth: 184, outerHeight: 60 });
+
+        expect($eXeFlipCards.textOverflows($text, 183.5, 134)).toBe(false);
+      });
+    });
+
+    describe('adjustFontSize', () => {
+      /**
+       * @param {object} card - text of the card and, when it has one, the size
+       * of its box. A box without a size stands for a hidden card.
+       * @returns {jQuery} The container to fit.
+       */
+      function givenCard({ text = 'electroencefalografista', box = '' }) {
+        document.body.innerHTML = `
+          <div class="FLCDSP-EText" style="${box}">
+            <div class="FLCDSP-ETextDinamyc">${text}</div>
+          </div>`;
+        return $('.FLCDSP-EText');
+      }
+
+      afterEach(() => {
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+      });
+
+      // The regression: a hidden card measures zero in jQuery 3, both loops of
+      // the old fit were skipped, and the text kept the 26px maximum the
+      // function had just stamped on it. Sizing nothing is the honest outcome —
+      // the stylesheet's own size still applies.
+      it('leaves a card it cannot measure alone', () => {
+        const $container = givenCard({});
+
+        expect($eXeFlipCards.adjustFontSize($container)).toBe(false);
+        expect($container.find('.FLCDSP-ETextDinamyc')[0].style.fontSize).toBe('');
+      });
+
+      it('shrinks until the text fits', () => {
+        const $container = givenCard({ box: 'width:184px;height:134px;' });
+        vi.spyOn($eXeFlipCards, 'textOverflows').mockImplementation(($text) =>
+          parseFloat($text.css('font-size')) > 18
+        );
+
+        expect($eXeFlipCards.adjustFontSize($container)).toBe(true);
+        expect($container.find('.FLCDSP-ETextDinamyc').css('font-size')).toBe('18px');
+      });
+
+      it('stops at the minimum rather than shrinking away', () => {
+        const $container = givenCard({ box: 'width:184px;height:134px;' });
+        vi.spyOn($eXeFlipCards, 'textOverflows').mockReturnValue(true);
+
+        $eXeFlipCards.adjustFontSize($container);
+
+        expect($container.find('.FLCDSP-ETextDinamyc').css('font-size')).toBe('10px');
+      });
+
+      it('has nothing to fit on a card that carries only an image', () => {
+        const $container = givenCard({ text: '   ', box: 'width:184px;height:134px;' });
+        const overflows = vi.spyOn($eXeFlipCards, 'textOverflows');
+
+        expect($eXeFlipCards.adjustFontSize($container)).toBe(false);
+        expect(overflows).not.toHaveBeenCalled();
+      });
+
+      it('reaches for the hidden card behind a zero measurement', () => {
+        const $container = givenCard({});
+        const measureVisible = vi.spyOn($eXeFlipCards, 'measureVisible');
+
+        $eXeFlipCards.adjustFontSize($container);
+
+        expect(measureVisible).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('measureVisible', () => {
+      afterEach(() => {
+        document.body.innerHTML = '';
+      });
+
+      /**
+       * @returns {jQuery} A box inside a card the mode has hidden.
+       */
+      function givenHiddenCard() {
+        document.body.innerHTML = `
+          <div class="FLCDSP-CardDraw" style="display:none">
+            <div class="FLCDSP-EText"></div>
+          </div>`;
+        return $('.FLCDSP-EText');
+      }
+
+      it('lifts the hiding on the way in and puts it back on the way out', () => {
+        const $box = givenHiddenCard();
+        const $card = $('.FLCDSP-CardDraw');
+
+        const seen = $eXeFlipCards.measureVisible($box, () =>
+          window.getComputedStyle($card[0]).display
+        );
+
+        expect(seen).not.toBe('none');
+        expect($card[0].style.display).toBe('none');
+      });
+
+      // A card hidden by the stylesheet rather than inline must not come back
+      // with an inline `display` the stylesheet never asked for.
+      it('leaves no inline display behind', () => {
+        const $box = givenHiddenCard();
+        $('.FLCDSP-CardDraw')[0].style.display = '';
+        document.head.innerHTML = '<style>.FLCDSP-CardDraw{display:none}</style>';
+
+        $eXeFlipCards.measureVisible($box, () => null);
+
+        expect($('.FLCDSP-CardDraw')[0].style.display).toBe('');
+        document.head.innerHTML = '';
+      });
+
+      it('puts the hiding back even when the measurement throws', () => {
+        const $box = givenHiddenCard();
+
+        expect(() =>
+          $eXeFlipCards.measureVisible($box, () => {
+            throw new Error('no layout');
+          })
+        ).toThrow('no layout');
+        expect($('.FLCDSP-CardDraw')[0].style.display).toBe('none');
+      });
+
+      it('measures an empty selection without touching the tree', () => {
+        expect($eXeFlipCards.measureVisible($('.nothing-here'), () => 'done')).toBe('done');
+      });
+    });
+
+    // A card can carry a formula on one face and plain text on the other. The
+    // back used to be decided by reading the front's content, which sized half
+    // of them by the wrong rule.
+    describe('fitTextBox', () => {
+      afterEach(() => {
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+      });
+
+      /**
+       * @param {string} back - content of the card's back face.
+       * @returns {object} The spies each rule was routed through.
+       */
+      function givenCardWithMathsOnTheBack(back) {
+        document.body.innerHTML = `
+          <div id="flcdsMultimedia-0">
+            <div class="FLCDSP-CardDraw">
+              <div class="FLCDSP-FlipCardFront">
+                <div class="FLCDSP-EText"><div class="FLCDSP-ETextDinamyc">Energía</div></div>
+              </div>
+              <div class="FLCDSP-FlipCardBack">
+                <div class="FLCDSP-EText"><div class="FLCDSP-ETextDinamyc">${back}</div></div>
+              </div>
+            </div>
+          </div>`;
+        $exeDevices.iDevice.gamification.math = {
+          hasLatex: (text) => /\\\(|\\\[|\\begin\{|\$\$/.test(text),
+        };
+        return {
+          measured: vi.spyOn($eXeFlipCards, 'adjustFontSize').mockReturnValue(true),
+          byCardCount: vi.spyOn($eXeFlipCards, 'setFontSizeMath').mockImplementation(() => {}),
+        };
+      }
+
+      it('sizes each face by its own content', () => {
+        const { measured, byCardCount } = givenCardWithMathsOnTheBack('\\(E=mc^2\\)');
+
+        $eXeFlipCards.setFontSize(0);
+
+        expect(measured).toHaveBeenCalledTimes(1);
+        expect(measured.mock.calls[0][0].text().trim()).toBe('Energía');
+        expect(byCardCount).toHaveBeenCalledTimes(1);
+        expect(byCardCount.mock.calls[0][0].text().trim()).toBe('\\(E=mc^2\\)');
+      });
+
+      it('measures both faces when neither holds a formula', () => {
+        const { measured, byCardCount } = givenCardWithMathsOnTheBack('Masa por c al cuadrado');
+
+        $eXeFlipCards.setFontSize(0);
+
+        expect(measured).toHaveBeenCalledTimes(2);
+        expect(byCardCount).not.toHaveBeenCalled();
+      });
     });
   });
 });

@@ -873,7 +873,11 @@ var $eXeFlipCards = {
             mOptions.msgs.mgsClickCard,
             instance
         );
-        $eXeFlipCards.refreshCards(instance);
+        // Memory, not the card modes: addCardsMemory has just replaced every
+        // card, and refreshCards looks for `.FLCDSP-CardDraw`, which this mode
+        // never builds. It matched nothing, so the new cards kept the
+        // stylesheet's 2.5em and their text spilled out of the box.
+        $eXeFlipCards.refreshCardsMemory(instance);
         mOptions.gameStarted = true;
         // After gameStarted, never before: sendScoreNew ignores a game that
         // reports as neither started nor over.
@@ -2260,40 +2264,44 @@ var $eXeFlipCards = {
         }
     },
 
+    /**
+     * Size one text box, by measurement or by card count when it holds maths.
+     *
+     * Each box decides for itself: a card can carry a formula on one face and
+     * plain text on the other, and reading the front's content to choose for
+     * the back sized half of them by the wrong rule.
+     *
+     * @param {jQuery} $text - `.FLCDSP-EText` / `.FLCDSP-ETextMemory`.
+     * @param {number} instance - Activity index.
+     */
+    fitTextBox: function ($text, instance) {
+        if ($text.length === 0) return;
+
+        const latex =
+            $text.find('mjx-container').length > 0 ||
+            $exeDevices.iDevice.gamification.math.hasLatex($text.text());
+
+        if (latex) {
+            $eXeFlipCards.setFontSizeMath($text, instance);
+        } else {
+            $eXeFlipCards.adjustFontSize($text);
+        }
+    },
+
     setFontSize: function (instance) {
         const $flcds = $('#flcdsMultimedia-' + instance).find(
             '.FLCDSP-CardDraw'
         );
         $flcds.each(function () {
-            const $card = $(this),
-                $text = $card
-                    .find('.FLCDSP-FlipCardFront')
-                    .find('.FLCDSP-EText'),
-                latex =
-                    $text.find('mjx-container').length > 0 ||
-                    $exeDevices.iDevice.gamification.math.hasLatex(
-                        $text.text()
-                    );
-
-            if (!latex) {
-                $eXeFlipCards.adjustFontSize($text);
-            } else {
-                $eXeFlipCards.setFontSizeMath($text, instance);
-            }
-
-            const $textb = $card
-                    .find('.FLCDSP-FlipCardBack')
-                    .find('.FLCDSP-EText'),
-                latexb =
-                    $textb.find('mjx-container').length > 0 ||
-                    $exeDevices.iDevice.gamification.math.hasLatex(
-                        $text.text()
-                    );
-            if (!latexb) {
-                $eXeFlipCards.adjustFontSize($textb);
-            } else {
-                $eXeFlipCards.setFontSizeMath($textb, instance);
-            }
+            const $card = $(this);
+            $eXeFlipCards.fitTextBox(
+                $card.find('.FLCDSP-FlipCardFront').find('.FLCDSP-EText'),
+                instance
+            );
+            $eXeFlipCards.fitTextBox(
+                $card.find('.FLCDSP-FlipCardBack').find('.FLCDSP-EText'),
+                instance
+            );
         });
     },
 
@@ -2302,18 +2310,10 @@ var $eXeFlipCards = {
             '.FLCDSP-CardContainerMemory'
         );
         $flcds.each(function () {
-            const $card = $(this),
-                $text = $card.find('.FLCDSP-ETextMemory'),
-                latex =
-                    $text.find('mjx-container').length > 0 ||
-                    $exeDevices.iDevice.gamification.math.hasLatex(
-                        $text.text()
-                    );
-            if (!latex) {
-                $eXeFlipCards.adjustFontSize($text);
-            } else {
-                $eXeFlipCards.setFontSizeMath($text, instance);
-            }
+            $eXeFlipCards.fitTextBox(
+                $(this).find('.FLCDSP-ETextMemory'),
+                instance
+            );
         });
     },
 
@@ -2344,7 +2344,7 @@ var $eXeFlipCards = {
                 break;
             }
         }
-        $text.css({ 'font-size': `${fontSize} px` });
+        $text.css({ 'font-size': `${fontSize}px` });
     },
 
     isFullScreen: function () {
@@ -2356,39 +2356,108 @@ var $eXeFlipCards = {
         );
     },
 
+    /**
+     * Run `measure` with every `display: none` between `$el` and the root
+     * lifted, then put them back.
+     *
+     * jQuery 3 reports zero for anything inside a hidden subtree — the swap it
+     * used to do for that was dropped in 3.0 — and every mode but the grid
+     * hides all the cards but the active one, so most boxes here are
+     * unmeasurable when the fit runs. Nothing is painted in between: the
+     * browser only repaints once the call stack unwinds, and the styles are
+     * back by then.
+     *
+     * @param {jQuery} $el - Element whose subtree has to be measurable.
+     * @param {Function} measure - Called once, with the layout available.
+     * @returns {*} Whatever `measure` returns.
+     */
+    measureVisible: function ($el, measure) {
+        const el = $el.length ? $el[0] : null;
+        if (!el) return measure();
+
+        const restore = [];
+        for (let node = el; node && node.nodeType === 1; node = node.parentElement) {
+            if (window.getComputedStyle(node).display !== 'none') continue;
+            restore.push([node, node.style.display]);
+            // Clearing the inline value first keeps the stylesheet's own
+            // display — `.FLCDSP-EText` is a centring flex box, and forcing it
+            // to `block` would measure a layout the card never renders.
+            node.style.display = '';
+            if (window.getComputedStyle(node).display === 'none') {
+                node.style.display = 'block';
+            }
+        }
+
+        try {
+            return measure();
+        } finally {
+            for (const [node, display] of restore) {
+                node.style.display = display;
+            }
+        }
+    },
+
+    /**
+     * Whether the text spills out of the box that holds it.
+     *
+     * The width comes from `scrollWidth`: the text block is `width: 100%`, so
+     * its own box can never report more than the container's and a word too
+     * long to break would go unnoticed. The height comes from the block's own
+     * box, which does grow with the wrapped lines — `scrollHeight` would not,
+     * since the block is `height: auto` and always contains itself.
+     *
+     * @param {jQuery} $text - The text block.
+     * @param {number} width - Content width of the container, in px.
+     * @param {number} height - Content height of the container, in px.
+     * @returns {boolean} True when it does not fit.
+     */
+    textOverflows: function ($text, width, height) {
+        const text = $text[0];
+        return (
+            text.scrollWidth > Math.ceil(width) ||
+            $text.outerHeight() > height
+        );
+    },
+
+    /**
+     * Shrink the text of a card until it fits its box.
+     *
+     * @param {jQuery} $container - `.FLCDSP-EText` / `.FLCDSP-ETextMemory`.
+     * @returns {boolean} True when a size was applied.
+     */
     adjustFontSize: function ($container) {
         const $text = $container.find('.FLCDSP-ETextDinamyc').eq(0),
             minFontSize = 10,
-            maxFontSize = 26,
-            widthc = $container.innerWidth(),
-            heightc = $container.innerHeight();
+            maxFontSize = 26;
 
-        let fontSize = maxFontSize;
+        if ($text.length === 0 || $text.text().trim().length === 0) return false;
 
-        $text.css('font-size', fontSize + 'px');
+        const fit = function () {
+            const width = $container.width(),
+                height = $container.height();
 
-        while (
-            ($text.outerWidth() > widthc || $text.outerHeight() > heightc) &&
-            fontSize > minFontSize
-        ) {
-            fontSize--;
-            $text.css('font-size', fontSize + 'px');
-        }
+            // A box with no layout cannot be fitted, and stamping the maximum
+            // on it regardless is how the text used to end up cut off.
+            if (!(width > 0) || !(height > 0)) return false;
 
-        while (
-            $text.outerWidth() < widthc &&
-            $text.outerHeight() < heightc &&
-            fontSize < maxFontSize
-        ) {
-            fontSize++;
+            let fontSize = maxFontSize;
             $text.css('font-size', fontSize + 'px');
 
-            if ($text.outerWidth() > widthc || $text.outerHeight() > heightc) {
+            while (
+                fontSize > minFontSize &&
+                $eXeFlipCards.textOverflows($text, width, height)
+            ) {
                 fontSize--;
                 $text.css('font-size', fontSize + 'px');
-                break;
             }
-        }
+
+            return true;
+        };
+
+        // A zero box means the card is hidden rather than empty: every mode but
+        // the grid shows one card at a time, so most of them are hidden when
+        // the fit runs. Uncover it and measure again.
+        return fit() || $eXeFlipCards.measureVisible($container, fit);
     },
 
     initCards: function (instance) {
