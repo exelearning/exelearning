@@ -300,16 +300,21 @@ var $padlock = {
                 $padlock.sendScore(false, instance);
             });
 
+        // Registering comes first: it is what resolves the node id from the
+        // DOM, and reportActivity drops any report that arrives without one.
+        // Both calls below report — the second through startGame, which shows
+        // the feedback straight away for a padlock restored as solved — so
+        // registering after them threw away the very mark being restored.
+        if (mOptions.isScorm > 0) {
+            $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
+        }
+
         if (mOptions.isScorm === 1) {
             $padlock.sendScore(true, instance);
         }
 
         if (!mOptions.candadoShowMinimize) {
             $padlock.startGame(instance);
-        }
-
-        if (mOptions.isScorm > 0) {
-            $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
 
         setTimeout(() => {
@@ -377,13 +382,15 @@ var $padlock = {
         // automatic, so without this flag a page carrying a padlock stays
         // `incomplete` in the LMS even once the learner has opened it.
         mOptions.gameOver = true;
-        // Full marks whichever of the three ways in was taken — the code was
-        // solved, the clock ran out, or an already solved padlock was reopened.
-        // A padlock is a gate, not a question: reaching the end of it is the
-        // whole of the task, and the learner is not being measured on how they
-        // got there. The local evaluation report has always recorded it this way
-        // (saveEvaluation); this makes the LMS agree with it.
-        mOptions.score = 10;
+        // The mark is left alone: 10 when the padlock was opened, 0 when the
+        // clock ran out without it — right or wrong, nothing in between.
+        //
+        // Deliberately not derived from `candadoSolved`, which means "finished"
+        // rather than "opened": the timeout path raises it too, and a restored
+        // attempt reads it back, so a padlock that once timed out would come
+        // back scoring 10. The score itself is the honest record — the solve
+        // path sets it to 10 just before calling in, and a restored attempt
+        // brings back whatever was stored.
 
         if (mOptions.isScorm > 0) {
             $padlock.sendScore(true, instance);
@@ -516,7 +523,10 @@ var $padlock = {
 
     saveEvaluation: function (instance) {
         const mOptions = $padlock.options[instance];
-        mOptions.scorerp = 10;
+        // The same mark the LMS gets: 10 for a padlock opened with the right
+        // code, 0 for one the clock closed. A hardcoded 10 here made the local
+        // report and the LMS disagree about the very same attempt.
+        mOptions.scorerp = mOptions.score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $padlock.isInExe

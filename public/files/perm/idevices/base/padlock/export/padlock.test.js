@@ -193,6 +193,33 @@ describe('padlock iDevice export', () => {
       expect($padlock.options[0].score).toBe(10);
     });
 
+    it('registers the activity before the first report goes out', () => {
+      setupRestore({
+        candadoSolved: true,
+        counter: 120,
+        candadoTime: 5,
+        candadoReboot: false,
+        candadoScore: 10,
+      });
+      // registerActivity resolves the node id from the DOM, and reportActivity
+      // drops any report that arrives without one — so a padlock restored as
+      // solved used to throw away the very mark it was restoring.
+      global.$exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn(
+        game => {
+          game.ideviceId = 'ide-padlock';
+        }
+      );
+      let idWhenReported = null;
+      $padlock.sendScore.mockImplementation(() => {
+        idWhenReported = $padlock.options[0].ideviceId;
+      });
+
+      $padlock.addEvents(0);
+
+      expect($padlock.sendScore).toHaveBeenCalled();
+      expect(idWhenReported).toBe('ide-padlock');
+    });
+
     it('restores a zero when nothing was scored', () => {
       setupRestore({
         candadoSolved: false,
@@ -271,15 +298,16 @@ describe('padlock iDevice export', () => {
       expect(flagWhenReported).toBe(true);
     });
 
-    // A padlock is a gate, not a question. Reaching the end of it is the whole
-    // of the task, so every way in reports full marks and the page passes —
-    // including the clock running out, which used to leave a 0 behind and, with
-    // it, a page the LMS called failed.
+    // 10 for a padlock opened with the right code, 0 for one the clock closed:
+    // right or wrong, nothing in between. The mark is whatever the solve path
+    // left on the instance, so showFeedback must not overwrite it — deriving it
+    // from candadoSolved would score a restored timeout as a solve, because
+    // that flag means "finished" and the timeout path raises it too.
     it.each([
-      ['the code was solved', { candadoSolved: true, counter: 90 }],
-      ['the clock ran out', { candadoSolved: false, counter: 0 }],
-    ])('reports a finished ten when %s', (_name, state) => {
-      setupPadlock(Object.assign({ isScorm: 1, score: 0 }, state));
+      ['the code was solved', { candadoSolved: true, score: 10 }, 10],
+      ['the clock ran out', { candadoSolved: false, score: 0 }, 0],
+    ])('reports its own mark when %s', (_name, state, expected) => {
+      setupPadlock(Object.assign({ isScorm: 1, counter: 0 }, state));
       const reported = [];
       global.$exeDevices.iDevice.gamification.scorm = {
         sendScoreNew: (auto, game) =>
@@ -288,7 +316,9 @@ describe('padlock iDevice export', () => {
 
       $padlock.showFeedback(0);
 
-      expect(reported).toEqual([{ auto: true, scorerp: 10, gameOver: true }]);
+      expect(reported).toEqual([
+        { auto: true, scorerp: expected, gameOver: true },
+      ]);
     });
   });
 });
