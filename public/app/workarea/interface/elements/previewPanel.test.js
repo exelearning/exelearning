@@ -27,7 +27,6 @@ function mockMessageChannel(onPostMessage) {
     }, 0);
   };
 
-  // Call onPostMessage with triggerResponse if provided
   if (onPostMessage) {
     onPostMessage(triggerResponse);
   }
@@ -49,7 +48,6 @@ describe('PreviewPanelManager', () => {
   let mockYdoc;
 
   beforeEach(() => {
-    // Mock DOM elements
     mockElements = {
       previewsidenav: document.createElement('div'),
       'preview-sidenav-overlay': document.createElement('div'),
@@ -68,8 +66,14 @@ describe('PreviewPanelManager', () => {
       workarea: document.createElement('div'),
     };
 
-    // Add nested elements for loading states; place the iframes inside the
-    // bodies so parentElement matches the real DOM (used by viewport toggling).
+    const mainExtractIcon = document.createElement('span');
+    mainExtractIcon.className = 'small-icon external-link-icon';
+    mockElements['preview-extract-button'].appendChild(mainExtractIcon);
+
+    const pinnedExtractIcon = document.createElement('span');
+    pinnedExtractIcon.className = 'small-icon external-link-icon';
+    mockElements['preview-pinned-extract-button'].appendChild(pinnedExtractIcon);
+
     const panelBody = document.createElement('div');
     panelBody.className = 'preview-panel-body';
     panelBody.appendChild(mockElements['preview-iframe']);
@@ -82,7 +86,6 @@ describe('PreviewPanelManager', () => {
 
     vi.spyOn(document, 'getElementById').mockImplementation(id => mockElements[id] || null);
 
-    // Mock Yjs
     mockYdoc = {
       on: vi.fn(),
       off: vi.fn(),
@@ -100,7 +103,6 @@ describe('PreviewPanelManager', () => {
       checkOpenIdevice: vi.fn(() => false),
     };
 
-    // Mock eXeLearning global
     window.eXeLearning = {
       app: {
         project: mockProject,
@@ -111,7 +113,6 @@ describe('PreviewPanelManager', () => {
       },
     };
 
-    // Mock SharedExporters
     window.SharedExporters = {
       generatePreview: vi.fn().mockResolvedValue({
         success: true,
@@ -119,16 +120,13 @@ describe('PreviewPanelManager', () => {
       }),
     };
 
-    // Mock ResourceFetcher
     window.ResourceFetcher = vi.fn().mockImplementation(function() {
       return {};
     });
 
-    // Mock URL methods
     global.URL.createObjectURL = vi.fn(() => 'blob:test-url');
     global.URL.revokeObjectURL = vi.fn();
 
-    // Mock i18n function
     globalThis._ = vi.fn((key) => key);
 
     manager = new PreviewPanelManager();
@@ -309,7 +307,6 @@ describe('PreviewPanelManager', () => {
         const checkRecoverSpy = vi.spyOn(manager, '_checkAndRecoverPreview').mockResolvedValue();
         manager._setupVisibilityHandler();
 
-        // Simulate tab becoming visible
         Object.defineProperty(document, 'visibilityState', {
           value: 'visible',
           writable: true,
@@ -406,13 +403,12 @@ describe('PreviewPanelManager', () => {
       it('should return false on timeout', async () => {
         vi.useFakeTimers();
         const mockSW = {
-          postMessage: vi.fn(), // Never calls callback
+          postMessage: vi.fn(),
         };
         window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(mockSW);
 
         const resultPromise = manager._checkServiceWorkerContent();
 
-        // Exceed the static timeout constant
         vi.advanceTimersByTime(PreviewPanelManager.SW_STATUS_TIMEOUT + 100);
 
         const result = await resultPromise;
@@ -444,7 +440,7 @@ describe('PreviewPanelManager', () => {
         });
         window.dispatchEvent(event);
 
-        vi.advanceTimersByTime(150); // Debounce timeout
+        vi.advanceTimersByTime(150);
 
         expect(refreshSpy).toHaveBeenCalled();
         vi.useRealTimers();
@@ -474,7 +470,6 @@ describe('PreviewPanelManager', () => {
         manager.isPinned = true;
         const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
 
-        // Send multiple messages rapidly
         for (let i = 0; i < 5; i++) {
           const event = new MessageEvent('message', {
             data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
@@ -484,7 +479,6 @@ describe('PreviewPanelManager', () => {
 
         vi.advanceTimersByTime(150);
 
-        // Should only refresh once due to debouncing
         expect(refreshSpy).toHaveBeenCalledTimes(1);
         vi.useRealTimers();
       });
@@ -543,10 +537,8 @@ describe('PreviewPanelManager', () => {
 
         manager._setupBroadcastChannelListener();
 
-        // Simulate receiving PREVIEW_CONTENT_LOST
         onMessageHandler({ data: { type: 'PREVIEW_CONTENT_LOST' } });
 
-        // Wait for async call
         await vi.waitFor(() => {
           expect(swRefreshSpy).toHaveBeenCalled();
         });
@@ -599,7 +591,6 @@ describe('PreviewPanelManager', () => {
 
         manager._setupServiceWorkerListener();
 
-        // Simulate SW CONTENT_NEEDED
         capturedHandler({ data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' } });
         vi.advanceTimersByTime(150);
 
@@ -655,7 +646,6 @@ describe('PreviewPanelManager', () => {
 
         manager._setupPopupMonitor();
 
-        // Simulate popup closing
         popup.closed = true;
         vi.advanceTimersByTime(2500);
 
@@ -692,6 +682,7 @@ describe('PreviewPanelManager', () => {
   describe('open/close', () => {
     it('should open the panel and refresh content', async () => {
       const refreshSpy = vi.spyOn(manager, 'refresh').mockImplementation(() => Promise.resolve());
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
       await manager.open();
 
       expect(manager.isOpen).toBe(true);
@@ -719,6 +710,7 @@ describe('PreviewPanelManager', () => {
   describe('pin/unpin', () => {
     it('should pin the preview to layout', async () => {
       const refreshSpy = vi.spyOn(manager, 'refresh').mockImplementation(() => Promise.resolve());
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
       await manager.pin();
 
       expect(manager.isPinned).toBe(true);
@@ -748,7 +740,6 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should use SW-based preview when available', async () => {
-      // Mock SW availability and refresh method
       vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
       const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
 
@@ -769,12 +760,9 @@ describe('PreviewPanelManager', () => {
     });
   });
 
-  // NOTE: generatePreviewHtml tests removed - method replaced by SW-based preview
-
   describe('extractToNewTab', () => {
     it('should open viewer URL in new tab when SW is available', async () => {
-      // Mock SW availability
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager._swAvailable = true;
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
@@ -789,7 +777,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should store popup window reference and start monitor', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager._swAvailable = true;
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockPopup = { closed: false };
@@ -803,7 +791,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should not store popup reference when popup is blocked', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager._swAvailable = true;
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
       global.open = vi.fn(() => null);
 
@@ -821,7 +809,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should fallback to link click if popup is blocked', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager._swAvailable = true;
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
       global.open = vi.fn(() => null);
 
@@ -838,27 +826,66 @@ describe('PreviewPanelManager', () => {
       expect(mockClick).toHaveBeenCalled();
     });
 
-    it('should not open tab if SW is not available', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(false);
+    it('should toggle fullscreen when SW is not available', async () => {
+      manager._swAvailable = false;
 
       const mockOpen = vi.fn();
       global.open = mockOpen;
 
       await manager.extractToNewTab();
 
-      // Should not open a new tab when SW is not available
       expect(mockOpen).not.toHaveBeenCalled();
+      expect(manager.isFullscreen).toBe(true);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(true);
+    });
+
+    it('should unpin and open fullscreen when pinned and SW not available', async () => {
+      manager._swAvailable = false;
+      manager.isPinned = true;
+      manager.unpin = vi.fn(() => { manager.isPinned = false; });
+      manager.toggleFullscreen = vi.fn(() => { manager.isFullscreen = true; });
+
+      await manager.extractToNewTab();
+
+      expect(manager._wasPinnedBeforeFullscreen).toBe(true);
+      expect(manager.unpin).toHaveBeenCalled();
+      expect(manager.toggleFullscreen).toHaveBeenCalled();
+    });
+
+    it('should exit fullscreen and restore pinned when SW not available', async () => {
+      manager._swAvailable = false;
+      manager.isFullscreen = true;
+      manager._wasPinnedBeforeFullscreen = true;
+      manager.toggleFullscreen = vi.fn(() => { manager.isFullscreen = false; });
+      manager.pin = vi.fn().mockResolvedValue();
+
+      await manager.extractToNewTab();
+
+      expect(manager.toggleFullscreen).toHaveBeenCalled();
+      expect(manager.pin).toHaveBeenCalled();
+      expect(manager._wasPinnedBeforeFullscreen).toBe(false);
+    });
+
+    it('should exit fullscreen without restoring pinned when was not pinned before', async () => {
+      manager._swAvailable = false;
+      manager.isFullscreen = true;
+      manager._wasPinnedBeforeFullscreen = false;
+      manager.toggleFullscreen = vi.fn(() => { manager.isFullscreen = false; });
+      manager.pin = vi.fn().mockResolvedValue();
+
+      await manager.extractToNewTab();
+
+      expect(manager.toggleFullscreen).toHaveBeenCalled();
+      expect(manager.pin).not.toHaveBeenCalled();
     });
 
     it('should derive basePath from pathname for subdirectory deployments', async () => {
-      // Mock SW availability
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager._swAvailable = true;
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
       global.open = mockOpen;
 
-      // Mock pathname for subdirectory deployment
       const originalLocation = window.location;
       delete window.location;
       window.location = {
@@ -869,18 +896,16 @@ describe('PreviewPanelManager', () => {
 
       await manager.extractToNewTab();
 
-      // Should derive base path from pathname and construct correct URL
       expect(mockOpen).toHaveBeenCalledWith(
         'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
         '_blank'
       );
 
-      // Restore location
       window.location = originalLocation;
     });
 
     it('should handle workarea.html pathname correctly', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager._swAvailable = true;
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
@@ -905,7 +930,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should handle root workarea path correctly', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager._swAvailable = true;
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
@@ -930,7 +955,7 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should handle pathname with trailing slash correctly', async () => {
-      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager._swAvailable = true;
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
@@ -946,7 +971,6 @@ describe('PreviewPanelManager', () => {
 
       await manager.extractToNewTab();
 
-      // Should NOT produce double slashes
       expect(mockOpen).toHaveBeenCalledWith(
         'https://example.com/pr-preview/pr-20/viewer/index.html?exe-teacher=1',
         '_blank'
@@ -956,22 +980,12 @@ describe('PreviewPanelManager', () => {
     });
   });
 
-  // NOTE: generateStandalonePreviewHtml tests removed - method no longer needed with SW approach
-
   describe('utility methods', () => {
     it('should escape HTML', () => {
       const escaped = manager.escapeHtml('<script>alert(1)</script>');
       expect(escaped).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
     });
   });
-
-  // NOTE: The following test sections have been removed as part of Phase 4 cleanup:
-  // - resolveHtmlIframeAssets (method removed - SW serves content via HTTP)
-  // - injectPdfBlobUrlConverter (method removed - SW eliminates blob:// context issues)
-  // - postMessage handling for PDF blobs (handlers removed)
-  // - injectHtmlLinkHandler (method removed - SW serves content via HTTP)
-  // - postMessage handling for HTML link resolution (handlers removed)
-  // - resolveHtmlIframeAssetsForStandalone (method removed - SW approach doesn't need it)
 
   describe('auto-refresh', () => {
     it('should schedule refresh on structure change', () => {
@@ -1010,7 +1024,6 @@ describe('PreviewPanelManager', () => {
       const unsubscribeSpy = vi.fn();
       manager._unsubscribeStructure = unsubscribeSpy;
 
-      // Setup blobUrl to test revocation
       mockElements['preview-iframe']._blobUrl = 'blob:test-1';
       mockElements['preview-pinned-iframe']._blobUrl = 'blob:test-2';
 
@@ -1082,24 +1095,27 @@ describe('PreviewPanelManager', () => {
     });
   });
 
-  // NOTE: Tests for blobToDataUrl and processUserThemeCssUrls have been removed
-  // as part of Phase 4 cleanup. These methods were used for the legacy blob URL
-  // approach and are no longer needed with the Service Worker-based preview.
-
   describe('resetToDefaultState', () => {
     it('should close preview and clear pinned state', () => {
       manager.isOpen = true;
       manager.isPinned = true;
+      manager.isFullscreen = true;
+      manager._wasPinnedBeforeFullscreen = true;
       mockElements.previewsidenav.classList.add('active');
       mockElements['preview-sidenav-overlay'].classList.add('active');
+      mockElements.previewsidenav.classList.add('preview-fullscreen');
 
       manager.resetToDefaultState();
 
       expect(manager.isOpen).toBe(false);
       expect(manager.isPinned).toBe(false);
+      expect(manager.isFullscreen).toBe(false);
+      expect(manager._wasPinnedBeforeFullscreen).toBe(false);
       expect(mockElements.previewsidenav.classList.contains('active')).toBe(false);
       expect(mockElements['preview-sidenav-overlay'].classList.contains('active')).toBe(false);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(false);
       expect(mockElements.workarea.getAttribute('data-preview-pinned')).toBe('false');
+      expect(mockElements.workarea.getAttribute('data-preview-fullscreen')).toBe('false');
     });
 
     it('should clear popup tracking state', () => {
@@ -1141,7 +1157,6 @@ describe('PreviewPanelManager', () => {
 
       vi.advanceTimersByTime(500);
 
-      // Should only call refresh once due to debouncing
       expect(refreshSpy).toHaveBeenCalledTimes(1);
       vi.useRealTimers();
     });
@@ -1164,6 +1179,94 @@ describe('PreviewPanelManager', () => {
       await manager.toggle();
 
       expect(closeSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('_updateExtractButton', () => {
+    it('should set enlarge text and icon when SW not available', () => {
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+
+      manager._updateExtractButton();
+
+      expect(manager._swAvailable).toBe(false);
+      expect(mockElements['preview-extract-button'].title).toBe('Enlarge preview');
+      expect(mockElements['preview-extract-button'].getAttribute('aria-label')).toBe('Enlarge preview');
+      expect(mockElements['preview-pinned-extract-button'].title).toBe('Enlarge preview');
+      expect(mockElements['preview-pinned-extract-button'].getAttribute('aria-label')).toBe('Enlarge preview');
+
+      const icon = mockElements['preview-extract-button'].querySelector('.small-icon');
+      expect(icon).not.toBeNull();
+      expect(icon.classList.contains('enlarge-icon')).toBe(true);
+      expect(icon.classList.contains('external-link-icon')).toBe(false);
+    });
+
+    it('should restore open in new tab text and icon when SW available', () => {
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+
+      manager._updateExtractButton();
+
+      expect(manager._swAvailable).toBe(true);
+      expect(mockElements['preview-extract-button'].title).toBe('Open in new tab');
+      expect(mockElements['preview-extract-button'].getAttribute('aria-label')).toBe('Open preview in new tab');
+      expect(mockElements['preview-pinned-extract-button'].title).toBe('Open in new tab');
+      expect(mockElements['preview-pinned-extract-button'].getAttribute('aria-label')).toBe('Open preview in new tab');
+
+      const icon = mockElements['preview-extract-button'].querySelector('.small-icon');
+      expect(icon).not.toBeNull();
+      expect(icon.classList.contains('external-link-icon')).toBe(true);
+      expect(icon.classList.contains('enlarge-icon')).toBe(false);
+    });
+
+    it('should keep enlarge icon but change text when fullscreen', () => {
+      manager.isFullscreen = true;
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+
+      manager._updateExtractButton();
+
+      expect(mockElements['preview-extract-button'].title).toBe('Restore preview size');
+      expect(mockElements['preview-extract-button'].getAttribute('aria-label')).toBe('Restore preview size');
+
+      const icon = mockElements['preview-extract-button'].querySelector('.small-icon');
+      expect(icon).not.toBeNull();
+      expect(icon.classList.contains('enlarge-icon')).toBe(true);
+      expect(icon.classList.contains('external-link-icon')).toBe(false);
+    });
+
+    it('should update both extract buttons', () => {
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+
+      manager._updateExtractButton();
+
+      const mainIcon = mockElements['preview-extract-button'].querySelector('.small-icon');
+      const pinnedIcon = mockElements['preview-pinned-extract-button'].querySelector('.small-icon');
+
+      expect(mainIcon.classList.contains('enlarge-icon')).toBe(true);
+      expect(pinnedIcon.classList.contains('enlarge-icon')).toBe(true);
+    });
+  });
+
+  describe('toggleFullscreen', () => {
+    it('should add preview-fullscreen class and set isFullscreen', () => {
+      manager.toggleFullscreen();
+
+      expect(manager.isFullscreen).toBe(true);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(true);
+      expect(mockElements.workarea.getAttribute('data-preview-fullscreen')).toBe('true');
+      expect(mockElements['preview-extract-button'].getAttribute('aria-pressed')).toBe('true');
+      expect(mockElements['preview-pinned-extract-button'].getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('should remove preview-fullscreen class and reset isFullscreen', () => {
+      manager.isFullscreen = true;
+      mockElements.previewsidenav.classList.add('preview-fullscreen');
+
+      manager.toggleFullscreen();
+
+      expect(manager.isFullscreen).toBe(false);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(false);
+      expect(mockElements.workarea.getAttribute('data-preview-fullscreen')).toBe('false');
+      expect(mockElements['preview-extract-button'].getAttribute('aria-pressed')).toBe('false');
+      expect(mockElements['preview-pinned-extract-button'].getAttribute('aria-pressed')).toBe('false');
     });
   });
 
@@ -1237,7 +1340,6 @@ describe('PreviewPanelManager', () => {
         writable: true,
         configurable: true,
       });
-      // Mock getPreviewServiceWorker to return null (no SW available)
       window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(null);
 
       expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
@@ -1249,7 +1351,6 @@ describe('PreviewPanelManager', () => {
         writable: true,
         configurable: true,
       });
-      // Mock getPreviewServiceWorker to return registration.active (fallback for BASE_PATH)
       window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({ state: 'activated' });
       window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
       window.SharedExporters.generatePreviewForSW = vi.fn();
@@ -1288,7 +1389,6 @@ describe('PreviewPanelManager', () => {
         writable: true,
         configurable: true,
       });
-      // Mock getPreviewServiceWorker to return a truthy value (used by isServiceWorkerPreviewAvailable)
       window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({});
       window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
       window.SharedExporters.generatePreviewForSW = vi.fn();
@@ -1320,9 +1420,7 @@ describe('PreviewPanelManager', () => {
 
       manager.loadPreviewFromServiceWorker();
 
-      // happy-dom normalizes URLs, so check for the path
       expect(mockElements['preview-iframe'].src).toContain('/myapp/viewer/index.html');
-      // The authoring preview reveals Teacher Mode content by default.
       expect(mockElements['preview-iframe'].src).toContain('exe-teacher=1');
     });
 
@@ -1333,10 +1431,8 @@ describe('PreviewPanelManager', () => {
 
       manager.loadPreviewFromServiceWorker();
 
-      // First set to about:blank
       expect(mockElements['preview-iframe'].src).toContain('about:blank');
 
-      // After timeout, set to viewer URL
       vi.advanceTimersByTime(60);
       expect(mockElements['preview-iframe'].src).toContain('/viewer/index.html');
 
@@ -1344,7 +1440,6 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should not throw when no iframe available', () => {
-      // Create manager with no iframe
       vi.spyOn(document, 'getElementById').mockImplementation(id => {
         if (id === 'preview-iframe' || id === 'preview-pinned-iframe') return null;
         return mockElements[id] || null;
@@ -1352,7 +1447,6 @@ describe('PreviewPanelManager', () => {
 
       const newManager = new PreviewPanelManager();
 
-      // Should not throw - just silently return
       expect(() => newManager.loadPreviewFromServiceWorker()).not.toThrow();
     });
   });
@@ -1390,7 +1484,6 @@ describe('PreviewPanelManager', () => {
 
       const newManager = new PreviewPanelManager();
 
-      // Should not throw - just silently return
       expect(() => newManager.injectHtmlToIframe('<html></html>')).not.toThrow();
     });
   });
@@ -1498,7 +1591,6 @@ describe('PreviewPanelManager', () => {
       const html = '<html><body></body></html>';
       const result = manager._injectBlobNavigationHandler(html, 'index.html');
 
-      // Uses extension matching instead of hardcoded regex
       expect(result).toContain('extMatch');
       expect(result).toContain('html?');
       expect(result).toContain('exe-blob-open-document');
@@ -1774,7 +1866,6 @@ describe('PreviewPanelManager', () => {
 
   describe('refreshWithServiceWorker', () => {
     beforeEach(() => {
-      // Setup complete mock environment
       window.eXeLearning.app.themes = { selected: { id: 'base' } };
       window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockResolvedValue();
       window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
@@ -1828,7 +1919,6 @@ describe('PreviewPanelManager', () => {
 
       await manager.refreshWithServiceWorker();
 
-      // Verify the last argument contains the theme
       expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
       const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
       expect(lastCall[4]).toEqual({ theme: 'custom-theme' });
@@ -1840,7 +1930,6 @@ describe('PreviewPanelManager', () => {
 
       await manager.refreshWithServiceWorker();
 
-      // Verify the last argument contains the theme
       const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
       expect(lastCall[4]).toEqual({ theme: 'theme-name' });
     });
@@ -1984,9 +2073,8 @@ describe('PreviewPanelManager', () => {
       manager.isOpen = true;
 
       const updateCallback = mockYdoc.on.mock.calls.find(call => call[0] === 'update')[1];
-      updateCallback(new Uint8Array(), 'system'); // System origin
+      updateCallback(new Uint8Array(), 'system');
 
-      // No refresh should be scheduled
       expect(manager.refreshDebounceTimer).toBeNull();
       vi.useRealTimers();
     });
@@ -1997,7 +2085,7 @@ describe('PreviewPanelManager', () => {
       manager.isOpen = true;
 
       const updateCallback = mockYdoc.on.mock.calls.find(call => call[0] === 'update')[1];
-      updateCallback(new Uint8Array(), 'initial'); // Initial origin
+      updateCallback(new Uint8Array(), 'initial');
 
       expect(manager.refreshDebounceTimer).toBeNull();
       vi.useRealTimers();
@@ -2023,7 +2111,26 @@ describe('PreviewPanelManager', () => {
 
       manager.close();
 
-      expect(manager.isOpen).toBe(true); // Still open because pinned
+      expect(manager.isOpen).toBe(true);
+    });
+
+    it('should remove fullscreen class and reset state', () => {
+      manager.isOpen = true;
+      manager.isFullscreen = true;
+      manager._wasPinnedBeforeFullscreen = true;
+      mockElements.previewsidenav.classList.add('preview-fullscreen');
+      mockElements['preview-extract-button'].setAttribute('aria-pressed', 'true');
+      mockElements['preview-pinned-extract-button'].setAttribute('aria-pressed', 'true');
+
+      manager.close();
+
+      expect(manager.isFullscreen).toBe(false);
+      expect(manager._wasPinnedBeforeFullscreen).toBe(false);
+      expect(mockElements.previewsidenav.classList.contains('preview-fullscreen')).toBe(false);
+      expect(mockElements.workarea.getAttribute('data-preview-fullscreen')).toBe('false');
+      expect(manager.isOpen).toBe(false);
+      expect(mockElements['preview-extract-button'].getAttribute('aria-pressed')).toBe('false');
+      expect(mockElements['preview-pinned-extract-button'].getAttribute('aria-pressed')).toBe('false');
     });
   });
 
@@ -2043,14 +2150,12 @@ describe('PreviewPanelManager', () => {
       manager.bindEvents();
       const closeSpy = vi.spyOn(manager, 'close');
 
-      // Test Enter key
       const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
       mockElements.previewsidenavclose.dispatchEvent(enterEvent);
       expect(closeSpy).toHaveBeenCalled();
 
       closeSpy.mockClear();
 
-      // Test Space key
       const spaceEvent = new KeyboardEvent('keydown', { key: ' ' });
       mockElements.previewsidenavclose.dispatchEvent(spaceEvent);
       expect(closeSpy).toHaveBeenCalled();
@@ -2077,7 +2182,6 @@ describe('PreviewPanelManager', () => {
       window.eXeLearning.app.project.exportToElpxViaYjs = undefined;
       const previewSource = mockElements['preview-iframe'].contentWindow;
 
-      // Mock alert
       const originalAlert = window.alert;
       window.alert = vi.fn();
 
@@ -2140,31 +2244,25 @@ describe('PreviewPanelManager', () => {
       window.dispatchEvent(event);
 
       await new Promise(resolve => setTimeout(resolve, 10));
-      // PDF.js viewer creates two blob URLs: one for PDF blob, one for viewer HTML
       expect(global.URL.createObjectURL).toHaveBeenCalledTimes(2);
-      // First call: PDF blob
       const firstCallArg = global.URL.createObjectURL.mock.calls[0][0];
       expect(firstCallArg).toBeInstanceOf(Blob);
       expect(firstCallArg.type).toBe('application/pdf');
-      // Second call: PDF.js viewer HTML blob
       const secondCallArg = global.URL.createObjectURL.mock.calls[1][0];
       expect(secondCallArg).toBeInstanceOf(Blob);
       expect(secondCallArg.type).toBe('text/html');
-      // Verify viewer HTML contains PDF.js import (not iframe)
       const viewerHtml = await secondCallArg.text();
       expect(viewerHtml).toContain('libs/pdfjs/pdf.min.js');
       expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.js');
       expect(viewerHtml).toContain('getDocument(');
       expect(viewerHtml).toContain('createElement("canvas")');
       expect(viewerHtml).not.toContain('<iframe');
-      // Verify toolbar elements
       expect(viewerHtml).toContain('id="tb"');
       expect(viewerHtml).toContain('id="prev"');
       expect(viewerHtml).toContain('id="next"');
       expect(viewerHtml).toContain('id="dl"');
       expect(viewerHtml).toContain('async function render(s)');
       expect(viewerHtml).toContain('pdf.getData()');
-      // Opens the wrapper URL (last blob URL created)
       expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
     });
 
@@ -2183,7 +2281,6 @@ describe('PreviewPanelManager', () => {
       window.dispatchEvent(event);
 
       await new Promise(resolve => setTimeout(resolve, 10));
-      // Non-PDF files use a single blob URL directly (no wrapper)
       expect(global.URL.createObjectURL).toHaveBeenCalledTimes(1);
       const callArg = global.URL.createObjectURL.mock.calls[0][0];
       expect(callArg).toBeInstanceOf(Blob);
@@ -2210,7 +2307,6 @@ describe('PreviewPanelManager', () => {
     });
 
     it('should not open when file is not found', async () => {
-      // Clear any previous calls from accumulated listeners
       mockOpen.mockClear();
 
       const previewSource = mockElements['preview-iframe'].contentWindow;
@@ -2231,11 +2327,8 @@ describe('PreviewPanelManager', () => {
     it('should not process document open when _blobUrlFiles is null', () => {
       manager._blobUrlFiles = null;
 
-      // Verify the guard condition directly: _findFileContent should not be called
       const findSpy = vi.spyOn(manager, '_findFileContent');
 
-      // Simulate what the message handler does by calling it with null files
-      // The guard `this._blobUrlFiles` prevents processing
       expect(manager._blobUrlFiles).toBeNull();
       expect(findSpy).not.toHaveBeenCalled();
     });
