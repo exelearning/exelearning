@@ -336,7 +336,7 @@ body#tinymce {
 }
 
 .exe-content .box-head .box-icon {
-    color: var(--exe-icon-color, #d40055);
+    color: var(--exe-icon-color);
 }
 
 .exe-content .box-head .exe-icon {

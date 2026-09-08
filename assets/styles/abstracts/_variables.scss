@@ -108,6 +108,8 @@
     --main-background: #f7f7f7;
     --border-buttons: #d8dae5;
     --icon-primary: #6E9F41;
+    /* Icon picker fallback when the style declares no tint. */
+    --modal-icon-default: var(--text);
     --node-menu-background: #252525;
     --text-black: #333;
     --menu-idevices-bg: #f4f4f5;

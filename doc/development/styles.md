@@ -171,8 +171,10 @@ the editor — that sizes the span to 40×40 and applies the mask. It loads befo
 ### Matching them to your own artwork
 
 Set `--exe-icon-color` so General icons take the same colour as your Style icons.
-Without it the tint falls back to the computed text colour of the block header, which
-may not match your artwork at all:
+Without it the two surfaces diverge, and neither is likely to match your artwork: in the
+content the glyphs inherit whatever colour the block header text happens to have, and in
+the icon picker they fall back to a neutral grey (see *Which colour the icon picker
+actually uses*, below):
 
 ```css
 .exe-content {
@@ -180,7 +182,7 @@ may not match your artwork at all:
 }
 
 .exe-content .box-head .box-icon {
-    color: var(--exe-icon-color, #d86e41);
+    color: var(--exe-icon-color);
 }
 ```
 
@@ -242,28 +244,66 @@ leave the element at `0.9 × 1.2`. If your style already uses `scale`, account f
 
 ### Which colour the icon picker actually uses
 
-The picker resolves the accent itself, in JavaScript (`getCurrentThemeIconColor()` in
-`public/app/workarea/project/idevices/content/blockNode.js`). It reads the block header, the
-block title and the icon element in turn, and takes the first value it finds:
+**No style is named anywhere in the application.** There is no table of per-style colours
+in the core: the picker tint comes from CSS your style declares, and a style you write
+yourself is read exactly like the seven that ship with eXeLearning. Whatever the bundled
+styles achieve, yours can achieve with the same declarations — and nothing you leave out
+is filled in for you by name.
+
+The picker resolves the accent in JavaScript (`getCurrentThemeIconColor()` in
+`public/app/workarea/project/idevices/content/blockNode.js`). It reads the block header —
+both variables are custom properties, so declaring them once on `.exe-content` is enough —
+and takes the first value it finds:
 
 ```
---exe-icon-picker-color  →  --exe-icon-color  →  --icon-primary  →  computed color
-                         →  THEME_ICON_COLOR_MAP[themeId]  →  #6E9F41
+--exe-icon-picker-color  →  --exe-icon-color
 ```
 
-`THEME_ICON_COLOR_MAP` is a small table in the same file holding one tint per included
-theme (`base`, `flux`, `nova`, `neo`, `zen`, `universal`, `educablue`), each sampled from
-that theme's own Style icon artwork so the two icon groups match in the picker. **The
-included themes reach the table, not the green** — which is why the green is hard to see
-in practice, and why a custom theme behaves differently from every theme shipped with the
-application.
+`currentColor` works here too: the resolver turns it into the block header's own text
+colour before handing it to the picker, which sits outside `.exe-content` and would
+otherwise read the keyword against the modal's near-black text.
 
-⚠️ **The last step is the application's own green, and only a theme outside the table can
-reach it.** A style that declares none of the three variables, leaves the header with no
-explicit colour, and is not one of the seven listed above gets `#6E9F41` in the picker,
-whatever its palette is. It is not a missing value, it is an inherited one — so declare
+Those two are the whole resolver, and both are yours. `--icon-primary` is not an input:
+it is the application chrome's own accent (the top menu, the node tree), and overriding it
+on `.exe-content` does not reach the picker.
+
+When your style declares neither variable, the picker is left untouched and its own
+stylesheet decides. What follows the tint is the chip ink, the chip border on the selected
+and hovered states, and the custom-icon button — the rules in
+`assets/styles/components/_modals.scss` that read
+`var(--modal-icon-color, var(--modal-icon-default))`, with
+`--modal-icon-default: var(--text)` declared on `:root` in
+`assets/styles/abstracts/_variables.scss`.
+
+⚠️ **Not everything in the picker follows your tint.** The section headings
+(`.icon-options-section-title`) use `--icon-gray`, and the chip background and border use
+`--main-background-color` and `--gray-border-light`. Setting `--exe-icon-color` recolours
+the glyphs and the selection, not the whole dialog.
+
+⚠️ **A style that declares neither `--exe-icon-picker-color` nor `--exe-icon-color` gets
+a neutral grey**, whatever its own palette is. That grey is deliberate — it says "no tint
+was chosen" instead of showing a colour you did not pick — but it will still sit next to
+your Style icons in the same picker: pink artwork beside grey glyphs. Declare
 `--exe-icon-color`, and sample it from your `icons/` artwork rather than guessing from the
 palette; the two are often not the same colour.
+
+### Checklist: owning your block icons from CSS alone
+
+Everything below lives in your `style.css`. Nothing needs a change in the application.
+
+| Goal | Declare |
+|---|---|
+| General icons match your Style artwork | `--exe-icon-color` on `.exe-content` |
+| Block header needs a light icon on a coloured band | keep `--exe-icon-color` light, add `--exe-icon-picker-color` with a tint readable on the picker's light chips |
+| Paint the header icon itself | `.exe-content .box-head .box-icon { color: var(--exe-icon-color); }` |
+| Recolour your **Style** `<img>` artwork inside the picker | a `filter` chain on `.modal #change-block-icon-modal-content .option-block-icon.exe-icon img` — never on the chip, and never on the General icons |
+| Resize the icons in exports | `.exe-content .box-icon img` and `.exe-content .box-icon .exe-material-icon` |
+| Resize them in the editor | the same pair under `#node-content-container.exe-content .box-head .exe-icon …` |
+| Multi-hued Style artwork that no single tint can match | pick one tint and declare it anyway — `neo` and `universal` do exactly this; changing your mind later is a one-line edit in your own stylesheet |
+
+The one thing CSS cannot do for you is tint an `<img>` without a filter, which is why the
+Style/General split exists at all. Everything else about the presentation of both groups —
+colour, size, scale, dark mode, picker appearance — is yours.
 
 ### The editor is a second surface, with a stronger selector
 

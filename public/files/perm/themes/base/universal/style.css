@@ -256,7 +256,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 .exe-content .box-icon {
     float: left;
     margin-right: 10px;
-    color: var(--exe-icon-color, #0d2953);
+    color: var(--exe-icon-color);
 }
 .exe-content .box-head.no-icon {
     padding-left: 20px;
