@@ -283,6 +283,76 @@ describe('quick-questions-multiple-choice export', () => {
             vi.useRealTimers();
         });
 
+        // In itinerary mode the next question is whatever the answered one
+        // points at, so the index of the active question decides nothing: a
+        // learner can finish on the second question of four, or still be
+        // playing on the last.
+        it('finishes where the itinerary says, not on the last index', () => {
+            vi.useFakeTimers();
+            setupAnswer({
+                order: 2,
+                activeQuestion: 1,
+                numberQuestions: 4,
+                selectsGame: [
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -2, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                ],
+            });
+            vi.spyOn(idevice(), 'updateScoreThree').mockImplementation(() => {});
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('keeps playing on the last index when the itinerary jumps back', () => {
+            vi.useFakeTimers();
+            setupAnswer({
+                order: 2,
+                activeQuestion: 3,
+                numberQuestions: 4,
+                selectsGame: [
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: 0, error: 0 },
+                ],
+            });
+            vi.spyOn(idevice(), 'updateScoreThree').mockImplementation(() => {});
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(false);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // Running out of lives ends the attempt in every mode. newQuestion
+        // checks it before anything else, and the score update has already
+        // spent this answer's life by the time the flag is decided.
+        it('finishes when the last life is gone, whatever question it was', () => {
+            vi.useFakeTimers();
+            setupAnswer({
+                activeQuestion: 0,
+                numberQuestions: 4,
+                useLives: true,
+                livesLeft: 0,
+            });
+
+            idevice().answerQuestionBoard(false, 0);
+
+            expect(idevice().options[0].gameOver).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
         // showQuestion applies the same lock; the new path must not bypass it
         // and score a non-repeatable activity twice.
         // No "score only once" lock any more: every report goes out. The one
