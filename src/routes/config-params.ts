@@ -349,7 +349,21 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
             },
             pp_addMathJax: {
                 title: `${TRANS_PREFIX}Include MathJax (advanced features)`,
-                help: `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.`,
+                /*
+                 * The help text used to quote a size and name the features. Both aged
+                 * badly: the directory has been 8 MB, 2.4 MB and 6.8 MB inside a single
+                 * release cycle, and "accessibility tools" was false for the seven
+                 * months issue #2259 covers. A translated string is expensive to change
+                 * — the English text is the XLF key, so every edit orphans ten locales —
+                 * so this one deliberately carries no figure and no feature list.
+                 *
+                 * The retired text stays here on purpose: `make translations-cleanup`
+                 * drops any trans-unit whose key is not found in the sources, and the
+                 * extractor is a plain text scan, so leaving it in a comment keeps the
+                 * ten existing translations parked instead of deleted.
+                 *   `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.`
+                 */
+                help: `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.`,
                 value: 'false',
                 type: 'checkbox',
                 category: 'properties',

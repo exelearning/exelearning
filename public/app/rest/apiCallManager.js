@@ -52,9 +52,29 @@ export default class ApiCallManager {
             return;
         }
 
-        // Priority 2: fetch bundle.json (for dev)
-        // In static mode, bundle.json is always relative to the current HTML file
+        // Priority 2: fetch bundle.json.zst (the static build ships the bundle
+        // zstd-compressed; window.fzstd is loaded by the static index — same
+        // pattern as the LOMLOE/DigCompEdu datasets)
+        // In static mode, the bundle is always relative to the current HTML file.
         // Don't use basePath here as it may include subdirectory paths that cause double-path issues
+        if (window.fzstd) {
+            try {
+                const zstUrl = './data/bundle.json.zst';
+                console.log(`[ApiCallManager] Fetching static data from ${zstUrl}`);
+                const response = await fetch(zstUrl);
+                if (response.ok) {
+                    const compressed = new Uint8Array(await response.arrayBuffer());
+                    const json = new TextDecoder().decode(window.fzstd.decompress(compressed));
+                    this.staticData = JSON.parse(json);
+                    console.log('[ApiCallManager] Loaded static data from bundle.json.zst');
+                    return;
+                }
+            } catch (e) {
+                console.warn('[ApiCallManager] Error loading compressed static bundle:', e);
+            }
+        }
+
+        // Priority 3: fetch plain bundle.json (dev fallback / older mirrors)
         try {
             const bundleUrl = './data/bundle.json';
             console.log(`[ApiCallManager] Fetching static data from ${bundleUrl}`);

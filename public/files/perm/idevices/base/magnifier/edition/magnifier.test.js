@@ -76,3 +76,27 @@ describe('magnifier iDevice', () => {
     });
   });
 });
+
+describe('default image edition/export dedup', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const editionDir = __dirname;
+  const exportDir = path.join(editionDir, '..', 'export');
+
+  it('ships the default image only in export/ (edition previews the export copy)', () => {
+    expect(fs.existsSync(path.join(exportDir, 'hood.jpg'))).toBe(true);
+    expect(fs.existsSync(path.join(editionDir, 'hood.jpg'))).toBe(false);
+  });
+
+  it('routes every edition reference to the export copy', () => {
+    const source = fs.readFileSync(path.join(editionDir, 'magnifier.js'), 'utf-8');
+    const refs = source.split('hood.jpg').length - 1;
+    const routed = source.split("replace(/\\/edition\\/?$/, '/export/')").length - 1;
+    expect(refs).toBeGreaterThan(0);
+    expect(routed).toBeGreaterThan(0);
+    // No unrouted direct reference may sneak back in.
+    expect(source).not.toContain("path + 'hood.jpg'");
+    expect(source).not.toContain('${path}hood.jpg');
+    expect(source).not.toContain('${$exeDevice.idevicePath}hood.jpg');
+  });
+});

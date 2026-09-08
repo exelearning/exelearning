@@ -2055,11 +2055,7 @@
       </trans-unit>
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
-        <target>Texto moi grande</target>
-      </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Extra large text">
-        <source>Extra large text</source>
-        <target>Texto máis grande</target>
+        <target>~Texto enorme</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
@@ -3728,14 +3724,6 @@
       <trans-unit id="RmnBdRa" resname="Info">
         <source>Info</source>
         <target>Información</target>
-      </trans-unit>
-      <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
-        <source>Show or hide the node's children</source>
-        <target>Amosar ou ocultar as páxinas filla</target>
-      </trans-unit>
-      <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
-        <source>Start working on a new mind map</source>
-        <target>Comeza a traballar nun novo mapa mental</target>
       </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
@@ -6971,7 +6959,7 @@
       </trans-unit>
       <trans-unit id="BpO2HgG" resname="You can edit them later">
         <source>You can edit them later</source>
-        <target>Editar fotogramas</target>
+        <target>~Poderá editalos máis tarde</target>
       </trans-unit>
       <trans-unit id="is3WU29" resname="Click on Save when you finish">
         <source>Click on Save when you finish</source>
@@ -10701,102 +10689,6 @@
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
         <target>Cambia o texto das lapelas engadindo un título a cada Encabezado 2 coa opción "Inserir/Editar atributos": </target>
       </trans-unit>
-      <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
-        <source>From Wikipedia, the free encyclopedia.</source>
-        <target>Desde Wikipedia, a enciclopedia libre.</target>
-      </trans-unit>
-      <trans-unit id="178jFkN" resname="Redirected from">
-        <source>Redirected from</source>
-        <target>Redirixido desde</target>
-      </trans-unit>
-      <trans-unit id="D.N0TPy" resname="Wikipedia does not have an article with this exact name.">
-        <source>Wikipedia does not have an article with this exact name.</source>
-        <target>A Wikipedia non ten un artigo con este nome exacto.</target>
-      </trans-unit>
-      <trans-unit id="vWtWulw" resname="search for">
-        <source>search for</source>
-        <target>buscar</target>
-      </trans-unit>
-      <trans-unit id="ReLHScr" resname="in Wikipedia">
-        <source>in Wikipedia</source>
-        <target>na Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="uLQ19JQ" resname="to check for alternative titles or spellings.">
-        <source>to check for alternative titles or spellings.</source>
-        <target>para comprobar títulos ou ortografías alternativas.</target>
-      </trans-unit>
-      <trans-unit id="Uy3s6Ik" resname="Wikipedia Article">
-        <source>Wikipedia Article</source>
-        <target>Artigo da Wikipedia</target>
-      </trans-unit>
-      <trans-unit id="8RTGAQT" resname="Article">
-        <source>Article</source>
-        <target>Artigo</target>
-      </trans-unit>
-      <trans-unit id="NR2RdXC" resname="English">
-        <source>English</source>
-        <target>Galego</target>
-      </trans-unit>
-      <trans-unit id="VNPyy5F" resname="Basque">
-        <source>Basque</source>
-        <target>Éuscaro</target>
-      </trans-unit>
-      <trans-unit id="6xS7ahk" resname="Catalan">
-        <source>Catalan</source>
-        <target>Catalán</target>
-      </trans-unit>
-      <trans-unit id="dY9PyfQ" resname="Chinese">
-        <source>Chinese</source>
-        <target>Chinés</target>
-      </trans-unit>
-      <trans-unit id="AdxkL_L" resname="Dutch">
-        <source>Dutch</source>
-        <target>Neerlandés</target>
-      </trans-unit>
-      <trans-unit id="pMwerq8" resname="French">
-        <source>French</source>
-        <target>Francés</target>
-      </trans-unit>
-      <trans-unit id="_PBILaW" resname="Galician">
-        <source>Galician</source>
-        <target>Galego</target>
-      </trans-unit>
-      <trans-unit id="HqedDt2" resname="German">
-        <source>German</source>
-        <target>Alemán</target>
-      </trans-unit>
-      <trans-unit id="xuAMUN9" resname="Italian">
-        <source>Italian</source>
-        <target>Italiano</target>
-      </trans-unit>
-      <trans-unit id="1PzOojp" resname="Japanese">
-        <source>Japanese</source>
-        <target>Xaponés</target>
-      </trans-unit>
-      <trans-unit id=".af6ZfV" resname="Magyar">
-        <source>Magyar</source>
-        <target>Húngaro</target>
-      </trans-unit>
-      <trans-unit id="ZYhMxlL" resname="Polish">
-        <source>Polish</source>
-        <target>Polonés</target>
-      </trans-unit>
-      <trans-unit id="jJYRmbQ" resname="Portuguese">
-        <source>Portuguese</source>
-        <target>Portugués</target>
-      </trans-unit>
-      <trans-unit id="b0hwZlf" resname="Slovenian">
-        <source>Slovenian</source>
-        <target>Esloveno</target>
-      </trans-unit>
-      <trans-unit id="YHU6HyX" resname="Spanish">
-        <source>Spanish</source>
-        <target>Español</target>
-      </trans-unit>
-      <trans-unit id="OCwplzN" resname="Swedish">
-        <source>Swedish</source>
-        <target>Sueco</target>
-      </trans-unit>
       <trans-unit id="zJxoJ__" resname="Emphasis">
         <source>Emphasis</source>
         <target>Énfase</target>
@@ -13641,10 +13533,6 @@
         <source>Your access to this project has been revoked.</source>
         <target>Revogouse o teu acceso a este proxecto.</target>
       </trans-unit>
-      <trans-unit id="upgs0ym" resname="Mind map saved">
-        <source>Mind map saved</source>
-        <target>Mapa mental gardado</target>
-      </trans-unit>
       <trans-unit id="443krxj" resname="source">
         <source>source</source>
         <target>orixe</target>
@@ -15692,6 +15580,114 @@
       <trans-unit id="h47cdy0" resname="These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.">
         <source>These activities refer to files that are not included in the imported package. The references have been kept, so adding the files back will restore them.</source>
         <target>~Estas actividades fan referencia a ficheiros que non se inclúen no paquete importado. Conserváronse as referencias, así que ao engadir de novo os ficheiros restauraranse.</target>
+      </trans-unit>
+      <trans-unit id="6j2cajg" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.">
+        <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports, which adds its contextual menu and interactive features.</source>
+        <target>~As fórmulas móstranse aínda que esta opción estea desactivada. Actívaa para incluír a biblioteca MathJax completa nas exportacións. Iso engade o seu menú contextual e as súas funcións interactivas.</target>
+      </trans-unit>
+      <trans-unit id="bg3z8te" resname="Change password">
+        <source>Change password</source>
+        <target>~Cambiar o contrasinal</target>
+      </trans-unit>
+      <trans-unit id="k3rj2bw" resname="Current password">
+        <source>Current password</source>
+        <target>~Contrasinal actual</target>
+      </trans-unit>
+      <trans-unit id="hr7z5gs" resname="New password">
+        <source>New password</source>
+        <target>~Novo contrasinal</target>
+      </trans-unit>
+      <trans-unit id="bzxjqwj" resname="At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.">
+        <source>At least 4 characters. Longer passwords that mix letters, numbers and symbols are safer.</source>
+        <target>~Polo menos 4 caracteres. Os contrasinais longos que combinan letras, números e símbolos son máis seguros.</target>
+      </trans-unit>
+      <trans-unit id="r03hdzk" resname="Confirm new password">
+        <source>Confirm new password</source>
+        <target>~Confirmar o novo contrasinal</target>
+      </trans-unit>
+      <trans-unit id="iv1ahd2" resname="Damaged activities">
+        <source>Damaged activities</source>
+        <target>~Actividades danadas</target>
+      </trans-unit>
+      <trans-unit id="hhr7h87" resname="The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.">
+        <source>The saved data of these activities is damaged and could not be read. They were imported unchanged: their last content is still shown, but they cannot be edited until they are recreated.</source>
+        <target>~Os datos destas actividades están danados e non se puideron ler. Importáronse sen cambios: aínda se mostra o seu último contido, pero non se poden editar sen crealas de novo.</target>
+      </trans-unit>
+      <trans-unit id="ddqrc1t" resname="Import warnings">
+        <source>Import warnings</source>
+        <target>~Avisos de importación</target>
+      </trans-unit>
+      <trans-unit id="4ddesuo" resname="Search icon">
+        <source>Search icon</source>
+        <target>~Buscar icona</target>
+      </trans-unit>
+      <trans-unit id="gz9vftz" resname="Choose image from file manager">
+        <source>Choose image from file manager</source>
+        <target>~Escoller imaxe do xestor de ficheiros</target>
+      </trans-unit>
+      <trans-unit id="itmsku9" resname="Icon">
+        <source>Icon</source>
+        <target>~Icona</target>
+      </trans-unit>
+      <trans-unit id="4s786ij" resname="Style icons">
+        <source>Style icons</source>
+        <target>~Iconas do estilo</target>
+      </trans-unit>
+      <trans-unit id="5ww31ln" resname="General icons">
+        <source>General icons</source>
+        <target>~Iconas xerais</target>
+      </trans-unit>
+      <trans-unit id="jz8witj" resname="Password strength: too short">
+        <source>Password strength: too short</source>
+        <target>~Seguridade do contrasinal: demasiado curto</target>
+      </trans-unit>
+      <trans-unit id="4b5seka" resname="Password strength: weak">
+        <source>Password strength: weak</source>
+        <target>~Seguridade do contrasinal: feble</target>
+      </trans-unit>
+      <trans-unit id="wynu198" resname="Password strength: fair">
+        <source>Password strength: fair</source>
+        <target>~Seguridade do contrasinal: aceptable</target>
+      </trans-unit>
+      <trans-unit id="t9rpeo6" resname="Password strength: good">
+        <source>Password strength: good</source>
+        <target>~Seguridade do contrasinal: boa</target>
+      </trans-unit>
+      <trans-unit id="7rpnjus" resname="Password strength: strong">
+        <source>Password strength: strong</source>
+        <target>~Seguridade do contrasinal: forte</target>
+      </trans-unit>
+      <trans-unit id="sma90rn" resname="Current password is incorrect">
+        <source>Current password is incorrect</source>
+        <target>~O contrasinal actual non é correcto</target>
+      </trans-unit>
+      <trans-unit id="rnzj4rq" resname="The new password cannot be empty.">
+        <source>The new password cannot be empty.</source>
+        <target>~O novo contrasinal non pode estar baleiro.</target>
+      </trans-unit>
+      <trans-unit id="ubemotk" resname="Passwords do not match">
+        <source>Passwords do not match</source>
+        <target>~Os contrasinais non coinciden</target>
+      </trans-unit>
+      <trans-unit id="wo6b7db" resname="Password changed successfully">
+        <source>Password changed successfully</source>
+        <target>~Contrasinal cambiado correctamente</target>
+      </trans-unit>
+      <trans-unit id="b81xwq2" resname="An error occurred. Please try again.">
+        <source>An error occurred. Please try again.</source>
+        <target>~Produciuse un erro. Por favor, inténtao de novo.</target>
+      </trans-unit>
+      <trans-unit id="46k673j" resname="Password changes are not available for this account.">
+        <source>Password changes are not available for this account.</source>
+        <target>~Esta conta non permite cambiar o contrasinal.</target>
+      </trans-unit>
+      <trans-unit id="l48vm6w" resname="The new password is not valid.">
+        <source>The new password is not valid.</source>
+        <target>~O novo contrasinal non é válido.</target>
+      </trans-unit>
+      <trans-unit id="xzx0b1a" resname="Huger text">
+        <source>Huger text</source>
+        <target>~Texto aínda máis enorme</target>
       </trans-unit>
     </body>
   </file>

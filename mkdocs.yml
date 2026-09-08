@@ -55,6 +55,8 @@ nav:
       - REST API: development/rest-api.md
       - Authentication: development/authentication.md
       - SCORM 1.2 Runtime Contract: development/scorm12-runtime-contract.md
+      - C10k Benchmark: development/c10k-benchmark.md
+      - C10k Benchmark (Español): development/c10k-benchmark.es.md
   - File Formats:
       - Legacy ELP Format: contentv3-format.md
       - ELPX Format:

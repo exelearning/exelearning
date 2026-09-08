@@ -284,6 +284,92 @@ describe('Translations Sort Command', () => {
     // Extra units not in reference (edge case)
     // -----------------------------------------------------------------------
 
+    describe('untrusted generated sources', () => {
+        const edicuatex = {
+            path: 'public/app/common/edicuatex',
+            regenerateWith: 'make vendor-edicuatex',
+            reason: 'holds the EdiCuaTeX equation editor strings',
+        };
+
+        /**
+         * Runs `body` with console output captured, and always puts the console back.
+         *
+         * try/finally rather than a restore statement after the awaited call: a rejection
+         * there would leave the stubs installed, and every later test in the file would
+         * push into a dead array instead of writing to the console.
+         */
+        async function withCapturedConsole(body: () => Promise<void>): Promise<string> {
+            const captured: string[] = [];
+            const originalWarn = console.warn;
+            const originalLog = console.log;
+            console.warn = (msg: string) => captured.push(String(msg));
+            console.log = (msg: string) => captured.push(String(msg));
+
+            try {
+                await body();
+            } finally {
+                console.warn = originalWarn;
+                console.log = originalLog;
+            }
+
+            return captured.join('\n');
+        }
+
+        it('should warn but still sort, since sorting cannot delete a trans-unit', async () => {
+            let succeeded: boolean | undefined;
+
+            const output = await withCapturedConsole(async () => {
+                const { execute, configure } = await import('./translations-sort');
+                configure({
+                    extractKeys: async () => new Set(['Key A', 'Key B', 'Key C']),
+                    findUntrustedGenerated: () => [
+                        { source: edicuatex, kind: 'missing', detail: 'the directory is not on disk' },
+                    ],
+                });
+                succeeded = (await execute([], { locale: 'es' })).success;
+            });
+
+            expect(succeeded).toBe(true);
+            expect(output).toContain('public/app/common/edicuatex');
+            expect(output).toContain('make vendor-edicuatex');
+        });
+
+        it('should warn about a tree that is on disk but short of the files its generator writes', async () => {
+            let succeeded: boolean | undefined;
+
+            const output = await withCapturedConsole(async () => {
+                const { execute, configure } = await import('./translations-sort');
+                configure({
+                    extractKeys: async () => new Set(['Key A', 'Key B', 'Key C']),
+                    findUntrustedGenerated: () => [
+                        { source: edicuatex, kind: 'incomplete', detail: '2 file(s) not written: lang/en.js' },
+                    ],
+                });
+                succeeded = (await execute([], { locale: 'es' })).success;
+            });
+
+            expect(succeeded).toBe(true);
+            expect(output).toContain('incomplete');
+            expect(output).toContain('lang/en.js');
+        });
+
+        it('should not warn when every generated tree is trustworthy', async () => {
+            let succeeded: boolean | undefined;
+
+            const output = await withCapturedConsole(async () => {
+                const { execute, configure } = await import('./translations-sort');
+                configure({
+                    extractKeys: async () => new Set(['Key A', 'Key B', 'Key C']),
+                    findUntrustedGenerated: () => [],
+                });
+                succeeded = (await execute([], { locale: 'es' })).success;
+            });
+
+            expect(succeeded).toBe(true);
+            expect(output).not.toContain('Generated source tree');
+        });
+    });
+
     describe('edge cases', () => {
         it('should append trans-units not present in reference order at the end', async () => {
             // es.xlf has an extra unit "id_X" that is NOT in messages.en.xlf

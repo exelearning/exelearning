@@ -275,6 +275,20 @@ export async function handleWebSocketOpen(
         return { success: false, error: { code: 4003, reason: access.reason || 'Access denied' } };
     }
 
+    // The token/access checks above both await (JWT verification, a DB
+    // lookup), and Bun does not wait for this async `open` handler before
+    // considering the socket live: the `close` handler can run concurrently
+    // during those awaits. If it did, `ws.data.docName` was still unset at
+    // that point, so `handleWebSocketClose` treated it as 'unknown' and
+    // skipped `roomManager.removeConnection` — no future `close` event will
+    // fire to clean up otherwise, so registering this now-dead socket would
+    // leak it in the room forever (issue #2255 C10k benchmark: this was
+    // measured accumulating thousands of permanently "connected" ghost
+    // entries under concurrent load).
+    if (ws.readyState !== 1) {
+        return { success: false };
+    }
+
     const userId = user.sub;
     const clientId = generateClientId();
 
@@ -320,7 +334,7 @@ export async function handleWebSocketOpen(
                     );
 
                     // Find the first (oldest) client in the room to request state
-                    const firstClient = Array.from(room.conns)[0];
+                    const firstClient = Array.from(room.conns.values())[0];
                     if (firstClient) {
                         // Send JSON message to request sync-state
                         const syncRequestMsg = JSON.stringify({
@@ -339,7 +353,7 @@ export async function handleWebSocketOpen(
 
         // Ask existing clients to re-broadcast awareness when a new client joins.
         // This keeps presence UI in sync without forcing reconnects.
-        for (const existingConn of room.conns) {
+        for (const existingConn of room.conns.values()) {
             if (existingConn.readyState === 1) {
                 try {
                     existingConn.send(
