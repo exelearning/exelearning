@@ -419,30 +419,36 @@ export default class IdeviceBlockNode {
      * "Style" artwork. The value comes from the theme's stylesheet and nowhere else:
      * --exe-icon-picker-color, then --exe-icon-color. No theme is named here.
      *
+     * Both are custom properties, so they inherit: reading them off the block header is
+     * enough. The title and the icon are its descendants and resolve to the same value,
+     * which is why there is no walk over the three elements.
+     *
      * Returns an empty string when the theme declares neither, so the caller leaves
-     * --modal-icon-color unset and the picker CSS falls back to --icon-primary
+     * --modal-icon-color unset and the picker CSS falls back to --modal-icon-default
      * (assets/styles/components/_modals.scss).
      */
     getCurrentThemeIconColor() {
-        const colorCandidates = [
-            this.headElement,
-            this.blockNameElementText,
-            this.iconElement,
-        ].filter(Boolean);
-
-        for (const colorSource of colorCandidates) {
-            if (!window.getComputedStyle) break;
-            const styles = window.getComputedStyle(colorSource);
-            // The picker chips sit on a light background, so a theme whose header needs
-            // a light --exe-icon-color declares a readable picker accent separately.
-            const customColor = styles.getPropertyValue('--exe-icon-picker-color').trim()
-                || styles.getPropertyValue('--exe-icon-color').trim();
-            if (customColor) {
-                return customColor;
-            }
+        const colorSource = this.headElement || this.blockNameElementText || this.iconElement;
+        if (!colorSource) {
+            return '';
         }
 
-        return '';
+        const styles = window.getComputedStyle(colorSource);
+        // The picker chips sit on a light background, so a theme whose header needs
+        // a light --exe-icon-color declares a readable picker accent separately.
+        const customColor = styles.getPropertyValue('--exe-icon-picker-color').trim()
+            || styles.getPropertyValue('--exe-icon-color').trim();
+
+        // `--exe-icon-color: currentColor` is a natural way for a theme to say "follow the
+        // block header text", and it works in the content. The picker is another matter: the
+        // value is copied verbatim onto the modal body, which lives outside .exe-content, so
+        // the keyword would resolve there against the modal's own near-black text. Resolve it
+        // here instead, against the element the theme meant.
+        if (customColor.toLowerCase() === 'currentcolor') {
+            return styles.color || '';
+        }
+
+        return customColor;
     }
 
     resolveAppAssetUrl(path) {

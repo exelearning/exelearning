@@ -1584,6 +1584,21 @@ describe('IdeviceBlockNode', () => {
     });
 
     describe('icon helpers', () => {
+        // The tint tests attach elements to document.body, because getComputedStyle only
+        // resolves custom properties on an attached node. Take them back out again: the
+        // outer afterEach only nulls `block`, so without this a later test looking for a
+        // <header> or #change-block-icon-modal-content would find a stale one.
+        const attached = [];
+        const attach = (element) => {
+            document.body.appendChild(element);
+            attached.push(element);
+            return element;
+        };
+
+        afterEach(() => {
+            attached.splice(0).forEach((element) => element.remove());
+        });
+
         it('normalizes legacy icon names into structured descriptors', () => {
             expect(block.normalizeIconDescriptor(null, '')).toEqual({ source: 'none', value: '' });
             expect(block.normalizeIconDescriptor(null, 'mi-alarm')).toEqual({
@@ -1758,8 +1773,7 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('prefers the picker accent over the box head icon color', () => {
-            block.headElement = document.createElement('div');
-            document.body.appendChild(block.headElement);
+            block.headElement = attach(document.createElement('div'));
             block.headElement.style.setProperty('--exe-icon-color', '#fff');
             block.headElement.style.setProperty('--exe-icon-picker-color', '#0d77d1');
             // The head needs white on its blue background; the white picker chip does not.
@@ -1769,22 +1783,27 @@ describe('IdeviceBlockNode', () => {
             expect(block.getCurrentThemeIconColor()).toBe('#fff');
         });
 
-        it('keeps looking when an attached element declares no theme variable', () => {
-            block.headElement = document.createElement('div');
-            document.body.appendChild(block.headElement);
-            block.blockNameElementText = document.createElement('h1');
-            document.body.appendChild(block.blockNameElementText);
-            // The head is attached but declares nothing, so the walk must reach the title.
+        it('falls back to the title, then the icon, when the block has no header yet', () => {
+            // The header is the normal source: a style declares both variables once on
+            // .exe-content and, since they are custom properties, the header inherits them.
+            // That inheritance is what the picker E2E spec covers, because happy-dom does not
+            // resolve inherited custom properties. What is worth pinning here is the source
+            // the resolver picks while the block is still being built and headElement is null.
+            block.headElement = null;
+            block.blockNameElementText = attach(document.createElement('h1'));
             block.blockNameElementText.style.setProperty('--exe-icon-color', '#123456');
-
             expect(block.getCurrentThemeIconColor()).toBe('#123456');
+
+            block.blockNameElementText = null;
+            block.iconElement = attach(document.createElement('div'));
+            block.iconElement.style.setProperty('--exe-icon-color', '#654321');
+            expect(block.getCurrentThemeIconColor()).toBe('#654321');
         });
 
         it('resolves no color when the theme declares neither variable', () => {
-            block.headElement = document.createElement('div');
-            document.body.appendChild(block.headElement);
+            block.headElement = attach(document.createElement('div'));
             // The block header text color is not the picker tint: an undeclared theme
-            // leaves --modal-icon-color unset so the picker CSS reaches --icon-primary.
+            // leaves --modal-icon-color unset so the picker CSS reaches --modal-icon-default.
             block.headElement.style.color = 'rgb(1, 2, 3)';
             block.blockNameElementText = null;
             block.iconElement = null;
@@ -1792,9 +1811,19 @@ describe('IdeviceBlockNode', () => {
             expect(block.getCurrentThemeIconColor()).toBe('');
         });
 
+        it('resolves currentColor against the block header, not the modal it is copied onto', () => {
+            // A style may say "follow the header text" with --exe-icon-color: currentColor.
+            // Copied verbatim onto the modal body it would mean the modal's own text, so the
+            // keyword has to be resolved here, while the block header is still the context.
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.color = 'rgb(1, 2, 3)';
+            block.headElement.style.setProperty('--exe-icon-color', 'currentColor');
+
+            expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
+        });
+
         it('sets --modal-icon-color on the picker from the theme variable', () => {
-            block.headElement = document.createElement('div');
-            document.body.appendChild(block.headElement);
+            block.headElement = attach(document.createElement('div'));
             block.headElement.style.setProperty('--exe-icon-color', '#123456');
 
             const body = block.makeModalChangeIconBody();
