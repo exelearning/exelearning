@@ -990,16 +990,19 @@ var $periodicTable = {
             $number.prop('disabled', true);
             $name.prop('disabled', true);
             $symbol.prop('disabled', true);
-            setTimeout(function () {
-                if (mOptions.active >= mOptions.number) {
-                    // Answering the last question ends the attempt. Raise the flag and report
-                    // here, so the mark and the completion reach the LMS now instead of after
-                    // the reveal delay below — a learner who leaves during it would otherwise
-                    // lose both.
-                    mOptions.gameOver = true;
+            // Answering the last question ends the attempt. Raise the flag and
+            // report now, outside the reveal delay: sitting inside it, the
+            // report arrived five seconds late and merely repeated the one
+            // gameMobileOver makes, so a learner who left during the reveal
+            // lost both the mark and the completion.
+            if (mOptions.active >= mOptions.number) {
+                mOptions.gameOver = true;
                     if (mOptions.isScorm == 1) {
                         $periodicTable.sendScore(true, instance);
                     }
+                }
+            setTimeout(function () {
+                if (mOptions.active >= mOptions.number) {
                     $periodicTable.gameMobileOver(instance);
                 } else {
                     $periodicTable.showMobileQuestion(instance);
@@ -1027,16 +1030,16 @@ var $periodicTable = {
                 $number.prop('disabled', true);
                 $name.prop('disabled', true);
                 $symbol.prop('disabled', true);
-                setTimeout(function () {
-                    if (mOptions.active >= mOptions.number) {
-                        // Answering the last question ends the attempt. Raise the flag and report
-                        // here, so the mark and the completion reach the LMS now instead of after
-                        // the reveal delay below — a learner who leaves during it would otherwise
-                        // lose both.
-                        mOptions.gameOver = true;
+                // Same as the correct branch above: the flag and the report go
+                // out now, not five seconds later inside the reveal.
+                if (mOptions.active >= mOptions.number) {
+                    mOptions.gameOver = true;
                         if (mOptions.isScorm == 1) {
                             $periodicTable.sendScore(true, instance);
                         }
+                    }
+                setTimeout(function () {
+                    if (mOptions.active >= mOptions.number) {
                         $periodicTable.gameMobileOver(instance);
                     } else {
                         $periodicTable.showMobileQuestion(instance);
@@ -1185,6 +1188,15 @@ var $periodicTable = {
                         dataclicked
                     );
                     $periodicTable.showMessage(1, msg3);
+                    // Running out of attempts on the last element ends the
+                    // attempt just as answering it does, so it gets the same
+                    // early report the correct branch above already had — this
+                    // one had none, and a learner who left during the three
+                    // seconds lost the mark and the completion.
+                    mOptions.gameOver = true;
+                    if (mOptions.isScorm == 1) {
+                        $periodicTable.sendScore(true, instance);
+                    }
                     setTimeout(function () {
                         $periodicTable.gameOver(instance);
                     }, 3000);
@@ -1611,9 +1623,18 @@ var $periodicTable = {
                         // checkAnswers(), which does not exist anywhere in this
                         // iDevice: the timer threw a TypeError instead, so the
                         // game never ended, no score was reported and the SCO
-                        // never completed. gameOver() is the end path every
-                        // other terminal branch already uses.
-                        $periodicTable.gameOver(instance);
+                        // never completed.
+                        //
+                        // Each layout has its own ending, and only the mobile
+                        // one fades out #ptlLightboxMobile and brings
+                        // #ptStartGameMobileDiv back. Calling the desktop
+                        // gameOver() on a phone left the learner looking at an
+                        // open overlay with no way to play again.
+                        if ($periodicTable.isMobileDevice()) {
+                            $periodicTable.gameMobileOver(instance);
+                        } else {
+                            $periodicTable.gameOver(instance);
+                        }
                         return;
                     }
                 }
