@@ -173,8 +173,8 @@ the editor — that sizes the span to 40×40 and applies the mask. It loads befo
 Set `--exe-icon-color` so General icons take the same colour as your Style icons.
 Without it the two surfaces diverge, and neither is likely to match your artwork: in the
 content the glyphs inherit whatever colour the block header text happens to have, and in
-the icon picker they fall back to the application's own green (see *Which colour the icon
-picker actually uses*, below):
+the icon picker they fall back to a neutral grey (see *Which colour the icon picker
+actually uses*, below):
 
 ```css
 .exe-content {
@@ -251,24 +251,41 @@ styles achieve, yours can achieve with the same declarations — and nothing you
 is filled in for you by name.
 
 The picker resolves the accent in JavaScript (`getCurrentThemeIconColor()` in
-`public/app/workarea/project/idevices/content/blockNode.js`). It reads the block header, the
-block title and the icon element in turn, and takes the first value it finds:
+`public/app/workarea/project/idevices/content/blockNode.js`). It reads the block header —
+both variables are custom properties, so declaring them once on `.exe-content` is enough —
+and takes the first value it finds:
 
 ```
 --exe-icon-picker-color  →  --exe-icon-color
 ```
 
-Those two are the whole resolver, and both are yours. When your style declares neither, the
-picker is left untouched and its own stylesheet decides: every rule in
-`assets/styles/components/_modals.scss` reads `var(--modal-icon-color, var(--icon-primary))`,
-and `--icon-primary: #6E9F41` is declared on `:root` in
+`currentColor` works here too: the resolver turns it into the block header's own text
+colour before handing it to the picker, which sits outside `.exe-content` and would
+otherwise read the keyword against the modal's near-black text.
+
+Those two are the whole resolver, and both are yours. `--icon-primary` is not an input:
+it is the application chrome's own accent (the top menu, the node tree), and overriding it
+on `.exe-content` does not reach the picker.
+
+When your style declares neither variable, the picker is left untouched and its own
+stylesheet decides. What follows the tint is the chip ink, the chip border on the selected
+and hovered states, and the custom-icon button — the rules in
+`assets/styles/components/_modals.scss` that read
+`var(--modal-icon-color, var(--modal-icon-default))`, with
+`--modal-icon-default: var(--text)` declared on `:root` in
 `assets/styles/abstracts/_variables.scss`.
 
+⚠️ **Not everything in the picker follows your tint.** The section headings
+(`.icon-options-section-title`) use `--icon-gray`, and the chip background and border use
+`--main-background-color` and `--gray-border-light`. Setting `--exe-icon-color` recolours
+the glyphs and the selection, not the whole dialog.
+
 ⚠️ **A style that declares neither `--exe-icon-picker-color` nor `--exe-icon-color` gets
-the application's green**, whatever its own palette is. Green is not a missing value, it is
-an inherited one, and it will sit next to your Style icons in the same picker: pink artwork
-beside green glyphs. Declare `--exe-icon-color`, and sample it from your `icons/` artwork
-rather than guessing from the palette; the two are often not the same colour.
+a neutral grey**, whatever its own palette is. That grey is deliberate — it says "no tint
+was chosen" instead of showing a colour you did not pick — but it will still sit next to
+your Style icons in the same picker: pink artwork beside grey glyphs. Declare
+`--exe-icon-color`, and sample it from your `icons/` artwork rather than guessing from the
+palette; the two are often not the same colour.
 
 ### Checklist: owning your block icons from CSS alone
 
