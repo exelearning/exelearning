@@ -1288,15 +1288,26 @@ var $azquizgame = {
         $azquizgame.drawRosco(instance);
 
         // Answering the last word ends the attempt. Raise the flag before the
-        // report so it carries the completion, and so a learner who leaves
-        // during the delay below still has the activity recorded as finished.
-        if (mOptions.activeWord + 1 >= mOptions.numberWords) {
-            mOptions.gameOver = true;
-        }
+        // report, so a learner who leaves during the reveal below still has
+        // the activity recorded as finished.
+        //
+        // answeredWords >= validWords is the condition updateNumberWord() uses
+        // itself, and the only correct one: the rosco comes back to the words
+        // the learner skipped, so the index of the active letter says nothing
+        // about how many are left.
+        const attemptFinished = mOptions.answeredWords >= mOptions.validWords;
+        if (attemptFinished) mOptions.gameOver = true;
         $azquizgame.saveScormScore(instance);
 
         setTimeout(() => {
-            $azquizgame.newWord(instance);
+            // Called directly, not through newWord(): that one returns at once
+            // while gameOver is up, so routing the ending through it would
+            // leave the rosco with no closing message and no start button.
+            if (attemptFinished) {
+                $azquizgame.gameOver(0, instance);
+            } else {
+                $azquizgame.newWord(instance);
+            }
         }, timeShowSolution);
 
         $azquizgame.drawMessage(Hit, word, clue, instance);
@@ -1371,15 +1382,26 @@ var $azquizgame = {
         $azquizgame.drawRosco(instance);
 
         // Answering the last word ends the attempt. Raise the flag before the
-        // report so it carries the completion, and so a learner who leaves
-        // during the delay below still has the activity recorded as finished.
-        if (mOptions.activeWord + 1 >= mOptions.numberWords) {
-            mOptions.gameOver = true;
-        }
+        // report, so a learner who leaves during the reveal below still has
+        // the activity recorded as finished.
+        //
+        // answeredWords >= validWords is the condition updateNumberWord() uses
+        // itself, and the only correct one: the rosco comes back to the words
+        // the learner skipped, so the index of the active letter says nothing
+        // about how many are left.
+        const attemptFinished = mOptions.answeredWords >= mOptions.validWords;
+        if (attemptFinished) mOptions.gameOver = true;
         $azquizgame.saveScormScore(instance);
 
         setTimeout(() => {
-            $azquizgame.newWord(instance);
+            // Called directly, not through newWord(): that one returns at once
+            // while gameOver is up, so routing the ending through it would
+            // leave the rosco with no closing message and no start button.
+            if (attemptFinished) {
+                $azquizgame.gameOver(0, instance);
+            } else {
+                $azquizgame.newWord(instance);
+            }
         }, timeShowSolution);
 
         $azquizgame.drawMessage(Hit, word, clue, instance);

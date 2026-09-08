@@ -285,7 +285,7 @@ describe('az-quiz-game iDevice export', () => {
           hits: 1,
           errors: 0,
           validWords: 4,
-          numberWords: 4,
+          answeredWords: 0,
           activeWord: 0,
           letters: ['A', 'B', 'C', 'D'],
           wordsGame: [
@@ -339,10 +339,12 @@ describe('az-quiz-game iDevice export', () => {
     });
 
     // An intermediate answer must not close the attempt: the page would go to
-    // passed/failed while the learner is still playing.
+    // passed/failed while the learner is still playing. The active letter says
+    // nothing here — the rosco comes back to the words that were skipped — so
+    // what decides is answeredWords against validWords.
     it('leaves the activity unfinished while words remain', () => {
       vi.useFakeTimers();
-      setupAnswer({ activeWord: 0, numberWords: 4 });
+      setupAnswer({ activeWord: 3, answeredWords: 0 });
 
       $azquizgame.answerQuetionBoard(0, 0);
 
@@ -352,11 +354,11 @@ describe('az-quiz-game iDevice export', () => {
       vi.useRealTimers();
     });
 
-    // The last answer must carry the completion, so leaving during the reveal
-    // delay still records a finished activity.
+    // The last answer has to carry the completion, so a learner who leaves
+    // during the reveal delay still has a finished activity recorded.
     it('marks the activity finished on the last word, before reporting', () => {
       vi.useFakeTimers();
-      setupAnswer({ activeWord: 3, numberWords: 4 });
+      setupAnswer({ activeWord: 0, answeredWords: 3 });
       let flagWhenReported;
       $azquizgame.sendScore.mockImplementation(() => {
         flagWhenReported = $azquizgame.options[0].gameOver;
@@ -365,6 +367,26 @@ describe('az-quiz-game iDevice export', () => {
       $azquizgame.answerQuetionBoard(0, 0);
 
       expect(flagWhenReported).toBe(true);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // newWord() returns at once while gameOver is up, so the ending has to be
+    // called directly. Routing it through newWord() would leave the rosco with
+    // no closing message and no start button.
+    it('runs the ending after the reveal, not through newWord', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeWord: 0, answeredWords: 3 });
+      const endSpy = vi
+        .spyOn($azquizgame, 'gameOver')
+        .mockImplementation(() => {});
+
+      $azquizgame.answerQuetionBoard(0, 0);
+      vi.runAllTimers();
+
+      expect(endSpy).toHaveBeenCalledWith(0, 0);
+      expect($azquizgame.newWord).not.toHaveBeenCalled();
 
       vi.clearAllTimers();
       vi.useRealTimers();
