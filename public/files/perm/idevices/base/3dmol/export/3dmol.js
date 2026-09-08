@@ -1581,6 +1581,13 @@ var $eXe3Dmol = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
+        // gameOver() leaves this true and renames the same button to New game,
+        // so a replay came back in with the finished attempt's flag still up.
+        // sendScoreNew derives completion from it, so every report of the new
+        // round said the activity was over and the page stayed complete in the
+        // LMS from the first answer. Its twin electrical-circuits lowers it
+        // here for the same reason.
+        mOptions.gameOver = false;
 
         $(`#dmolpPNumber-${instance}`).text(mOptions.numberQuestions);
 

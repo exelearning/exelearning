@@ -486,6 +486,56 @@ describe('3dmol iDevice export', () => {
         });
     });
 
+    describe('starting a new game after one has ended', () => {
+        const instance = 0;
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        // gameOver() renames the same button to New game and leaves its flag
+        // up. sendScoreNew derives completion from that flag, so a replay
+        // coming back in with it still raised reported every answer as a
+        // finished attempt, and the page stayed complete in the LMS from the
+        // very first one.
+        it('lowers the finished flag so the replay reports as unfinished', () => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <span id="dmolpPNumber-${instance}"></span>
+                    <span id="dmolpPHits-${instance}"></span>
+                    <span id="dmolpPErrors-${instance}"></span>
+                    <span id="dmolpPScore-${instance}"></span>
+                </div>`;
+            dmol.options[instance] = {
+                main: `dmolpMainContainer-${instance}`,
+                isScorm: 1,
+                numberQuestions: 2,
+                // The state gameOver() leaves behind.
+                gameOver: true,
+                gameStarted: false,
+                questionsRandom: false,
+                selectsGame: [{ answerScore: 1 }, { answerScore: 0 }],
+                msgs: {},
+            };
+            vi.spyOn(dmol, 'setModelStyleControlVisibility').mockImplementation(
+                () => {}
+            );
+            vi.spyOn(dmol, 'updateTime').mockImplementation(() => {});
+            vi.spyOn(dmol, 'newQuestion').mockImplementation(() => {});
+
+            dmol.startGame(instance);
+
+            expect(dmol.options[instance].gameOver).toBe(false);
+            expect(dmol.options[instance].gameStarted).toBe(true);
+
+            clearInterval(dmol.options[instance].counterClock);
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+    });
+
     // The code opens both modes, but only one of them can be started by it.
     describe('opening with an access code', () => {
         const instance = 0;
