@@ -143,6 +143,81 @@ describe('exe-scorm12-policy', () => {
             expect(suspendWrite).toBeLessThan(names.indexOf('LMSCommit'));
         });
 
+        describe('a report made before the session survives the restore', () => {
+            it('keeps it when it beats the stored attempt', () => {
+                activities.register('quiz', {
+                    evaluable: true,
+                    completionRequired: true,
+                    completed: true,
+                    score: 90,
+                });
+                // Flags 3: evaluable and required, not completed.
+                startSession({
+                    'cmi.core.lesson_status': 'incomplete',
+                    'cmi.suspend_data': 'exe12/1|quiz;3;0;0;40;1;0;100',
+                });
+
+                policy.applyEntryPolicy();
+
+                expect(activities.get('quiz')).toMatchObject({ score: 90, completed: true });
+                expect(api.data['cmi.core.score.raw']).toBe('90');
+            });
+
+            // The decisive case, and the reason the fix lives here rather than
+            // in activities.load(). The learner returns to a page they had
+            // passed and restarts the activity before the session opened, so
+            // the report says score 0, not completed — and the status has to
+            // follow it down. It only works because the stored attempt is
+            // recognised FIRST (the adoption, which needs decideStatus() to
+            // read the registry exactly as the payload left it) and the report
+            // re-applied AFTER. Merge the report inside load() instead and the
+            // adoption never happens, so applyDecidedStatus preserves the
+            // stored "passed" over a registry that now says 0.
+            it('lets a restart downgrade a stored pass', () => {
+                activities.register('quiz', { evaluable: true, completionRequired: true, score: 0 });
+                startSession({
+                    'cmi.core.lesson_status': 'passed',
+                    'cmi.core.score.raw': '90',
+                    'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100',
+                });
+
+                policy.applyEntryPolicy();
+
+                expect(activities.get('quiz')).toMatchObject({ score: 0, completed: false });
+                expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+                expect(api.data['cmi.core.score.raw']).toBe('0');
+            });
+
+            it('leaves the other activities on the page restored', () => {
+                activities.register('quiz', { evaluable: true, completionRequired: true, score: 0 });
+                activities.register('essay', { evaluable: true, completionRequired: true });
+                startSession({
+                    'cmi.core.lesson_status': 'incomplete',
+                    'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100|essay;7;0;0;70;1;0;100',
+                });
+
+                policy.applyEntryPolicy();
+
+                expect(activities.get('quiz')).toMatchObject({ score: 0, completed: false });
+                expect(activities.get('essay')).toMatchObject({ score: 70, completed: true });
+            });
+
+            it('restores the stored attempt when the activity was only declared', () => {
+                // registerActivity() declares total and legacyIndex, no score.
+                activities.register('quiz', { evaluable: true, completionRequired: true, total: 5 });
+                startSession({
+                    'cmi.core.lesson_status': 'passed',
+                    'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100',
+                });
+
+                policy.applyEntryPolicy();
+
+                expect(activities.get('quiz')).toMatchObject({ score: 90, completed: true });
+                // Nothing was reported this session, so nothing is flushed.
+                expect(api.callNames()).not.toContain('LMSCommit');
+            });
+        });
+
         // Deciding the status from a purely restored registry would rewrite an
         // attempt this session has not touched, which the entry contract forbids.
         it('does not decide a status for a registry that only came from the restore', () => {

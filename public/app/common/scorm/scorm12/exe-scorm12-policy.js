@@ -216,6 +216,40 @@
     }
 
     /**
+     * Take the progress this session has already reported, before the stored
+     * attempt is restored over it.
+     *
+     * `score !== null` is what separates a report from a mere declaration:
+     * registerActivity() declares an activity with `total` and `legacyIndex`
+     * only, so a declared-but-unplayed activity still has a null score, while
+     * every real report carries one — including the 0 an iDevice publishes when
+     * the learner starts it.
+     *
+     * @param {object|null} activities - The registry, when one is installed.
+     * @returns {Array<{id: string, score: number, completed: boolean,
+     * answered: number}>} What to re-apply after the restore.
+     */
+    function reportedThisSession(activities) {
+        var reports = [];
+        if (!activities) {
+            return reports;
+        }
+        var records = activities.list();
+        for (var index = 0; index < records.length; index += 1) {
+            var record = records[index];
+            if (record.score !== null) {
+                reports.push({
+                    id: record.id,
+                    score: record.score,
+                    completed: record.completed,
+                    answered: record.answered,
+                });
+            }
+        }
+        return reports;
+    }
+
+    /**
      * Aggregate the registry, falling back to the page-level scored-activities
      * flag when no iDevice registered.
      *
@@ -348,16 +382,22 @@
             policy.resolveSuccessThreshold();
             var activities = deps.getActivities();
             // Anything the registry already holds got there before the session
-            // opened: iDevices register and report on jQuery ready, while
-            // loadPage() runs on body onload, after every image and video has
-            // loaded. The registry needs no session, so those reports land —
-            // but showFinalScore's own publish is refused, and they would sit
-            // unseen by the LMS until something else flushed them. Noted here,
-            // before load() merges the stored payload over them, so the flush
-            // below can tell this session's work from a restored attempt.
-            var summaryBeforeRestore = activities ? activities.summary() : null;
-            var reportedBeforeEntry =
-                !!summaryBeforeRestore && summaryBeforeRestore.scored > 0;
+            // opened: iDevices register and report on jQuery ready, and
+            // loadPage() always trails them — the first attempt is a 50 ms poll
+            // in exe_export.js, it only latches on a successful open, and its
+            // sole retry is the body's onload, which waits for every image,
+            // stylesheet and iframe. The registry needs no session, so those
+            // reports land — but showFinalScore's own publish is refused, and
+            // they would sit unseen by the LMS until something else flushed
+            // them.
+            //
+            // Taken here as records, not as a flag. load() merges the stored
+            // payload OVER the live one — normalize() falls back to the live
+            // record only for an undefined field, and decodeRecord() never
+            // produces one — so this session's work does not survive the
+            // restore on its own. Knowing merely that work arrived cannot
+            // protect it; knowing which activities reported can.
+            var pendingReports = reportedThisSession(activities);
             if (activities) {
                 activities.load(client.getValue(SUSPEND_DATA));
             }
@@ -379,6 +419,27 @@
             // from the payload the LMS just handed back.
             if (activities && policy.isTerminalStatus(status) && policy.decideStatus().status === status) {
                 state.policySessionStatus = status;
+            }
+            // Now re-apply this session's reports over the restored attempt —
+            // after the adoption above, which has to read the registry exactly
+            // as the payload left it, and never before it.
+            //
+            // A report supersedes the stored record whether it scores higher or
+            // lower, because an iDevice cannot resume: nothing under idevices/
+            // reads cmi.suspend_data, and startGame() clears the board and
+            // resets the counters. Interacting again therefore begins a new
+            // attempt, and the 0 it publishes is deliberate — once the session
+            // is open register() already lets that 0 win, so anything else here
+            // would make the same learner action behave differently depending
+            // on when it landed. Applied as a unit: mixing a stored completion
+            // with a live score would build a state no report ever produced.
+            for (var pending = 0; pending < pendingReports.length; pending += 1) {
+                var report = pendingReports[pending];
+                activities.update(report.id, {
+                    score: report.score,
+                    completed: report.completed,
+                    answered: report.answered,
+                });
             }
             state.entryApplied = true;
             var summary = activities ? activities.summary() : null;
@@ -404,7 +465,7 @@
             // so a later visit would restore less than the LMS already shows.
             // This was the one place in the runtime that committed without
             // persisting first.
-            if (reportedBeforeEntry) {
+            if (pendingReports.length > 0) {
                 policy.persistActivities();
                 policy.applyDecidedStatus();
                 client.commit();
