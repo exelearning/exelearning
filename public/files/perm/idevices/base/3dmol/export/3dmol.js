@@ -16,7 +16,6 @@ var $eXe3Dmol = {
     options: {},
     userName: '',
     previousScore: '',
-    initialScore: '',
     msgs: '',
     hasSCORMbutton: false,
     isInExe: false,
@@ -1697,21 +1696,21 @@ var $eXe3Dmol = {
 
         mOptions.gameOver = true;
 
+        // No "score only once" lock: the end of the attempt is always reported.
+        // The lock this used to carry could never close anyway —
+        // registerActivity forces `repeatActivity` to true at page load
+        // (common.js updateScormNew), so it short-circuited the condition
+        // before the learner touched anything. The activity registry owns what
+        // has been recorded.
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXe3Dmol.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXe3Dmol.sendScore(true, instance);
-                $(`#dmolpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $eXe3Dmol.initialScore = score;
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $eXe3Dmol.sendScore(true, instance);
+            $(`#dmolpRepeatActivity-${instance}`).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
         }
         $eXe3Dmol.saveEvaluation(instance);
         $eXe3Dmol.showFeedBack(instance);
@@ -1880,20 +1879,16 @@ var $eXe3Dmol = {
             }
         }
 
+        // No "score only once" lock — see gameOver().
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXe3Dmol.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXe3Dmol.sendScore(true, instance);
-                $(`#dmolpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $eXe3Dmol.sendScore(true, instance);
+            $(`#dmolpRepeatActivity-${instance}`).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
         }
 
 

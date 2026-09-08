@@ -30,7 +30,6 @@ var $eXeSeleccionaMedias = {
     isInExe: false,
     userName: '',
     previousScore: '',
-    initialScore: '',
     mScorm: null,
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
@@ -716,17 +715,14 @@ var $eXeSeleccionaMedias = {
                     : mOptions.msgs.msgAllOK;
             $eXeSeleccionaMedias.showMessage(2, msg, instance);
 
-            if (
-                mOptions.isScorm === 1 &&
-                (mOptions.repeatActivity ||
-                    $eXeSeleccionaMedias.initialScore === '')
-            ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.phrasesGame.length
-                ).toFixed(2);
+            // No "score only once" lock: every resolved question is reported.
+            // The lock this used to carry could never close anyway —
+            // registerActivity forces `repeatActivity` to true at page load
+            // (common.js updateScormNew), so it short-circuited the condition
+            // before the learner touched anything. The activity registry owns
+            // what has been recorded.
+            if (mOptions.isScorm === 1) {
                 $eXeSeleccionaMedias.sendScore(true, instance);
-                $eXeSeleccionaMedias.initialScore = score;
             }
         } else {
             let msg = $eXeSeleccionaMedias.getMessageErrorAnswer(instance);
@@ -749,17 +745,8 @@ var $eXeSeleccionaMedias = {
                 $(`#slcmpReboot-${instance}`).show();
             } else {
                 $eXeSeleccionaMedias.updateScore(false, instance);
-                if (
-                    mOptions.isScorm === 1 &&
-                    (mOptions.repeatActivity ||
-                        $eXeSeleccionaMedias.initialScore === '')
-                ) {
-                    const score = (
-                        (mOptions.hits * 10) /
-                        mOptions.phrasesGame.length
-                    ).toFixed(2);
+                if (mOptions.isScorm === 1) {
                     $eXeSeleccionaMedias.sendScore(true, instance);
-                    $eXeSeleccionaMedias.initialScore = score;
                 }
             }
         }
@@ -1289,12 +1276,7 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.showScoreGame(type, instance);
         $eXeSeleccionaMedias.saveEvaluation(instance);
         if (mOptions.isScorm == 1) {
-            const score = (
-                (mOptions.hits * 10) /
-                mOptions.phrasesGame.length
-            ).toFixed(2);
             $eXeSeleccionaMedias.sendScore(true, instance);
-            $eXeSeleccionaMedias.initialScore = score;
         }
         $eXeSeleccionaMedias.showFeedBack(instance);
         $('#slcmpCodeAccessDiv-' + instance).hide();

@@ -36,7 +36,6 @@ var $quickquestionsvideo = {
     options: {},
     userName: '',
     previousScore: '',
-    initialScore: '',
     msgs: '',
     youtubeLoaded: false,
     hasSCORMbutton: false,
@@ -1669,21 +1668,21 @@ var $quickquestionsvideo = {
         $quickquestionsvideo.showNavigationButtons(instance, 0);
 
         mOptions.gameOver = true;
+        // No "score only once" lock: the end of the attempt is always reported.
+        // The lock this used to carry could never close anyway —
+        // registerActivity forces `repeatActivity` to true at page load
+        // (common.js updateScormNew), so it short-circuited the condition
+        // before the learner touched anything. The activity registry owns what
+        // has been recorded.
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
-            ) {
-                let score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                $quickquestionsvideo.sendScore(true, instance);
-                $('#vquextRepeatActivity-' + instance).text(
-                    mOptions.msgs.msgYouScore + ': ' + score
-                );
-                $quickquestionsvideo.initialScore = score;
-            }
+            const score = (
+                (mOptions.hits * 10) /
+                mOptions.numberQuestions
+            ).toFixed(2);
+            $quickquestionsvideo.sendScore(true, instance);
+            $('#vquextRepeatActivity-' + instance).text(
+                mOptions.msgs.msgYouScore + ': ' + score
+            );
         }
         $quickquestionsvideo.saveEvaluation(instance);
         $quickquestionsvideo.showFeedBack(instance);
@@ -1783,32 +1782,26 @@ var $quickquestionsvideo = {
             $quickquestionsvideo.muteVideo(false, instance);
         }
 
+        // No "score only once" lock — see gameOver().
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
-            ) {
-                let score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                if (mOptions.isNavigable) {
-                    score = 0;
-                    for (let i = 0; i < mOptions.questionsGame.length; i++) {
-                        score =
-                            mOptions.questionsGame[i].answerScore > 0
-                                ? score + 1
-                                : score;
-                    }
-                    score = ((score * 10) / mOptions.numberQuestions).toFixed(
-                        2
-                    );
+            let score = (
+                (mOptions.hits * 10) /
+                mOptions.numberQuestions
+            ).toFixed(2);
+            if (mOptions.isNavigable) {
+                score = 0;
+                for (let i = 0; i < mOptions.questionsGame.length; i++) {
+                    score =
+                        mOptions.questionsGame[i].answerScore > 0
+                            ? score + 1
+                            : score;
                 }
-                $quickquestionsvideo.sendScore(true, instance);
-                $('#vquextRepeatActivity-' + instance).text(
-                    mOptions.msgs.msgYouScore + ': ' + score
-                );
+                score = ((score * 10) / mOptions.numberQuestions).toFixed(2);
             }
+            $quickquestionsvideo.sendScore(true, instance);
+            $('#vquextRepeatActivity-' + instance).text(
+                mOptions.msgs.msgYouScore + ': ' + score
+            );
         }
         $quickquestionsvideo.saveEvaluation(instance);
     },
@@ -1913,20 +1906,16 @@ var $quickquestionsvideo = {
             $quickquestionsvideo.gameOver(1, instance);
             return;
         }
+        // No "score only once" lock — see gameOver().
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                $quickquestionsvideo.sendScore(true, instance);
-                $('#vquextRepeatActivity-' + instance).text(
-                    mOptions.msgs.msgYouScore + ': ' + score
-                );
-            }
+            const score = (
+                (mOptions.hits * 10) /
+                mOptions.numberQuestions
+            ).toFixed(2);
+            $quickquestionsvideo.sendScore(true, instance);
+            $('#vquextRepeatActivity-' + instance).text(
+                mOptions.msgs.msgYouScore + ': ' + score
+            );
         }
 
         $quickquestionsvideo.saveEvaluation(instance);
@@ -1985,20 +1974,16 @@ var $quickquestionsvideo = {
             return;
         }
 
+        // No "score only once" lock — see gameOver().
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestionsvideo.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                $quickquestionsvideo.sendScore(true, instance);
-                $('#vquextRepeatActivity-' + instance).text(
-                    mOptions.msgs.msgYouScore + ': ' + score
-                );
-            }
+            const score = (
+                (mOptions.hits * 10) /
+                mOptions.numberQuestions
+            ).toFixed(2);
+            $quickquestionsvideo.sendScore(true, instance);
+            $('#vquextRepeatActivity-' + instance).text(
+                mOptions.msgs.msgYouScore + ': ' + score
+            );
         }
 
         $quickquestionsvideo.saveEvaluation(instance);

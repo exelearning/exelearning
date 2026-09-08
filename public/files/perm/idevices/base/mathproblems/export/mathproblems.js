@@ -37,7 +37,6 @@ var $eXeMathProblems = {
     isInExe: false,
     userName: '',
     previousScore: '',
-    initialScore: '',
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
@@ -1051,13 +1050,9 @@ var $eXeMathProblems = {
             $mthpPNumber.text(mOptions.numberQuestions - mActiveQuestion);
         }
 
+        // No "score only once" lock — see gameOver().
         if (mOptions.scorm.isScorm == 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
-                $eXeMathProblems.sendScore(true, instance);
-            }
+            $eXeMathProblems.sendScore(true, instance);
         }
 
         $eXeMathProblems.saveEvaluation(instance);
@@ -1087,18 +1082,15 @@ var $eXeMathProblems = {
         clearInterval(mOptions.counterClock);
 
         $eXeMathProblems.uptateTime(0, instance);
+        // No "score only once" lock: the end of the attempt is always reported.
+        // The lock this used to carry could never close anyway —
+        // registerActivity forces `repeatActivity` to true at page load
+        // (common.js updateScormNew). It read the nested `scorm.repeatActivity`
+        // that common.js never writes, so here it survived a while longer than
+        // in its siblings, but the option itself is always true. The activity
+        // registry owns what has been recorded.
         if (mOptions.scorm.isScorm == 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.numberQuestions
-                ).toFixed(2);
-                $eXeMathProblems.sendScore(true, instance);
-                $eXeMathProblems.initialScore = score;
-            }
+            $eXeMathProblems.sendScore(true, instance);
         }
 
         $eXeMathProblems.saveEvaluation(instance);
@@ -1201,13 +1193,9 @@ var $eXeMathProblems = {
             mOptions.gameOver = true;
         }
 
+        // No "score only once" lock — see gameOver().
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.scorm.repeatActivity ||
-                $eXeMathProblems.initialScore === ''
-            ) {
-                $eXeMathProblems.sendScore(true, instance);
-            }
+            $eXeMathProblems.sendScore(true, instance);
         }
 
         $eXeMathProblems.saveEvaluation(instance);
