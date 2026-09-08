@@ -765,7 +765,7 @@ var $form = {
         if (data.addBtnAnswers & showAnswers.length) showAnswers.show();
         data.gameOver = true;
         $form.checkAllQuestions(data);
-        $form.showScore(50, data);
+        $form.showScore(data.passRate, data);
         if ($('body').hasClass('exe-scorm') && data.isScorm > 0) {
             $form.sendScore(data);
         }
