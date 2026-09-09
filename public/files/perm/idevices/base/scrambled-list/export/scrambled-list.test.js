@@ -445,6 +445,68 @@ describe('scrambled-list iDevice export', () => {
     });
   });
 
+  // Accepting the retry reshuffles the list and clears the feedback, so the
+  // mark the LMS holds from the check that failed stops describing anything on
+  // screen. It used to stay there until the learner checked again.
+  describe('retryGame', () => {
+    function captureGradingSurface() {
+      const calls = [];
+      const previous = global.$exeDevices;
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: {
+              sendScoreNew: (auto, data) => calls.push({ auto, data }),
+            },
+          },
+        },
+      };
+      return { calls, restore: () => { global.$exeDevices = previous; } };
+    }
+
+    function givenGradedList() {
+      document.body.classList.add('exe-scorm');
+      document.body.innerHTML += `
+        <ul id="exe-sortableList-0"></ul>
+        <ul id="exe-sortableListResults-0"><li>a</li><li>b</li></ul>
+        <div id="exe-sortableList-0-feedback"></div>
+        <div id="exe-sortableList-0-retry"></div>
+        <button id="exe-sortableListButton-0"></button>`;
+    }
+
+    afterEach(() => {
+      document.body.classList.remove('exe-scorm');
+      document.body.innerHTML = '';
+    });
+
+    it('reports a zero and an attempt still open', () => {
+      givenGradedList();
+      const surface = captureGradingSurface();
+      const data = { id: 'sl-1', isScorm: 1, scorerp: 5, gameOver: true, gameStarted: true };
+
+      $scrambledlist.retryGame(0, data);
+
+      expect(surface.calls).toHaveLength(1);
+      expect(surface.calls[0].auto).toBe(true);
+      expect(surface.calls[0].data.scorerp).toBe(0);
+      // sendScoreNew drops a game that is neither started nor over, and it
+      // derives completion from gameOver: the retry is not a finished attempt.
+      expect(surface.calls[0].data.gameStarted).toBe(true);
+      expect(surface.calls[0].data.gameOver).toBe(false);
+      surface.restore();
+    });
+
+    it('says nothing when the activity does not report to SCORM', () => {
+      givenGradedList();
+      const surface = captureGradingSurface();
+
+      $scrambledlist.retryGame(0, { id: 'sl-1', isScorm: 0 });
+
+      expect(surface.calls).toHaveLength(0);
+      surface.restore();
+    });
+  });
+
   describe('escapeHtmlButKeepRenderedMath', () => {
     const mathSpan =
       '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg><math></math></span>';

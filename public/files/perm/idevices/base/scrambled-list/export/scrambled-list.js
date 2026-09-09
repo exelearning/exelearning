@@ -512,7 +512,7 @@ var $scrambledlist = {
                 data,
                 () => {
                     // Re-enable game with randomized cards for the next attempt.
-                    this.retryGame(listOrder);
+                    this.retryGame(listOrder, data);
                 },
                 () => {
                     this.showResultFeedback(
@@ -666,7 +666,7 @@ var $scrambledlist = {
             .attr('aria-disabled', 'true');
     },
 
-    retryGame: function (listOrder) {
+    retryGame: function (listOrder, data) {
         const $userList = $('#exe-sortableList-' + listOrder);
         const $rightAnswers = $('#exe-sortableListResults-' + listOrder);
         const $feedback = $('#exe-sortableList-' + listOrder + '-feedback');
@@ -703,6 +703,22 @@ var $scrambledlist = {
         $feedback.empty().removeClass('feedback-right feedback-wrong');
         $retry.empty().removeClass('d-block').addClass('d-none');
         $button.show();
+
+        // Accepting the retry reshuffles the list and clears the feedback, so
+        // the mark the LMS holds from the check that failed no longer describes
+        // anything on screen. Report the zero, and as an attempt still open:
+        // sendScore() cannot serve here because it declares the activity over,
+        // which is right for a check and wrong for the retry that follows one.
+        if (
+            data &&
+            document.body.classList.contains('exe-scorm') &&
+            data.isScorm > 0
+        ) {
+            data.scorerp = 0;
+            data.gameStarted = true;
+            data.gameOver = false;
+            $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
+        }
     },
 
     saveEvaluation: function (nRightAnswers, total, data) {
