@@ -20,6 +20,9 @@ import {
     createNotReadyResponse,
     createNotFoundResponse,
     createSuccessResponse,
+    parseByteRange,
+    createRangeResponse,
+    createRangeNotSatisfiableResponse,
     createPdfViewerResponse,
     sniffMimeFromBytes,
     resolveServedMime,
@@ -38,7 +41,7 @@ describe('Preview Service Worker', () => {
 
     describe('Constants', () => {
         it('should have SW_VERSION defined', () => {
-            expect(SW_VERSION).toBe('1.0.0');
+            expect(SW_VERSION).toBe('1.1.0');
         });
 
         it('should have MIME_TYPES with common file types', () => {
@@ -560,6 +563,81 @@ describe('Preview Service Worker', () => {
             const response = createSuccessResponse(body, 'text/plain');
             const text = await response.text();
             expect(text).toBe('Hello World');
+        });
+
+        it('should advertise byte ranges and the body length', async () => {
+            const body = new TextEncoder().encode('Hello World');
+            const response = createSuccessResponse(body, 'video/webm');
+            expect(response.headers.get('Accept-Ranges')).toBe('bytes');
+            expect(response.headers.get('Content-Length')).toBe('11');
+        });
+    });
+
+    // Media elements only expose a seekable range when byte ranges are served:
+    // without them `video.seekable` is [0, 0] and every seek clamps to 0.
+    describe('parseByteRange', () => {
+        it('should ignore a missing or unparsable header', () => {
+            expect(parseByteRange(null, 100)).toBeNull();
+            expect(parseByteRange('', 100)).toBeNull();
+            expect(parseByteRange('items=0-10', 100)).toBeNull();
+            expect(parseByteRange('bytes=0-10, 20-30', 100)).toBeNull();
+            expect(parseByteRange('bytes=-', 100)).toBeNull();
+        });
+
+        it('should parse a closed range', () => {
+            expect(parseByteRange('bytes=10-19', 100)).toEqual({ start: 10, end: 19 });
+        });
+
+        it('should parse an open-ended range', () => {
+            expect(parseByteRange('bytes=90-', 100)).toEqual({ start: 90, end: 99 });
+        });
+
+        it('should parse a suffix range', () => {
+            expect(parseByteRange('bytes=-10', 100)).toEqual({ start: 90, end: 99 });
+        });
+
+        it('should clamp an end past the last byte', () => {
+            expect(parseByteRange('bytes=50-999', 100)).toEqual({ start: 50, end: 99 });
+        });
+
+        it('should clamp a suffix larger than the body', () => {
+            expect(parseByteRange('bytes=-500', 100)).toEqual({ start: 0, end: 99 });
+        });
+
+        it('should report unsatisfiable ranges', () => {
+            expect(parseByteRange('bytes=100-200', 100)).toBe(false);
+            expect(parseByteRange('bytes=20-10', 100)).toBe(false);
+            expect(parseByteRange('bytes=-0', 100)).toBe(false);
+        });
+
+        it('should tolerate surrounding whitespace', () => {
+            expect(parseByteRange('  bytes=0-4  ', 100)).toEqual({ start: 0, end: 4 });
+        });
+    });
+
+    describe('createRangeResponse', () => {
+        it('should return 206 with the requested slice', async () => {
+            const body = new TextEncoder().encode('Hello World');
+            const response = createRangeResponse(body, 'video/webm', { start: 6, end: 10 });
+            expect(response.status).toBe(206);
+            expect(await response.text()).toBe('World');
+        });
+
+        it('should describe the slice with Content-Range and Content-Length', () => {
+            const body = new TextEncoder().encode('Hello World');
+            const response = createRangeResponse(body, 'video/webm', { start: 6, end: 10 });
+            expect(response.headers.get('Content-Range')).toBe('bytes 6-10/11');
+            expect(response.headers.get('Content-Length')).toBe('5');
+            expect(response.headers.get('Accept-Ranges')).toBe('bytes');
+            expect(response.headers.get('Content-Type')).toBe('video/webm');
+        });
+    });
+
+    describe('createRangeNotSatisfiableResponse', () => {
+        it('should return 416 with the total size', () => {
+            const response = createRangeNotSatisfiableResponse(11);
+            expect(response.status).toBe(416);
+            expect(response.headers.get('Content-Range')).toBe('bytes */11');
         });
     });
 

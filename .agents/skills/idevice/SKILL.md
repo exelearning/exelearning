@@ -23,6 +23,25 @@ Creating or modifying interactive devices (iDevices) in `public/files/perm/idevi
 
 **Reference iDevices** (well-tested, good to study): `checklist`, `rubric`, `geogebra-activity`
 
+## TypeScript iDevices (`src/`)
+
+An iDevice with a `src/` directory is a **TypeScript iDevice**: its
+`edition/<name>.js` and `export/<name>.js` are GENERATED bundles (gitignored)
+— never edit them; edit `src/` and rebuild. Convention and commands:
+
+- `src/edition/index.ts` → `edition/<name>.js` (assigns `window.$exeDevice`);
+  `src/export/index.ts` → `export/<name>.js` (assigns the runtime global).
+- Build/typecheck: `bun run bundle:idevices` / `bun run typecheck:idevices`
+  (central runner `scripts/build-idevices.ts`; `--only <name>`, `--watch`).
+  Run `make bundle` after src/ edits and BEFORE E2E, or the preview serves the
+  stale bundle from `public/bundles/idevices.zip`.
+- Tests are colocated `*.spec.ts` (Vitest — `bun test` ignores `public/**`),
+  plus bundle-contract smoke tests over the compiled IIFEs.
+- Deviations (custom bundle name, externals, minify) go in an optional
+  `build.config.json` — see `doc/development/idevices-typescript.md` and
+  ADR-2147-06. Reference implementations: `interactive-video` (full convention),
+  `slide` (manifest).
+
 ## Structure
 
 ```
