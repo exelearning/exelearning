@@ -1208,7 +1208,7 @@ describe('ProjectManager', () => {
                 expect(global.fetch).toHaveBeenNthCalledWith(
                     2,
                     '/exelearning/api/project/cleanup-import?path=%2Ftmp%2Fproject.elpx',
-                    { method: 'DELETE' },
+                    { method: 'DELETE', credentials: 'include' },
                 );
                 expect(replaceStateSpy).toHaveBeenCalled();
             } finally {

@@ -5,6 +5,7 @@
  * Uses Dependency Injection pattern for testability
  */
 import { Elysia } from 'elysia';
+import { isProductionEnv } from '../utils/env';
 import { getJwtSecret } from './auth';
 import { jwt } from '@elysiajs/jwt';
 import { randomBytes } from 'crypto';
@@ -510,7 +511,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             cookie.auth.set({
                                 value: token,
                                 httpOnly: true,
-                                secure: process.env.NODE_ENV === 'production',
+                                secure: isProductionEnv(),
                                 sameSite: 'lax',
                                 maxAge: 7 * 24 * 60 * 60, // 7 days
                                 path: '/',

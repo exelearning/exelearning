@@ -14,7 +14,7 @@ import {
     getSession as getSessionDefault,
     updateSession as updateSessionDefault,
     deleteSession as deleteSessionDefault,
-    getAllSessions as getAllSessionsDefault,
+    getSessionsByUser as getSessionsByUserDefault,
     generateSessionId as generateSessionIdDefault,
 } from '../services/session-manager';
 
@@ -162,7 +162,7 @@ export interface SessionManagerDeps {
     getSession: typeof getSessionDefault;
     updateSession: typeof updateSessionDefault;
     deleteSession: typeof deleteSessionDefault;
-    getAllSessions: typeof getAllSessionsDefault;
+    getSessionsByUser: typeof getSessionsByUserDefault;
     generateSessionId: typeof generateSessionIdDefault;
 }
 
@@ -261,7 +261,7 @@ const defaultSessionManager: SessionManagerDeps = {
     getSession: getSessionDefault,
     updateSession: updateSessionDefault,
     deleteSession: deleteSessionDefault,
-    getAllSessions: getAllSessionsDefault,
+    getSessionsByUser: getSessionsByUserDefault,
     generateSessionId: generateSessionIdDefault,
 };
 
@@ -403,7 +403,8 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
     const db = deps.db; // Shadow global db
 
     // Session manager functions
-    const { createSession, getSession, deleteSession, getAllSessions } = deps.sessionManager ?? defaultSessionManager;
+    const { createSession, getSession, deleteSession, getSessionsByUser } =
+        deps.sessionManager ?? defaultSessionManager;
 
     // File helper functions
     const { getOdeSessionTempDir, getContentXmlPath, fileExists, readFileAsString, appendFile, getFilesDir } =
@@ -454,9 +455,16 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
             // Session Management
             // =====================================================
 
-            // GET /api/project/sessions - List all sessions
-            .get('/sessions', () => {
-                const sessions = getAllSessions();
+            // GET /api/project/sessions - List the caller's own sessions
+            .get('/sessions', ({ set, currentUser }) => {
+                // Sessions expose project UUIDs and titles across tenants, so this
+                // listing must be authenticated and scoped to the caller (mirrors the
+                // already-hardened upload-chunk/create-quick handlers in this group).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
+                const sessions = getSessionsByUser(currentUser.id);
                 return {
                     count: sessions.length,
                     sessions: sessions.map(s => ({
@@ -468,10 +476,16 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 };
             })
 
-            // GET /api/project/sessions/:id - Get session details
-            .get('/sessions/:id', ({ params, set }) => {
+            // GET /api/project/sessions/:id - Get session details (owner only)
+            .get('/sessions/:id', ({ params, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
                 const session = getSession(params.id);
-                if (!session) {
+                // 404 (not 403) for foreign sessions so this cannot be used as an
+                // existence oracle for other users' sessions.
+                if (!session || session.userId !== currentUser.id) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Session not found' };
                 }
@@ -486,10 +500,14 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 };
             })
 
-            // DELETE /api/project/sessions/:id - Delete a session
-            .delete('/sessions/:id', async ({ params, set }) => {
+            // DELETE /api/project/sessions/:id - Delete a session (owner only)
+            .delete('/sessions/:id', async ({ params, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { error: 'Unauthorized', message: 'Authentication required' };
+                }
                 const session = getSession(params.id);
-                if (!session) {
+                if (!session || session.userId !== currentUser.id) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Session not found' };
                 }
@@ -725,7 +743,16 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
             })
 
             // DELETE /api/project/cleanup-import - Cleanup temp import file after ElpxImporter is done
-            .delete('/cleanup-import', async ({ query }) => {
+            .delete('/cleanup-import', async ({ query, set, currentUser }) => {
+                // This destructive, path-parameterized file delete must require
+                // authentication like its twin upload-chunk handler; otherwise an
+                // anonymous caller could delete another user's in-flight import
+                // temp files under FILES_DIR/tmp.
+                if (!currentUser) {
+                    set.status = 401;
+                    return { success: false, message: 'Authentication required' };
+                }
+
                 const importPath = query.path as string;
 
                 if (!importPath) {
@@ -742,7 +769,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                     const resolvedPath = path.resolve(fullPath);
                     const allowedBase = path.resolve(path.join(filesDir, 'tmp'));
 
-                    if (!resolvedPath.startsWith(allowedBase)) {
+                    if (!isWithinBase(allowedBase, resolvedPath)) {
                         console.warn(`[Project] Cleanup blocked: path outside allowed directory: ${resolvedPath}`);
                         return { success: false, message: 'Invalid path' };
                     }
@@ -1979,7 +2006,15 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // =====================================================
 
             // POST /api/ode-management/odes/session/usedfiles - Get used files report
-            .post('/api/ode-management/odes/session/usedfiles', async ({ body }) => {
+            .post('/api/ode-management/odes/session/usedfiles', async ({ body, set, currentUser }) => {
+                // Server-side file existence/size lookups must require authentication
+                // so this report cannot be abused as an unauthenticated file oracle,
+                // mirroring the brokenlinks handler above (security audit).
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const data = body as UsedFilesRequest;
                 const idevices = data.idevices || [];
                 const assetMetadata = data.assetMetadata || {};
@@ -2089,6 +2124,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                         // Remove "files/" prefix for filesystem path
                         const relativePath = filePath.startsWith('files/') ? filePath.substring(6) : filePath;
+                        // Reject traversal escaping FILES_DIR (same existence/size
+                        // oracle class as the brokenlinks validator); skip silently.
+                        if (!isWithinBase(filesDir, relativePath)) {
+                            return null;
+                        }
                         const fullPath = path.join(filesDir, relativePath);
 
                         // Check if file exists

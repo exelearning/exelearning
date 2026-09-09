@@ -3,6 +3,7 @@
  * Handles login, logout, session checks, and guest access
  */
 import { Elysia, t } from 'elysia';
+import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
 import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
@@ -131,6 +132,36 @@ const loginSchema = t.Object({
 });
 
 /**
+ * Pre-computed bcrypt hash (cost factor 10, matching real user passwords) of a
+ * random secret that intentionally corresponds to no real account. It is used
+ * as a decoy so password verification always performs one `verifyPassword`
+ * call — even when the email does not exist — keeping the response time of a
+ * failed login constant and closing the username-enumeration timing oracle.
+ *
+ * Verification goes through `src/services/password.ts` (`Bun.password.verify`),
+ * not bcryptjs, so this dummy compare stays off the JS event loop (ADR-2255-02).
+ */
+const DUMMY_PASSWORD_HASH = '$2b$10$pWMhak8HjxajRfmz7mkS8O99xR2ozkUT89L1IFMeKMaE3ERN0huYm';
+
+/**
+ * Verify a plaintext password against a (possibly missing) user in constant time.
+ *
+ * When `user` is null/undefined we still run `verifyPassword` against
+ * DUMMY_PASSWORD_HASH so an attacker cannot use the response latency to tell
+ * whether the email exists. Returns true only when the user exists AND the
+ * password matches. Shared by both password-login entry points so the
+ * comparison behaviour lives in a single place.
+ */
+export async function verifyUserPassword(
+    user: { password?: string | null } | null | undefined,
+    password: string,
+): Promise<boolean> {
+    const hash = user?.password || DUMMY_PASSWORD_HASH;
+    const matches = await verifyPassword(password, hash);
+    return Boolean(user) && matches;
+}
+
+/**
  * Factory function to create auth routes with dependency injection
  * @param deps - Dependencies to inject (db, queries)
  */
@@ -206,13 +237,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const { email, password } = body;
 
                     const user = await findUserByEmail(db, email);
-                    if (!user) {
-                        set.status = 401;
-                        return { error: 'Unauthorized', message: 'Invalid credentials' };
-                    }
-
-                    const isValid = await verifyPassword(password, user.password);
-                    if (!isValid) {
+                    // Always run one verifyPassword (see verifyUserPassword) so an
+                    // unknown email and a wrong password take the same time and
+                    // cannot be distinguished via response latency.
+                    const passwordValid = await verifyUserPassword(user, password);
+                    if (!user || !passwordValid) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid credentials' };
                     }
@@ -235,7 +264,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -312,7 +341,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: originalToken,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 7 * 24 * 60 * 60,
                     path: '/',
@@ -411,16 +440,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 const user = await findUserByEmail(db, email);
-                if (!user) {
-                    // Redirect back to login with error
-                    return Response.redirect(
-                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
-                        302,
-                    );
-                }
-
-                const isValid = await verifyPassword(password, user.password);
-                if (!isValid) {
+                // Always run one verifyPassword (see verifyUserPassword) so an
+                // unknown email and a wrong password take the same time and
+                // cannot be distinguished via response latency.
+                const passwordValid = await verifyUserPassword(user, password);
+                if (!user || !passwordValid) {
                     // Redirect back to login with error
                     return Response.redirect(
                         `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
@@ -448,7 +472,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: token,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 7 * 24 * 60 * 60,
                     path: '/',
@@ -583,7 +607,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 const returnUrl = query.returnUrl as string | undefined;
                 const headers: [string, string][] = [['Location', loginUrl]];
                 if (returnUrl && isValidReturnUrl(returnUrl)) {
-                    const isSecure = process.env.NODE_ENV === 'production';
+                    const isSecure = isProductionEnv();
                     headers.push([
                         'Set-Cookie',
                         `sso_return_url=${encodeURIComponent(returnUrl)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${isSecure ? '; Secure' : ''}`,
@@ -701,7 +725,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -790,7 +814,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 });
 
                 // Build cookies to set (OIDC state + optional returnUrl)
-                const isSecure = process.env.NODE_ENV === 'production';
+                const isSecure = isProductionEnv();
                 const cookies: string[] = [
                     `oidc_state=${encodeURIComponent(oidcState)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${isSecure ? '; Secure' : ''}`,
                 ];
@@ -1038,7 +1062,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -1073,7 +1097,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         'sso_return_url=; Path=/; HttpOnly; Max-Age=0', // Clear returnUrl cookie
                     ];
                     if (idToken) {
-                        const isSecure = process.env.NODE_ENV === 'production';
+                        const isSecure = isProductionEnv();
                         setCookieHeaders.push(
                             `oidc_id_token=${idToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}${isSecure ? '; Secure' : ''}`,
                         );
@@ -1155,7 +1179,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: token,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 24 * 60 * 60,
                     path: '/',

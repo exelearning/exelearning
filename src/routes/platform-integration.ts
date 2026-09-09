@@ -328,6 +328,24 @@ export const platformIntegrationRoutes = new Elysia({ name: 'platform-integratio
                 return { responseMessage: 'Missing package file' };
             }
 
+            // Ownership gate (IDOR): mirror the check the non-browser
+            // set_platform_new_ode handler performs above. A valid platform JWT
+            // only authorizes the course module it was issued for; a
+            // client-supplied projectUuid already bound to a *different* module
+            // must not have a package forwarded on its behalf or be rebound
+            // (platformPetitionSetForward writes projects.platform_id). Checking
+            // before reading the upload also avoids buffering a large file for an
+            // unauthorized request. Unknown/unlinked projects stay allowed.
+            if (projectUuid) {
+                const authorized = await isProjectAuthorizedForPlatform(projectUuid, params.cmid);
+                if (!authorized) {
+                    set.status = 403;
+                    return {
+                        responseMessage: 'Forbidden: project does not belong to this platform identity',
+                    };
+                }
+            }
+
             let buffer: Buffer;
             try {
                 const arrayBuffer = await packageFile.arrayBuffer();

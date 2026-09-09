@@ -43,6 +43,31 @@ const defaultLookup: LookupFn = async hostname => {
 };
 
 /**
+ * Convert an IPv4-mapped IPv6 address (`::ffff:1.2.3.4` dotted form, or
+ * `::ffff:hhhh:hhhh` hex form) to its dotted IPv4 string, else `null`. Node's
+ * `isIP()` reports these as IPv6, so without this normalization the IPv4-only
+ * controls below (`isIP(addr) === 4` gating the `EXTRA_BLOCKED_V4_CIDRS` loop)
+ * are skipped and the mapped form bypasses the egress guard.
+ */
+function mappedIpv4(host: string): string | null {
+    const m = /^::ffff:(.+)$/i.exec(host);
+    if (!m) {
+        return null;
+    }
+    const rest = m[1];
+    if (isIP(rest) === 4) {
+        return rest; // dotted tail, e.g. ::ffff:169.254.169.254
+    }
+    const hex = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(rest);
+    if (hex) {
+        const hi = parseInt(hex[1], 16);
+        const lo = parseInt(hex[2], 16);
+        return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+    }
+    return null;
+}
+
+/**
  * Returns true if the given resolved IP must not be contacted (loopback,
  * private, link-local, CGNAT, unspecified, multicast, reserved...).
  */
@@ -51,7 +76,12 @@ export function isBlockedAddress(ip: string): boolean {
         return true;
     }
     // Strip an IPv6 zone id (e.g. fe80::1%eth0).
-    const addr = ip.split('%')[0].trim();
+    const stripped = ip.split('%')[0].trim();
+    // Normalize IPv4-mapped IPv6 to dotted IPv4 first, so EVERY v4 control below
+    // (isPrivateIp AND the EXTRA_BLOCKED_V4_CIDRS loop, which isIP gates on v4)
+    // applies. Without this, ::ffff:100.64.0.1 / ::ffff:224.0.0.1 etc. slip past
+    // as "IPv6" and reach CGNAT / multicast / reserved / this-host ranges.
+    const addr = mappedIpv4(stripped) ?? stripped;
     if (addr === '' || addr === '0.0.0.0' || addr === '::' || addr === '0:0:0:0:0:0:0:0') {
         return true;
     }

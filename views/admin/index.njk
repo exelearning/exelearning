@@ -2602,12 +2602,18 @@ window.$eXeLearningCustom = {
         // =============================================
         // Custom Assets management
         // =============================================
-        function escapeHtml(str) {
-            return String(str)
+        // Single HTML escaper for this panel. Escapes & < > " ' so it is safe for
+        // BOTH element-content and quoted-attribute sinks (a maintainer can rely on
+        // quotes being escaped). Keeps the falsy-returns-'' behavior of the previous
+        // implementation.
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         function copyToClipboard(text) {
@@ -2947,8 +2953,13 @@ window.$eXeLearningCustom = {
                         ? T.cannot_impersonate_admin
                         : (isSelfUser ? T.cannot_impersonate_self : T.log_in_as);
                     const safeImpersonateTitle = String(impersonateButtonTitle || '').replace(/"/g, '&quot;');
+                    // HTML-encode & and ' so an email containing a single quote (e.g. from
+                    // SSO auto-provisioning) cannot break out of the single-quoted onclick
+                    // attribute. JSON.stringify does NOT escape ', so the raw value would
+                    // close the attribute and inject markup (stored XSS in the admin panel).
+                    const safeEmailArg = JSON.stringify(user.email || '').replace(/&/g, '&amp;').replace(/'/g, '&#39;');
                     const impersonateItem = canImpersonate
-                        ? `<li><button type="button" class="dropdown-item" data-action="impersonate" onclick='impersonateUser(${user.id}, ${JSON.stringify(user.email || '')})'>
+                        ? `<li><button type="button" class="dropdown-item" data-action="impersonate" onclick='impersonateUser(${user.id}, ${safeEmailArg})'>
                                 <span class="mi mi-sm">login</span> ${T.log_in_as}
                            </button></li>`
                         : `<li><button type="button" class="dropdown-item" data-action="impersonate" disabled title="${safeImpersonateTitle}">
@@ -2958,7 +2969,7 @@ window.$eXeLearningCustom = {
                     // Reset password only exists for eXeLearning password accounts:
                     // CAS/OIDC/SAML/guest users have no password we manage.
                     const resetPasswordItem = user.can_reset_password
-                        ? `<li><button type="button" class="dropdown-item" data-action="reset-password" onclick='openResetPasswordModal(${user.id}, ${JSON.stringify(user.email || '')})'>
+                        ? `<li><button type="button" class="dropdown-item" data-action="reset-password" onclick='openResetPasswordModal(${user.id}, ${safeEmailArg})'>
                                 <span class="mi mi-sm">key</span> ${T.reset_password}
                            </button></li>`
                         : '';
@@ -3002,8 +3013,8 @@ window.$eXeLearningCustom = {
                         <td style="font-weight: 600; color: var(--admin-text-muted);">#${user.id}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <div class="user-avatar user-avatar-sm">${(user.email[0] || 'U').toUpperCase()}</div>
-                                <span style="font-weight: 500;">${user.email}</span>
+                                <div class="user-avatar user-avatar-sm">${escapeHtml((user.email[0] || 'U').toUpperCase())}</div>
+                                <span style="font-weight: 500;">${escapeHtml(user.email)}</span>
                             </div>
                         </td>
                         <td>${roles}</td>
@@ -3281,9 +3292,9 @@ window.$eXeLearningCustom = {
                         <td>
                             <input type="checkbox" class="bulk-checkbox project-checkbox" data-project-id="${project.id}" ${isChecked}>
                         </td>
-                        <td style="font-weight: 600; color: var(--admin-text-muted);" title="${project.uuid}">#${project.id}</td>
-                        <td>${project.title || '-'}</td>
-                        <td>${ownerLabel}</td>
+                        <td style="font-weight: 600; color: var(--admin-text-muted);" title="${escapeHtml(project.uuid)}">#${project.id}</td>
+                        <td>${escapeHtml(project.title || '-')}</td>
+                        <td>${escapeHtml(ownerLabel)}</td>
                         <td><span class="badge-role ${statusClass}">${project.status}</span></td>
                         <td><span class="badge-role ${visibilityClass}">${project.visibility}</span></td>
                         <td>${createdAt}</td>
@@ -3292,7 +3303,7 @@ window.$eXeLearningCustom = {
                             <a class="btn-admin-outline" href="/workarea?project=${project.uuid}" target="_blank" title="{{ t.view_project or 'View Project' }}">
                                 <span class="mi mi-sm">open_in_new</span>
                             </a>
-                            <button class="btn-admin-outline" onclick="downloadProjectElpx(${project.id}, '${(project.title || '').replace(/'/g, "\\'")}')" title="{{ t.download_elpx or 'Download .elpx' }}">
+                            <button class="btn-admin-outline" onclick="downloadProjectElpx(${project.id})" title="{{ t.download_elpx or 'Download .elpx' }}">
                                 <span class="mi mi-sm">download</span>
                             </button>
                             ` : ''}
@@ -3633,7 +3644,7 @@ window.$eXeLearningCustom = {
             }
         }
 
-        async function downloadProjectElpx(projectId, projectTitle) {
+        async function downloadProjectElpx(projectId) {
             try {
                 const res = await fetch(`${API_BASE}/projects/${projectId}/download`, { credentials: 'include' });
                 if (!res.ok) {
@@ -4271,14 +4282,6 @@ window.$eXeLearningCustom = {
                 e.target.value = '';
             }
         });
-
-        // Utility function for escaping HTML
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
 
         // Notification helper
         function showNotification(message, type = 'info') {
