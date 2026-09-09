@@ -744,6 +744,15 @@ var $eXeCompleta = {
             $eXeCompleta.getWordArrayJson(instance);
         }
         $('#cmptCheckPhrase-' + instance).show();
+        // Trying again empties every gap and zeroes the counters, so the mark
+        // the LMS holds from the last check no longer describes anything on
+        // screen. Report the zero, or a learner who walked away here would
+        // leave the previous check's score standing over a blank board.
+        //
+        // Safe to report as unfinished: this button is only shown when
+        // checkPhrase found attempts left, which is the branch that does not
+        // raise gameOver — the game-over path hides it (see gameOver()).
+        $eXeCompleta.saveScormScore(instance);
     },
 
     checkPhrase: function (instance) {

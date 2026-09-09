@@ -593,6 +593,36 @@ describe('complete iDevice export', () => {
       vi.restoreAllMocks();
     });
 
+    // Trying again empties the gaps and zeroes the counters, so the mark the
+    // LMS holds from the last check stops describing anything on screen. It
+    // used to stay there, and a learner who walked away left the previous
+    // score standing over a blank board.
+    it('publishes the zero when the learner tries the phrase again', () => {
+      setupStart({ gameStarted: true, gameOver: false, hits: 3, errors: 1 });
+      document.getElementById(`cmptMainContainer-${instance}`).innerHTML +=
+        `<div id="cmptReloadPhrase-${instance}"></div>
+         <div id="cmptCheckPhrase-${instance}"></div>`;
+      let stateWhenReported;
+      $eXeCompleta.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } = $eXeCompleta.options[instance];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+      vi.spyOn($eXeCompleta, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'updateGameBoard').mockImplementation(() => {});
+
+      $eXeCompleta.reloadGame(instance);
+
+      expect($eXeCompleta.sendScore).toHaveBeenCalledWith(true, instance);
+      // The report describes the blank board, and says the attempt goes on:
+      // this button only appears while attempts remain.
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
     it('saveScormScore reports only in automatic SCORM mode', () => {
       setupStart({ isScorm: 1 });
       $eXeCompleta.saveScormScore(instance);
