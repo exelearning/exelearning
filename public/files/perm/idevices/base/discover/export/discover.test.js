@@ -726,4 +726,97 @@ describe('discover iDevice export', () => {
       });
     });
   });
+
+  // Play again abandons the finished attempt. With a single level it starts the
+  // next one straight away and startGame reports; with several it only brings
+  // the level panel back, and it used to report nothing — so the LMS kept the
+  // finished attempt's grade over a board the learner had already left. Same
+  // rule the access code above already follows.
+  describe('playing again with several levels', () => {
+    function setupFinishedGame(overrides) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreCubierta-0"></div>
+          <div id="descubreStartLevels-0"></div>
+          <div id="descubreMultimedia-0"></div>
+          <a id="descubreStartGameEnd-0" href="#"></a>
+          <a id="descubreReboot-0" href="#"></a>
+          <a id="descubreShowSolution-0" href="#"></a>
+          <a id="descubreClueButton-0" href="#"></a>
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          main: 'descubreMainContainer-0',
+          isScorm: 1,
+          gameLevels: 3,
+          // The attempt that just finished.
+          gameStarted: false,
+          gameOver: true,
+          hits: 6,
+          errors: 2,
+          score: 100,
+          wordsGame: [{}, {}, {}],
+          numberQuestions: 6,
+          time: 0,
+          author: '',
+          fullscreen: false,
+          itinerary: { showCodeAccess: false },
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'startGame').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'uptateTime').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports the abandoned attempt as unfinished with no score', () => {
+      setupFinishedGame();
+      let stateWhenReported;
+      $eXeDescubre.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } = $eXeDescubre.options[0];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+      $eXeDescubre.addEvents(0);
+
+      document.getElementById('descubreStartGameEnd-0').click();
+
+      expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0);
+      // sendScoreNew drops a game that is neither started nor over, and it
+      // derives completion from gameOver.
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('leaves no game running: the level buttons still start one', () => {
+      setupFinishedGame();
+      $eXeDescubre.addEvents(0);
+
+      document.getElementById('descubreStartGameEnd-0').click();
+
+      // startGame() returns early on a game it believes is already going.
+      expect($eXeDescubre.options[0].gameStarted).toBe(false);
+    });
+
+    it('starts the next game itself when there is only one level', () => {
+      setupFinishedGame({ gameLevels: 1 });
+      $eXeDescubre.addEvents(0);
+
+      document.getElementById('descubreStartGameEnd-0').click();
+
+      // startGame publishes the zero on its own in that branch.
+      expect($eXeDescubre.startGame).toHaveBeenCalledWith(0, 0);
+      expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+    });
+  });
 });

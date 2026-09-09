@@ -1045,6 +1045,24 @@ var $eXeDescubre = {
             $('#descubreMultimedia-' + instance)
                 .find('.DescubreQP-Card1')
                 .removeClass('flipped');
+            // Play again abandons the finished attempt even though the next one
+            // does not begin until a level is picked, so the LMS is told now,
+            // as in every other iDevice: score 0 and unfinished. Leaving it to
+            // the level buttons kept the previous grade standing over a board
+            // the learner had already left.
+            //
+            // gameStarted goes up only for the length of the report, because
+            // sendScoreNew drops a game that declares itself neither started
+            // nor over, and gameOver is what it would otherwise read as
+            // completion. It goes straight back down: no round is running, and
+            // startGame() returns early on a game it believes is already going.
+            mOptions.hits = 0;
+            mOptions.errors = 0;
+            mOptions.score = 0;
+            mOptions.gameOver = false;
+            mOptions.gameStarted = true;
+            $eXeDescubre.saveScormScore(instance);
+            mOptions.gameStarted = false;
         });
 
         $('#descubreReboot-' + instance).on('click', function (e) {
