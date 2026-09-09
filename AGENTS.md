@@ -75,6 +75,7 @@ make up                         # Docker dev environment
 | **Test** | `make test-e2e` | E2E tests (Playwright) |
 | **Test** | `make test-e2e-static` | E2E tests against static build |
 | **Test** | `make test-coverage` | Tests with coverage report |
+| **Bench** | `make bench-preview` | Three-way preview refresh benchmark (main vs filtered vs opaque) |
 | **Lint** | `make fix` | Autofix lint + check — **always run after changes** |
 | **Lint** | `make lint` | Lint without fixing |
 | **i18n** | `make translations` | Extract new translation keys — **never run by agents; managed by a separate process** |
@@ -339,6 +340,7 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | [mkdocs-nav](.agents/skills/mkdocs-nav/SKILL.md) | Sync `mkdocs.yml` nav with the actual contents of `doc/` |
 | [api-v1](.agents/skills/api-v1/SKILL.md) | External REST API v1 endpoints |
 | [changelog](.agents/skills/changelog/SKILL.md) | Drafting or updating `public/CHANGELOG.md` from merged PRs |
+| [external-media-report](.agents/skills/external-media-report/SKILL.md) | Verifying the shared external-media bundle across the five host plugins, or diagnosing an embed/video that misbehaves in one |
 
 ## 12. Deep-Dive Documentation
 
@@ -352,6 +354,7 @@ Domain-specific guidance lives in `.agents/skills/*/SKILL.md`.
 | REST API v1 | [doc/development/rest-api.md](doc/development/rest-api.md) |
 | Embedding in LMS | [doc/development/embedding.md](doc/development/embedding.md) |
 | Profiling | [doc/development/profiling.md](doc/development/profiling.md) |
+| External-media evidence harness | [doc/development/external-media-report/README.md](doc/development/external-media-report/README.md) |
 | Styles/Themes | [doc/development/styles.md](doc/development/styles.md) |
 | Conventions | [doc/conventions.md](doc/conventions.md) |
 | Architecture | [doc/architecture.md](doc/architecture.md) |

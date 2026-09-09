@@ -1,0 +1,21 @@
+{
+  "id": "wordpress-admin",
+  "expect": "promoted",
+  "platform": "WordPress",
+  "name": "Editor de bloques (backend)",
+  "url": "http://localhost:8888/wp-admin/post.php?post=49&action=edit",
+  "frame": "iframe[src*=\"/exelearning/v1/content/\"]",
+  "login": "wordpress",
+  "note": "componente edit del bloque, con la misma frontera y la misma promoción que el front",
+  "players": [
+    "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"
+  ],
+  "sandboxes": [
+    "allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+  ],
+  "canonicalHost": "object",
+  "youtubeSdk": "undefined",
+  "vimeoSdk": "undefined",
+  "contentSandbox": "allow-scripts allow-popups allow-forms",
+  "contentOpaque": true
+}

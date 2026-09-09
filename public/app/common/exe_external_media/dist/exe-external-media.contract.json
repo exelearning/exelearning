@@ -1,0 +1,61 @@
+{
+    "libraryProtocol": 1,
+    "protocol": {
+        "type": "exe-media",
+        "version": 1,
+        "commands": [
+            "close",
+            "getCurrentTime",
+            "getDuration",
+            "hide",
+            "open",
+            "pause",
+            "play",
+            "seek",
+            "show"
+        ],
+        "events": [
+            "closed",
+            "ended",
+            "error",
+            "pause",
+            "play",
+            "ready",
+            "seeked",
+            "state",
+            "timeupdate"
+        ]
+    },
+    "providers": [
+        {
+            "id": "dailymotion",
+            "sampleCanonicalUrl": "https://www.dailymotion.com/embed/video/x8abc12"
+        },
+        {
+            "id": "mediateca-madrid",
+            "sampleCanonicalUrl": "https://mediateca.educa.madrid.org/video/abcd1234/fs"
+        },
+        {
+            "id": "vimeo",
+            "sampleCanonicalUrl": "https://player.vimeo.com/video/76979871"
+        },
+        {
+            "id": "youtube",
+            "sampleCanonicalUrl": "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"
+        }
+    ],
+    "handshake": {
+        "childToHost": [
+            "hello",
+            "sync"
+        ],
+        "hostToChild": [
+            "welcome",
+            "request"
+        ]
+    },
+    "sandbox": {
+        "video": "allow-scripts allow-same-origin allow-popups allow-forms allow-presentation",
+        "crossOriginPdf": "allow-same-origin"
+    }
+}

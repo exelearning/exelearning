@@ -1,5 +1,6 @@
 .modal {
-    z-index: 20009 !important;
+    // Keep dialogs above slide-out panels and their embedded iframes.
+    z-index: 100020 !important;
     font-family: "Inter", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -195,6 +196,10 @@
             background-color:var(--brand-primary);
         }
     }
+}
+
+.modal-backdrop {
+    z-index: 100010;
 }
 
 #modalConfirm:has(.modal-body[modal-content-id="block-icon-picker"]) {
