@@ -187,7 +187,12 @@
                 : source.completionRequired === true;
         var minimumScore = toNumber(source.minimumScore, toNumber(base.minimumScore, 0));
         var maximumScore = toNumber(source.maximumScore, toNumber(base.maximumScore, 100));
-        var weight = toNumber(source.weight, toNumber(base.weight, 1));
+        // No usable weight means 100, the same answer common.js gives in
+        // reportActivity() and the same default the editor writes into the
+        // form. It used to be 1 here, so the fallback was decided in two
+        // places that disagreed — and 1 is what made an activity that had
+        // never been through the editor weigh a hundredth of one that had.
+        var weight = toNumber(source.weight, toNumber(base.weight, 100));
         return {
             id: id,
             evaluable: evaluable,
@@ -200,7 +205,12 @@
             // A degenerate range (max <= min) cannot normalise a score; fall
             // back to the SCORM 1.2 default 0-100 window.
             maximumScore: maximumScore > minimumScore ? maximumScore : minimumScore + 100,
-            weight: weight > 0 ? weight : 1,
+            // Not usable is not usable: a zero or a negative gets the same 100
+            // a missing weight gets, which is what getFinalScore() answers and
+            // what the cross-check in the test file pins. Flooring these at 1
+            // instead made the two aggregations disagree — 40.4 against 60 for
+            // an activity weighed 0 next to one weighed by default.
+            weight: weight > 0 ? weight : 100,
         };
     }
 
@@ -332,7 +342,10 @@
             answered: toNumber(fields[2], 0),
             total: toNumber(fields[3], 0),
             score: fields[4] === '' ? null : toNumber(fields[4], null),
-            weight: toNumber(fields[5], 1),
+            // A record whose weight field is missing or unreadable has no
+            // usable weight, which is the same 100 the rest of the runtime
+            // answers. A record that really carries 1 still decodes as 1.
+            weight: toNumber(fields[5], 100),
             minimumScore: toNumber(fields[6], 0),
             maximumScore: toNumber(fields[7], 100),
         });
@@ -365,10 +378,16 @@
                 continue;
             }
             var score = toNumber(match[3], null);
-            var weight = toNumber(match[4], 1);
+            // Same rule as everywhere else: a weight that is missing, zero or
+            // negative is not usable, and an unusable weight is 100. A pool
+            // record does not weigh until a live registration claims it — and
+            // claiming inherits the score alone — but serialize() writes the
+            // pool back out, so a bad value would round-trip through
+            // cmi.suspend_data on every visit.
+            var weight = toNumber(match[4], 100);
             pool[match[1]] = {
                 score: score === null ? 0 : clamp(score, 0, 100),
-                weight: weight !== null && weight > 0 ? weight : 1,
+                weight: weight !== null && weight > 0 ? weight : 100,
             };
         }
         return pool;
@@ -677,10 +696,14 @@
                     if (fields.length === 3) {
                         var poolPosition = toNumber(fields[0], null);
                         var poolScore = toNumber(fields[1], null);
+                        var poolWeight = toNumber(fields[2], 100);
                         if (poolPosition !== null && poolScore !== null) {
                             state.legacyByIndex[poolPosition] = {
                                 score: clamp(poolScore, 0, 100),
-                                weight: toNumber(fields[2], 1) || 1,
+                                // As above. `|| 1` used to let a negative
+                                // through untouched, because a negative number
+                                // is truthy.
+                                weight: poolWeight > 0 ? poolWeight : 100,
                             };
                             result.restored += 1;
                         }

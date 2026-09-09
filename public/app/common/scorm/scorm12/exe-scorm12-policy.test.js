@@ -1170,7 +1170,7 @@ describe('exe-scorm12-policy', () => {
             policy.applyExitPolicy();
 
             expect(api.callSignatures()).toEqual([
-                'LMSSetValue(cmi.suspend_data=exe12/1|quiz-1;7;0;0;90;1;0;100)',
+                'LMSSetValue(cmi.suspend_data=exe12/1|quiz-1;7;0;0;90;100;0;100)',
                 'LMSGetValue(cmi.core.lesson_status)',
                 'LMSSetValue(cmi.core.lesson_status=passed)',
                 'LMSSetValue(cmi.core.exit=)',

@@ -56,7 +56,8 @@ describe('exe-scorm12-activities', () => {
                 score: null,
                 minimumScore: 0,
                 maximumScore: 100,
-                weight: 1,
+                // No usable weight means 100, as in common.js and the editor.
+                weight: 100,
             });
         });
 
@@ -100,10 +101,13 @@ describe('exe-scorm12-activities', () => {
             expect(activities.get('missing')).toBeNull();
         });
 
-        it('clamps a non-positive weight and a degenerate score range', () => {
+        // A zero or a negative is not a usable weight, so it gets the same 100
+        // a missing one gets — the answer getFinalScore() in common.js already
+        // gave. Flooring it at 1 instead made the two aggregations disagree.
+        it('treats a non-positive weight as missing, and clamps a degenerate score range', () => {
             const stored = activities.register('a', { weight: 0, minimumScore: 50, maximumScore: 10 });
 
-            expect(stored.weight).toBe(1);
+            expect(stored.weight).toBe(100);
             expect(stored.maximumScore).toBe(150);
         });
 
@@ -294,7 +298,7 @@ describe('exe-scorm12-activities', () => {
 
             // Only structural fields: identifier, flags, counters, score,
             // weight and bounds.
-            expect(activities.serialize()).toBe('exe12/1|quiz-1;7;0;0;60;1;0;100');
+            expect(activities.serialize()).toBe('exe12/1|quiz-1;7;0;0;60;100;0;100');
         });
 
         it('stays inside the SCORM 1.2 4096-character limit and says what it dropped', () => {
@@ -367,7 +371,7 @@ describe('exe-scorm12-activities', () => {
             // The score is inherited; completion is NOT — the legacy format
             // carries no completion flag, so the live iDevice decides. The
             // declaration (weight, bounds) is the live one.
-            expect(stored).toMatchObject({ id: 'idevice-abc', score: 80, completed: false, weight: 1, total: 5 });
+            expect(stored).toMatchObject({ id: 'idevice-abc', score: 80, completed: false, weight: 100, total: 5 });
             expect(activities.pendingLegacy()).toBe(1);
             // The same activity registered under one id only — no positional
             // duplicate that would double the weight.
@@ -380,6 +384,29 @@ describe('exe-scorm12-activities', () => {
             const stored = activities.register('quiz-a', { evaluable: true, legacyIndex: 1 });
 
             expect(stored).toMatchObject({ score: 0, completed: false });
+        });
+
+        // Both pool readers answer the same "an unusable weight is 100" the
+        // rest of the runtime does. A pool record does not weigh until a live
+        // registration claims it, and claiming inherits the score alone — but
+        // serialize() writes the pool back out, so a bad value would round-trip
+        // through cmi.suspend_data on every visit.
+        it('gives a zero weight in the unversioned payload the usual 100', () => {
+            activities.load('1. "Quiz"; Score: 40%; Weight: 0%');
+
+            expect(activities.serialize()).toBe('exe12/1|1;40;100');
+        });
+
+        it.each([
+            ['a zero weight', 'exe12/1|1;40;0'],
+            // `|| 1` used to let this one through untouched: a negative number
+            // is truthy.
+            ['a negative weight', 'exe12/1|1;40;-5'],
+            ['an unreadable weight', 'exe12/1|1;40;abc'],
+        ])('gives %s in a versioned pool record the usual 100', (_label, payload) => {
+            activities.load(payload);
+
+            expect(activities.serialize()).toBe('exe12/1|1;40;100');
         });
 
         it('a claim only happens on the first registration', () => {
