@@ -388,7 +388,7 @@ describe('NavbarFile', () => {
             });
 
             expect(preventDefault).toHaveBeenCalled();
-            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/projects', '_blank');
             expect(newProjectSpy).not.toHaveBeenCalled();
         });
 
@@ -450,7 +450,7 @@ describe('NavbarFile', () => {
             });
 
             expect(preventDefault).toHaveBeenCalled();
-            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/projects', '_blank');
             expect(newProjectSpy).not.toHaveBeenCalled();
         });
 
@@ -484,7 +484,7 @@ describe('NavbarFile', () => {
             });
 
             expect(preventDefault).toHaveBeenCalled();
-            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/projects', '_blank');
             expect(newProjectSpy).not.toHaveBeenCalled();
         });
 
@@ -513,7 +513,7 @@ describe('NavbarFile', () => {
             });
 
             expect(preventDefault).toHaveBeenCalled();
-            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/projects', '_blank');
             expect(newProjectSpy).not.toHaveBeenCalled();
         });
 
@@ -542,7 +542,7 @@ describe('NavbarFile', () => {
             // Simulate a stale duplicated listener trying to execute in same gesture.
             realNewProjectEvent.call(navbarFile);
 
-            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/projects', '_blank');
             expect(newSessionSpy).not.toHaveBeenCalled();
         });
 
