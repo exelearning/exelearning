@@ -115,8 +115,8 @@
     "@types/node": "^26.2.0",
     "@types/nunjucks": "^3.2.6",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^4.1.11",
-    "@vitest/ui": "^4.1.11",
+    "@vitest/coverage-v8": "^5.0.0",
+    "@vitest/ui": "^5.0.0",
     "cross-env": "^10.1.0",
     "dompurify": "^3.4.14",
     "electron": "^44.0.0",
@@ -131,7 +131,7 @@
     "scorm-again": "3.3.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.0",
     "wait-on": "^9.1.0"
   },
   "build": {
