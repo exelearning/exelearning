@@ -138,7 +138,7 @@ article.box.idevice-element-in-content[mode="export"] .idevice_node {
 }
 
 .exe-content .box-head .box-icon {
-    color: var(--exe-icon-color, #d86e41);
+    color: var(--exe-icon-color);
 }
 
 .exe-content .box-head .exe-icon {

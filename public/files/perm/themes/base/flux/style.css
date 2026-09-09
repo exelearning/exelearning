@@ -390,7 +390,7 @@ body#tinymce {
 }
 
 .exe-content .box-head .box-icon {
-    color: var(--exe-icon-color, #eda900);
+    color: var(--exe-icon-color);
 }
 
 /* Teacher mode visual indicator */
