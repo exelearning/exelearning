@@ -1954,6 +1954,18 @@ var $eXeDescubre = {
         $('#descubreStartLevels-' + instance).show();
         $('#descubreCubierta-' + instance).hide();
         $('#descubreInfo-' + instance).text(mOptions.msgs.msgSelectLevel);
+        // Abandoning mid-game is the learner giving up the attempt, so the LMS
+        // is told here rather than left holding whatever the last answers had
+        // scored. Same rule as the play-again button and the access code.
+        //
+        // gameStarted goes up only for the length of the report: sendScoreNew
+        // drops a game that declares itself neither started nor over, and
+        // gameOver is what it would otherwise read as completion. It goes
+        // straight back down — the learner is at the level panel now, and
+        // startGame() returns early on a game it believes is already going.
+        mOptions.gameStarted = true;
+        $eXeDescubre.saveScormScore(instance);
+        mOptions.gameStarted = false;
     },
 
     showFeedBack: function (instance) {

@@ -808,6 +808,33 @@ describe('discover iDevice export', () => {
       expect($eXeDescubre.options[0].gameStarted).toBe(false);
     });
 
+    // The reboot icon abandons a game in progress and sends the learner back to
+    // the level panel. It used to leave the LMS holding whatever the answers so
+    // far had scored.
+    it('reports giving up mid-game as unfinished with no score', () => {
+      setupFinishedGame({ gameStarted: true, gameOver: false, hits: 4, errors: 1 });
+      // rebootGame silences the card audio on its way out.
+      global.$exeDevices.iDevice.gamification.media = { stopSound: vi.fn() };
+      let stateWhenReported;
+      $eXeDescubre.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } = $eXeDescubre.options[0];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+      $eXeDescubre.addEvents(0);
+
+      document.getElementById('descubreReboot-0').click();
+
+      expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0);
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+      // Back at the panel: no game is running.
+      expect($eXeDescubre.options[0].gameStarted).toBe(false);
+    });
+
     it('starts the next game itself when there is only one level', () => {
       setupFinishedGame({ gameLevels: 1 });
       $eXeDescubre.addEvents(0);
