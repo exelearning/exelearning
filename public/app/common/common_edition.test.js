@@ -1903,6 +1903,141 @@ describe('common_edition.js', () => {
 
       expect(globalThis.eXe.app.alert).toHaveBeenCalled();
     });
+
+    describe('seedDeclaredTargets (author/license prefill from asset metadata)', () => {
+      const seed = (...args) =>
+        globalThis.$exeDevicesEdition.iDevice.filePicker.seedDeclaredTargets(...args);
+
+      it('fills an empty author target and triggers change', () => {
+        document.body.innerHTML = `
+          <input type="text" id="picker" class="exe-image-picker" data-author-target="#author" />
+          <input type="text" id="author" />
+        `;
+        const changed = vi.fn();
+        $('#author').on('change', changed);
+
+        seed($('#picker'), $(), { author: 'Ada Lovelace' });
+
+        expect($('#author').val()).toBe('Ada Lovelace');
+        expect(changed).toHaveBeenCalled();
+      });
+
+      it('never overwrites a value the user already typed', () => {
+        document.body.innerHTML = `
+          <input type="text" id="picker" class="exe-image-picker" data-author-target="#author" />
+          <input type="text" id="author" value="Manual Author" />
+        `;
+        const changed = vi.fn();
+        $('#author').on('change', changed);
+
+        seed($('#picker'), $(), { author: 'Ada Lovelace' });
+
+        expect($('#author').val()).toBe('Manual Author');
+        expect(changed).not.toHaveBeenCalled();
+      });
+
+      it('treats whitespace-only values as empty', () => {
+        document.body.innerHTML = `
+          <input type="text" id="picker" class="exe-image-picker" data-author-target="#author" />
+          <input type="text" id="author" value="   " />
+        `;
+        seed($('#picker'), $(), { author: 'Ada Lovelace' });
+        expect($('#author').val()).toBe('Ada Lovelace');
+      });
+
+      it('is a silent no-op when the declared target does not resolve', () => {
+        document.body.innerHTML = `
+          <input type="text" id="picker" class="exe-image-picker" data-author-target="#missing" />
+        `;
+        expect(() => seed($('#picker'), $(), { author: 'Ada Lovelace' })).not.toThrow();
+      });
+
+      it('is a no-op without asset metadata or without an author value', () => {
+        document.body.innerHTML = `
+          <input type="text" id="picker" class="exe-image-picker" data-author-target="#author" />
+          <input type="text" id="author" />
+        `;
+        seed($('#picker'), $(), null);
+        expect($('#author').val()).toBe('');
+        seed($('#picker'), $(), { author: '' });
+        expect($('#author').val()).toBe('');
+      });
+
+      it('scopes resolution to the picker\'s .idevice_node before falling back to document', () => {
+        document.body.innerHTML = `
+          <div class="idevice_node" id="other">
+            <input type="text" class="row-author" value="" />
+          </div>
+          <div class="idevice_node" id="mine">
+            <input type="text" id="picker" class="exe-image-picker" data-author-target=".row-author" />
+            <input type="text" class="row-author" value="" />
+          </div>
+        `;
+        seed($('#picker'), $(), { author: 'Ada Lovelace' });
+
+        expect($('#mine .row-author').val()).toBe('Ada Lovelace');
+        expect($('#other .row-author').val()).toBe('');
+      });
+
+      it('reads the declaration from the generated button when the input lacks it', () => {
+        document.body.innerHTML = `
+          <input type="text" id="picker" class="exe-image-picker" />
+          <input type="button" id="btn" data-author-target="#author" />
+          <input type="text" id="author" />
+        `;
+        seed($('#picker'), $('#btn'), { author: 'Ada Lovelace' });
+        expect($('#author').val()).toBe('Ada Lovelace');
+      });
+
+      it('fills an empty license target from asset.license', () => {
+        document.body.innerHTML = `
+          <input type="text" id="picker" class="exe-image-picker"
+                 data-author-target="#author" data-license-target="#license" />
+          <input type="text" id="author" />
+          <select id="license">
+            <option value=""></option>
+            <option value="Creative Commons BY">Creative Commons BY</option>
+          </select>
+        `;
+        seed($('#picker'), $(), { author: 'Ada', license: 'Creative Commons BY' });
+        expect($('#license').val()).toBe('Creative Commons BY');
+      });
+
+      it('resolves the target at selection time (dynamically re-rendered rows)', () => {
+        document.body.innerHTML = `
+          <input type="text" id="picker" class="exe-image-picker" data-author-target="#author-row-2" />
+        `;
+        globalThis.$exeDevicesEdition.iDevice.filePicker.init();
+
+        // The row the selector points at is rendered AFTER init (game re-renders)
+        document.body.insertAdjacentHTML('beforeend', '<input type="text" id="author-row-2" />');
+
+        document.querySelector('.exe-pick-image').click();
+        const { onSelect } = globalThis.eXeLearning.app.modals.filemanager.show.mock.calls.at(-1)[0];
+        onSelect({ assetUrl: 'asset://a1.png', blobUrl: 'blob:x', asset: { author: 'Ada Lovelace' } });
+
+        expect($('#picker').val()).toBe('asset://a1.png');
+        expect($('#author-row-2').val()).toBe('Ada Lovelace');
+      });
+
+      it('the click handler seeds targets before firing change on the picker input', () => {
+        document.body.innerHTML = `
+          <input type="text" id="picker" class="exe-image-picker" data-author-target="#author" />
+          <input type="text" id="author" />
+        `;
+        globalThis.$exeDevicesEdition.iDevice.filePicker.init();
+
+        const seen = [];
+        $('#picker').on('change', () => seen.push($('#author').val()));
+
+        document.querySelector('.exe-pick-image').click();
+        const { onSelect } = globalThis.eXeLearning.app.modals.filemanager.show.mock.calls.at(-1)[0];
+        onSelect({ assetUrl: 'asset://a1.png', blobUrl: 'blob:x', asset: { author: 'Ada Lovelace' } });
+
+        // When the picker's change handler runs, the author is already seeded
+        expect(seen).toEqual(['Ada Lovelace']);
+      });
+    });
   });
 
   describe('voiceRecorder', () => {

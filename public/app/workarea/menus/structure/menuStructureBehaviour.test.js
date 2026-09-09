@@ -262,6 +262,7 @@ describe('MenuStructureBehaviour', () => {
                 },
                 project: {
                     checkOpenIdevice: vi.fn(() => false),
+                    hasOpenIdevice: vi.fn(() => false),
                     unlockIdevices: vi.fn(),
                     openLoad: vi.fn(),
                     idevices: {
@@ -431,6 +432,43 @@ describe('MenuStructureBehaviour', () => {
             await Promise.resolve();
             // Should NOT have called selectNode because the handler ignores .dropdown-item
             expect(selectSpy).not.toHaveBeenCalled();
+        });
+
+        it('skips inline rename SILENTLY when an iDevice entered edition during the async page load', async () => {
+            // Second click on the already-selected node normally starts inline
+            // rename — but if an iDevice was opened while selectNode() settled,
+            // the continuation must bail out WITHOUT popping the unsaved-changes
+            // alert (checkOpenIdevice would blame the user for a spurious action).
+            const node1 = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.setNodeSelected(node1);
+            vi.spyOn(behaviour, 'selectNode').mockResolvedValue(node1);
+            const renameSpy = vi.spyOn(behaviour, 'startInlinePageRename');
+            global.eXeLearning.app.project.hasOpenIdevice.mockReturnValue(true);
+
+            behaviour.addEventNavElementOnclick();
+            const label = document.querySelector('.nav-element[nav-id="node-1"] > .nav-element-text');
+            label.click();
+            await Promise.resolve();
+            await Promise.resolve();
+
+            expect(renameSpy).not.toHaveBeenCalled();
+            expect(global.eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
+        });
+
+        it('starts inline rename on a second click when nothing is being edited', async () => {
+            const node1 = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.setNodeSelected(node1);
+            vi.spyOn(behaviour, 'selectNode').mockResolvedValue(node1);
+            const renameSpy = vi.spyOn(behaviour, 'startInlinePageRename').mockImplementation(() => {});
+            global.eXeLearning.app.project.hasOpenIdevice.mockReturnValue(false);
+
+            behaviour.addEventNavElementOnclick();
+            const label = document.querySelector('.nav-element[nav-id="node-1"] > .nav-element-text');
+            label.click();
+            await Promise.resolve();
+            await Promise.resolve();
+
+            expect(renameSpy).toHaveBeenCalledWith(node1);
         });
 
         it('supports Ctrl/Cmd additive multi-selection', () => {

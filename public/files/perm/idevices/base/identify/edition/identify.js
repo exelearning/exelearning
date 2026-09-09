@@ -531,7 +531,7 @@ var $exeDevice = {
                                     <span id="idfETitleImage">${_('Image URL')}</span>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="idfEInputImage">
                                         <label class="sr-av" for="idfEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker w-100 form-control me-0" id="idfEURLImage"/>
+                                        <input type="text" class="exe-file-picker w-100 form-control me-0" id="idfEURLImage" data-author-target="#idfEAuthor"/>
                                         <a href="#" id="idfEPlayImage" class="IDFE-ENavigationButton IDFE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="IDFE-EButtonImage " /></a>
                                         <a href="#" id="idfEShowMore" class="IDFE-ENavigationButton IDFE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="IDFE-EButtonImage " /></a>
                                     </div>

@@ -890,7 +890,7 @@ var $exeDevice = {
                         <div class="roscoBarEdition row g-2 align-items-center">
                             <div class="col-12 roscoImageInputWrapper">
                                 <label class="form-label mb-0">${_('Image')}: </label>
-                                <input type="text" class="form-control exe-file-picker roscoURLImageEdition me-0" id="roscoURLImage-${letter}" placeholder="${_('Indicate a valid URL of an image or select one from your device')}"/>
+                                <input type="text" class="form-control exe-file-picker roscoURLImageEdition me-0" id="roscoURLImage-${letter}" data-author-target="#roscoAuthorEdition${letter}" placeholder="${_('Indicate a valid URL of an image or select one from your device')}"/>
                             </div>
                             <div class="col-auto d-none">
                                 <label class="form-label sr-av">X: </label><input type="text" class="roscoXImageEdition" value="0" readonly />

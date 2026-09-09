@@ -155,4 +155,41 @@ describe('image-gallery iDevice', () => {
       expect(typeof $exeDevice.getDataJson).toBe('function');
     });
   });
+
+  describe('seedAttributionFromAsset', () => {
+    beforeEach(() => {
+      $exeDevice.attributionData = {};
+    });
+
+    it('seeds title/author/license from centralized asset metadata when empty', () => {
+      $exeDevice.seedAttributionFromAsset('img_0', {
+        title: 'Sunset',
+        author: 'Ada',
+        license: 'Creative Commons BY',
+      });
+      expect($exeDevice.attributionData['img_0']).toEqual({
+        title: 'Sunset',
+        author: 'Ada',
+        license: 'Creative Commons BY',
+      });
+    });
+
+    it('never overwrites fields the user already filled', () => {
+      $exeDevice.attributionData['img_0'] = { title: 'Mine', author: '', license: '' };
+      $exeDevice.seedAttributionFromAsset('img_0', {
+        title: 'Sunset',
+        author: 'Ada',
+        license: 'Creative Commons BY',
+      });
+      expect($exeDevice.attributionData['img_0'].title).toBe('Mine');
+      expect($exeDevice.attributionData['img_0'].author).toBe('Ada');
+      expect($exeDevice.attributionData['img_0'].license).toBe('Creative Commons BY');
+    });
+
+    it('is a safe no-op without a key or asset', () => {
+      expect(() => $exeDevice.seedAttributionFromAsset('', { author: 'Ada' })).not.toThrow();
+      $exeDevice.seedAttributionFromAsset('img_0', null);
+      expect($exeDevice.attributionData['img_0']).toBeUndefined();
+    });
+  });
 });

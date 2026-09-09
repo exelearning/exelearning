@@ -599,12 +599,12 @@
 
 #modalFileManager {
     > .modal-dialog {
-        max-width: 1100px;
-        max-height: 700px;
+        max-width: 1280px;
+        max-height: 800px;
     }
 
     .modal-content {
-        width: 1000px;
+        width: 100%;
         height: 650px;
         position: relative;
 
@@ -619,9 +619,6 @@
             flex-direction: column;
         }
 
-        .form-control.media-library-url{
-            width:auto;
-        }
     }
 
     /* Header with title, search, and close button aligned */
@@ -689,6 +686,8 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            padding-top: 5px;
+            padding-bottom: 5px;
 
             .exe-icon {
                 font-family: var(--icons-ff);
@@ -700,7 +699,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 6px 10px;
+            padding: 5px 10px;
 
             .exe-icon {
                 font-family: var(--icons-ff);
@@ -715,7 +714,7 @@
         }
 
         .media-library-view-btn {
-            padding: 6px 10px;
+            padding: 5px 10px;
             border: 1px solid var(--elements-hover);
             background: white;
             cursor: pointer;
@@ -763,25 +762,12 @@
             }
         }
 
-        .media-library-refcount-toggle {
-            display: flex;
-            align-items: center;
-            margin-left: 8px;
+        .media-library-file-count {
+            white-space: nowrap;
 
-            label {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                margin: 0;
-                font-size: 13px;
-                color: var(--icon-gray);
-                cursor: pointer;
-                white-space: nowrap;
-
-                input[type="checkbox"] {
-                    margin: 0;
-                    cursor: pointer;
-                }
+            .media-library-count-value {
+                font-weight: 600;
+                color: var(--body-text-color);
             }
         }
 
@@ -789,6 +775,13 @@
             margin-left: auto;
             max-width: 200px;
         }
+    }
+
+    /* Breadcrumb row with the file count tucked to the right. */
+    .media-library-nav-bar {
+        display: flex;
+        align-items: center;
+        gap: var(--margin-m);
     }
 
     /* Main container */
@@ -813,10 +806,11 @@
         padding: var(--margin-l);
         overflow-y: auto;
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        grid-auto-rows: 100px;
+        grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+        grid-auto-rows: max-content;
         gap: var(--margin-m);
         align-content: start;
+        align-items: start;
     }
 
     .media-library-loading,
@@ -886,24 +880,20 @@
         color: var(--remove);
     }
 
-    /* Grid items */
+    /* Grid items: card with a fixed-height thumbnail and a name + usage footer */
     .media-library-item {
-        width: 100px;
-        height: 100px;
-        border: 2px solid transparent;
+        border: 2px solid var(--elements-hover);
         border-radius: var(--radius);
         overflow: hidden;
         cursor: pointer;
-        background: var(--bg-light-gray);
+        background: var(--main-background-color);
         transition: var(--tr-02);
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
         position: relative;
 
         &:hover {
-            border-color: var(--elements-hover);
+            border-color: var(--dark-exe-color);
         }
 
         &.selected {
@@ -911,77 +901,58 @@
             box-shadow: 0 0 0 2px var(--dark-exe-color-04);
         }
 
-        img {
+        .item-thumb {
             width: 100%;
-            height: 100%;
-            object-fit: contain;
-            background: #f5f5f5;
-        }
-
-        .media-thumbnail {
+            height: 96px;
+            flex-shrink: 0;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: var(--margin-s);
-            text-align: center;
-            width: 100%;
-            height: 100%;
+            background: var(--bg-light-gray);
+            overflow: hidden;
+
+            img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
 
             .exe-icon {
                 font-family: var(--icons-ff);
                 font-size: 32px;
                 color: var(--icon-gray);
-                margin-bottom: var(--margin-s);
             }
+        }
 
-            .media-label {
-                font-size: 10px;
-                color: var(--icon-gray);
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 6px 8px;
+
+            .item-name {
+                font-size: 12px;
+                color: var(--body-text-color);
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
-                max-width: 100%;
             }
-        }
-
-        .item-name {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 2px 4px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            font-size: 9px;
-            text-align: center;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        /* Usage count badge (grid) */
-        .badge {
-            font-size: 10px;
-            font-weight: 600;
-            min-width: 18px;
-            height: 18px;
-            line-height: 12px;
-            padding: 3px 5px;
-            z-index: 1;
         }
     }
 
-    /* Small badge for list view */
-    .badge-sm {
-        font-size: 9px;
-        font-weight: 600;
-        min-width: 14px;
-        height: 14px;
-        line-height: 10px;
-        padding: 2px 4px;
-        vertical-align: middle;
-        margin-left: 6px;
+    /* Usage label ("Not used" / "N uses") shown on grid cards and list rows */
+    .item-usage {
+        font-size: 11px;
+        white-space: nowrap;
+
+        &.is-used {
+            color: var(--dark-exe-color);
+        }
+
+        &.is-unused,
+        &.is-folder {
+            color: var(--icon-gray);
+        }
     }
 
     /* List view container */
@@ -1131,7 +1102,7 @@
 
     /* Sidebar */
     .media-library-sidebar {
-        width: 280px;
+        width: 340px;
         border-left: 1px solid var(--elements-hover);
         background: var(--main-background-color);
         display: flex;
@@ -1155,21 +1126,112 @@
         flex-direction: column;
         flex: 1;
         min-height: 0;
-        overflow: hidden;
+        overflow-y: auto; /* the whole panel scrolls; preview can be folded to free space */
     }
 
-    /* Preview */
-    .media-library-preview {
-        padding: var(--margin-l);
+    /* Compact file header: thumbnail + name + technical summary + preview toggle */
+    .media-library-file-header {
+        display: flex;
+        align-items: center;
+        gap: var(--margin-m);
+        padding: var(--margin-m) var(--margin-l);
+        border-bottom: 1px solid var(--elements-hover);
+        flex-shrink: 0;
+
+        .media-library-header-thumb {
+            width: 64px;
+            height: 48px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--elements-hover);
+            border-radius: var(--radius);
+            background: var(--bg-light-gray);
+            overflow: hidden;
+
+            img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 24px;
+                color: var(--icon-gray);
+            }
+        }
+
+        .media-library-header-info {
+            flex: 1;
+            min-width: 0;
+
+            .media-library-header-name {
+                margin: 0;
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--dark-exe-color);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .media-library-header-meta {
+                margin: 2px 0 0;
+                font-size: 11px;
+                color: var(--icon-gray);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        }
+
+        .media-library-preview-toggle {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--elements-hover);
+            border-radius: var(--radius);
+            background: var(--main-background-color);
+            color: var(--icon-gray);
+            cursor: pointer;
+            transition: var(--tr-02);
+
+            &:hover {
+                background: var(--bg-light-gray);
+                color: var(--body-text-color);
+            }
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 16px;
+            }
+        }
+    }
+
+    /* Large preview, expanded from the file header */
+    .media-library-preview-wrap {
+        padding: var(--margin-m) var(--margin-l);
+        border-bottom: 1px solid var(--elements-hover);
         background: var(--bg-light-gray);
+        flex-shrink: 0;
+    }
+
+    .media-library-preview {
+        background: var(--bg-light-gray);
+        border-radius: var(--radius);
         display: flex;
         align-items: center;
         justify-content: center;
-        min-height: 180px;
+        min-height: 120px;
 
         img, video {
             max-width: 100%;
-            max-height: 160px;
+            max-height: 150px;
             object-fit: contain;
             border-radius: var(--radius);
         }
@@ -1193,10 +1255,8 @@
 
     /* Metadata */
     .media-library-metadata {
-        padding: var(--margin-l);
-        flex: 1;
-        overflow-y: auto;
-        min-height: 0;
+        padding: 0;
+        flex: 0 0 auto;
 
         .metadata-row {
             display: flex;
@@ -1221,6 +1281,264 @@
                 font-size: 12px;
                 padding: 4px 8px;
                 height: auto;
+            }
+        }
+    }
+
+    /* Sidebar tabs (Metadata / Details / Usage): underline style, matching the
+       app's standard tabs (e.g. the project properties panel) — a bottom rule with
+       a teal underline + teal label on the active tab. */
+    .media-library-tabs {
+        display: flex;
+        gap: 0;
+        margin: var(--margin-m) var(--margin-l) 0;
+        padding: 0;
+        border-bottom: 2px solid var(--gray-200, #e5e7eb);
+        flex-shrink: 0;
+
+        .nav-item {
+            margin-bottom: -2px;
+        }
+
+        .nav-link.media-library-tab {
+            border: none;
+            border-bottom: 2px solid transparent;
+            background: transparent;
+            border-radius: 0;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-500, #6b7280) !important;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+
+            &:hover {
+                color: var(--gray-700, #374151) !important;
+            }
+
+            &.active {
+                color: var(--brand-primary, #0BA1A1) !important;
+                border-bottom-color: var(--brand-primary, #0BA1A1);
+                background: transparent;
+                box-shadow: none;
+            }
+
+            &:focus-visible {
+                outline: 2px solid var(--brand-primary, #0BA1A1);
+                outline-offset: -2px;
+            }
+
+            .media-library-usage-tab-count {
+                font-weight: 400;
+                white-space: pre;
+            }
+        }
+    }
+
+    /* Tab panes share the horizontal inset of the header */
+    .media-library-tab-content {
+        flex: 1;
+        min-height: 0;
+
+        > .media-library-tab-pane {
+            padding: var(--margin-m) var(--margin-l) var(--margin-l);
+        }
+    }
+
+    /* Read-only Details rows read inline — the label sits on the same line as its
+       value ("TYPE: image/png"), not stacked above it. The editable Metadata form
+       keeps its stacked label/input layout. */
+    .media-library-section-details .metadata-row {
+        flex-direction: row;
+        align-items: baseline;
+        gap: 6px;
+
+        > label {
+            margin-bottom: 0;
+            flex-shrink: 0;
+        }
+
+        > span,
+        > .media-library-url-group,
+        > .d-flex {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+
+    /* Explanatory hint at the top of the Metadata tab */
+    .media-library-metadata-hint {
+        margin: 0 0 var(--margin-m);
+        font-size: 11px;
+        color: var(--icon-gray);
+    }
+
+    /* Author + author link side by side */
+    .metadata-author-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 var(--margin-m);
+
+        .metadata-edit-row {
+            min-width: 0;
+        }
+    }
+
+    /* Live "resulting caption" preview (shared figure-caption builder output) */
+    .media-library-caption-preview {
+        border: 1px solid var(--elements-hover);
+        border-radius: var(--radius);
+        background: var(--bg-light-gray);
+        padding: var(--margin-s) var(--margin-m);
+
+        .media-library-caption-preview-label {
+            margin: 0 0 2px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--icon-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .media-library-caption-preview-text {
+            font-size: 12px;
+            color: var(--body-text-color);
+            font-style: italic;
+            word-break: break-word;
+
+            .figcaption {
+                display: block;
+            }
+        }
+
+        &.is-empty .media-library-caption-preview-text {
+            color: var(--icon-gray);
+        }
+    }
+
+    /* Location and Internal URL rows read like the other detail rows: label on
+       top, plain left-aligned value, with their action as a subtle icon button. */
+    .metadata-url-row {
+        .media-library-url-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        input.media-library-url {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            background: transparent;
+            padding: 0;
+            font-size: 13px;
+            color: var(--body-text-color);
+            box-shadow: none;
+            outline: none;
+        }
+
+        .media-library-copy-url-btn {
+            border: none;
+            background: transparent;
+            color: var(--icon-gray);
+            padding: 2px 4px;
+            border-radius: var(--radius);
+            flex-shrink: 0;
+            cursor: pointer;
+
+            &:hover {
+                color: var(--body-text-color);
+                background: var(--bg-light-gray);
+            }
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 16px;
+            }
+        }
+    }
+
+    /* Inline replace action in the Details tab */
+    .media-library-replace-inline-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: var(--margin-s);
+
+        .exe-icon {
+            font-family: var(--icons-ff);
+            font-size: 16px;
+        }
+    }
+
+    .media-library-replace-hint {
+        margin: var(--margin-s) 0 0;
+        font-size: 11px;
+        color: var(--icon-gray);
+    }
+
+    /* Usage tab intro line */
+    .media-library-usage-intro {
+        margin: 0 0 var(--margin-m);
+        font-size: 12px;
+        color: var(--body-text-color);
+    }
+
+    /* Editable centralized metadata form. */
+    .media-library-edit-metadata {
+        padding-bottom: var(--margin-s);
+
+        .metadata-edit-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: var(--margin-m);
+
+            label {
+                font-size: 11px;
+                color: var(--icon-gray);
+                text-transform: uppercase;
+                margin-bottom: 2px;
+                margin-top: 0;
+            }
+
+            .form-control,
+            .form-select {
+                font-size: 12px;
+                padding: 4px 8px;
+                height: auto;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            textarea.form-control {
+                resize: vertical;
+            }
+        }
+
+        /* Autosave status: icon + text, state reinforced by colour (not colour alone). */
+        .media-library-meta-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 18px;
+            font-size: 12px;
+            margin-bottom: var(--margin-s);
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 14px;
+            }
+
+            &.is-saving {
+                color: var(--icon-gray);
+            }
+
+            &.is-saved {
+                color: var(--success-color, #2e7d32);
+            }
+
+            &.is-error {
+                color: var(--danger-color, #c62828);
             }
         }
     }
@@ -3443,16 +3761,51 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
         }
     }
 
-    /* File manager: hide preview sidebar on mobile, let main pane take the full width */
+    /* File manager on mobile: the grid/list takes the full width and the asset detail
+       panel becomes a bottom sheet that slides up when an asset is selected. */
     #modalFileManager {
-        .media-library-sidebar {
-            display: none !important;
-        }
         .media-library-main {
             width: 100% !important;
             max-width: 100% !important;
             flex: 1 1 100% !important;
         }
+
+        .media-library-sidebar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1060;
+            max-height: 85dvh;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+            background: var(--bg-white, #fff);
+            transform: translateY(100%);
+            transition: transform 0.25s ease;
+            overflow-y: auto;
+
+            &.is-open {
+                transform: translateY(0);
+            }
+        }
+
+        .media-library-sheet-close {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            border: 0;
+            background: transparent;
+            padding: 6px 0 2px;
+            color: var(--icon-gray);
+
+            .exe-icon {
+                font-family: var(--icons-ff);
+                font-size: 28px;
+            }
+        }
+
         .media-library-footer {
             flex-wrap: wrap;
             gap: 8px;
@@ -3715,7 +4068,7 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
 #modalFileManager .media-library-header-search {
     position: relative;
-    width: 200px;
+    width: 300px;
     flex-shrink: 0;
 }
 
@@ -3833,31 +4186,6 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     color: var(--remove, #dc3545);
 }
 
-/* Grid item info overlay (for search results) */
-#modalFileManager .media-library-item .item-info {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(transparent, rgba(0,0,0,0.75));
-    padding: 16px 4px 4px 4px;
-    color: white;
-    font-size: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-#modalFileManager .media-library-item .item-info .item-name {
-    position: static;
-    background: none;
-    padding: 0;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 #modalFileManager .media-library-item .item-path-badge {
     display: inline-flex;
     align-items: center;
@@ -3908,18 +4236,6 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     color: var(--brand-dark, #087d7d);
 }
 
-/* Location row in sidebar */
-#modalFileManager .media-library-location-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-#modalFileManager .media-library-location-value {
-    color: var(--brand-primary, #0BA1A1);
-    font-size: 12px;
-}
-
 #modalFileManager .media-library-open-folder-btn {
     color: #6b7280;
     font-size: 14px;
@@ -3932,12 +4248,12 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
 /* Fixed modal height - NEVER changes based on content */
 #modalFileManager .modal-dialog {
-    max-width: 1100px;
+    max-width: 1280px;
 }
 
 #modalFileManager .modal-content {
-    height: 70vh;
-    max-height: 700px;
+    height: 78vh;
+    max-height: 800px;
     min-height: 500px;
     display: flex;
     flex-direction: column;
@@ -3958,11 +4274,59 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
 /* Sort and filter selects - wider for longer text */
 #modalFileManager .media-library-sort {
-    min-width: 150px;
+    /* Wide enough for the longest option (e.g. "References: most used first" /
+       "Referencias: más usadas primero") without truncation, but responsive. */
+    min-width: 210px;
+    max-width: 100%;
+    width: auto;
 }
 
 #modalFileManager .media-library-filter {
     min-width: 120px;
+}
+
+/* "Used in" usage-locations list in the asset details panel */
+#modalFileManager .media-library-usage-locations {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    li {
+        font-size: 12px;
+        color: var(--body-text-color);
+        word-break: break-word;
+    }
+
+    .media-library-usage-location {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        border: 1px solid var(--elements-hover);
+        border-radius: var(--radius);
+        background: var(--bg-light-gray);
+        padding: 8px 10px;
+
+        .usage-page {
+            font-weight: 700;
+        }
+
+        .usage-place {
+            font-size: 11px;
+            color: var(--icon-gray);
+        }
+    }
+
+    .media-library-usage-empty {
+        font-style: italic;
+        color: var(--icon-gray);
+    }
+
+    .media-library-usage-more {
+        color: var(--icon-gray);
+    }
 }
 
 /* Container with grid and sidebar - flex row */
@@ -3998,7 +4362,7 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
 
 /* Sidebar fixed width with scroll */
 #modalFileManager .media-library-sidebar {
-    width: 280px;
+    width: 340px;
     flex-shrink: 0;
     overflow-y: auto;
     overflow-x: hidden;
@@ -4173,9 +4537,8 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     font-size: 16px;
 }
 
-/* File count indicator in toolbar */
+/* File count indicator (sits at the right of the breadcrumb nav bar) */
 .media-library-file-count {
-    margin-left: auto;
     font-size: 13px;
     color: #6c757d;
     white-space: nowrap;

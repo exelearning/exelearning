@@ -1181,7 +1181,7 @@ var $exeDevice = {
                                     <span id="quextETitleImage"  style="display:none">${_('Image URL')}</span>
                                     <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="quextEInputImage">
                                         <label class="sr-av" for="quextEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker w-100 form-control me-0" id="quextEURLImage"/>
+                                        <input type="text" class="exe-file-picker w-100 form-control me-0" id="quextEURLImage" data-author-target="#quextEAuthor"/>
                                         <a href="#" id="quextEPlayImage" class="QXTE-ENavigationButton " title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="QXTE-ENavigationButton " /></a>
                                     </div>
                                     <div class="d-none">

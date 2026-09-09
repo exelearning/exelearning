@@ -18,9 +18,10 @@
  *     via KEEP_LOOSE_APP_FILES.
  *
  * License and attribution files are never prunable: pruneDistPaths refuses
- * any path containing "license" (any case) and the runtime-fetched
- * libs/README.md + libs/LICENSES.md attribution files are additionally pinned
- * by the spec.
+ * basenames that *are* a license file (LICENSE, LICENSES.md, LICENCE_BAKOMA.txt)
+ * and the runtime-fetched libs/README.md + libs/LICENSES.md attribution files
+ * are additionally pinned by the spec. CamelCase application modules such as
+ * licenseOptions.js are ordinary bundle inputs and must stay prunable.
  */
 
 import fs from 'fs';
@@ -113,6 +114,16 @@ export async function computeBundledAppSources(rootDir: string): Promise<string[
 }
 
 /**
+ * True for attribution files (LICENSE, LICENSES.md, LICENCE_BAKOMA.txt, …).
+ * A camelCase module whose name merely contains the substring (licenseOptions.js)
+ * is application code, not attribution material.
+ */
+export function isLicenseMaterial(rel: string): boolean {
+    const base = (rel.split('/').pop() || '').toLowerCase();
+    return /^(licen[cs]es?)([._-]|$)/.test(base);
+}
+
+/**
  * Remove the given dist-relative paths from the output directory.
  * Throws if a path is missing (stale list) or looks like license material.
  */
@@ -120,7 +131,7 @@ export function pruneDistPaths(distDir: string, relPaths: string[]): { files: nu
     let files = 0;
     let bytes = 0;
     for (const rel of relPaths) {
-        if (rel.toLowerCase().includes('license') || rel.toLowerCase().includes('licence')) {
+        if (isLicenseMaterial(rel)) {
             throw new Error(`pruneDistPaths: refusing to prune license material: ${rel}`);
         }
         const abs = path.join(distDir, rel);

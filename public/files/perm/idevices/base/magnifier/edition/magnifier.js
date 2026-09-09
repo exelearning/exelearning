@@ -72,7 +72,7 @@ var $exeDevice = {
                     </div>
                     <div class="d-flex align-items-center mb-3">
                         <label for="mnfFileInput" class="form-label me-2 mb-0 sr-av">${_('Image URL')}:</label>
-                        <input type="text" class="exe-file-picker form-control w-50" id="mnfFileInput" />
+                        <input type="text" class="exe-file-picker form-control w-50" id="mnfFileInput" data-author-target="#mnfAuthor" />
                     </div>
                     <div class="d-flex align-items-center flex-nowrap gap-2 mb-3 w-50" id="mnfAuthorAlt">
                         <div class="w-50">

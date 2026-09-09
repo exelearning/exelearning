@@ -271,4 +271,41 @@ describe('hidden-image iDevice', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
     });
   });
+
+  describe('prefillAuthorFromAsset', () => {
+    function setAssetManager(metaById) {
+      global.window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: { getAssetMetadata: (id) => metaById[id] || null } } } },
+      };
+    }
+
+    beforeEach(() => {
+      document.body.innerHTML = '<input id="hiEAuthor" type="text" />';
+    });
+
+    afterEach(() => {
+      delete global.window.eXeLearning;
+      document.body.innerHTML = '';
+    });
+
+    it('fills the empty author field from the picked asset metadata', () => {
+      setAssetManager({ img1: { author: 'Ada Lovelace' } });
+      $exeDevice.prefillAuthorFromAsset('asset://img1.png');
+      expect(document.getElementById('hiEAuthor').value).toBe('Ada Lovelace');
+    });
+
+    it('does not overwrite an author the user already typed', () => {
+      setAssetManager({ img1: { author: 'Ada Lovelace' } });
+      document.getElementById('hiEAuthor').value = 'My Author';
+      $exeDevice.prefillAuthorFromAsset('asset://img1.png');
+      expect(document.getElementById('hiEAuthor').value).toBe('My Author');
+    });
+
+    it('is a no-op for non-asset URLs or assets without an author', () => {
+      setAssetManager({ img1: { author: '' } });
+      $exeDevice.prefillAuthorFromAsset('files/legacy/photo.png');
+      $exeDevice.prefillAuthorFromAsset('asset://img1.png');
+      expect(document.getElementById('hiEAuthor').value).toBe('');
+    });
+  });
 });
