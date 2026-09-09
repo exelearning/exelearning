@@ -125,8 +125,8 @@ var $padlock = {
             </div>
             <div class="candado-GameContainer" id="candadoGameContainer-${instance}">
                 <div class="candado-GameScoreBoard">
-                    <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
-                    <div class="exeQuextIcons34-Time" title="${msgs.msgTime}"></div>
+                    <strong id="candadoTimeLabel-${instance}"><span class="sr-av">${msgs.msgTime}:</span></strong>
+                    <div class="exeQuextIcons34-Time" id="candadoTimeIcon-${instance}" title="${msgs.msgTime}"></div>
                     <p id="candadoPTime-${instance}" class="candado-PTime">00:00</p>
                     <a href="#" class="candado-LinkMinimize candado-Activo" id="candadoLinkMinimize-${instance}" title="${msgs.msgMinimize}">
                         <strong><span class="sr-av">${msgs.msgMinimize}:</span></strong>
@@ -257,9 +257,17 @@ var $padlock = {
                 .show();
         }
 
+        // An untimed padlock has no countdown — startGame() returns before
+        // setting the interval — so the board must not show a clock icon and a
+        // 00:00 that will never move. The label goes with them, or a screen
+        // reader announces "Time:" over nothing.
+        //
+        // This used to hide candadoTimeQuestion and candadoTimeNumber, ids the
+        // export markup has never had, so it did nothing at all.
         if (mOptions.candadoTime === 0) {
-            $(`#candadoTimeQuestion-${instance}`).hide();
-            $(`#candadoTimeNumber-${instance}`).css('width', '32px');
+            $(`#candadoTimeLabel-${instance}`).hide();
+            $(`#candadoTimeIcon-${instance}`).hide();
+            $(`#candadoPTime-${instance}`).hide();
         }
 
         const dataCandado = $padlock.getCandadoData(instance);
@@ -274,15 +282,16 @@ var $padlock = {
             ) {
                 mOptions.score = 0;
                 localStorage.removeItem(`dataCandado-${mOptions.id}`);
-                // A retry begins with this very load: the stored attempt is
-                // gone and the clock below starts from the full time. Declare
-                // the attempt started so the report in addEvents goes out —
-                // sendScoreNew drops a game that is neither started nor over,
-                // and padlock never raised this flag, so nothing was reported
-                // and the LMS kept the finished attempt's passed/failed and its
-                // mark while a fresh clock was already running. With it the
-                // page goes back to incomplete with a score of 0.
-                mOptions.gameStarted = true;
+                // The board is reset and the clock below starts again, but the
+                // LMS is told nothing: loading a page changes no mark. The
+                // score moves only when the learner enters the code or the
+                // clock runs out, so the previous passed/failed stands until
+                // this retry produces an outcome of its own.
+                //
+                // padlock never raises `gameStarted`, so the report in
+                // addEvents is dropped by sendScoreNew, which needs a game that
+                // declares itself started or over. That is the intended silence
+                // here, not an oversight.
             } else {
                 mOptions.candadoSolved = dataCandado.candadoSolved;
                 mOptions.counter = dataCandado.counter;
@@ -351,7 +360,10 @@ var $padlock = {
         mOptions.candadoStarted = true;
 
         if (mOptions.candadoSolved && !mOptions.candadoReboot) {
-            $padlock.showFeedback(instance);
+            // Paint the stored result, say nothing: this runs on page load and
+            // the learner has done nothing. The registry restored the mark from
+            // cmi.suspend_data already.
+            $padlock.showFeedback(instance, false);
             return;
         }
 
@@ -381,7 +393,17 @@ var $padlock = {
         }, 1000);
     },
 
-    showFeedback: function (instance) {
+    /**
+     * @param {number} instance - Activity index.
+     * @param {boolean} [report] - Send the outcome to the LMS. Only the two
+     * callers that resolve the padlock do: the learner entering the code and
+     * the clock running out. Reopening an already solved padlock paints the
+     * same result on page load, and reporting there would write and commit a
+     * score nobody has just earned — merely visiting a page must not. Nothing
+     * is lost by staying quiet: the score it would resend is the one the
+     * activity registry has already restored from cmi.suspend_data.
+     */
+    showFeedback: function (instance, report = true) {
         const mOptions = $padlock.options[instance];
 
         // The padlock is resolved here and only here — its three callers are
@@ -401,7 +423,7 @@ var $padlock = {
         // path sets it to 10 just before calling in, and a restored attempt
         // brings back whatever was stored.
 
-        if (mOptions.isScorm > 0) {
+        if (report && mOptions.isScorm > 0) {
             $padlock.sendScore(true, instance);
         }
 

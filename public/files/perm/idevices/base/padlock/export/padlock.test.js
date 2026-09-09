@@ -179,6 +179,105 @@ describe('padlock iDevice export', () => {
       vi.restoreAllMocks();
     });
 
+    // Without retries the learner cannot solve it again, so a finished padlock
+    // must never reopen the attempt: startGame shows the result and returns,
+    // and showFeedback reports with gameOver up (pinned below), which is what
+    // keeps the page on passed/failed instead of falling back to incomplete.
+    describe('a finished padlock without retries stays finished', () => {
+      function setupFinished(overrides) {
+        document.body.innerHTML = '<div id="candadoMainContainer-0"></div>';
+        $padlock.options[0] = Object.assign(
+          {
+            id: 0,
+            isScorm: 1,
+            candadoTime: 5,
+            candadoReboot: false,
+            candadoSolved: true,
+            counter: 30,
+            score: 10,
+            msgs: {},
+          },
+          overrides
+        );
+        vi.spyOn($padlock, 'showFeedback').mockImplementation(() => {});
+        vi.useFakeTimers();
+      }
+
+      afterEach(() => {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+      });
+
+      it.each([
+        ['solved', 10],
+        ['closed by the clock', 0],
+      ])('shows the result of a padlock %s instead of running the clock', (_label, score) => {
+        setupFinished({ score });
+
+        $padlock.startGame(0);
+
+        // `false`: painting the stored result on page load must not report —
+        // the learner has done nothing and the registry already restored the
+        // mark from cmi.suspend_data.
+        expect($padlock.showFeedback).toHaveBeenCalledWith(0, false);
+        // No countdown and no reopened attempt: the mark and the status stand.
+        expect(vi.getTimerCount()).toBe(0);
+        expect($padlock.options[0].gameStarted).not.toBe(true);
+        expect($padlock.options[0].score).toBe(score);
+      });
+    });
+
+    // An untimed padlock never starts a countdown, so the board must not carry
+    // a clock icon and a 00:00 that will never move. The code used to hide two
+    // ids the export markup has never had, so nothing was hidden.
+    describe('an untimed padlock hides the clock', () => {
+      function setupBoard(candadoTime) {
+        document.body.innerHTML = `
+          <div id="candadoMainContainer-0"></div>
+          <strong id="candadoTimeLabel-0"></strong>
+          <div id="candadoTimeIcon-0"></div>
+          <p id="candadoPTime-0">00:00</p>`;
+        $padlock.options[0] = {
+          id: 0,
+          isScorm: 0,
+          candadoTime,
+          candadoReboot: false,
+          candadoShowMinimize: true,
+          score: 0,
+          msgs: {},
+        };
+        vi.spyOn($padlock, 'getCandadoData').mockReturnValue(null);
+        vi.spyOn($padlock, 'uptateTime').mockImplementation(() => {});
+        vi.spyOn($padlock, 'startGame').mockImplementation(() => {});
+        global.$exeDevices.iDevice.gamification.report = {
+          updateEvaluationIcon: vi.fn(),
+        };
+        global.localStorage = { removeItem: vi.fn(), setItem: vi.fn() };
+      }
+
+      it.each(['candadoTimeLabel-0', 'candadoTimeIcon-0', 'candadoPTime-0'])(
+        'hides %s when there is no time',
+        id => {
+          setupBoard(0);
+
+          $padlock.addEvents(0);
+
+          expect(document.getElementById(id).style.display).toBe('none');
+        }
+      );
+
+      it('leaves the clock in place when the padlock is timed', () => {
+        setupBoard(5);
+
+        $padlock.addEvents(0);
+
+        expect(document.getElementById('candadoPTime-0').style.display).not.toBe('none');
+        expect(document.getElementById('candadoTimeIcon-0').style.display).not.toBe('none');
+      });
+    });
+
     it('restores the mark the learner had earned', () => {
       setupRestore({
         candadoSolved: true,
@@ -250,24 +349,19 @@ describe('padlock iDevice export', () => {
         $padlock.options[0].candadoReboot = true;
       }
 
-      it('reports the retry as unfinished with no score', () => {
+      // Loading a page changes no mark. The board is reset and the clock starts
+      // again, but the previous passed/failed stands until this retry produces
+      // an outcome: the score moves only when the learner enters the code or
+      // the clock runs out.
+      it('changes nothing in the LMS', () => {
         setupRetry();
-        let stateWhenReported;
-        $padlock.sendScore.mockImplementation(() => {
-          const { score, gameStarted, gameOver } = $padlock.options[0];
-          stateWhenReported = { score, gameStarted, gameOver: gameOver === true };
-        });
 
         $padlock.addEvents(0);
 
-        expect($padlock.sendScore).toHaveBeenCalledWith(true, 0);
-        // sendScoreNew drops a game that is neither started nor over, and it
-        // derives completion from gameOver.
-        expect(stateWhenReported).toEqual({
-          score: 0,
-          gameStarted: true,
-          gameOver: false,
-        });
+        // Not merely "no score sent": the attempt is never declared open, which
+        // is what makes sendScoreNew drop the report in addEvents.
+        expect($padlock.options[0].gameStarted).not.toBe(true);
+        expect($padlock.options[0].gameOver).not.toBe(true);
       });
 
       it('drops the stored attempt so the clock starts from the full time', () => {
@@ -350,6 +444,22 @@ describe('padlock iDevice export', () => {
       $padlock.showFeedback(0);
 
       expect($padlock.options[0].gameOver).toBe(true);
+    });
+
+    // Only the two callers that resolve the padlock report: the learner
+    // entering the code and the clock running out. Painting the stored result
+    // on page load must not, or merely visiting a page would write and commit
+    // a score nobody has just earned.
+    it('stays quiet when it only paints a stored result', () => {
+      setupPadlock({ isScorm: 1 });
+      vi.spyOn($padlock, 'sendScore').mockImplementation(() => {});
+
+      $padlock.showFeedback(0, false);
+
+      expect($padlock.sendScore).not.toHaveBeenCalled();
+      // Still painted and still finished: only the report is held back.
+      expect($padlock.options[0].gameOver).toBe(true);
+      expect($padlock.options[0].candadoSolved).toBe(true);
     });
 
     it('raises the flag before it reports, so the two cannot disagree', () => {
