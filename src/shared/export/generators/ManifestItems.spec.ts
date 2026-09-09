@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { generateManifestItems, buildRootItemIdentifier, escapeXml } from './ManifestItems';
+import { generateManifestItems, buildRootItemIdentifier, dedupePagesById, escapeXml } from './ManifestItems';
 import type { ExportPage } from '../interfaces';
 
 const page = (id: string, title: string, parentId: string | null = null, order = 0): ExportPage => ({
@@ -47,6 +47,25 @@ describe('escapeXml', () => {
 
     it('returns an empty string for empty input', () => {
         expect(escapeXml('')).toBe('');
+    });
+});
+
+describe('dedupePagesById', () => {
+    it('keeps the first occurrence of a repeated id', () => {
+        const deduped = dedupePagesById([page('a', 'A'), page('b', 'B'), page('a', 'A again')]);
+
+        expect(deduped.map(p => p.id)).toEqual(['a', 'b']);
+        expect(deduped[0].title).toBe('A');
+    });
+
+    it('preserves the incoming order when there is nothing to drop', () => {
+        const pages = nestedPages();
+
+        expect(dedupePagesById(pages)).toEqual(pages);
+    });
+
+    it('returns an empty list for an empty project', () => {
+        expect(dedupePagesById([])).toEqual([]);
     });
 });
 

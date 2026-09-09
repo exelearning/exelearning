@@ -97,6 +97,29 @@ export function escapeXml(str: string): string {
 }
 
 /**
+ * Drop pages that repeat the id of an earlier page, preserving the incoming
+ * order.
+ *
+ * The `<item>` tree already renders a repeated id only once (see
+ * {@link renderItem}). The `<resources>` loops of the three generators consume
+ * the same page list, and `identifier` is an `xsd:ID` in
+ * `imscp_rootv1p1p2.xsd`, so it must be unique across the whole document:
+ * emitting `<resource identifier="RES-a">` twice makes the package
+ * schema-invalid. Both loops therefore go through the same filter.
+ *
+ * @param pages - Flat page list
+ * @returns Pages with the first occurrence of each id only
+ */
+export function dedupePagesById(pages: ExportPage[]): ExportPage[] {
+    const seenIds = new Set<string>();
+    return pages.filter(page => {
+        if (seenIds.has(page.id)) return false;
+        seenIds.add(page.id);
+        return true;
+    });
+}
+
+/**
  * Group pages by their parent id, preserving the incoming order.
  *
  * @param pages - Flat page list
@@ -224,8 +247,9 @@ function reportDroppedPages(pages: ExportPage[], rendered: Set<string>): void {
 
     if (duplicated.length > 0) {
         console.warn(
-            `[ManifestItems] ${duplicated.length} page(s) reuse the id of an earlier page and were written to the ` +
-                `manifest only once: ${duplicated.join(', ')}`,
+            `[ManifestItems] ${duplicated.length} page(s) reuse the id of an earlier page. Only the first ` +
+                'occurrence gets an <item> and a <resource>, so the later ones are unreachable from the LMS ' +
+                `table of contents: ${duplicated.join(', ')}`,
         );
     }
 }

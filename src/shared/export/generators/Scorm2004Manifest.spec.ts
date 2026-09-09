@@ -77,6 +77,26 @@ describe('Scorm2004ManifestGenerator', () => {
     });
 
     describe('generateResources', () => {
+        it('should emit a single resource for a duplicated page id', () => {
+            // `identifier` is an xsd:ID, so two <resource> elements sharing one
+            // would make the package schema-invalid.
+            const pages = createTestPages();
+            pages.push({ id: 'page-2', title: 'Chapter 1 again', parentId: null, order: 3, blocks: [] });
+            const duplicated = new Scorm2004ManifestGenerator('test-project-123', pages, { title: 'Test Course' });
+
+            const originalWarn = console.warn;
+            console.warn = () => {};
+            let xml: string;
+            try {
+                xml = duplicated.generate();
+            } finally {
+                console.warn = originalWarn;
+            }
+
+            expect(xml.match(/identifier="RES-page-2"/g)?.length).toBe(1);
+            expect(xml.match(/identifier="ITEM-page-2"/g)?.length).toBe(1);
+        });
+
         it('should use adlcp:scormType (capital T) for SCORM 2004', () => {
             const xml = generator.generate();
 

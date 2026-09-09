@@ -18,7 +18,7 @@
 
 import type { ExportPage, ScormManifestOptions } from '../interfaces';
 import { SCORM_2004_NAMESPACES } from '../constants';
-import { generateManifestItems, escapeXml } from './ManifestItems';
+import { dedupePagesById, generateManifestItems, escapeXml } from './ManifestItems';
 
 /**
  * Page file info for resource generation
@@ -248,7 +248,9 @@ ${indentStr}</imsss:sequencing>
         let xml = '  <resources>\n';
 
         // Generate resource for each page (SCO type)
-        for (const page of this.pages) {
+        // Deduplicated: `identifier` is an xsd:ID, so a repeated page id would emit
+        // two <resource> elements sharing one identifier and invalidate the package.
+        for (const page of dedupePagesById(this.pages)) {
             const pageFile = pageFiles[page.id] || {};
             xml += this.generatePageResource(page, pageFile);
         }
