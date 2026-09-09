@@ -162,6 +162,69 @@ describe('ApiCallManager', () => {
     });
   });
 
+  describe('getGenerateQuestions', () => {
+    it('posts the prompt to the AI endpoint and normalizes the text into questions', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ text: '```text\nq1|a|b\n\nq2|c|d\n```' }),
+      });
+      localStorage.setItem('authToken', 'ai-token');
+
+      const result = await apiManager.getGenerateQuestions('PROMPT');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/ai/generate-text'),
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+          body: JSON.stringify({ prompt: 'PROMPT' }),
+          headers: expect.objectContaining({ Authorization: 'Bearer ai-token' }),
+        })
+      );
+      // Code fences and blank lines are stripped; one question per array entry.
+      expect(result).toEqual({ questions: ['q1|a|b', 'q2|c|d'] });
+      localStorage.removeItem('authToken');
+    });
+
+    it('returns the server error code without throwing on a non-ok response', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: vi.fn().mockResolvedValue({ error: 'AI_NOT_CONFIGURED', message: 'not configured' }),
+      });
+
+      const result = await apiManager.getGenerateQuestions('PROMPT');
+      expect(result).toEqual({ error: 'AI_NOT_CONFIGURED', message: 'not configured' });
+    });
+
+    it('does not call the server in static/offline mode', async () => {
+      mockApp.capabilities = { storage: { remote: false } };
+      global.fetch = vi.fn();
+
+      const result = await apiManager.getGenerateQuestions('PROMPT');
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result.error).toBe('AI_OFFLINE');
+    });
+
+    it('falls back to AI_PROVIDER_ERROR when the error body is not JSON', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        json: vi.fn().mockRejectedValue(new Error('not json')),
+      });
+
+      const result = await apiManager.getGenerateQuestions('PROMPT');
+      expect(result).toEqual({ error: 'AI_PROVIDER_ERROR', message: undefined });
+    });
+
+    it('_normalizeAiQuestions returns [] for non-string input', () => {
+      expect(apiManager._normalizeAiQuestions(undefined)).toEqual([]);
+      expect(apiManager._normalizeAiQuestions(null)).toEqual([]);
+      expect(apiManager._normalizeAiQuestions('  a \n\n b ')).toEqual(['a', 'b']);
+    });
+  });
+
   describe('getCurrentUserOdeSessionId', () => {
     it('should return project id from URL', async () => {
       const oldLocation = window.location;
