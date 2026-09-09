@@ -233,6 +233,73 @@ describe('padlock iDevice export', () => {
 
       expect($padlock.options[0].score).toBe(0);
     });
+
+    // With retries allowed, reopening the page discards the finished attempt
+    // and starts the clock again from the full time. That is the retry, and it
+    // happens on load, so the LMS has to be told on load: the page used to keep
+    // the previous passed/failed and its mark while a fresh clock ran.
+    describe('reopening a solved padlock that allows retries', () => {
+      function setupRetry() {
+        setupRestore({
+          candadoSolved: true,
+          counter: 30,
+          candadoTime: 5,
+          candadoReboot: true,
+          candadoScore: 10,
+        });
+        $padlock.options[0].candadoReboot = true;
+      }
+
+      it('reports the retry as unfinished with no score', () => {
+        setupRetry();
+        let stateWhenReported;
+        $padlock.sendScore.mockImplementation(() => {
+          const { score, gameStarted, gameOver } = $padlock.options[0];
+          stateWhenReported = { score, gameStarted, gameOver: gameOver === true };
+        });
+
+        $padlock.addEvents(0);
+
+        expect($padlock.sendScore).toHaveBeenCalledWith(true, 0);
+        // sendScoreNew drops a game that is neither started nor over, and it
+        // derives completion from gameOver.
+        expect(stateWhenReported).toEqual({
+          score: 0,
+          gameStarted: true,
+          gameOver: false,
+        });
+      });
+
+      it('drops the stored attempt so the clock starts from the full time', () => {
+        setupRetry();
+
+        $padlock.addEvents(0);
+
+        expect(global.localStorage.removeItem).toHaveBeenCalledWith('dataCandado-0');
+        expect($padlock.options[0].candadoSolved).toBe(false);
+        expect($padlock.options[0].counter).toBe(5 * 60);
+      });
+
+      it('leaves a padlock without retries alone', () => {
+        setupRestore({
+          candadoSolved: true,
+          counter: 30,
+          candadoTime: 5,
+          candadoReboot: false,
+          candadoScore: 10,
+        });
+
+        $padlock.addEvents(0);
+
+        // Terminal attempt: nothing is discarded and no attempt is declared
+        // open, so startGame shows the result instead of running the clock.
+        // `not.toBe(true)` rather than `toBe(false)`: loadDataGame is what
+        // initialises the flag, and this harness builds the options directly.
+        expect($padlock.options[0].gameStarted).not.toBe(true);
+        expect($padlock.options[0].candadoSolved).toBe(true);
+        expect($padlock.options[0].score).toBe(10);
+      });
+    });
   });
 
   describe('completion signal', () => {

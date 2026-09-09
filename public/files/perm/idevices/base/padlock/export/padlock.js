@@ -274,6 +274,15 @@ var $padlock = {
             ) {
                 mOptions.score = 0;
                 localStorage.removeItem(`dataCandado-${mOptions.id}`);
+                // A retry begins with this very load: the stored attempt is
+                // gone and the clock below starts from the full time. Declare
+                // the attempt started so the report in addEvents goes out —
+                // sendScoreNew drops a game that is neither started nor over,
+                // and padlock never raised this flag, so nothing was reported
+                // and the LMS kept the finished attempt's passed/failed and its
+                // mark while a fresh clock was already running. With it the
+                // page goes back to incomplete with a score of 0.
+                mOptions.gameStarted = true;
             } else {
                 mOptions.candadoSolved = dataCandado.candadoSolved;
                 mOptions.counter = dataCandado.counter;
