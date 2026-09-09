@@ -386,9 +386,13 @@ describe('generateManifestItems', () => {
                 }),
             );
 
-            expect(messages).toHaveLength(1);
-            expect(messages[0]).toContain('reuse the id of an earlier page');
-            expect(messages[0]).toContain('"A again" (a)');
+            // Asserted verbatim: the wording is the promise made to the author,
+            // and it must keep matching what the manifest actually emits.
+            expect(messages).toEqual([
+                '[ManifestItems] 1 page(s) reuse the id of an earlier page. Only the first occurrence gets an ' +
+                    '<item> and a <resource>, so the later ones are unreachable from the LMS table of contents: ' +
+                    '"A again" (a)',
+            ]);
         });
 
         it('stays quiet for a well-formed hierarchy', () => {

@@ -100,12 +100,17 @@ export function escapeXml(str: string): string {
  * Drop pages that repeat the id of an earlier page, preserving the incoming
  * order.
  *
- * The `<item>` tree already renders a repeated id only once (see
- * {@link renderItem}). The `<resources>` loops of the three generators consume
- * the same page list, and `identifier` is an `xsd:ID` in
- * `imscp_rootv1p1p2.xsd`, so it must be unique across the whole document:
- * emitting `<resource identifier="RES-a">` twice makes the package
- * schema-invalid. Both loops therefore go through the same filter.
+ * The `<item>` tree already renders a repeated id only once, through the
+ * depth-first `visited` guard in {@link renderItem}. The `<resources>` loops of
+ * the three generators consume the same page list, and `identifier` is an
+ * `xsd:ID` in `imscp_rootv1p1p2.xsd`, so it must be unique across the whole
+ * document: emitting `<resource identifier="RES-a">` twice makes the package
+ * schema-invalid.
+ *
+ * The two mechanisms differ — depth-first order there, list order here — so
+ * when the orders disagree they can keep different page objects. That is safe
+ * because both identifiers derive from `page.id` alone: `ITEM-x` always finds
+ * its `RES-x`.
  *
  * @param pages - Flat page list
  * @returns Pages with the first occurrence of each id only
