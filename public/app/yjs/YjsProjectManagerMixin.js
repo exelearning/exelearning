@@ -23,7 +23,6 @@ const YjsProjectManagerMixin = {
     // Add Yjs properties
     projectManager._yjsEnabled = false;
     projectManager._yjsBridge = null;
-    projectManager._yjsBindings = new Map(); // TinyMCE bindings
 
     /**
      * Enable Yjs mode for the current project
@@ -58,9 +57,6 @@ const YjsProjectManagerMixin = {
 
       this._yjsEnabled = true;
 
-      // Set up TinyMCE editor hook for auto-binding to Yjs
-      this._setupTinyMCEHook();
-
       Logger.log('[ProjectManager] Yjs mode enabled');
 
       // Update title element now that Yjs is ready
@@ -88,114 +84,12 @@ const YjsProjectManagerMixin = {
     };
 
     /**
-     * Set up TinyMCE hook for automatic Yjs binding
-     * @private
-     */
-    projectManager._setupTinyMCEHook = function () {
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      const self = this;
-
-      // Store original hook if exists
-      const originalHook = window.$exeTinyMCE?.onEditorInit;
-
-      // Set up the hook for TinyMCE editor initialization
-      if (window.$exeTinyMCE) {
-        window.$exeTinyMCE.onEditorInit = function (editor) {
-          // Call original hook if exists
-          if (originalHook) {
-            originalHook(editor);
-          }
-
-          // Skip if Yjs is not enabled
-          if (!self._yjsEnabled || !self._yjsBridge) {
-            return;
-          }
-
-          // Try to extract page/block/component IDs from the editor context
-          const ids = self._extractIdsFromEditor(editor);
-          if (ids) {
-            Logger.log('[YjsHook] Binding editor to Yjs:', ids);
-            self.bindEditorToYjs(editor, ids.pageId, ids.blockId, ids.componentId);
-          } else {
-            Logger.log('[YjsHook] Could not extract IDs for editor:', editor.id);
-          }
-        };
-      }
-    };
-
-    /**
-     * Extract page, block, and component IDs from TinyMCE editor context
-     * @private
-     */
-    projectManager._extractIdsFromEditor = function (editor) {
-      try {
-        // Try to get IDs from the editor container's data attributes or parent elements
-        const container = editor.getContainer();
-        if (!container) return null;
-
-        // Walk up to find idevice container with data attributes
-        let element = container;
-        let ideviceEl = null;
-        let blockEl = null;
-
-        while (element && element !== document.body) {
-          if (element.classList?.contains('idevice-node') || element.dataset?.odeIdeviceId) {
-            ideviceEl = element;
-          }
-          if (element.classList?.contains('block-node') || element.dataset?.odeBlockId) {
-            blockEl = element;
-          }
-          element = element.parentElement;
-        }
-
-        // Get active page ID from structure
-        const activePageId = this.structure?.nodeSelected?.id ||
-                            this.structure?.nodeSelected?.pageId ||
-                            document.querySelector('.structure-node.selected')?.dataset?.pageId;
-
-        if (!activePageId) {
-          Logger.log('[YjsHook] No active page ID found');
-          return null;
-        }
-
-        // Get block ID
-        const blockId = blockEl?.dataset?.odeBlockId ||
-                       ideviceEl?.closest('[data-ode-block-id]')?.dataset?.odeBlockId ||
-                       'default-block';
-
-        // Get component/iDevice ID
-        const componentId = ideviceEl?.dataset?.odeIdeviceId ||
-                           container.closest('[data-ode-idevice-id]')?.dataset?.odeIdeviceId;
-
-        if (!componentId) {
-          Logger.log('[YjsHook] No component ID found');
-          return null;
-        }
-
-        return {
-          pageId: activePageId,
-          blockId: blockId,
-          componentId: componentId,
-        };
-      } catch (error) {
-        console.error('[YjsHook] Error extracting IDs:', error);
-        return null;
-      }
-    };
-
-    /**
      * Disable Yjs mode and revert to legacy behavior
      */
     projectManager.disableYjsMode = async function () {
       if (!this._yjsEnabled) return;
 
       Logger.log('[ProjectManager] Disabling Yjs mode');
-
-      // Clean up bindings
-      for (const binding of this._yjsBindings.values()) {
-        binding.destroy?.();
-      }
-      this._yjsBindings.clear();
 
       // Clean up Yjs
       if (window.YjsModules) {
@@ -256,47 +150,6 @@ const YjsProjectManagerMixin = {
       // Fallback to original
       if (originalGenerateIntervalAutosave) {
         return originalGenerateIntervalAutosave(...args);
-      }
-    };
-
-    /**
-     * Bind a TinyMCE editor to Yjs for collaborative editing
-     * @param {TinyMCE.Editor} editor - TinyMCE editor instance
-     * @param {string} pageId - Page ID
-     * @param {string} blockId - Block ID
-     * @param {string} componentId - Component ID (iDevice ID)
-     * @returns {Object|null} The binding object or null
-     */
-    projectManager.bindEditorToYjs = function (editor, pageId, blockId, componentId) {
-      if (!this._yjsEnabled || !window.YjsModules) {
-        return null;
-      }
-
-      // Clean up existing binding for this component
-      const existingBinding = this._yjsBindings.get(componentId);
-      if (existingBinding) {
-        existingBinding.destroy?.();
-        this._yjsBindings.delete(componentId);
-      }
-
-      // Create new binding
-      const binding = window.YjsModules.bindTinyMCE(editor, pageId, blockId, componentId);
-      if (binding) {
-        this._yjsBindings.set(componentId, binding);
-      }
-
-      return binding;
-    };
-
-    /**
-     * Unbind a TinyMCE editor from Yjs
-     * @param {string} componentId - Component ID
-     */
-    projectManager.unbindEditorFromYjs = function (componentId) {
-      const binding = this._yjsBindings.get(componentId);
-      if (binding) {
-        binding.destroy?.();
-        this._yjsBindings.delete(componentId);
       }
     };
 

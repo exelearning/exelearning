@@ -157,4 +157,130 @@ describe('exemermaid plugin - Path Handling', () => {
             expect(isMermaidElement('pre', 'mermaid')).toBe(false);
         });
     });
+
+    describe('Mermaid library preload on dialog open', () => {
+        // These tests run the real plugin.min.js: the preload cannot be removed
+        // from openHTMLDialog without failing here.
+        const fs = require('node:fs');
+        const path = require('node:path');
+        const PLUGIN_SRC = fs.readFileSync(path.join(__dirname, 'plugin.min.js'), 'utf8');
+
+        // jQuery-like stub: every call returns the same chainable object
+        function domQuery() {
+            const chain = { length: 0 };
+            chain.eq = () => chain;
+            chain.children = () => chain;
+            return () => chain;
+        }
+
+        function loadPlugin() {
+            const calls = [];
+            const handlers = {};
+            const registry = {};
+            const editor = {
+                ui: {
+                    registry: {
+                        addIcon: () => {},
+                        addToggleButton: (name, spec) => {
+                            registry.button = spec;
+                        },
+                        addMenuItem: (name, spec) => {
+                            registry.menuItem = spec;
+                        },
+                    },
+                },
+                on: (name, fn) => {
+                    handlers[name] = fn;
+                },
+                off: () => {},
+                dom: { loadCSS: () => {} },
+                selection: {
+                    getContent: () => '',
+                    getNode: () => ({ nodeName: 'P', className: '', style: {} }),
+                },
+                windowManager: {
+                    open: (...args) => {
+                        calls.push('open');
+                        return args;
+                    },
+                    close: () => {},
+                    alert: () => {},
+                },
+            };
+            const tinymce = {
+                PluginManager: { add: (name, factory) => tinymce.PluginManager._factories.push(factory) },
+                dom: { DomQuery: domQuery() },
+                DOM: { setAttrib: () => {}, setStyle: () => {} },
+                activeEditor: editor,
+            };
+            tinymce.PluginManager._factories = [];
+            // Run the shipped plugin file, then instantiate it for our stub editor
+            new Function('tinymce', 'tinyMCE', '_', PLUGIN_SRC)(tinymce, tinymce, (s) => s);
+            tinymce.PluginManager._factories[0](editor, '/libs/tinymce_5/js/tinymce/plugins/exemermaid');
+            return { editor, registry, handlers, calls };
+        }
+
+        let originalExe;
+
+        beforeEach(() => {
+            originalExe = globalThis.$exe;
+        });
+
+        afterEach(() => {
+            if (typeof originalExe === 'undefined') {
+                delete globalThis.$exe;
+            } else {
+                globalThis.$exe = originalExe;
+            }
+            delete globalThis.PasteMermaidDialog;
+            delete globalThis.win;
+        });
+
+        it('starts loading Mermaid before the dialog is opened', () => {
+            const calls = [];
+            globalThis.$exe = { mermaid: { loadMermaid: () => calls.push('loadMermaid'), init: () => {} } };
+            const plugin = loadPlugin();
+            plugin.calls = calls;
+            // The toolbar button is the production entry point
+            plugin.registry.button.onAction();
+            expect(calls[0]).toBe('loadMermaid');
+        });
+
+        it('preloads Mermaid from the menu item too', () => {
+            const loadMermaid = vi.fn();
+            globalThis.$exe = { mermaid: { loadMermaid, init: () => {} } };
+            const plugin = loadPlugin();
+            plugin.registry.menuItem.onAction();
+            expect(loadMermaid).toHaveBeenCalledTimes(1);
+        });
+
+        it('opens the dialog after requesting the preload', () => {
+            const loadMermaid = vi.fn();
+            globalThis.$exe = { mermaid: { loadMermaid, init: () => {} } };
+            const plugin = loadPlugin();
+            plugin.registry.button.onAction();
+            expect(plugin.calls).toContain('open');
+            expect(loadMermaid).toHaveBeenCalledTimes(1);
+        });
+
+        it('still renders the diagram when the editor is deactivated', () => {
+            const init = vi.fn();
+            globalThis.$exe = { mermaid: { loadMermaid: () => {}, init } };
+            const plugin = loadPlugin();
+            plugin.handlers.deactivate({});
+            expect(init).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not throw when $exe is undefined', () => {
+            delete globalThis.$exe;
+            const plugin = loadPlugin();
+            expect(() => plugin.registry.button.onAction()).not.toThrow();
+        });
+
+        it('does not throw when $exe.mermaid is missing', () => {
+            globalThis.$exe = {};
+            const plugin = loadPlugin();
+            expect(() => plugin.registry.button.onAction()).not.toThrow();
+        });
+    });
 });

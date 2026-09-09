@@ -106,8 +106,12 @@ async function hasWebGL(page: Page): Promise<boolean> {
  */
 async function expectModelAtomCount(page: Page, expected: number): Promise<void> {
     if (await hasWebGL(page)) {
+        // The viewer swaps models asynchronously: polling can observe the
+        // previous model (or both models mid-swap), so wait for the expected
+        // count — mirroring the non-WebGL branch — instead of asserting the
+        // first non-zero sample.
         const atomCount = await page.waitForFunction(
-            () => {
+            exp => {
                 const dev = (
                     window as { $exeDevice?: { modelViewer?: { selectedAtoms?: (sel: object) => unknown[] } } }
                 ).$exeDevice;
@@ -116,8 +120,9 @@ async function expectModelAtomCount(page: Page, expected: number): Promise<void>
                     return false;
                 }
                 const count = viewer.selectedAtoms({}).length;
-                return count > 0 ? count : false;
+                return count === exp ? count : false;
             },
+            expected,
             { timeout: 20000 },
         );
         expect(await atomCount.jsonValue()).toBe(expected);

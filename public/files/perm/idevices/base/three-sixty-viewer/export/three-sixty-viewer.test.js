@@ -508,6 +508,41 @@ describe('three-sixty-viewer iDevice (export)', () => {
             spies.forEach(s => expect(s).toHaveBeenCalledTimes(1));
             expect($t._instances.length).toBe(0);
         });
+
+        // The runtime binds `pagehide`, not `beforeunload`: an unload-family
+        // listener would make the page ineligible for the back/forward cache
+        // that the SCORM 1.2 runtime relies on.
+        describe('page-lifecycle cleanup binding', () => {
+            function makeInstance() {
+                const node = document.createElement('div');
+                node.className = 'idevice_node three-sixty-viewer';
+                document.body.appendChild(node);
+                $t.renderOne(node, $t.normalize({ src: 'asset://p.jpg' }), '', false);
+            }
+
+            function firePageHide(persisted) {
+                const event = new Event('pagehide');
+                Object.defineProperty(event, 'persisted', { value: persisted });
+                window.dispatchEvent(event);
+            }
+
+            it('a real teardown disposes every instance', () => {
+                makeInstance();
+                expect($t._instances.length).toBe(1);
+
+                firePageHide(false);
+
+                expect($t._instances.length).toBe(0);
+            });
+
+            it('a back/forward-cache freeze keeps the instances alive', () => {
+                makeInstance();
+
+                firePageHide(true);
+
+                expect($t._instances.length).toBe(1);
+            });
+        });
     });
 
     describe('renderView()', () => {

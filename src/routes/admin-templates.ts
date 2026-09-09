@@ -4,7 +4,6 @@
  * Requires ROLE_ADMIN for all routes
  */
 import { Elysia, t } from 'elysia';
-import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -133,7 +132,6 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                     secret: getJwtSecret(),
                 }),
             )
-            .use(cookie())
 
             // Global guard for admin routes
             .guard({

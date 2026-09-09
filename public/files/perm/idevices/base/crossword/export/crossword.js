@@ -2068,7 +2068,7 @@ var $eXeCrucigrama = {
         $mainContainer.off('click touchend', '.CCGMP-Number');
         $mainContainer.off('keydown', '.CCGMP-InputWord, .CCGMP-InputWordDef');
         $mainContainer.off('input', '.CCGMP-InputWordDef, .CCGMP-InputWord');
-        $(window).off('unload.eXeCrucigrama beforeunload.eXeCrucigrama');
+        $(window).off('pagehide.eXeCrucigrama');
     },
 
     addEvents: function (instance) {
@@ -2182,7 +2182,7 @@ var $eXeCrucigrama = {
         $('#ccgmPNumber-' + instance).text(mOptions.numberQuestions);
 
         $(window).on(
-            'unload.eXeCrucigrama beforeunload.eXeCrucigrama',
+            'pagehide.eXeCrucigrama',
             function () {
                 $exeDevices.iDevice.gamification.media.stopSound();
                 if ($eXeCrucigrama.mScorm) {

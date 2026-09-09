@@ -1269,6 +1269,62 @@ describe('Yjs WebSocket Service', () => {
             expect(result.error).toBeUndefined();
         });
 
+        it('does not register a room connection if the socket closed while awaiting token verification', async () => {
+            // Reproduces the issue #2255 benchmark finding: `open(ws)` awaits
+            // verifyToken/checkProjectAccess, but Bun fires `close(ws)`
+            // independently of that pending promise. If the socket closes
+            // during the await, handleWebSocketClose runs first (a no-op,
+            // since ws.data.docName isn't set yet) and no further `close`
+            // event will ever fire for this connection.
+            let resolveVerify!: (user: { sub: number; email: string; roles: string[] } | null) => void;
+            const mockAuth: YjsWebSocketAuth = {
+                verifyToken: () =>
+                    new Promise(resolve => {
+                        resolveVerify = resolve;
+                    }),
+            };
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: mockAuth,
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            // Before `open` populates it, real Elysia/Bun ws.data only has
+            // {params, query} — none of the WsData fields the default mock
+            // pre-fills. Override them to undefined so handleWebSocketClose
+            // sees the same "not populated yet" state it would in production.
+            const ws = createMockWebSocket({
+                clientId: undefined,
+                userId: undefined,
+                projectUuid: undefined,
+                docName: undefined,
+            } as unknown as Partial<WsData>) as any;
+            const docName = 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            // In-memory session so checkWebSocketProjectAccess grants access
+            // without touching the (unmocked-here) DB path, isolating the
+            // scenario to the verifyToken await specifically.
+            mockSessions.set('a1b2c3d4-e5f6-7890-abcd-ef1234567890', {
+                sessionId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                fileName: 'Test.elp',
+            });
+
+            const openPromise = handleWebSocketOpen(ws, docName, 'valid-token-user-1');
+
+            // Client disconnects while verifyToken is still pending: Bun's
+            // close handler fires with ws.data still unpopulated.
+            ws.readyState = 3; // CLOSED
+            handleWebSocketClose(ws, ws.data);
+
+            // The awaited verification now resolves successfully.
+            resolveVerify({ sub: 1, email: 'user1@test.com', roles: ['ROLE_USER'] });
+            const result = await openPromise;
+
+            expect(result.success).toBe(false);
+            expect(roomManager.getRoom(docName)).toBeUndefined();
+        });
+
         it('should register client with asset coordinator on success', async () => {
             const mockAssetCoordinator = createMockAssetCoordinator();
             const registerSpy = mock(() => {});

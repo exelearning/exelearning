@@ -47,9 +47,10 @@ export abstract class BaseLegacyHandler implements IdeviceHandler {
      *
      * @param dict - Dictionary element of the iDevice
      * @param _ideviceId - Generated iDevice ID
+     * @param _context - Context with language and metadata
      * @returns Properties object
      */
-    extractProperties(dict: Element, _ideviceId?: string): Record<string, unknown> {
+    extractProperties(dict: Element, _ideviceId?: string, _context?: IdeviceHandlerContext): Record<string, unknown> {
         void dict;
         return {};
     }

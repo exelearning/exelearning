@@ -24,6 +24,24 @@
   font-size: 1.2em;
 }
 
+.exe-content .exe-material-icon {
+  display: block;
+  width: 40px;
+  height: 40px;
+  background-color: currentColor;
+  -webkit-mask-image: var(--exe-material-icon-url);
+  mask-image: var(--exe-material-icon-url);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  /* 20px live area on a 24px grid: scale 24/20 so the ink matches the Style icons.
+     Kept in step with the editor rule in assets/styles/layout/_execontent.scss. */
+  transform: scale(1.2);
+}
+
 .exe-content a{
   color: #5a7f0c;
 }

@@ -12,14 +12,6 @@
 
 describe('YjsModules (index.js)', () => {
   let savedValues;
-  const createYText = (text = '') => {
-    const doc = new window.Y.Doc();
-    const yText = doc.getText('html');
-    if (text) {
-      yText.insert(0, text);
-    }
-    return yText;
-  };
 
   beforeEach(() => {
     // Reset modules first to clear any cached require
@@ -34,7 +26,6 @@ describe('YjsModules (index.js)', () => {
       ElpxImporter: window.ElpxImporter,
       ElpxExporter: window.ElpxExporter,
       YjsProjectBridge: window.YjsProjectBridge,
-      YjsTinyMCEBinding: window.YjsTinyMCEBinding,
       YjsStructureTreeAdapter: window.YjsStructureTreeAdapter,
       YjsProjectManagerMixin: window.YjsProjectManagerMixin,
       YjsPropertiesBinding: window.YjsPropertiesBinding,
@@ -56,10 +47,6 @@ describe('YjsModules (index.js)', () => {
       this.disconnect = vi.fn().mockResolvedValue();
       this.structureBinding = {};
       this.initialized = true;
-      return this;
-    });
-    window.YjsTinyMCEBinding = vi.fn().mockImplementation(function() {
-      this.binding = true;
       return this;
     });
     window.YjsStructureTreeAdapter = vi.fn().mockImplementation(function() {
@@ -122,8 +109,9 @@ describe('YjsModules (index.js)', () => {
       expect(window.YjsModules.YjsProjectBridge).toBeDefined();
     });
 
-    it('exports YjsTinyMCEBinding reference', () => {
-      expect(window.YjsModules.YjsTinyMCEBinding).toBeDefined();
+    it('does not export the removed TinyMCE binding (#2169)', () => {
+      expect(window.YjsModules.YjsTinyMCEBinding).toBeUndefined();
+      expect(window.YjsModules.bindTinyMCE).toBeUndefined();
     });
 
     it('exports YjsStructureTreeAdapter reference', () => {
@@ -380,96 +368,4 @@ describe('YjsModules (index.js)', () => {
     });
   });
 
-  describe('bindTinyMCE', () => {
-    it('returns null when no bridge', () => {
-      window.YjsModules._bridge = null;
-
-      const result = window.YjsModules.bindTinyMCE({}, 'page-1', 'block-1', 'comp-1');
-
-      expect(result).toBeNull();
-      expect(console.warn).toHaveBeenCalled();
-    });
-
-    it('returns null when component not found', () => {
-      const mockBridge = {
-        structureBinding: {
-          getComponent: mock(() => null),
-        },
-        documentManager: {
-          awareness: null,
-        },
-        app: null,
-      };
-      window.YjsModules._bridge = mockBridge;
-
-      const result = window.YjsModules.bindTinyMCE({}, 'page-1', 'block-1', 'comp-1');
-
-      expect(result).toBeNull();
-      expect(console.warn).toHaveBeenCalled();
-    });
-
-    it('creates TinyMCE binding when component found', () => {
-      const mockYText = createYText();
-      const mockComponent = {
-        get: vi.fn((key) => {
-          if (key === 'htmlContent') return mockYText;
-          return null;
-        }),
-        set: vi.fn(),
-      };
-      const mockBridge = {
-        structureBinding: {
-          getComponent: vi.fn(() => mockComponent),
-        },
-        documentManager: {
-          awareness: null,
-        },
-        app: null,
-      };
-      window.YjsModules._bridge = mockBridge;
-      window.YjsTinyMCEBinding = vi.fn().mockImplementation(function() {
-        this.binding = true;
-        return this;
-      });
-
-      const mockEditor = { on: vi.fn(), off: vi.fn() };
-      const result = window.YjsModules.bindTinyMCE(mockEditor, 'page-1', 'block-1', 'comp-1');
-
-      expect(window.YjsTinyMCEBinding).toHaveBeenCalled();
-      expect(result.binding).toBe(true);
-    });
-
-    it('creates new Y.Text when htmlContent is string', () => {
-      const insertSpy = spyOn(window.Y.Text.prototype, 'insert');
-      const mockComponent = {
-        get: vi.fn((key) => {
-          if (key === 'htmlContent') return '<p>String content</p>';
-          return null;
-        }),
-        set: vi.fn(),
-      };
-      const mockBridge = {
-        structureBinding: {
-          getComponent: vi.fn(() => mockComponent),
-        },
-        documentManager: {
-          awareness: null,
-        },
-        app: null,
-      };
-      window.YjsModules._bridge = mockBridge;
-
-      window.YjsTinyMCEBinding = vi.fn().mockImplementation(function() {
-        this.binding = true;
-        return this;
-      });
-
-      const mockEditor = { on: vi.fn(), off: vi.fn() };
-      window.YjsModules.bindTinyMCE(mockEditor, 'page-1', 'block-1', 'comp-1');
-
-      const [[, createdYText]] = mockComponent.set.mock.calls;
-      expect(createdYText).toBeInstanceOf(window.Y.Text);
-      expect(insertSpy).toHaveBeenCalledWith(0, '<p>String content</p>');
-    });
-  });
 });

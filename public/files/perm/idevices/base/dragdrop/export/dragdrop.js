@@ -366,6 +366,8 @@ var $eXeDragDrop = {
 
     initializeDragAndDrop: function (instance) {
         const mOptions = $eXeDragDrop.options[instance];
+        // The 200ms retry can fire after teardown removed the options
+        if (!mOptions) return;
 
         // Keep a retry counter to handle race conditions (jQuery UI or images not ready)
         mOptions._initRetries = mOptions._initRetries || 0;
@@ -850,7 +852,6 @@ var $eXeDragDrop = {
         $('#dadPLinkMinimize-' + instance).off('click');
         $('#dadPCodeAccessButton-' + instance).off('click');
         $('#dadPCodeAccessE-' + instance).off('keydown');
-        $(window).off('unload.eXeDragDrop beforeunload.eXeDragDrop');
         $('#dadPMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
@@ -916,17 +917,6 @@ var $eXeDragDrop = {
         });
 
         $('#dadPPNumber-' + instance).text(mOptions.realNumberCards);
-
-        $(window).on(
-            'unload.eXeDragDrop beforeunload.eXeDragDrop',
-            function () {
-                if ($eXeDragDrop.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeDragDrop.mScorm
-                    );
-                }
-            }
-        );
 
         $('#dadPMainContainer-' + instance)
             .closest('.idevice_node')

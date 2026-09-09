@@ -90,6 +90,24 @@ describe('Unified Export System Integration', () => {
         // Create minimal theme files
         await fs.writeFile(path.join(testDir, 'public', 'theme', 'base', 'style.css'), '/* Test theme CSS */');
         await fs.writeFile(path.join(testDir, 'public', 'theme', 'base', 'style.js'), '/* Test theme JS */');
+
+        // Create the SCORM runtime source files (the 1.2 exporter fails
+        // loudly when they are missing; see Scorm12Runtime.ts)
+        const scormDir = path.join(testDir, 'public', 'app', 'common', 'scorm');
+        for (const sourcePath of [
+            'SCORM_API_wrapper.js',
+            'SCOFunctions.js',
+            'scorm12/vendor/pipwerks/SCORM_API_wrapper.js',
+            'scorm12/exe-scorm12-client.js',
+            'scorm12/exe-scorm12-activities.js',
+            'scorm12/exe-scorm12-policy.js',
+            'scorm12/exe-scorm12-lifecycle.js',
+            'scorm12/exe-scorm12-adapter.js',
+        ]) {
+            const fullPath = path.join(scormDir, ...sourcePath.split('/'));
+            await fs.ensureDir(path.dirname(fullPath));
+            await fs.writeFile(fullPath, `/* ${sourcePath} */`);
+        }
     });
 
     afterEach(async () => {
@@ -171,6 +189,36 @@ describe('Unified Export System Integration', () => {
             // Verify manifest exists
             const zipFile = unzipSync(result.data!);
             expect(zipFile['imsmanifest.xml']).toBeDefined();
+        });
+
+        it('Scorm12Exporter stamps the runtime with the version it was given', async () => {
+            // The stamp is what lets another project say which eXeLearning release the
+            // runtime in a package came from — the Moodle plugin vendors that exact file
+            // and its provenance test rejects an unstamped copy. Asserting it on a real
+            // export closes the gap the unit tests cannot: an exporter that accepts the
+            // option and then drops it.
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export({ runtimeVersion: 'v9.9.9-test' });
+
+            expect(result.success).toBe(true);
+            const files = unzipSync(result.data!);
+            const runtime = new TextDecoder().decode(files['libs/SCOFunctions.js']);
+
+            expect(runtime).toContain('eXeLearning-SCORM12-Runtime: v9.9.9-test');
+            expect(runtime).toContain('ns.runtimeVersion = "v9.9.9-test"');
+        });
+
+        it('Scorm12Exporter says "unknown" rather than nothing when no version reaches it', async () => {
+            // "unknown" is a real signal, not a default to be comfortable with: it is what
+            // the plugin's provenance test refuses. A missing line would instead look like
+            // a package that predates stamping.
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+
+            const files = unzipSync(result.data!);
+            const runtime = new TextDecoder().decode(files['libs/SCOFunctions.js']);
+
+            expect(runtime).toContain('eXeLearning-SCORM12-Runtime: unknown');
         });
 
         it('Scorm2004Exporter produces ZIP with imsmanifest.xml', async () => {

@@ -454,4 +454,50 @@ describe('form iDevice export', () => {
       expect(html).toContain('<option value="five">five</option>');
     });
   });
+
+  describe('renderBehaviour button binding', () => {
+    /**
+     * The behaviour used to be bound only from a setInterval(..., 200) polling
+     * for the iDevice element. The questions are appended into a descendant of
+     * that element immediately before, so it is already in the document and the
+     * poll only costs time: for up to 200 ms "Comprobar" is rendered but has no
+     * click handler, and a learner clicking in that window gets no score, no
+     * feedback and no error.
+     */
+    it('binds Comprobar synchronously when the iDevice is already in the document', () => {
+      const id = 'form-race';
+      document.body.innerHTML =
+        `<div id="${id}">` +
+        `<div id="form-questions-${id}"></div>` +
+        `<input id="form-button-check-${id}" type="button">` +
+        `</div>`;
+
+      let gameOverCalls = 0;
+      $form.gameOver = () => {
+        gameOverCalls += 1;
+      };
+      // Keep the test on the binding itself: the siblings the bind step also
+      // calls are covered by their own tests.
+      for (const name of [
+        'setBehaviourButtonResetQuestions',
+        'setBehaviourButtonShowAnswers',
+        'setBehaviourOptions',
+        'hideScore',
+        'setBehaviourTest',
+        'addEventsSlideShow',
+      ]) {
+        $form[name] = () => {};
+      }
+
+      $form.renderBehaviour({
+        id,
+        questionsData: [{ question: 'q', options: [], typeQuestion: 'text' }],
+      });
+
+      // No timer is advanced: this is the click that used to be swallowed.
+      document.getElementById(`form-button-check-${id}`).click();
+
+      expect(gameOverCalls).toBe(1);
+    });
+  });
 });

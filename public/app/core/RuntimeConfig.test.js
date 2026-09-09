@@ -38,13 +38,13 @@ describe('RuntimeConfig', () => {
                 mode: 'static',
                 baseUrl: '.',
                 wsUrl: null,
-                staticDataPath: './data/bundle.json',
+                staticDataPath: './data/bundle.json.zst',
             });
 
             expect(config.mode).toBe('static');
             expect(config.baseUrl).toBe('.');
             expect(config.wsUrl).toBe(null);
-            expect(config.staticDataPath).toBe('./data/bundle.json');
+            expect(config.staticDataPath).toBe('./data/bundle.json.zst');
         });
     });
 
@@ -58,7 +58,7 @@ describe('RuntimeConfig', () => {
             expect(config.mode).toBe('static');
             expect(config.baseUrl).toBe('.');
             expect(config.wsUrl).toBe(null);
-            expect(config.staticDataPath).toBe('./data/bundle.json');
+            expect(config.staticDataPath).toBe('./data/bundle.json.zst');
         });
 
         it('should detect Electron as static mode', () => {
@@ -123,7 +123,7 @@ describe('RuntimeConfig', () => {
             const config = RuntimeConfig.fromEnvironment();
 
             expect(config.baseUrl).toBe('/custom/path');
-            expect(config.staticDataPath).toBe('/custom/path/data/bundle.json');
+            expect(config.staticDataPath).toBe('/custom/path/data/bundle.json.zst');
         });
 
         it('should normalize embedding basePath without leading slash', () => {
@@ -136,7 +136,7 @@ describe('RuntimeConfig', () => {
             const config = RuntimeConfig.fromEnvironment();
 
             expect(config.baseUrl).toBe('/custom/path');
-            expect(config.staticDataPath).toBe('/custom/path/data/bundle.json');
+            expect(config.staticDataPath).toBe('/custom/path/data/bundle.json.zst');
         });
 
         it('should set isEmbedded when config is present even without iframe', () => {

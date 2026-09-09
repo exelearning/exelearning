@@ -23,13 +23,9 @@ var myTheme = {
         ';
         $('#siteNav').before(togglers);
         // Check the current NAV status
-        var url = window.location.href;
-        url = url.split('?');
-        if (url.length > 1) {
-            if (url[1].indexOf('nav=false') != -1) {
-                $('body').addClass('siteNav-off');
-                myTheme.params('add');
-            }
+        if (new URLSearchParams(window.location.search).get('nav') === 'false') {
+            $('body').addClass('siteNav-off');
+            myTheme.params('add');
         }
         // Menu toggler
         $('#siteNavToggler').on('click', function () {
@@ -95,26 +91,14 @@ var myTheme = {
         if (navH < $(window).height()) wrapper.addClass('fixed');
         else wrapper.removeClass('fixed');
     },
-    param: function (e, act) {
-        if (act == 'add') {
-            var ref = e.href;
-            var con = '?';
-            if (ref.indexOf('.html?') != -1) con = '&';
-            var param = 'nav=false';
-            if (ref.indexOf(param) == -1) {
-                ref += con + param;
-                e.href = ref;
-            }
-        } else {
-            // This will remove all params
-            var ref = e.href;
-            ref = ref.split('?');
-            e.href = ref[0];
-        }
-    },
+    // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
+        var value = act == 'add' ? 'false' : null;
         $('.nav-buttons a').each(function () {
-            myTheme.param(this, act);
+            this.setAttribute(
+                'href',
+                $exeExport.setUrlParam(this.getAttribute('href'), 'nav', value)
+            );
         });
     },
 

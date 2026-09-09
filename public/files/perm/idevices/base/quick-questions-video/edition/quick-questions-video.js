@@ -261,12 +261,12 @@ var $exeDevice = {
         const $player = $('#vquextEVIURL');
         if ($player.length == 1) {
             const idv = $player.val().trim();
-            if (idv !== '') $exeDevice.loadVideo(idv);
+            if (idv !== '') $exeDevice?.loadVideo(idv);
         }
     },
 
     youTubeReady: function () {
-        if (typeof YT == 'undefined') return false;
+        if (typeof YT == 'undefined' || !$exeDevice) return false;
         $('#vquextMediaVideo').prop('disabled', false);
         $exeDevice.player = new YT.Player('vquextEVideo', {
             width: '100%',
@@ -286,7 +286,7 @@ var $exeDevice = {
     },
 
     onPlayerStateChange() {
-        if ($exeDevice.videoType > 0) return;
+        if (!$exeDevice || $exeDevice.videoType > 0) return;
         const lduration = Math.floor($exeDevice.player.getDuration());
         if (!isNaN(lduration) && lduration > 0) {
             $exeDevice.durationVideo = lduration;
@@ -305,7 +305,7 @@ var $exeDevice = {
     },
 
     onPlayerReady: function () {
-        if ($exeDevice.videoType > 0) return;
+        if (!$exeDevice || $exeDevice.videoType > 0) return;
 
         $exeDevice.youtubeLoaded = true;
         const url = $('#vquextEVIURL').val(),
@@ -520,7 +520,7 @@ var $exeDevice = {
     },
 
     getDataVideoLocal: function () {
-        if ($exeDevice.videoType > 0 && this.duration > 0) {
+        if ($exeDevice?.videoType > 0 && this.duration > 0) {
             $exeDevice.durationVideo = Math.floor(this.duration);
             const endVideo =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
@@ -1862,7 +1862,7 @@ var $exeDevice = {
 
         $('.VDQXTE-EPanel').on('click', 'input.VDQXTE-Number', function () {
             const number = parseInt($(this).val());
-            $exeDevice.showOptions(number);
+            $exeDevice?.showOptions(number);
         });
 
         $('.VDQXTE-EPanel').on(
@@ -1870,43 +1870,43 @@ var $exeDevice = {
             'input.VDQXTE-TypeQuestion',
             function () {
                 const type = parseInt($(this).val());
-                $exeDevice.showTypeQuestion(type);
+                $exeDevice?.showTypeQuestion(type);
             }
         );
 
         $('#vquextEAdd').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.addQuestion();
+            $exeDevice?.addQuestion();
         });
 
         $('#vquextEFirst').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.firstQuestion();
+            $exeDevice?.firstQuestion();
         });
 
         $('#vquextEPrevious').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.previousQuestion();
+            $exeDevice?.previousQuestion();
         });
 
         $('#vquextENext').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.nextQuestion();
+            $exeDevice?.nextQuestion();
         });
 
         $('#vquextELast').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.lastQuestion();
+            $exeDevice?.lastQuestion();
         });
 
         $('#vquextEDelete').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.removeQuestion();
+            $exeDevice?.removeQuestion();
         });
 
         $('#vquextEPlayVideo').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.playQuestionVideo();
+            $exeDevice?.playQuestionVideo();
         });
 
         $('#vquextENumberLives').on('keyup', function () {
@@ -1928,19 +1928,19 @@ var $exeDevice = {
             v = v.substring(0, 3);
             this.value = v;
             if (this.value > 0 && this.value < 101) {
-                $exeDevice.updateQuestionsNumber();
+                $exeDevice?.updateQuestionsNumber();
             }
         });
 
         $('#vquextEPercentajeQuestions').on('click', function () {
-            $exeDevice.updateQuestionsNumber();
+            $exeDevice?.updateQuestionsNumber();
         });
 
         $('#vquextEPercentajeQuestions').on('focusout', function () {
             this.value = this.value.trim() == '' ? 100 : this.value;
             this.value = this.value > 100 ? 100 : this.value;
             this.value = this.value < 1 ? 1 : this.value;
-            $exeDevice.updateQuestionsNumber();
+            $exeDevice?.updateQuestionsNumber();
         });
 
         $('#vquextETimeShowSolution').on('keyup', function () {
@@ -1959,6 +1959,7 @@ var $exeDevice = {
         $('#vquextPoint, #vquextEVIStart, #vquextEVIEnd').on(
             'focusout',
             function () {
+                if (!$exeDevice) return;
                 if (!$exeDevice.validTime(this.value)) {
                     $(this).css({
                         'background-color': 'red',
@@ -1981,6 +1982,7 @@ var $exeDevice = {
         $('#vquextPoint').css('color', '#2c6d2c');
 
         $('#vquextPoint').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVIFocus = 0;
             $('#vquextPoint').css('color', '#2c6d2c');
@@ -1989,6 +1991,7 @@ var $exeDevice = {
         });
 
         $('#vquextEVIStart').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVIFocus = 1;
             $('#vquextPoint').css('color', '#000000');
@@ -1997,6 +2000,7 @@ var $exeDevice = {
         });
 
         $('#vquextEVIEnd').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVIFocus = 2;
             $('#vquextEVIEnd').css('color', '#2c6d2c');
@@ -2005,6 +2009,7 @@ var $exeDevice = {
         });
 
         $('#vquextEVITime').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             if ($exeDevice.timeVIFocus == 0) {
                 $('#vquextPoint').val($('#vquextEVITime').text());
@@ -2038,6 +2043,7 @@ var $exeDevice = {
         });
 
         $('#vquextEVIURL').change(function () {
+            if (!$exeDevice) return;
             const url = $(this).val().trim(),
                 id = $exeDevices.iDevice.gamification.media.getIDYoutube(url);
             $('#vquextEVIEnd').val('00:00:00');
@@ -2050,6 +2056,7 @@ var $exeDevice = {
         });
 
         $('#vquextEPlayStart').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             const url = $('#vquextEVIURL').val().trim(),
                 id = $exeDevices.iDevice.gamification.media.getIDYoutube(url);
@@ -2077,7 +2084,7 @@ var $exeDevice = {
                 const gm = parseInt($(this).val()),
                     fb = $('#vquextEHasFeedBack').is(':checked'),
                     ul = $('#vquextEUseLives').is(':checked');
-                $exeDevice.updateGameMode(gm, fb, ul);
+                $exeDevice?.updateGameMode(gm, fb, ul);
             }
         );
 
@@ -2097,7 +2104,7 @@ var $exeDevice = {
 
         $('#vquextECustomMessages').on('change', function () {
             const messages = $(this).is(':checked');
-            $exeDevice.showSelectOrder(messages);
+            $exeDevice?.showSelectOrder(messages);
         });
 
         $('#vquextENavigable').on('change', function () {
@@ -2106,6 +2113,7 @@ var $exeDevice = {
         });
 
         $('#vquextNumberQuestion').keyup(function (e) {
+            if (!$exeDevice) return;
             if (e.keyCode == 13) {
                 const num = parseInt($(this).val());
                 if (!isNaN(num) && num > 0) {
@@ -2126,6 +2134,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $('#vquextGlobalTimeButton').on('click', function (e) {
+            if (!$exeDevice) return;
             e.preventDefault();
             const selectedTime = parseInt($('#vquextEGlobalTimes').val(), 10);
             for (let i = 0; i < $exeDevice.questionsGame.length; i++) {

@@ -513,7 +513,6 @@ var $eXe3Dmol = {
 
     removeEvents: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
-        $(window).off('unload.exeEC beforeunload.exeEC');
         $(document).off(`fullscreenchange.dmolp${instance}`);
         $(document).off(`webkitfullscreenchange.dmolp${instance}`);
         $(document).off(`mozfullscreenchange.dmolp${instance}`);
@@ -571,11 +570,6 @@ var $eXe3Dmol = {
             });
 
         $eXe3Dmol.removeEvents(instance);
-        $(window).on('unload.exeEC beforeunload.exeEC', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXe3Dmol.mScorm
-            );
-        });
 
         $(`#dmolpGamerOver-${instance}`).css('display', 'flex');
 

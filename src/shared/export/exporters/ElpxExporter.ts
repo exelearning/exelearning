@@ -148,6 +148,10 @@ export class ElpxExporter extends Html5Exporter {
                 language: meta.language || 'en',
             });
 
+            // Resolve material icon data URIs for inline SVG embedding
+            const { files: materialIconFiles, dataUris: materialIconDataUris } =
+                await this.resolveMaterialIconDataUris(pages);
+
             // 1.1 Generate HTML pages with optional LaTeX/Mermaid pre-rendering and store them for ZIP insertion.
             const pageHtmlMap = new Map<string, string>();
             let mermaidWasRendered = false;
@@ -168,6 +172,7 @@ export class ElpxExporter extends Html5Exporter {
                     faviconInfo,
                     pageFilenameMap,
                     undefined,
+                    materialIconDataUris,
                     navLabels,
                 );
 
@@ -273,6 +278,11 @@ export class ElpxExporter extends Html5Exporter {
             } catch {
                 // Base libraries not available - continue anyway
             }
+
+            // 1.6.1 Add material icon SVG files
+            this.addPrefixedFiles(materialIconFiles, 'libs/', (path, content) => {
+                addFile(path, content);
+            });
 
             // 1.6.5 Generate localized i18n file
             const i18nContent = await this.generateI18nContent(meta.language || 'en');

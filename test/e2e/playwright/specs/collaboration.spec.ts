@@ -1,8 +1,32 @@
 import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 import { NavigationPage } from '../pages/navigation.page';
 import { WorkareaPage } from '../pages/workarea.page';
-import { waitForYjsSync } from '../helpers/sync-helpers';
-import { openElpFile } from '../helpers/workarea-helpers';
+import {
+    getIdeviceLockState,
+    waitForIdeviceLockedByMe,
+    waitForIdeviceLockedByOther,
+    waitForIdeviceUnlocked,
+    waitForYjsComponentText,
+    waitForYjsSync,
+} from '../helpers/sync-helpers';
+import {
+    ORIGINAL_IDEVICE_CONTENT,
+    UPDATED_IDEVICE_CONTENT,
+    expectUnsavedTextDoesNotLeak,
+    fillTextIdeviceEditor,
+    getTextIdeviceId,
+    getTinyMCEPlainText,
+    ideviceLocator,
+    isIdeviceCollabSessionAlive,
+    markIdeviceCollabSession,
+} from '../helpers/idevice-collab-helpers';
+import {
+    editIdevice,
+    openElpFile,
+    saveIdevice,
+    waitForAppReady,
+    waitForTinyMCEReady,
+} from '../helpers/workarea-helpers';
 import * as path from 'path';
 
 /**
@@ -369,6 +393,97 @@ test.describe('Real-Time Collaboration', () => {
             // Verify content is present
             const hasContent = await workareaB.hasTextInContent(testContent);
             expect(hasContent).toBeTruthy();
+        });
+
+        test('should refresh Client B automatically when Client A saves, without navigation', async ({
+            authenticatedPage,
+            secondAuthenticatedPage,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            // A saves while B is already viewing the same iDevice. Navigating B after
+            // save would hide a missing remote-view refresh (issue #2169).
+            const pageA = authenticatedPage;
+            const pageB = secondAuthenticatedPage;
+
+            const projectUuid = await createProject(pageA, 'Live Content Edit Sync');
+            await pageA.goto(`/workarea?project=${projectUuid}`);
+            await waitForAppReady(pageA);
+            const shareUrl = await getShareUrl(pageA);
+            await joinSharedProject(pageB, shareUrl);
+            await waitForYjsSync(pageA);
+            await waitForYjsSync(pageB);
+
+            const navA = new NavigationPage(pageA);
+            const navB = new NavigationPage(pageB);
+            const workareaA = new WorkareaPage(pageA);
+
+            const pageName = `Live Sync Page ${Date.now()}`;
+            await navA.createNodeAtRoot(pageName);
+            await navB.waitForNodeInNav(pageName);
+
+            // Setup only: both clients must already be on the page before A edits.
+            await navA.selectNodeByTitle(pageName);
+            await navB.selectNodeByTitle(pageName);
+            await workareaA.waitForContentReady(pageName);
+
+            await workareaA.addTextIdevice();
+            const ideviceId = await getTextIdeviceId(pageA);
+            await fillTextIdeviceEditor(pageA, ORIGINAL_IDEVICE_CONTENT);
+            await saveIdevice(pageA, ideviceId);
+
+            await expect(ideviceLocator(pageA, ideviceId).locator('.idevice_body')).toContainText(
+                ORIGINAL_IDEVICE_CONTENT,
+                { timeout: 15000 },
+            );
+            await expect(ideviceLocator(pageB, ideviceId).locator('.idevice_body')).toContainText(
+                ORIGINAL_IDEVICE_CONTENT,
+                { timeout: 20000 },
+            );
+
+            await markIdeviceCollabSession(pageA);
+            await markIdeviceCollabSession(pageB);
+
+            await editIdevice(pageA, ideviceId);
+            await waitForTinyMCEReady(pageA);
+            await waitForIdeviceLockedByMe(pageA, ideviceId);
+            await waitForIdeviceLockedByOther(pageB, ideviceId);
+
+            const editBtnOnB = ideviceLocator(pageB, ideviceId).locator('.btn-edit-idevice');
+            const lockOnB = await getIdeviceLockState(pageB, ideviceId);
+            if (lockOnB.editDisabled) {
+                await expect(editBtnOnB).toBeDisabled();
+            } else {
+                await editBtnOnB.click();
+            }
+            await expect(ideviceLocator(pageB, ideviceId)).not.toHaveAttribute('mode', 'edition');
+
+            await fillTextIdeviceEditor(pageA, UPDATED_IDEVICE_CONTENT);
+            await expectUnsavedTextDoesNotLeak(
+                pageA,
+                pageB,
+                ideviceId,
+                UPDATED_IDEVICE_CONTENT,
+                ORIGINAL_IDEVICE_CONTENT,
+            );
+
+            await fillTextIdeviceEditor(pageA, UPDATED_IDEVICE_CONTENT);
+            await saveIdevice(pageA, ideviceId);
+            await waitForYjsComponentText(pageA, ideviceId, UPDATED_IDEVICE_CONTENT);
+            await waitForYjsComponentText(pageB, ideviceId, UPDATED_IDEVICE_CONTENT);
+
+            await expect(ideviceLocator(pageB, ideviceId).locator('.idevice_body')).toContainText(
+                UPDATED_IDEVICE_CONTENT,
+                { timeout: 20000 },
+            );
+            expect(await isIdeviceCollabSessionAlive(pageB)).toBe(true);
+            expect(pageB.url()).toContain('/workarea');
+
+            await waitForIdeviceUnlocked(pageB, ideviceId);
+            await editIdevice(pageB, ideviceId);
+            await waitForTinyMCEReady(pageB);
+            expect(await getTinyMCEPlainText(pageB)).toContain(UPDATED_IDEVICE_CONTENT);
         });
     });
 

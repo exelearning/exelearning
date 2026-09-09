@@ -106,6 +106,10 @@ export interface ExportBlock {
 
     // Block icon name (for themed icons)
     iconName?: string;
+    icon?: {
+        source: 'material' | 'asset' | 'theme' | 'none';
+        value: string;
+    };
 
     // Block-level properties
     properties?: ExportBlockProperties;
@@ -132,6 +136,14 @@ export interface ExportComponent {
     order: number;
     content: string; // HTML content
     properties: Record<string, unknown>;
+
+    /**
+     * Raw jsonProperties payload stored in the document that could not be
+     * parsed (#2190). When set, `properties` is {} and content.xml must carry
+     * this string verbatim so a save/export does not destroy the damaged
+     * activity's data.
+     */
+    malformedProperties?: string;
 
     // Component-level structure properties (visibility, teacherOnly, cssClass)
     structureProperties?: ExportComponentProperties;
@@ -203,9 +215,12 @@ export interface ResourceProvider {
     fetchContentCss(): Promise<Map<string, Uint8Array>>;
 
     /**
-     * Fetch SCORM API wrapper files (SCORM_API_wrapper.js, SCOFunctions.js)
+     * Fetch SCORM runtime source files. For '1.2' this is the vendored
+     * pipwerks wrapper plus the project runtime layers (assembled into the
+     * package files by Scorm12Runtime.buildScorm12RuntimeFiles); for '2004'
+     * it is the legacy SCORM_API_wrapper.js/SCOFunctions.js pair.
      * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of relative path -> content buffer
+     * @returns Map of scorm/-relative path -> content buffer
      */
     fetchScormFiles(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
 
@@ -411,6 +426,20 @@ export interface ExportOptions {
     /** Output filename (without extension) */
     filename?: string;
 
+    /**
+     * Version of the eXeLearning that is producing this export.
+     *
+     * Stamped into the assembled SCORM 1.2 runtime so a consumer can say which
+     * runtime it is carrying — the Moodle plugin above all, which vendors the
+     * same file and must be able to prove it matches the release it claims to.
+     * There is one runtime per eXeLearning version, so this is that version.
+     *
+     * Distinct from `ExportMetadata.exelearningVersion`, which records the
+     * version that AUTHORED the project. An old project exported by a new
+     * eXeLearning carries a new runtime and an old authoring version.
+     */
+    runtimeVersion?: string;
+
     /** Include data-* attributes for JS initialization */
     includeDataAttributes?: boolean;
 
@@ -589,51 +618,6 @@ export interface AssetResolverOptions {
 // =============================================================================
 
 /**
- * xAPI runtime configuration serialized into `window.exeXapi` and consumed by
- * the always-on emitter (`public/app/common/xapi/exe_xapi.js`).
- *
- * This type is the single source of truth for the config shape: every key here
- * is read by the emitter, and the emitter reads nothing that is not declared
- * here. Keep it aligned with `exe_xapi.js#_resolveConfig`.
- *
- * Identity keys (always populated by the server-side exporters):
- * - `odeId`        – the ODE identifier; used to derive a stable base IRI.
- * - `baseIri`      – explicit base IRI; defaults to `https://exelearning.net/xapi/<odeId>`.
- * - `activityId`   – the root activity IRI; defaults to `baseIri`.
- * - `packageTitle` – human-readable activity name.
- * - `language`     – BCP-47 language tag for language-map values (default `en`).
- *
- * Delivery keys (OPT-IN, currently NOT populated by the exporters):
- * - `parentOrigin` – when set, statements are postMessage'd only to this exact
- *   parent window origin instead of broadcasting to `'*'`. Restricting the
- *   origin lets the emitter forward the real (possibly identifying) actor
- *   safely; without it the emitter broadcasts an anonymous actor to any host.
- * - `actor`        – a pre-resolved xAPI actor (e.g. injected by an embedding
- *   LMS host). When absent, the emitter falls back to the launch URL actor or
- *   an anonymous account.
- * - `registration` – an xAPI registration UUID grouping statements into one
- *   attempt; falls back to the launch URL `registration` param.
- *
- * The delivery keys are intentionally optional and unset by the default export
- * pipeline. Wiring them through requires runtime context (the embedding origin /
- * LMS-provided actor) that the static exporter does not have, so origin-restricted
- * postMessage delivery is opt-in and supplied by the embedding bridge at runtime.
- */
-export interface XapiConfig {
-    odeId?: string;
-    baseIri?: string;
-    activityId?: string;
-    packageTitle?: string;
-    language?: string;
-    /** Opt-in: restrict postMessage delivery to this exact parent origin. */
-    parentOrigin?: string;
-    /** Opt-in: pre-resolved xAPI actor (object); shape per the xAPI spec. */
-    actor?: Record<string, unknown>;
-    /** Opt-in: xAPI registration UUID grouping statements into one attempt. */
-    registration?: string;
-}
-
-/**
  * Page rendering options
  */
 export interface PageRenderOptions {
@@ -653,12 +637,6 @@ export interface PageRenderOptions {
 
     /** Application version string (e.g., "v3.0.0") for generator meta tag */
     version?: string;
-
-    /**
-     * xAPI runtime config injected into <head> as `window.exeXapi` so the
-     * always-on emitter (exe_xapi.js) can build stable per-iDevice IRIs.
-     */
-    xapi?: XapiConfig;
 
     // Page counter options
     totalPages?: number;
@@ -735,6 +713,9 @@ export interface PageRenderOptions {
      * Used to convert asset:// URLs to content/resources/ paths in export output.
      */
     assetExportPathMap?: Map<string, string>;
+
+    /** Optional inline SVG data URIs for Material Icons keyed by icon name. */
+    materialIconDataUris?: Map<string, string>;
 }
 
 /**
@@ -753,6 +734,8 @@ export interface ComponentRenderOptions {
 export interface BlockRenderOptions extends ComponentRenderOptions {
     /** Base path for theme icons (e.g., '/files/perm/themes/base/base/icons/' for preview) */
     themeIconBasePath?: string;
+    /** Optional inline SVG data URIs for Material Icons keyed by icon name. */
+    materialIconDataUris?: Map<string, string>;
 }
 
 // =============================================================================

@@ -105,6 +105,8 @@ export class Scorm2004Exporter extends Html5Exporter {
 
             // Configure iDevice renderer with theme files for icon resolution
             this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+            const { files: materialIconFiles, dataUris: materialIconDataUris } =
+                await this.resolveMaterialIconDataUris(pages);
 
             // Fetch translated nav labels for the content language (includes license)
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
@@ -127,6 +129,7 @@ export class Scorm2004Exporter extends Html5Exporter {
                     faviconInfo,
                     pageFilenameMap,
                     navLabels,
+                    materialIconDataUris,
                 );
 
                 // Pre-render LaTeX to SVG unless the author explicitly requested MathJax.
@@ -242,6 +245,11 @@ export class Scorm2004Exporter extends Html5Exporter {
             } catch {
                 // No base libraries available
             }
+
+            this.addPrefixedFiles(materialIconFiles, 'libs/', (path, content) => {
+                this.zip.addFile(path, content);
+                commonFiles.push(path);
+            });
 
             // 4.5. Generate localized i18n file
             const i18nContent = await this.generateI18nContent(meta.language || 'en');
@@ -416,6 +424,7 @@ export class Scorm2004Exporter extends Html5Exporter {
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
         navLabels?: { previous: string; next: string; license?: string },
+        materialIconDataUris?: Map<string, string>,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -470,6 +479,8 @@ export class Scorm2004Exporter extends Html5Exporter {
             pageFilenameMap,
             // Pre-translated nav button labels (resolved from XLF at export time)
             navLabels,
+            materialIconDataUris,
+            // Application version for generator meta tag
             version: meta.exelearningVersion,
         });
     }

@@ -2,14 +2,16 @@
 <theme>
     <name>zen</name>
     <title>Zen</title>
-    <version>2025</version>
-    <compatibility>3.0</compatibility>
+    <version>20260827</version>
+    <compatibility>4.0.4</compatibility>
     <author>3ipunt for eXeLearning.net</author>
     <license>Creative Commons by-sa</license>
     <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
     <description>Equilibrio y claridad.
 
-iDevice icons by Google (https://fonts.google.com/icons), under the 2.0 version of the Apache License (https://www.apache.org/licenses/LICENSE-2.0.html).
+iDevice icons by Google (Material Symbols, https://fonts.google.com/icons), under the Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). The full license text is included in icons/LICENSE.txt.
 
-Inter Font, by Rasmus Andersson, under the SIL Open Font License, Version 1.1. Copyright (c) 2016-2020 The Inter Project Authors (https://github.com/rsms/inter).</description>
+Inter Font, designed by Rasmus Andersson, under the SIL Open Font License, Version 1.1. Copyright 2016-2020 The Inter Project Authors (https://github.com/rsms/inter). The full license text is included in fonts/OFL.txt.
+
+Creative Commons license badges (img/licenses.gif) are trademarks of Creative Commons (https://creativecommons.org) and are used under their trademark policy (https://creativecommons.org/policies/). They are not covered by this style's CC BY-SA license.</description>
 </theme>

@@ -1347,6 +1347,39 @@ describe('TrueFalseHandler', () => {
             expect(msgs.msgFalse).toBe('False');
         });
 
+        // Issue #2252: a legacy package authored in Spanish must not come back
+        // with English interface texts.
+        it('should localize default messages to the project language', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <list>
+                        <instance class="TrueFalseQuestion">
+                            <dictionary>
+                                <string role="key" value="questionTextArea"/>
+                                <instance class="TextAreaField">
+                                    <dictionary>
+                                        <string role="key" value="content"/>
+                                        <unicode value="Q"/>
+                                    </dictionary>
+                                </instance>
+                                <string role="key" value="isCorrect"/>
+                                <bool value="1"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict, 'idev-1', {
+                language: 'es',
+                ideviceId: 'idev-1',
+                className: 'exe.engine.truefalseidevice.TrueFalseIdevice',
+            });
+            const msgs = props.msgs as { msgTrue: string; msgFalse: string; msgSuggestion: string };
+            expect(msgs.msgTrue).toBe('Verdadero');
+            expect(msgs.msgFalse).toBe('Falso');
+            expect(msgs.msgSuggestion).toBe('Sugerencia');
+        });
+
         it('should include eXeGameInstructions when present', () => {
             const dict = createDomElement(`
                 <dictionary>

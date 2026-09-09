@@ -63,7 +63,23 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        if (_files.includes('material-icons/material-icons.svg')) {
+            files.set(
+                'material-icons/material-icons.svg',
+                Buffer.from(
+                    [
+                        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+                        '<symbol id="lightbulb" viewBox="0 -960 960 960"><path d="M0Z"/></symbol>',
+                        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M1Z"/></symbol>',
+                        '<symbol id="filter_5" viewBox="0 -960 960 960"><path d="M2Z"/></symbol>',
+                        '<symbol id="help" viewBox="0 -960 960 960"><path d="M3Z"/></symbol>',
+                        '</svg>',
+                    ].join('\n'),
+                ),
+            );
+        }
+        return files;
     }
 
     async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
@@ -514,6 +530,80 @@ describe('PageExporter', () => {
 
             expect(zip.files.has('content/css/single-page.css')).toBe(true);
         });
+
+        it('should add only used material icon SVGs to the ZIP and inline them in HTML', async () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+            document = new MockDocument({}, pagesWithBootstrapIcon);
+            exporter = new PageExporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('libs/material-icons/icons/lightbulb.svg')).toBe(true);
+            expect(zip.files.has('libs/material-icons/icons/alarm.svg')).toBe(false);
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('data:image/svg+xml;utf8,');
+            expect(indexHtml).not.toContain('libs/material-icons/icons/lightbulb.svg');
+        });
+
+        it('falls back to the inlined help data URI when the material icon sprite cannot be fetched', async () => {
+            // The loose per-icon SVG files were removed, so a sprite-fetch failure
+            // must NOT leave a dangling libs/material-icons/icons/{name}.svg URL in
+            // the HTML — the renderer emits a self-contained help data: URI instead.
+            const pagesWithMaterialIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+            document = new MockDocument({}, pagesWithMaterialIcon);
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                if (files.includes('material-icons/material-icons.svg')) {
+                    throw new Error('material icon fetch failed');
+                }
+                return new Map();
+            };
+            exporter = new PageExporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('libs/material-icons/icons/lightbulb.svg')).toBe(false);
+            const indexHtml = zip.files.get('index.html') as string;
+            // No dead /icons/ path anywhere, and a real inlined icon is emitted.
+            expect(indexHtml).not.toContain('libs/material-icons/icons/');
+            expect(indexHtml).toContain('--exe-material-icon-url:url(');
+            expect(indexHtml).toContain('data:image/svg+xml;utf8,');
+        });
     });
 
     describe('Single Page HTML Generation', () => {
@@ -537,6 +627,41 @@ describe('PageExporter', () => {
             const html = exporter.generateSinglePageHtml(samplePages, document.getMetadata(), []);
 
             expect(html).toContain('exe-single-page');
+        });
+
+        it('should inline material icon SVGs as data URIs in single-page HTML', () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            const html = exporter.generateSinglePageHtml(
+                pagesWithBootstrapIcon,
+                document.getMetadata(),
+                [],
+                null,
+                [],
+                false,
+                undefined,
+                new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            );
+
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('libs/material-icons/icons/lightbulb.svg');
         });
 
         it('should render license as a link when licenseUrl is present in metadata', () => {

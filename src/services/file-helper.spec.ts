@@ -154,24 +154,102 @@ describe('File Helper Service', () => {
     });
 
     describe('getProjectAssetsDir', () => {
-        it('should return UUID-based path for project assets', () => {
+        it('should return a sharded UUID-based path for project assets', () => {
             const projectUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
             const result = fileHelper.getProjectAssetsDir(projectUuid);
-            expect(result).toContain('assets');
-            expect(result).toContain(projectUuid);
-            expect(result).toBe(path.join(testDir, 'assets', projectUuid));
+            expect(result).toBe(path.join(testDir, 'assets', 'a1', projectUuid));
         });
 
-        it('should handle different UUID formats', () => {
-            const uuid1 = 'simple-uuid-123';
-            const uuid2 = 'another-project-uuid';
+        it('should shard by the lowercased first two hex characters of the UUID', () => {
+            const projectUuid = 'FFE0D5AA-D8D2-4A7B-BF6D-C809321CCC2A';
+            const result = fileHelper.getProjectAssetsDir(projectUuid);
+            expect(result).toBe(path.join(testDir, 'assets', 'ff', projectUuid));
+        });
 
-            const result1 = fileHelper.getProjectAssetsDir(uuid1);
-            const result2 = fileHelper.getProjectAssetsDir(uuid2);
+        it('should place non-canonical identifiers in a deterministic hash bucket', () => {
+            const result1 = fileHelper.getProjectAssetsDir('simple-uuid-123');
+            const result2 = fileHelper.getProjectAssetsDir('simple-uuid-123');
+            expect(result1).toBe(result2);
+            const relative = path.relative(testDir, result1).split(path.sep);
+            expect(relative[0]).toBe('assets');
+            expect(relative[1]).toMatch(/^[0-9a-f]{2}$/);
+            expect(relative[2]).toBe('simple-uuid-123');
+        });
 
-            expect(result1).toContain(uuid1);
-            expect(result2).toContain(uuid2);
+        it('should give different projects different directories', () => {
+            const result1 = fileHelper.getProjectAssetsDir('simple-uuid-123');
+            const result2 = fileHelper.getProjectAssetsDir('another-project-uuid');
             expect(result1).not.toBe(result2);
+        });
+
+        it('should reject unsafe project identifiers instead of building a traversal path', () => {
+            expect(() => fileHelper.getProjectAssetsDir('../..')).toThrow();
+            expect(() => fileHelper.getProjectAssetsDir('a/b')).toThrow();
+            expect(() => fileHelper.getProjectAssetsDir('a\\b')).toThrow();
+            expect(() => fileHelper.getProjectAssetsDir('')).toThrow();
+        });
+    });
+
+    describe('getProjectAssetsDirCandidates', () => {
+        it('should return the sharded directory and the legacy unsharded directory', () => {
+            const projectUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            expect(fileHelper.getProjectAssetsDirCandidates(projectUuid)).toEqual([
+                path.join(testDir, 'assets', 'a1', projectUuid),
+                path.join(testDir, 'assets', projectUuid),
+            ]);
+        });
+    });
+
+    describe('resolveAssetStoragePath', () => {
+        const projectUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+        it('should resolve a canonical relative storage path under FILES_DIR', () => {
+            const stored = `assets/a1/${projectUuid}/client-1.png`;
+            expect(fileHelper.resolveAssetStoragePath(stored)).toBe(
+                path.join(testDir, 'assets', 'a1', projectUuid, 'client-1.png'),
+            );
+        });
+
+        it('should re-root legacy absolute storage paths under the current FILES_DIR', () => {
+            const legacy = `/old-deployment/data/assets/${projectUuid}/client-1.png`;
+            expect(fileHelper.resolveAssetStoragePath(legacy)).toBe(
+                path.join(testDir, 'assets', projectUuid, 'client-1.png'),
+            );
+        });
+
+        it('should keep the same stored path valid when FILES_DIR changes (portability)', () => {
+            const stored = `assets/a1/${projectUuid}/client-1.png`;
+            const helperA = createFileHelper({
+                getEnv: key => (key === 'FILES_DIR' ? '/mnt/data-a' : undefined),
+            });
+            const helperB = createFileHelper({
+                getEnv: key => (key === 'FILES_DIR' ? '/mnt/data-b' : undefined),
+            });
+            expect(helperA.resolveAssetStoragePath(stored)).toBe(
+                path.join('/mnt/data-a', 'assets', 'a1', projectUuid, 'client-1.png'),
+            );
+            expect(helperB.resolveAssetStoragePath(stored)).toBe(
+                path.join('/mnt/data-b', 'assets', 'a1', projectUuid, 'client-1.png'),
+            );
+        });
+
+        it('should throw for traversal attempts', () => {
+            expect(() => fileHelper.resolveAssetStoragePath('assets/../secrets.db')).toThrow();
+        });
+    });
+
+    describe('tryResolveAssetStoragePath', () => {
+        it('should return null for unresolvable stored values', () => {
+            expect(fileHelper.tryResolveAssetStoragePath('/somewhere/else/file.png')).toBeNull();
+            expect(fileHelper.tryResolveAssetStoragePath('assets/../evil')).toBeNull();
+        });
+
+        it('should resolve valid stored values', () => {
+            const projectUuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            const stored = `assets/a1/${projectUuid}/client-1.png`;
+            expect(fileHelper.tryResolveAssetStoragePath(stored)).toBe(
+                path.join(testDir, 'assets', 'a1', projectUuid, 'client-1.png'),
+            );
         });
     });
 

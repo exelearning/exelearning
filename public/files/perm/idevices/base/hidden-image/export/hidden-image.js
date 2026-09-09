@@ -426,12 +426,6 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance];
         $eXeHiddenImage.removeEvents(instance);
 
-        $(window).on('unload.eXehiP beforeunload.eXehiP', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeHiddenImage.mScorm
-            );
-        });
-
         $('#hiPLinkMaximize-' + instance).on('click touchstart', (e) => {
             e.preventDefault();
             $('#hiPGameContainer-' + instance).show();
@@ -601,8 +595,6 @@ var $eXeHiddenImage = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXehiP beforeunload.eXehiP');
-
         $('#hiPLinkMaximize-' + instance).off('click touchstart');
         $('#hiPLinkMinimize-' + instance).off('click touchstart');
         $('#hiPMainContainer-' + instance)
@@ -830,13 +822,15 @@ var $eXeHiddenImage = {
     },
 
     showImageNeo: function (url, instance) {
-        const mOptions = $eXeHiddenImage.options[instance],
-            mQuestion = mOptions.questionsGame[mOptions.activeQuestion],
+        const mOptions = $eXeHiddenImage.options[instance];
+        if (!mOptions) return;
+        const mQuestion = mOptions.questionsGame[mOptions.activeQuestion],
             $image = $('#hiPImage-' + instance);
 
         $image.attr('alt', 'No image').hide();
 
         const imgEl = $image[0];
+        if (!imgEl) return;
 
         function onImageLoad() {
             if (
@@ -918,6 +912,7 @@ var $eXeHiddenImage = {
 
     createSquares: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
+        if (!mOptions) return;
         const mQuestion = mOptions.questionsGame[mOptions.activeQuestion];
         const $overlay = $('#hipOverlay-' + instance);
         $eXeHiddenImage.updateOverlaySize(instance);

@@ -533,4 +533,193 @@ describe('complete iDevice export', () => {
       expect(() => handler({ changedTouches: [{ clientX: 10, clientY: 10 }] })).not.toThrow();
     });
   });
+
+  /**
+   * Completion signal.
+   *
+   * `checkPhrase` reports the score automatically (auto = true) on every press of the
+   * check button. The runtime funnel in public/app/common/common.js decides whether the
+   * page may be completed from `game.gameOver === true || auto !== true`, so an auto
+   * report sent while `gameOver` is still false leaves the page `incomplete` in the LMS
+   * no matter how good the score is.
+   *
+   * This activity's own end condition is the one already written in `checkPhrase`:
+   * `mOptions.attempsNumber <= 0 || mOptions.hits === mOptions.number` — attempts spent
+   * or every gap right. These tests pin the flag to that condition and to nothing else:
+   * a check with attempts still left must NOT complete the activity.
+   */
+  describe('completion signal on the automatic report', () => {
+    let reports;
+    let originalScorm;
+    let originalReport;
+    let originalGetTimeToString;
+
+    /**
+     * Build the DOM `checkPhrase` walks and the instance state it reads.
+     *
+     * @param {object} config test knobs
+     * @param {string[]} config.words the expected answers, one per gap
+     * @param {string[]} config.answers what the learner typed, index-aligned with words
+     * @param {number} config.attempsNumber attempts left before this check
+     * @returns {number} the instance index to pass to checkPhrase
+     */
+    function givenPlayedActivity({ words, answers, attempsNumber }) {
+      const instance = 42;
+
+      $eXeCompleta.options[instance] = {
+        attempsNumber,
+        caseSensitive: false,
+        errors: 0,
+        estrictCheck: false,
+        evaluation: false,
+        evaluationID: '',
+        feedBack: false,
+        gameOver: false,
+        gameStarted: true,
+        hits: 0,
+        isScorm: 1,
+        itinerary: { showClue: false, percentageClue: 0 },
+        main: 'cmptMainContainer-' + instance,
+        msgs: { msgEndScore: '%s / %d', msgGameEnd: 'End', msgTry: 'Try', msgYouScore: 'Score' },
+        number: words.length,
+        percentajeError: 0,
+        showSolution: false,
+        type: 0,
+        words: [...words],
+      };
+
+      const inputs = answers
+        .map((answer, i) => `<input type="text" class="CMPT-Input" data-number="${i}" value="${answer}">`)
+        .join('');
+      const container = document.createElement('div');
+      container.id = `cmptMainContainer-${instance}`;
+      container.innerHTML = `
+        <div id="cmptGameContainer-${instance}">
+          <div id="cmptMultimedia-${instance}">${inputs}</div>
+          <div id="cmptMensaje-${instance}"></div>
+          <span id="cmptPHits-${instance}"></span>
+          <span id="cmptPErrors-${instance}"></span>
+          <span id="cmptPNumber-${instance}"></span>
+          <span id="cmptPScore-${instance}"></span>
+          <span id="cmptRepeatActivity-${instance}"></span>
+          <button id="cmptCheckPhrase-${instance}"></button>
+          <button id="cmptReloadPhrase-${instance}"></button>
+          <div id="cmptButonsDiv-${instance}"></div>
+          <div id="cmptSolutionDiv-${instance}"><div id="cmptSolution-${instance}"></div></div>
+          <div id="cmptPShowClue-${instance}"></div>
+        </div>`;
+      document.body.appendChild(container);
+      // jQuery reads `value` from the attribute only before the first user edit, so push
+      // the authored answers into the live property the same way a learner would.
+      answers.forEach((answer, i) => {
+        container.querySelector(`[data-number="${i}"]`).value = answer;
+      });
+
+      return instance;
+    }
+
+    beforeEach(() => {
+      reports = [];
+      originalScorm = global.$exeDevices.iDevice.gamification.scorm;
+      originalReport = global.$exeDevices.iDevice.gamification.report;
+      // Capture what the shared funnel would receive: the `auto` flag and the live
+      // instance object, whose `gameOver` is read synchronously at that moment.
+      global.$exeDevices.iDevice.gamification.scorm = {
+        ...originalScorm,
+        sendScoreNew: (auto, game) => reports.push({ auto, gameOver: game.gameOver, scorerp: game.scorerp }),
+        registerActivity: vi.fn(),
+      };
+      global.$exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      originalGetTimeToString = global.$exeDevices.iDevice.gamification.helpers.getTimeToString;
+      global.$exeDevices.iDevice.gamification.helpers.getTimeToString = (t) => String(t);
+    });
+
+    afterEach(() => {
+      global.$exeDevices.iDevice.gamification.scorm = originalScorm;
+      global.$exeDevices.iDevice.gamification.report = originalReport;
+      global.$exeDevices.iDevice.gamification.helpers.getTimeToString = originalGetTimeToString;
+      const leftover = document.getElementById('cmptMainContainer-42');
+      if (leftover) leftover.remove();
+    });
+
+    it('reports automatically on every check', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      expect(reports).toHaveLength(1);
+      expect(reports[0].auto).toBe(true);
+    });
+
+    it('does not complete the activity while attempts remain', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      expect(reports[0].gameOver).toBe(false);
+      expect($eXeCompleta.options[instance].gameOver).toBe(false);
+    });
+
+    it('completes the activity on the report that carries a perfect answer', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'dog'],
+        attempsNumber: 3,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      // Every gap right: the activity is over, and the LMS has to see that on the same
+      // report that carries the 10/10 score.
+      expect(reports[0].gameOver).toBe(true);
+      expect(reports[0].scorerp).toBe(10);
+    });
+
+    it('completes the activity on the report from the last attempt', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 1,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      // Attempts spent with a partial score: still finished, just not passed.
+      expect(reports[0].gameOver).toBe(true);
+      expect(reports[0].scorerp).toBe(5);
+    });
+
+    it('completes the activity when the clock runs out mid-attempt', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+      const mOptions = $eXeCompleta.options[instance];
+      mOptions.time = 1;
+      mOptions.gameStarted = false;
+
+      vi.useFakeTimers();
+      try {
+        // startGame owns the countdown; at zero it forces a check and ends the game, so
+        // that forced check is the end of the activity even with attempts left.
+        $eXeCompleta.startGame(instance);
+        vi.advanceTimersByTime(60000);
+      } finally {
+        clearInterval(mOptions.counterClock);
+        vi.useRealTimers();
+      }
+
+      expect(reports).toHaveLength(1);
+      expect(reports[0].gameOver).toBe(true);
+    });
+  });
 });

@@ -1,3 +1,17 @@
+/*!
+ * eXeLearning v4+ Style Script File
+ * -----------------------
+ * Author: Ignacio Gros for eXeLearning
+ * Project: exelearning.net
+ *
+ * This JavaScript file is part of a style for eXeLearning.
+ * Licensed under Creative Commons Attribution-ShareAlike (CC BY-SA).
+ *
+ * Note: The style's config.xml contains additional information
+ *       about materials (images) created by third parties
+ *       and included in this style.
+ */
+
 var myTheme = {
     init: function () {
         // Common functions
@@ -6,14 +20,14 @@ var myTheme = {
         // Add menu and search bar togglers
         var togglers =
             '\
-            <button type="button" id="siteNavToggler" class="toggler" title="' +
+            <button type="button" id="siteNavToggler" class="toggler" aria-expanded="true" aria-controls="siteNav" title="' +
             $exe_i18n.menu +
             '">\
                 <span class="sr-av">' +
             $exe_i18n.menu +
             '</span>\
             </button>\
-            <button type="button" id="searchBarTogger" class="toggler" title="' +
+            <button type="button" id="searchBarTogger" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
             $exe_i18n.search +
             '">\
                 <span class="sr-av">' +
@@ -23,18 +37,16 @@ var myTheme = {
         ';
         $('#siteNav').before(togglers);
         // Check the current NAV status
-        var url = window.location.href;
-        url = url.split('?');
-        if (url.length > 1) {
-            if (url[1].indexOf('nav=false') != -1) {
-                $('body').addClass('siteNav-off');
-                myTheme.params('add');
-            }
+        if (new URLSearchParams(window.location.search).get('nav') === 'false') {
+            $('body').addClass('siteNav-off');
+            $('#siteNavToggler').attr('aria-expanded', 'false');
+            myTheme.params('add');
         }
         // Menu toggler
         $('#siteNavToggler').on('click', function () {
             if (myTheme.isLowRes()) {
                 $('#exe-client-search').hide();
+                $('#searchBarTogger').attr('aria-expanded', 'false');
                 if ($('body').hasClass('siteNav-off')) {
                     $('body').removeClass('siteNav-off');
                 } else {
@@ -50,6 +62,7 @@ var myTheme = {
                     $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
+            $(this).attr('aria-expanded', !$('body').hasClass('siteNav-off'));
         });
         // Search bar toggler
         $('#searchBarTogger').on('click', function () {
@@ -59,11 +72,13 @@ var myTheme = {
             } else {
                 if (myTheme.isLowRes()) {
                     $('body').addClass('siteNav-off');
+                    $('#siteNavToggler').attr('aria-expanded', 'false');
                 }
                 bar.show();
                 $('#exe-client-search-text').focus();
                 window.scroll(0, 0);
             }
+            $(this).attr('aria-expanded', bar.is(':visible'));
         });
         if (!this.inIframe()) {
             // Fixed navigation
@@ -96,26 +111,14 @@ var myTheme = {
         if (navH < $(window).height()) wrapper.addClass('fixed');
         else wrapper.removeClass('fixed');
     },
-    param: function (e, act) {
-        if (act == 'add') {
-            var ref = e.href;
-            var con = '?';
-            if (ref.indexOf('.html?') != -1) con = '&';
-            var param = 'nav=false';
-            if (ref.indexOf(param) == -1) {
-                ref += con + param;
-                e.href = ref;
-            }
-        } else {
-            // This will remove all params
-            var ref = e.href;
-            ref = ref.split('?');
-            e.href = ref[0];
-        }
-    },
+    // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
+        var value = act == 'add' ? 'false' : null;
         $('.nav-buttons a').each(function () {
-            myTheme.param(this, act);
+            this.setAttribute(
+                'href',
+                $exeExport.setUrlParam(this.getAttribute('href'), 'nav', value)
+            );
         });
     },
 };

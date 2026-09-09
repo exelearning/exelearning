@@ -1318,6 +1318,97 @@ function assertInfantilLinkedToCompetenciasClave(data) {
     expect(empty, 'all Infantil criterios must be linked to competencias clave').toBe(0);
 }
 
+// ════════════════════════════════════════════════════════════════
+describe('fetchJsonMaybeGzipped decompression tiers (.zst / plain / XHR)', () => {
+    let el;
+
+    function minimalDataset() {
+        return {
+            'Educación Primaria': {
+                '1º Primaria': {
+                    MAT: {
+                        denominacion: 'Matemáticas',
+                        saberes_basicos: { bloques: {} },
+                        competencias_especificas: {},
+                    },
+                },
+            },
+        };
+    }
+
+    function mockZstFetch(ds) {
+        const zstUrl = /\.zst$/;
+        const jsonBytes = new TextEncoder().encode(JSON.stringify(ds));
+        globalThis.window.fzstd = { decompress: vi.fn(() => jsonBytes) };
+        globalThis.fetch = vi.fn((url) => {
+            if (zstUrl.test(url)) {
+                return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(jsonBytes.buffer) });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(ds) });
+        });
+    }
+
+    function mockZstFetch404ThenPlain(ds) {
+        globalThis.window.fzstd = { decompress: vi.fn() };
+        globalThis.fetch = vi.fn((url) => {
+            if (/\.zst$/.test(url)) {
+                return Promise.resolve({ ok: false, status: 404 });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(ds) });
+        });
+    }
+
+    function mockPlainFetchOnly(ds) {
+        delete globalThis.window.fzstd;
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(ds) }));
+    }
+
+    let dev;
+    beforeEach(async () => {
+        el = buildMockElement();
+        const raw = await import('./lomloe.js?raw').then(m => m.default);
+        dev = new Function('globalThis', '_', 'CSS', raw + '\nreturn $exeDevice;')(
+            globalThis, globalThis._, globalThis.CSS
+        );
+    });
+    afterEach(() => {
+        el && el.remove();
+        delete globalThis.window.fzstd;
+        vi.restoreAllMocks();
+    });
+
+    it('tries <url>.zst first and decompresses via window.fzstd when available', async () => {
+        mockZstFetch(minimalDataset());
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        expect(globalThis.fetch).toHaveBeenCalled();
+        const firstUrl = globalThis.fetch.mock.calls[0][0];
+        expect(firstUrl).toMatch(/\.zst$/);
+        expect(globalThis.window.fzstd.decompress).toHaveBeenCalled();
+        // Data loaded successfully via the .zst tier (no error thrown, summary renders).
+        expect(dev.save().lomloeSummaryHtml).toBeDefined();
+    });
+
+    it('falls back to the plain <url> fetch when the .zst request 404s', async () => {
+        mockZstFetch404ThenPlain(minimalDataset());
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        const urls = globalThis.fetch.mock.calls.map(c => c[0]);
+        expect(urls.some(u => /\.zst$/.test(u))).toBe(true);
+        expect(urls.some(u => !/\.zst$/.test(u))).toBe(true);
+        expect(dev.save().lomloeSummaryHtml).toBeDefined();
+    });
+
+    it('skips the .zst tier entirely when window.fzstd is not loaded', async () => {
+        mockPlainFetchOnly(minimalDataset());
+        dev.init(el, null);
+        await new Promise(r => setTimeout(r, 50));
+        const urls = globalThis.fetch.mock.calls.map(c => c[0]);
+        expect(urls.every(u => !/\.zst$/.test(u))).toBe(true);
+        expect(dev.save().lomloeSummaryHtml).toBeDefined();
+    });
+});
+
 describe('lomloe-ES.json (state minimum teachings)', () => {
     const data = loadDataset('lomloe-ES.json');
 

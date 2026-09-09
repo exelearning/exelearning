@@ -476,6 +476,71 @@ describe('YjsDocumentAdapter', () => {
             expect(comp.properties.textFeedbackInput).toBe('Show Feedback');
             expect(comp.properties.textFeedbackTextarea).toBe('<p>Feedback content here</p>');
         });
+
+        it('should convert nested Yjs icon maps on blocks', () => {
+            const block = new MockYMap({
+                id: 'b1',
+                name: 'Block 1',
+                blockName: 'Block 1',
+                order: 0,
+                iconName: 'mi-info',
+                icon: new MockYMap({
+                    source: 'material',
+                    value: 'info',
+                }),
+                components: new MockYArray([]),
+            });
+            const page = createMockPage('p1', 'Page 1', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].iconName).toBe('mi-info');
+            expect(pages[0].blocks[0].icon).toEqual({
+                source: 'material',
+                value: 'info',
+            });
+        });
+
+        it('should keep the raw payload when stored jsonProperties cannot be parsed (#2190)', () => {
+            // The #2177 corruption shape: unescaped quotes inside a JSON string.
+            const malformed = '{"questionsData":[{"baseText":"<audio src="broken.webm"></audio>"}]}';
+            const component = new MockYMap({
+                id: 'c1',
+                type: 'trueorfalse',
+                ideviceType: 'trueorfalse',
+                content: '<p>Damaged</p>',
+                htmlContent: '<p>Damaged</p>',
+                order: 0,
+                jsonProperties: malformed,
+            });
+            const block = createMockBlock('b1', 'Block', [component]);
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const comp = adapter.getNavigation()[0].blocks[0].components[0];
+
+            expect(comp.properties).toEqual({});
+            expect(comp.malformedProperties).toBe(malformed);
+        });
+
+        it('should leave malformedProperties unset when jsonProperties parses (#2190)', () => {
+            const component = createMockComponent('c1', 'trueorfalse', '<p>Fine</p>', { answer: 'True' });
+            const block = createMockBlock('b1', 'Block', [component]);
+            const page = createMockPage('p1', 'Page', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const comp = adapter.getNavigation()[0].blocks[0].components[0];
+
+            expect(comp.properties).toEqual({ answer: 'True' });
+            expect(comp.malformedProperties).toBeUndefined();
+        });
     });
 
     describe('block and component ordering', () => {

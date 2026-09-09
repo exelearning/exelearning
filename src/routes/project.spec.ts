@@ -6,6 +6,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import {
+    getAssetShard,
+    resolveAssetStoragePath as resolveAssetStoragePathPure,
+    tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
+} from '../utils/asset-paths';
 
 import {
     createProjectRoutes,
@@ -103,7 +108,11 @@ function createMockFileHelper(): FileHelperDeps {
             await fs.appendFile(filePath, content);
         },
         getFilesDir: () => path.join(testDir, 'files'),
-        getProjectAssetsDir: (projectUuid: string) => path.join(testDir, 'assets', projectUuid),
+        // Asset storage resolvers bound to testDir: legacy absolute fixture
+        // paths under testDir/assets resolve to themselves, and new sharded
+        // relative paths resolve under testDir/assets/<shard>/<uuid>/.
+        resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(testDir, storagePath),
+        tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(testDir, storagePath),
     };
 }
 
@@ -1680,6 +1689,53 @@ describe('Project Routes', () => {
             expect(newAssets![0].client_id).toBe(sourceClientId);
             expect(newAssets![0].filename).toBe('test-image.png');
             expect(newAssets![0].project_id).toBe(newProjectId);
+        });
+
+        it('should store duplicated assets with FILES_DIR-relative sharded paths (issue #2250)', async () => {
+            const sourceProject = createTestProject(910, 'uuid-910-sharded-dup', 1);
+
+            const sourceClientId = 'sharded-dup-client';
+            const sourceAssetDir = path.join(testDir, 'assets', String(sourceProject.id), sourceClientId);
+            await fs.ensureDir(sourceAssetDir);
+            const sourceFilePath = path.join(sourceAssetDir, 'picture.png');
+            await fs.writeFile(sourceFilePath, Buffer.from('shard-me'));
+
+            mockAssets.set(sourceProject.id, [
+                {
+                    id: 1,
+                    project_id: sourceProject.id,
+                    filename: 'picture.png',
+                    storage_path: sourceFilePath,
+                    mime_type: 'image/png',
+                    file_size: 8,
+                    client_id: sourceClientId,
+                    component_id: null,
+                    content_hash: 'h1',
+                },
+            ]);
+
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-910-sharded-dup/duplicate', {
+                    method: 'POST',
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            const newAssets = mockAssets.get(body.project.id);
+            expect(newAssets).toBeDefined();
+            expect(newAssets!.length).toBe(1);
+
+            const newUuid = body.project.uuid as string;
+            const storedPath = newAssets![0].storage_path as string;
+            expect(path.isAbsolute(storedPath)).toBe(false);
+            expect(storedPath).toBe(`assets/${getAssetShard(newUuid)}/${newUuid}/${sourceClientId}/picture.png`);
+
+            const resolved = resolveAssetStoragePathPure(testDir, storedPath);
+            expect(await fs.pathExists(resolved)).toBe(true);
+            expect((await fs.readFile(resolved)).toString()).toBe('shard-me');
         });
 
         it('should handle project with no assets during duplication', async () => {

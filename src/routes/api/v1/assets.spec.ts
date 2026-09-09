@@ -15,6 +15,7 @@ import { now } from '../../../db/types';
 import { assetsRoutes } from './assets';
 import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser, createAsset } from '../../../db/queries';
+import { getAssetShard } from '../../../utils/asset-paths';
 import { configureDocManager, resetDocManager, configureBroadcaster, resetBroadcaster } from '../../../yjs';
 import * as Y from 'yjs';
 
@@ -405,11 +406,17 @@ describe('Assets API v1', () => {
             expect(body.success).toBe(false);
             expect(body.error.code).toBe('BAD_REQUEST');
 
-            // Nothing was written outside (or inside) the project assets directory.
+            // Nothing was written outside (or inside) the project assets directory
+            // (checked in both the sharded and the legacy unsharded location).
             expect(await fs.pathExists(escapeTarget)).toBe(false);
-            const assetsDir = path.join(TEST_FILES_DIR, 'assets', 'user-project-traversal');
-            const entries = (await fs.pathExists(assetsDir)) ? await fs.readdir(assetsDir) : [];
-            expect(entries.length).toBe(0);
+            const shard = getAssetShard('user-project-traversal');
+            for (const assetsDir of [
+                path.join(TEST_FILES_DIR, 'assets', shard, 'user-project-traversal'),
+                path.join(TEST_FILES_DIR, 'assets', 'user-project-traversal'),
+            ]) {
+                const entries = (await fs.pathExists(assetsDir)) ? await fs.readdir(assetsDir) : [];
+                expect(entries.length).toBe(0);
+            }
 
             // And no asset record was created.
             const rows = await db.selectFrom('assets').selectAll().execute();
@@ -446,9 +453,25 @@ describe('Assets API v1', () => {
             expect(body.data.clientId).toBe(clientId);
             expect(body.data.filename).toBe('safe.png');
 
-            // File is stored as {clientId}.{ext} inside the project assets directory.
-            const expectedPath = path.join(TEST_FILES_DIR, 'assets', 'user-project-uuid-clientid', `${clientId}.png`);
+            // File is stored as {clientId}.{ext} inside the sharded project
+            // assets directory, and the DB row holds the FILES_DIR-relative path.
+            const shard = getAssetShard('user-project-uuid-clientid');
+            const expectedPath = path.join(
+                TEST_FILES_DIR,
+                'assets',
+                shard,
+                'user-project-uuid-clientid',
+                `${clientId}.png`,
+            );
             expect(await fs.pathExists(expectedPath)).toBe(true);
+
+            const row = await db
+                .selectFrom('assets')
+                .selectAll()
+                .where('client_id', '=', clientId)
+                .executeTakeFirstOrThrow();
+            expect(row.storage_path).toBe(`assets/${shard}/user-project-uuid-clientid/${clientId}.png`);
+            expect(path.isAbsolute(row.storage_path)).toBe(false);
         });
     });
 

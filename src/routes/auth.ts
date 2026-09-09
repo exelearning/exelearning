@@ -4,7 +4,6 @@
  */
 import { Elysia, t } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
-import { cookie } from '@elysiajs/cookie';
 import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
 import type { User, Database } from '../db/types';
@@ -25,6 +24,7 @@ import { getAuthMethods, getSettingString, getSettingNumber } from '../services/
 import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
 import { resolveOidcEndpoints, type ResolvedOidcEndpoints } from '../services/oidc-discovery';
+import { verifyPassword } from '../services/password';
 
 // Domain for temporary emails (CAS, OIDC, Guest users without real email)
 const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
@@ -141,7 +141,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
     return (
         new Elysia({ name: 'auth-routes' })
             // Add cookie and JWT plugins
-            .use(cookie())
             .use(
                 jwt({
                     name: 'jwt',
@@ -212,7 +211,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         return { error: 'Unauthorized', message: 'Invalid credentials' };
                     }
 
-                    const isValid = await bcrypt.compare(password, user.password);
+                    const isValid = await verifyPassword(password, user.password);
                     if (!isValid) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid credentials' };
@@ -420,7 +419,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     );
                 }
 
-                const isValid = await bcrypt.compare(password, user.password);
+                const isValid = await verifyPassword(password, user.password);
                 if (!isValid) {
                     // Redirect back to login with error
                     return Response.redirect(

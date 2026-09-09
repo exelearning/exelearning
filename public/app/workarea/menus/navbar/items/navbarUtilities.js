@@ -10,6 +10,11 @@ export default class NavbarFile {
         this.preferencesButton = document.querySelector(
             '#navbar-button-preferences'
         );
+        // Rendered only when the server says the session may change its password
+        // (user.canChangePassword), so this can legitimately be absent.
+        this.changePasswordButton = document.querySelector(
+            '#navbar-button-change-password'
+        );
         this.ideviceManagerButton = this.menu.navbar.querySelector(
             '#navbar-button-idevice-manager'
         );
@@ -42,6 +47,7 @@ export default class NavbarFile {
     setEvents() {
         this.setTooltips();
         this.setPreferencesEvent();
+        this.setChangePasswordEvent();
         this.setIdeviceManagerEvent();
         this.setFileManagerEvent();
         this.setOdeBrokenLinksEvent();
@@ -81,6 +87,20 @@ export default class NavbarFile {
             }
             this.preferencesEvent();
             e.preventDefault();
+        });
+    }
+
+    /**
+     * Change password form
+     * User menu -> Change password
+     *
+     */
+    setChangePasswordEvent() {
+        if (!this.changePasswordButton) return;
+        this.changePasswordButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (eXeLearning.app.project.checkOpenIdevice()) return false;
+            this.changePasswordEvent();
         });
     }
 
@@ -195,6 +215,14 @@ export default class NavbarFile {
      */
     preferencesEvent() {
         eXeLearning.app.user.preferences.showModalPreferences();
+    }
+
+    /**
+     * Show change password modal
+     *
+     */
+    changePasswordEvent() {
+        eXeLearning.app.modals.changepassword.show();
     }
 
     /**

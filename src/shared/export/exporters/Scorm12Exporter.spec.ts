@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Scorm12Exporter } from './Scorm12Exporter';
+import { SCORM12_RUNTIME_SOURCE_PATHS } from '../utils/Scorm12Runtime';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
     ExportDocument,
@@ -63,13 +64,35 @@ class MockResourceProvider implements ResourceProvider {
     }
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
-        return new Map();
+        const files = new Map<string, Buffer>();
+        if (_files.includes('material-icons/material-icons.svg')) {
+            files.set(
+                'material-icons/material-icons.svg',
+                Buffer.from(
+                    [
+                        '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+                        '<symbol id="lightbulb" viewBox="0 -960 960 960"><path d="M0Z"/></symbol>',
+                        '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M1Z"/></symbol>',
+                        '<symbol id="filter_5" viewBox="0 -960 960 960"><path d="M2Z"/></symbol>',
+                        '<symbol id="help" viewBox="0 -960 960 960"><path d="M3Z"/></symbol>',
+                        '</svg>',
+                    ].join('\n'),
+                ),
+            );
+        }
+        return files;
     }
 
-    async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(version: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
-        files.set('SCORM_API_wrapper.js', Buffer.from('// SCORM API'));
-        files.set('SCOFunctions.js', Buffer.from('// SCO Functions'));
+        if (version === '1.2') {
+            for (const sourcePath of SCORM12_RUNTIME_SOURCE_PATHS) {
+                files.set(sourcePath, Buffer.from(`// ${sourcePath}`));
+            }
+        } else {
+            files.set('SCORM_API_wrapper.js', Buffer.from('// SCORM API'));
+            files.set('SCOFunctions.js', Buffer.from('// SCO Functions'));
+        }
         return files;
     }
 
@@ -453,10 +476,12 @@ describe('Scorm12Exporter', () => {
             expect(html).toContain('loadPage');
         });
 
-        it('should include onunload handler', () => {
+        it('should NOT emit unload/beforeunload attributes (runtime owns end-of-session)', () => {
             const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
-            expect(html).toContain('unloadPage');
+            expect(html).not.toContain('onunload');
+            expect(html).not.toContain('onbeforeunload');
+            expect(html).not.toContain('unloadPage');
         });
 
         it('should have exe-scorm class', () => {
@@ -495,6 +520,43 @@ describe('Scorm12Exporter', () => {
 
             expect(html).toContain('made-with-eXe');
         });
+
+        it('should inline material icon SVGs as data URIs in SCORM 1.2 HTML', () => {
+            const pagesWithBootstrapIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Introduction',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            iconName: 'mi-lightbulb',
+                            icon: { source: 'material', value: 'lightbulb' },
+                            components: [],
+                        },
+                    ],
+                },
+            ];
+
+            const html = exporter.generateScormPageHtml(
+                pagesWithBootstrapIcon[0],
+                pagesWithBootstrapIcon,
+                document.getMetadata(),
+                true,
+                [],
+                0,
+                null,
+                undefined,
+                undefined,
+                new Map([['lightbulb', 'data:image/svg+xml;utf8,%3Csvg%3E%3C%2Fsvg%3E']]),
+            );
+
+            expect(html).toContain('data:image/svg+xml;utf8,');
+            expect(html).not.toContain('libs/material-icons/icons/lightbulb.svg');
+        });
     });
 
     describe('SCORM Scripts', () => {
@@ -513,26 +575,29 @@ describe('Scorm12Exporter', () => {
         });
     });
 
-    describe('Fallback SCORM API', () => {
-        it('should provide SCORM API wrapper fallback', () => {
-            const wrapper = exporter.getScormApiWrapper();
+    describe('Assembled SCORM 1.2 runtime', () => {
+        it('should ship the vendored wrapper verbatim', async () => {
+            await exporter.export();
 
-            expect(wrapper).toContain('pipwerks');
-            expect(wrapper).toContain('SCORM');
-            expect(wrapper).toContain('LMSInitialize');
-            expect(wrapper).toContain('LMSFinish');
-            expect(wrapper).toContain('LMSGetValue');
-            expect(wrapper).toContain('LMSSetValue');
+            const wrapper = zip.files.get('libs/SCORM_API_wrapper.js') as Buffer;
+            expect(Buffer.from(wrapper).toString()).toBe('// scorm12/vendor/pipwerks/SCORM_API_wrapper.js');
         });
 
-        it('should provide SCO functions fallback', () => {
-            const scoFunctions = exporter.getScoFunctions();
+        it('should assemble SCOFunctions.js from the runtime layers in load order', async () => {
+            await exporter.export();
 
-            expect(scoFunctions).toContain('loadPage');
-            expect(scoFunctions).toContain('unloadPage');
-            expect(scoFunctions).toContain('setComplete');
-            expect(scoFunctions).toContain('setIncomplete');
-            expect(scoFunctions).toContain('setScore');
+            const scoFunctions = zip.files.get('libs/SCOFunctions.js') as string;
+            expect(scoFunctions).toContain('SPDX-License-Identifier: AGPL-3.0-or-later');
+            const clientIndex = scoFunctions.indexOf('exe-scorm12-client.js');
+            const activitiesIndex = scoFunctions.indexOf('exe-scorm12-activities.js');
+            const policyIndex = scoFunctions.indexOf('exe-scorm12-policy.js');
+            const lifecycleIndex = scoFunctions.indexOf('exe-scorm12-lifecycle.js');
+            const adapterIndex = scoFunctions.indexOf('exe-scorm12-adapter.js');
+            expect(clientIndex).toBeGreaterThan(-1);
+            expect(activitiesIndex).toBeGreaterThan(clientIndex);
+            expect(policyIndex).toBeGreaterThan(activitiesIndex);
+            expect(lifecycleIndex).toBeGreaterThan(policyIndex);
+            expect(adapterIndex).toBeGreaterThan(lifecycleIndex);
         });
     });
 
@@ -763,17 +828,26 @@ describe('Scorm12Exporter', () => {
             expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico">');
         });
 
-        it('should handle SCORM file fetch failure', async () => {
+        it('should fail the export when SCORM runtime files cannot be fetched', async () => {
             resources.fetchScormFiles = async () => {
                 throw new Error('SCORM files not found');
             };
 
             const result = await exporter.export();
 
-            // Should succeed with fallback SCORM files
-            expect(result.success).toBe(true);
-            expect(zip.files.has('libs/SCORM_API_wrapper.js')).toBe(true);
-            expect(zip.files.has('libs/SCOFunctions.js')).toBe(true);
+            // No silent fallback: an incomplete runtime breaks LMS tracking.
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('SCORM files not found');
+        });
+
+        it('should fail the export naming the missing SCORM runtime files', async () => {
+            resources.fetchScormFiles = async () => new Map<string, Buffer>();
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('SCORM 1.2 runtime files are missing');
+            expect(result.error).toContain('scorm12/vendor/pipwerks/SCORM_API_wrapper.js');
         });
     });
 

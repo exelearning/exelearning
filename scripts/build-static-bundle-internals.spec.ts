@@ -383,6 +383,35 @@ describe('menu and modal HTML generation', () => {
         expect(modals.length).toBeGreaterThan(0);
         expect(modals).toContain('modal');
     });
+
+    it('emits a root element for every modal ModalsManagement instantiates', () => {
+        // The static list of templates in build-static-bundle.ts is maintained by
+        // hand, while ModalsManagement constructs every modal unconditionally and
+        // the base Modal constructor dereferences its root element. A template
+        // missing from the list therefore breaks the whole static app at startup,
+        // which no other test would notice. Derive the expectation from the
+        // manager itself so the two cannot drift.
+        const modalsRoot = path.join(projectRoot, 'public/app/workarea/modals');
+        const managerSource = fs.readFileSync(path.join(modalsRoot, 'modalsManager.js'), 'utf8');
+        const importedFiles = [...managerSource.matchAll(/^import\s+\w+\s+from\s+'(\.\/modals\/[^']+)'/gm)].map(
+            match => match[1],
+        );
+        expect(importedFiles.length).toBeGreaterThan(10);
+
+        const html = generateModalsHtml();
+        const missing: string[] = [];
+
+        for (const relativePath of importedFiles) {
+            const source = fs.readFileSync(path.join(modalsRoot, relativePath), 'utf8');
+            const id = source.match(/(?:let|const) id = '([^']+)'/)?.[1] ?? source.match(/super\(\s*manager,\s*'([^']+)'/)?.[1];
+            // Modals that resolve their element some other way (e.g. by passing a
+            // node in) have no literal id to check.
+            if (!id) continue;
+            if (!html.includes(`id="${id}"`)) missing.push(`${relativePath} -> #${id}`);
+        }
+
+        expect(missing).toEqual([]);
+    });
 });
 
 describe('generateStaticHtml', () => {
@@ -416,12 +445,12 @@ describe('compressJsonInDir', () => {
         expect(compressJsonInDir(path.join(os.tmpdir(), 'exe-absent-dir-xyz'))).toEqual({
             count: 0,
             origTotal: 0,
-            gzTotal: 0,
+            compressedTotal: 0,
         });
     });
 
-    it('gzips json files recursively, removes the originals and leaves other files alone', () => {
-        const tmp = makeTempDir('gzip');
+    it('zstd-compresses json files recursively, removes the originals and leaves other files alone', () => {
+        const tmp = makeTempDir('zstd');
         try {
             const payload = JSON.stringify({ data: 'x'.repeat(500) });
             fs.writeFileSync(path.join(tmp, 'a.json'), payload);
@@ -433,14 +462,14 @@ describe('compressJsonInDir', () => {
 
             expect(stats.count).toBe(2);
             expect(stats.origTotal).toBe(payload.length * 2);
-            expect(stats.gzTotal).toBeGreaterThan(0);
-            expect(stats.gzTotal).toBeLessThan(stats.origTotal);
+            expect(stats.compressedTotal).toBeGreaterThan(0);
+            expect(stats.compressedTotal).toBeLessThan(stats.origTotal);
 
             expect(fs.existsSync(path.join(tmp, 'a.json'))).toBe(false);
             expect(fs.existsSync(path.join(tmp, 'nested', 'b.json'))).toBe(false);
             expect(fs.existsSync(path.join(tmp, 'keep.txt'))).toBe(true);
 
-            const roundTripped = zlib.gunzipSync(fs.readFileSync(path.join(tmp, 'a.json.gz'))).toString();
+            const roundTripped = zlib.zstdDecompressSync(fs.readFileSync(path.join(tmp, 'a.json.zst'))).toString();
             expect(roundTripped).toBe(payload);
         } finally {
             fs.rmSync(tmp, { recursive: true, force: true });

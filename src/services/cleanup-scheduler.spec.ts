@@ -15,6 +15,7 @@ import {
 } from './cleanup-scheduler';
 import type { Kysely } from 'kysely';
 import type { Database, Project } from '../db/types';
+import { getAssetShard } from '../utils/asset-paths';
 
 describe('Cleanup Scheduler', () => {
     // Helper to create mock projects
@@ -186,6 +187,95 @@ describe('Cleanup Scheduler', () => {
             expect(result.success).toBe(true);
             expect(result.diskCleaned).toBe(1);
             expect(fileHelper._removedPaths).toContain('/data/assets/uuid-1');
+        });
+
+        it('should clean up sharded asset directories', async () => {
+            const shard = getAssetShard('uuid-1');
+            const unsavedProjects = [createMockProject({ id: 1, uuid: 'uuid-1' })];
+            const existingPaths = new Set([`/data/assets/${shard}/uuid-1`]);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths });
+            const queries = createMockQueries({ unsavedProjects });
+
+            const deps: CleanupSchedulerDeps = {
+                db: {} as Kysely<Database>,
+                queries,
+                fileHelper,
+            };
+
+            const result = await runCleanup(deps, DEFAULT_CONFIG);
+
+            expect(result.success).toBe(true);
+            expect(result.diskCleaned).toBe(1);
+            expect(fileHelper._removedPaths).toContain(`/data/assets/${shard}/uuid-1`);
+        });
+
+        it('should clean up both sharded and legacy asset directories when both exist', async () => {
+            const shard = getAssetShard('uuid-1');
+            const unsavedProjects = [createMockProject({ id: 1, uuid: 'uuid-1' })];
+            const existingPaths = new Set([`/data/assets/${shard}/uuid-1`, '/data/assets/uuid-1']);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths });
+            const queries = createMockQueries({ unsavedProjects });
+
+            const deps: CleanupSchedulerDeps = {
+                db: {} as Kysely<Database>,
+                queries,
+                fileHelper,
+            };
+
+            const result = await runCleanup(deps, DEFAULT_CONFIG);
+
+            expect(result.success).toBe(true);
+            expect(result.diskCleaned).toBe(1);
+            expect(fileHelper._removedPaths).toContain(`/data/assets/${shard}/uuid-1`);
+            expect(fileHelper._removedPaths).toContain('/data/assets/uuid-1');
+        });
+
+        it('should surface a legacy-directory removal error even when the sharded directory was removed', async () => {
+            const shard = getAssetShard('uuid-1');
+            const unsavedProjects = [createMockProject({ id: 1, uuid: 'uuid-1' })];
+            const existingPaths = new Set([`/data/assets/${shard}/uuid-1`, '/data/assets/uuid-1']);
+            const removeErrors = new Map([['/data/assets/uuid-1', new Error('EBUSY: locked')]]);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths, removeErrors });
+            const queries = createMockQueries({ unsavedProjects });
+
+            const deps: CleanupSchedulerDeps = {
+                db: {} as Kysely<Database>,
+                queries,
+                fileHelper,
+            };
+
+            const result = await runCleanup(deps, DEFAULT_CONFIG);
+
+            // The sharded dir was removed, but the failure must not be swallowed.
+            expect(result.diskCleaned).toBe(1);
+            expect(result.errors.length).toBe(1);
+            expect(result.errors[0]).toContain('EBUSY');
+            expect(result.success).toBe(false);
+        });
+
+        it('should report (not throw on) a project uuid that cannot form a safe directory path', async () => {
+            const unsavedProjects = [
+                createMockProject({ id: 1, uuid: '../evil' }),
+                createMockProject({ id: 2, uuid: 'uuid-2' }),
+            ];
+            const shard2 = getAssetShard('uuid-2');
+            const existingPaths = new Set([`/data/assets/${shard2}/uuid-2`]);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths });
+            const queries = createMockQueries({ unsavedProjects });
+
+            const deps: CleanupSchedulerDeps = {
+                db: {} as Kysely<Database>,
+                queries,
+                fileHelper,
+            };
+
+            const result = await runCleanup(deps, DEFAULT_CONFIG);
+
+            // Both projects are deleted from the DB; the bad uuid is reported
+            // as an asset-cleanup error and the second project is still cleaned.
+            expect(result.unsavedDeleted).toBe(2);
+            expect(result.diskCleaned).toBe(1);
+            expect(result.errors.length).toBe(1);
         });
 
         it('should handle disk errors gracefully', async () => {

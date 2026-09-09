@@ -14,6 +14,7 @@
  *   --help, -h     Show this help message
  */
 import { getString, getBoolean, hasHelp } from '../utils/args';
+import { getAppVersion } from '../../utils/version';
 import { colors } from '../utils/output';
 import * as path from 'path';
 import * as fs from 'fs/promises';
@@ -258,6 +259,9 @@ export async function execute(
 
         const result = await exporter.export({
             filename: path.basename(output),
+            // The eXeLearning doing the exporting, which is the runtime the package
+            // will carry — not the version that authored the project.
+            runtimeVersion: getAppVersion(),
         });
 
         if (!result.success) {

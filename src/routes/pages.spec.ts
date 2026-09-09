@@ -2668,4 +2668,129 @@ describe('Pages Routes', () => {
             }
         });
     });
+    describe('canChangePassword capability (workarea user model)', () => {
+        /**
+         * Render /workarea with the given JWT payload and return the `user`
+         * object handed to the template.
+         */
+        async function renderWorkareaUser(
+            payload: Record<string, unknown>,
+            options: { user?: Record<string, unknown>; env?: Record<string, string> } = {},
+        ): Promise<Record<string, any>> {
+            mockUsers.set(1, {
+                id: 1,
+                email: 'test@test.com',
+                roles: '["ROLE_USER"]',
+                user_id: null,
+                external_identifier: null,
+                ...options.user,
+            });
+
+            for (const [key, value] of Object.entries(options.env ?? {})) {
+                process.env[key] = value;
+            }
+
+            let captured: Record<string, any> = {};
+            const deps = createMockDependencies();
+            deps.template = {
+                renderTemplate: (_template: string, data: any) => {
+                    captured = data.user;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => undefined,
+            };
+            const testApp = new Elysia().use(createPagesRoutes(deps));
+
+            const jwtModule = await import('@elysiajs/jwt');
+            const tempApp = new Elysia().use(jwtModule.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+                ...payload,
+            });
+
+            mockSessions.set('capability-project', {
+                sessionId: 'capability-project',
+                fileName: 'Test.elp',
+            });
+
+            const res = await testApp.handle(
+                new Request('http://localhost/workarea?project=capability-project', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            return captured;
+        }
+
+        it('is true for a local password session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'local' });
+
+            expect(user.canChangePassword).toBe(true);
+        });
+
+        it('is false for a CAS session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'cas' }, { user: { user_id: 'cas:jdoe' } });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false for an OpenID Connect session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'openid' }, { user: { user_id: 'oidc:abc' } });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false for a SAML session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'saml' });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false for a guest session', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'guest', isGuest: true });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false in offline mode', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'local' }, { env: { APP_ONLINE_MODE: '0' } });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false when authentication is disabled', async () => {
+            const user = await renderWorkareaUser({ authMethod: 'local' }, { env: { APP_AUTH_METHODS: 'none' } });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false for an impersonated session that inherited local auth', async () => {
+            const user = await renderWorkareaUser({
+                authMethod: 'local',
+                isImpersonated: true,
+                impersonatedBy: 99,
+            });
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false when the session carries no auth method', async () => {
+            const user = await renderWorkareaUser({});
+
+            expect(user.canChangePassword).toBe(false);
+        });
+
+        it('is false when the persisted account is externally managed', async () => {
+            const user = await renderWorkareaUser(
+                { authMethod: 'local' },
+                { user: { external_identifier: 'saml:abc' } },
+            );
+
+            expect(user.canChangePassword).toBe(false);
+        });
+    });
 });

@@ -16,3 +16,8 @@ flags:
       - public/app/
       - public/files/perm/idevices/base/
       - public/libs/
+
+ignore:
+  # Vendored third-party code (never edited locally, see THIRD-PARTY-NOTICES.md)
+  - public/app/common/scorm/scorm12/vendor/**
+

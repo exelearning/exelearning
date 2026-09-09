@@ -21,8 +21,12 @@ const __dirname = dirname(__filename);
  */
 function loadExportIdevice(code) {
   let modifiedCode = code.replace(/var\s+\$azquizgame\s*=/, 'global.$azquizgame =');
-  // Remove auto-init call: $(function () { $azquizgame.init(); });
-  modifiedCode = modifiedCode.replace(/\$\(function\s*\(\)\s*\{\s*\$azquizgame\.init\(\);\s*\}\);?/g, '');
+  // Remove the auto-init call, whichever form the export uses:
+  // $(function () { $azquizgame.init(); }); or $(() => { $azquizgame.init(); });
+  modifiedCode = modifiedCode.replace(
+    /\$\(\s*(?:function\s*\(\)|\(\)\s*=>)\s*\{\s*\$azquizgame\.init\(\);\s*\}\s*\);?/g,
+    ''
+  );
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
   return global.$azquizgame;
@@ -185,6 +189,76 @@ describe('az-quiz-game iDevice export', () => {
       expect(result.evaluationID).toBe('');
       expect(result.playerAudio).toBe('');
       expect(result.gameOver).toBe(false);
+    });
+  });
+
+  describe('page lifecycle', () => {
+    // The SCORM runtime owns the end of the session (pagehide / visibilitychange).
+    // An activity must never finish itself when the page is hidden: a learner who
+    // navigates away, switches tab or lets the browser freeze the page mid-rosco
+    // would otherwise be reported as finished with the score of the moment — a
+    // fail below the threshold — and the completion flag survives in
+    // cmi.suspend_data, so the attempt is closed for good.
+    beforeEach(() => {
+      // An earlier suite in this file removes the shared mock; rebuild the surface
+      // addEvents touches. The scorm helpers are what the hide handler used to call.
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: { endScorm: vi.fn(), registerActivity: vi.fn() },
+            media: { stopSound: vi.fn(), playSound: vi.fn() },
+            helpers: { toggleFullscreen: vi.fn(), getTimeToString: vi.fn(() => '00:00') },
+          },
+        },
+      };
+    });
+
+    afterEach(() => {
+      delete global.$exeDevices;
+    });
+
+    it('does not finish a running game when the page is hidden', () => {
+      document.body.innerHTML = `
+        <div id="roscoMainContainer-0">
+          <div id="roscoTypeGame-0"></div>
+          <canvas id="roscoCanvas-0"></canvas>
+        </div>
+      `;
+      // happy-dom has no 2D context; addEvents only needs one it can draw on.
+      const getContext = vi
+        .spyOn(HTMLCanvasElement.prototype, 'getContext')
+        .mockReturnValue(new Proxy({}, { get: () => vi.fn() }));
+      $azquizgame.options[0] = {
+        isScorm: 0,
+        gameStarted: true,
+        gameOver: false,
+        itinerary: { showCodeAccess: false },
+        wordsGame: [],
+        msgs: {},
+        instructions: '',
+        title: '',
+        author: '',
+        durationGame: 0,
+        numberTurns: 1,
+      };
+      // Board drawing is not what this test is about.
+      $azquizgame.drawRosco = vi.fn();
+      $azquizgame.drawRows = vi.fn();
+      $azquizgame.drawText = vi.fn();
+      $azquizgame.gameOver = vi.fn();
+      $azquizgame.sendScore = vi.fn();
+
+      $azquizgame.addEvents(0);
+      try {
+        $(window).trigger('pagehide');
+      } finally {
+        $azquizgame.removeEvents(0);
+        getContext.mockRestore();
+        document.body.innerHTML = '';
+      }
+
+      expect($azquizgame.gameOver).not.toHaveBeenCalled();
+      expect($azquizgame.sendScore).not.toHaveBeenCalled();
     });
   });
 });

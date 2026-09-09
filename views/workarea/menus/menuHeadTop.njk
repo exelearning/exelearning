@@ -84,6 +84,12 @@
 
                     {# Items existentes #}
                     <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ t.preferences or 'Preferences' }}</a></li>
+                    {# Only for sessions authenticated with an eXeLearning password:
+                       not guests, not CAS/OIDC/SAML, not impersonated, not offline.
+                       The capability is computed server-side (see pages.ts). #}
+                    {% if user.canChangePassword %}
+                    <li class="exe-online"><a class="dropdown-item" id="navbar-button-change-password" href="#" data-testid="change-password-link">{{ t.change_password or 'Change password' }}</a></li>
+                    {% endif %}
                     {% if user.isAdmin %}
                     <li class="dropdown-divider exe-online"></li>
                     <li class="exe-online"><a class="dropdown-item" id="navbar-button-admin-panel" href="{{ basePath }}/admin" data-testid="admin-panel-link" hreflang="en">Admin</a></li>

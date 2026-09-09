@@ -301,7 +301,12 @@ function generateOdeComponentXml(component: ExportComponent, pageId: string, blo
     xml += `          <htmlView><![CDATA[${escapeCdata(htmlContent)}]]></htmlView>\n`;
 
     // JSON properties - transform asset:// URLs to content/resources/ (wrapped in CDATA)
-    if (component.properties && Object.keys(component.properties).length > 0) {
+    if (typeof component.malformedProperties === 'string') {
+        // A payload the adapter could not parse (#2190) is written back
+        // verbatim: it is the only copy of the damaged activity's data, and
+        // escapeCdata keeps the XML well-formed regardless of its content.
+        xml += `          <jsonProperties><![CDATA[${escapeCdata(component.malformedProperties)}]]></jsonProperties>\n`;
+    } else if (component.properties && Object.keys(component.properties).length > 0) {
         const jsonStr = transformAssetUrlsForXml(JSON.stringify(component.properties));
         xml += `          <jsonProperties><![CDATA[${escapeCdata(jsonStr)}]]></jsonProperties>\n`;
     } else {

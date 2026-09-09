@@ -25,6 +25,106 @@ import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '..
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
+import {
+    parseMaterialIconSprite,
+    buildStandaloneSvg,
+    resolveMaterialIconSymbol,
+} from '../../material-icons/spriteParser';
+
+/** Path of the single vendored Material Symbols sprite, relative to `libs/`. */
+const MATERIAL_ICON_SPRITE_PATH = 'material-icons/material-icons.svg';
+
+/**
+ * Collect the distinct Material icon names referenced by a project's blocks.
+ * Icons come either as `block.icon = { source: 'material', value }` or as a
+ * legacy `block.iconName` prefixed with `mi-`.
+ */
+function collectUsedMaterialIconNames(pages: ExportPage[]): string[] {
+    const names = new Set<string>();
+
+    for (const page of pages) {
+        for (const block of page.blocks || []) {
+            const icon = block.icon;
+            const iconName = block.iconName || '';
+
+            if (icon?.source === 'material' && icon.value) {
+                names.add(icon.value);
+                continue;
+            }
+
+            if (iconName.startsWith('mi-')) {
+                names.add(iconName.replace(/^mi-/, ''));
+            }
+        }
+    }
+
+    return Array.from(names);
+}
+
+/**
+ * Resolve the Material icons used by a project from the single sprite file.
+ *
+ * The loose per-icon SVG files no longer exist on disk — the sprite is the only
+ * source — so we fetch it once, parse it, and rebuild standalone SVGs for just
+ * the used icons. The return shape is unchanged so every exporter keeps working:
+ * - `files`  → `material-icons/icons/{name}.svg` reconstructed bytes (written to
+ *   the export package, byte-equivalent to the files they replace).
+ * - `dataUris` → `name -> data:` URI inlined into the rendered HTML.
+ */
+export async function resolveMaterialIconDataUris(
+    resources: ResourceProvider,
+    pages: ExportPage[],
+): Promise<{
+    paths: string[];
+    files: Map<string, Uint8Array>;
+    dataUris: Map<string, string>;
+}> {
+    const empty = {
+        paths: [] as string[],
+        files: new Map<string, Uint8Array>(),
+        dataUris: new Map<string, string>(),
+    };
+
+    const names = collectUsedMaterialIconNames(pages);
+    if (names.length === 0) {
+        return empty;
+    }
+
+    try {
+        const spriteFiles = await resources.fetchLibraryFiles([MATERIAL_ICON_SPRITE_PATH]);
+        const spriteContent = spriteFiles.get(MATERIAL_ICON_SPRITE_PATH);
+        if (!spriteContent) {
+            return empty;
+        }
+
+        const symbols = parseMaterialIconSprite(new TextDecoder().decode(spriteContent));
+        const encoder = new TextEncoder();
+
+        const paths: string[] = [];
+        const files = new Map<string, Uint8Array>();
+        const dataUris = new Map<string, string>();
+
+        for (const name of names) {
+            // Resolve to the requested glyph, falling back to the `help` symbol
+            // when the name is unknown. The loose per-icon SVG files were removed,
+            // so a missing name must still yield a real inlined icon rather than a
+            // dangling `material-icons/icons/{name}.svg` reference.
+            const symbol = resolveMaterialIconSymbol(symbols, name);
+            if (!symbol) {
+                continue;
+            }
+            const svg = buildStandaloneSvg(symbol);
+            const libPath = `material-icons/icons/${name}.svg`;
+            paths.push(libPath);
+            files.set(libPath, encoder.encode(svg));
+            dataUris.set(name, `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`);
+        }
+
+        return { paths, files, dataUris };
+    } catch {
+        return empty;
+    }
+}
 import { convertSrtToVtt } from '../../utils/srt-to-vtt';
 
 /**
@@ -249,6 +349,28 @@ export abstract class BaseExporter {
         }
 
         return Array.from(types);
+    }
+
+    protected async resolveMaterialIconDataUris(pages: ExportPage[]): Promise<{
+        paths: string[];
+        files: Map<string, Uint8Array>;
+        dataUris: Map<string, string>;
+    }> {
+        return resolveMaterialIconDataUris(this.resources, pages);
+    }
+
+    protected addPrefixedFiles(
+        files: Map<string, Uint8Array>,
+        prefix: string,
+        addFile: (path: string, content: Uint8Array) => void,
+        hasFile: (path: string) => boolean = path => this.zip.hasFile(path),
+    ): void {
+        for (const [relativePath, content] of files) {
+            const targetPath = `${prefix}${relativePath}`;
+            if (!hasFile(targetPath)) {
+                addFile(targetPath, content);
+            }
+        }
     }
 
     /**

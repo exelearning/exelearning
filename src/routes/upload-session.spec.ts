@@ -6,6 +6,7 @@ import { Elysia } from 'elysia';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import { createUploadSessionRoutes, type UploadSessionDependencies } from './upload-session';
+import { buildAssetStoragePath, getAssetShard } from '../utils/asset-paths';
 import {
     createUploadSessionManager,
     validateSession,
@@ -313,7 +314,7 @@ describe('Upload Session Routes - Integration', () => {
 
     it('should accept batch upload with valid session and single file', async () => {
         // Create assets directory
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -339,8 +340,50 @@ describe('Upload Session Routes - Integration', () => {
         expect(data.failed).toBe(0);
     });
 
+    it('should persist a FILES_DIR-relative sharded storage_path (issue #2250)', async () => {
+        const capturingQueries = {
+            createAssets: mock((_db: Kysely<Database>, assets: Array<{ client_id: string }>) =>
+                Promise.resolve(assets.map((a, i) => ({ id: i + 900, client_id: a.client_id }))),
+            ),
+            findAssetsByClientIds: mock(() => Promise.resolve([])),
+            bulkUpdateAssets: mock(() => Promise.resolve()),
+            findProjectByUuid: mock(() => Promise.resolve({ id: 42, uuid: projectUuid, user_id: 1 })),
+        };
+        const capturingApp = new Elysia().use(
+            createUploadSessionRoutes({
+                db: createMockDb(),
+                queries: capturingQueries as unknown as UploadSessionDependencies['queries'],
+            }),
+        );
+
+        const formData = new FormData();
+        formData.append(
+            'metadata',
+            JSON.stringify([{ clientId: 'sharded-asset-1', filename: 'photo.png', mimeType: 'image/png' }]),
+        );
+        formData.append('files', new Blob(['sharded bytes'], { type: 'image/png' }));
+
+        const response = await capturingApp.handle(
+            new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                method: 'POST',
+                body: formData,
+            }),
+        );
+        expect(response.status).toBe(200);
+
+        const created = capturingQueries.createAssets.mock.calls[0][1] as unknown as Array<{
+            storage_path: string;
+        }>;
+        expect(created[0].storage_path).toBe(buildAssetStoragePath(projectUuid, 'sharded-asset-1.png'));
+        expect(path.isAbsolute(created[0].storage_path)).toBe(false);
+
+        // The physical file lives in the sharded directory, created lazily.
+        const physical = path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid, 'sharded-asset-1.png');
+        expect(await fs.pathExists(physical)).toBe(true);
+    });
+
     it('should accept batch upload with multiple files', async () => {
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -373,7 +416,7 @@ describe('Upload Session Routes - Integration', () => {
     });
 
     it('should accept batch upload without X-Upload-Session header', async () => {
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -396,7 +439,7 @@ describe('Upload Session Routes - Integration', () => {
     });
 
     it('should handle metadata as array instead of string', async () => {
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         // This tests the case where metadata is already parsed as array
         const formData = new FormData();
@@ -417,7 +460,7 @@ describe('Upload Session Routes - Integration', () => {
     });
 
     it('should handle file upload with missing metadata fields', async () => {
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         // Metadata with minimal fields
@@ -437,7 +480,7 @@ describe('Upload Session Routes - Integration', () => {
     });
 
     it('should handle file upload with folderPath', async () => {
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -517,7 +560,7 @@ describe('Upload Session Routes - Edge Cases', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -564,7 +607,7 @@ describe('Upload Session Routes - Edge Cases', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -606,7 +649,7 @@ describe('Upload Session Routes - Edge Cases', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -625,7 +668,7 @@ describe('Upload Session Routes - Edge Cases', () => {
         expect(response.status).toBe(200);
 
         // Verify the file was created with correct extension
-        const files = await fs.readdir(path.join(TEST_DIR, 'assets', projectUuid));
+        const files = await fs.readdir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
         expect(files.some(f => f.endsWith('.jpg'))).toBe(true);
     });
 
@@ -645,7 +688,7 @@ describe('Upload Session Routes - Edge Cases', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -688,7 +731,7 @@ describe('Upload Session Routes - Edge Cases', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -714,7 +757,7 @@ describe('Upload Session Routes - Path Traversal Security (C1)', () => {
     let sessionToken: string;
     let mockQueries: ReturnType<typeof createMockQueries>;
     const projectUuid = 'traversal-security-project';
-    const assetsDir = path.join(TEST_DIR, 'assets', projectUuid);
+    const assetsDir = path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid);
 
     beforeEach(async () => {
         await fs.ensureDir(TEST_DIR);
@@ -870,7 +913,7 @@ describe('Upload Session Routes - Batch Size Limit (L1, memory DoS)', () => {
     let sessionToken: string;
     let mockQueries: ReturnType<typeof createMockQueries>;
     const projectUuid = 'batch-size-limit-project';
-    const assetsDir = path.join(TEST_DIR, 'assets', projectUuid);
+    const assetsDir = path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid);
 
     beforeEach(async () => {
         await fs.ensureDir(TEST_DIR);
@@ -1065,7 +1108,7 @@ describe('Upload Session Routes - Error Handling', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         // Create a large blob (we'll use multiple files that exceed MAX_BATCH_BYTES in total)
         // MAX_BATCH_BYTES is 100MB, so we create files that exceed this
@@ -1115,7 +1158,7 @@ describe('Upload Session Routes - Error Handling', () => {
 
         // Create an unwritable directory (by making it read-only or non-existent parent)
         // We'll use a path that will fail to write
-        const badPath = path.join(TEST_DIR, 'assets', projectUuid);
+        const badPath = path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid);
         await fs.ensureDir(badPath);
         // Create a file with the same name as what we'll try to write
         const blockingFilePath = path.join(badPath, 'blocking-asset');
@@ -1161,7 +1204,7 @@ describe('Upload Session Routes - Error Handling', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -1200,7 +1243,7 @@ describe('Upload Session Routes - Error Handling', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -1238,7 +1281,7 @@ describe('Upload Session Routes - Error Handling', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         formData.append(
@@ -1277,7 +1320,7 @@ describe('Upload Session Routes - Error Handling', () => {
         });
 
         app = new Elysia().use(routes);
-        await fs.ensureDir(path.join(TEST_DIR, 'assets', projectUuid));
+        await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
 
         const formData = new FormData();
         // Empty metadata array - will use defaults
@@ -1316,7 +1359,7 @@ describe('Upload Session Routes - Error Handling', () => {
         app = new Elysia().use(routes);
 
         // Create a path that will cause write to fail
-        const assetDir = path.join(TEST_DIR, 'assets', projectUuid);
+        const assetDir = path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid);
         await fs.ensureDir(assetDir);
         // Make the directory read-only to cause write failure
         await fs.chmod(assetDir, 0o444);

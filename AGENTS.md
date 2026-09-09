@@ -157,7 +157,7 @@ CLIENT (Browser)                        SERVER (Bun/Elysia)
 YjsDocumentManager (Y.Doc)              SessionManager: lightweight metadata
 ├── navigation (Y.Array)                WebSocket: stateless relay
 ├── metadata (Y.Map)                    Database: projects + yjs snapshots
-├── assets (Y.Map)                      Filesystem: FILES_DIR/assets/{uuid}/
+├── assets (Y.Map)                      Filesystem: FILES_DIR/assets/{shard}/{uuid}/
 └── themeFiles (Y.Map)
 ```
 
@@ -185,7 +185,7 @@ Client-side storage:
 
 ```
 FILES_DIR/
-├── assets/{projectUuid}/           # Permanent project assets
+├── assets/{shard}/{projectUuid}/   # Permanent project assets (shard = first 2 hex chars of UUID, ADR-2250-01)
 ├── tmp/{year}/{month}/{day}/{id}/  # Temporary files
 ├── dist/{year}/{month}/{day}/{id}/ # Ready-to-download exports
 ├── chunks/                         # Upload chunks
@@ -196,6 +196,8 @@ FILES_DIR/
 Key rules:
 - Directories created **lazily** (on-demand), never eagerly
 - Assets use project **UUID**, not numeric ID
+- `assets.storage_path` is stored **relative to FILES_DIR** (`assets/<shard>/<uuid>/...`, POSIX separators) —
+  never absolute; always build/resolve through `src/utils/asset-paths.ts` via `src/services/file-helper.ts`
 - Always use `isPathSafe()` for user-supplied paths
 - Use `path.join()` for cross-platform paths
 

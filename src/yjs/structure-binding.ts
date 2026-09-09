@@ -13,11 +13,13 @@
  */
 import * as Y from 'yjs';
 import { generateId } from '../shared/ids';
+import { deriveBlockIcon } from '../shared/block-icon';
 import type {
     PageData,
     CreatePageInput,
     UpdatePageInput,
     BlockData,
+    BlockIconDescriptor,
     CreateBlockInput,
     UpdateBlockInput,
     ComponentData,
@@ -31,6 +33,49 @@ import type {
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
+
+function toBlockIconDescriptor(value: unknown): BlockIconDescriptor | undefined {
+    if (!value) return undefined;
+
+    if (value instanceof Y.Map) {
+        const source = value.get('source');
+        const iconValue = value.get('value');
+        const name = value.get('name');
+
+        if (typeof source === 'string' && typeof iconValue === 'string') {
+            return {
+                source: source as BlockIconDescriptor['source'],
+                value: iconValue,
+                name: typeof name === 'string' ? name : undefined,
+            };
+        }
+
+        return undefined;
+    }
+
+    if (typeof value === 'object') {
+        const icon = value as Partial<BlockIconDescriptor>;
+        if (typeof icon.source === 'string' && typeof icon.value === 'string') {
+            return {
+                source: icon.source as BlockIconDescriptor['source'],
+                value: icon.value,
+                name: typeof icon.name === 'string' ? icon.name : undefined,
+            };
+        }
+    }
+
+    return undefined;
+}
+
+function createYjsBlockIcon(icon: BlockIconDescriptor): Y.Map<unknown> {
+    const iconMap = new Y.Map<unknown>();
+    iconMap.set('source', icon.source);
+    iconMap.set('value', icon.value);
+    if (icon.name !== undefined) {
+        iconMap.set('name', icon.name);
+    }
+    return iconMap;
+}
 
 /**
  * Generate a unique ID with prefix.
@@ -251,6 +296,7 @@ function mapToBlockData(blockMap: Y.Map<unknown>): BlockData {
         blockId: (blockMap.get('blockId') as string) || (blockMap.get('id') as string),
         blockName: (blockMap.get('blockName') as string) || 'Block',
         iconName: (blockMap.get('iconName') as string) || '',
+        icon: toBlockIconDescriptor(blockMap.get('icon')),
         blockType: (blockMap.get('blockType') as string) || 'default',
         order: (blockMap.get('order') as number) ?? 0,
         componentCount: components?.length ?? 0,
@@ -518,6 +564,7 @@ export function createBlock(ydoc: Y.Doc, input: CreateBlockInput): OperationResu
     blockMap.set('blockId', blockId);
     blockMap.set('blockName', input.name ?? 'Block');
     blockMap.set('iconName', '');
+    blockMap.set('icon', createYjsBlockIcon({ source: 'none', value: '' }));
     blockMap.set('blockType', 'default');
     blockMap.set('order', targetOrder);
     blockMap.set('components', new Y.Array());
@@ -551,6 +598,7 @@ export function createBlock(ydoc: Y.Doc, input: CreateBlockInput): OperationResu
             blockId,
             blockName: input.name ?? 'Block',
             iconName: '',
+            icon: { source: 'none', value: '' },
             blockType: 'default',
             order: targetOrder,
             componentCount: 0,
@@ -572,8 +620,17 @@ export function updateBlock(ydoc: Y.Doc, blockId: string, updates: UpdateBlockIn
         blockMap.set('blockName', updates.name);
     }
 
+    if (updates.icon !== undefined) {
+        blockMap.set('icon', createYjsBlockIcon(updates.icon));
+        const legacy = updates.icon?.source === 'material' ? `mi-${updates.icon.value}` : updates.icon?.value || '';
+        blockMap.set('iconName', legacy);
+    }
+
     if (updates.iconName !== undefined) {
         blockMap.set('iconName', updates.iconName);
+        if (!updates.icon) {
+            blockMap.set('icon', createYjsBlockIcon(deriveBlockIcon(updates.iconName)));
+        }
     }
 
     if (updates.properties !== undefined) {
@@ -701,10 +758,13 @@ function cloneBlockMap(sourceBlock: Y.Map<unknown>): Y.Map<unknown> {
     sourceBlock.forEach((value, key) => {
         if (key === 'components') {
             // Clone components separately
-        } else if (key === 'properties' && value instanceof Y.Map) {
-            const newProps = new Y.Map();
-            value.forEach((v, k) => newProps.set(k, v));
-            newBlock.set(key, newProps);
+        } else if (value instanceof Y.Map) {
+            // Nested Y.Maps (e.g. `properties`, `icon`) cannot be re-inserted once
+            // they are integrated, so they must be shallow-cloned key-by-key. Both
+            // hold only primitive values, so a flat copy is sufficient.
+            const cloned = new Y.Map();
+            value.forEach((v, k) => cloned.set(k, v));
+            newBlock.set(key, cloned);
         } else if (value !== null && value !== undefined) {
             newBlock.set(key, value);
         }

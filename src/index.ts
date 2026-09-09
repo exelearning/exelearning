@@ -37,6 +37,7 @@ import { getAppVersion } from './utils/version';
 import { getFilesDir } from './services/file-helper';
 import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
+import { migrateAssetStorage } from './services/asset-storage-migration';
 import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
@@ -730,6 +731,17 @@ async function bootstrap() {
     if (!migrationResult.success) {
         console.error('[DB] Migration failed:', migrationResult.error);
         process.exit(1);
+    }
+
+    // 1b. Converge the asset storage layout (sharded directories + relative
+    // storage_path, issue #2250 / ADR-2250-01). Idempotent and resumable; a
+    // fast no-op once converged. Failures are logged and retried on the next
+    // startup — unmigrated rows keep working through the transitional
+    // legacy-path read fallback in the storage resolver.
+    try {
+        await migrateAssetStorage();
+    } catch (err) {
+        console.error('[AssetStorage] Migration failed (will retry on next startup):', err);
     }
 
     // 2. Initialize Redis for high availability (if configured)

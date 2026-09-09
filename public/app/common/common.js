@@ -23,6 +23,20 @@
     2015. Refactored and completed by Ignacio Gros (http://www.gros.es) for http://exelearning.net/
 */
 
+// Glyph ranges vendored under exe_math/fonts/. Kept equal to VENDORED_FONT_RANGES in
+// scripts/vendor-mathjax.ts by mathjax-packages.spec.ts.
+//
+// MathJax 4 asks for a range the first time a character needs it. The ones we do not
+// ship must never be asked for: with paths.fonts pointing at our own tree the request
+// 404s, and MathJax remembers the failure -- the first character degrades to a serif
+// glyph, but the *second* one rejects the whole render call, so every formula in that
+// call is left on screen as raw \(...\), accented or not. See
+// $exe.math.silenceUnvendoredFontRanges below.
+window.MATHJAX_VENDORED_FONT_RANGES = [
+    'accents', 'arrows', 'calligraphic', 'double-struck', 'fraktur', 'math', 'monospace',
+    'sans-serif', 'script', 'shapes', 'symbols', 'symbols-b-i', 'variants'
+];
+
 window.MathJax = window.MathJax || (function() {
     var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
     var isIndex = document.documentElement.id === 'exe-index';
@@ -76,22 +90,27 @@ window.MathJax = window.MathJax || (function() {
         isIndex = true;
     }
 
-    var basePath = isWorkarea
+    // The static PWA build serves everything from one directory and sets this
+    // before common.js runs, so it overrides the path detection above instead of
+    // duplicating the whole configuration.
+    var basePath = window.MATHJAX_BASE_PATH || (isWorkarea
         ? (version ? configBasePath + '/' + version + '/app/common/exe_math' : configBasePath + '/app/common/exe_math')
-        : (isIndex ? 'libs/exe_math' : '../libs/exe_math');
-    
+        : (isIndex ? 'libs/exe_math' : '../libs/exe_math'));
+
+    // MathJax 4 makes five of these usable that the 3.2.2 bundle could not load:
+    // begingroup, colorv2, dsfont, texhtml and units.
+    // 'bbm' and 'bboldx' stay out on weight, not availability: MathJax does publish
+    // @mathjax/mathjax-{bbm,bboldx}-font-extension (svg.js is 206 KB and 141 KB), so
+    // enabling them is a matter of vendoring two more files the way mhchem and dsfont
+    // are. Nobody has asked for either macro set; revisit if someone does.
     var externalExtensions = [
-        'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
-        'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose',
-        'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
-        'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb',
-        'setoptions'
-        // TODO: Enable these extensions when upgrading to MathJax 4.0
-        // Currently disabled due to dependency issues with bundled tex-mml-svg.js (MathJax 3.x)
-        // These extensions require input/tex-base to be fully loaded before initialization
-        // 'bbm', 'bboldx', 'begingroup', 'colorv2', 'dsfont', 'texhtml', 'units'
+        'amscd', 'bbox', 'begingroup', 'boldsymbol', 'braket', 'bussproofs',
+        'cancel', 'cases', 'centernot', 'color', 'colortbl', 'colorv2', 'dsfont',
+        'empheq', 'enclose', 'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem',
+        'noerrors', 'physics', 'setoptions', 'tagformat', 'texhtml', 'textcomp',
+        'unicode', 'units', 'upgreek', 'verb'
     ];
-    
+
     return {
         tex: {
             inlineMath: [["\\(", "\\)"]],
@@ -101,15 +120,68 @@ window.MathJax = window.MathJax || (function() {
             packages: { '[+]': externalExtensions }
         },
         loader: {
-            paths: { mathjax: basePath },
+            paths: {
+                mathjax: basePath,
+                // MathJax 4 fetches the font's glyph ranges (\mathbb, \mathcal,
+                // \mathfrak, stretchy arrows...) on first use, and the stock value here
+                // is https://cdn.jsdelivr.net/npm/@mathjax. That would put an external
+                // request inside every exported package and leave the glyph missing
+                // wherever there is no network. The ranges are vendored under
+                // exe_math/fonts, so point the token at them and nothing can leave the
+                // origin. See scripts/vendor-mathjax.ts (VENDORED_FONT_RANGES).
+                fonts: '[mathjax]/fonts'
+            },
             load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
+                // Hidden MathML for screen readers. MathJax 4 leaves this off because it
+                // prefers the speech extension, but speech needs a web worker and a
+                // fetch, neither of which survives an export opened from the filesystem.
+                // Assistive MathML has no such dependency, so it is our accessibility floor.
+                .concat(['a11y/assistive-mml'])
         },
         options: {
             // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
             // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
             ignoreHtmlClass: 'tex2jax_ignore|dropdown-menu|dropdown-item|modal',
             // Skip processing inside these HTML tags
-            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            enableAssistiveMml: true,
+            // The Speech Rule Engine is not vendored (ADR-2259-03), and speech lives
+            // inside the combined component, so deleting the files is not enough: the
+            // menu would still offer the toggles and each one would request a file that
+            // is not there, leaving typesetPromise() unsettled and the queue stalled.
+            //
+            // These have to be set as *menu* settings rather than document options.
+            // MathJax builds the menu inside the document constructor and then writes
+            // enableSpeech/enableBraille/enableComplexity/enableExplorer back onto the
+            // document from them, so anything set directly on `options` is overwritten
+            // a moment later. `enrich: false` is the single lever: enrichment gates all
+            // four. assistiveMml stays true — it is the floor, and it is independent.
+            menuOptions: {
+                settings: {
+                    enrich: false,
+                    speech: false,
+                    braille: false,
+                    collapsible: false,
+                    assistiveMml: true
+                }
+            }
+        },
+        startup: {
+            ready: function() {
+                // Before defaultReady: the menu reads its persisted settings while the
+                // document is being built, so a stale renderer choice has to be gone by
+                // then. See $exe.math.forgetUnavailableMenuSettings.
+                if (typeof $exe !== 'undefined' && $exe.math) {
+                    $exe.math.forgetUnavailableMenuSettings();
+                }
+                MathJax.startup.defaultReady();
+                // Guarded: anything thrown here leaves MathJax permanently un-started,
+                // which would cost every formula on the page to tidy up one menu.
+                if (typeof $exe !== 'undefined' && $exe.math) {
+                    $exe.math.silenceUnvendoredFontRanges();
+                    $exe.math.hideUnavailableMenuEntries();
+                }
+            }
         }
     };
 })();
@@ -175,6 +247,149 @@ var $exe = {
         },
         refresh: function(elements) {
             return $exeDevices.iDevice.gamification.math.updateLatex(elements);
+        },
+        // Stop MathJax asking for glyph ranges this build does not ship.
+        //
+        // MathJax 4 keeps most of the font in ~40 ranges it fetches on first use, and
+        // seeds its character tables with a placeholder per code point saying which
+        // range provides it. We vendor the 13 whose code points MathJax 3.2.2 could
+        // already render, so no glyph anyone could previously see is lost; the rest
+        // would 404 against our own tree.
+        //
+        // A 404 is not a quiet degradation. loadDynamicFile() catches the first failure
+        // and marks the range `failed`; every later request for the same range rejects,
+        // which fails the whole typeset call and leaves every formula in it on screen as
+        // raw \(...\) -- including formulas with no unusual characters. Two accented
+        // letters in one iDevice were enough to blank eleven formulas.
+        //
+        // So drop the placeholders instead. getChar() then finds nothing, takes the
+        // unknown-character path and renders the glyph in the CSS `unknownFamily` serif,
+        // which is exactly what 3.2.2 did with the same characters. Dropping them rather
+        // than resolving their promises also matters for speed: getChar() deletes one
+        // placeholder per call and re-renders the whole document to retry, so leaving
+        // them in place costs a full re-render per accented letter.
+        //
+        // Returns how many placeholders were dropped, so a MathJax upgrade that renames
+        // or restructures the ranges shows up as 0 instead of failing silently.
+        silenceUnvendoredFontRanges: function() {
+            var jax = window.MathJax && window.MathJax.startup && window.MathJax.startup.document
+                && window.MathJax.startup.document.outputJax;
+            var font = jax && jax.font;
+            if (!font || !font.variant) return 0;
+            var vendored = window.MATHJAX_VENDORED_FONT_RANGES;
+            var dropped = 0;
+            Object.keys(font.variant).forEach(function(name) {
+                var chars = font.variant[name] && font.variant[name].chars;
+                if (!chars) return;
+                Object.keys(chars).forEach(function(code) {
+                    var entry = chars[code];
+                    // Glyph data is an array; a placeholder is the range descriptor.
+                    if (!entry || Array.isArray(entry) || !entry.file) return;
+                    if (vendored.indexOf(entry.file) !== -1) return;
+                    delete chars[code];
+                    dropped++;
+                });
+            });
+            // Belt and braces: if a descriptor is reachable by some path this does not
+            // cover, make it resolve rather than reject, so at worst a glyph is missing
+            // instead of the whole call failing.
+            var files = font.CLASS && font.CLASS.dynamicFiles;
+            if (files) {
+                Object.keys(files).forEach(function(range) {
+                    if (vendored.indexOf(range) !== -1) return;
+                    files[range].promise = Promise.resolve();
+                    files[range].setup = function() {};
+                });
+            }
+            return dropped;
+        },
+        // Hide the contextual-menu entries this build cannot serve.
+        //
+        //   Speech / Braille / Explorer — the Speech Rule Engine is not vendored
+        //     (ADR-2259-03). The features are already off via menuOptions.settings, but
+        //     the sections stay in the menu because they are built into the bundle, and
+        //     toggling one would request a file that is not there and stall the typeset
+        //     queue rather than fail.
+        //   Settings -> Math Renderer — only the SVG output ships. CHTML lives in a
+        //     component we do not vendor and its font is a separate 2.4 MB package.
+        //
+        // MathJax hides these itself only when no loader is present, which is not our
+        // case, so it has to be explicit. Returns the number of entries hidden so the
+        // caller can tell "nothing to do" from "the menu moved under us".
+        hideUnavailableMenuEntries: function() {
+            var menu = window.MathJax && window.MathJax.startup && window.MathJax.startup.document
+                && window.MathJax.startup.document.menu;
+            if (!menu || !menu.menu || typeof menu.menu.findID !== 'function') return 0;
+            // 'Accessibility' is the label heading the three sections; without them it
+            // would sit above nothing.
+            var paths = [['Accessibility'], ['Speech'], ['Braille'], ['Explorer'], ['Settings', 'Renderer']];
+            var hidden = 0;
+            paths.forEach(function(path) {
+                var item = menu.menu.findID.apply(menu.menu, path);
+                if (item && typeof item.hide === 'function') {
+                    item.hide();
+                    hidden++;
+                }
+            });
+            return hidden;
+        },
+        // Drop persisted menu settings that this build cannot honour. MathJax keeps
+        // them in localStorage for the whole origin and acts on them while the document
+        // is being built, so this has to run before defaultReady(), and a value picked up
+        // on any other MathJax page of the same site counts.
+        //
+        // Two keys matter:
+        //
+        //   renderer — CHTML is not vendored and its font is a separate package, so a
+        //     stored choice makes every page request a missing component at startup,
+        //     without anyone opening the menu.
+        //
+        //   enrich / speech / braille / collapsible / explorer — all gate the Speech
+        //     Rule Engine, which is not vendored (ADR-2259-03). A value stored before
+        //     it was removed, or by any other MathJax page on this origin, would turn
+        //     a feature back on and stall the typeset queue on a missing file.
+        //
+        //   assistiveMml — the hidden MathML is our accessibility floor (ADR-2259-02),
+        //     but MathJax treats it as an alternative to speech rather than a floor:
+        //     toggling Speech in the menu calls setValue(false) on it and persists that.
+        //     A reader who did so once gets no MathML from then on, and in an export
+        //     opened from the filesystem speech cannot start either, so they would be
+        //     left with nothing. Only a stored `false` is dropped; a stored `true` is
+        //     already what we want.
+        //
+        // Note the reach: because the key is per origin, this also rewrites the setting
+        // for any other MathJax page hosted on the same origin. Accepted deliberately —
+        // both keys name something this build cannot honour, and the alternative is
+        // leaving a reader's maths silently unreadable.
+        forgetUnavailableMenuSettings: function() {
+            var KEY = 'MathJax-Menu-Settings';
+            try {
+                var stored = window.localStorage.getItem(KEY);
+                if (!stored) return false;
+                var settings = JSON.parse(stored);
+                if (!settings || typeof settings !== 'object') return false;
+                var dropped = false;
+                ['renderer', 'enrich', 'speech', 'braille', 'collapsible', 'explorer'].forEach(function(key) {
+                    if (key in settings) {
+                        delete settings[key];
+                        dropped = true;
+                    }
+                });
+                if (settings.assistiveMml === false) {
+                    delete settings.assistiveMml;
+                    dropped = true;
+                }
+                if (!dropped) return false;
+                if (Object.keys(settings).length) {
+                    window.localStorage.setItem(KEY, JSON.stringify(settings));
+                } else {
+                    window.localStorage.removeItem(KEY);
+                }
+                return true;
+            } catch (e) {
+                // Private mode, disabled storage or corrupt JSON: nothing to forget.
+                return false;
+            }
         },
         // Create links to the code and the image (different possibilities)
         createLinks: function (math) {
@@ -354,6 +569,7 @@ var $exe = {
         })(),
         reload_pending: false,
         initialized: false,
+        loading: false,
         loadMermaid: function () {
             // Dynamic path resolution
             var enginePath = this.engine;
@@ -370,10 +586,17 @@ var $exe = {
             }
 
             if (typeof window.mermaid === 'undefined') {
+                // Already being fetched: do not inject the script twice
+                if (this.loading) return;
+                this.loading = true;
                 const script = document.createElement("script");
                 script.src = enginePath;
                 script.async = true;
+                script.onerror = function () {
+                    $exe.mermaid.loading = false;
+                };
                 script.onload = function () {
+                    $exe.mermaid.loading = false;
                     mermaid = window.mermaid;
                     mermaid.initialize({
                         startOnLoad: false,
@@ -963,8 +1186,14 @@ var $exeDevices = {
                         return 0;
                     }
 
-                    const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                    const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                    // Single owner of cmi.suspend_data: the SCORM 1.2 registry
+                    // when present, the legacy line format otherwise.
+                    const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    const lmsData = registry
+                        ? $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry()
+                        : $exeDevices.iDevice.gamification.scorm.parseSuspendData(
+                              pipwerks.SCORM.get("cmi.suspend_data") || ""
+                          );
 
                     if (lmsData[ideviceNumber]) {
                         // Score está guardado en escala 0-1000, convertir a 0-10
@@ -984,8 +1213,117 @@ var $exeDevices = {
                     return parseFloat(rawScore) || 0;
                 },
 
+                /**
+                 * Documented no-op, kept because every game iDevice calls it
+                 * when the page is going away.
+                 *
+                 * SCORM session finalization is centralized: the SCORM 1.2
+                 * runtime ends the session exactly once from its own lifecycle
+                 * layer (pagehide), and older packages end it from
+                 * unloadPage(). An iDevice terminating the session on its own
+                 * would either close it while other iDevices are still writing
+                 * or attempt a second LMSFinish. Activity state and scores are
+                 * already written through sendScoreNew/updateActivity by the
+                 * time this runs, so there is nothing left to flush here.
+                 *
+                 * @param {Object} scormgame Unused; kept for the legacy signature.
+                 */
                 endScorm: function (scormgame) {
-                    /*if (scormgame && typeof scormgame.quit == "function") scormgame.quit();*/
+                    // Intentionally empty — see the comment above.
+                },
+
+                /**
+                 * The central SCORM 1.2 activity registry, when the page
+                 * carries the SCORM 1.2 runtime (`libs/SCOFunctions.js`).
+                 * Absent in HTML5/EPUB exports and in SCORM 2004 packages,
+                 * which keep the legacy runtime.
+                 *
+                 * @returns {Object|null} The registry, or null.
+                 */
+                getActivityRegistry: function () {
+                    if (typeof window === 'undefined' || !window.exeScorm12) return null;
+                    return window.exeScorm12.activities || null;
+                },
+
+                /**
+                 * Report an iDevice to the central activity registry.
+                 *
+                 * Every flag is passed explicitly: `isScorm > 0` is how an
+                 * eXeLearning activity declares itself evaluable and required,
+                 * and `completed` is supplied by the caller. The registry
+                 * never infers policy from incidental game properties.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @param {Object} [progress] Fields to merge (completed, answered, total, score).
+                 * @returns {Object|null} The stored record, or null when the
+                 * page has no SCORM 1.2 registry.
+                 */
+                reportActivity: function (game, progress) {
+                    const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    if (!registry || typeof game !== 'object' || game === null || !game.ideviceId) return null;
+                    const evaluable = Number(game.isScorm) > 0;
+                    const weight = parseFloat(game.weighted);
+                    if (game.ideviceNumber) {
+                        // Page position of each registered id, so registry
+                        // records can be presented under the positional keys
+                        // the legacy display code uses (buildLmsDataFromRegistry).
+                        $exeDevices.iDevice.gamification.scorm._activityNumbersById[game.ideviceId] =
+                            game.ideviceNumber;
+                    }
+                    const registration = registry.register(
+                        game.ideviceId,
+                        Object.assign(
+                            {
+                                evaluable: evaluable,
+                                // A presentation or exploration iDevice is not
+                                // required: it must never hold the page at
+                                // "incomplete".
+                                completionRequired: evaluable,
+                                weight: Number.isNaN(weight) || weight <= 0 ? 1 : weight,
+                                minimumScore: 0,
+                                maximumScore: 100,
+                            },
+                            progress || {}
+                        )
+                    );
+                    // A required activity registering after the policy already
+                    // wrote a terminal verdict means the page is demonstrably
+                    // not finished — let the policy correct its own verdict
+                    // (a restored one is never touched).
+                    const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
+                    if (runtime && runtime.policy && typeof runtime.policy.reconcilePendingActivities === 'function') {
+                        runtime.policy.reconcilePendingActivities();
+                    }
+                    return registration;
+                },
+
+                /** Page position by activity id (see reportActivity). */
+                _activityNumbersById: {},
+
+                /**
+                 * Present the registry in the legacy lmsData shape
+                 * (`{ideviceNumber: {title, score, weighted}}`), so the
+                 * historical aggregate (getFinalScore) and the display helpers
+                 * keep a single source of score math. Only evaluable
+                 * activities enter, matching what the legacy format stored.
+                 *
+                 * @returns {Object} Legacy-shaped view of the registry.
+                 */
+                buildLmsDataFromRegistry: function () {
+                    const lmsData = {};
+                    const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    if (!registry) return lmsData;
+                    const numbers = $exeDevices.iDevice.gamification.scorm._activityNumbersById;
+                    registry.list().forEach((record, position) => {
+                        if (!record.evaluable) return;
+                        const key = numbers[record.id] || position + 1;
+                        lmsData[key] = {
+                            title: '',
+                            score: record.score === null ? 0 : record.score,
+                            weighted: record.weight,
+                        };
+                    });
+                    return lmsData;
                 },
 
                 addButtonScoreNew: function (game, hasSCORMbutton, isInExe) {
@@ -1025,10 +1363,20 @@ var $exeDevices = {
                         if (rawScore && rawScore !== "" && rawScore !== "0") {
                             initialScore = parseFloat(rawScore) || 0;
                         } else {
-                            const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                            if (suspendData && suspendData.trim() !== "") {
-                                const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
-                                initialScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                            // Single owner of cmi.suspend_data: the SCORM 1.2
+                            // registry when present, the legacy line format
+                            // otherwise.
+                            const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                            if (registry) {
+                                initialScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(
+                                    $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry()
+                                );
+                            } else {
+                                const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+                                if (suspendData && suspendData.trim() !== "") {
+                                    const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                                    initialScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                                }
                             }
                         }
                     }
@@ -1099,6 +1447,18 @@ var $exeDevices = {
                 },
 
                 getFinalScore: function (lmsData) {
+                    // Single aggregation algorithm: when the SCORM 1.2
+                    // registry is present, its summary() owns the historical
+                    // weighting, so the displayed score, cmi.core.score.raw
+                    // and the completion policy always read the same number.
+                    // The local implementation below serves only the legacy
+                    // runtimes (SCORM 2004 and pre-rewrite packages), which
+                    // have no registry.
+                    const scoreRegistry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    if (scoreRegistry) {
+                        const aggregate = scoreRegistry.summary().score;
+                        return aggregate === null ? 0 : aggregate;
+                    }
                     if (!lmsData) {
                         return 0;
                     }
@@ -1161,41 +1521,71 @@ var $exeDevices = {
                 registerActivity: function (game) {
                     if (typeof game !== 'object' || game === null) return;
 
-                    // Resolve the iDevice identity from the DOM once. This is used by
-                    // both SCORM tracking and the always-on xAPI emitter (exe_xapi.js),
-                    // so it must run in every export format, not only under SCORM.
+                    // Resolve the iDevice identity from the DOM once. SCORM tracking
+                    // and the progress report both read it, so it must run in every
+                    // export format, not only under SCORM.
                     game.mainElement = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
                     let $ideviceNode = game.mainElement.closest('.idevice_node');
-                    // The node id equals the stable odeIdeviceId, used as the xAPI object IRI.
+                    // The node id equals the stable odeIdeviceId.
                     game.ideviceId = $ideviceNode.attr('id');
                     game.title = (game.mainElement.closest('article')
                         .find('header .box-title').text() || '').replace(/"/g, ' ');
                     game.ideviceNumber = $('.idevice_node').index($ideviceNode) + 1;
 
+                    // Declare the activity to the central registry (SCORM 1.2
+                    // packages only) before any score is reported, so the
+                    // completion policy knows the page's shape from the start.
+                    // The legacy suspend_data format identified activities by
+                    // page position; passing the position lets the registry
+                    // claim a migrated record for this activity.
+                    $exeDevices.iDevice.gamification.scorm.reportActivity(game, {
+                        total: parseFloat(game.numberQuestions) || 0,
+                        legacyIndex: game.ideviceNumber,
+                    });
+
                     let lmsData = {};
                     if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
                         $exeDevices.iDevice.gamification.scorm.createScoreScormHtml(game);
 
-                        let suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-
-                        lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
-
-                        if (lmsData[game.ideviceNumber]) {
-                            game.previousScore = (lmsData[game.ideviceNumber].score / 10).toFixed(2);
-                            // Actualizar el score node con la puntuación recuperada
-                            const totalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
-                            if (totalScore > 0) {
-                                $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
+                        const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                        if (registry) {
+                            // SCORM 1.2 runtime: the registry is the single
+                            // owner of cmi.suspend_data (restored by the entry
+                            // policy, persisted by the lifecycle layer) — this
+                            // helper no longer reads or writes it directly.
+                            lmsData = $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry();
+                            const record = registry.get(game.ideviceId);
+                            if (record && record.score !== null) {
+                                game.previousScore = (record.score / 10).toFixed(2);
+                                const totalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                                if (totalScore > 0) {
+                                    $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
+                                }
                             }
                         } else {
-                            lmsData[game.ideviceNumber] = {
-                                title: game.title,
-                                score: 0,
-                                weighted: game.weighted
-                            };
+                            // Legacy runtime (SCORM 2004 packages and packages
+                            // exported before the SCORM 1.2 runtime rewrite).
+                            let suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
 
-                            const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
-                            pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
+                            lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+
+                            if (lmsData[game.ideviceNumber]) {
+                                game.previousScore = (lmsData[game.ideviceNumber].score / 10).toFixed(2);
+                                // Actualizar el score node con la puntuación recuperada
+                                const totalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                                if (totalScore > 0) {
+                                    $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
+                                }
+                            } else {
+                                lmsData[game.ideviceNumber] = {
+                                    title: game.title,
+                                    score: 0,
+                                    weighted: game.weighted
+                                };
+
+                                const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
+                                pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
+                            }
                         }
                     }
 
@@ -1264,11 +1654,6 @@ var $exeDevices = {
                     if (typeof game !== 'object' || game === null) {
                         return;
                     }
-                    // xAPI: emit a per-iDevice statement whenever the activity has a
-                    // score, regardless of SCORM/export format (see exe_xapi.js).
-                    if (game.gameStarted || game.gameOver) {
-                        $exeDevices.iDevice.gamification.track('answered', game);
-                    }
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
                         return;
                     }
@@ -1280,8 +1665,24 @@ var $exeDevices = {
                     let message = '';
                     if (game.gameStarted || game.gameOver) {
                         game.repeatActivity = true;
-                        const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                        const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                        // Explicit completion signal for the activity registry:
+                        // the learner either finished the activity (gameOver)
+                        // or submitted their score by hand (!auto). Counting a
+                        // manual submission as completion is a documented
+                        // policy decision (ADR-2209-02): submitting is the
+                        // learner's explicit act of finishing the attempt, and
+                        // it is the only completion signal games without a
+                        // game-over state can give.
+                        const activityCompleted = game.gameOver === true || auto !== true;
+                        // Single owner of cmi.suspend_data: the registry when
+                        // the SCORM 1.2 runtime is present, the legacy line
+                        // format otherwise.
+                        const scormRegistry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                        const lmsData = scormRegistry
+                            ? $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry()
+                            : $exeDevices.iDevice.gamification.scorm.parseSuspendData(
+                                  pipwerks.SCORM.get("cmi.suspend_data") || ""
+                              );
                         const scoreVal = parseFloat(lmsData[game.ideviceNumber]?.score);
                         const previousScore = !Number.isNaN(scoreVal) ? (scoreVal / 10).toFixed(2) : '';
 
@@ -1297,7 +1698,7 @@ var $exeDevices = {
                                     : game.msgs.msgOnlySaveScore;
                             } else {
                                 game.previousScore = formattedScore;
-                                $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData);
+                                $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);
 
                                 message = game.userName !== ''
                                     ? (game.userName + '. ' + game.msgs.msgYouScore + ': ' + formattedScore)
@@ -1311,7 +1712,7 @@ var $exeDevices = {
                             }
                         } else {
                             game.previousScore = formattedScore;
-                            $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData);
+                            $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);
                             message = game.msgs.msgYouScore + ': ' + formattedScore;
                             $repeatActivity.text(message).show();
                         }
@@ -1327,11 +1728,45 @@ var $exeDevices = {
 
                 },
 
-                updateActivity: function (game, lmsData) {
+                /**
+                 * Record an activity's score.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @param {Object} lmsData Parsed suspend_data keyed by activity index.
+                 * @param {boolean} [completed] Whether the learner finished the
+                 * activity. Supplied explicitly by the caller — the completion
+                 * policy never infers it from a game property.
+                 */
+                updateActivity: function (game, lmsData, completed) {
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM || typeof game !== 'object' || game === null) {
                         return;
                     }
 
+                    const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                    if (registry) {
+                        // SCORM 1.2 runtime: the registry is the single owner
+                        // of cmi.suspend_data — report the progress, let the
+                        // runtime serialise it, and never write the legacy
+                        // line format (two writers alternating formats would
+                        // corrupt each other's view on resume).
+                        $exeDevices.iDevice.gamification.scorm.reportActivity(game, {
+                            completed: completed === true,
+                            score: game.scorerp * 10,
+                            answered: parseFloat(game.answered) || 0,
+                        });
+                        const runtime = window.exeScorm12;
+                        if (runtime.policy && typeof runtime.policy.persistActivities === 'function') {
+                            runtime.policy.persistActivities();
+                        }
+                        $exeDevices.iDevice.gamification.scorm.showFinalScore(
+                            $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry(),
+                            game
+                        );
+                        return;
+                    }
+
+                    // Legacy runtime (SCORM 2004 packages and packages
+                    // exported before the SCORM 1.2 runtime rewrite).
                     const updatedData = {
                         title: game.title,
                         score: game.scorerp * 10,
@@ -1353,62 +1788,100 @@ var $exeDevices = {
                     }
 
                     if (!lmsData || typeof lmsData !== 'object') {
-                        const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
-                        lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                        const fallbackRegistry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                        lmsData = fallbackRegistry
+                            ? $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry()
+                            : $exeDevices.iDevice.gamification.scorm.parseSuspendData(
+                                  pipwerks.SCORM.get("cmi.suspend_data") || ""
+                              );
                     }
 
+                    // Single source of truth for the aggregate: with the
+                    // SCORM 1.2 registry present, getFinalScore delegates to
+                    // its summary(), which owns the weighting algorithm
+                    // published packages rely on.
                     const newFinalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
 
-                    pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-
-                    if (newFinalScore >= 50) {
-                        pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
+                    const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
+                    // Branch on the CAPABILITY, not on the runtime object: a host that
+                    // ships an older or partial runtime may still expose `policy`, and
+                    // calling a method it does not have would throw before the score
+                    // is written. This file travels with the content, but the Moodle
+                    // plugin injects its own vendored copy of the runtime (complete,
+                    // five layers) into content exported by whichever eXeLearning
+                    // release the author used, so the two can come from different
+                    // releases. Falling through to the legacy branch keeps that host
+                    // scoring.
+                    if (runtime && runtime.policy && typeof runtime.policy.setScoreDetailed === 'function') {
+                        // Game iDevices call this from jQuery ready, which
+                        // runs before loadPage() restores cmi.suspend_data.
+                        // Writing score.raw=0 then would erase a resumed
+                        // attempt; wait until applyEntryPolicy() has run.
+                        const entryReady =
+                            typeof runtime.policy.hasAppliedEntry !== 'function' || runtime.policy.hasAppliedEntry();
+                        if (entryReady) {
+                            // A page the learner opened but never answered must not
+                            // publish a score. cmi.core.score.raw cannot express "no
+                            // answer" — a 0 there reads as "scored zero" — and Moodle
+                            // promotes an `incomplete` status to `completed` as soon as
+                            // any score.raw exists (mod/scorm/locallib.php
+                            // scorm_insert_track, under forcecompleted), so a merely
+                            // visited page would be counted as a finished learning
+                            // object. The status policy still runs: leaving the page
+                            // `incomplete` is the honest report.
+                            // Ask the registry whether any evaluable activity has
+                            // actually produced a score. NOT summary.answered: that
+                            // counter has one writer, `parseFloat(game.answered)` in
+                            // reportActivity(), and no iDevice ever sets game.answered —
+                            // the real ones carry answeredIndexes, questionsAnswered and
+                            // the like — so it is structurally always 0 and keying on it
+                            // would suppress EVERY score, not just the unanswered ones.
+                            // Nor summary.score, which counts an evaluable activity that
+                            // has not scored yet as 0 and so cannot tell the two apart.
+                            //
+                            // A host that assembled the runtime WITHOUT the registry
+                            // layer (tolerated by the adapter's install guard; neither
+                            // eXeLearning's exports nor the Moodle plugin ship such a
+                            // build) gets a null registry: it cannot answer the
+                            // question, so it keeps scoring exactly as before rather
+                            // than being silently suppressed.
+                            const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
+                            // An EMPTY registry is treated the same way as an absent
+                            // one: no activity registered, so there is nothing to base
+                            // the judgement on. Suppressing there would silence the
+                            // legacy iDevices that score without registering.
+                            //
+                            // `summary().scored` is the registry's own count and its
+                            // single owner; policy.applyEntryPolicy() reads the same
+                            // field. Recomputing the predicate here from list() is what
+                            // let the two paths drift apart in the first place — the
+                            // entry policy published a 0 this branch would have
+                            // suppressed.
+                            const summary = registry ? registry.summary() : null;
+                            const nothingScored = !!summary && summary.total > 0 && summary.scored === 0;
+                            if (!nothingScored) {
+                                // SCORM 1.2 packages: the runtime owns score
+                                // validation and the completion/success policy.
+                                runtime.policy.setScoreDetailed(newFinalScore, 0, 100);
+                            }
+                            if (typeof runtime.policy.recordActivityOutcome === 'function') {
+                                runtime.policy.recordActivityOutcome();
+                            }
+                        }
                     } else {
-                        pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
+                        // Legacy runtime (SCORM 2004 packages and packages
+                        // exported before the SCORM 1.2 runtime rewrite).
+                        pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
+                        if (newFinalScore >= 50) {
+                            pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
+                        } else {
+                            pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
+                        }
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
 
                 },
-            },
-
-            /**
-             * Transport-agnostic dispatch to the always-on xAPI emitter
-             * (exe_xapi.js). Runs in EVERY export format, independent of
-             * SCORM/pipwerks, so a published package is xAPI-compatible out
-             * of the box (it is therefore a sibling of `scorm`, not nested in
-             * it). Score math stays single-source (game.scorerp +
-             * getFinalScore); this only forwards it as an xAPI statement.
-             * See https://github.com/adlnet/xAPI-Spec/blob/master/xAPI-Data.md
-             *
-             * @param {string} eventType e.g. 'answered'
-             * @param {Object} game the iDevice game options (carries score + identity)
-             */
-            track: function (eventType, game) {
-                try {
-                    let xapi = $exeDevices.iDevice.xapi;
-                    if (!xapi || typeof xapi.emit !== 'function') return;
-                    if (typeof game !== 'object' || game === null) return;
-                    if (!game.ideviceId && game.mainElement && game.mainElement.closest) {
-                        game.ideviceId = game.mainElement.closest('.idevice_node').attr('id');
-                    }
-                    xapi.emit({
-                        type: eventType,
-                        ideviceId: game.ideviceId,
-                        // The iDevice type/class name lives on game.idevice (see the
-                        // gamification-evaluation-saved emitter, which uses
-                        // `ideviceType: game.idevice`). game.ideviceType is never
-                        // populated by the real callers, so prefer it only when a
-                        // caller explicitly sets it and fall back to game.idevice.
-                        ideviceType: game.ideviceType || game.idevice,
-                        ideviceNumber: game.ideviceNumber,
-                        title: game.title,
-                        score: parseFloat(game.scorerp),
-                        weighted: game.weighted,
-                    });
-                } catch (e) {
-                    // Never let tracking break the activity.
-                }
             },
 
             colors: {

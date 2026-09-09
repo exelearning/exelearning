@@ -10,8 +10,10 @@ import * as path from 'path';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 
+import * as Y from 'yjs';
 import {
     createExportRoutes,
+    populateYDocFromStructure,
     type ExportDependencies,
     type ExportSessionManagerDeps,
     type ExportFileHelperDeps,
@@ -164,6 +166,66 @@ function createMockDependencies(): ExportDependencies {
         publicDir: path.join(testDir, 'public'),
     };
 }
+
+describe('populateYDocFromStructure block icons', () => {
+    const buildStructure = (block: {
+        iconName?: string;
+        icon?: { source: 'material' | 'asset' | 'theme' | 'none'; value: string };
+    }): YjsExportStructure => ({
+        meta: { title: 'T' },
+        pages: [
+            {
+                id: 'page-1',
+                pageName: 'Page 1',
+                parentId: null,
+                blocks: [{ id: 'block-1', blockName: 'B', ...block, components: [] }],
+            },
+        ],
+        navigation: [],
+    });
+
+    const readBlockIcon = (structure: YjsExportStructure): unknown => {
+        const ydoc = new Y.Doc();
+        populateYDocFromStructure(ydoc, structure);
+        const navigation = ydoc.getArray<Y.Map<unknown>>('navigation');
+        const pageMap = navigation.get(0);
+        const blocks = pageMap.get('blocks') as Y.Array<Y.Map<unknown>>;
+        return blocks.get(0).get('icon');
+    };
+
+    it('derives a material icon from a mi- iconName', () => {
+        expect(readBlockIcon(buildStructure({ iconName: 'mi-lightbulb' }))).toEqual({
+            source: 'material',
+            value: 'lightbulb',
+        });
+    });
+
+    it('derives an asset icon from an asset:// iconName (consistent with the other paths)', () => {
+        // The old export.ts copy mislabeled this as `theme`; it now matches
+        // the renderer / structure-binding behavior via the shared derivation.
+        expect(readBlockIcon(buildStructure({ iconName: 'asset://uuid/icon.png' }))).toEqual({
+            source: 'asset',
+            value: 'asset://uuid/icon.png',
+        });
+    });
+
+    it('derives a theme icon from a plain iconName', () => {
+        expect(readBlockIcon(buildStructure({ iconName: 'objectives' }))).toEqual({
+            source: 'theme',
+            value: 'objectives',
+        });
+    });
+
+    it('derives none when there is no iconName', () => {
+        expect(readBlockIcon(buildStructure({}))).toEqual({ source: 'none', value: '' });
+    });
+
+    it('lets an explicit block.icon win over the iconName derivation', () => {
+        expect(
+            readBlockIcon(buildStructure({ iconName: 'mi-lightbulb', icon: { source: 'theme', value: 'objectives' } })),
+        ).toEqual({ source: 'theme', value: 'objectives' });
+    });
+});
 
 describe('Export Routes', () => {
     let app: Elysia;

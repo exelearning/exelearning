@@ -234,6 +234,71 @@ See [Deployment: Reverse Proxy Configuration](../deployment.md#reverse-proxy-con
 
 Include `guest` in `APP_AUTH_METHODS` to enable `/login/guest`. It creates a temporary user and logs in with role `ROLE_GUEST`.
 
+## Changing Passwords
+
+Password changes are available only for local accounts authenticated with the
+eXeLearning password method. Accounts authenticated through CAS, OpenID Connect,
+SAML, guest access, or other external identity providers must change their
+password through their identity provider.
+
+This applies to every route into the feature — the user menu, the admin panel and
+the command line all refuse the same accounts. eXeLearning never turns an
+externally authenticated account into a local-password one.
+
+### For users: the Change password option
+
+**User menu → Change password**
+
+Open the avatar menu in the top-right corner of the workarea and choose **Change
+password**. The dialog asks for the current password, the new password, and a
+confirmation of the new password. The current password is always verified on the
+server, so a mistyped one is reported without ending the session.
+
+The menu item is only shown when the current session uses local password
+authentication. It is not displayed for guest users, for users signed in through
+CAS, OpenID Connect or SAML, for offline/desktop installations where there is no
+real login, or while an administrator is impersonating another user.
+
+A password must be at least 4 characters long. The dialog shows a strength
+indicator as a guide — it never blocks a password that meets the minimum, but
+longer passwords mixing letters, numbers and symbols are considerably safer.
+
+### For administrators: resetting a user's password
+
+In **Admin → Users**, open the actions menu (⋮) on the user's row and choose
+**Reset password**. The administrator sets a new password directly and is not
+asked for the user's current one.
+
+The action only appears for accounts that own an eXeLearning password. Guest
+accounts and accounts managed by an external identity provider never show it,
+and the API rejects such a request even if it is issued by hand.
+
+### From the command line
+
+Recovery and scripted administration go through the CLI. The recommended form
+asks for the new password interactively, twice, without echoing it — so it never
+reaches the shell history or a process listing:
+
+```bash
+make change-password EMAIL=user@example.com
+```
+
+The Make target is a thin wrapper around the underlying CLI command:
+
+```bash
+bun cli user:password user@example.com
+```
+
+Both refuse CAS, OpenID Connect, SAML, guest and other externally managed
+accounts, and report why. For automation where no terminal is available, the
+password can be piped in instead:
+
+```bash
+echo "$NEW_PASSWORD" | bun cli user:password user@example.com --password-stdin
+```
+
+The password is never accepted as a command-line argument.
+
 ## Local API JWT (optional)
 
 The backend can accept locally signed JWTs (useful for scripts/internal services).

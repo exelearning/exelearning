@@ -116,11 +116,37 @@ function setupLocalStorageStub() {
   };
 }
 
+// jsdom keeps one `window` for the whole file, so a listener a test leaves
+// behind (the legacy `pagehide` bridge, for one) would fire in every later
+// test and make call counts meaningless. Record what each test registers on
+// `window` and take it down again afterwards.
+const windowListeners = [];
+let nativeWindowAddEventListener = null;
+
+function trackWindowListeners() {
+  nativeWindowAddEventListener = window.addEventListener;
+  window.addEventListener = function (type, listener, options) {
+    windowListeners.push([type, listener, options]);
+    return nativeWindowAddEventListener.call(window, type, listener, options);
+  };
+}
+
+function releaseWindowListeners() {
+  for (const [type, listener, options] of windowListeners.splice(0)) {
+    window.removeEventListener(type, listener, options);
+  }
+  if (nativeWindowAddEventListener) {
+    window.addEventListener = nativeWindowAddEventListener;
+    nativeWindowAddEventListener = null;
+  }
+}
+
 describe('exe_export.js', () => {
   beforeEach(async () => {
     vi.resetModules();
     readyCallbacks.length = 0;
     document.body.innerHTML = '';
+    trackWindowListeners();
 
     window.$exe = { init: vi.fn(), clearHistory: vi.fn(), _confirmResponses: new Map() };
     window.$exe_i18n = {
@@ -140,6 +166,7 @@ describe('exe_export.js', () => {
   });
 
   afterEach(() => {
+    releaseWindowListeners();
     delete window.$exe;
     delete window.eXe;
     delete window.$exe_i18n;
@@ -343,10 +370,13 @@ describe('exe_export.js', () => {
     intervalSpy.mockRestore();
   });
 
-  it('detects scorm data in idevices and wires unload handler', () => {
+  it('detects scorm data in idevices and wires the legacy pagehide handler', () => {
     window.scorm = {};
     window.loadPage = vi.fn();
     window.unloadPage = vi.fn();
+    // A SCORM 2004 package ships the legacy runtime: no `window.exeScorm12`,
+    // so exe_export.js has to bridge `pagehide` to unloadPage() itself.
+    expect(window.exeScorm12).toBeUndefined();
 
     window.$testidevice = {
       options: [{ isScorm: true }],
@@ -369,9 +399,41 @@ describe('exe_export.js', () => {
     document.body.append(jsNode, jsonNode);
 
     window.$exeExport.initScorm();
-    window.dispatchEvent(new Event('unload'));
+    window.dispatchEvent(new Event('pagehide'));
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
+    // One teardown, one end-of-session call, carrying the scored flag.
+    expect(window.unloadPage).toHaveBeenCalledTimes(1);
+    expect(window.unloadPage).toHaveBeenCalledWith(true);
+  });
+
+  it('the legacy pagehide bridge stands down when the page enters the back/forward cache', () => {
+    window.scorm = {};
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
+    expect(window.exeScorm12).toBeUndefined();
+
+    // The scan only trusts a node whose iDevice object exists on the page.
+    window.$adaptativequiz = {};
+    const jsonNode = document.createElement('div');
+    jsonNode.className = 'idevice_node adaptative-quiz';
+    jsonNode.setAttribute('data-idevice-component-type', 'json');
+    jsonNode.setAttribute('data-idevice-type', 'adaptative-quiz');
+    jsonNode.setAttribute('data-idevice-json-data', JSON.stringify({ isScorm: 1 }));
+    document.body.appendChild(jsonNode);
+
+    window.$exeExport.initScorm();
+
+    // A frozen page may be restored intact: ending the LMS session then would
+    // close an attempt the learner has not left.
+    const frozen = new Event('pagehide');
+    Object.defineProperty(frozen, 'persisted', { value: true });
+    window.dispatchEvent(frozen);
+    expect(window.unloadPage).not.toHaveBeenCalled();
+
+    // A real teardown still ends it, exactly once.
+    window.dispatchEvent(new Event('pagehide'));
+    expect(window.unloadPage).toHaveBeenCalledTimes(1);
     expect(window.unloadPage).toHaveBeenCalledWith(true);
   });
 
@@ -389,10 +451,74 @@ describe('exe_export.js', () => {
     document.body.appendChild(jsonNode);
 
     window.$exeExport.initScorm();
-    window.dispatchEvent(new Event('unload'));
+    window.dispatchEvent(new Event('pagehide'));
 
     expect(window.loadPage).toHaveBeenCalledTimes(1);
     expect(window.unloadPage).toHaveBeenCalledWith(true);
+  });
+
+  it('hands the scored-activities flag to the new SCORM 1.2 runtime instead of wiring unload', () => {
+    window.scorm = {};
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
+    window.exeScorm12 = { setPageHasScoredActivities: vi.fn() };
+
+    const jsonNode = document.createElement('div');
+    jsonNode.className = 'idevice_node adaptative-quiz';
+    jsonNode.setAttribute('data-idevice-component-type', 'json');
+    jsonNode.setAttribute('data-idevice-type', 'adaptative-quiz');
+    jsonNode.setAttribute('data-idevice-json-data', JSON.stringify({ isScorm: 1 }));
+    document.body.appendChild(jsonNode);
+    window.$adaptativequiz = {};
+
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+    window.$exeExport.initScorm();
+
+    expect(window.loadPage).toHaveBeenCalledTimes(1);
+    expect(window.exeScorm12.setPageHasScoredActivities).toHaveBeenCalledWith(true);
+    // The flag must be in place before loadPage() runs the entry policy,
+    // which reads it to tell a scored page from a content-only one.
+    expect(window.exeScorm12.setPageHasScoredActivities.mock.invocationCallOrder[0]).toBeLessThan(
+      window.loadPage.mock.invocationCallOrder[0],
+    );
+    // The new runtime owns end-of-session handling: exe_export.js wires
+    // neither the legacy pagehide bridge nor any unload-family listener.
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('unload', expect.any(Function));
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('beforeunload', expect.any(Function));
+    expect(addEventListenerSpy).not.toHaveBeenCalledWith('pagehide', expect.any(Function));
+    // …so a real teardown reaches the runtime's lifecycle, not unloadPage().
+    window.dispatchEvent(new Event('pagehide'));
+    expect(window.unloadPage).not.toHaveBeenCalled();
+
+    addEventListenerSpy.mockRestore();
+    delete window.exeScorm12;
+  });
+
+  it('falls back to the legacy pagehide bridge when the runtime lacks the scored-flag setter', () => {
+    window.scorm = {};
+    window.loadPage = vi.fn();
+    window.unloadPage = vi.fn();
+    // A partial runtime object (an older SCOFunctions.js build) does not
+    // expose setPageHasScoredActivities: the page is treated as legacy.
+    window.exeScorm12 = {};
+
+    // The scan only trusts a node whose iDevice object exists on the page.
+    window.$adaptativequiz = {};
+    const jsonNode = document.createElement('div');
+    jsonNode.className = 'idevice_node adaptative-quiz';
+    jsonNode.setAttribute('data-idevice-component-type', 'json');
+    jsonNode.setAttribute('data-idevice-type', 'adaptative-quiz');
+    jsonNode.setAttribute('data-idevice-json-data', JSON.stringify({ isScorm: 1 }));
+    document.body.appendChild(jsonNode);
+
+    window.$exeExport.initScorm();
+    window.dispatchEvent(new Event('pagehide'));
+
+    expect(window.loadPage).toHaveBeenCalledTimes(1);
+    expect(window.unloadPage).toHaveBeenCalledTimes(1);
+    expect(window.unloadPage).toHaveBeenCalledWith(true);
+
+    delete window.exeScorm12;
   });
 
   it('normalizes search strings', () => {
@@ -980,6 +1106,92 @@ describe('exe_export.js', () => {
       });
     });
 
+    describe('setUrlParam', () => {
+      // The seven hrefs the styles' nav=false handling has to survive.
+      const HREFS = [
+        'page.html',
+        'page.html#sec3',
+        'page.html?exe-teacher=1',
+        'page.html?exe-teacher=1#sec3',
+        'page.html?nav=false',
+        'page.html?nav=false#sec3',
+        'page.html?a=1&b=2',
+      ];
+
+      it('adds nav=false without losing other params or the fragment', () => {
+        const set = (h) => window.$exeExport.setUrlParam(h, 'nav', 'false');
+        expect(HREFS.map(set)).toEqual([
+          'page.html?nav=false',
+          'page.html?nav=false#sec3',
+          'page.html?exe-teacher=1&nav=false',
+          'page.html?exe-teacher=1&nav=false#sec3',
+          'page.html?nav=false',
+          'page.html?nav=false#sec3',
+          'page.html?a=1&b=2&nav=false',
+        ]);
+      });
+
+      it('removes only nav, keeping other params and the fragment', () => {
+        const del = (h) => window.$exeExport.setUrlParam(h, 'nav', null);
+        expect(HREFS.map(del)).toEqual([
+          'page.html',
+          'page.html#sec3',
+          'page.html?exe-teacher=1',
+          'page.html?exe-teacher=1#sec3',
+          'page.html',
+          'page.html#sec3',
+          'page.html?a=1&b=2',
+        ]);
+      });
+
+      it('is idempotent when applied twice', () => {
+        const set = (h) => window.$exeExport.setUrlParam(h, 'nav', 'false');
+        expect(HREFS.map((h) => set(set(h)))).toEqual(HREFS.map(set));
+      });
+
+      it('matches the key, not a substring of the pair', () => {
+        const set = window.$exeExport.setUrlParam;
+        // Keys that merely contain "nav" are preserved.
+        expect(set('page.html?xnav=false', 'nav', 'false')).toBe('page.html?xnav=false&nav=false');
+        // Any value of nav is replaced, not just the literal nav=false.
+        expect(set('page.html?nav=FALSE', 'nav', null)).toBe('page.html');
+        expect(set('page.html?nav=falsey', 'nav', null)).toBe('page.html');
+        expect(set('page.html?nav=false&nav=false', 'nav', 'false')).toBe('page.html?nav=false');
+        // A nav=false hidden inside another param's value is left alone.
+        expect(set('page.html?q=nav%3Dfalse', 'nav', null)).toBe('page.html?q=nav%3Dfalse');
+      });
+
+      it('never drops or reorders the fragment', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('page.html#a?b=1', 'nav', 'false')).toBe('page.html?nav=false#a?b=1');
+        expect(set('page.html#a&b', 'nav', 'false')).toBe('page.html?nav=false#a&b');
+        expect(set('page.html#nav=false', 'nav', null)).toBe('page.html#nav=false');
+        expect(set('page.html#', 'nav', 'false')).toBe('page.html?nav=false#');
+        expect(set('html/a.html?q=x#t%C3%ADtulo', 'nav', null)).toBe('html/a.html?q=x#t%C3%ADtulo');
+      });
+
+      it('leaves a fragment-only href alone, so an in-page jump stays one', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('#anchor', 'nav', 'false')).toBe('#anchor');
+        expect(set('#anchor', 'nav', null)).toBe('#anchor');
+      });
+
+      it('keeps relative hrefs relative and preserves parameter order', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('../index.html', 'nav', 'false')).toBe('../index.html?nav=false');
+        expect(set('html/a.html?endpoint=x&auth=y&actor=z', 'nav', 'false')).toBe(
+            'html/a.html?endpoint=x&auth=y&actor=z&nav=false'
+        );
+      });
+
+      it('returns falsy or nameless input unchanged', () => {
+        const set = window.$exeExport.setUrlParam;
+        expect(set('', 'nav', 'false')).toBe('');
+        expect(set(null, 'nav', 'false')).toBe(null);
+        expect(set('page.html', '', 'false')).toBe('page.html');
+      });
+    });
+
     describe('withTeacherParams', () => {
       it('appends the active params to a relative same-package link', () => {
         const tm = window.$exeExport.teacherMode;
@@ -1008,6 +1220,17 @@ describe('exe_export.js', () => {
         const tm = window.$exeExport.teacherMode;
         tm._navParams = 'exe-teacher=1';
         expect(tm.withTeacherParams('page.html?exe-teacher=1')).toBe('page.html?exe-teacher=1');
+        expect(tm.withTeacherParams('page.html?exe-teacher=0')).toBe('page.html?exe-teacher=1');
+      });
+
+      it('matches the exact key, not any occurrence of the name in the href', () => {
+        const tm = window.$exeExport.teacherMode;
+        tm._navParams = 'exe-teacher=1';
+        expect(tm.withTeacherParams('exe-teacher-guide.html')).toBe('exe-teacher-guide.html?exe-teacher=1');
+        expect(tm.withTeacherParams('page.html?q=exe-teacher')).toBe('page.html?q=exe-teacher&exe-teacher=1');
+        expect(tm.withTeacherParams('page.html?exe-teacher-toggler=1')).toBe(
+          'page.html?exe-teacher-toggler=1&exe-teacher=1'
+        );
       });
 
       it('returns the href unchanged when there are no active params', () => {
@@ -1144,7 +1367,7 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsonNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
+      window.dispatchEvent(new Event('pagehide'));
 
       expect(window.unloadPage).toHaveBeenCalledWith(false);
     });
@@ -1162,7 +1385,7 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
+      window.dispatchEvent(new Event('pagehide'));
 
       expect(window.unloadPage).toHaveBeenCalledWith(false);
     });
@@ -1180,7 +1403,7 @@ describe('exe_export.js', () => {
       document.body.appendChild(jsNode);
 
       window.$exeExport.initScorm();
-      window.dispatchEvent(new Event('unload'));
+      window.dispatchEvent(new Event('pagehide'));
 
       expect(window.unloadPage).toHaveBeenCalledWith(false);
     });
@@ -1892,6 +2115,143 @@ describe('exe_export.js', () => {
       expect(link.href).toContain('&nav=false');
 
       // Restore jQuery
+      window.$ = originalJQuery;
+    });
+
+    it('click handler keeps the deep-link fragment and other params', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML =
+        '<li><a href="html/page.html#block-7">A</a></li>' +
+        '<li><a href="html/page.html?exe-teacher=1#block-7">B</a></li>' +
+        '<li><a href="html/page.html?nav=false#block-7">C</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        if (selector === '#siteNav') result.is = vi.fn(() => false);
+        return result;
+      });
+
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      const links = [...wrapper.querySelectorAll('a')];
+      links.forEach((link) => clickHandler.call(link));
+
+      expect(links.map((l) => l.getAttribute('href'))).toEqual([
+        'html/page.html?nav=false#block-7',
+        'html/page.html?exe-teacher=1&nav=false#block-7',
+        'html/page.html?nav=false#block-7',
+      ]);
+
+      window.$ = originalJQuery;
+    });
+
+    it('click handler carries exe-teacher=1 onto search hits', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML =
+        '<li><a href="html/page.html?q=foo">A</a></li>' +
+        '<li><a href="html/page.html?q=foo#block-3">B</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        // siteNav visible, so only the teacher param should be added.
+        if (selector === '#siteNav') result.is = vi.fn(() => true);
+        return result;
+      });
+
+      window.$exeExport.teacherMode._navParams = 'exe-teacher=1';
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      const links = [...wrapper.querySelectorAll('a')];
+      links.forEach((link) => clickHandler.call(link));
+
+      expect(links.map((l) => l.getAttribute('href'))).toEqual([
+        'html/page.html?q=foo&exe-teacher=1',
+        'html/page.html?q=foo&exe-teacher=1#block-3',
+      ]);
+
+      window.$exeExport.teacherMode._navParams = '';
+      window.$ = originalJQuery;
+    });
+
+    it('click handler combines teacher mode and nav=false on a deep link', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML = '<li><a href="html/page.html?q=foo#block-3">A</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        if (selector === '#siteNav') result.is = vi.fn(() => false);
+        return result;
+      });
+
+      window.$exeExport.teacherMode._navParams = 'exe-teacher=1';
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      const link = wrapper.querySelector('a');
+      clickHandler.call(link);
+
+      expect(link.getAttribute('href')).toBe('html/page.html?q=foo&exe-teacher=1&nav=false#block-3');
+
+      window.$exeExport.teacherMode._navParams = '';
       window.$ = originalJQuery;
     });
 

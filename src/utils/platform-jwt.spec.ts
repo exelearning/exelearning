@@ -177,6 +177,233 @@ describe('Platform JWT Utilities', () => {
 
             expect(isAllowedProviderUrl('')).toBe(false);
         });
+
+        it('should return false for a malformed URL', () => {
+            process.env.PROVIDER_URLS = 'https://moodle.example.com';
+
+            expect(isAllowedProviderUrl('not-a-url')).toBe(false);
+            expect(isAllowedProviderUrl('https://')).toBe(false);
+        });
+
+        it('should return false for a non-http(s) URL scheme', () => {
+            process.env.PROVIDER_URLS = 'https://moodle.example.com';
+
+            expect(isAllowedProviderUrl('file:///etc/passwd')).toBe(false);
+            expect(isAllowedProviderUrl('gopher://moodle.example.com/')).toBe(false);
+        });
+
+        // The allow-list is matched on the PARSED host. Raw string-prefix matching
+        // accepted URLs whose effective host was a different domain, which mattered
+        // because the matched URL becomes a server-side request target.
+        it('should match on the parsed host, not on a string prefix', () => {
+            process.env.PROVIDER_URLS = 'https://moodle.example.com';
+
+            // Longer domain that merely starts with the entry.
+            expect(isAllowedProviderUrl('https://moodle.example.com.evil.com/path')).toBe(false);
+            // Entry value placed in the userinfo slot; the real host is evil.com.
+            expect(isAllowedProviderUrl('https://moodle.example.com@evil.com/path')).toBe(false);
+            // Entry value only appears in the query string.
+            expect(isAllowedProviderUrl('https://evil.com/?r=https://moodle.example.com')).toBe(false);
+        });
+
+        it('should ignore the path when the entry has none', () => {
+            process.env.PROVIDER_URLS = 'https://moodle.example.com';
+
+            expect(isAllowedProviderUrl('https://moodle.example.com')).toBe(true);
+            expect(isAllowedProviderUrl('https://moodle.example.com/')).toBe(true);
+            expect(isAllowedProviderUrl('https://moodle.example.com/deep/path?x=1#f')).toBe(true);
+        });
+
+        it('should be case-insensitive on the host', () => {
+            process.env.PROVIDER_URLS = 'https://Moodle.Example.COM';
+
+            expect(isAllowedProviderUrl('https://MOODLE.example.com/path')).toBe(true);
+        });
+
+        describe('wildcard entries (issue #2248)', () => {
+            it('should match exactly one label in place of the wildcard', () => {
+                process.env.PROVIDER_URLS = 'https://*.example.net';
+
+                expect(isAllowedProviderUrl('https://tenant.example.net/')).toBe(true);
+                expect(isAllowedProviderUrl('https://another-tenant.example.net/course/view.php?id=1')).toBe(true);
+            });
+
+            it('should not match multiple labels in place of the wildcard', () => {
+                process.env.PROVIDER_URLS = 'https://*.example.net';
+
+                expect(isAllowedProviderUrl('https://a.b.example.net/')).toBe(false);
+            });
+
+            it('should not match the bare domain', () => {
+                process.env.PROVIDER_URLS = 'https://*.example.net';
+
+                expect(isAllowedProviderUrl('https://example.net/')).toBe(false);
+            });
+
+            it('should not match a domain that merely ends with the same text', () => {
+                process.env.PROVIDER_URLS = 'https://*.example.net';
+
+                expect(isAllowedProviderUrl('https://evilexample.net/')).toBe(false);
+                expect(isAllowedProviderUrl('https://tenant.example.net.evil.com/')).toBe(false);
+            });
+
+            it('should reject a bare "*" entry so the allow-list cannot be opened up', () => {
+                process.env.PROVIDER_URLS = '*';
+
+                expect(isAllowedProviderUrl('https://anything.com/')).toBe(false);
+            });
+
+            it('should reject a wildcard that is not the leftmost label', () => {
+                process.env.PROVIDER_URLS = 'https://tenant.*.net';
+
+                expect(isAllowedProviderUrl('https://tenant.example.net/')).toBe(false);
+            });
+
+            it('should support mixing wildcard and exact entries', () => {
+                process.env.PROVIDER_URLS = 'https://*.example.net,https://moodle.other.com';
+
+                expect(isAllowedProviderUrl('https://tenant.example.net/')).toBe(true);
+                expect(isAllowedProviderUrl('https://moodle.other.com/')).toBe(true);
+                expect(isAllowedProviderUrl('https://nope.other.com/')).toBe(false);
+            });
+        });
+
+        describe('scheme, port and path constraints', () => {
+            it('should enforce the scheme when the entry specifies one', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com';
+
+                expect(isAllowedProviderUrl('http://moodle.example.com/')).toBe(false);
+            });
+
+            it('should accept both http and https when the entry omits the scheme', () => {
+                process.env.PROVIDER_URLS = '*.example.net';
+
+                expect(isAllowedProviderUrl('https://tenant.example.net/')).toBe(true);
+                expect(isAllowedProviderUrl('http://tenant.example.net/')).toBe(true);
+            });
+
+            it('should match any port when the entry omits one', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com:8443/')).toBe(true);
+            });
+
+            it('should enforce the port when the entry specifies one', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com:8443';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com:8443/')).toBe(true);
+                expect(isAllowedProviderUrl('https://moodle.example.com:9000/')).toBe(false);
+                expect(isAllowedProviderUrl('https://moodle.example.com/')).toBe(false);
+            });
+
+            it('should treat an explicit default port as equivalent to none', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com:443';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com/')).toBe(true);
+            });
+
+            it('should enforce an explicit http default port', () => {
+                process.env.PROVIDER_URLS = 'http://moodle.example.com:80';
+
+                expect(isAllowedProviderUrl('http://moodle.example.com/')).toBe(true);
+                expect(isAllowedProviderUrl('http://moodle.example.com:8080/')).toBe(false);
+            });
+
+            // A query or fragment attached straight to the port must not cost the
+            // entry its port constraint: silently widening it to any port would
+            // relax the SSRF boundary the operator configured.
+            it('should keep the port when a query follows it without a path', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com:8443?foo=bar';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com:8443/')).toBe(true);
+                expect(isAllowedProviderUrl('https://moodle.example.com:9000/')).toBe(false);
+                expect(isAllowedProviderUrl('https://moodle.example.com/')).toBe(false);
+            });
+
+            it('should keep the port when a fragment follows it without a path', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com:8443#frag';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com:8443/')).toBe(true);
+                expect(isAllowedProviderUrl('https://moodle.example.com:9000/')).toBe(false);
+            });
+
+            it('should keep the port of a wildcard entry when a query follows it', () => {
+                process.env.PROVIDER_URLS = 'https://*.example.net:8443?foo=bar';
+
+                expect(isAllowedProviderUrl('https://tenant.example.net:8443/')).toBe(true);
+                expect(isAllowedProviderUrl('https://tenant.example.net:9000/')).toBe(false);
+                expect(isAllowedProviderUrl('https://tenant.example.net/')).toBe(false);
+            });
+
+            it('should not constrain the path when the entry has only a query', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com?foo=bar';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com/anything')).toBe(true);
+            });
+
+            it('should normalize dot segments in the entry path', () => {
+                process.env.PROVIDER_URLS = 'https://host.example.com/lms/../moodle';
+
+                expect(isAllowedProviderUrl('https://host.example.com/moodle/view.php')).toBe(true);
+                expect(isAllowedProviderUrl('https://host.example.com/lms/other')).toBe(false);
+            });
+
+            it('should narrow to a path prefix when the entry has a path', () => {
+                process.env.PROVIDER_URLS = 'https://host.example.com/moodle';
+
+                expect(isAllowedProviderUrl('https://host.example.com/moodle/mod/exescorm/view.php')).toBe(true);
+                expect(isAllowedProviderUrl('https://host.example.com/other')).toBe(false);
+            });
+
+            it('should ignore a query or fragment in the entry path', () => {
+                process.env.PROVIDER_URLS = 'https://host.example.com/moodle?foo=bar';
+
+                expect(isAllowedProviderUrl('https://host.example.com/moodle/view.php')).toBe(true);
+                expect(isAllowedProviderUrl('https://host.example.com/other')).toBe(false);
+            });
+
+            it('should treat a lone trailing slash as no path constraint', () => {
+                process.env.PROVIDER_URLS = 'https://moodle.example.com/';
+
+                expect(isAllowedProviderUrl('https://moodle.example.com/anything')).toBe(true);
+            });
+        });
+
+        it('should ignore malformed entries without affecting valid ones', () => {
+            process.env.PROVIDER_URLS = 'file://somewhere,,https://moodle.example.com';
+
+            expect(isAllowedProviderUrl('https://moodle.example.com/')).toBe(true);
+            expect(isAllowedProviderUrl('https://somewhere/')).toBe(false);
+        });
+
+        it('should ignore entries whose host cannot be parsed', () => {
+            process.env.PROVIDER_URLS = 'https://mo odle.example.com,https://[invalid,https://moodle.example.com';
+
+            expect(isAllowedProviderUrl('https://moodle.example.com/')).toBe(true);
+            expect(isAllowedProviderUrl('https://invalid/')).toBe(false);
+        });
+
+        it('should reject an entry that hides a different host behind userinfo', () => {
+            process.env.PROVIDER_URLS = 'https://moodle.example.com@evil.com';
+
+            expect(isAllowedProviderUrl('https://evil.com/')).toBe(false);
+            expect(isAllowedProviderUrl('https://moodle.example.com/')).toBe(false);
+        });
+
+        it('should normalize internationalized domains to punycode', () => {
+            process.env.PROVIDER_URLS = 'https://möödle.example.com';
+
+            expect(isAllowedProviderUrl('https://xn--mdle-5qaa.example.com/course/')).toBe(true);
+        });
+
+        // Previously `PROVIDER_URLS=https://` matched every https URL by string
+        // prefix, re-opening the SSRF the fail-closed change had shut. It now
+        // parses to an empty host and is discarded as malformed.
+        it('should not allow everything for a scheme-only entry', () => {
+            process.env.PROVIDER_URLS = 'https://';
+
+            expect(isAllowedProviderUrl('https://anything.com/')).toBe(false);
+        });
     });
 
     describe('isSafeReturnUrl', () => {

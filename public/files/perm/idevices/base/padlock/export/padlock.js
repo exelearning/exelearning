@@ -282,7 +282,7 @@ var $padlock = {
                     : 0;
             }
         }
-        $(window).on('unload.eXeCandado beforeunload.eXeCandado', function () {
+        $(window).on('pagehide.eXeCandado', function () {
             const mOptions = $padlock.options[instance];
             if (mOptions.candadoStarted) {
                 $padlock.saveCandadoData(instance);
@@ -323,7 +323,7 @@ var $padlock = {
         $(`#candadoShowRetro-${instance}`).off('click');
         $(`#candadoSendScore`).off('click');
 
-        $(window).off('unload.eXeCandado beforeunload.eXeCandado');
+        $(window).off('pagehide.eXeCandado');
     },
 
     startGame: function (instance) {

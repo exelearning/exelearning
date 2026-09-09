@@ -450,19 +450,23 @@ var $exeDevice = (function () {
         return promise;
     }
 
-    // Tries <url>.gz first (decompressed in-browser via DecompressionStream),
-    // falls back to raw <url> for dev (uncompressed) and browsers that lack the API.
+    // Tries <url>.zst first (decompressed in-browser via fzstd, see
+    // public/libs/fzstd/fzstd.umd.js), falls back to raw <url> for dev
+    // (uncompressed) and browsers/sessions where fzstd isn't loaded.
     function fetchJsonMaybeGzipped(url) {
-        var canDecompress = typeof DecompressionStream !== 'undefined'
+        var canDecompressZstd = typeof window !== 'undefined'
+            && typeof window.fzstd !== 'undefined'
             && typeof fetch === 'function';
-        var gzPromise = canDecompress
-            ? fetch(url + '.gz').then(function (r) {
-                if (!r.ok) throw new Error('gz HTTP ' + r.status);
-                var stream = r.body.pipeThrough(new DecompressionStream('gzip'));
-                return new Response(stream).json();
+        var zstPromise = canDecompressZstd
+            ? fetch(url + '.zst').then(function (r) {
+                if (!r.ok) throw new Error('zst HTTP ' + r.status);
+                return r.arrayBuffer();
+            }).then(function (buf) {
+                var decompressed = window.fzstd.decompress(new Uint8Array(buf));
+                return JSON.parse(new TextDecoder().decode(decompressed));
             })
-            : Promise.reject(new Error('DecompressionStream unavailable'));
-        return gzPromise.catch(function () {
+            : Promise.reject(new Error('fzstd unavailable'));
+        return zstPromise.catch(function () {
             if (typeof fetch === 'function') {
                 return fetch(url).then(function (r) {
                     if (!r.ok) throw new Error('HTTP ' + r.status);

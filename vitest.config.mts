@@ -82,10 +82,14 @@ export default defineConfig({
             exclude: [
                 '**/node_modules/**',
                 '**/*.test.js',
+                '**/*.test-util.js',
                 '**/vitest.setup.js',
                 '**/libs/**',
                 '**/*.min.js',
                 '**/*.bundle.js',
+                // Vendored third-party code (never edited locally, see
+                // THIRD-PARTY-NOTICES.md)
+                'public/app/common/scorm/scorm12/vendor/**',
                 'public/app/common/mermaid/**',
                 'public/app/common/mindmaps/**',
                 'public/app/common/fix_webm_duration/**',

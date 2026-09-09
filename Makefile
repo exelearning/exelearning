@@ -251,6 +251,17 @@ ifndef PASSWORD
 endif
 	@$(CLI) create-user $(EMAIL) $(PASSWORD) $(if $(ROLES),--roles=$(ROLES),) $(if $(QUOTA),--quota=$(QUOTA),) $(if $(NO_FAIL),--no-fail,)
 
+# Change the password of a local account
+# Usage: make change-password EMAIL=user@example.com
+# The new password is asked for interactively (and hidden), so it never reaches
+# the shell history or a process listing.
+.PHONY: change-password
+change-password: check-bun
+ifndef EMAIL
+	$(error EMAIL is required. Usage: make change-password EMAIL=user@example.com)
+endif
+	@$(CLI) user:password $(EMAIL)
+
 # Grant ROLE_ADMIN to a user
 # Usage: make promote-admin EMAIL=x
 .PHONY: promote-admin
@@ -310,20 +321,22 @@ tmp-cleanup: check-bun
 
 # Extract new translation keys (does not clean or remove anything)
 # Usage: make translations [LOCALE=es]
+# Depends on vendor-edicuatex: the vendored tree is gitignored and only exists after a
+# build, and the extraction scans it for the equation editor strings.
 .PHONY: translations
-translations: check-bun
+translations: check-bun vendor-edicuatex
 	@$(CLI) translations --extract-only $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Clean and remove obsolete translation strings (destructive: removes trans-units not found in source)
 # Usage: make translations-cleanup [LOCALE=es]
 .PHONY: translations-cleanup
-translations-cleanup: check-bun
+translations-cleanup: check-bun vendor-edicuatex
 	@$(CLI) translations --clean-only --remove-obsolete $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Reorder trans-units in XLF files to match the order in messages.en.xlf
 # Usage: make translations-sort [LOCALE=es]
 .PHONY: translations-sort
-translations-sort: check-bun
+translations-sort: check-bun vendor-edicuatex
 	@$(CLI) translations:sort $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Add CDATA to <target> elements that need it and normalise indentation
@@ -337,6 +350,14 @@ translations-format: check-bun
 .PHONY: update-licenses
 update-licenses: check-bun
 	@$(CLI) update-licenses $(if $(DRY_RUN),--dry-run,)
+
+# Fail if public/libs/README.md is not what update-licenses would generate.
+# Attribution is legal metadata, so drift is a build failure, not a warning: this
+# target is part of `make lint`, which ci.yml already runs with node_modules
+# installed, the same way `architecture-check` is.
+.PHONY: update-licenses-check
+update-licenses-check: check-bun
+	@$(CLI) update-licenses --check
 
 
 # =============================================================================
@@ -437,10 +458,25 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests architecture-check
+lint: check-bun lint-ts lint-js lint-tests architecture-check update-licenses-check
 
 .PHONY: fix
 fix: check-bun fix-ts fix-js fix-tests
+
+# Regenerate public/app/common/exe_math/ from the pinned `mathjax` npm package.
+# The tree is committed (exports, the static build and Electron all need it on
+# disk), so run this after bumping the dependency. vendor-mathjax.spec.ts fails
+# if the committed tree and the package disagree.
+.PHONY: vendor-mathjax
+vendor-mathjax: check-bun
+	bun run scripts/vendor-mathjax.ts
+
+# Regenerate public/app/common/edicuatex/ from the pinned `edicuatex` package. The
+# tree is gitignored and build:all regenerates it, so this is only needed to refresh
+# it without a full build; `--check` reports a tree left stale by an interrupted one.
+.PHONY: vendor-edicuatex
+vendor-edicuatex: check-bun
+	bun run scripts/vendor-edicuatex.ts
 
 # Print the architecture record index, derived from document frontmatter.
 # Deliberately not a committed file: it would conflict on every concurrent branch.
@@ -873,6 +909,7 @@ help:
 	@echo ""
 	@echo "CLI Commands:"
 	@echo "  make cli ARGS='...'                           Generic CLI access"
+	@echo "  make change-password EMAIL=x                  Change a local account password"
 	@echo "  make create-user EMAIL=x PASSWORD=y           Create a new user"
 	@echo "  make demote-admin EMAIL=x                     Remove ROLE_ADMIN"
 	@echo "  make generate-jwt EMAIL=x [TTL=3600]          Generate JWT token"
@@ -885,6 +922,7 @@ help:
 	@echo "  make translations-sort [LOCALE=es]            Sort trans-units to match messages.en.xlf"
 	@echo "  make translations-format [LOCALE=es]          Add CDATA where needed and normalise indentation"
 	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
+	@echo "  make update-licenses-check                    Fail if license info has drifted"
 	@echo ""
 	@echo "ELPX Processing:"
 	@echo "  make convert-elp INPUT=x OUTPUT=y             Convert ELP v2.x to v3.0 (elpx)"

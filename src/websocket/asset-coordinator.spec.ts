@@ -1584,6 +1584,37 @@ describe('Asset Coordinator Service (DI)', () => {
             manifest: [],
         };
 
+        it('should create the upload session with the canonical projects.uuid, not the raw client value', async () => {
+            // Simulates a case-insensitive DB collation: the lookup for the
+            // client-supplied identifier returns a row whose canonical uuid
+            // differs. Storage paths derive from the session's projectId, so it
+            // must be the canonical value (issue #2250).
+            let createArgs: any;
+            const usm = {
+                createSession: async (args: any) => {
+                    createArgs = args;
+                    return { sessionToken: 'tok-canon', expiresAt: Date.now() + 60_000 };
+                },
+                validateSession: async () => ({ sessionId: 'sess-c', projectId: 'canonical-uuid', userId: 3 }),
+                onProgress: () => {},
+                onBatchComplete: () => {},
+            };
+            const c = buildCoordinator(usm, { id: 7, uuid: 'canonical-uuid', user_id: 3 });
+            const socket = createMockSocket();
+            c.registerClient('session-project', 'client-1', socket);
+
+            await c.handleMessage('session-project', 'client-1', {
+                type: 'upload-session-create',
+                data: validData,
+            });
+
+            expect(createArgs).toBeDefined();
+            expect(createArgs.projectId).toBe('canonical-uuid');
+            expect(createArgs.projectIdNum).toBe(7);
+
+            c.cleanupProject('session-project');
+        });
+
         it('should register progress + batch callbacks and forward their events to the client', async () => {
             let progressCb: ((p: any) => void) | undefined;
             let batchCb: ((r: any) => void) | undefined;

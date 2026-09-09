@@ -41,7 +41,6 @@ window.YjsModules = {
 
   // UI Integration
   YjsProjectBridge: window.YjsProjectBridge,
-  YjsTinyMCEBinding: window.YjsTinyMCEBinding,
   YjsStructureTreeAdapter: window.YjsStructureTreeAdapter,
   YjsProjectManagerMixin: window.YjsProjectManagerMixin,
   YjsPropertiesBinding: window.YjsPropertiesBinding,
@@ -141,58 +140,6 @@ window.YjsModules = {
    */
   isInitialized() {
     return this._bridge !== null && this._bridge.initialized;
-  },
-
-  /**
-   * Create a TinyMCE binding for an editor
-   * @param {TinyMCE.Editor} editor - TinyMCE editor instance
-   * @param {string} pageId - Page ID
-   * @param {string} blockId - Block ID
-   * @param {string} componentId - Component ID
-   * @returns {YjsTinyMCEBinding|null}
-   */
-  bindTinyMCE(editor, pageId, blockId, componentId) {
-    if (!this._bridge) {
-      console.warn('[YjsModules] Bridge not initialized');
-      return null;
-    }
-
-    const component = this._bridge.structureBinding.getComponent(pageId, blockId, componentId);
-    if (!component) {
-      console.warn('[YjsModules] Component not found:', componentId);
-      return null;
-    }
-
-    // Get or create Y.Text for HTML content
-    let yText = component.get('htmlContent');
-
-    // Handle case where htmlContent is a plain string (from import) or doesn't exist
-    if (!yText || typeof yText === 'string') {
-      // Check htmlContent first, then htmlView (from import) for existing content
-      let existingContent = '';
-      if (typeof yText === 'string' && yText) {
-        existingContent = yText;
-      } else {
-        const htmlView = component.get('htmlView');
-        if (typeof htmlView === 'string' && htmlView) {
-          existingContent = htmlView;
-        }
-      }
-
-      yText = new window.Y.Text();
-      // IMPORTANT: Insert content BEFORE setting on component to avoid Yjs integration errors
-      yText.insert(0, existingContent);
-      component.set('htmlContent', yText);
-    }
-
-    // Create binding
-    const binding = new window.YjsTinyMCEBinding(editor, yText, {
-      awareness: this._bridge.documentManager?.awareness,
-      userId: this._bridge.app?.user?.id || 'unknown',
-      userName: this._bridge.app?.user?.name || 'User',
-    });
-
-    return binding;
   },
 };
 

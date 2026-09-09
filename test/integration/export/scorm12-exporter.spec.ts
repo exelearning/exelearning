@@ -25,6 +25,7 @@ import {
 
 // Import test helpers
 import { createDocumentFromStructure, createDocumentFromElpFile } from '../../helpers/document-test-utils';
+import { formatUnloadFindings, scanPackageForUnloadHandlers } from '../../helpers/unload-handler-scanner';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'scorm12-exporter-test');
 const fixtureElpx = path.join(process.cwd(), 'test', 'fixtures', 'really-simple-test-project.elpx');
@@ -411,6 +412,228 @@ describe('Scorm12Exporter Integration', () => {
             } finally {
                 await cleanup();
             }
+        });
+    });
+
+    describe('SCORM 1.2 runtime packaging (clean-provenance rewrite)', () => {
+        async function exportPackage() {
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const resources = new FileSystemResourceProvider(publicDir);
+            const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
+            const zip = new FflateZipProvider();
+
+            const exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const result = await exporter.export();
+            expect(result.success).toBe(true);
+            return fflateUnzipSync(result.data!);
+        }
+
+        it('ships the vendored pipwerks wrapper byte-identical to the repository copy', async () => {
+            const unzipped = await exportPackage();
+
+            const vendoredPath = path.join(
+                publicDir,
+                'app',
+                'common',
+                'scorm',
+                'scorm12',
+                'vendor',
+                'pipwerks',
+                'SCORM_API_wrapper.js',
+            );
+            const vendored = await fs.readFile(vendoredPath);
+            expect(Buffer.from(unzipped['libs/SCORM_API_wrapper.js']).equals(vendored)).toBe(true);
+        });
+
+        it('keeps the MIT license notice inside the exported package', async () => {
+            const unzipped = await exportPackage();
+
+            const wrapper = new TextDecoder().decode(unzipped['libs/SCORM_API_wrapper.js']);
+            expect(wrapper).toContain('MIT-style license');
+            expect(wrapper).toContain('pipwerks SCORM Wrapper for JavaScript');
+        });
+
+        it('ships the assembled project runtime instead of the legacy SCOFunctions.js', async () => {
+            const unzipped = await exportPackage();
+
+            const scoFunctions = new TextDecoder().decode(unzipped['libs/SCOFunctions.js']);
+            // The assembled AGPL runtime: every layer under its section marker…
+            expect(scoFunctions).toContain('SPDX-License-Identifier: AGPL-3.0-or-later');
+            for (const layer of [
+                'exe-scorm12-client.js',
+                'exe-scorm12-activities.js',
+                'exe-scorm12-policy.js',
+                'exe-scorm12-lifecycle.js',
+                'exe-scorm12-adapter.js',
+            ]) {
+                expect(scoFunctions).toContain(`/* ==== ${layer} ==== */`);
+            }
+            // …and none of the legacy ADL/CTC-derived file.
+            expect(scoFunctions).not.toContain('ADL Technical Team');
+            expect(scoFunctions).not.toContain('convertTotalMiliSeconds');
+        });
+
+        it('emits no unload/beforeunload attributes or handlers in the pages', async () => {
+            const unzipped = await exportPackage();
+
+            const htmlFiles = Object.keys(unzipped).filter(f => f.endsWith('.html') && !f.includes('idevices/'));
+            expect(htmlFiles.length).toBeGreaterThan(0);
+            for (const file of htmlFiles) {
+                const html = new TextDecoder().decode(unzipped[file]);
+                expect(html).not.toContain('onunload');
+                expect(html).not.toContain('onbeforeunload');
+                expect(html).toContain('onload="loadPage()"');
+            }
+        });
+
+        it('assembles the runtime layers in load order', async () => {
+            const unzipped = await exportPackage();
+            const scoFunctions = new TextDecoder().decode(unzipped['libs/SCOFunctions.js']);
+
+            const order = [
+                'exe-scorm12-client.js',
+                'exe-scorm12-activities.js',
+                'exe-scorm12-policy.js',
+                'exe-scorm12-lifecycle.js',
+                'exe-scorm12-adapter.js',
+            ].map(layer => scoFunctions.indexOf(`/* ==== ${layer} ==== */`));
+
+            expect(order.every(position => position !== -1)).toBe(true);
+            expect(order).toEqual([...order].sort((a, b) => a - b));
+        });
+    });
+
+    // The acceptance target is zero unload/beforeunload handlers anywhere in a
+    // newly exported SCORM 1.2 package: not only the page bodies, but every
+    // inline script, every runtime library and every iDevice JavaScript file
+    // copied into it. An unload-family listener anywhere on the page disables
+    // the back/forward cache the SCORM 1.2 runtime relies on.
+    describe('SCORM 1.2 package carries no unload/beforeunload handlers', () => {
+        it('holds for a minimal text-only package', async () => {
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const resources = new FileSystemResourceProvider(publicDir);
+            const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
+            const zip = new FflateZipProvider();
+
+            const result = await new Scorm12Exporter(document, resources, assets, zip).export();
+            const findings = scanPackageForUnloadHandlers(fflateUnzipSync(result.data!));
+
+            expect(formatUnloadFindings(findings)).toBe('');
+        });
+
+        it('holds for a package built from the real ELPX fixture', async () => {
+            const { document, extractedPath, cleanup } = await createDocumentFromElpFile(fixtureElpx);
+            const resources = new FileSystemResourceProvider(publicDir);
+            const assets = new FileSystemAssetProvider(extractedPath);
+            const zip = new FflateZipProvider();
+
+            try {
+                const result = await new Scorm12Exporter(document, resources, assets, zip).export();
+                const findings = scanPackageForUnloadHandlers(fflateUnzipSync(result.data!));
+
+                expect(formatUnloadFindings(findings)).toBe('');
+            } finally {
+                await cleanup();
+            }
+        });
+
+        // Regression fixture: one page per iDevice whose export runtime binds a
+        // page-lifecycle handler. The list is derived from the repository
+        // itself, so an iDevice added (or reverted) later is covered
+        // automatically rather than silently dropped from the fixture.
+        //
+        // The component type is the iDevice's export folder name, because that
+        // is what normalizeIdeviceType() resolves to and therefore what makes
+        // the exporter copy the folder's JavaScript into the package. Getting
+        // that wrong would leave the scan trivially green, so the test asserts
+        // the files are really there before scanning them.
+        it('holds for a package containing every lifecycle-binding iDevice', async () => {
+            const ideviceRoot = path.join(publicDir, 'files', 'perm', 'idevices', 'base');
+            const folders = (await fs.readdir(ideviceRoot)).filter(folder => {
+                const exportDir = path.join(ideviceRoot, folder, 'export');
+                if (!fs.existsSync(exportDir)) {
+                    return false;
+                }
+                return fs
+                    .readdirSync(exportDir)
+                    .filter(file => file.endsWith('.js'))
+                    .some(file => fs.readFileSync(path.join(exportDir, file), 'utf8').includes('pagehide'));
+            });
+            // Only the runtimes that persist state or clean up on page hide
+            // still bind `pagehide`; they anchor the fixture so that the
+            // filter can never go trivially empty.
+            expect(folders).toEqual(
+                expect.arrayContaining([
+                    'challenge',
+                    'crossword',
+                    'padlock',
+                    'trivial',
+                    'three-d-viewer',
+                    'three-sixty-viewer',
+                ]),
+            );
+
+            const structure: ParsedOdeStructure = {
+                meta: { title: 'iDevice matrix', author: '', language: 'en', theme: 'base' },
+                pages: folders.map((folder, index) => ({
+                    id: `page-${index}`,
+                    title: folder,
+                    components: [
+                        {
+                            id: `comp-${index}`,
+                            type: folder,
+                            content: `<div class="idevice_node" id="id-${index}">${folder}</div>`,
+                            order: 0,
+                            position: 0,
+                        },
+                    ],
+                    level: 0,
+                    parent_id: null,
+                    position: index,
+                })),
+                navigation: null,
+                raw: null,
+            };
+
+            const document = createDocumentFromStructure(structure, path.join(testDir, 'extracted'));
+            const resources = new FileSystemResourceProvider(publicDir);
+            const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
+            const zip = new FflateZipProvider();
+
+            const result = await new Scorm12Exporter(document, resources, assets, zip).export();
+            const unzipped = fflateUnzipSync(result.data!);
+
+            // Positive control: without this, a fixture that failed to pull the
+            // iDevice JavaScript in would pass the scan for the wrong reason.
+            const withoutJavaScript = folders.filter(
+                folder =>
+                    !Object.keys(unzipped).some(
+                        entry => entry.startsWith(`idevices/${folder}/`) && entry.endsWith('.js'),
+                    ),
+            );
+            expect(withoutJavaScript).toEqual([]);
+            expect(Object.keys(unzipped)).toContain('idevices/three-d-viewer/three-d-viewer-runtime.js');
+            expect(Object.keys(unzipped)).toContain('idevices/three-sixty-viewer/three-sixty-viewer.js');
+
+            expect(formatUnloadFindings(scanPackageForUnloadHandlers(unzipped))).toBe('');
+        });
+
+        it('the scanner would catch a handler if one were reintroduced', async () => {
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const resources = new FileSystemResourceProvider(publicDir);
+            const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
+            const zip = new FflateZipProvider();
+
+            const result = await new Scorm12Exporter(document, resources, assets, zip).export();
+            const unzipped = fflateUnzipSync(result.data!);
+            unzipped['libs/regression-probe.js'] = new TextEncoder().encode(
+                "$(window).on('unload.probe beforeunload.probe', function () {});",
+            );
+
+            const findings = scanPackageForUnloadHandlers(unzipped);
+
+            expect(findings).toHaveLength(1);
+            expect(findings[0].file).toBe('libs/regression-probe.js');
         });
     });
 

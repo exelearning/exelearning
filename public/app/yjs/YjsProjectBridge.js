@@ -1,3 +1,39 @@
+
+const blockIconRuntime = window.eXeBlockIconRuntime
+  || (typeof require === 'function' ? require('../common/blockIconRuntime.js') : null);
+
+function normalizeBlockIcon(icon, iconName = '') {
+  // A structured icon descriptor wins (it may carry extra fields), but a theme icon name
+  // a style has since renamed still has to be mapped: _syncBlockIcon() and
+  // _applyBlockUpdate() look this value up in getThemeIcons(), and the raw old name misses.
+  if (icon && typeof icon === 'object' && icon.source) {
+    if (icon.source !== 'theme') return icon;
+    // `icon.value || ''` on both sides: a descriptor that omits `value` normalises to '',
+    // and comparing the mapped '' against an absent one would rewrite it for no reason.
+    const stored = icon.value || '';
+    const value = blockIconRuntime.resolveRenamedThemeIcon(stored);
+    if (value === stored) return icon;
+    return { ...icon, value, name: value };
+  }
+  // Otherwise derive from the legacy iconName via the shared derivation
+  // (JS twin of src/shared/block-icon.ts).
+  return blockIconRuntime.deriveBlockIcon(iconName);
+}
+
+function resolveAppAssetUrl(path) {
+  return blockIconRuntime.resolveAppAssetUrl(path, {
+    app: window.eXeLearning?.app,
+    config: window.eXeLearning?.config,
+  });
+}
+
+function renderMaterialMaskIcon(iconName) {
+  return blockIconRuntime.renderMaterialMaskIcon(iconName, {
+    app: window.eXeLearning?.app,
+    config: window.eXeLearning?.config,
+  });
+}
+
 /**
  * YjsProjectBridge
  * Bridges the legacy projectManager with the new Yjs-based system.
@@ -11,6 +47,63 @@
  *   // Now all save operations go through Yjs
  *   bridge.enableAutoSync();
  */
+
+const REMOTE_COMPONENT_CONTENT_KEYS = ['htmlContent', 'htmlView', 'jsonProperties'];
+const REMOTE_COMPONENT_LOCK_KEYS = ['lockedBy', 'lockUserName', 'lockUserColor'];
+
+/**
+ * Read the current HTML payload from a Yjs component map.
+ * Prefers htmlContent (Y.Text) and falls back to htmlView (import string).
+ *
+ * @param {Y.Map} compMap
+ * @returns {string}
+ */
+function readComponentHtml(compMap) {
+  const htmlContent = compMap.get('htmlContent');
+  const fromYText = htmlContent?.toString?.() || '';
+  if (fromYText) {
+    return fromYText;
+  }
+  const htmlView = compMap.get('htmlView');
+  return typeof htmlView === 'string' ? htmlView : '';
+}
+
+/**
+ * Build the payload sent to updateRemoteComponent.
+ *
+ * Lock-only Y.Map updates (lockedBy / lockUserName / lockUserColor) must not
+ * include htmlContent or jsonProperties. Those fields being present is treated
+ * as a content update and would re-render — and an empty htmlContent would
+ * wipe the last saved remote view.
+ *
+ * @param {Y.Map} compMap
+ * @param {string[]|null} changedKeys - keys that changed; omit or pass null to include content
+ * @returns {Object}
+ */
+function buildRemoteComponentUpdate(compMap, changedKeys = null) {
+  const data = {
+    id: compMap.get('id'),
+    ideviceType: compMap.get('ideviceType') || compMap.get('type'),
+    lockedBy: compMap.get('lockedBy'),
+    lockUserName: compMap.get('lockUserName'),
+    lockUserColor: compMap.get('lockUserColor'),
+  };
+
+  const keys = changedKeys ? new Set(changedKeys) : null;
+  const htmlChanged = !keys || keys.has('htmlContent') || keys.has('htmlView');
+  const jsonChanged = !keys || keys.has('jsonProperties');
+
+  if (htmlChanged) {
+    data.htmlContent = readComponentHtml(compMap);
+  }
+
+  if (jsonChanged) {
+    data.jsonProperties = compMap.get('jsonProperties');
+  }
+
+  return data;
+}
+
 class YjsProjectBridge {
   /**
    * @param {Object} app - The eXeLearning app instance
@@ -372,6 +465,33 @@ class YjsProjectBridge {
         this.app.resourceFetcher = this.resourceFetcher;
       }
       Logger.log('[YjsProjectBridge] ResourceFetcher initialized with bundle support');
+    }
+
+    // Preload the single Material icon sprite into the shared block-icon runtime
+    // so applied block icons render as self-contained data: URIs. The loose
+    // per-icon SVG files were removed in favour of this one sprite.
+    try {
+      if (
+        blockIconRuntime
+        && typeof blockIconRuntime.loadMaterialSprite === 'function'
+        && !blockIconRuntime.isMaterialSpriteLoaded?.()
+      ) {
+        let spriteText = null;
+        if (this.resourceFetcher?.fetchLibraryFile) {
+          const spriteBlob = await this.resourceFetcher.fetchLibraryFile('material-icons/material-icons.svg');
+          if (spriteBlob) spriteText = await spriteBlob.text();
+        }
+        if (!spriteText) {
+          const spriteResp = await fetch(resolveAppAssetUrl('/libs/material-icons/material-icons.svg'));
+          if (spriteResp.ok) spriteText = await spriteResp.text();
+        }
+        if (spriteText) {
+          const iconCount = blockIconRuntime.loadMaterialSprite(spriteText, { root: document });
+          Logger.log(`[YjsProjectBridge] Material icon sprite loaded (${iconCount} icons)`);
+        }
+      }
+    } catch (e) {
+      console.warn('[YjsProjectBridge] Failed to preload Material icon sprite:', e?.message || e);
     }
 
     // Create AssetWebSocketHandler for peer-to-peer asset synchronization
@@ -947,15 +1067,7 @@ class YjsProjectBridge {
             const compMap = components.get(compIndex);
             if (!compMap) continue;
 
-            const componentData = {
-              id: compMap.get('id'),
-              ideviceType: compMap.get('ideviceType'),
-              htmlContent: compMap.get('htmlContent')?.toString?.() || '',
-              jsonProperties: compMap.get('jsonProperties'),
-              lockedBy: compMap.get('lockedBy'),
-              lockUserName: compMap.get('lockUserName'),
-              lockUserColor: compMap.get('lockUserColor'),
-            };
+            const componentData = buildRemoteComponentUpdate(compMap, changedKeys);
 
             Logger.log('[YjsProjectBridge] Remote component updated:', componentData.id, 'changed keys:', changedKeys);
 
@@ -988,15 +1100,7 @@ class YjsProjectBridge {
           const compMap = components.get(compIndex);
           if (!compMap) continue;
 
-          const componentData = {
-            id: compMap.get('id'),
-            ideviceType: compMap.get('ideviceType'),
-            htmlContent: compMap.get('htmlContent')?.toString?.() || '',
-            jsonProperties: compMap.get('jsonProperties'),
-            lockedBy: compMap.get('lockedBy'),
-            lockUserName: compMap.get('lockUserName'),
-            lockUserColor: compMap.get('lockUserColor'),
-          };
+          const componentData = buildRemoteComponentUpdate(compMap, ['htmlContent']);
 
           Logger.log('[YjsProjectBridge] Remote component content updated (Y.Text):', componentData.id);
 
@@ -1010,7 +1114,7 @@ class YjsProjectBridge {
             path.length >= 3 && path[1] === 'blocks' && typeof path[2] === 'number' && path.length === 3) {
 
           const changedKeys = Array.from(event.changes.keys.keys());
-          const relevantKeys = ['blockName', 'iconName', 'properties'];
+          const relevantKeys = ['blockName', 'iconName', 'icon', 'properties'];
 
           if (changedKeys.some(key => relevantKeys.includes(key))) {
             const pageIndex = path[0];
@@ -1032,6 +1136,7 @@ class YjsProjectBridge {
               blockId: blockMap.get('blockId'),
               blockName: blockMap.get('blockName'),
               iconName: blockMap.get('iconName'),
+              icon: normalizeBlockIcon(blockMap.get('icon'), blockMap.get('iconName')),
             };
 
             // Get properties if present
@@ -1430,9 +1535,18 @@ class YjsProjectBridge {
         this._syncBlockTitle(blockNode.blockNameElementText, blockData.blockName, blockNode);
       }
 
-      // Update icon if changed
-      if (blockData.iconName !== undefined && blockNode.iconName !== blockData.iconName) {
-        blockNode.iconName = blockData.iconName;
+      // Update icon if changed. Both sides go through normalizeBlockIcon() first: the
+      // descriptors are what the block actually renders, and a renamed name arrives raw
+      // (`objetives`) while the node already holds the mapped one (`objectives`). Comparing
+      // the raw `blockData.iconName` against the normalised `blockNode.iconName` reported a
+      // change on every remote update of such a block, re-running makeIconNameElement()
+      // without end until someone re-saved it.
+      const nextIcon = normalizeBlockIcon(blockData.icon, blockData.iconName);
+      const currentIcon = normalizeBlockIcon(blockNode.icon, blockNode.iconName);
+      const iconChanged = currentIcon.source !== nextIcon.source || currentIcon.value !== nextIcon.value;
+      if (iconChanged) {
+        blockNode.icon = nextIcon;
+        blockNode.iconName = nextIcon.source === 'material' ? `mi-${nextIcon.value}` : (nextIcon.value || '');
         blockNode.makeIconNameElement();
       }
 
@@ -2006,11 +2120,11 @@ class YjsProjectBridge {
             }
 
             // Sync icon - update both DOM and blockNode state
-            const iconName = blockMap.get('iconName');
+            const icon = normalizeBlockIcon(blockMap.get('icon'), blockMap.get('iconName'));
 
             // Update DOM directly using _syncBlockIcon (handles icon.id vs key mismatch)
             if (iconEl) {
-              this._syncBlockIcon(iconEl, iconName, blockId);
+              this._syncBlockIcon(iconEl, icon, blockId);
             }
 
             // Also update blockNode instance properties so internal state matches Yjs
@@ -2024,9 +2138,11 @@ class YjsProjectBridge {
               }
 
               // Update blockNode.iconName to match Yjs
-              if (iconName !== undefined && blockNode.iconName !== iconName) {
-                blockNode.iconName = iconName;
-                Logger.log(`[YjsProjectBridge] Synced blockNode.iconName: ${blockId} -> '${iconName}'`);
+              const normalizedIconName = icon.source === 'material' ? `mi-${icon.value}` : (icon.value || '');
+              if (normalizedIconName !== undefined && blockNode.iconName !== normalizedIconName) {
+                blockNode.icon = icon;
+                blockNode.iconName = normalizedIconName;
+                Logger.log(`[YjsProjectBridge] Synced blockNode.iconName: ${blockId} -> '${normalizedIconName}'`);
               }
 
               // Update blockNode.iconElement reference if needed
@@ -2081,14 +2197,15 @@ class YjsProjectBridge {
    * @param {string} iconName - The icon name/id from Yjs
    * @param {string} blockId - The block ID for logging
    */
-  _syncBlockIcon(iconEl, iconName, blockId) {
+  _syncBlockIcon(iconEl, iconData, blockId) {
     const imgEl = iconEl.querySelector('img');
     const currentIconSrc = imgEl?.getAttribute('src') || '';
 
     // Get theme icons to find the icon URL
+    const icon = normalizeBlockIcon(iconData, typeof iconData === 'string' ? iconData : '');
     const themeIcons = window.eXeLearning?.app?.themes?.getThemeIcons?.() || {};
 
-    if (!iconName || iconName === '') {
+    if (!icon.value || icon.source === 'none') {
       // No icon - check if we need to clear it
       // Only clear if there's currently an img (not already showing empty SVG)
       if (imgEl || !iconEl.classList.contains('exe-no-icon')) {
@@ -2100,30 +2217,39 @@ class YjsProjectBridge {
         Logger.log(`[YjsProjectBridge] Synced block icon to empty: ${blockId}`);
       }
     } else {
-      // Has icon - find it in theme icons
-      // First try direct lookup (iconName is the key in themeIcons)
-      let iconData = themeIcons[iconName];
+      if (icon.source === 'material') {
+        iconEl.innerHTML = renderMaterialMaskIcon(icon.value);
+        iconEl.classList.remove('exe-no-icon');
+        iconEl.style.removeProperty('color');
+        return;
+      }
 
-      // If not found, search by icon.id or icon.value
-      if (!iconData) {
-        for (const [, icon] of Object.entries(themeIcons)) {
-          if (icon.id === iconName || icon.value === iconName) {
-            iconData = icon;
+      if (icon.source === 'asset') {
+        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        const resolvedAssetUrl = assetManager?.resolveAssetURLSync?.(icon.value) || icon.value;
+        iconEl.innerHTML = `<img src="${resolvedAssetUrl}" alt="${icon.value}">`;
+        iconEl.classList.remove('exe-no-icon');
+        return;
+      }
+
+      let themeIcon = themeIcons[icon.value];
+      if (!themeIcon) {
+        for (const [, candidate] of Object.entries(themeIcons)) {
+          if (candidate.id === icon.value || candidate.value === icon.value) {
+            themeIcon = candidate;
             break;
           }
         }
       }
 
-      if (iconData && iconData.value) {
-        // Always set the icon if we have valid icon data
-        // Check if we actually need to change (avoid unnecessary DOM updates)
-        if (currentIconSrc !== iconData.value || iconEl.classList.contains('exe-no-icon')) {
-          iconEl.innerHTML = `<img src="${iconData.value}" alt="${iconData.title || iconName}">`;
+      if (themeIcon && themeIcon.value) {
+        if (currentIconSrc !== themeIcon.value || iconEl.classList.contains('exe-no-icon')) {
+          iconEl.innerHTML = `<img src="${themeIcon.value}" alt="${themeIcon.title || icon.value}">`;
           iconEl.classList.remove('exe-no-icon');
-          Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${iconName}`);
+          Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${icon.value}`);
         }
       } else {
-        Logger.log(`[YjsProjectBridge] Icon data not found for: ${iconName}`);
+        Logger.log(`[YjsProjectBridge] Icon data not found for: ${icon.value}`);
       }
     }
   }
@@ -3797,8 +3923,9 @@ class YjsProjectBridge {
     // Every import funnels through here — the online menu goes via
     // projectManager.importFromElpxViaYjs, but the static build and the
     // embedding bridge call this method directly — so this is the only place
-    // that reports references the package could not satisfy (#2223).
-    window.eXeLearning?.app?.project?.showMissingAssetsNotice?.(stats);
+    // that reports what the import could not fully restore: unsatisfied asset
+    // references (#2223) and activities with damaged saved data (#2190).
+    window.eXeLearning?.app?.project?.showImportNotices?.(stats);
 
     return stats;
   }
@@ -4727,6 +4854,11 @@ class YjsProjectBridge {
     Logger.log('[YjsProjectBridge] Metadata cleared for new project');
   }
 }
+
+YjsProjectBridge.buildRemoteComponentUpdate = buildRemoteComponentUpdate;
+YjsProjectBridge.readComponentHtml = readComponentHtml;
+YjsProjectBridge.REMOTE_COMPONENT_CONTENT_KEYS = REMOTE_COMPONENT_CONTENT_KEYS;
+YjsProjectBridge.REMOTE_COMPONENT_LOCK_KEYS = REMOTE_COMPONENT_LOCK_KEYS;
 
 // Export for use
 if (typeof module !== 'undefined' && module.exports) {

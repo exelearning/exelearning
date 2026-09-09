@@ -260,6 +260,7 @@ var $exeDevice = {
     },
 
     clickPlay: function () {
+        if (!$exeDevice) return;
         const ulrvideo = $('#seleccionaEURLYoutube');
         if (
             !ulrvideo ||
@@ -364,6 +365,7 @@ var $exeDevice = {
     },
 
     youTubeReady: function () {
+        if (!$exeDevice) return;
         $exeDevice.player = new YT.Player('seleccionaEVideo', {
             width: '100%',
             height: '100%',
@@ -395,7 +397,7 @@ var $exeDevice = {
     },
 
     onPlayerReady: function () {
-        if ($exeDevice.isVideoType) {
+        if ($exeDevice?.isVideoType) {
             $exeDevice.showVideoQuestion();
         }
     },
@@ -727,7 +729,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
         $exeDevice.playerAudio.addEventListener('canplaythrough', function () {
-            $exeDevice.playerAudio.play();
+            $exeDevice?.playerAudio.play();
         });
     },
 
@@ -1046,6 +1048,7 @@ var $exeDevice = {
         $image
             .prop('src', url)
             .on('load', function () {
+                if (!$exeDevice) return false;
                 if (
                     !this.complete ||
                     typeof this.naturalWidth == 'undefined' ||
@@ -1070,7 +1073,7 @@ var $exeDevice = {
             })
             .on('error', function () {
                 if (type == 1) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                    $exeDevice?.showMessage($exeDevice.msgs.msgEURLValid);
                 }
                 return false;
             });
@@ -1723,7 +1726,7 @@ var $exeDevice = {
             statusbar: false,
             setup: function (ed) {
                 ed.on('init', function () {
-                    $exeDevice.enableForm();
+                    $exeDevice?.enableForm();
                 });
             },
         });
@@ -2612,6 +2615,7 @@ var $exeDevice = {
             .add($seleccionaEEndVideo)
             .add($seleccionaESilenceVideo)
             .on('focusout', function () {
+                if (!$exeDevice) return;
                 if (!$exeDevice.validTime(this.value)) {
                     $(this).css({
                         'background-color': 'red',
@@ -2636,65 +2640,66 @@ var $exeDevice = {
 
         $('.SLCNE-EPanel').on('click', 'input.SLCNE-Type', function () {
             const type = parseInt($(this).val(), 10);
-            $exeDevice.changeTypeQuestion(type);
+            $exeDevice?.changeTypeQuestion(type);
         });
 
         $('.SLCNE-EPanel').on('click', 'input.SLCNE-TypeSelect', function () {
             const type = parseInt($(this).val(), 10);
-            $exeDevice.showTypeQuestion(type);
+            $exeDevice?.showTypeQuestion(type);
         });
 
         $('.SLCNE-EPanel').on('click', 'input.SLCNE-Number', function () {
             const number = parseInt($(this).val(), 10);
-            $exeDevice.showOptions(number);
+            $exeDevice?.showOptions(number);
         });
 
         $('#seleccionaEAdd').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.addQuestion();
+            $exeDevice?.addQuestion();
         });
 
         $('#seleccionaEFirst').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.firstQuestion();
+            $exeDevice?.firstQuestion();
         });
 
         $('#seleccionaEPrevious').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.previousQuestion();
+            $exeDevice?.previousQuestion();
         });
 
         $('#seleccionaENext').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.nextQuestion();
+            $exeDevice?.nextQuestion();
         });
 
         $('#seleccionaELast').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.lastQuestion();
+            $exeDevice?.lastQuestion();
         });
 
         $('#seleccionaEDelete').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.removeQuestion();
+            $exeDevice?.removeQuestion();
         });
 
         $('#seleccionaECopy').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.copyQuestion();
+            $exeDevice?.copyQuestion();
         });
 
         $('#seleccionaECut').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.cutQuestion();
+            $exeDevice?.cutQuestion();
         });
 
         $('#seleccionaEPaste').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.pasteQuestion();
+            $exeDevice?.pasteQuestion();
         });
 
         $('#seleccionaGlobalTimeButton').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             const selectedTime = parseInt(
                 $('#seleccionaEGlobalTimes').val(),
@@ -2710,13 +2715,13 @@ var $exeDevice = {
 
         $('#seleccionaEPlayVideo').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.playVideoQuestion();
+            $exeDevice?.playVideoQuestion();
         });
 
         $('#seleccionaECheckSoundVideo, #seleccionaECheckImageVideo').on(
             'change',
             () => {
-                $exeDevice.playVideoQuestion();
+                $exeDevice?.playVideoQuestion();
             }
         );
 
@@ -2759,6 +2764,7 @@ var $exeDevice = {
             });
 
         $('#seleccionaEScoreQuestion').on('focusout', function () {
+            if (!$exeDevice) return;
             if (!$exeDevice.validateScoreQuestion($(this).val())) {
                 $(this).val(1);
             }
@@ -2786,6 +2792,7 @@ var $exeDevice = {
             $('#eXeGameImportGame')
                 .attr('accept', '.txt, .xml')
                 .on('change', function (e) {
+                    if (!$exeDevice) return;
                     const file = e.target.files[0];
                     if (!file) {
                         $exeDevice.showMessage(
@@ -2809,18 +2816,19 @@ var $exeDevice = {
                     }
                     const reader = new FileReader();
                     reader.onload = function (e) {
-                        $exeDevice.importGame(e.target.result, file.type);
+                        $exeDevice?.importGame(e.target.result, file.type);
                     };
                     reader.readAsText(file);
                 });
             $('#eXeGameExportQuestions').on('click', () => {
-                $exeDevice.exportQuestions();
+                $exeDevice?.exportQuestions();
             });
         } else {
             $('#eXeGameExportImport').hide();
         }
 
         $seleccionaEInitVideo.css('color', '#2c6d2c').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVideoFocus = 0;
             $seleccionaEInitVideo.css('color', '#2c6d2c');
@@ -2830,6 +2838,7 @@ var $exeDevice = {
         });
 
         $seleccionaEEndVideo.on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVideoFocus = 1;
             $seleccionaEEndVideo.css('color', '#2c6d2c');
@@ -2839,6 +2848,7 @@ var $exeDevice = {
         });
 
         $seleccionaESilenceVideo.on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVideoFocus = 2;
             $seleccionaESilenceVideo.css('color', '#2c6d2c');
@@ -2848,6 +2858,7 @@ var $exeDevice = {
         });
 
         $('#seleccionaEVideoTime').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             let $timeV;
             switch ($exeDevice.timeVideoFocus) {
@@ -2872,6 +2883,7 @@ var $exeDevice = {
         $('#seleccionaEVIStart')
             .css('color', '#2c6d2c')
             .on('click', (e) => {
+                if (!$exeDevice) return;
                 e.preventDefault();
                 $exeDevice.timeVIFocus = true;
                 $('#seleccionaEVIStart').css('color', '#2c6d2c');
@@ -2879,6 +2891,7 @@ var $exeDevice = {
             });
 
         $('#seleccionaEVIEnd').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             $exeDevice.timeVIFocus = false;
             $('#seleccionaEVIEnd').css('color', '#2c6d2c');
@@ -2886,6 +2899,7 @@ var $exeDevice = {
         });
 
         $('#seleccionaEVITime').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             const $timeV = $exeDevice.timeVIFocus
                 ? $('#seleccionaEVIStart')
@@ -2901,7 +2915,7 @@ var $exeDevice = {
         $('.SLCNE-ESolution').on('change', function () {
             const marcado = $(this).is(':checked'),
                 value = $(this).val();
-            $exeDevice.clickSolution(marcado, value);
+            $exeDevice?.clickSolution(marcado, value);
         });
 
         $('#seleccionaECustomScore').on('change', function () {
@@ -2912,6 +2926,7 @@ var $exeDevice = {
         });
 
         $('#seleccionaEURLImage').on('change', function () {
+            if (!$exeDevice) return;
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
@@ -2929,6 +2944,7 @@ var $exeDevice = {
         });
 
         $('#seleccionaEPlayImage').on('click', (e) => {
+            if (!$exeDevice) return;
             e.preventDefault();
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $('#seleccionaEURLImage').val(),
@@ -2947,17 +2963,17 @@ var $exeDevice = {
         });
 
         $('#seleccionaEImage').on('click', function (e) {
-            $exeDevice.clickImage(this, e.pageX, e.pageY);
+            $exeDevice?.clickImage(this, e.pageX, e.pageY);
         });
 
         $('#seleccionaEVideoIntroPlay').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.playVideoIntro1();
+            $exeDevice?.playVideoIntro1();
         });
 
         $('#seleccionaEVIPlayI').on('click', (e) => {
             e.preventDefault();
-            $exeDevice.playVideoIntro2();
+            $exeDevice?.playVideoIntro2();
         });
 
         $('#seleccionaEVIClose').on('click', (e) => {
@@ -2965,7 +2981,7 @@ var $exeDevice = {
             $('#seleccionaEVideoIntro').val($('#seleccionaEVIURL').val());
             $('#seleccionaEVIDiv').hide();
             $('#seleccionaENumQuestionDiv').show();
-            $exeDevice.stopVideoIntro();
+            $exeDevice?.stopVideoIntro();
         });
 
         $('#seleccionaECursor').on('click', () => {
@@ -2984,7 +3000,7 @@ var $exeDevice = {
         $('#seleccionaEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
-                $exeDevice.showMessage(
+                $exeDevice?.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
@@ -3005,7 +3021,7 @@ var $exeDevice = {
                 const gm = parseInt($(this).val(), 10),
                     fb = $('#seleccionaEHasFeedBack').is(':checked'),
                     ul = $seleccionaEUseLives.is(':checked');
-                $exeDevice.updateGameMode(gm, fb, ul);
+                $exeDevice?.updateGameMode(gm, fb, ul);
             }
         );
 
@@ -3013,7 +3029,7 @@ var $exeDevice = {
             const type = parseInt($(this).val(), 10),
                 messages = $('#seleccionaECustomMessages').is(':checked'),
                 customS = $('#seleccionaECustomScore').is(':checked');
-            $exeDevice.showSelectOrder(type, messages, customS);
+            $exeDevice?.showSelectOrder(type, messages, customS);
         });
 
         $('#seleccionaECustomMessages').on('change', function () {
@@ -3023,7 +3039,7 @@ var $exeDevice = {
                     10
                 ),
                 customS = $('#seleccionaECustomScore').is(':checked');
-            $exeDevice.showSelectOrder(type, messages, customS);
+            $exeDevice?.showSelectOrder(type, messages, customS);
         });
 
         $('#seleccionaEGameModeHelpLnk').on('click', function () {
@@ -3041,20 +3057,21 @@ var $exeDevice = {
                 let v = this.value.replace(/\D/g, '').substring(0, 3);
                 this.value = v;
                 if (this.value > 0 && this.value <= 100) {
-                    $exeDevice.updateQuestionsNumber();
+                    $exeDevice?.updateQuestionsNumber();
                 }
             })
             .on('click', function () {
-                $exeDevice.updateQuestionsNumber();
+                $exeDevice?.updateQuestionsNumber();
             })
             .on('focusout', function () {
                 let val = parseInt(this.value.trim() || 100, 10);
                 val = Math.max(1, Math.min(val, 100));
                 this.value = val;
-                $exeDevice.updateQuestionsNumber();
+                $exeDevice?.updateQuestionsNumber();
             });
 
         $seleccionaENumberQuestion.on('keyup', function (e) {
+            if (!$exeDevice) return;
             if (e.keyCode === 13) {
                 const num = parseInt($(this).val(), 10);
                 if (!isNaN(num) && num > 0) {

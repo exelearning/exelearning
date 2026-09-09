@@ -92,7 +92,33 @@ window.$exeExport = {
     initExe: function () {
         window.eXe.app.init();
     },
-    
+
+    // Set one query param on an href (null removes it), keeping the rest and the fragment.
+    setUrlParam : function (href, name, value) {
+        if (!href || !name) return href;
+        // A query would turn a fragment-only jump into a page load.
+        if (href.charAt(0) === '#') return href;
+        var hash = '';
+        var i = href.indexOf('#');
+        if (i !== -1) {
+            hash = href.slice(i);
+            href = href.slice(0, i);
+        }
+        var query = '';
+        i = href.indexOf('?');
+        if (i !== -1) {
+            query = href.slice(i + 1);
+            href = href.slice(0, i);
+        }
+        var parts = query ? query.split('&') : [];
+        var kept = [];
+        for (i = 0; i < parts.length; i++) {
+            if (parts[i] && parts[i].split('=')[0] !== name) kept.push(parts[i]);
+        }
+        if (value !== null && value !== undefined) kept.push(name + '=' + value);
+        return href + (kept.length ? '?' + kept.join('&') : '') + hash;
+    },
+
     /**
      * Teacher Mode
      *
@@ -151,12 +177,10 @@ window.$exeExport = {
         withTeacherParams : function(href){
             if (!href || !this._navParams) return href;
             if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
-            if (href.indexOf('exe-teacher') !== -1) return href;
-            var hashIdx = href.indexOf('#');
-            var hash = hashIdx >= 0 ? href.slice(hashIdx) : '';
-            var base = hashIdx >= 0 ? href.slice(0, hashIdx) : href;
-            var sep = base.indexOf('?') !== -1 ? '&' : '?';
-            return base + sep + this._navParams + hash;
+            var eq = this._navParams.indexOf('=');
+            var name = eq === -1 ? this._navParams : this._navParams.slice(0, eq);
+            var value = eq === -1 ? '' : this._navParams.slice(eq + 1);
+            return $exeExport.setUrlParam(href, name, value);
         },
         /** Rewrite the menu and prev/next links so navigation keeps the teacher view. */
         propagateNavParams : function(){
@@ -271,8 +295,32 @@ window.$exeExport = {
                     }
                 }
             })
-            window.loadPage()
-            window.addEventListener('unload', () => window.unloadPage(isSCORM));
+            if (window.exeScorm12 && typeof window.exeScorm12.setPageHasScoredActivities === 'function') {
+                // Scan before loadPage() so applyEntryPolicy() sees whether
+                // scored iDevices exist (a presentation iDevice may already
+                // have registered on jQuery ready). The runtime owns
+                // end-of-session handling; no unload handler is registered.
+                window.exeScorm12.setPageHasScoredActivities(isSCORM);
+                window.loadPage();
+            } else {
+                window.loadPage();
+                // Legacy runtime (SCORM 2004 packages and packages exported
+                // before the SCORM 1.2 runtime rewrite). `pagehide` rather
+                // than `unload`: this file also ships inside SCORM 1.2
+                // packages, where an unload-family listener anywhere on the
+                // page would disable the back/forward cache the SCORM 1.2
+                // runtime depends on. `pagehide` fires immediately before
+                // `unload`, and the legacy unloadPage() is guarded to run only
+                // once, so the end-of-session behaviour is unchanged.
+                //
+                // `event.persisted === true` means the page is being frozen
+                // into the back/forward cache and may come back: ending the
+                // LMS session then would be wrong, so the bridge stands down.
+                window.addEventListener('pagehide', (event) => {
+                    if (event && event.persisted) return;
+                    window.unloadPage(isSCORM);
+                });
+            }
         }
     },
 
@@ -740,11 +788,13 @@ $exeExport.searchBar = {
             spans.remove();
         }
         $("#exe-client-search-results-list a").on("click", function(){
+            // Hits come from the search index, so they inherit no params.
+            var href = $exeExport.teacherMode.withTeacherParams(this.getAttribute('href'));
             if (!$("#siteNav").is(":visible")) {
-                // Use & if URL already has parameters, otherwise use ?
-                var separator = this.href.indexOf('?') !== -1 ? '&' : '?';
-                this.href += separator + 'nav=false';
+                // Deep links: the param goes before the fragment.
+                href = $exeExport.setUrlParam(href, 'nav', 'false');
             }
+            this.setAttribute('href', href);
             // Close search box and restore page content
             $("main > header, main div.page-content").show();
             $("#exe-client-search-reset").removeClass("visible");
@@ -821,21 +871,7 @@ $exeExport.searchBar = {
     // Add search parameter to a link
     addSearchParam : function(lnk) {
         if (!this.query) return lnk;
-        var searchParam = encodeURIComponent(this.query);
-        // Handle hash
-        var hashIndex = lnk.indexOf('#');
-        var hash = '';
-        if (hashIndex !== -1) {
-            hash = lnk.substring(hashIndex);
-            lnk = lnk.substring(0, hashIndex);
-        }
-        // Add parameter
-        if (lnk.indexOf('?') !== -1) {
-            lnk += '&q=' + searchParam;
-        } else {
-            lnk += '?q=' + searchParam;
-        }
-        return lnk + hash;
+        return $exeExport.setUrlParam(lnk, 'q', encodeURIComponent(this.query));
     },
 
     // Check URL for search parameter and highlight matches

@@ -13,6 +13,7 @@
 
 import { BaseLegacyHandler } from './BaseLegacyHandler';
 import type { IdeviceHandlerContext, FeedbackResult } from './IdeviceHandler';
+import { getTrueFalseMessages } from './trueFalseMessages';
 
 /**
  * Question structure for true/false game format
@@ -22,47 +23,6 @@ interface TrueFalseQuestionGame {
     feedback: string;
     suggestion: string;
     solution: number; // 1 for true, 0 for false
-}
-
-/**
- * Default messages for the true/false game
- */
-interface TrueFalseMessages {
-    msgStartGame: string;
-    msgTime: string;
-    msgNoImage: string;
-    msgScoreScorm: string;
-    msgEndGameScore: string;
-    msgOnlySaveScore: string;
-    msgOnlySave: string;
-    msgYouScore: string;
-    msgAuthor: string;
-    msgOnlySaveAuto: string;
-    msgSaveAuto: string;
-    msgSeveralScore: string;
-    msgYouLastScore: string;
-    msgActityComply: string;
-    msgPlaySeveralTimes: string;
-    msgUncompletedActivity: string;
-    msgSuccessfulActivity: string;
-    msgUnsuccessfulActivity: string;
-    msgTypeGame: string;
-    msgFeedback: string;
-    msgSuggestion: string;
-    msgSolution: string;
-    msgQuestion: string;
-    msgTrue: string;
-    msgFalse: string;
-    msgOk: string;
-    msgKO: string;
-    msgShow: string;
-    msgHide: string;
-    msgCheck: string;
-    msgReboot: string;
-    msgScore: string;
-    msgWeight: string;
-    msgNext: string;
-    msgPrevious: string;
 }
 
 export class TrueFalseHandler extends BaseLegacyHandler {
@@ -82,55 +42,19 @@ export class TrueFalseHandler extends BaseLegacyHandler {
     }
 
     /**
-     * Get default messages for the game
-     * These match the messages used by edition/trueorfalse.js
-     */
-    private getDefaultMessages(): TrueFalseMessages {
-        return {
-            msgStartGame: 'Click here to start',
-            msgTime: 'Time per question',
-            msgNoImage: 'No picture question',
-            msgScoreScorm: "The score can't be saved because this page is not part of a SCORM package.",
-            msgEndGameScore: 'Please start the game before saving your score.',
-            msgOnlySaveScore: 'You can only save the score once!',
-            msgOnlySave: 'You can only save once',
-            msgYouScore: 'Your score',
-            msgAuthor: 'Authorship',
-            msgOnlySaveAuto: 'Your score will be saved after each question. You can only play once.',
-            msgSaveAuto: 'Your score will be automatically saved after each question.',
-            msgSeveralScore: 'You can save the score as many times as you want',
-            msgYouLastScore: 'The last score saved is',
-            msgActityComply: 'You have already done this activity.',
-            msgPlaySeveralTimes: 'You can do this activity as many times as you want',
-            msgUncompletedActivity: 'Incomplete activity',
-            msgSuccessfulActivity: 'Activity: Passed. Score: %s',
-            msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
-            msgTypeGame: 'True or false',
-            msgFeedback: 'Feedback',
-            msgSuggestion: 'Suggestion',
-            msgSolution: 'Solution',
-            msgQuestion: 'Question',
-            msgTrue: 'True',
-            msgFalse: 'False',
-            msgOk: 'Correct',
-            msgKO: 'Incorrect',
-            msgShow: 'Show',
-            msgHide: 'Hide',
-            msgCheck: 'Check',
-            msgReboot: 'Try again!',
-            msgScore: 'Score',
-            msgWeight: 'Weight',
-            msgNext: 'Next',
-            msgPrevious: 'Previous',
-        };
-    }
-
-    /**
      * Extract properties in the game-compatible format expected by the renderer.
      * This generates the full format with typeGame, questionsGame, msgs, etc.
      * to avoid the need for transformation at edit time.
+     *
+     * The legacy format does not store the interface texts, so they are supplied
+     * here in the package language — English only when that language has no
+     * catalogue (issue #2252).
+     *
+     * @param dict - Dictionary element of the TrueFalseIdevice
+     * @param ideviceId - Generated iDevice ID
+     * @param context - Context with the package language
      */
-    extractProperties(dict: Element, ideviceId?: string): Record<string, unknown> {
+    extractProperties(dict: Element, ideviceId?: string, context?: IdeviceHandlerContext): Record<string, unknown> {
         const questionsGame = this.extractQuestionsGame(dict);
         const instructions = this.extractHtmlView(dict);
 
@@ -140,7 +64,7 @@ export class TrueFalseHandler extends BaseLegacyHandler {
                 typeGame: 'TrueOrFalse',
                 eXeGameInstructions: instructions || '',
                 eXeIdeviceTextAfter: '',
-                msgs: this.getDefaultMessages(),
+                msgs: getTrueFalseMessages(context?.language),
                 questionsRandom: false,
                 percentageQuestions: 100,
                 isTest: false,

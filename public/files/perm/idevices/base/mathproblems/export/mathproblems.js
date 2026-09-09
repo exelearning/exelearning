@@ -905,13 +905,6 @@ var $eXeMathProblems = {
         });
 
         $('#mthpPNumber-' + instance).text(mOptions.numberQuestions);
-        $(window).on('unload', function () {
-            if (typeof $eXeMathProblems.mScorm != 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeMathProblems.mScorm
-                );
-            }
-        });
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);

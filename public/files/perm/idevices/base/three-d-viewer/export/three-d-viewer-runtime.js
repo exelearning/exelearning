@@ -9,7 +9,7 @@
  *   - <model-viewer> attribute application for GLB/GLTF
  *   - Asset source resolution (asset:// → blob via AssetManager, or
  *     content/resources/... for offline export)
- *   - Per-wrapper instance registry with cleanup on beforeunload
+ *   - Per-wrapper instance registry with cleanup on a non-persisted pagehide
  *   - Pure helpers: detectModelType, normalizeColor, normalizeModelSource,
  *     configureRendererColorManagement, disposeObject3D, disposeMaterial
  *
@@ -314,7 +314,7 @@
     }
 
     /**
-     * Tear down every instance. Called on `beforeunload`.
+     * Tear down every instance. Called when the page is really going away.
      */
     function destroyAll() {
         // Iterate a snapshot in reverse-insertion order; destroy() mutates
@@ -323,11 +323,28 @@
         wrappers.forEach((w) => destroy(w));
     }
 
-    function bindBeforeUnloadOnce() {
+    /**
+     * `pagehide` replaces the former `beforeunload` binding: an unload-family
+     * listener makes the page ineligible for the back/forward cache, and the
+     * viewer ships inside SCORM packages whose runtime relies on bfcache
+     * staying available.
+     *
+     * `event.persisted === true` means the page is being frozen into the
+     * back/forward cache and may be restored intact, so the WebGL contexts and
+     * object URLs must survive; only a real teardown disposes them.
+     */
+    function onPageHide(event) {
+        if (event && event.persisted) {
+            return;
+        }
+        destroyAll();
+    }
+
+    function bindPageHideOnce() {
         if (globalScope.__threedViewerCleanupBound) return;
         globalScope.__threedViewerCleanupBound = true;
         if (typeof globalScope.addEventListener === 'function') {
-            globalScope.addEventListener('beforeunload', destroyAll);
+            globalScope.addEventListener('pagehide', onPageHide);
         }
     }
 
@@ -387,7 +404,7 @@
         const cfg = options || readWrapperConfig(wrapper);
         const instance = buildInstanceShell(wrapper, cfg);
         REGISTRY.set(wrapper, instance);
-        bindBeforeUnloadOnce();
+        bindPageHideOnce();
         if (instance.type === 'stl' && instance.options.src) {
             bootSTL(instance).catch((err) => {
                 if (typeof console !== 'undefined' && console.error) {

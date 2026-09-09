@@ -9,6 +9,7 @@
 import { Elysia, t } from 'elysia';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs-extra';
+import * as path from 'path';
 
 import { db } from '../../../db/client';
 import { buildContentDisposition } from '../../../shared/http/headers';
@@ -23,8 +24,15 @@ import {
     updateAsset,
 } from '../../../db/queries';
 import type { Asset } from '../../../db/types';
-import { getProjectAssetsDir, fileExists, readFile, remove } from '../../../services/file-helper';
-import { isSafePathSegment, safeJoin, sanitizeFileExtension } from '../../../utils/safe-path';
+import {
+    resolveAssetStoragePath,
+    tryResolveAssetStoragePath,
+    fileExists,
+    readFile,
+    remove,
+} from '../../../services/file-helper';
+import { buildAssetStoragePath } from '../../../utils/asset-paths';
+import { isSafePathSegment, sanitizeFileExtension } from '../../../utils/safe-path';
 import { withDocument, setAssetMetadata, deleteAssetMetadata, type AssetMetadata } from '../../../yjs';
 import {
     authenticateRequest,
@@ -207,13 +215,13 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
                 return errorResponse('BAD_REQUEST', 'Invalid file format');
             }
 
-            // Store file: assets/{projectUuid}/{clientId}.{ext}
-            const baseStoragePath = getProjectAssetsDir(params.uuid);
-            await fs.ensureDir(baseStoragePath);
-
+            // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
+            // The database stores the FILES_DIR-relative path.
             const ext = sanitizeFileExtension(filename);
             const flatFilename = `${clientId}${ext}`;
-            const filePath = safeJoin(baseStoragePath, flatFilename);
+            const storagePath = buildAssetStoragePath(project!.uuid, flatFilename);
+            const filePath = resolveAssetStoragePath(storagePath);
+            await fs.ensureDir(path.dirname(filePath));
 
             // Write file
             if (typeof Bun !== 'undefined' && Bun.write) {
@@ -227,10 +235,19 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
 
             let asset: Asset;
             if (existingAsset) {
+                // A relocating update (row still pointing at a legacy or
+                // conflict-parked location) must not leave the superseded file
+                // behind as an untracked orphan.
+                if (existingAsset.storage_path && existingAsset.storage_path !== storagePath) {
+                    const oldPath = tryResolveAssetStoragePath(existingAsset.storage_path);
+                    if (oldPath && oldPath !== filePath) {
+                        await remove(oldPath).catch(() => {});
+                    }
+                }
                 // Update existing in DB
                 const updatedAsset = await updateAsset(db, existingAsset.id, {
                     filename: filename,
-                    storage_path: filePath,
+                    storage_path: storagePath,
                     mime_type: mimetype,
                     file_size: String(fileBuffer.length),
                     folder_path: folderPath,
@@ -241,7 +258,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
                 asset = await createAsset(db, {
                     project_id: project!.id,
                     filename: filename,
-                    storage_path: filePath,
+                    storage_path: storagePath,
                     mime_type: mimetype,
                     file_size: String(fileBuffer.length),
                     component_id: null,
@@ -308,13 +325,14 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             // Check if file exists
-            if (!(await fileExists(asset.storage_path))) {
+            const absPath = asset.storage_path ? tryResolveAssetStoragePath(asset.storage_path) : null;
+            if (!absPath || !(await fileExists(absPath))) {
                 set.status = 404;
                 return errorResponse('NOT_FOUND', 'Asset file not found on disk');
             }
 
             // Return file
-            const fileBuffer = await readFile(asset.storage_path);
+            const fileBuffer = await readFile(absPath);
             set.headers['content-type'] = asset.mime_type || 'application/octet-stream';
             set.headers['content-disposition'] = buildContentDisposition(asset.filename);
             return fileBuffer;
@@ -403,7 +421,10 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             // Delete file from disk
-            await remove(asset.storage_path).catch(() => {});
+            const absPath = asset.storage_path ? tryResolveAssetStoragePath(asset.storage_path) : null;
+            if (absPath) {
+                await remove(absPath).catch(() => {});
+            }
 
             // Delete database record
             await dbDeleteAsset(db, assetId);
@@ -455,7 +476,10 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
 
             // Delete files and database records
             for (const asset of assets) {
-                await remove(asset.storage_path).catch(() => {});
+                const absPath = asset.storage_path ? tryResolveAssetStoragePath(asset.storage_path) : null;
+                if (absPath) {
+                    await remove(absPath).catch(() => {});
+                }
                 await dbDeleteAsset(db, asset.id);
             }
 
