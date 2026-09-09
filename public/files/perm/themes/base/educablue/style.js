@@ -38,7 +38,7 @@ var myTheme = {
         // Add menu and search bar togglers
         togglers +=
             '\
-            <button type="button" id="siteNavToggler" class="toggler" title="' +
+            <button type="button" id="siteNavToggler" class="toggler" aria-expanded="true" aria-controls="siteNav" title="' +
             $exe_i18n.menu +
             '">\
                 <span>' +
@@ -50,6 +50,7 @@ var myTheme = {
         // Check the current NAV status
         if (new URLSearchParams(window.location.search).get('nav') === 'false') {
             $('body').addClass('siteNav-off');
+            myTheme.navExpanded(false);
             myTheme.params('add');
         }
         // Dark mode
@@ -73,6 +74,7 @@ var myTheme = {
                     $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
+            myTheme.navExpanded(!$('body').hasClass('siteNav-off'));
         });  
         // Allways close the menu in low resolution
         $("#siteNav a").on('click', function(event){
@@ -180,6 +182,9 @@ var myTheme = {
                 }
             });
         });
+    },
+    navExpanded: function (visible) {
+        $('#siteNavToggler').attr('aria-expanded', visible ? 'true' : 'false');
     },
     // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {

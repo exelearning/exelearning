@@ -843,8 +843,8 @@ body.siteNav-off button#siteNavToggler .sr-av {
 }
 
 /* Search bar */
-body.siteNav-off.exe-search-on button#searchBarTogger,
-body.exe-search-on button#searchBarTogger {
+body.siteNav-off.exe-search-on button#searchBarToggler,
+body.exe-search-on button#searchBarToggler {
     display: inline-block;
 }
 #exe-client-search-form p {
@@ -858,7 +858,7 @@ body.exe-search-on button#searchBarTogger {
     gap: 6px;
 }
 
-button#searchBarTogger {
+button#searchBarToggler {
     right: auto;
     left: 260px;
     top: 136px;
@@ -867,7 +867,7 @@ button#searchBarTogger {
     height: 48px;
     display: none;
 }
-body.siteNav-off button#searchBarTogger {
+body.siteNav-off button#searchBarToggler {
     top: 220px;
     left: 0px;
     padding-left: 50px;
@@ -1146,8 +1146,8 @@ body.siteNav-off button#searchBarTogger {
         right: 100px;
         height: 30px;
     }
-    body.siteNav-off button#searchBarTogger,
-    body button#searchBarTogger {
+    body.siteNav-off button#searchBarToggler,
+    body button#searchBarToggler {
         left: auto;
         right: 20px;
         top: 120px;
@@ -1233,8 +1233,8 @@ body.siteNav-off button#searchBarTogger {
         width: 32px;
         height: 32px;
     }
-    body.siteNav-off button#searchBarTogger,
-    body button#searchBarTogger {
+    body.siteNav-off button#searchBarToggler,
+    body button#searchBarToggler {
         height: 60px;
     }
 

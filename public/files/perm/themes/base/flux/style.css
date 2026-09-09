@@ -964,8 +964,8 @@ body.exe-teacher-mode-toggler.exe-web-site .page-counter {
 }
 
 /* Search bar */
-body.siteNav-off.exe-search-on:has(#exe-client-search) button#searchBarTogger,
-body.exe-search-on:has(#exe-client-search) button#searchBarTogger {
+body.siteNav-off.exe-search-on:has(#exe-client-search) button#searchBarToggler,
+body.exe-search-on:has(#exe-client-search) button#searchBarToggler {
     display: inline-block;
 }
 #exe-client-search-form p {
@@ -979,7 +979,7 @@ body.exe-search-on:has(#exe-client-search) button#searchBarTogger {
     gap: 6px;
 }
 
-button#searchBarTogger {
+button#searchBarToggler {
     right: auto;
     left: 260px;
     top: 136px;
@@ -988,7 +988,7 @@ button#searchBarTogger {
     height: 48px;
     display: none;
 }
-.siteNav-off button#searchBarTogger {
+.siteNav-off button#searchBarToggler {
     top: 220px;
     left: 0px;
     padding-left: 50px;
@@ -1272,8 +1272,8 @@ button#searchBarTogger {
         right: 92px;
         height: 60px;
     }
-    .siteNav-off button#searchBarTogger,
-    body button#searchBarTogger {
+    .siteNav-off button#searchBarToggler,
+    body button#searchBarToggler {
         left: auto;
         right: 16px;
         top: 120px;

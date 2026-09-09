@@ -27,7 +27,7 @@ var myTheme = {
             $exe_i18n.menu +
             '</span>\
             </button>\
-            <button type="button" id="searchBarTogger" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
+            <button type="button" id="searchBarToggler" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
             $exe_i18n.search +
             '">\
                 <span class="sr-av">' +
@@ -46,7 +46,7 @@ var myTheme = {
         $('#siteNavToggler').on('click', function () {
             if (myTheme.isLowRes()) {
                 $('#exe-client-search').hide();
-                $('#searchBarTogger').attr('aria-expanded', 'false');
+                $('#searchBarToggler').attr('aria-expanded', 'false');
                 if ($('body').hasClass('siteNav-off')) {
                     $('body').removeClass('siteNav-off');
                 } else {
@@ -65,7 +65,7 @@ var myTheme = {
             $(this).attr('aria-expanded', !$('body').hasClass('siteNav-off'));
         });
         // Search bar toggler
-        $('#searchBarTogger').on('click', function () {
+        $('#searchBarToggler').on('click', function () {
             var bar = $('#exe-client-search');
             if (bar.is(':visible')) {
                 bar.hide();

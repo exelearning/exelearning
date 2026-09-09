@@ -20,14 +20,14 @@ var myTheme = {
         // Add menu and search bar togglers
         var togglers =
             '\
-            <button type="button" id="siteNavToggler" class="toggler" title="' +
+            <button type="button" id="siteNavToggler" class="toggler" aria-expanded="true" aria-controls="siteNav" title="' +
             $exe_i18n.menu +
             '">\
                 <span class="sr-av">' +
             $exe_i18n.menu +
             '</span>\
             </button>\
-            <button type="button" id="searchBarTogger" class="toggler" title="' +
+            <button type="button" id="searchBarToggler" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
             $exe_i18n.search +
             '">\
                 <span class="sr-av">' +
@@ -45,10 +45,12 @@ var myTheme = {
             myTheme.params('add');
         }
         myTheme.persistNavState(off);
+        myTheme.navExpanded(!off);
         // Menu toggler
         $('#siteNavToggler').on('click', function () {
             if (myTheme.isLowRes()) {
                 $('#exe-client-search').hide();
+                $('#searchBarToggler').attr('aria-expanded', 'false');
                 if ($('body').hasClass('siteNav-off')) {
                     myTheme.setNavOff(false);
                 } else if ($('#siteNav').isInViewport()) {
@@ -62,13 +64,15 @@ var myTheme = {
             myTheme.params(off ? 'add' : 'remove');
         });
         // Search bar toggler — preserve sidebar state
-        $('#searchBarTogger').on('click', function () {
+        $('#searchBarToggler').on('click', function () {
             var bar = $('#exe-client-search');
             if (bar.is(':visible')) {
                 bar.hide();
+                $(this).attr('aria-expanded', 'false');
                 return;
             }
             bar.show();
+            $(this).attr('aria-expanded', 'true');
             $('#exe-client-search-text').focus();
         });
         // Collapsible submenus
@@ -145,11 +149,15 @@ var myTheme = {
         document.documentElement.classList.toggle('siteNav-off', off);
         $('body').toggleClass('siteNav-off', off);
         myTheme.persistNavState(off);
+        myTheme.navExpanded(!off);
     },
     persistNavState: function (off) {
         try {
             sessionStorage.setItem('siteNav-off', off ? '1' : '0');
         } catch (e) {}
+    },
+    navExpanded: function (visible) {
+        $('#siteNavToggler').attr('aria-expanded', visible ? 'true' : 'false');
     },
     // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
