@@ -243,8 +243,11 @@
      * `getFinalScore()` carries the same arithmetic for the runtimes that have
      * no registry (SCORM 2004, pre-rewrite packages). The two must agree: a
      * second algorithm could disagree near the mastery threshold and flip a
-     * passed page to failed at exit. `exe-scorm12-activities.spec.js` pins
-     * them against each other.
+     * passed page to failed at exit. `exe-scorm12-activities.test.js` pins
+     * them against each other — it used to name a `.spec.js` that has never
+     * existed (frontend tests are `*.test.js`), so the invariant was declared
+     * and unguarded, which is how the two answers for an unusable weight came
+     * to disagree.
      *
      * It used to scale the weights to integers summing to exactly 100 by
      * largest-remainder rounding. That made the page's mark depend on the

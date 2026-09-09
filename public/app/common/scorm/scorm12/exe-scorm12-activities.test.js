@@ -554,4 +554,67 @@ describe('exe-scorm12-activities', () => {
 
         consoleWarnSpy.mockRestore();
     });
+    // The invariant aggregateScore()'s JSDoc declares, finally enforced. Two
+    // implementations compute the page mark: this registry for SCORM 1.2, and
+    // getFinalScore() in common.js for the runtimes that have none (SCORM 2004
+    // and pre-rewrite packages). If they drift, the same activity passes in one
+    // package and fails in another near the mastery threshold — and they had
+    // already drifted once, on what a missing weight defaults to, because the
+    // comment named a spec file that never existed and nothing checked.
+    describe('agrees with getFinalScore() in common.js', () => {
+        let getFinalScore;
+
+        beforeEach(() => {
+            require('../../common.js');
+            // getFinalScore delegates to the registry when window.exeScorm12
+            // exists. Removing it exercises the local implementation, which is
+            // the one that has to match.
+            delete global.window.exeScorm12;
+            getFinalScore = global.$exeDevices.iDevice.gamification.scorm.getFinalScore;
+        });
+
+        /**
+         * The same activities in both shapes: the registry's records and the
+         * legacy `lmsData` map keyed by page position.
+         *
+         * @param {Array<{score: number|null, weight?: number}>} entries
+         * @returns {object} the lmsData the legacy aggregation reads
+         */
+        function givenBoth(entries) {
+            const lmsData = {};
+            entries.forEach((entry, index) => {
+                const descriptor = { evaluable: true, score: entry.score };
+                if (entry.weight !== undefined) {
+                    descriptor.weight = entry.weight;
+                }
+                activities.register('a' + index, descriptor);
+                lmsData[index + 1] = {
+                    score: entry.score === null ? 0 : entry.score,
+                    weighted: entry.weight,
+                };
+            });
+            return lmsData;
+        }
+
+        it.each([
+            ['equal weights', [{ score: 100 }, { score: 49 }, { score: 0 }]],
+            ['different weights', [{ score: 100, weight: 3 }, { score: 20, weight: 1 }]],
+            // The default that had drifted: one activity carries a weight, the
+            // other does not.
+            ['a mixture of stored and missing weights', [{ score: 100, weight: 50 }, { score: 0 }]],
+            ['an activity with no score yet', [{ score: 100 }, { score: null }]],
+            ['a weight of zero', [{ score: 80, weight: 0 }, { score: 40 }]],
+            ['a negative weight', [{ score: 80, weight: -5 }, { score: 40 }]],
+            ['a weight above the ceiling', [{ score: 80, weight: 500 }, { score: 40 }]],
+            // Where a disagreement does damage: either side of the default
+            // mastery score of 50.
+            ['a mark just under the threshold', [{ score: 100 }, { score: 49 }, { score: 0 }]],
+            ['a mark just over the threshold', [{ score: 100 }, { score: 51 }, { score: 0 }]],
+            ['a single activity', [{ score: 73 }]],
+        ])('matches on %s', (_label, entries) => {
+            const lmsData = givenBoth(entries);
+
+            expect(activities.summary().score).toBe(getFinalScore(lmsData));
+        });
+    });
 });
