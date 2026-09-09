@@ -3,7 +3,7 @@
 ## v4.0.4 – 2026-09-10
 
 ### Added
-
+- Updated the Galician (GL) translation
 - iDevice boxes: you can now choose between the icons provided by the current style and the new General icons catalogue (Google's Material Icons); included styles have been updated to support both icon catalogues
 - Math editor: added fullscreen and settings controls, reworked the menu and updated texts
 - New EducaBlue style: a modern responsive blue design with dark mode and colours and typography meeting WCAG 2.2 level AA
