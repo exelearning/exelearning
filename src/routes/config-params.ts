@@ -369,6 +369,14 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                 category: 'properties',
                 groups: { export: GROUPS_TITLE.export },
             },
+            pp_addKeyboardNavigation: {
+                title: `${TRANS_PREFIX}Keyboard navigation`,
+                help: `${TRANS_PREFIX}Lets visitors move between pages with the arrow keys, and toggle the menu, search box and Teacher Mode from the keyboard. Disabled by default because it changes standard page navigation and may conflict with other keyboard-driven content on the page, such as image galleries.`,
+                value: 'false',
+                type: 'checkbox',
+                category: 'properties',
+                groups: { export: GROUPS_TITLE.export },
+            },
             pp_globalFont: {
                 title: `${TRANS_PREFIX}Global font`,
                 help: `${TRANS_PREFIX}Apply a global font to all content. Useful for accessibility and early literacy.`,

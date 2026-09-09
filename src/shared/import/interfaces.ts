@@ -308,6 +308,8 @@ export interface OdeMetadata {
     footer: string;
     /** Enable MathJax for LaTeX rendering (default: false) */
     addMathJax: boolean;
+    /** Enable arrow-key page navigation and keyboard shortcuts in exports (default: false) */
+    addKeyboardNavigation: boolean;
     /** Global font family (default: 'default') */
     globalFont: string;
     /** Project screenshot/thumbnail as base64 data URL (optional) */

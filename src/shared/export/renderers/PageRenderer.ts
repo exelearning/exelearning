@@ -122,6 +122,7 @@ export class PageRenderer {
             addSearchBox = false,
             addAccessibilityToolbar = false,
             addMathJax = false,
+            addKeyboardNavigation = false,
             // Custom head content
             extraHeadContent = '',
             // SCORM-specific options
@@ -212,7 +213,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, addKeyboardNavigation, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -245,6 +246,7 @@ ${madeWithExeHtml}
         licenseUrl?: string;
         addAccessibilityToolbar?: boolean;
         addMathJax?: boolean;
+        addKeyboardNavigation?: boolean;
         extraHeadContent?: string;
         addSearchBox?: boolean;
         detectedLibraries?: string[];
@@ -265,6 +267,7 @@ ${madeWithExeHtml}
             licenseUrl = '',
             addAccessibilityToolbar = false,
             addMathJax = false,
+            addKeyboardNavigation = false,
             extraHeadContent = '',
             addSearchBox = false,
             detectedLibraries = [],
@@ -302,6 +305,13 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         head += `<script src="${basePath}libs/jquery/jquery.min.js"> </script>`;
         head += `<script src="${basePath}libs/common_i18n.js"> </script>`;
         head += `<script src="${basePath}libs/common.js"> </script>`;
+        // Opt-in flag read by exe_export.js's keyboardNav module. Off by default:
+        // arrow-key page navigation can conflict with other keyboard-driven
+        // content on the page (e.g. lightbox galleries), so authors must
+        // explicitly enable it via the "Keyboard navigation" export option.
+        if (addKeyboardNavigation) {
+            head += `<script>window.exeKeyboardNavEnabled=true;</script>`;
+        }
         head += `<script src="${basePath}libs/exe_export.js"> </script>`;
 
         // Search index script (loads before exe_export.js initializes)
@@ -1246,6 +1256,7 @@ ${userFooterHtml}</div></footer>`;
             detectedLibraries?: string[];
             addMathJax?: boolean;
             addAccessibilityToolbar?: boolean;
+            addKeyboardNavigation?: boolean;
             version?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
@@ -1270,6 +1281,7 @@ ${userFooterHtml}</div></footer>`;
             detectedLibraries = [],
             addMathJax = false,
             addAccessibilityToolbar = false,
+            addKeyboardNavigation = false,
             navLabels,
             materialIconDataUris,
         } = options;
@@ -1354,7 +1366,7 @@ ${this.renderFavicon('', faviconPath, faviconType)}
 <script src="libs/jquery/jquery.min.js"> </script>
 <script src="libs/common_i18n.js"> </script>
 <script src="libs/common.js"> </script>
-<script src="libs/exe_export.js"> </script>
+${addKeyboardNavigation ? `<script>window.exeKeyboardNavEnabled=true;</script>\n` : ''}<script src="libs/exe_export.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}${libraryIncludes}${atoolsIncludes}
 <link rel="stylesheet" href="content/css/base.css">

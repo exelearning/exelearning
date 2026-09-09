@@ -107,6 +107,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             addSearchBox: this.parseBoolean(meta.get('addSearchBox'), false),
             addAccessibilityToolbar: this.parseBoolean(meta.get('addAccessibilityToolbar'), false),
             addMathJax: this.parseBoolean(meta.get('addMathJax'), false),
+            addKeyboardNavigation: this.parseBoolean(meta.get('addKeyboardNavigation'), false),
             exportSource: this.parseBoolean(meta.get('exportSource'), true), // Default: true
             globalFont: (meta.get('globalFont') as string) || 'default',
 
