@@ -33,6 +33,355 @@
     const YAW_STEP = (15 * Math.PI) / 180;
     const PITCH_STEP = (10 * Math.PI) / 180;
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Interaction schema (mirror edition/three-d-viewer.js). These pure
+    // helpers must stay byte-identical with the edition copy — see
+    // doc/architecture/sdd/the #2153 change design. Used by renderView/renderBehaviour and
+    // consumed by the shared runtime (three-d-viewer-runtime.js).
+    // ─────────────────────────────────────────────────────────────────────
+    var STATE_VERSION = 2;
+    var MARKER_ICONS = ['circle', 'pin', 'info', 'question', 'star'];
+    var INTERACTION_ACTION_TYPES = ['information', 'image', 'video', 'link', 'question'];
+
+    function tdNum(v, fallback) { var n = typeof v === 'number' ? v : parseFloat(v); return Number.isFinite(n) ? n : fallback; }
+    function tdClamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+    function tdStr(v, fallback) { return typeof v === 'string' ? v : (fallback || ''); }
+    function tdId(prefix, existing) {
+        if (typeof existing === 'string' && existing) return existing;
+        return prefix + '-' + Math.floor(Math.random() * 1e9).toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+    }
+    function tdStripUnsafeUrl(v) { var s = tdStr(v, ''); return /^\s*(blob:|data:|javascript:|vbscript:)/i.test(s) ? '' : s.trim(); }
+    function tdInt(v, fallback) { var n = parseInt(v, 10); return Number.isFinite(n) ? n : fallback; }
+    /** Normalize the SCORM scoring config (mirror edition/export). */
+    function normalizeScorm(data) {
+        var o = data && typeof data === 'object' ? data : {};
+        return {
+            isScorm: tdClamp(tdInt(o.isScorm, 0), 0, 2),
+            weighted: tdClamp(tdNum(o.weighted, 100), 1, 100),
+            textButtonScorm: tdStr(o.textButtonScorm, ''),
+        };
+    }
+    function normalizeVec3(v, dflt) {
+        var o = v && typeof v === 'object' ? v : {};
+        return { x: tdNum(o.x, dflt.x), y: tdNum(o.y, dflt.y), z: tdNum(o.z, dflt.z) };
+    }
+    function normalizeAnchor(a) {
+        var o = a && typeof a === 'object' ? a : {};
+        return {
+            position: normalizeVec3(o.position, { x: 0, y: 0, z: 0 }),
+            normal: normalizeVec3(o.normal, { x: 0, y: 1, z: 0 }),
+            surface: tdStr(o.surface, ''),
+        };
+    }
+    function normalizeCamera(c) {
+        var o = c && typeof c === 'object' ? c : {};
+        return { orbit: tdStr(o.orbit, ''), target: tdStr(o.target, ''), fieldOfView: tdStr(o.fieldOfView, '') };
+    }
+    function normalizeQuestion(p) {
+        var o = p && typeof p === 'object' ? p : {};
+        var rawOpts = Array.isArray(o.options) ? o.options : [];
+        var seenCorrect = false;
+        var options = rawOpts.slice(0, 10).map(function (opt) {
+            var oo = opt && typeof opt === 'object' ? opt : {};
+            var correct = !!oo.correct && !seenCorrect;
+            if (correct) seenCorrect = true;
+            return { id: tdId('option', oo.id), text: tdStr(oo.text, ''), correct: correct };
+        });
+        if (options.length === 0) {
+            options = [{ id: tdId('option'), text: '', correct: true }, { id: tdId('option'), text: '', correct: false }];
+        } else if (!seenCorrect) {
+            options[0].correct = true;
+        }
+        return {
+            prompt: tdStr(o.prompt, ''),
+            type: 'single-choice',
+            options: options,
+            feedbackCorrect: tdStr(o.feedbackCorrect, ''),
+            feedbackIncorrect: tdStr(o.feedbackIncorrect, ''),
+            attemptsAllowed: tdClamp(Math.round(tdNum(o.attemptsAllowed, 0)), 0, 20),
+        };
+    }
+    function normalizeAction(a) {
+        var o = a && typeof a === 'object' ? a : {};
+        var type = INTERACTION_ACTION_TYPES.indexOf(o.type) >= 0 ? o.type : 'information';
+        var pin = o.payload && typeof o.payload === 'object' ? o.payload : {};
+        var payload;
+        switch (type) {
+            case 'image': payload = { src: tdStripUnsafeUrl(pin.src), alt: tdStr(pin.alt, ''), caption: tdStr(pin.caption, '') }; break;
+            case 'video': payload = { src: tdStripUnsafeUrl(pin.src), poster: tdStripUnsafeUrl(pin.poster) }; break;
+            case 'link': payload = { url: tdStripUnsafeUrl(pin.url), newTab: pin.newTab !== false }; break;
+            case 'question': payload = normalizeQuestion(pin); break;
+            default: payload = { html: tdStr(pin.html, '') }; break;
+        }
+        return { type: type, payload: payload };
+    }
+    function normalizeMarker(m, index) {
+        var o = m && typeof m === 'object' ? m : {};
+        var order = tdNum(o.order, NaN);
+        return {
+            id: tdId('marker', o.id),
+            label: tdStr(o.label, ''),
+            description: tdStr(o.description, ''),
+            icon: MARKER_ICONS.indexOf(o.icon) >= 0 ? o.icon : 'circle',
+            order: Number.isFinite(order) ? order : index,
+            anchor: normalizeAnchor(o.anchor),
+            camera: normalizeCamera(o.camera),
+            action: normalizeAction(o.action),
+        };
+    }
+    function normalizeInteraction(it) {
+        var o = it && typeof it === 'object' ? it : {};
+        var markers = (Array.isArray(o.markers) ? o.markers : []).map(normalizeMarker);
+        markers.sort(function (a, b) { return a.order - b.order; });
+        markers.forEach(function (mk, i) { mk.order = i; });
+        var ids = markers.map(function (mk) { return mk.id; });
+        return {
+            enabled: !!o.enabled,
+            guidedMode: !!o.guidedMode,
+            wrapNavigation: !!o.wrapNavigation,
+            showMarkerLabels: o.showMarkerLabels !== false,
+            activeMarkerId: ids.indexOf(o.activeMarkerId) >= 0 ? o.activeMarkerId : '',
+            markers: markers,
+        };
+    }
+    /** Pure single-choice grading — chosen option id → correct? */
+    function gradeSingleChoice(question, selectedOptionId) {
+        var q = normalizeQuestion(question);
+        var chosen = q.options.filter(function (op) { return op.id === selectedOptionId; })[0];
+        return !!(chosen && chosen.correct);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Interaction export markup
+    //
+    // The interaction state ships as an escaped JSON <script> block inside the
+    // wrapper (mirrors three-sixty-viewer's data script). A static, escaped
+    // fallback <ul> lists every marker for the no-WebGL case, and guided-nav
+    // controls are baked when guided mode is on. asset:// media inside the
+    // JSON block is rewritten to content/resources/... by the global export
+    // rewriter (IdeviceRenderer.fixAssetUrls); we never emit blob:.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Content-locale translation, degrading to _() then identity. */
+    function tdT(s) {
+        if (typeof c_ === 'function') return c_(s);
+        if (typeof _ === 'function') return _(s);
+        return s;
+    }
+
+    /** Allow only safe URL schemes (mirror runtime safeUrl). */
+    function tdSafeUrl(url) {
+        var s = typeof url === 'string' ? url.trim() : '';
+        if (!s) return '';
+        if (/^\s*javascript:/i.test(s)) return '';
+        if (/^(https?:|mailto:|tel:|asset:)/i.test(s)) return s;
+        if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) return s;
+        return '';
+    }
+
+    /** Extract plain text from marker HTML for the escaped text fallback. */
+    function stripHtmlToText(html) {
+        return String(html == null ? '' : html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    /** Learner-facing micro-strings baked for the runtime controller. */
+    function buildRuntimeI18n() {
+        return {
+            Marker: tdT('Marker'),
+            Close: tdT('Close'),
+            Check: tdT('Check'),
+            Correct: tdT('Correct'),
+            Incorrect: tdT('Incorrect'),
+            Previous: tdT('Previous'),
+            Next: tdT('Next'),
+            'Please select an answer': tdT('Please select an answer'),
+            'No attempts left': tdT('No attempts left'),
+        };
+    }
+
+    /** Build the static, escaped fallback list of markers. */
+    function buildInteractionFallback(interaction) {
+        var items = (interaction.markers || []).map(function (m, i) {
+            var label = m.label || (tdT('Marker') + ' ' + (i + 1));
+            var parts = ['<strong>' + (i + 1) + '. ' + escapeAttr(label) + '</strong>'];
+            if (m.description) parts.push('<p>' + escapeAttr(m.description) + '</p>');
+            var a = m.action || {};
+            var p = a.payload || {};
+            if (a.type === 'information') {
+                var text = stripHtmlToText(p.html);
+                if (text) parts.push('<p>' + escapeAttr(text) + '</p>');
+            } else if (a.type === 'image') {
+                if (p.alt) parts.push('<p>' + escapeAttr(p.alt) + '</p>');
+                if (p.caption) parts.push('<p>' + escapeAttr(p.caption) + '</p>');
+            } else if (a.type === 'link') {
+                var url = tdSafeUrl(p.url);
+                if (url) parts.push('<a href="' + escapeAttr(url) + '" rel="noopener noreferrer">' + escapeAttr(url) + '</a>');
+            } else if (a.type === 'question') {
+                if (p.prompt) parts.push('<p>' + escapeAttr(p.prompt) + '</p>');
+                var opts = (p.options || []).map(function (o) { return '<li>' + escapeAttr(o.text || '') + '</li>'; }).join('');
+                if (opts) parts.push('<ul>' + opts + '</ul>');
+            }
+            return '<li>' + parts.join('') + '</li>';
+        }).join('');
+        return '<ul class="tdv-fallback" hidden>' + items + '</ul>';
+    }
+
+    /**
+     * Build the interaction markup appended inside the wrapper: JSON data
+     * block + fallback list + guided-nav controls. Empty when disabled.
+     * @param {object} interaction - already normalized
+     * @returns {string}
+     */
+    function buildInteractionMarkup(interaction, scorm) {
+        if (!interaction || !interaction.enabled) return '';
+        var payload = Object.assign({}, interaction, { i18n: buildRuntimeI18n(), scorm: normalizeScorm(scorm) });
+        // Escape < so a payload value can never terminate the <script>.
+        var json = JSON.stringify(payload).replace(/</g, '\\u003c');
+        var script = '<script type="application/json" class="tdv-interaction-data">' + json + '</' + 'script>';
+        var nav = '';
+        if (interaction.guidedMode) {
+            nav = '<div class="tdv-guided-nav" data-guided hidden>'
+                + '<button type="button" class="tdv-nav-prev">' + escapeAttr(tdT('Previous')) + '</button>'
+                + '<span class="tdv-guided-status" aria-live="polite"></span>'
+                + '<button type="button" class="tdv-nav-next">' + escapeAttr(tdT('Next')) + '</button>'
+                + '</div>';
+        }
+        return script + buildInteractionFallback(interaction) + nav;
+    }
+
+    /** Reveal the static text fallback for a wrapper (no WebGL / boot failure). */
+    function revealInteractionFallback(wrapper) {
+        if (!wrapper || typeof wrapper.querySelector !== 'function') return;
+        var fb = wrapper.querySelector('.tdv-fallback');
+        if (fb) fb.hidden = false;
+    }
+
+    /** Read + parse the interaction data block from a booted wrapper. */
+    function parseInteractionData(wrapper) {
+        if (!wrapper || typeof wrapper.querySelector !== 'function') return null;
+        var script = wrapper.querySelector('script.tdv-interaction-data, script[type="application/json"].tdv-interaction-data');
+        if (!script) return null;
+        try {
+            return JSON.parse(script.textContent || script.innerHTML || '{}');
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /** The shared SCORM export helper, or null when the framework is absent. */
+    function getScormRuntime() {
+        var g = globalScope.$exeDevices
+            && globalScope.$exeDevices.iDevice
+            && globalScope.$exeDevices.iDevice.gamification
+            && globalScope.$exeDevices.iDevice.gamification.scorm;
+        return g || null;
+    }
+
+    /**
+     * Wire SCORM scoring for question markers onto the interaction hooks.
+     * No-op unless this is a SCORM export, scoring is enabled, the framework is
+     * present, and there is at least one question marker.
+     * @param {HTMLElement} wrapper
+     * @param {object} interaction - normalized interaction state
+     * @param {object} rawScorm - the persisted SCORM config
+     * @param {object} hooks - interaction hooks to augment (onQuestionAnswered)
+     */
+    function setupScormScoring(wrapper, interaction, rawScorm, hooks) {
+        var cfg = normalizeScorm(rawScorm);
+        if (cfg.isScorm <= 0) return;
+        var inScormExport = typeof document !== 'undefined'
+            && document.body && document.body.classList
+            && document.body.classList.contains('exe-scorm');
+        if (!inScormExport) return;
+        var scorm = getScormRuntime();
+        if (!scorm) return;
+        var questionMarkers = (interaction.markers || []).filter(function (m) {
+            return m.action && m.action.type === 'question';
+        });
+        if (!questionMarkers.length) return;
+
+        var correctIds = {};
+        var game = {
+            main: wrapper.id,
+            idevice: 'three-d-viewer',
+            isScorm: cfg.isScorm,
+            weighted: cfg.weighted,
+            scorerp: 0,
+            gameStarted: true,
+            msgs: {},
+        };
+        try {
+            if (typeof scorm.registerActivity === 'function') scorm.registerActivity(game);
+        } catch (e) { /* framework not fully available — degrade silently */ }
+
+        hooks.onQuestionAnswered = function (markerId, correct) {
+            if (correct) correctIds[markerId] = true;
+            var right = Object.keys(correctIds).length;
+            game.scorerp = (right * 10) / questionMarkers.length;
+            game.gameOver = right >= questionMarkers.length;
+            try {
+                if (typeof scorm.sendScoreNew === 'function') scorm.sendScoreNew(true, game);
+            } catch (e) { /* degrade silently */ }
+        };
+    }
+
+    /**
+     * Attach the shared interaction layer to a booted wrapper. Resolves the
+     * right handle per render path (native model-viewer hotspots vs. STL
+     * instance) and is idempotent.
+     * @param {HTMLElement} wrapper
+     */
+    function attachInteractionLayer(wrapper) {
+        var runtime = globalScope.eXe3DViewer;
+        if (!runtime || typeof runtime.createInteractionLayer !== 'function') return;
+        var ds = wrapper.dataset || {};
+        if (ds._tdvInteractionBooted === '1') return;
+        var raw = parseInteractionData(wrapper);
+        if (!raw || !raw.enabled) return;
+        var interaction = normalizeInteraction(raw);
+        var i18nMap = raw.i18n && typeof raw.i18n === 'object' ? raw.i18n : {};
+        var hooks = {
+            t: function (k) { return i18nMap[k] || k; },
+            resolveMediaUrl: function (u) {
+                try { return resolveRuntimeSrc(u, wrapper.id) || u; } catch (e) { return u; }
+            },
+        };
+        // Optional SCORM scoring for question markers. Reuses the shared
+        // gamification.scorm framework (registerActivity + sendScoreNew). Only
+        // active in a SCORM export (body.exe-scorm), when configured, and when
+        // there is at least one question to score. Score is the fraction of
+        // question markers answered correctly, on the 0..10 convention.
+        setupScormScoring(wrapper, interaction, raw.scorm, hooks);
+        var type = ds.modelType || detectModelTypeFromSrc(ds.modelSrc || '');
+        ds._tdvInteractionBooted = '1';
+        if (type === 'stl') {
+            // Wait (time-based, tolerant of a cold Three.js module load + STL
+            // fetch/parse) for the shared runtime to finish booting the STL
+            // scene before attaching markers. A fixed frame budget was too
+            // short and fell back to the text list even though the model
+            // eventually rendered.
+            var deadline = Date.now() + 20000;
+            var poll = function () {
+                var inst = runtime.getInstance(wrapper);
+                if (inst && inst.mesh) {
+                    inst.interaction = runtime.createInteractionLayer(
+                        { wrapper: wrapper, type: 'stl', instance: inst }, interaction, 'view', hooks);
+                } else if (Date.now() < deadline) {
+                    (globalScope.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); })(poll);
+                } else {
+                    // STL never produced a mesh (no WebGL / load failure):
+                    // expose the accessible text fallback instead.
+                    revealInteractionFallback(wrapper);
+                }
+            };
+            poll();
+        } else {
+            var mv = wrapper.querySelector('model-viewer');
+            wrapper.__tdvInteraction = runtime.createInteractionLayer(
+                { wrapper: wrapper, type: type, modelViewer: mv }, interaction, 'view', hooks);
+        }
+    }
+
     /**
      * Build the toolbar markup (fullscreen button + 4-direction nav pad).
      * Rendered once into the wrapper so it ships with the static export.
@@ -1223,6 +1572,10 @@
             // Store current iDevice ID for asset:// resolution
             globalScope.$threedviewer._currentIdeviceId = viewerId;
 
+            // Optional interaction layer (markers / guided nav / questions).
+            const interaction = normalizeInteraction(data.interaction);
+            const scorm = normalizeScorm(data);
+
             // Flat data-* attributes — exposed to grep/inspect and picked
             // up by IdeviceRenderer.fixAssetUrls during export.
             const wrapperAttrs = buildWrapperAttrs(cfg);
@@ -1232,6 +1585,7 @@
                     <span class="sr-only" data-live aria-live="polite"></span>
                     <div class="viewer-empty" data-empty>${translate('viewer.empty_state')}</div>
                     ${buildControlsMarkup(cfg)}
+                    ${buildInteractionMarkup(interaction, scorm)}
                 </div>
             `;
             return template.replace('{content}', content);
@@ -1360,6 +1714,19 @@
             };
 
             ensureModelViewerModule(id).then(boot);
+
+            // Attach interaction layers for wrappers that carry an enabled
+            // data block. The shared runtime (three-d-viewer-runtime.js) is
+            // loaded on demand — GLB/GLTF pages don't otherwise need it.
+            const interactive = wrappers.filter((w) => {
+                const raw = parseInteractionData(w);
+                return raw && raw.enabled;
+            });
+            if (interactive.length) {
+                ensureRuntimeLoaded()
+                    .then(() => { interactive.forEach(attachInteractionLayer); })
+                    .catch(() => { interactive.forEach(revealInteractionFallback); });
+            }
             return true;
         },
 
@@ -1375,6 +1742,19 @@
     globalScope.$threedviewer.resolveAssetUrl = resolveAssetUrl;
     globalScope.$threedviewer.__migrateLegacyConfig = migrateLegacyConfig;
     globalScope.$threedviewer.__detectModelTypeFromSrc = detectModelTypeFromSrc;
+    // Interaction schema helpers (mirror edition) — exposed for unit tests.
+    globalScope.$threedviewer.__normalizeInteraction = normalizeInteraction;
+    globalScope.$threedviewer.__normalizeMarker = normalizeMarker;
+    globalScope.$threedviewer.__normalizeAnchor = normalizeAnchor;
+    globalScope.$threedviewer.__normalizeCamera = normalizeCamera;
+    globalScope.$threedviewer.__normalizeAction = normalizeAction;
+    globalScope.$threedviewer.__normalizeQuestion = normalizeQuestion;
+    globalScope.$threedviewer.__gradeSingleChoice = gradeSingleChoice;
+    globalScope.$threedviewer.__buildInteractionMarkup = buildInteractionMarkup;
+    globalScope.$threedviewer.__parseInteractionData = parseInteractionData;
+    globalScope.$threedviewer.__attachInteractionLayer = attachInteractionLayer;
+    globalScope.$threedviewer.__normalizeScorm = normalizeScorm;
+    globalScope.$threedviewer.__setupScormScoring = setupScormScoring;
     globalScope.$threedviewer.__resolveRuntimeSrc = resolveRuntimeSrc;
     globalScope.$threedviewer.__computeEmptyStateDisplay = computeEmptyStateDisplay;
     globalScope.$threedviewer.__ThreeDViewerRuntime = ThreeDViewerRuntime;
