@@ -45,14 +45,14 @@ var eXeUniversalStyle = {
         // Add menu and search bar togglers
         togglers +=
             '\
-            <button type="button" id="siteNavToggler" class="toggler" title="' +
+            <button type="button" id="siteNavToggler" class="toggler" aria-expanded="true" aria-controls="siteNav" title="' +
             $exe_i18n.menu +
             '">\
                 <span>' +
             $exe_i18n.menu +
             '</span>\
             </button>\
-            <button type="button" id="searchBarTogger" class="toggler" title="' +
+            <button type="button" id="searchBarToggler" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
             $exe_i18n.search +
             '">\
                 <span>' +
@@ -89,7 +89,7 @@ var eXeUniversalStyle = {
             }
         });
         // Search bar toggler
-        $('#searchBarTogger').on('click', function () {
+        $('#searchBarToggler').on('click', function () {
             var bar = $('#exe-client-search');
             if (bar.is(':visible')) {
                 bar.hide();
