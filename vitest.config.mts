@@ -61,7 +61,6 @@ export default defineConfig({
 
         // Worker isolation - critical for memory management
         pool: 'threads',
-        singleFork: false,
         isolate: true,
 
         // Limit concurrent tests to prevent memory explosion

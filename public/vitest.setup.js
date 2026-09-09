@@ -77,6 +77,21 @@ if (typeof window !== 'undefined') {
   } else {
     globalThis.navigator = window.navigator;
   }
+
+  // Vitest 5 propagates every assignment on the test global to happy-dom's own
+  // Window. There, localStorage/sessionStorage/CSS are getter-only (assignment
+  // throws) and `document` is writable, so a test fake would replace the
+  // document happy-dom uses internally and break innerHTML/DOMParser for the
+  // rest of the file. Tests swap these wholesale, so keep them as plain
+  // writable properties of the test global, as Vitest 4 did.
+  for (const key of ['document', 'localStorage', 'sessionStorage', 'CSS']) {
+    Object.defineProperty(globalThis, key, {
+      value: globalThis[key],
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+  }
 }
 
 // ============================================================================

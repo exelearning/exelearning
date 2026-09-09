@@ -12,6 +12,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      # vitest and its @vitest/* companions pin each other with exact-version
+      # peer dependencies; bumping one alone breaks the run (#2384).
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
     ignore:
       # Playwright 1.62 ships a Firefox build whose driver intermittently
       # never attaches the SW-served preview iframe, hanging frameLocator
