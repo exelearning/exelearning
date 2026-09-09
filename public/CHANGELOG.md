@@ -16,7 +16,7 @@
 - Platform integration: `PROVIDER_URLS` now supports wildcard subdomains and matches against the address host, allowing multi-tenant deployments to be authorised without widening the allow-list
 - Added `assets:conflicts` command to list and resolve asset storage conflicts, keeping either the old or new copy
 - Updated development documentation and improved development tools
-- Reviewed and completed the Spanish (ES) translation
+- Reviewed and completed the Spanish (ES) and Galician (GL) translations
 - Restored the French (FR) translation from version 3, corrected its errors and added new automatic placeholder translations for previously untranslated strings
 - Added automatic placeholder translations for new strings in incomplete translations
 
