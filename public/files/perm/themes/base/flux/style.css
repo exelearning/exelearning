@@ -468,7 +468,6 @@ body.exe-export.exe-epub .exe-content {
 
 /* siteNav */
 #siteNav {
-    float: left;
     padding: 100px 16px 48px 16px;
     background-color: #2c2977;
     height: calc(100vh - 100px);
@@ -1180,7 +1179,6 @@ button#searchBarToggler {
         padding: 0 20px;
     }
     #siteNav {
-        float: none;
         border-right: 0;
         width: 100%;
         background-color: #282573;

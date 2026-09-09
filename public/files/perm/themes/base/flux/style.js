@@ -143,7 +143,7 @@ var myTheme = {
         }
     },
     isLowRes: function () {
-        return $('#siteNav').css('float') == 'none';
+        return $('#siteNav').css('position') == 'static';
     },
     setNavOff: function (off) {
         document.documentElement.classList.toggle('siteNav-off', off);

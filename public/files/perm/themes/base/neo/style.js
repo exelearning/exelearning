@@ -87,7 +87,7 @@ var myTheme = {
         $('#exe-client-search-text').attr('class', 'form-control');
     },
     isLowRes: function () {
-        return $('#siteNav').css('float') == 'none';
+        return $('#siteNav').css('position') == 'static';
     },
     checkNav: function () {
         var wrapper = $('#sidebar-nav');
