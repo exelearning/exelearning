@@ -1084,9 +1084,11 @@ var $eXeEC = {
         $(`#elcpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
-        if (mOptions.activityMode !== 'show') {
-            $eXeEC.saveScormScore(instance);
-        }
+        // No report here: newQuestion() publishes the same opening state on
+        // the very next line, by either of its branches — showQuestion() when
+        // there is a question to ask, gameOver() when there is not. Reporting
+        // here as well put the same zero on the wire twice on every start,
+        // with two commits and two redraws of the LMS menu for one action.
         $eXeEC.newQuestion(instance);
     },
 

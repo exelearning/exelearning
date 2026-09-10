@@ -600,18 +600,20 @@ describe('electrical-circuits iDevice export', () => {
             vi.restoreAllMocks();
         });
 
-        it('reports the replay as unfinished, with the counts cleared', () => {
+        it('hands newQuestion a cleared, reopened attempt to publish', () => {
             setupReplay();
-            let stateWhenReported;
-            idevice().sendScore.mockImplementation(() => {
+            let stateWhenHandedOver;
+            idevice().newQuestion.mockImplementation(() => {
                 const { hits, errors, gameOver, gameStarted } =
                     idevice().options[instance];
-                stateWhenReported = { hits, errors, gameOver, gameStarted };
+                stateWhenHandedOver = { hits, errors, gameOver, gameStarted };
             });
 
             idevice().startGame(instance);
 
-            expect(stateWhenReported).toEqual({
+            // newQuestion publishes the live options object on either of its
+            // branches, so this is the state that reaches the LMS.
+            expect(stateWhenHandedOver).toEqual({
                 hits: 0,
                 errors: 0,
                 // The whole point: sendScoreNew reads gameOver as "the learner
@@ -619,6 +621,18 @@ describe('electrical-circuits iDevice export', () => {
                 gameOver: false,
                 gameStarted: true,
             });
+        });
+
+        // startGame used to report as well, so every start put the same zero
+        // on the wire twice, with two commits and two redraws of the LMS menu
+        // for one action.
+        it('does not report it a second time itself', () => {
+            setupReplay();
+
+            idevice().startGame(instance);
+
+            expect(idevice().newQuestion).toHaveBeenCalledWith(instance);
+            expect(idevice().sendScore).not.toHaveBeenCalled();
         });
     });
 
