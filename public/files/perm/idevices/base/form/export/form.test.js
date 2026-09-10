@@ -977,6 +977,47 @@ describe('form iDevice export', () => {
       expect($form.sendScore).toHaveBeenCalledTimes(1);
     });
 
+    /**
+     * Starting a timed activity in automatic mode must leave the LMS holding a
+     * zero and an unfinished attempt — the page reads `incomplete`, because a
+     * required activity has yet to be answered.
+     *
+     * Runs the real sendScore, not a spy: the mark it computes divides by
+     * `totalQuestions`, which startGame has just zeroed, so this is where a NaN
+     * would appear. It used to, and only sendScoreNew's Number.isFinite guard
+     * — several files away — kept it out of the LMS.
+     */
+    it('publishes a zero and an unfinished attempt when a timed game starts', () => {
+      const activity = data({ time: 5, gameStarted: false, gameOver: true, rightQuestions: 2 });
+      document.body.innerHTML += `
+        <div id="frmMainContainer-f1">
+          <div id="frmStartGameDiv-f1">
+            <button id="frmStartGame-f1" type="button">Start</button>
+          </div>
+          <div id="frmBody-f1"></div>
+        </div>`;
+      document.body.className = 'exe-scorm';
+      global.$exeDevices.iDevice.gamification.math = {
+        hasLatex: () => false,
+        updateLatex: () => {},
+      };
+      vi.spyOn($form, 'resizeSlideShow').mockImplementation(() => {});
+
+      $form.setBehaviourTest(activity);
+      document.getElementById('frmStartGame-f1').click();
+      clearInterval(activity.clock);
+      document.body.className = '';
+
+      expect(sendScoreNew).toHaveBeenCalledTimes(1);
+      const [auto, published] = sendScoreNew.mock.calls[0];
+      expect(auto).toBe(true);
+      expect(published.scorerp).toBe(0);
+      // Not finished: the runtime derives completion from this alone, and the
+      // page stays incomplete while a required activity is unanswered.
+      expect(published.gameOver).toBe(false);
+      expect(published.gameStarted).toBe(true);
+    });
+
     // The other modes render no button at all, so there is nothing to bind and
     // nothing to blow up on.
     it('stands down when the activity renders no button', () => {

@@ -863,7 +863,7 @@ var $form = {
         $form.saveScormScore(data);
     },
     saveEvaluation: function (data) {
-        data.scorerp = (data.rightQuestions * 10) / data.totalQuestions;
+        data.scorerp = $form.getScore(data);
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             data,
             data.isInExe
@@ -928,7 +928,7 @@ var $form = {
      * learner, and what lets a manual-mode activity report at all.
      */
     sendScore: function (data, auto = true) {
-        data.scorerp = (data.rightQuestions * 10) / data.totalQuestions;
+        data.scorerp = $form.getScore(data);
         data.previousScore = $form.previousScore;
         data.userName = $form.userName;
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, data);
@@ -1505,7 +1505,7 @@ var $form = {
                 .addClass('number-score-alone');
         }
 
-        const score = (data.rightQuestions * 10) / data.totalQuestions;
+        const score = $form.getScore(data);
         let finalScore = score % 1 === 0 ? score : score.toFixed(2);
         const scoreText = `${data.msgs.msgYouScore} ${finalScore} (${data.rightQuestions}/${data.totalQuestions})`;
         $scoreTest.text(scoreText);
@@ -1516,6 +1516,27 @@ var $form = {
         data.totalQuestions = 0;
         data.rightQuestions = 0;
         data.wrongQuestions = 0;
+    },
+
+    /**
+     * The mark for this activity, on the 0..10 scale the runtime expects.
+     *
+     * `totalQuestions` is counted while the answers are checked, and
+     * resetScore() zeroes it — so between starting a timed activity and the
+     * first Comprobar there is nothing to divide by, and the division gave NaN.
+     * The only reason it never reached the LMS is sendScoreNew's own
+     * Number.isFinite guard, several files away. Nothing answered yet is a
+     * zero.
+     *
+     * @param {Object} data The activity's options.
+     * @returns {number} the mark, 0 when there is nothing to score
+     */
+    getScore: function (data) {
+        const total = parseFloat(data && data.totalQuestions);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+        const right = parseFloat(data.rightQuestions);
+        if (!Number.isFinite(right)) return 0;
+        return (right * 10) / total;
     },
 
     setBehaviourTest: function (data) {
