@@ -1002,4 +1002,48 @@ describe('interactive-video iDevice export', () => {
       expect($interactivevideo.sendScore).not.toHaveBeenCalled();
     });
   });
+
+  /**
+   * A SCORM-enabled video need not carry a single scored question: numSlides
+   * counts the scoring slides, so it is 0 for a video of plain markers, and the
+   * mark used to be computed inline in three places. The learner saw "NaN" on
+   * the score line for the whole visit and the progress report stored it; only
+   * sendScoreNew's own Number.isFinite guard kept it out of the LMS.
+   */
+  describe('getScore', () => {
+    afterEach(() => {
+      $interactivevideo.score = 0;
+      $interactivevideo.numSlides = 1000;
+    });
+
+    it('is zero when there is nothing to score', () => {
+      $interactivevideo.score = 0;
+      $interactivevideo.numSlides = 0;
+
+      expect($interactivevideo.getScore()).toBe(0);
+    });
+
+    it('is a number, never NaN, whatever the counters hold', () => {
+      for (const [score, numSlides] of [
+        [0, 0],
+        [1, 0],
+        [0, -1],
+        [Number.NaN, 4],
+        [1, Number.NaN],
+        [1, undefined],
+      ]) {
+        $interactivevideo.score = score;
+        $interactivevideo.numSlides = numSlides;
+
+        expect(Number.isFinite($interactivevideo.getScore())).toBe(true);
+      }
+    });
+
+    it('scales the answers over the scoring slides', () => {
+      $interactivevideo.score = 3;
+      $interactivevideo.numSlides = 4;
+
+      expect($interactivevideo.getScore()).toBe(7.5);
+    });
+  });
 });

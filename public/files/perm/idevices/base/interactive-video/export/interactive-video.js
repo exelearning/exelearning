@@ -529,11 +529,30 @@ var $interactivevideo = {
         // $interactivevideo.ready();
     },
 
+    /**
+     * The mark for this activity, on the 0..10 scale the runtime expects.
+     *
+     * A SCORM-enabled video need not carry a single scored question, and
+     * `numSlides` counts the scoring slides — so it is 0 for a video of plain
+     * markers, and this division yielded NaN. The learner saw "NaN" on the
+     * score line for the whole visit and the progress report stored it; only
+     * sendScoreNew's own Number.isFinite guard kept it out of the LMS. Nothing
+     * to score is a zero.
+     *
+     * @returns {number} the mark, 0 when there is nothing to score
+     */
+    getScore: function () {
+        const total = parseFloat($interactivevideo.numSlides);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+        const score = parseFloat($interactivevideo.score);
+        if (!Number.isFinite(score)) return 0;
+        return (score * 10) / total;
+    },
+
     saveEvaluation: function () {
         let options = $interactivevideo.mOptions;
         options.gameStarted = true;
-        options.scorerp =
-            ($interactivevideo.score * 10) / $interactivevideo.numSlides;
+        options.scorerp = $interactivevideo.getScore();
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             options,
             options.isInExe
@@ -576,8 +595,7 @@ var $interactivevideo = {
 
     sendScore: function (auto) {
         let options = $interactivevideo.mOptions;
-        options.scorerp =
-            ($interactivevideo.score * 10) / $interactivevideo.numSlides;
+        options.scorerp = $interactivevideo.getScore();
         options.gameStarted = true;
         options.userName = $interactivevideo.userName || '';
 
@@ -626,10 +644,7 @@ var $interactivevideo = {
         ) {
             return;
         }
-        const scoref = (
-            ($interactivevideo.score * 10) /
-            $interactivevideo.numSlides
-        ).toFixed(2);
+        const scoref = $interactivevideo.getScore().toFixed(2);
         // By class, not by id: `#interactiveRepeatActivity` matches nothing —
         // the node is the shared `.Games-RepeatActivity` span.
         $interactivevideo
