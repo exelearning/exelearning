@@ -1584,6 +1584,21 @@ describe('IdeviceBlockNode', () => {
     });
 
     describe('icon helpers', () => {
+        // The tint tests attach elements to document.body, because getComputedStyle only
+        // resolves custom properties on an attached node. Take them back out again: the
+        // outer afterEach only nulls `block`, so without this a later test looking for a
+        // <header> or #change-block-icon-modal-content would find a stale one.
+        const attached = [];
+        const attach = (element) => {
+            document.body.appendChild(element);
+            attached.push(element);
+            return element;
+        };
+
+        afterEach(() => {
+            attached.splice(0).forEach((element) => element.remove());
+        });
+
         it('normalizes legacy icon names into structured descriptors', () => {
             expect(block.normalizeIconDescriptor(null, '')).toEqual({ source: 'none', value: '' });
             expect(block.normalizeIconDescriptor(null, 'mi-alarm')).toEqual({
@@ -1758,8 +1773,7 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('prefers the picker accent over the box head icon color', () => {
-            block.headElement = document.createElement('div');
-            document.body.appendChild(block.headElement);
+            block.headElement = attach(document.createElement('div'));
             block.headElement.style.setProperty('--exe-icon-color', '#fff');
             block.headElement.style.setProperty('--exe-icon-picker-color', '#0d77d1');
             // The head needs white on its blue background; the white picker chip does not.
@@ -1769,44 +1783,76 @@ describe('IdeviceBlockNode', () => {
             expect(block.getCurrentThemeIconColor()).toBe('#fff');
         });
 
-        it('prefers theme css variables and known theme colors when resolving modal icon color', () => {
-            block.headElement = document.createElement('div');
-            document.body.appendChild(block.headElement);
-            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+        it('falls back to the title, then the icon, when the block has no header yet', () => {
+            // The header is the normal source: a style declares both variables once on
+            // .exe-content and, since they are custom properties, the header inherits them.
+            // That inheritance is what the picker E2E spec covers, because happy-dom does not
+            // resolve inherited custom properties. What is pinned here is only which source
+            // the resolver picks when headElement is null -- a defensive path, since a real
+            // browser returns nothing for the detached title and icon a headerless block has.
+            block.headElement = null;
+            block.blockNameElementText = attach(document.createElement('h1'));
+            block.blockNameElementText.style.setProperty('--exe-icon-color', '#123456');
             expect(block.getCurrentThemeIconColor()).toBe('#123456');
 
-            block.headElement.style.removeProperty('--exe-icon-color');
-            block.blockNameElementText = document.createElement('h1');
-            document.body.appendChild(block.blockNameElementText);
-            block.blockNameElementText.style.color = 'rgb(1, 2, 3)';
-            expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
-
-            block.headElement = null;
             block.blockNameElementText = null;
-            eXeLearning.app.themes.selected = { id: 'flux' };
-            expect(block.getCurrentThemeIconColor()).toBe('#eda900');
+            block.iconElement = attach(document.createElement('div'));
+            block.iconElement.style.setProperty('--exe-icon-color', '#654321');
+            expect(block.getCurrentThemeIconColor()).toBe('#654321');
         });
 
-        it('falls back to each theme style-icon color so General icons match Style icons', () => {
+        it('resolves no color when the theme declares neither variable', () => {
+            block.headElement = attach(document.createElement('div'));
+            // The block header text color is not the picker tint: an undeclared theme
+            // leaves --modal-icon-color unset so the picker CSS reaches --modal-icon-default.
+            block.headElement.style.color = 'rgb(1, 2, 3)';
+            block.blockNameElementText = null;
+            block.iconElement = null;
+
+            expect(block.getCurrentThemeIconColor()).toBe('');
+        });
+
+        it('resolves currentColor against the block header, not the modal it is copied onto', () => {
+            // A style may say "follow the header text" with --exe-icon-color: currentColor.
+            // Copied verbatim onto the modal body it would mean the modal's own text, so the
+            // keyword has to be resolved here, while the block header is still the context.
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.color = 'rgb(1, 2, 3)';
+            block.headElement.style.setProperty('--exe-icon-color', 'currentColor');
+
+            expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
+        });
+
+        it('leaves the picker untinted rather than throwing when getComputedStyle is missing', () => {
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+            const original = window.getComputedStyle;
+            window.getComputedStyle = undefined;
+
+            try {
+                expect(block.getCurrentThemeIconColor()).toBe('');
+            } finally {
+                window.getComputedStyle = original;
+            }
+        });
+
+        it('sets --modal-icon-color on the picker from the theme variable', () => {
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+
+            const body = block.makeModalChangeIconBody();
+
+            expect(body.style.getPropertyValue('--modal-icon-color')).toBe('#123456');
+        });
+
+        it('leaves --modal-icon-color unset when the theme declares no tint', () => {
             block.headElement = null;
             block.blockNameElementText = null;
             block.iconElement = null;
 
-            const expectedByTheme = {
-                base: '#d86e41',
-                flux: '#eda900',
-                nova: '#f5c200',
-                zen: '#d40055',
-                // Multicolor themes keep the theme accent (cannot match a single hue).
-                neo: '#e3ac3b',
-                universal: '#0d2953',
-                // Picker accent: the box head icon itself is white.
-                educablue: '#0d77d1',
-            };
-            for (const [id, color] of Object.entries(expectedByTheme)) {
-                eXeLearning.app.themes.selected = { id };
-                expect(block.getCurrentThemeIconColor()).toBe(color);
-            }
+            const body = block.makeModalChangeIconBody();
+
+            expect(body.style.getPropertyValue('--modal-icon-color')).toBe('');
         });
     });
 
