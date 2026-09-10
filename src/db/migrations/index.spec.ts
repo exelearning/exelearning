@@ -113,7 +113,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('007_activity_log');
+            expect(result.rolledBack).toBe('009_project_public_view_enabled');
         });
 
         it('should report no migrations to rollback on fresh database', async () => {
@@ -127,7 +127,9 @@ describe('Database Migrations', () => {
             // Migrate up
             await migrateToLatest(db);
 
-            // Rollback all 8 migrations to remove all tables
+            // Rollback all migrations to remove all tables
+            await migrateDown(db); // rollback 009_project_public_view_enabled
+            await migrateDown(db); // rollback 008_project_public_view_id
             await migrateDown(db); // rollback 007_activity_log
             await migrateDown(db); // rollback 006_impersonation_audit_log
             await migrateDown(db); // rollback 005_user_id_nullable
@@ -194,9 +196,9 @@ describe('Database Migrations', () => {
 
             const status = await getMigrationStatus(db);
 
-            // After one rollback, 007_activity_log should be pending
+            // After one rollback, the last migration should be pending
             // All prior migrations are still executed
-            expect(status.pending).toContain('007_activity_log');
+            expect(status.pending).toContain('009_project_public_view_enabled');
             expect(status.executed).toContain('001_initial');
             expect(status.executed).toContain('000_legacy_symfony');
             expect(status.executed).toContain('002_asset_folder_path');
@@ -204,6 +206,8 @@ describe('Database Migrations', () => {
             expect(status.executed).toContain('004_fix_user_foreign_keys');
             expect(status.executed).toContain('005_user_id_nullable');
             expect(status.executed).toContain('006_impersonation_audit_log');
+            expect(status.executed).toContain('007_activity_log');
+            expect(status.executed).toContain('008_project_public_view_id');
         });
     });
 
@@ -220,16 +224,18 @@ describe('Database Migrations', () => {
             expect(up1.executedMigrations).toContain('005_user_id_nullable');
             expect(up1.executedMigrations).toContain('006_impersonation_audit_log');
             expect(up1.executedMigrations).toContain('007_activity_log');
+            expect(up1.executedMigrations).toContain('008_project_public_view_id');
+            expect(up1.executedMigrations).toContain('009_project_public_view_enabled');
 
-            // Down - rolls back the last migration (007_activity_log)
+            // Down - rolls back the last migration (009_project_public_view_enabled)
             const down = await migrateDown(db);
             expect(down.success).toBe(true);
-            expect(down.rolledBack).toBe('007_activity_log');
+            expect(down.rolledBack).toBe('009_project_public_view_enabled');
 
-            // Up again - should re-apply 007_activity_log
+            // Up again - should re-apply 009_project_public_view_enabled
             const up2 = await migrateToLatest(db);
             expect(up2.success).toBe(true);
-            expect(up2.executedMigrations).toContain('007_activity_log');
+            expect(up2.executedMigrations).toContain('009_project_public_view_enabled');
         });
     });
 
