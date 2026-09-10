@@ -1089,7 +1089,9 @@ describe('rubric iDevice SCORM integration', () => {
 
       expect(registerSpy).toHaveBeenCalledTimes(1);
       expect(data.scormGame).toBeDefined();
-      expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(1);
+      // The button is part of the rendered interface now, not something this
+      // step injects afterwards into the rubric's own row of actions.
+      expect($rubricRoot.find('.exe-rubrics-actions .Games-SendScore').length).toBe(0);
     });
 
     it('initScorm does not add save button when isScorm=1', () => {
@@ -1114,25 +1116,72 @@ describe('rubric iDevice SCORM integration', () => {
       expect($rubricRoot.find('.exe-rubrics-scorm-save').length).toBe(0);
     });
 
-    it('addScormSaveButton prepends a button with the configured text', () => {
-      const scope = $('<div class="idevice_node rubric" id="btn-scope"><div class="rubric"><div class="exe-rubrics-actions"><button class="existing"></button></div></div></div>');
-      document.body.append(scope);
+    // The defect: this iDevice built its own button and prepended it to the row
+    // holding Download and Reset, so it sat among the rubric's own actions
+    // instead of in the container every other iDevice puts it in.
+    describe('getScormAreaHtml', () => {
+      it('renders the shared container with the button in manual mode', () => {
+        const html = $rubric.getScormAreaHtml(
+          { isScorm: 2, textButtonScorm: 'Enviar puntuación' },
+          {}
+        );
 
-      const table = $('<table></table>');
-      scope.find('.rubric').append(table);
-
-      $rubric.addScormSaveButton({
-        table,
-        textButtonScorm: 'Enviar puntuación',
-        strings: {},
+        expect(html).toContain('Games-GetScore');
+        expect(html).toContain('Games-SendScore');
+        expect(html).toContain('Enviar puntuación');
+        expect(html).toContain('btn btn-primary');
       });
 
-      const $btn = scope.find('.exe-rubrics-scorm-save');
-      expect($btn.length).toBe(1);
-      expect($btn.text()).toBe('Enviar puntuación');
-      expect($btn.hasClass('Games-SendScore')).toBe(true);
-      // Button must be first child of actions container
-      expect(scope.find('.exe-rubrics-actions').children().first().is($btn)).toBe(true);
+      it('renders no button in automatic mode, only the message slot', () => {
+        const html = $rubric.getScormAreaHtml({ isScorm: 1 }, {});
+
+        expect(html).not.toContain('Games-SendScore');
+        expect(html).toContain('Games-RepeatActivity');
+      });
+
+      it('falls back to the caption from the activity strings', () => {
+        const html = $rubric.getScormAreaHtml({ isScorm: 2 }, { msgScore: 'Puntuación' });
+
+        expect(html).toContain('Puntuación');
+      });
+
+      it('keeps the message slot when the gamification bridge is absent', () => {
+        const previous = globalThis.$exeDevices;
+        globalThis.$exeDevices = undefined;
+
+        try {
+          const html = $rubric.getScormAreaHtml({ isScorm: 2 }, {});
+
+          expect(html).toContain('Games-RepeatActivity');
+        } finally {
+          globalThis.$exeDevices = previous;
+        }
+      });
+
+      // Where the learner actually sees it: in the interface the activity
+      // renders, below its own actions, not inside the row with Download and
+      // Reset.
+      it('lands in the rendered interface, outside the rubric actions', () => {
+        const scope = $(
+          '<div class="idevice_node rubric" id="iface-node"><div class="rubric"></div></div>'
+        );
+        document.body.append(scope);
+        const table = buildScoredTable();
+        const $root = scope.find('.rubric');
+        $root.append(table);
+
+        $rubric.createInterface({
+          scope: $root,
+          scopeId: 'iface-node',
+          strings: {},
+          table,
+          isScorm: 2,
+          textButtonScorm: 'Guardar',
+        });
+
+        expect($root.find('.Games-GetScore .Games-SendScore').length).toBe(1);
+        expect($root.find('.exe-rubrics-actions .Games-SendScore').length).toBe(0);
+      });
     });
 
     it('sendRubricScore calls sendScoreNew with computed score', () => {
@@ -1224,10 +1273,11 @@ describe('rubric iDevice SCORM integration', () => {
       });
     });
 
-    // sendScoreNew counts any manual submit as completion — `gameOver === true
-    // || auto !== true` — whatever the flag says, so the rule has to be
-    // enforced before the report or the button would close an unfinished
-    // rubric anyway.
+    // The button publishes the marks so far and leaves the attempt open, like
+    // everywhere else. It used to refuse an unfinished rubric outright, because
+    // sendScoreNew counted any hand-sent score as completion and there was no
+    // other way to keep it open. Completion comes from gameOver alone now, so
+    // the refusal is gone and the rubric decides its own state.
     describe('the manual save button obeys the same rule', () => {
       function givenManualSave(tick) {
         const node = $('<div class="idevice_node"><span class="Games-RepeatActivity"></span></div>');
@@ -1249,13 +1299,16 @@ describe('rubric iDevice SCORM integration', () => {
         return { sendSpy, node };
       }
 
-      it('refuses to save an unfinished rubric, and says why', () => {
-        const { sendSpy, node } = givenManualSave(table => {
+      it('saves an unfinished rubric without closing the attempt', () => {
+        const { sendSpy } = givenManualSave(table => {
           table.find('input[value="3"]').prop('checked', true);
         });
 
-        expect(sendSpy).not.toHaveBeenCalled();
-        expect(node.find('.Games-RepeatActivity').text()).toBe('Complete the rubric first');
+        expect(sendSpy).toHaveBeenCalledTimes(1);
+        expect(sendSpy.mock.calls[0][0]).toBe(false);
+        // One of two criteria scored: the rubric is not finished, and saying so
+        // is what keeps the attempt open.
+        expect(sendSpy.mock.calls[0][1].gameOver).toBe(false);
       });
 
       it('saves once every criterion is scored', () => {

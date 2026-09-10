@@ -639,12 +639,19 @@ var $rubric = {
             $rubric.saveAsPdf($table);
         });
 
-        this.bindScopedEvent($actions.find('.exe-rubrics-scorm-save'), 'click.rubric', function () {
-            var data = $rubric.getDataForTable($table);
-            if (data) {
-                $rubric.sendRubricScore(false, data);
+        // The button lives in the shared container now, not in this row, so it
+        // is looked up from the activity's scope and matched by the class every
+        // iDevice's save button carries.
+        this.bindScopedEvent(
+            this.getDataScope($table).find('.Games-SendScore'),
+            'click.rubric',
+            function () {
+                var data = $rubric.getDataForTable($table);
+                if (data) {
+                    $rubric.sendRubricScore(false, data);
+                }
             }
-        });
+        );
     },
 
     getLicenseLabel: function (license) {
@@ -735,6 +742,13 @@ var $rubric = {
         var dateId = 'rubric-date-' + safeScopeId;
         var notesId = 'rubric-notes-' + safeScopeId;
         var authorshipFooter = this.resolveAuthorshipFooter(root, data.raw);
+        // The shared container: the save button, when the activity has one, and
+        // the runtime's message, in the same place and with the same look as in
+        // every other iDevice. This used to be a bare span here, with the button
+        // injected afterwards into the rubric's own row of actions — so it sat
+        // between Download and Reset instead of where the learner finds it
+        // everywhere else.
+        var scormArea = this.getScormAreaHtml(data, strings);
 
         var html = `
             <div class="exe-rubrics-wrapper" data-rubric-interface="${safeScopeId}">
@@ -769,9 +783,7 @@ var $rubric = {
                         <button type="button" class="exe-rubrics-reset btn btn-primary btn-sm">${safeStrings.reset}</button>
                     </p>
                     ${authorshipFooter}
-                    <div class="Games-GetScore mb-2 d-flex align-items-center justify-content-center w-100 mt-3">
-                        <span class="Games-RepeatActivity"></span>
-                    </div>
+                    ${scormArea}
                 </div>
             </div>
         `;
@@ -1533,21 +1545,37 @@ var $rubric = {
         $exeDevices.iDevice.gamification.scorm.registerActivity(scormGame);
 
         this.restoreVisibleScoreFromLms(data);
-
-        if (data.isScorm === 2) {
-            this.addScormSaveButton(data);
-        }
     },
 
-    addScormSaveButton: function (data) {
-        var $table = $(data.table);
-        var $actions = this.getDataScope($table).find('.exe-rubrics-actions').first();
-        if ($actions.length !== 1) return;
+    /**
+     * The shared save-button container for this activity.
+     *
+     * addButtonScoreNew emits the button for manual mode alone and the message
+     * span in both tracked modes, so this iDevice's control is the same one,
+     * in the same place, as everywhere else. Falls back to the bare span when
+     * the gamification bridge is absent, which is how the rest of this file
+     * treats it.
+     *
+     * @param {object} data the activity's options
+     * @param {object} strings the activity's captions
+     * @returns {string} the container's HTML
+     */
+    getScormAreaHtml: function (data, strings) {
+        var bare =
+            '<div class="Games-GetScore mb-2 d-flex align-items-center justify-content-center w-100 mt-3">' +
+            '<span class="Games-RepeatActivity"></span></div>';
 
-        var buttonText = data.textButtonScorm || data.strings.msgScore || 'Save score';
-        var $btn = $('<button type="button" class="exe-rubrics-scorm-save Games-SendScore btn btn-primary btn-sm"></button>');
-        $btn.text(buttonText);
-        $actions.prepend($btn).prepend(' ');
+        if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
+            return bare;
+        }
+
+        var caption = data.textButtonScorm || (strings && strings.msgScore) || 'Save score';
+        return (
+            $exeDevices.iDevice.gamification.scorm.addButtonScoreNew({
+                isScorm: data.isScorm,
+                textButtonScorm: this.escapeAttribute(caption),
+            }) || bare
+        );
     },
 
     /**
@@ -1607,16 +1635,13 @@ var $rubric = {
         var game = data.scormGame;
         var complete = this.isRubricComplete($table);
 
-        // A manual save must not close an unfinished rubric. sendScoreNew
-        // counts any manual submit as completion — `gameOver === true ||
-        // auto !== true` — whatever the flag says, so refusing has to happen
-        // here, before the report. The string for it has been in this iDevice
-        // all along, unused.
-        if (auto === false && !complete) {
-            this.showScormMessage(game, game.msgs && game.msgs.msgEndGameScore);
-            return;
-        }
-
+        // No refusal. This used to turn a manual save away while the rubric was
+        // unfinished, because sendScoreNew counted any hand-sent score as
+        // completion and there was no other way to stop an unfinished rubric
+        // being closed. It no longer does: completion is decided from gameOver
+        // alone, which the line below sets to what the rubric actually is. So
+        // the button does here what it does everywhere else — it publishes the
+        // marks so far and leaves the attempt open.
         game.scorerp = score;
         game.gameStarted = true;
         // The rubric is finished exactly while every criterion is scored, and
