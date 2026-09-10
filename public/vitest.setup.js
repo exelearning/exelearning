@@ -1261,6 +1261,26 @@ const mockGamificationObservers = {
   }),
 };
 
+/**
+ * Local progress report, mirroring gamification.report in
+ * public/app/common/common.js. It has to be here rather than in each spec:
+ * addEvents() in several iDevices refreshes the icon from a 500 ms timer, so
+ * the call lands after the test that armed it has finished and cleared its own
+ * mocks. In a browser common.js has always defined this object; leaving it out
+ * of the harness turned that timer into an uncaught TypeError, which Vitest
+ * reports as an unhandled error and fails the whole run on — with every test
+ * still passing. A spec that wants to assert on the report installs its own.
+ */
+const mockGamificationReport = {
+  updateEvaluationIcon: vi.fn(),
+  showEvaluationIcon: vi.fn(),
+  updateEvaluation: vi.fn(),
+  getDateString: vi.fn(() => ''),
+  getNodeIdevice: vi.fn(() => ''),
+  getNameIdevice: vi.fn(() => ''),
+  saveEvaluation: vi.fn(),
+};
+
 global.$exeDevices = {
   iDevice: {
     gamification: {
@@ -1270,6 +1290,7 @@ global.$exeDevices = {
       helpers: mockGamificationHelpers,
       math: mockGamificationMath,
       observers: mockGamificationObservers,
+      report: mockGamificationReport,
     },
   },
 };
