@@ -1,4 +1,5 @@
 import Modal from '../modal.js';
+import { SYSTEM_DEFAULT } from '../../../user/preferences/spellCheckerPreferences.js';
 
 export default class ModalProperties extends Modal {
     constructor(manager) {
@@ -667,15 +668,10 @@ export default class ModalProperties extends Modal {
                 valueElement.value = property.value;
                 break;
             case 'select':
-                valueElement = document.createElement('select');
-                for (let [value, text] of Object.entries(property.options)) {
-                    let optionElement = document.createElement('option');
-                    optionElement.value = value;
-                    optionElement.innerHTML = text;
-                    if (value == property.value)
-                        optionElement.setAttribute('selected', 'selected');
-                    valueElement.append(optionElement);
-                }
+                valueElement = this.makeSelectElement(property, false);
+                break;
+            case 'multiselect':
+                valueElement = this.makeSelectElement(property, true);
                 break;
             default:
                 valueElement = document.createElement('div');
@@ -704,6 +700,34 @@ export default class ModalProperties extends Modal {
             }
         }
         return valueElement;
+    }
+
+    makeSelectElement(property, multiple) {
+        const select = document.createElement('select');
+        select.multiple = multiple;
+        const selectedValues = multiple ? property.value : [property.value];
+        for (const [value, text] of Object.entries(property.options)) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = text;
+            option.selected = Array.isArray(selectedValues) && selectedValues.includes(value);
+            select.append(option);
+        }
+        if (multiple && Object.hasOwn(property.options, SYSTEM_DEFAULT)) {
+            select.addEventListener('change', event => {
+                const changed = event.target;
+                const systemDefault = Array.from(changed.options).find(
+                    option => option.value === SYSTEM_DEFAULT
+                );
+                const concrete = Array.from(changed.selectedOptions).filter(
+                    option => option.value !== SYSTEM_DEFAULT
+                );
+                if (systemDefault?.selected && concrete.length > 0) {
+                    systemDefault.selected = false;
+                }
+            });
+        }
+        return select;
     }
 
     /**
@@ -767,6 +791,11 @@ export default class ModalProperties extends Modal {
                     break;
                 case 'select':
                     value = property.selectedOptions[0].value.trim();
+                    break;
+                case 'multiselect':
+                    value = Array.from(property.selectedOptions, (option) =>
+                        option.value.trim()
+                    );
                     break;
                 case 'text':
                 case 'date':
