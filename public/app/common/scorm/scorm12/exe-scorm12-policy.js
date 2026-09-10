@@ -174,7 +174,20 @@
         // from content, which does not go through this policy. A copy kept
         // here would go stale the moment content set its own exit, and the
         // skipped write would be exactly the one that matters.
-        if (client.hasWrittenValue(EXIT) && client.getCachedValue(EXIT) === exit) {
+        //
+        // Branch on the CAPABILITY, not on the client object, for the same
+        // reason showFinalScore does in common.js: getClient() resolves
+        // `exeScorm12.client` off the global, and the Moodle plugin injects
+        // its own vendored copy of this runtime into content exported by
+        // whichever eXeLearning release the author used. Both accessors
+        // arrived with the exit clearing itself, so a client from before it
+        // has neither. Losing the de-duplication costs one LMSSetValue of a
+        // value the LMS already holds; throwing here would take the exit, the
+        // session time and LMSFinish with it, since this runs inside
+        // applyExitPolicy.
+        var remembersWrites =
+            typeof client.hasWrittenValue === 'function' && typeof client.getCachedValue === 'function';
+        if (remembersWrites && client.hasWrittenValue(EXIT) && client.getCachedValue(EXIT) === exit) {
             return exit;
         }
         client.setValue(EXIT, exit);

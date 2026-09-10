@@ -622,7 +622,11 @@ still reads `not attempted`.
   cache (`client.hasWrittenValue()` / `getCachedValue()`) rather than a copy
   held by the policy: `scorm.SetExit()` lets content write the element
   directly, so a policy-local copy would go stale and skip the write that
-  matters.
+  matters. Both accessors are called behind a **capability check**, for the
+  reason `showFinalScore()` gives: the policy resolves its client off the
+  global, and a host that vendored this runtime before those accessors existed
+  would otherwise throw inside the exit write — taking the exit, the session
+  time and `LMSFinish` with it.
 - The success threshold is `cmi.student_data.mastery_score` when the LMS
   publishes one, otherwise **50**, which is the threshold eXeLearning game
   iDevices have always applied. `policy.setSuccessThreshold(null)` disables the

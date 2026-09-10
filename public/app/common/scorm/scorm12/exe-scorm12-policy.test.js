@@ -1220,6 +1220,26 @@ describe('exe-scorm12-policy', () => {
             expect(api.data['cmi.core.exit']).toBe('suspend');
         });
 
+        // getClient() resolves exeScorm12.client off the global, and the Moodle
+        // plugin injects its own vendored copy of this runtime into content
+        // exported by whichever release the author used. Both write-cache
+        // accessors arrived with the exit clearing itself, so a client from
+        // before it has neither — and this runs inside applyExitPolicy, where a
+        // throw would take the exit, the session time and LMSFinish with it.
+        it('still writes the exit through a client with no write cache', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            const olderClient = {
+                isActive: () => client.isActive(),
+                getValue: element => client.getValue(element),
+                setValue: (element, value) => client.setValue(element, value),
+            };
+            policy.configure({ getClient: () => olderClient, getActivities: () => activities, warn: warnSpy });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            expect(() => policy.recordActivityOutcome()).not.toThrow();
+            expect(api.data['cmi.core.exit']).toBe('');
+        });
+
         it('keeps the exit suspended when the LMS rejects the terminal status', () => {
             startSession(
                 { 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' },
