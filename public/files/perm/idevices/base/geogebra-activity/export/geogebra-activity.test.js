@@ -396,17 +396,56 @@ describe('geogebra-activity iDevice (export)', () => {
   // always come from the evaluation messages; this pins that, because dropping
   // the wrong one of the pair would have changed the label silently.
   describe('getOptions', () => {
-    it('takes msgYouScore from the evaluation messages, not the SCORM ones', () => {
-      $geogebraactivity.messages = ['m0', 'm1', 'm2', 'evaluation-label'];
+    // msgs used to define msgYouScore twice — from messagesScorm[1], which is
+    // what the editor writes 'Your score' into, and again from messagesEval[3],
+    // which is the save button's caption. In an object literal the last wins,
+    // so the correct one was shadowed and dead, and the score line read
+    // "Save score: 6.67". Dropping the duplicate kept the winner.
+    it('takes msgYouScore from the SCORM messages, where the editor puts it', () => {
+      $geogebraactivity.messages = ['m0', 'm1', 'm2', 'button-caption'];
 
       const options = $geogebraactivity.getOptions(
         'a0',
         100,
-        ['scorm0', 'scorm-label', 'scorm2', 'scorm3', 'scorm4'],
+        ['scorm0', 'your-score', 'scorm2', 'scorm3', 'scorm4'],
         ''
       );
 
-      expect(options.msgs.msgYouScore).toBe('evaluation-label');
+      expect(options.msgs.msgYouScore).toBe('your-score');
+      // [3] of the evaluation list is the button's caption, and that is the
+      // only thing it feeds.
+      expect(options.textButtonScorm).toBe('button-caption');
+    });
+
+    // The editor serialises the evaluation list as [0] incomplete, [1] passed,
+    // [2] not passed. The two names were bound to the wrong slots, so the
+    // progress report told a learner who passed that they had not — and paired
+    // the message with the opposite icon, since showEvaluationIcon shows the
+    // error icon with msgUnsuccessfulActivity and the success icon with
+    // msgSuccessfulActivity.
+    it('does not swap the pass and fail messages', () => {
+      $geogebraactivity.messages = [
+        'Incomplete activity',
+        'Activity: Passed. Score: %s',
+        'Activity: Not passed. Score: %s',
+        'Save score',
+      ];
+
+      const options = $geogebraactivity.getOptions('a0', 100, [], '');
+
+      expect(options.msgs.msgSuccessfulActivity).toBe('Activity: Passed. Score: %s');
+      expect(options.msgs.msgUnsuccessfulActivity).toBe('Activity: Not passed. Score: %s');
+      expect(options.msgs.msgUncompletedActivity).toBe('Incomplete activity');
+    });
+
+    it('does not swap them in the fallbacks either', () => {
+      $geogebraactivity.messages = [];
+
+      const options = $geogebraactivity.getOptions('a0', 100, [], '');
+
+      expect(options.msgs.msgSuccessfulActivity).toContain('Passed');
+      expect(options.msgs.msgSuccessfulActivity).not.toContain('Not passed');
+      expect(options.msgs.msgUnsuccessfulActivity).toContain('Not passed');
     });
 
     // msgYouLastScore compared the value against the string 'undefined' where

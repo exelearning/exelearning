@@ -519,18 +519,32 @@ var $geogebraactivity = {
                     typeof messagesEval[0] != 'undefined'
                         ? messagesEval[0]
                         : '',
-                msgUnsuccessfulActivity:
+                // The editor serialises this list in a fixed order, the same in
+                // every version of this iDevice: [0] incomplete, [1] passed,
+                // [2] not passed, [3] the save button's caption. Two of the
+                // names below were bound to the wrong slots, so the progress
+                // report told a learner who passed that they had not and a
+                // learner who failed that they had passed — and paired each
+                // with the opposite icon, since showEvaluationIcon shows the
+                // error icon with msgUnsuccessfulActivity and the success icon
+                // with msgSuccessfulActivity.
+                msgSuccessfulActivity:
                     typeof messagesEval[1] != 'undefined'
                         ? messagesEval[1]
                         : 'Activity: Passed. Score: %s',
-                msgSuccessfulActivity:
+                msgUnsuccessfulActivity:
                     typeof messagesEval[2] != 'undefined'
                         ? messagesEval[2]
                         : 'Activity: Not passed. Score: %s',
+                // From the SCORM list, whose second entry is exactly this and
+                // was never read by anything. It used to come from [3] of the
+                // list above, which is the save button's caption — the one
+                // textButtonScorm already takes — so the score line read
+                // "Save score: 6.67".
                 msgYouScore:
-                    typeof messagesEval[3] != 'undefined'
-                        ? messagesEval[3]
-                        : 'You score',
+                    typeof messagesScorm[1] != 'undefined'
+                        ? messagesScorm[1]
+                        : 'Your score',
             },
         };
         return options;
