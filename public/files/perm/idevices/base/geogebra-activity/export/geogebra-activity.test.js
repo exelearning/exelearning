@@ -606,4 +606,57 @@ describe('geogebra-activity iDevice (export)', () => {
       );
     });
   });
+
+  // An applet has no end of its own — the learner can go on dragging the
+  // construction — so saving is the only completion signal this activity has,
+  // and it has to give it itself. The shared runtime decides completion from
+  // gameOver alone and no longer infers it from the save button, so without
+  // this the activity would never complete and its page would stay
+  // `incomplete` however many times the learner saved.
+  describe('sendScore', () => {
+    let previousScorm;
+    let previousPipwerks;
+    let reported;
+
+    beforeEach(() => {
+      reported = [];
+      previousScorm = $exeDevices.iDevice.gamification.scorm;
+      previousPipwerks = global.pipwerks;
+      $exeDevices.iDevice.gamification.scorm = {
+        sendScoreNew: (auto, game) => reported.push({ auto, game }),
+      };
+      global.pipwerks = {
+        SCORM: { SetScoreMax: () => {}, SetScoreMin: () => {} },
+      };
+      $geogebraactivity.applets = {
+        z0: {
+          exists: () => true,
+          getValue: name =>
+            ({ SCORMRawScore: 8, SCORMMinScore: 0, SCORMMaxScore: 10 })[name],
+        },
+      };
+    });
+
+    afterEach(() => {
+      $exeDevices.iDevice.gamification.scorm = previousScorm;
+      global.pipwerks = previousPipwerks;
+    });
+
+    it('declares the activity finished, because saving is its only end', () => {
+      $geogebraactivity.sendScore({ appletSuffix: 'z0' });
+
+      expect(reported).toHaveLength(1);
+      expect(reported[0].auto).toBe(false);
+      expect(reported[0].game.gameOver).toBe(true);
+      expect(reported[0].game.gameStarted).toBe(true);
+    });
+
+    it('stands down without the SCORM wrapper', () => {
+      delete global.pipwerks;
+
+      $geogebraactivity.sendScore({ appletSuffix: 'z0' });
+
+      expect(reported).toEqual([]);
+    });
+  });
 });

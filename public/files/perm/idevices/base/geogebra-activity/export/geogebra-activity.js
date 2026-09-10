@@ -611,6 +611,13 @@ var $geogebraactivity = {
         }
         const mOptions = JSON.parse(JSON.stringify(options));
         mOptions.gameStarted = true;
+        // Saving is what finishes a GeoGebra activity, and the activity has to
+        // say so itself: an applet has no end of its own — the learner may keep
+        // dragging the construction for as long as they like — so this is the
+        // only completion signal there is. The shared runtime no longer infers
+        // one from the save button, so without this line the activity would
+        // never complete and its page would stay `incomplete` for good.
+        mOptions.gameOver = true;
         pipwerks.SCORM.SetScoreMax('100');
         pipwerks.SCORM.SetScoreMin('0');
 
