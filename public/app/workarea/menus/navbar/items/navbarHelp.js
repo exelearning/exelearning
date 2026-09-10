@@ -6,6 +6,9 @@ export default class NavbarFile {
         this.assistantButton = this.menu.navbar.querySelector(
             '#navbar-button-assistant'
         );
+        this.connectMcpButton = this.menu.navbar.querySelector(
+            '#navbar-button-connect-mcp'
+        );
         this.tutorialButton = this.menu.navbar.querySelector(
             '#navbar-button-exe-tutorial'
         );
@@ -35,6 +38,7 @@ export default class NavbarFile {
      */
     setEvents() {
         this.setAssistantEvent();
+        this.setConnectMcpEvent();
         this.setTutorialEvent();
         this.setApiDocsEvent();
         this.setReleaseNotesEvent();
@@ -56,6 +60,17 @@ export default class NavbarFile {
     setAssistantEvent() {
         this.assistantButton.addEventListener('click', () => {
             this.assistantEvent();
+        });
+    }
+
+    /**
+     * Connect MCP
+     * Help -> Connect MCP
+     *
+     */
+    setConnectMcpEvent() {
+        this.connectMcpButton.addEventListener('click', () => {
+            this.connectMcpEvent();
         });
     }
 
@@ -145,6 +160,14 @@ export default class NavbarFile {
      */
     assistantEvent() {
         eXeLearning.app.modals.assistant.show();
+    }
+
+    /**
+     * Show Connect MCP modal
+     *
+     */
+    connectMcpEvent() {
+        eXeLearning.app.modals.connectmcp.show();
     }
 
     /**

@@ -178,13 +178,17 @@ export default class IdeviceNode {
             let value = data[param] ? data[param] : defaultValue;
             if (this.parseParams.includes(param)) {
                 const parsed = parseIdeviceJsonProperties(value);
-                this[param] = parsed.value;
                 this.jsonPropertiesParseError = parsed.error;
                 this.malformedJsonPropertiesRaw = parsed.error ? value : null;
                 if (parsed.error) {
                     Logger.warn(
                         `[IdeviceNode] Ignoring malformed jsonProperties for ${data.odeIdeviceId || data.id || 'unknown component'}: ${parsed.error.message}`
                     );
+                    this[param] = {};
+                } else {
+                    // Additional shape normalisation (arrays / non-object JSON → {})
+                    // from the WebMCP branch's parseParamValue hardening.
+                    this[param] = this.parseParamValue(param, value, data);
                 }
             } else {
                 this[param] = value;
@@ -196,6 +200,52 @@ export default class IdeviceNode {
         }
         if (data.odeComponentsSyncProperties) {
             this.setProperties(data.odeComponentsSyncProperties);
+        }
+    }
+
+    parseParamValue(paramName, value, data = {}) {
+        // The only field routed through parseParamValue is `jsonProperties`
+        // (see `parseParams`), and `jsonProperties` is always an object map
+        // (default '{}'); downstream consumers read it with Object.keys()/
+        // property assignment, never as an array. A value that parses to an
+        // array is therefore malformed, so we normalise it to {} rather than
+        // returning the array.
+        if (value === null || value === undefined || value === '') {
+            return {};
+        }
+
+        if (typeof value === 'object') {
+            if (Array.isArray(value)) {
+                Logger.warn(
+                    `[IdeviceNode] Invalid ${paramName} array in component ${data.odeIdeviceId || data.id || 'unknown'}; using empty object.`,
+                );
+                return {};
+            }
+            return value;
+        }
+
+        if (typeof value !== 'string') {
+            Logger.warn(
+                `[IdeviceNode] Invalid ${paramName} type (${typeof value}) in component ${data.odeIdeviceId || data.id || 'unknown'}; using empty object.`,
+            );
+            return {};
+        }
+
+        try {
+            const parsed = JSON.parse(value);
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                Logger.warn(
+                    `[IdeviceNode] Invalid ${paramName} payload in component ${data.odeIdeviceId || data.id || 'unknown'}; using empty object.`,
+                );
+                return {};
+            }
+            return parsed;
+        } catch (error) {
+            Logger.warn(
+                `[IdeviceNode] Failed to parse ${paramName} in component ${data.odeIdeviceId || data.id || 'unknown'}; using empty object.`,
+                error,
+            );
+            return {};
         }
     }
 

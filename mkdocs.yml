@@ -34,6 +34,7 @@ nav:
   - Overview: overview.md
   - Install: install.md
   - Profile Avatars: profile-avatars.md
+  - WebMCP: webmcp.md
   - Deployment: deployment.md
   - High Availability: high-availability.md
   - "Deploy: Sample Configs": deploy/README.md
@@ -49,6 +50,7 @@ nav:
       - Real Time: development/real-time.md
       - Embedding: development/embedding.md
       - Profiling: development/profiling.md
+      - WebMCP Integration: development/webmcp.md
       - Customization: development/customization.md
       - Styles: development/styles.md
       - Installers: development/installers.md
