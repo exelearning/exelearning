@@ -606,13 +606,23 @@ still reads `not attempted`.
   after a resume kept the unfinished icon in the course-structure menu until
   `cmi.core.exit` was cleared, with `cmi.core.lesson_status` sitting at
   `passed` the whole time — Moodle redraws that menu on `LMSCommit`, which
-  happens while the stale `suspend` is still there. Only the terminal
-  direction is written mid-session; `suspend` still belongs to the exit, since
-  a page the learner is still working through is not suspended. An unchanged
-  value is not re-sent, and the check reads the **client's** write cache
-  (`client.hasWrittenValue()` / `getCachedValue()`) rather than a copy held by
-  the policy: `scorm.SetExit()` lets content write the element directly, so a
-  policy-local copy would go stale and skip the write that matters.
+  happens while the stale `suspend` is still there.
+
+  `suspend` is written mid-session **only to undo that clearing**, when the
+  attempt this session closed reopens — the learner restarts an activity, so
+  the status goes back to `incomplete`. Without it the LMS keeps a `""`
+  describing an end that has not happened, and the only path that would
+  correct it is the exit policy, which runs from `lifecycle.finish()` alone: a
+  tab the mobile browser kills, or an iframe the LMS replaces without firing
+  `pagehide`, never reaches it, and `persist()` does not touch the exit. On a
+  page that was never terminal nothing is written, because a page the learner
+  is still working through is not suspended; that value belongs to the exit.
+
+  An unchanged value is not re-sent, and the check reads the **client's** write
+  cache (`client.hasWrittenValue()` / `getCachedValue()`) rather than a copy
+  held by the policy: `scorm.SetExit()` lets content write the element
+  directly, so a policy-local copy would go stale and skip the write that
+  matters.
 - The success threshold is `cmi.student_data.mastery_score` when the LMS
   publishes one, otherwise **50**, which is the threshold eXeLearning game
   iDevices have always applied. `policy.setSuccessThreshold(null)` disables the
@@ -772,6 +782,7 @@ LMSGetValue("cmi.suspend_data")                     → restore the activity reg
 -- visibilitychange → hidden (any number of times) --
 [LMSGetValue("cmi.core.lesson_status")]             (reconcile, only with required work pending)
 [LMSSetValue("cmi.core.lesson_status", "incomplete")]   (only when correcting the policy's own stale verdict)
+[LMSSetValue("cmi.core.exit", "suspend")]           (with it, when this session had cleared the exit)
 [LMSSetValue("cmi.suspend_data", …)]                (only when activities are registered)
 LMSSetValue("cmi.core.session_time", "HHHH:MM:SS.SS")
 LMSCommit("")

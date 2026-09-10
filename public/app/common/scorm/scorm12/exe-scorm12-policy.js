@@ -112,6 +112,15 @@
             // required activity registers late; one restored from a previous
             // attempt or written explicitly by content never is.
             policySessionStatus: null,
+            // True while the LMS may hold an empty cmi.core.exit next to a
+            // terminal status this policy owns — either because this session
+            // cleared it, or because the entry policy adopted a terminal
+            // attempt the previous visit closed, which is what closing it
+            // wrote. It is what lets that "" be undone if the attempt reopens:
+            // outside the window the exit belongs to applyExitPolicy, and
+            // writing "suspend" on every page that merely reports progress
+            // would mark attempts the learner is still working on as suspended.
+            exitCleared: false,
             // True after applyEntryPolicy() has restored suspend_data. Game
             // iDevices register on jQuery ready, which is before loadPage().
             entryApplied: false,
@@ -184,16 +193,33 @@
      * after a resume kept the unfinished icon until cmi.core.exit was cleared,
      * with cmi.core.lesson_status sitting at "passed" the whole time.
      *
-     * Only the terminal direction is handled here. Writing "suspend" as soon
-     * as a page reports progress would mark an attempt the learner is still
-     * working on as suspended; that value belongs to the exit, and
-     * applyExitPolicy still writes it.
+     * The other direction is handled only inside the window this function
+     * opened. Writing "suspend" as soon as any page reports progress would
+     * mark an attempt the learner is still working on as suspended; that value
+     * belongs to the exit, and applyExitPolicy still writes it. But once this
+     * session has cleared the exit, a "" is stored at the LMS describing an end
+     * that has not happened — and if the attempt then reopens (the learner
+     * restarts an activity, so reconcilePendingActivities downgrades the status
+     * back to "incomplete") nothing rewrote it. The only path that would is
+     * applyExitPolicy, and that runs from lifecycle.finish() alone: a tab the
+     * mobile browser kills, or an iframe Moodle replaces without firing
+     * pagehide, never reaches it. persist() — the last moment this runtime
+     * documents as guaranteed — does not touch the exit. The LMS would then
+     * close an unfinished attempt as a normal completion.
+     *
+     * Before the exit was cleared mid-session there was no such window: the
+     * "suspend" a resumed attempt already had at the LMS simply survived.
      *
      * @param {string} status - The status now in force at the LMS.
      */
-    function clearExitWhenTerminal(status) {
+    function syncExitWithStatus(status) {
         if (policy.isTerminalStatus(status)) {
+            state.exitCleared = true;
             writeExit('');
+            return;
+        }
+        if (state.exitCleared) {
+            writeExit('suspend');
         }
     }
 
@@ -419,6 +445,18 @@
             // from the payload the LMS just handed back.
             if (activities && policy.isTerminalStatus(status) && policy.decideStatus().status === status) {
                 state.policySessionStatus = status;
+                // The exit that goes with it is claimed too. A terminal attempt
+                // stored at the LMS was closed by the visit that finished it,
+                // and closing it wrote cmi.core.exit = "": the same window this
+                // session opens when it clears the exit itself, only opened by
+                // a previous visit. Without claiming it here, a learner who
+                // finishes a page, comes back and restarts an activity leaves
+                // the LMS holding a "" that describes an end that no longer
+                // happened — verified in Moodle 5.0.7 with a minimal SCO, where
+                // only an intermediate re-evaluation of the terminal status
+                // (which the full iDevice flow happens to do, and the policy
+                // alone does not guarantee) covered it up.
+                state.exitCleared = true;
             }
             // Now re-apply this session's reports over the restored attempt —
             // after the adoption above, which has to read the registry exactly
@@ -676,7 +714,7 @@
                 // by content — agreeing with it is not the same as having
                 // written it, and only a status this policy wrote may later
                 // be downgraded.
-                clearExitWhenTerminal(current);
+                syncExitWithStatus(current);
                 return { status: current, written: true, reason: decision.reason, effective: current };
             }
             var written = writeStatus(decision.status);
@@ -686,7 +724,7 @@
             // The status the LMS actually holds, so a rejected write does not
             // clear an exit the attempt still needs.
             var effective = written ? decision.status : current;
-            clearExitWhenTerminal(effective);
+            syncExitWithStatus(effective);
             return {
                 status: decision.status,
                 written: written,

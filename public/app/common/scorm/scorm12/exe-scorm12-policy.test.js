@@ -1123,6 +1123,103 @@ describe('exe-scorm12-policy', () => {
             expect(api.data['cmi.core.exit']).toBe('');
         });
 
+        // The window the clearing itself opened: the attempt turned terminal,
+        // the exit was cleared, and then the learner restarted an activity, so
+        // the status went back to "incomplete". Nothing rewrote the exit. The
+        // only path that would is applyExitPolicy, and that runs from
+        // lifecycle.finish() alone — a tab the mobile browser kills, or an
+        // iframe Moodle replaces without firing pagehide, never reaches it, and
+        // persist() does not touch the exit. The LMS would close an unfinished
+        // attempt as a normal completion.
+        it('suspends the exit again when the attempt reopens', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+            expect(api.data['cmi.core.exit']).toBe('');
+
+            // The learner plays the activity again: it reports itself unfinished.
+            activities.update('quiz-1', { completed: false, score: 0 });
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({ status: 'incomplete', written: true });
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+
+        // The reopen is written early in updateActivity() and the commit that
+        // ships it comes last, with persistActivities() and showFinalScore() in
+        // between — and showFinalScore calls recordActivityOutcome(), which
+        // runs the whole status decision again. Whatever the LMS holds when
+        // the commit goes out is what Moodle redraws its menu from, so the
+        // question is what survives to the end of that sequence, not what the
+        // reconcile wrote.
+        it('holds the suspended exit through the rest of the report cycle', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            policy.recordActivityOutcome();
+            activities.update('quiz-1', { completed: false, score: 0 });
+            policy.reconcilePendingActivities();
+            api.resetCalls();
+
+            // What follows the reconcile inside updateActivity().
+            policy.persistActivities();
+            policy.recordActivityOutcome();
+
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+            // And nothing re-sent: the write cache is what makes the repeat a
+            // no-op, so the commit carries one exit value, not a pair.
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.exit')).toEqual([]);
+        });
+
+        // The same window opened by a previous visit instead of by this one:
+        // the learner finished the page, left, and comes back. applyEntryPolicy
+        // adopts the stored terminal status as this session's claim, and the ""
+        // that goes with it was written when that visit closed the attempt.
+        //
+        // Deliberately with NO intermediate re-evaluation of the terminal
+        // status before the restart: the full iDevice flow happens to make one,
+        // which hid this in Moodle 5.0.7 for every path except a minimal SCO
+        // driving the policy directly.
+        it('suspends the exit again for a terminal attempt restored from a previous visit', () => {
+            startSession({
+                'cmi.core.lesson_status': 'passed',
+                // What closing the attempt wrote when the previous visit ended.
+                'cmi.core.exit': '',
+                // Evaluable, required and completed (flags 7), scored 90.
+                'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;100;0;100',
+            });
+
+            policy.applyEntryPolicy();
+            // Straight from the restore to the restart, nothing in between.
+            activities.update('quiz', { completed: false, score: 0 });
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({ status: 'incomplete', written: true });
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+
+        // Only inside that window. Writing "suspend" as soon as any page
+        // reports progress would mark attempts the learner is still working on
+        // as suspended, which is a much wider change than the case it fixes.
+        it('writes no exit for a page that was never terminal', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+
+            policy.recordActivityOutcome();
+
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.exit')).toEqual([]);
+        });
+
+        // The terminal status belongs to a previous attempt or to content, so
+        // this branch deliberately touches nothing — including the exit.
+        it('writes no exit when a terminal status it does not own is preserved', () => {
+            startSession({ 'cmi.core.lesson_status': 'passed', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+            api.resetCalls();
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({ reason: 'terminal-status-preserved' });
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.exit')).toEqual([]);
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+
         it('keeps the exit suspended when the LMS rejects the terminal status', () => {
             startSession(
                 { 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' },
