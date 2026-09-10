@@ -1692,11 +1692,43 @@ var $exeDevices = {
                     return obj;
                 },
 
+                /**
+                 * Whether an activity publishes its progress by itself.
+                 *
+                 * Only automatic mode (isScorm 1) does. In manual mode the
+                 * learner owns the save button and decides when — if ever —
+                 * their grade is written, so nothing the activity reports on
+                 * its own may reach the LMS.
+                 *
+                 * Every SCORM-capable iDevice offers the three modes, so there
+                 * is nothing to except: a stored 2 always has a button behind
+                 * it. form, trueorfalse, scrambled-list and complete were the
+                 * four that hid the option and shipped a button that was
+                 * missing, dead or hidden; they behave like the rest now.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @returns {boolean} true when the activity reports on its own.
+                 */
+                reportsAutomatically: function (game) {
+                    if (typeof game !== 'object' || game === null) return false;
+                    return Number(game.isScorm) === 1;
+                },
+
                 sendScoreNew: function (auto, game) {
                     if (typeof game !== 'object' || game === null) {
                         return;
                     }
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
+                        return;
+                    }
+                    // One guard for every iDevice, instead of the same
+                    // condition repeated at each of the hundred-odd places an
+                    // activity reports its progress — where it was easy to
+                    // forget one, and where forgetting it meant a manual-mode
+                    // activity quietly grading the learner behind the button.
+                    // A hand-sent score is never dropped: it came from the
+                    // button, which only exists in manual mode.
+                    if (auto === true && !$exeDevices.iDevice.gamification.scorm.reportsAutomatically(game)) {
                         return;
                     }
                     const $gmain = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
@@ -1708,14 +1740,22 @@ var $exeDevices = {
                     if (game.gameStarted || game.gameOver) {
                         game.repeatActivity = true;
                         // Explicit completion signal for the activity registry:
-                        // the learner either finished the activity (gameOver)
-                        // or submitted their score by hand (!auto). Counting a
-                        // manual submission as completion is a documented
-                        // policy decision (ADR-2209-02): submitting is the
-                        // learner's explicit act of finishing the attempt, and
-                        // it is the only completion signal games without a
-                        // game-over state can give.
-                        const activityCompleted = game.gameOver === true || auto !== true;
+                        // the activity is finished when, and only when, it says
+                        // it is. No button finishes anything.
+                        //
+                        // This used to read `gameOver === true || auto !== true`,
+                        // counting any hand-sent score as completion. The save
+                        // button is not a hand-in: it exists so the learner
+                        // decides when their grade is written, if ever, and
+                        // pressing it mid-game published a terminal state for an
+                        // activity still being played — and republished it on
+                        // every further press, which is what made the LMS
+                        // re-evaluate a verdict it had already reached.
+                        //
+                        // The learner who presses it before starting is told to
+                        // start first: that is the else branch below, which
+                        // reports nothing at all.
+                        const activityCompleted = game.gameOver === true;
                         // Single owner of cmi.suspend_data: the registry when
                         // the SCORM 1.2 runtime is present, the legacy line
                         // format otherwise.

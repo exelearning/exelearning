@@ -1883,6 +1883,7 @@ describe('common.js $exeDevices', () => {
           scorm.sendScoreNew(true, {
             main: 'main-1',
             gameStarted: true,
+            isScorm: 1,
             scorerp,
             weighted: 100,
             msgs: { msgYouScore: 'Score' },
@@ -2270,7 +2271,11 @@ describe('common.js $exeDevices', () => {
     it.each([
       ['a finished game reported automatically', { gameOver: true, gameStarted: true }, true, true],
       ['an unfinished game reported automatically', { gameOver: false, gameStarted: true }, true, false],
-      ['a score the learner submitted by hand', { gameOver: false, gameStarted: true }, false, true],
+      // The save button is not a hand-in: it says when the grade is written,
+      // never that the activity is over. Only gameOver says that, in either
+      // direction and whichever way the score was sent.
+      ['a score the learner submitted by hand mid-game', { gameOver: false, gameStarted: true, isScorm: 2 }, false, false],
+      ['a finished game whose score the learner sent by hand', { gameOver: true, gameStarted: true, isScorm: 2 }, false, true],
     ])('sendScoreNew reports %s with the right completion flag', (_label, flags, auto, expected) => {
       // The manual-submit branch ends with an alert(); happy-dom has none.
       const originalAlert = window.alert;
@@ -2312,6 +2317,90 @@ describe('common.js $exeDevices', () => {
       expect(registry.register).toHaveBeenCalledWith('id-1', expect.objectContaining({ completed: expected }));
       container.remove();
       window.alert = originalAlert;
+    });
+
+    // In manual mode the learner owns the save button and decides when — if
+    // ever — their grade is written. So an activity reporting on its own must
+    // reach nothing, and it is worth guarding once here rather than at each of
+    // the hundred-odd places the iDevices publish their progress.
+    describe('manual mode silences the activity, not the button', () => {
+      /**
+       * A game ready to report, with the SCORM mode under test.
+       *
+       * @param {number} isScorm 0 untracked, 1 automatic, 2 manual
+       * @returns {Object} the options object sendScoreNew receives
+       */
+      function gameInMode(isScorm) {
+        return {
+          ideviceId: 'id-1',
+          ideviceNumber: 1,
+          isScorm,
+          weighted: 100,
+          scorerp: 7,
+          gameStarted: true,
+          gameOver: false,
+          main: 'game-main',
+          title: 'Quiz',
+          userName: '',
+          msgs: { msgYouScore: 'Score', msgEndGameScore: 'end' },
+        };
+      }
+
+      let container;
+      let originalAlert;
+
+      beforeEach(() => {
+        originalAlert = window.alert;
+        window.alert = vi.fn();
+        global.pipwerks = { SCORM: { get: () => '', set: vi.fn(() => true) } };
+        container = document.createElement('div');
+        container.id = 'game-main';
+        container.className = 'idevice_node';
+        document.body.appendChild(container);
+      });
+
+      afterEach(() => {
+        container.remove();
+        window.alert = originalAlert;
+      });
+
+      it('drops an automatic report in manual mode', () => {
+        getScorm().sendScoreNew(true, gameInMode(2));
+
+        expect(registry.register).not.toHaveBeenCalled();
+      });
+
+      it('publishes an automatic report in automatic mode', () => {
+        getScorm().sendScoreNew(true, gameInMode(1));
+
+        expect(registry.register).toHaveBeenCalledWith('id-1', expect.objectContaining({ score: 70 }));
+      });
+
+      it('publishes what the button asks for, in manual mode', () => {
+        getScorm().sendScoreNew(false, gameInMode(2));
+
+        expect(registry.register).toHaveBeenCalledWith('id-1', expect.objectContaining({ score: 70 }));
+      });
+
+      it('drops an automatic report from an untracked activity', () => {
+        getScorm().sendScoreNew(true, gameInMode(0));
+
+        expect(registry.register).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        [1, true],
+        [2, false],
+        [0, false],
+        ['1', true],
+      ])('reportsAutomatically(%s) is %s', (isScorm, expected) => {
+        expect(getScorm().reportsAutomatically({ isScorm })).toBe(expected);
+      });
+
+      it('reportsAutomatically says no without a game', () => {
+        expect(getScorm().reportsAutomatically(null)).toBe(false);
+        expect(getScorm().reportsAutomatically(undefined)).toBe(false);
+      });
     });
 
     // The status is read on both sides of updateActivity, which is what writes

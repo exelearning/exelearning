@@ -531,14 +531,24 @@ still reads `not attempted`.
   register with `completionRequired: false`. This is the chosen policy of the
   two the requirement allowed; it means such an iDevice does not need to report
   a "viewed" state to let the page complete.
-- **A manually submitted score counts as completing the activity** **[POLICY]**.
-  The gamification bridge reports `completed: true` when the game is over *or*
-  the learner pressed the send-score button (`sendScoreNew(auto=false)`).
-  Submitting is the learner's explicit act of finishing the attempt, and it is
-  the only completion signal games without a game-over state can give — without
-  it, such an activity would hold its page at `incomplete` forever. An iDevice
-  with a richer notion of completion can report `completed` itself through
+- **Only the activity finishes the activity** **[POLICY]**. The gamification
+  bridge reports `completed: true` when the game is over, and never because of
+  how the score was sent. The send-score button is not a hand-in: it exists so
+  the learner decides when — if ever — their grade is written, so pressing it
+  mid-game must not publish a terminal state for an activity still being played.
+  An activity whose only end is the act of saving — an applet the learner may
+  keep manipulating, such as `geogebra-activity` — sets its own game-over state,
+  keeping the decision in the iDevice that knows it. An iDevice with a richer
+  notion of completion can also report `completed` itself through
   `scorm.activities.update()`.
+- **In manual mode only the button reports** **[POLICY]**. `sendScoreNew` drops
+  any automatic report (`auto === true`) from an activity that is not in
+  automatic mode (`isScorm === 1`), so nothing an iDevice publishes on its own
+  reaches the LMS while the learner owns the button. The guard lives in the
+  bridge rather than at each of the hundred-odd places the iDevices report,
+  where forgetting one meant a manual-mode activity quietly grading the learner
+  behind the button. Every SCORM-capable iDevice offers the three modes, so a
+  stored 2 always has a working button behind it.
 - **One aggregation algorithm** **[POLICY]**. The registry's
   `summary().score` is the weighted mean of the evaluable activities'
   normalised scores, each weight clamped into 1–100. `common.js`'s

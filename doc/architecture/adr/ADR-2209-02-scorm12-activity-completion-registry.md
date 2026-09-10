@@ -138,12 +138,15 @@ scorm.activities.summary();
    game iDevices onto it (`reportActivity`), deriving `evaluable` and
    `completionRequired` from the iDevice's own `isScorm` flag and passing
    `completed` explicitly from the call site. The bridge reports
-   `completed: true` when the game is over **or** the learner submitted their
-   score by hand (`sendScoreNew(auto=false)`): submitting is the learner's
-   explicit act of finishing the attempt, and it is the only completion signal
-   games without a game-over state can give — without it, such an activity
-   would hold its page at `incomplete` forever. This is a deliberate product
-   policy, recorded here rather than implied by the code.
+   `completed: true` when the activity says it is over, and never because of how
+   the score was sent. The save-score button is not a hand-in: it exists so the
+   learner decides when — if ever — their grade is written, and pressing it
+   mid-game must not publish a terminal state for an activity still being
+   played, nor republish one on every further press. An activity whose only end
+   is the act of saving — an applet the learner may keep manipulating, such as
+   `geogebra-activity` — declares its own game-over state, which keeps the
+   decision in the iDevice that knows it. This is a deliberate product policy,
+   recorded here rather than implied by the code.
 4. **The registry is the single owner of `cmi.suspend_data`.** When the SCORM
    1.2 runtime is present, every `common.js` helper that used to read or write
    the legacy line format directly goes through the registry instead
