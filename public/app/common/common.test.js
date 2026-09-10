@@ -3647,6 +3647,68 @@ describe('common.js $exeDevices', () => {
       expect(typeof report.getDataStorage).toBe('function');
     });
 
+    /**
+     * Twenty iDevices compute their mark as hits over a count they read from
+     * their own data, and an activity saved with nothing scorable makes that
+     * division 0/0. sendScoreNew already refuses the result on the way to the
+     * LMS; this path had no guard, so the NaN was stored and then decided the
+     * icon through `parseFloat(score) >= 5`, which a NaN fails — an activity
+     * the learner passed could be shown as failed.
+     */
+    describe('saveEvaluation with an unusable mark', () => {
+      const instance = 'rep-1';
+
+      function givenActivity(scorerp) {
+        document.body.innerHTML = `
+          <article>
+            <header><h1 class="box-title">Game</h1></header>
+            <div id="${instance}" class="idevice_node">
+              <div id="main-${instance}"></div>
+            </div>
+          </article>`;
+        localStorage.removeItem('dataEvaluation-eval-1');
+        return {
+          main: `main-${instance}`,
+          evaluation: true,
+          evaluationID: 'eval-1',
+          scorerp,
+          idevicePath: 'p/',
+          idevice: 'idevice_node',
+          msgs: {
+            msgTypeGame: 'Game',
+            msgUncompletedActivity: 'x',
+            msgSuccessfulActivity: 'Passed: %s',
+            msgUnsuccessfulActivity: 'Not passed: %s',
+          },
+        };
+      }
+
+      function storedScore() {
+        const raw = localStorage.getItem('dataEvaluation-eval-1');
+        return JSON.parse(raw).activities[0].score;
+      }
+
+      it.each([
+        ['a division by zero', Number.NaN],
+        ['a count of zero', Number.POSITIVE_INFINITY],
+      ])('records a zero for %s', (_label, scorerp) => {
+        getReport().saveEvaluation(givenActivity(scorerp));
+
+        expect(storedScore()).toBe(0);
+      });
+
+      it('leaves a usable mark alone', () => {
+        getReport().saveEvaluation(givenActivity(7.5));
+
+        expect(storedScore()).toBe(7.5);
+      });
+
+      afterEach(() => {
+        localStorage.removeItem('dataEvaluation-eval-1');
+        document.body.innerHTML = '';
+      });
+    });
+
     it('scrollToHash does nothing when in eXe', () => {
       const report = getReport();
       global.eXeLearning = {};

@@ -2317,8 +2317,20 @@ var $exeDevices = {
                     }
                     if (game && game.id && game.evaluation && game.evaluationID.length > 0) {
                         const $main = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
+                        // Number.isFinite, not !isNaN, and here rather than in
+                        // each iDevice: twenty of them compute the mark as hits
+                        // over a count they read from their own data, and an
+                        // activity saved with nothing scorable makes that
+                        // division 0/0. sendScoreNew already refuses the result
+                        // on the way to the LMS; this path had no such guard, so
+                        // the NaN was stored in localStorage and decided the
+                        // icon through `parseFloat(score) >= 5`, which a NaN
+                        // fails — an activity the learner passed could be shown
+                        // as failed. isNaN would let Infinity through, which a
+                        // count of zero also produces.
+                        const rawScore = parseFloat(game.scorerp);
+                        const score = Number.isFinite(rawScore) ? rawScore : 0;
                         const name = $exeDevices.iDevice.gamification.report.getNameIdevice($main),
-                            score = game.scorerp,
                             formattedDate = $exeDevices.iDevice.gamification.report.getDateString(),
                             scorm = {
                                 'id': game.id,
