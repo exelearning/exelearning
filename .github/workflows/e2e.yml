@@ -61,10 +61,17 @@ jobs:
             public/app/yjs/exporters.bundle.js
             public/app/yjs/importers.bundle.js
             public/app/common/i18n/**
+            public/app/common/mermaid/mermaid.min.js
             public/app/common/edicuatex/**
             public/bundles/**
+            public/libs/**
             public/style/workarea/main.css
             public/files/perm/idevices/base/slide/edition/slide-editor.bundle.js
+            public/files/perm/idevices/base/progress-report/export/html2canvas.js
+            public/files/perm/idevices/base/checklist/export/html2canvas.js
+            public/files/perm/idevices/base/rubric/export/html2canvas.js
+            public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js
+            public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css
 
       - name: Upload static distribution (static project)
         uses: actions/upload-artifact@v7
