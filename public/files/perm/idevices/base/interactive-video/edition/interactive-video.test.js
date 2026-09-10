@@ -140,4 +140,57 @@ describe('interactive-video iDevice edition', () => {
       expect(setValues.mock.calls[0][3]).toBeUndefined();
     });
   });
+
+  /**
+   * Saving a score needs something to score. The mark is hits over the number
+   * of scorable slides, so with none of them the division has no denominator
+   * and the activity could only ever report a zero the learner did nothing to
+   * earn. This is the same criterion the export counts with, so the editor and
+   * the runtime cannot disagree.
+   */
+  describe('hasScorableSlide', () => {
+    const question = { type: 'singleChoice' };
+    const picture = { type: 'image' };
+
+    it.each([
+      ['singleChoice'],
+      ['multipleChoice'],
+      ['dropdown'],
+      ['matchElements'],
+      ['sortableList'],
+      ['cloze'],
+    ])('counts a %s slide', type => {
+      expect($exeDevice.hasScorableSlide([picture, { type }], false)).toBe(true);
+    });
+
+    it('does not count slides the learner cannot answer', () => {
+      expect(
+        $exeDevice.hasScorableSlide(
+          [picture, { type: 'text' }, { type: 'pause' }],
+          false
+        )
+      ).toBe(false);
+    });
+
+    // With "score every slide" ticked the export counts them all, so anything
+    // at all gives the division a denominator.
+    it('counts any slide when every slide scores', () => {
+      expect($exeDevice.hasScorableSlide([picture], true)).toBe(true);
+    });
+
+    it.each([
+      ['no slides', [], true],
+      ['a missing list', undefined, true],
+      ['no slides without the option', [], false],
+    ])('answers false for %s', (_label, slides, scoreNIA) => {
+      expect($exeDevice.hasScorableSlide(slides, scoreNIA)).toBe(false);
+    });
+
+    it('survives a malformed slide', () => {
+      expect(() =>
+        $exeDevice.hasScorableSlide([null, question], false)
+      ).not.toThrow();
+      expect($exeDevice.hasScorableSlide([null, question], false)).toBe(true);
+    });
+  });
 });
