@@ -286,7 +286,9 @@ var $exeDevice = {
         fileManager.show({
             accept: 'image',
             multiSelect: multiSelect,
-            onSelect: (result) => {
+            // The modal outlives the edition form, so a selection confirmed
+            // after the editor closed must not add images to it.
+            onSelect: this.$lifecycle.bind((result) => {
                 // Handle selected assets
                 if (multiSelect && Array.isArray(result)) {
                     // Multiple images selected
@@ -297,7 +299,7 @@ var $exeDevice = {
                     // Single image selected (for modify)
                     this.addImageFromAsset(result);
                 }
-            }
+            }),
         });
     },
 
@@ -333,12 +335,17 @@ var $exeDevice = {
      *
      */
     readFile: function (file) {
+        // A read still in flight is aborted when the editor closes, and the
+        // callbacks are bound to this edition, so a `loadend` already queued
+        // cannot feed an image into another iDevice.
+        const lifecycle = this.$lifecycle;
         return new Promise((resolve, reject) => {
             let reader = new FileReader();
-            reader.onload = (field) => {
+            lifecycle.ownFileReader(reader);
+            reader.onload = lifecycle.bind((field) => {
                 resolve(field.target.result);
-            };
-            reader.onerror = reject;
+            });
+            reader.onerror = lifecycle.bind(reject);
             reader.readAsDataURL(file);
         });
     },
@@ -353,6 +360,9 @@ var $exeDevice = {
             const assetManager = eXeLearning?.app?.project?._yjsBridge?.assetManager;
             if (assetManager) {
                 const assetUrl = await assetManager.insertImage(file);
+                // The upload can finish after the editor closed; the image
+                // would then be added to a form that is no longer on the page.
+                if (!this.$lifecycle.isActive()) return;
                 if (assetUrl) {
                     this.addImageFromAsset({
                         assetUrl: assetUrl,
@@ -788,20 +798,25 @@ var $exeDevice = {
             '.imageGalleryIdeviceForm'
         );
 
-        const resize_ob = new ResizeObserver(function (entries) {
-            // // since we are observing only a single element, so we access the first element in entries array
-            // let rect = entries[0].contentRect;
+        const resize_ob = new ResizeObserver(
+            this.$lifecycle.bind(function (entries) {
+                // // since we are observing only a single element, so we access the first element in entries array
+                // let rect = entries[0].contentRect;
 
-            // // current width & height
-            // let width = rect.width;
-            // let height = rect.height;
-            if (typeof $exeDevice === 'object') {
-                $exeDevice.getReferences();
-            }
-        });
+                // // current width & height
+                // let width = rect.width;
+                // let height = rect.height;
+                if (typeof $exeDevice === 'object') {
+                    this.getReferences();
+                }
+            }),
+        );
 
         // start observing for resize
         resize_ob.observe(dropArea);
+        // Disconnected with the edition: the observer holds the drop area alive
+        // and would keep firing while the form is being replaced.
+        this.$lifecycle.ownInstance(resize_ob, 'disconnect');
 
         this.dropAreaEvents(dropArea);
     },
@@ -992,8 +1007,10 @@ var $exeDevice = {
         const dropArea = $exeDevice.ideviceBody.querySelector(
             '.imageGalleryIdeviceForm'
         );
-        setTimeout(function () {
-            if (!$exeDevice.inDropArea) dropArea.classList.remove('highlight');
+        // Owned by the edition: the timer must not un-highlight the drop area
+        // of the iDevice that replaced this one.
+        $exeDevice.$lifecycle.setTimeout(function () {
+            if (!this.inDropArea) dropArea.classList.remove('highlight');
         }, 100);
     },
 

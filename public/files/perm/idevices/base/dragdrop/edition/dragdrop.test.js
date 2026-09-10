@@ -99,6 +99,10 @@ function buildEditionForm() {
             <img id="dadEImage" alt="" />
             <img id="dadEImageBack" alt="" />
             <input id="dadENumberCard" type="text" value="2" />
+            <span class="toggle-item" role="switch">
+                <input class="toggle-input" type="checkbox" data-target="#dadEToggleTarget" />
+            </span>
+            <div id="dadEToggleTarget"></div>
         </div>`;
 }
 
@@ -120,6 +124,9 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
     });
 
     afterEach(() => {
+        // Close the edition as the workarea does, so handlers this test bound
+        // on shared targets such as `document` cannot reach the next one.
+        $exeDevice.$lifecycle.destroy();
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });
@@ -174,6 +181,102 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
                 .mockImplementation(() => {});
             $('#dadENumberCard').trigger($.Event('keyup', { keyCode: 13 }));
             expect(showCard).toHaveBeenCalledWith(1);
+        });
+    });
+
+    describe('edition lifecycle teardown (#2293)', () => {
+        it('releases the toggle handler delegated on document', () => {
+            const item = document.querySelector('.toggle-item');
+            const input = document.querySelector('.toggle-input');
+            const unrelated = vi.fn();
+            $(document).on('change.dragdropUnrelated', '.toggle-input', unrelated);
+
+            try {
+                input.checked = true;
+                $(input).trigger('change');
+                expect(item.getAttribute('aria-checked')).toBe('true');
+                expect(unrelated).toHaveBeenCalledTimes(1);
+
+                item.setAttribute('aria-checked', 'untouched');
+                $exeDevice.$lifecycle.destroy();
+                $(input).trigger('change');
+
+                expect(item.getAttribute('aria-checked')).toBe('untouched');
+                expect(unrelated).toHaveBeenCalledTimes(2);
+            } finally {
+                $(document).off('change.dragdropUnrelated');
+            }
+        });
+
+        it('aborts an in-flight game import when the edition closes', () => {
+            const reader = {
+                readyState: 1,
+                abort: vi.fn(),
+                readAsText: vi.fn(),
+                onload: null,
+            };
+            const readerSpy = vi.spyOn(global, 'FileReader').mockImplementation(function () {
+                return reader;
+            });
+
+            try {
+                const file = new File(['{}'], 'game.json', {
+                    type: 'application/json',
+                });
+                const input = document.getElementById('eXeGameImportGame');
+                Object.defineProperty(input, 'files', { value: [file] });
+
+                $(input).trigger('change');
+                expect(reader.readAsText).toHaveBeenCalledWith(file);
+
+                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+                reader.onload({ target: { result: '{}' } });
+                expect(importGame).toHaveBeenCalledTimes(1);
+
+                $exeDevice.$lifecycle.destroy();
+                expect(reader.abort).toHaveBeenCalledTimes(1);
+
+                reader.onload({ target: { result: '{}' } });
+                expect(importGame).toHaveBeenCalledTimes(1);
+            } finally {
+                readerSpy.mockRestore();
+            }
+        });
+
+        it('stops the preview audio when the edition closes', () => {
+            const audio = {
+                play: vi.fn(),
+                pause: vi.fn(),
+                load: vi.fn(),
+                removeAttribute: vi.fn(),
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            };
+            const audioSpy = vi.spyOn(global, 'Audio').mockImplementation(function () {
+                return audio;
+            });
+            global.$exeDevices.iDevice.gamification.media = {
+                ...global.$exeDevices.iDevice.gamification.media,
+                extractURLGD: vi.fn(url => url),
+            };
+
+            try {
+                $exeDevice.playSound('sound.mp3');
+                const [type, handler] = audio.addEventListener.mock.calls[0];
+                expect(type).toBe('canplaythrough');
+
+                handler();
+                expect(audio.play).toHaveBeenCalledTimes(1);
+
+                $exeDevice.$lifecycle.destroy();
+                expect(audio.pause).toHaveBeenCalledTimes(1);
+                expect(audio.removeAttribute).toHaveBeenCalledWith('src');
+
+                handler();
+                expect(audio.play).toHaveBeenCalledTimes(1);
+            } finally {
+                audioSpy.mockRestore();
+            }
         });
     });
 });

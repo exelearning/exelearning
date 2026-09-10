@@ -2148,7 +2148,8 @@ var $exeDevice = {
             $('#eXeGameExportImport .exe-field-instructions').eq(0).text(_('Supported formats') + ': txt');
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame').attr('accept', '.txt');
-            $('#eXeGameImportGame').on('change', function (e) {
+
+            $('#eXeGameImportGame').on('change', e => {
                 const file = e.target.files && e.target.files[0];
                 if (!file) {
                     eXe.app.alert(_('Please select a text file (.txt)'));
@@ -2159,9 +2160,12 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (ev) {
-                    $exeDevice.importGame(ev.target.result, file.type);
-                };
+                // The read is aborted and its result discarded if the editor
+                // closes before it completes.
+                this.$lifecycle.ownFileReader(reader);
+                reader.onload = this.$lifecycle.bind(function (ev) {
+                    this.importGame(ev.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', () => {

@@ -131,28 +131,41 @@
             loadingEl.textContent = _('Loading editor…');
             host.appendChild(loadingEl);
 
-            loadBundle(path)
-                .then(() => {
-                    if (!window[BUNDLE_GLOBAL] || typeof window[BUNDLE_GLOBAL].mount !== 'function') {
-                        throw new Error('slide editor bundle did not expose mount()');
-                    }
-                    host.innerHTML = '';
-                    var mount = document.createElement('div');
-                    mount.className = 'exe-slide-mount';
-                    host.appendChild(mount);
+            // The bundle promise is shared across editions and can settle long
+            // after this editor closed. Binding both continuations keeps them
+            // tied to this instance and stops a Fabric canvas from being
+            // mounted into a container nobody is showing any more.
+            var lifecycle = this.$lifecycle;
 
-                    this._editorApi = window[BUNDLE_GLOBAL].mount(mount, {
-                        previousData: previousData,
-                    });
-                })
-                .catch(() => {
-                    host.innerHTML = '';
-                    var errEl = document.createElement('p');
-                    errEl.className = 'exe-slide-error';
-                    errEl.setAttribute('data-testid', 'slide-error');
-                    errEl.textContent = _('Could not load the slide editor. Please reload the page.');
-                    host.appendChild(errEl);
-                });
+            loadBundle(path)
+                .then(
+                    lifecycle.bind(function () {
+                        if (!window[BUNDLE_GLOBAL] || typeof window[BUNDLE_GLOBAL].mount !== 'function') {
+                            throw new Error('slide editor bundle did not expose mount()');
+                        }
+                        host.innerHTML = '';
+                        var mount = document.createElement('div');
+                        mount.className = 'exe-slide-mount';
+                        host.appendChild(mount);
+
+                        this._editorApi = window[BUNDLE_GLOBAL].mount(mount, {
+                            previousData: previousData,
+                        });
+                        // The editor owns a Fabric canvas, its own listeners and
+                        // an asset service; nothing else ever released them.
+                        lifecycle.ownInstance(this._editorApi, 'destroy');
+                    })
+                )
+                .catch(
+                    lifecycle.bind(function () {
+                        host.innerHTML = '';
+                        var errEl = document.createElement('p');
+                        errEl.className = 'exe-slide-error';
+                        errEl.setAttribute('data-testid', 'slide-error');
+                        errEl.textContent = _('Could not load the slide editor. Please reload the page.');
+                        host.appendChild(errEl);
+                    })
+                );
         },
 
         /**

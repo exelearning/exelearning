@@ -92,6 +92,8 @@ beforeEach(async () => {
     new Function('window', 'document', code)(global.window, global.document);
 
     $exeDevice = global.window.$exeDevice;
+    // Give the bridge the lifecycle IdeviceNode publishes in the real workarea.
+    global.attachEditionLifecycle($exeDevice);
     container = buildContainerMock();
 });
 
@@ -357,5 +359,83 @@ describe('init with various previousData inputs', () => {
 
     it('handles legacy v1 payloads', async () => {
         await expect(initWithData({ version: 1, html: '<p>old idevice</p>' })).resolves.toBeUndefined();
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The Fabric editor owns a canvas, its own DOM listeners and an asset service.
+ * `mount()` has always returned a `destroy()`, but nothing ever called it, so
+ * every closed slide editor leaked the whole editor. The bundle promise is also
+ * shared across editions, so it can settle after this editor is gone.
+ */
+describe('edition lifecycle teardown', () => {
+    it('destroys the mounted editor when the edition closes', async () => {
+        const mockApi = buildMockEditorApi();
+        global.window.__slideEditorInit = { mount: vi.fn(() => mockApi) };
+
+        $exeDevice.init(container, null, '/path/');
+        await new Promise(r => setTimeout(r, 0));
+        expect(mockApi.destroy).not.toHaveBeenCalled();
+
+        $exeDevice.$lifecycle.destroy();
+
+        expect(mockApi.destroy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not mount an editor when the bundle arrives after the edition closed', async () => {
+        let releaseBundle;
+        global.window.__slideBundlePromise = new Promise(resolve => {
+            releaseBundle = resolve;
+        });
+        const mount = vi.fn(() => buildMockEditorApi());
+        global.window.__slideEditorInit = { mount };
+
+        $exeDevice.init(container, null, '/path/');
+        $exeDevice.$lifecycle.destroy();
+        releaseBundle();
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(mount).not.toHaveBeenCalled();
+        expect($exeDevice._editorApi).toBeNull();
+    });
+
+    it('never mounts into the iDevice that replaced this one', async () => {
+        let releaseBundle;
+        global.window.__slideBundlePromise = new Promise(resolve => {
+            releaseBundle = resolve;
+        });
+        const mount = vi.fn(() => buildMockEditorApi());
+        global.window.__slideEditorInit = { mount };
+
+        const first = $exeDevice;
+        first.init(container, null, '/path/');
+        first.$lifecycle.destroy();
+
+        const second = { _editorApi: null };
+        global.window.$exeDevice = second;
+        releaseBundle();
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(mount).not.toHaveBeenCalled();
+        expect(second._editorApi).toBeNull();
+        global.window.$exeDevice = first;
+    });
+
+    it('does not paint the load error into a container the author already left', async () => {
+        let rejectBundle;
+        global.window.__slideBundlePromise = new Promise((resolve, reject) => {
+            rejectBundle = reject;
+        });
+        delete global.window.__slideEditorInit;
+
+        $exeDevice.init(container, null, '/path/');
+        const host = container._children.find(c => c.className === 'exe-slide-host');
+        $exeDevice.$lifecycle.destroy();
+        rejectBundle(new Error('404'));
+        await new Promise(r => setTimeout(r, 0));
+
+        expect(host.querySelector('.exe-slide-error')).toBeNull();
     });
 });

@@ -5,7 +5,7 @@
  * identifiers. Only the labels rendered in the editor use the inclusive age
  * ranges requested for the two cycles.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock eXeLearning globals used by the editor module.
 globalThis._ = (str) => str;
@@ -14,6 +14,12 @@ globalThis.CSS = { escape: (str) => str.replace(/[^a-zA-Z0-9\-_]/g, '\\$&') };
 const src = await import('./lomloe.js?raw').then((module) => module.default);
 const factory = new Function('globalThis', '_', 'CSS', `${src}\nreturn $exeDevice;`);
 const device = factory(globalThis, globalThis._, globalThis.CSS);
+
+// A fresh edition lifecycle per test, as the workarea publishes one before
+// each init(); a destroyed lifecycle refuses every registration.
+beforeEach(() => {
+    globalThis.attachEditionLifecycle(device);
+});
 
 const DATASET = {
     'Haur Hezkuntza': {
@@ -57,24 +63,26 @@ afterEach(() => {
 describe('Euskadi Infantil level labels', () => {
     it('renders inclusive age labels while keeping canonical dataset keys', async () => {
         const element = buildMockElement();
-        globalThis.fetch = vi.fn(() => Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(DATASET),
-        }));
+        globalThis.fetch = vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(DATASET),
+            }),
+        );
 
         device.init(element, {
             lomloeDataset: 'ES-PV',
             lomloeSelections: [],
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         const buttons = [...element.querySelectorAll('.lomloe-nivel-btn')];
-        expect(buttons.map((button) => button.textContent)).toEqual([
+        expect(buttons.map(button => button.textContent)).toEqual([
             'Lehen zikloa (0-2 urte)',
             'Bigarren zikloa (3-5 urte)',
         ]);
-        expect(buttons.map((button) => button.dataset.nivel)).toEqual([
+        expect(buttons.map(button => button.dataset.nivel)).toEqual([
             'Lehen zikloa (0-3 urte)',
             'Bigarren zikloa (3-6 urte)',
         ]);
@@ -83,17 +91,19 @@ describe('Euskadi Infantil level labels', () => {
 
     it('remaps the Infantil level label in the selection panel and summary tooltip', async () => {
         const element = buildMockElement();
-        globalThis.fetch = vi.fn(() => Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(DATASET),
-        }));
+        globalThis.fetch = vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(DATASET),
+            }),
+        );
 
         device.init(element, {
             lomloeDataset: 'ES-PV',
             lomloeSelections: [structuredClone(CRITERIO_SELECTION)],
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         // Selection panel group title must use the inclusive (remapped) label,
         // not the raw canonical dataset key.

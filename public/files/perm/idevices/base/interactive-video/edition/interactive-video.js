@@ -615,9 +615,18 @@ var $exeDevice = {
     	</div>	
     	`;
             $('body').append(html);
-            win = new bootstrap.Modal(
-                document.getElementById('modalGenericIframeContainer')
-            );
+            win = new bootstrap.Modal(document.getElementById('modalGenericIframeContainer'));
+            // The modal, its stylesheet and the editor iframe are appended
+            // outside the edition form, so nothing detaches them when the
+            // editor closes. Left behind, the iframe keeps running and keeps
+            // writing into `top.interactiveVideoEditor`, which the next iDevice
+            // edition rebuilds for itself. Removing them here is the same
+            // cleanup `start()` performs before it opens a new modal.
+            const lifecycle = $exeDevice.$lifecycle;
+            lifecycle.own(() => {
+                $('#modalGenericIframeContainer,#modalGenericIframeContainerCSS').remove();
+            });
+            lifecycle.ownInstance(win, 'dispose');
             win.show();
             // Save the status (with or without changes)
             top.interactiveVideoEditor.hasChanged = false;

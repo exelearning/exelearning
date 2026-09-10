@@ -898,10 +898,13 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const lifecycle = this.$lifecycle;
+        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener('canplaythrough', () => {
+        // The element is never inserted in the form, so closing the editor
+        // would otherwise leave it playing and downloading.
+        lifecycle.ownMedia($exeDevice.playerAudio);
+        lifecycle.addEventListener($exeDevice.playerAudio, 'canplaythrough', () => {
             $exeDevice?.playerAudio.play();
         });
     },
@@ -944,6 +947,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         $('#dadEPasteC').hide();
         // Inicializar toggles (sin afectar lógica existente)
         const initToggle = function ($input) {
@@ -965,8 +969,11 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        // Delegated on `document`, which outlives the form: the lifecycle
+        // removes it, and only it, when the editor closes. Handlers it owns run
+        // bound to the edition, so the changed toggle comes from the event.
+        lifecycle.on(document, 'change', '.toggle-input', e => {
+            initToggle($(e.currentTarget));
         });
 
         $('#dadEAddC').on('click', (e) => {
@@ -1038,9 +1045,12 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    $exeDevice?.importGame(e.target.result, file.type);
-                };
+                // A read still in flight is aborted on teardown, and a read
+                // that lands first cannot import into a later iDevice.
+                lifecycle.ownFileReader(reader);
+                reader.onload = lifecycle.bind(event => {
+                    $exeDevice?.importGame(event.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', () => {

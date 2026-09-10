@@ -16,6 +16,7 @@
             "!**/nestjs_legacy",
             "!**/public/libs",
             "!**/public/app/common",
+            "!**/public/files/perm/idevices",
             "!**/public/app/dist",
             "!**/*.bundle.js",
             "!**/*.min.js",
@@ -121,6 +122,9 @@
             "includes": ["public/files/perm/idevices/**/*.test.js"],
             "javascript": {
                 "globals": ["describe", "it", "expect", "beforeEach", "afterEach", "vi", "global"]
+            },
+            "formatter": {
+                "enabled": false
             },
             "linter": {
                 "enabled": false

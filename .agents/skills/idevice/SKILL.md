@@ -82,6 +82,66 @@ function loadExportIdevice(code) {
 }
 ```
 
+## Edition Lifecycle — Owning What You Create
+
+An editor is opened and closed many times in one session. Anything the edition creates that can
+outlive its form — a timer, a handler on `document`, a player, a pending read — must be owned by
+the edition's lifecycle, or it keeps running after the editor is gone and, worse, can end up
+driving the *next* iDevice the user opens.
+
+`IdeviceNode` gives every edition an `EditionLifecycle`
+(`public/app/workarea/project/idevices/content/editionLifecycle.js`) before calling `init()`, as
+`this.$lifecycle`. Register through it and teardown is automatic. See [ADR-2293-01](../../../doc/architecture/adr/ADR-2293-01-own-idevice-edition-resources-with-an-explicit-lifecycle.md).
+
+```javascript
+init: function (element, data) {
+    // Timers: cancelled on close. `this` is this edition instance.
+    this.$lifecycle.setInterval(function () { this.refreshPreview(); }, 1000);
+
+    // Handlers on shared targets: removed on close, by a namespace unique to
+    // this edition, so unrelated handlers on document/window are untouched.
+    this.$lifecycle.on(document, 'keydown', this.onKeyDown);
+
+    // Native listeners: removed through the lifecycle's AbortSignal.
+    this.$lifecycle.addEventListener(window, 'resize', this.onResize);
+
+    // Anything with its own cleanup API — name the method, never assume one.
+    this.$lifecycle.ownInstance(player, 'destroy');   // YouTube player
+    this.$lifecycle.ownInstance(observer, 'disconnect');
+    this.$lifecycle.ownMedia(audioElement);           // pause + release the stream
+    this.$lifecycle.own(() => URL.revokeObjectURL(blobUrl));
+    this.$lifecycle.ownFileReader(reader);            // abort an in-flight read
+    this.$lifecycle.own(() => widget.teardown());     // anything else
+
+    // Abortable requests.
+    fetch(url, { signal: this.$lifecycle.signal });
+}
+```
+
+**Never dereference the global inside a deferred callback.** When it finally runs, `$exeDevice`
+usually holds a valid *different* device, so a `?.` guard passes and the callback edits the wrong
+iDevice:
+
+```javascript
+setTimeout(() => $exeDevice?.refresh(), 500);                    // wrong
+this.$lifecycle.setTimeout(function () { this.refresh(); }, 500); // right
+```
+
+Arrow callbacks ignore `this`, so capture the instance instead: `const self = this;`. A lexical
+capture is bound to the instance that made it, which gives the same guarantee.
+
+Form-local handlers (`$('#myFormField').on('click', ...)`) need nothing: the centralized teardown
+unbinds the edition form through jQuery, which removes them. TinyMCE editors inside the form are
+also disposed centrally — do not add your own.
+
+`own()` disposers run last, in reverse order. If something must be cleaned up *before* them, add
+the optional hook instead — it runs first, while the instance and its DOM are both still alive,
+and at most once:
+
+```javascript
+destroyEdition: function () { /* ... */ },
+```
+
 ## Commands
 
 ```bash
@@ -99,6 +159,7 @@ make fix
 - **Both `edition/` and `export/` are required** — missing either causes silent failures.
 - **Icon naming** — must follow `<name>-icon.svg` pattern.
 - **Use `escape()` for metadata persistence** — some iDevices use `escape()` for special characters in saved data. Be consistent with the existing pattern.
+- **Resources that outlive the editor** — a raw `setInterval`, a `document` handler or a player left running after close keeps firing, and can drive the next iDevice the user opens. Register them through `this.$lifecycle` (see above). _Issues #2271, #2293._
 
 ## Done When
 

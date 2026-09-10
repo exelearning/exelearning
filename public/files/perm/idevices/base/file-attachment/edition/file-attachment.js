@@ -133,12 +133,18 @@ var $exeDevice = {
             return;
         }
 
-        fileManager.show({
-            multiSelect: true,
-            onSelect: (result) => {
-                const results = Array.isArray(result) ? result : [result];
-                results.forEach((item) => this.addAttachmentFromAsset(item));
-            },
+        // The modal outlives the edition form, so a selection confirmed after
+        // the editor closed must not add rows to it.
+        const onSelect = this.$lifecycle.bind((result) => {
+            const results = Array.isArray(result) ? result : [result];
+            results.forEach((item) => this.addAttachmentFromAsset(item));
+        });
+        fileManager.show({ multiSelect: true, onSelect });
+        // The File Manager is an application-lifetime singleton that keeps the
+        // callback until it is next closed or reopened. Dropping it with the
+        // edition stops a bound handler from holding this editor's DOM.
+        this.$lifecycle.own(() => {
+            if (fileManager.onSelectCallback === onSelect) fileManager.onSelectCallback = null;
         });
     },
 
@@ -204,6 +210,13 @@ var $exeDevice = {
 
         assetsMap.observe(handler);
         this._assetsObserver = { map: assetsMap, handler };
+        // The map is shared with the whole project, so the observer would
+        // outlive this editor. Release it as soon as the edition closes,
+        // instead of waiting for the lazy self-clean above.
+        this.$lifecycle.own(() => {
+            assetsMap.unobserve(handler);
+            this._assetsObserver = null;
+        });
     },
 
     /**
@@ -315,7 +328,9 @@ var $exeDevice = {
         }
         try {
             const assetUrl = await assetManager.insertImage(file);
-            if (!assetUrl) return;
+            // The upload can finish after the editor closed; the row would
+            // then be added to a form that is no longer on the page.
+            if (!assetUrl || !this.$lifecycle.isActive()) return;
             const assetId = assetManager.extractAssetId ? assetManager.extractAssetId(assetUrl) : null;
             const metadata =
                 assetId && assetManager.getAssetMetadata ? assetManager.getAssetMetadata(assetId) || {} : {};

@@ -202,7 +202,10 @@ var $exeDevice = {
 
     loadYoutubeApi: function () {
         if (typeof YT == 'undefined') {
-            onYouTubeIframeAPIReady = $exeDevice.youTubeReady;
+            // The YouTube API script calls this global whenever it finishes
+            // loading, which can be long after this edition was closed. Binding
+            // it keeps the callback tied to this instance and inert afterwards.
+            onYouTubeIframeAPIReady = this.$lifecycle.bind(this.youTubeReady);
             let tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
@@ -214,7 +217,7 @@ var $exeDevice = {
     },
     youTubeReady: function () {
         $('#trivialMediaVideo').prop('disabled', false);
-        $exeDevice.player = new YT.Player('trivialEVideo', {
+        this.player = new YT.Player('trivialEVideo', {
             width: '100%',
             height: '100%',
             videoId: '',
@@ -224,15 +227,16 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.onPlayerReady,
-                onError: $exeDevice.onPlayerError,
+                onReady: this.$lifecycle.bind(this.onPlayerReady),
+                onError: this.$lifecycle.bind(this.onPlayerError),
             },
         });
+        this.$lifecycle.ownInstance(this.player, 'destroy');
     },
 
     loadPlayerYoutube: function () {
         $('#trivialMediaVideo').prop('disabled', false);
-        $exeDevice.player = new YT.Player('trivialEVideo', {
+        this.player = new YT.Player('trivialEVideo', {
             width: '100%',
             height: '100%',
             videoId: '',
@@ -242,10 +246,11 @@ var $exeDevice = {
                 controls: 1,
             },
             events: {
-                onReady: $exeDevice.clickPlay,
-                onError: $exeDevice.onPlayerError,
+                onReady: this.$lifecycle.bind(this.clickPlay),
+                onError: this.$lifecycle.bind(this.onPlayerError),
             },
         });
+        this.$lifecycle.ownInstance(this.player, 'destroy');
     },
 
     clickPlay: function () {
@@ -348,9 +353,9 @@ var $exeDevice = {
                 $exeDevice.localPlayer.currentTime = parseFloat(mstart);
                 $exeDevice.localPlayer.play();
             }
-            clearInterval($exeDevice.timeUpdateInterval);
-            $exeDevice.timeUpdateInterval = setInterval(function () {
-                $exeDevice.updateTimerDisplayLocal();
+            this.$lifecycle.clearInterval(this.timeUpdateInterval);
+            this.timeUpdateInterval = this.$lifecycle.setInterval(function () {
+                this.updateTimerDisplayLocal();
             }, 1000);
             return;
         }
@@ -362,28 +367,28 @@ var $exeDevice = {
                     endSeconds: end,
                 });
             }
-            clearInterval($exeDevice.timeUpdateInterval);
-            $exeDevice.timeUpdateInterval = setInterval(function () {
-                $exeDevice.updateTimerDisplay();
+            this.$lifecycle.clearInterval(this.timeUpdateInterval);
+            this.timeUpdateInterval = this.$lifecycle.setInterval(function () {
+                this.updateTimerDisplay();
             }, 1000);
         }
     },
 
     playVideo: function () {
         if ($exeDevice.player) {
-            clearInterval($exeDevice.timeUpdateInterval);
+            this.$lifecycle.clearInterval(this.timeUpdateInterval);
             if (typeof $exeDevice.player.playVideo === 'function') {
                 $exeDevice.player.playVideo();
             }
-            $exeDevice.timeUpdateInterval = setInterval(function () {
-                $exeDevice.updateTimerDisplay();
+            this.timeUpdateInterval = this.$lifecycle.setInterval(function () {
+                this.updateTimerDisplay();
             }, 1000);
         }
     },
 
     stopVideo: function () {
         if ($exeDevice.player) {
-            clearInterval($exeDevice.timeUpdateInterval);
+            this.$lifecycle.clearInterval(this.timeUpdateInterval);
             if (typeof $exeDevice.player.pauseVideo === 'function') {
                 $exeDevice.player.pauseVideo();
             }
@@ -1414,6 +1419,7 @@ var $exeDevice = {
         $exeDevice.showSolution('');
         $exeDevice.showTypeQuestion(0);
         this.localPlayer = document.getElementById('trivialEVideoLocal');
+        this.$lifecycle.ownMedia(this.localPlayer);
     },
 
     getCuestionDefault: function () {
@@ -2576,6 +2582,9 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Captured lexically so the deferred file-reader callbacks below stay
+        // bound to this edition instead of resolving the mutable global.
+        const self = this;
         $exeDevice.hideFlex($('#trivialEPaste'));
 
         $('#trivialEInitVideo,#trivialEEndVideo,#trivialESilenceVideo').on(
@@ -2755,9 +2764,10 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.importGame(e.target.result);
+                });
                 reader.readAsText(file);
             });
 
@@ -2781,9 +2791,10 @@ var $exeDevice = {
                     return;
                 }
                 const reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.gameAdd(e.target.result, file.type);
-                };
+                self.$lifecycle.ownFileReader(reader);
+                reader.onload = self.$lifecycle.bind(function (e) {
+                    this.gameAdd(e.target.result, file.type);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', function () {

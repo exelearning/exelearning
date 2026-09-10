@@ -2035,7 +2035,27 @@ var iAdmin = {
                         }
 
                         if (fileManagerModalEl) {
-                            fileManagerModalEl.addEventListener('hidden.bs.modal', restoreEditorModal, { once: true });
+                            // This listener is the only thing this editor binds
+                            // outside its own iframe, so it is the only thing
+                            // that survives the iframe being removed. Left
+                            // behind, a later `hidden.bs.modal` would reopen the
+                            // modal of an iDevice edition that is already gone,
+                            // so the host edition owns it.
+                            const hostLifecycle = hostWindow?.$exeEditionLifecycle;
+                            if (hostLifecycle && typeof hostLifecycle.addEventListener === 'function') {
+                                hostLifecycle.addEventListener(
+                                    fileManagerModalEl,
+                                    'hidden.bs.modal',
+                                    restoreEditorModal,
+                                    {
+                                        once: true,
+                                    },
+                                );
+                            } else {
+                                fileManagerModalEl.addEventListener('hidden.bs.modal', restoreEditorModal, {
+                                    once: true,
+                                });
+                            }
                         }
 
                         fileManager.show({

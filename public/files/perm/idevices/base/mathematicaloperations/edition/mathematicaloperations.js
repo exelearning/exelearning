@@ -625,6 +625,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         // Inicialización de toggles (estado aria y targets)
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
@@ -644,8 +645,8 @@ var $exeDevice = {
         $('.toggle-input').each(function () {
             initToggle($(this));
         });
-        $(document).on('change', '.toggle-input', function () {
-            initToggle($(this));
+        lifecycle.on(document, 'change', '.toggle-input', event => {
+            initToggle($(event.currentTarget));
         });
         if (
             window.File &&
@@ -659,10 +660,11 @@ var $exeDevice = {
                 if (!file) {
                     return;
                 }
-                let reader = new FileReader();
-                reader.onload = function (e) {
-                    $exeDevice.importGame(e.target.result);
-                };
+                const reader = new FileReader();
+                lifecycle.ownFileReader(reader);
+                reader.onload = lifecycle.bind(function (e) {
+                    this.importGame(e.target.result);
+                });
                 reader.readAsText(file);
             });
             $('#eXeGameExportQuestions').on('click', function () {

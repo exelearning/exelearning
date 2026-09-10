@@ -501,24 +501,28 @@ var $exeDevice = {
                     try {
                         timestamp = Date.now();
                     } catch (e) {}
-                    $.ajax({
+                    // The download can answer long after the editor is gone:
+                    // it is aborted with the edition and both callbacks are
+                    // bound to it, so a late answer never fills another
+                    // iDevice's rubric editor.
+                    var lifecycle = $exeDevice.$lifecycle;
+                    var request = $.ajax({
                         url:
                             $exeDevice.idevicePath +
                             'cedec.json?version' +
                             timestamp,
                         dataType: 'json',
-                        success: function (res) {
+                        success: lifecycle.bind(function (res) {
                             $('#ri_RubricsEditor').removeClass('loading');
-                            $exeDevice.cedecRubrics = res;
-                            $exeDevice.completeRubricModels();
-                        },
-                        error: function () {
-                            $exeDevice.alert(
-                                _('Could not retrieve data (Core error)')
-                            );
+                            this.cedecRubrics = res;
+                            this.completeRubricModels();
+                        }),
+                        error: lifecycle.bind(function () {
+                            this.alert(_('Could not retrieve data (Core error)'));
                             $('#ri_RubricsEditor').removeClass('loading');
-                        },
+                        }),
                     });
+                    lifecycle.ownInstance(request, 'abort');
                     return false;
                 })
                 .show();
@@ -608,15 +612,20 @@ var $exeDevice = {
             this.alert(_('Only CSV files are allowed.'));
             return;
         }
+        // A read still in flight is aborted when the editor closes, and the
+        // callbacks are bound to this edition, so a CSV that arrives late is
+        // never imported into another iDevice.
+        var lifecycle = this.$lifecycle;
         var reader = new FileReader();
-        reader.onload = function (ev) {
+        lifecycle.ownFileReader(reader);
+        reader.onload = lifecycle.bind(function (ev) {
             var csv = ev && ev.target ? ev.target.result : '';
             if (typeof csv !== 'string') csv = '';
-            $exeDevice.importCSV(csv);
-        };
-        reader.onerror = function () {
-            $exeDevice.alert(_('Could not read the selected CSV file.'));
-        };
+            this.importCSV(csv);
+        });
+        reader.onerror = lifecycle.bind(function () {
+            this.alert(_('Could not read the selected CSV file.'));
+        });
         reader.readAsText(file, 'utf-8');
     },
 

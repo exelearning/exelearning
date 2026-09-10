@@ -24,6 +24,8 @@ function loadIdevice(code) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  // Give the edition the lifecycle IdeviceNode publishes in the real workarea.
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
 }
 
@@ -237,6 +239,109 @@ describe('trueorfalse iDevice', () => {
       }
 
       expect($exeDevice.questionsGame).toEqual([]);
+    });
+  });
+  /**
+   * Importing a question file is asynchronous, so the read can complete after
+   * the editor closed. The callback used to reach `$exeDevice` through the
+   * global, which by then holds whatever iDevice the author opened next.
+   */
+  describe('edition lifecycle teardown', () => {
+    /** FileReader double that fires only when a test says so. */
+    class FakeFileReader {
+      constructor() {
+        FakeFileReader.instances.push(this);
+        this.readyState = 0;
+        this.onload = null;
+        this.abort = vi.fn(() => {
+          this.readyState = 2;
+        });
+      }
+
+      readAsText() {
+        this.readyState = 1;
+      }
+
+      fire(result) {
+        this.readyState = 2;
+        if (this.onload) this.onload({ target: { result } });
+      }
+    }
+
+    let originalFileReader;
+
+    const selectFile = () => {
+      const input = document.getElementById('eXeGameImportGame');
+      Object.defineProperty(input, 'files', {
+        value: [{ name: 'questions.json', type: 'application/json' }],
+        configurable: true,
+      });
+      $(input).trigger('change');
+    };
+
+    beforeEach(() => {
+      FakeFileReader.instances = [];
+      originalFileReader = global.FileReader;
+      global.FileReader = FakeFileReader;
+      window.FileReader = FakeFileReader;
+
+      document.body.innerHTML = `
+        <div id="eXeGameExportImport"></div>
+        <input type="file" id="eXeGameImportGame" />
+        <button id="eXeGameExportQuestions"></button>`;
+      $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+      if ($exeDevice && $exeDevice.$lifecycle) $exeDevice.$lifecycle.destroy();
+      global.FileReader = originalFileReader;
+      window.FileReader = originalFileReader;
+    });
+
+    it('imports the questions while the edition is open', () => {
+      const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+
+      selectFile();
+      FakeFileReader.instances[0].fire('{"q":1}');
+
+      expect(importGame).toHaveBeenCalledWith('{"q":1}', 'application/json');
+      importGame.mockRestore();
+    });
+
+    it('aborts an in-flight read when the edition closes', () => {
+      selectFile();
+      const reader = FakeFileReader.instances[0];
+      expect(reader.readyState).toBe(1);
+
+      $exeDevice.$lifecycle.destroy();
+
+      expect(reader.abort).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a late read callback instead of importing into a closed edition', () => {
+      const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+
+      selectFile();
+      const reader = FakeFileReader.instances[0];
+      $exeDevice.$lifecycle.destroy();
+      reader.fire('{"q":1}');
+
+      expect(importGame).not.toHaveBeenCalled();
+      importGame.mockRestore();
+    });
+
+    it('never imports into the iDevice that replaced this one', () => {
+      const first = $exeDevice;
+      selectFile();
+      const reader = FakeFileReader.instances[0];
+      first.$lifecycle.destroy();
+
+      const second = { importGame: vi.fn() };
+      global.$exeDevice = second;
+      reader.fire('{"q":1}');
+
+      expect(second.importGame).not.toHaveBeenCalled();
+      global.$exeDevice = first;
     });
   });
 });

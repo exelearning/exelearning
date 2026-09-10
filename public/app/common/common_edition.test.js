@@ -2417,4 +2417,454 @@ describe('common_edition.js', () => {
       expect(globalThis._('Next')).toBe('Siguiente');
     });
   });
+
+  /**
+   * These helpers create resources that live outside the edition form —
+   * handlers on `document` and `window`, timers, object URLs, audio and a
+   * microphone stream. They belong to the edition that created them, which
+   * `IdeviceNode` publishes as `window.$exeEditionLifecycle`, so closing the
+   * editor must release every one of them.
+   *
+   * Behaviour without a lifecycle is covered by every other test in this file:
+   * none of them opens an edition.
+   */
+  describe('edition lifecycle ownership', () => {
+    const iDevice = () => globalThis.$exeDevicesEdition.iDevice;
+    let lifecycle = null;
+
+    const openEdition = () => {
+      lifecycle = global.attachEditionLifecycle({ name: 'lifecycle-test-device' });
+      return lifecycle;
+    };
+
+    const closeEdition = () => {
+      if (lifecycle) lifecycle.destroy();
+      lifecycle = null;
+      window.$exeEditionLifecycle = null;
+    };
+
+    afterEach(() => {
+      closeEdition();
+      // Registrations made through the no-lifecycle fallback paths.
+      $(document).off(
+        'click.filepicker click.exeProgressReportHelp click.exeFileTrigger change.exeFileInput'
+      );
+    });
+
+    describe('getLifecycle', () => {
+      it('returns null when no editor is open', () => {
+        window.$exeEditionLifecycle = null;
+        expect(iDevice().getLifecycle()).toBeNull();
+      });
+
+      it('returns null once the edition it belongs to has been closed', () => {
+        const active = openEdition();
+        expect(iDevice().getLifecycle()).toBe(active);
+
+        active.destroy();
+
+        expect(iDevice().getLifecycle()).toBeNull();
+      });
+    });
+
+    describe('color picker timer', () => {
+      const withColorPicker = (run) => {
+        vi.useFakeTimers();
+        const previous = iDevice().colorPicker;
+        const colorPicker = { init: vi.fn() };
+        iDevice().colorPicker = colorPicker;
+        try {
+          run(colorPicker);
+        } finally {
+          vi.useRealTimers();
+          if (previous === undefined) delete iDevice().colorPicker;
+          else iDevice().colorPicker = previous;
+        }
+      };
+
+      it('initializes the color picker while the editor stays open', () => {
+        withColorPicker((colorPicker) => {
+          openEdition();
+          iDevice().init();
+
+          vi.advanceTimersByTime(500);
+
+          expect(colorPicker.init).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      it('does not initialize the color picker after the editor closes', () => {
+        withColorPicker((colorPicker) => {
+          openEdition();
+          iDevice().init();
+
+          lifecycle.destroy();
+          vi.advanceTimersByTime(500);
+
+          expect(colorPicker.init).not.toHaveBeenCalled();
+        });
+      });
+    });
+
+    describe('document handlers', () => {
+      it('drops the progress-report help toggle and keeps unrelated document handlers', () => {
+        document.body.innerHTML = iDevice().gamification.progressBar.getContents('/themes/example/');
+        const unrelated = vi.fn();
+        $(document).on('click.unrelatedProbe', unrelated);
+
+        openEdition();
+        iDevice().gamification.progressBar.addEvents();
+
+        const help = document.getElementById('eXeProgressReportHelp');
+        $('#eXeProgressReportHelpLnk').trigger('click');
+        expect(help.classList.contains('d-none')).toBe(false);
+
+        lifecycle.destroy();
+        $('#eXeProgressReportHelpLnk').trigger('click');
+
+        expect(help.classList.contains('d-none')).toBe(false);
+        expect(unrelated).toHaveBeenCalledTimes(2);
+
+        $(document).off('click.unrelatedProbe');
+      });
+
+      it('drops the import file-picker handlers', () => {
+        document.body.innerHTML = `
+          <div data-exe-upload>
+            <input type="file" class="exe-file-input" />
+            <button type="button" data-exe-file-trigger>choose</button>
+            <span data-exe-file-name>none</span>
+          </div>
+        `;
+        const fileInputClicks = vi.fn();
+        document.querySelector('.exe-file-input').addEventListener('click', fileInputClicks);
+
+        openEdition();
+        iDevice().gamification.share.addEvents(0, vi.fn());
+
+        $('[data-exe-file-trigger]').trigger('click');
+        expect(fileInputClicks).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+        $('[data-exe-file-trigger]').trigger('click');
+
+        expect(fileInputClicks).toHaveBeenCalledTimes(1);
+      });
+
+      it('drops the file-manager button handler', () => {
+        document.body.innerHTML = '<input type="text" id="lifecyclePicker" class="exe-image-picker" />';
+        const show = globalThis.eXeLearning.app.modals.filemanager.show;
+        show.mockClear();
+
+        openEdition();
+        iDevice().filePicker.init();
+
+        document.querySelector('.exe-pick-image').click();
+        expect(show).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+        document.querySelector('.exe-pick-image').click();
+
+        expect(show).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('AI question generation', () => {
+      const mountIAForm = () => {
+        document.body.innerHTML = `
+          <div id="eXeFormIAContainer"><textarea id="eXeThemeIA"></textarea></div>
+          <p id="eXeIAMessage"></p>
+        `;
+      };
+
+      const withApi = async (implementation, run) => {
+        const previous = globalThis.eXeLearning.app.api.getGenerateQuestions;
+        globalThis.eXeLearning.app.api.getGenerateQuestions = vi.fn(implementation);
+        try {
+          await run();
+        } finally {
+          globalThis.eXeLearning.app.api.getGenerateQuestions = previous;
+        }
+      };
+
+      it('delivers generated questions while the editor is still open', async () => {
+        mountIAForm();
+        const saveQuestions = vi.fn();
+
+        await withApi(
+          () => Promise.resolve({ questions: ['Heart#A muscular organ'] }),
+          async () => {
+            openEdition();
+            await iDevice().gamification.share.genarateIAQuestons(0, saveQuestions);
+
+            expect(saveQuestions).toHaveBeenCalledWith(['Heart#A muscular organ']);
+          }
+        );
+      });
+
+      it('drops generated questions that arrive after the editor closed', async () => {
+        mountIAForm();
+        const saveQuestions = vi.fn();
+        let resolveRequest;
+
+        await withApi(
+          () =>
+            new Promise((resolve) => {
+              resolveRequest = resolve;
+            }),
+          async () => {
+            openEdition();
+            const pending = iDevice().gamification.share.genarateIAQuestons(0, saveQuestions);
+
+            lifecycle.destroy();
+            resolveRequest({ questions: ['Heart#A muscular organ'] });
+            await pending;
+
+            expect(saveQuestions).not.toHaveBeenCalled();
+          }
+        );
+      });
+    });
+
+    describe('downloadBlob', () => {
+      it('revokes the object URL and removes the anchor when the editor closes first', () => {
+        vi.useFakeTimers();
+        const createSpy = vi
+          .spyOn(window.URL, 'createObjectURL')
+          .mockReturnValue('blob:lifecycle-download');
+        const revokeSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+
+        try {
+          openEdition();
+          const started = iDevice().gamification.share.downloadBlob(
+            new Blob(['data'], { type: 'text/plain' }),
+            'game.json'
+          );
+
+          expect(started).toBe(true);
+          expect(document.querySelector('a[download="game.json"]')).toBeTruthy();
+
+          lifecycle.destroy();
+
+          expect(revokeSpy).toHaveBeenCalledTimes(1);
+          expect(revokeSpy).toHaveBeenCalledWith('blob:lifecycle-download');
+          expect(document.querySelector('a[download="game.json"]')).toBeNull();
+
+          // The cancelled timer must not revoke a second time.
+          vi.advanceTimersByTime(1000);
+          expect(revokeSpy).toHaveBeenCalledTimes(1);
+        } finally {
+          createSpy.mockRestore();
+          revokeSpy.mockRestore();
+          vi.useRealTimers();
+        }
+      });
+
+      it('still revokes the object URL on its own timer while the editor stays open', () => {
+        vi.useFakeTimers();
+        const createSpy = vi
+          .spyOn(window.URL, 'createObjectURL')
+          .mockReturnValue('blob:lifecycle-download');
+        const revokeSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+
+        try {
+          openEdition();
+          iDevice().gamification.share.downloadBlob(
+            new Blob(['data'], { type: 'text/plain' }),
+            'game.json'
+          );
+
+          vi.advanceTimersByTime(200);
+
+          expect(revokeSpy).toHaveBeenCalledTimes(1);
+          expect(document.querySelector('a[download="game.json"]')).toBeNull();
+
+          // Already released: teardown must not revoke it again.
+          lifecycle.destroy();
+          expect(revokeSpy).toHaveBeenCalledTimes(1);
+        } finally {
+          createSpy.mockRestore();
+          revokeSpy.mockRestore();
+          vi.useRealTimers();
+        }
+      });
+    });
+
+    describe('gamification.helpers audio', () => {
+      let previousAudio;
+
+      const useAudioMock = (instance) => {
+        previousAudio = globalThis.Audio;
+        // `new Audio(url)` needs a real constructor, not an arrow function.
+        const ctor = vi.fn(function () {
+          return instance;
+        });
+        globalThis.Audio = ctor;
+        return ctor;
+      };
+
+      afterEach(() => {
+        if (previousAudio === undefined) delete globalThis.Audio;
+        else globalThis.Audio = previousAudio;
+        previousAudio = undefined;
+        delete window.eXeLearningAssetResolver;
+        iDevice().gamification.helpers.playerAudio = null;
+        iDevice().gamification.helpers.currentAudioUrl = null;
+      });
+
+      it('stops audio started by the edition when the editor closes', async () => {
+        const instance = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(), paused: false };
+        useAudioMock(instance);
+        const helpers = iDevice().gamification.helpers;
+        helpers.playerAudio = null;
+        helpers.currentAudioUrl = null;
+
+        openEdition();
+        await helpers.playSound('https://example.com/audio.mp3');
+        expect(instance.play).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+
+        expect(instance.pause).toHaveBeenCalledTimes(1);
+        expect(helpers.playerAudio).toBeNull();
+        expect(helpers.currentAudioUrl).toBeNull();
+      });
+
+      it('does not stop audio twice when it was already stopped by the user', async () => {
+        const instance = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(), paused: false };
+        useAudioMock(instance);
+        const helpers = iDevice().gamification.helpers;
+        helpers.playerAudio = null;
+        helpers.currentAudioUrl = null;
+
+        openEdition();
+        await helpers.playSound('https://example.com/audio.mp3');
+        helpers.stopSound();
+        expect(instance.pause).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+
+        expect(instance.pause).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not start audio resolved after the editor closed', async () => {
+        const instance = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(), paused: true };
+        const ctor = useAudioMock(instance);
+        let resolveAsset;
+        window.eXeLearningAssetResolver = {
+          resolve: vi.fn(
+            () =>
+              new Promise((resolve) => {
+                resolveAsset = resolve;
+              })
+          ),
+        };
+        const helpers = iDevice().gamification.helpers;
+        helpers.playerAudio = null;
+        helpers.currentAudioUrl = null;
+
+        openEdition();
+        const pending = helpers.playSound('asset://recording.webm');
+        lifecycle.destroy();
+        resolveAsset('blob:resolved-audio');
+        await pending;
+
+        expect(ctor).not.toHaveBeenCalled();
+        expect(helpers.playerAudio).toBeNull();
+        expect(helpers.currentAudioUrl).toBeNull();
+      });
+    });
+
+    describe('voiceRecorder', () => {
+      afterEach(() => {
+        delete globalThis.MediaRecorder;
+        delete globalThis.navigator.mediaDevices;
+      });
+
+      it('stops the microphone and removes the recorder UI when the editor closes', async () => {
+        const stopTrack = vi.fn();
+        const stream = { getTracks: () => [{ stop: stopTrack }] };
+        globalThis.navigator.mediaDevices = {
+          getUserMedia: vi.fn().mockResolvedValue(stream),
+        };
+        globalThis.MediaRecorder = class {
+          static isTypeSupported(type) {
+            return type.indexOf('audio/webm') === 0;
+          }
+          constructor() {
+            this.mimeType = 'audio/webm';
+            this.state = 'inactive';
+          }
+          start() {
+            this.state = 'recording';
+          }
+          stop() {
+            this.state = 'inactive';
+          }
+        };
+
+        const recorder = iDevice().voiceRecorder;
+        document.body.innerHTML = `
+          <div id="voice-lifecycle" data-voice-recorder data-voice-input="#audioInput">
+            <input id="audioInput" type="text" class="exe-file-picker" />
+            <input type="button" class="exe-pick-any-file" value="Select a file" />
+          </div>
+        `;
+        const container = document.getElementById('voice-lifecycle');
+
+        openEdition();
+        recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+
+        document.querySelector('.exe-voice-recorder-toggle').click();
+        await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
+
+        expect(globalThis.navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+        expect(recorder.instances.some((entry) => entry.containerEl === container)).toBe(true);
+        expect(document.querySelector('.exe-voice-recorder-fallback-modal')).toBeTruthy();
+
+        lifecycle.destroy();
+
+        expect(stopTrack).toHaveBeenCalledTimes(1);
+        expect(recorder.instances.some((entry) => entry.containerEl === container)).toBe(false);
+        expect(document.querySelector('.exe-voice-recorder-fallback-modal')).toBeNull();
+      });
+
+      it('rebinds its page-level cleanup handlers for the next edition', () => {
+        const recorder = iDevice().voiceRecorder;
+        const cleanupAll = vi.spyOn(recorder, 'cleanupAll').mockImplementation(() => {});
+        const previousBound = recorder._cleanupBound;
+        const previousObserver = recorder._detachObserver;
+        recorder._cleanupBound = false;
+        recorder._detachObserver = null;
+
+        try {
+          // Earlier tests bound the page handlers without a lifecycle, so
+          // count what a `pagehide` already triggers before this edition adds
+          // its own handler.
+          window.dispatchEvent(new window.Event('pagehide'));
+          const alreadyBound = cleanupAll.mock.calls.length;
+
+          openEdition();
+          recorder.bindCleanupHandlers();
+          expect(recorder._cleanupBound).toBe(true);
+
+          cleanupAll.mockClear();
+          window.dispatchEvent(new window.Event('pagehide'));
+          expect(cleanupAll).toHaveBeenCalledTimes(alreadyBound + 1);
+
+          lifecycle.destroy();
+          cleanupAll.mockClear();
+          window.dispatchEvent(new window.Event('pagehide'));
+
+          expect(cleanupAll).toHaveBeenCalledTimes(alreadyBound);
+          expect(recorder._cleanupBound).toBe(false);
+          expect(recorder._detachObserver).toBeNull();
+        } finally {
+          cleanupAll.mockRestore();
+          recorder._cleanupBound = previousBound;
+          recorder._detachObserver = previousObserver;
+        }
+      });
+    });
+  });
 });
