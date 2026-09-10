@@ -608,9 +608,10 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             expect(midSuspend).toContain(nodeIds[0]);
             expect(midSuspend).toContain(nodeIds[1]);
 
-            // ---- Second activity: the learner submits by hand ---------------
-            // ADR-2209-02: a manual submission is the learner's explicit act of
-            // finishing the attempt, so it completes the activity.
+            // ---- Second activity: the learner saves mid-game ----------------
+            // ADR-2209-02: the save button is not a hand-in. It writes the
+            // grade earned so far, and only the activity's own game-over state
+            // completes it — so the score moves and the status does not.
             await page.evaluate(() => {
                 const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
                 const game = sco.__bridgeGames[1];
@@ -621,8 +622,25 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
                 sco.$exeDevices.iDevice.gamification.scorm.sendScoreNew(false, game);
             });
 
-            // Both complete: aggregate (80 + 40) / 2 = 60 ≥ 50 → passed, and
-            // the score the LMS stores is the same aggregate the policy read.
+            // The aggregate already reads (80 + 40) / 2 = 60, but the second
+            // activity is still being played, so the page stays incomplete.
+            expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe('60');
+            expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe(
+                'incomplete',
+            );
+
+            // ---- The learner finishes it and saves again --------------------
+            // Same score, same button; what changed is that the activity now
+            // declares itself over. That is the signal that completes it.
+            await page.evaluate(() => {
+                const sco = (document.getElementById('sco') as HTMLIFrameElement).contentWindow as any;
+                const game = sco.__bridgeGames[1];
+                game.gameOver = true;
+                sco.$exeDevices.iDevice.gamification.scorm.sendScoreNew(false, game);
+            });
+
+            // Both complete: aggregate 60 ≥ 50 → passed, and the score the LMS
+            // stores is the same aggregate the policy read.
             expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe('60');
             expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status'])).toBe('passed');
 
