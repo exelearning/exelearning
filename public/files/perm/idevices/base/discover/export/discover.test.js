@@ -571,9 +571,12 @@ describe('discover iDevice export', () => {
     it('publishes a zero and an unfinished attempt on a valid code', () => {
       setupCodeAccess('AbrE');
       let stateWhenReported;
-      $eXeDescubre.sendScore.mockImplementation(() => {
-        const { hits, gameOver, gameStarted } = $eXeDescubre.options[0];
-        stateWhenReported = { hits, gameOver, gameStarted };
+      $eXeDescubre.sendScore.mockImplementation((auto, instance, engaged) => {
+        const { hits, gameOver } = $eXeDescubre.options[0];
+        // `engaged` is what tells the runtime the learner has opened the
+        // activity: sendScoreNew drops a game that is neither started nor over,
+        // and it is reported on a copy so the live flag stays where it is.
+        stateWhenReported = { hits, gameOver, engaged };
       });
 
       $eXeDescubre.enterCodeAccess(0);
@@ -581,14 +584,12 @@ describe('discover iDevice export', () => {
       expect(stateWhenReported).toEqual({
         hits: 0,
         gameOver: false,
-        // Up only for the report: sendScoreNew drops a game that is neither
-        // started nor over.
-        gameStarted: true,
+        engaged: true,
       });
     });
 
-    // The flag has to come back down, or startGame's early return would make
-    // every level button dead and the activity unplayable.
+    // startGame's early return reads this flag, so raising it would make every
+    // level button dead and the activity unplayable.
     it('leaves the game unstarted, so the level buttons still work', () => {
       setupCodeAccess('abre');
 
@@ -627,8 +628,12 @@ describe('discover iDevice export', () => {
 
         $eXeDescubre.enterCodeAccess(0);
 
-        // Level 2 is what the single play button passes.
-        expect(startGame).toHaveBeenCalledWith(0, 2);
+        // Level 0, which is what every other single-level entry point passes.
+        // getCardsLevels ignores the index when there is only one level but
+        // still names the level from it on screen, so a 2 here announced the
+        // same game as "Level: Master" while playing it again announced it as
+        // "Level: Rookie".
+        expect(startGame).toHaveBeenCalledWith(0, 0);
         // Not reported twice: startGame publishes the opening zero itself, so
         // reporting here as well would put the same zero on the wire twice.
         // The test below proves that zero really does go out.
@@ -669,10 +674,9 @@ describe('discover iDevice export', () => {
         vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
         vi.spyOn($eXeDescubre, 'uptateTime').mockImplementation(() => {});
         let stateWhenReported;
-        $eXeDescubre.sendScore.mockImplementation(() => {
-          const { hits, errors, score, gameOver, gameStarted } =
-            $eXeDescubre.options[0];
-          stateWhenReported = { hits, errors, score, gameOver, gameStarted };
+        $eXeDescubre.sendScore.mockImplementation((auto, instance, engaged) => {
+          const { hits, errors, score, gameOver } = $eXeDescubre.options[0];
+          stateWhenReported = { hits, errors, score, gameOver, engaged };
         });
 
         $eXeDescubre.enterCodeAccess(0);
@@ -683,7 +687,7 @@ describe('discover iDevice export', () => {
           score: 0,
           gameOver: false,
           // sendScoreNew drops a game that is neither started nor over.
-          gameStarted: true,
+          engaged: true,
         });
       });
 
@@ -696,7 +700,7 @@ describe('discover iDevice export', () => {
         $eXeDescubre.enterCodeAccess(0);
 
         expect(startGame).not.toHaveBeenCalled();
-        expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0);
+        expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0, true);
         expect($eXeDescubre.options[0].gameStarted).toBe(false);
       });
 
@@ -710,7 +714,7 @@ describe('discover iDevice export', () => {
 
         $eXeDescubre.enterCodeAccess(0);
 
-        expect(startGame).toHaveBeenCalledWith(0, 2);
+        expect(startGame).toHaveBeenCalledWith(0, 0);
       });
 
       it.each([2, 3])('leaves an untimed game with %i levels to its panel', (gameLevels) => {
@@ -722,7 +726,7 @@ describe('discover iDevice export', () => {
         $eXeDescubre.enterCodeAccess(0);
 
         expect(startGame).not.toHaveBeenCalled();
-        expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0);
+        expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0, true);
       });
     });
   });
@@ -779,22 +783,22 @@ describe('discover iDevice export', () => {
     it('reports the abandoned attempt as unfinished with no score', () => {
       setupFinishedGame();
       let stateWhenReported;
-      $eXeDescubre.sendScore.mockImplementation(() => {
-        const { hits, errors, gameOver, gameStarted } = $eXeDescubre.options[0];
-        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      $eXeDescubre.sendScore.mockImplementation((auto, instance, engaged) => {
+        const { hits, errors, gameOver } = $eXeDescubre.options[0];
+        stateWhenReported = { hits, errors, gameOver, engaged };
       });
       $eXeDescubre.addEvents(0);
 
       document.getElementById('descubreStartGameEnd-0').click();
 
-      expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0);
+      expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0, true);
       // sendScoreNew drops a game that is neither started nor over, and it
       // derives completion from gameOver.
       expect(stateWhenReported).toEqual({
         hits: 0,
         errors: 0,
         gameOver: false,
-        gameStarted: true,
+        engaged: true,
       });
     });
 
@@ -816,20 +820,20 @@ describe('discover iDevice export', () => {
       // rebootGame silences the card audio on its way out.
       global.$exeDevices.iDevice.gamification.media = { stopSound: vi.fn() };
       let stateWhenReported;
-      $eXeDescubre.sendScore.mockImplementation(() => {
-        const { hits, errors, gameOver, gameStarted } = $eXeDescubre.options[0];
-        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      $eXeDescubre.sendScore.mockImplementation((auto, instance, engaged) => {
+        const { hits, errors, gameOver } = $eXeDescubre.options[0];
+        stateWhenReported = { hits, errors, gameOver, engaged };
       });
       $eXeDescubre.addEvents(0);
 
       document.getElementById('descubreReboot-0').click();
 
-      expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0);
+      expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0, true);
       expect(stateWhenReported).toEqual({
         hits: 0,
         errors: 0,
         gameOver: false,
-        gameStarted: true,
+        engaged: true,
       });
       // Back at the panel: no game is running.
       expect($eXeDescubre.options[0].gameStarted).toBe(false);
@@ -844,6 +848,91 @@ describe('discover iDevice export', () => {
       // startGame publishes the zero on its own in that branch.
       expect($eXeDescubre.startGame).toHaveBeenCalledWith(0, 0);
       expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * sendScoreNew's gate asks whether the learner has engaged with the activity.
+   * In this iDevice `gameStarted` answers something narrower — whether a round
+   * is running — and both startGame() and the card clicks read it, so three
+   * call sites used to raise it, report, and lower it again, mutating live
+   * state to satisfy a guard about something else. The report carries its own
+   * answer now, on a copy.
+   */
+  describe('reporting a state with no round running', () => {
+    let published;
+
+    function givenActivity(overrides = {}) {
+      published = [];
+      global.$exeDevices.iDevice.gamification.scorm.sendScoreNew = (auto, game) =>
+        published.push({ auto, game });
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: false,
+          gameOver: false,
+          hits: 2,
+          wordsGame: [{}, {}, {}, {}],
+          msgs: {},
+        },
+        overrides
+      );
+    }
+
+    afterEach(() => {
+      delete global.$exeDevices.iDevice.gamification.scorm.sendScoreNew;
+    });
+
+    it('tells the runtime the learner has engaged, on a copy', () => {
+      givenActivity();
+
+      $eXeDescubre.sendScore(true, 0, true);
+
+      expect(published[0].game.gameStarted).toBe(true);
+      // The flag the level buttons and the card clicks read is untouched.
+      expect($eXeDescubre.options[0].gameStarted).toBe(false);
+    });
+
+    it('reports the live state when nothing is asserted', () => {
+      givenActivity();
+
+      $eXeDescubre.sendScore(false, 0);
+
+      // A press of the save button before the learner started anything must be
+      // refused by the runtime, not scored as a zero.
+      expect(published[0].game.gameStarted).toBe(false);
+      expect(published[0].game).toBe($eXeDescubre.options[0]);
+    });
+
+    describe('getScore', () => {
+      it('scales the hits over the deck the level cut out', () => {
+        givenActivity();
+
+        expect($eXeDescubre.getScore(0)).toBe(5);
+      });
+
+      // getCardsLevels floors the division that builds wordsGame, so a
+      // three-level game with two words leaves it empty and dividing by its
+      // length gave NaN.
+      it('is zero when the deck is empty', () => {
+        givenActivity({ wordsGame: [] });
+
+        expect($eXeDescubre.getScore(0)).toBe(0);
+      });
+
+      it('is a number, never NaN, whatever the counters hold', () => {
+        for (const overrides of [
+          { wordsGame: [] },
+          { wordsGame: undefined },
+          { hits: Number.NaN },
+          { hits: undefined },
+        ]) {
+          givenActivity(overrides);
+
+          expect(Number.isFinite($eXeDescubre.getScore(0))).toBe(true);
+        }
+      });
     });
   });
 });

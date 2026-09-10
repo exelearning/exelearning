@@ -711,10 +711,30 @@ var $eXeDescubre = {
         return html;
     },
 
+    /**
+     * The mark for this activity, on the 0..10 scale the runtime expects.
+     *
+     * `wordsGame` is the deck the chosen level cut out of the full one, and
+     * getCardsLevels floors that division — so a three-level game with two
+     * words leaves it empty, and dividing by its length gave NaN. Nothing to
+     * score is a zero.
+     *
+     * @param {number} instance the activity index
+     * @returns {number} the mark, 0 when there is nothing to score
+     */
+    getScore: function (instance) {
+        const mOptions = $eXeDescubre.options[instance];
+        const total = mOptions.wordsGame ? mOptions.wordsGame.length : 0;
+        if (!total) return 0;
+        const hits = parseFloat(mOptions.hits);
+        if (!Number.isFinite(hits)) return 0;
+        return (hits * 10) / total;
+    },
+
     saveEvaluation: function (instance) {
         const mOptions = $eXeDescubre.options[instance];
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.wordsGame.length;
+        mOptions.scorerp = $eXeDescubre.getScore(instance);
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $eXeDescubre.isInExe
@@ -736,19 +756,44 @@ var $eXeDescubre = {
     saveScormScore: function (instance) {
         const mOptions = $eXeDescubre.options[instance];
         if (!mOptions || mOptions.isScorm !== 1) return;
-        $eXeDescubre.sendScore(true, instance);
+        // sendScoreNew's gate asks whether the learner has engaged with the
+        // activity, and by the time any of the four moments that reach this
+        // function happen — opening it with a code, starting it, abandoning it,
+        // asking to play again — they have. But in this iDevice `gameStarted`
+        // answers a narrower question, whether a round is running, and both
+        // startGame() and the card clicks read it: leaving it up would make the
+        // level buttons dead and the activity unplayable. So the report says so
+        // on a copy and the live flag is left alone. Three call sites used to
+        // raise it, report, and lower it again.
+        $eXeDescubre.sendScore(true, instance, true);
     },
 
-    sendScore: function (auto, instance) {
+    /**
+     * Report the current state.
+     *
+     * @param {boolean} auto false when the learner asked for it by pressing the
+     * save button
+     * @param {number} instance the activity index
+     * @param {boolean} [engaged] true to state that the learner has engaged with
+     * the activity even though no round is running. Reported on a copy, so the
+     * live `gameStarted` — which here means "a round is running" and is read by
+     * startGame() and by the card clicks — is never touched. Without it, a
+     * press of the save button before the learner started anything is refused
+     * by the runtime rather than scored as a zero.
+     */
+    sendScore: function (auto, instance, engaged) {
         const mOptions = $eXeDescubre.options[instance];
+        const game = engaged
+            ? Object.assign({}, mOptions, { gameStarted: true })
+            : mOptions;
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.wordsGame.length;
-        mOptions.previousScore = $eXeDescubre.previousScore;
-        mOptions.userName = $eXeDescubre.userName;
+        game.scorerp = $eXeDescubre.getScore(instance);
+        game.previousScore = $eXeDescubre.previousScore;
+        game.userName = $eXeDescubre.userName;
 
-        $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, game);
 
-        $eXeDescubre.previousScore = mOptions.previousScore;
+        $eXeDescubre.previousScore = game.previousScore;
     },
 
     addCards: function (instance, cardsGame) {
@@ -1050,19 +1095,11 @@ var $eXeDescubre = {
             // as in every other iDevice: score 0 and unfinished. Leaving it to
             // the level buttons kept the previous grade standing over a board
             // the learner had already left.
-            //
-            // gameStarted goes up only for the length of the report, because
-            // sendScoreNew drops a game that declares itself neither started
-            // nor over, and gameOver is what it would otherwise read as
-            // completion. It goes straight back down: no round is running, and
-            // startGame() returns early on a game it believes is already going.
             mOptions.hits = 0;
             mOptions.errors = 0;
             mOptions.score = 0;
             mOptions.gameOver = false;
-            mOptions.gameStarted = true;
             $eXeDescubre.saveScormScore(instance);
-            mOptions.gameStarted = false;
         });
 
         $('#descubreReboot-' + instance).on('click', function (e) {
@@ -1697,23 +1734,20 @@ var $eXeDescubre = {
                 // report here — startGame publishes the opening zero itself,
                 // at its end, and doing it twice would put the same zero on
                 // the wire twice.
-                $eXeDescubre.startGame(instance, 2);
+                //
+                // Level 0, which is what every other single-level entry point
+                // passes. getCardsLevels ignores the index when there is only
+                // one level, but still names the level from it on screen, so a
+                // 2 here announced the same game as "Level: Master" while
+                // playing it again announced it as "Level: Rookie".
+                $eXeDescubre.startGame(instance, 0);
             } else {
                 $('#descubreStartLevels-' + instance).show();
                 // A valid code is the learner opening the activity, and the
                 // LMS should hear that even though no round is running yet:
                 // with more than one level, what comes next is the panel, not
                 // the game.
-                //
-                // Raised and lowered around the report on purpose.
-                // sendScoreNew drops a game that reports as neither started
-                // nor over, so the zero needs the flag up to travel — but
-                // startGame returns early on a game it believes is already
-                // running, so leaving it up would make every level button dead
-                // and the activity unplayable.
-                mOptions.gameStarted = true;
                 $eXeDescubre.saveScormScore(instance);
-                mOptions.gameStarted = false;
             }
         } else {
             $('#descubreMesajeAccesCodeE-' + instance)
@@ -1957,15 +1991,7 @@ var $eXeDescubre = {
         // Abandoning mid-game is the learner giving up the attempt, so the LMS
         // is told here rather than left holding whatever the last answers had
         // scored. Same rule as the play-again button and the access code.
-        //
-        // gameStarted goes up only for the length of the report: sendScoreNew
-        // drops a game that declares itself neither started nor over, and
-        // gameOver is what it would otherwise read as completion. It goes
-        // straight back down — the learner is at the level panel now, and
-        // startGame() returns early on a game it believes is already going.
-        mOptions.gameStarted = true;
         $eXeDescubre.saveScormScore(instance);
-        mOptions.gameStarted = false;
     },
 
     showFeedBack: function (instance) {
