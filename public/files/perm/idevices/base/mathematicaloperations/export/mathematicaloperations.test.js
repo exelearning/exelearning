@@ -231,6 +231,24 @@ describe('mathematicaloperations iDevice export', () => {
       });
     });
 
+    // Timed, the click handler calls startGame() on its next line and that
+    // publishes the same cleared state at its end. Reporting here as well put
+    // the same zero on the wire twice on every restart, with two commits and
+    // two redraws of the LMS menu for one action.
+    it('leaves the report to startGame when a timed game is restarted', () => {
+      setupGame({ time: 1, hits: 4, errors: 1, score: 10, gameOver: true });
+
+      $eXeMathOperations.reloadGame(0);
+
+      expect($eXeMathOperations.sendScore).not.toHaveBeenCalled();
+      // The board is cleared all the same: what moves is who publishes it.
+      expect($eXeMathOperations.options[0]).toMatchObject({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+      });
+    });
+
     it('publishes the cleared state when a timed game starts', () => {
       setupGame({ time: 1, hits: 3, gameOver: true });
       let stateWhenReported;

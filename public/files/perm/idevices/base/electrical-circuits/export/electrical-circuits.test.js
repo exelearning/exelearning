@@ -600,20 +600,19 @@ describe('electrical-circuits iDevice export', () => {
             vi.restoreAllMocks();
         });
 
-        it('hands newQuestion a cleared, reopened attempt to publish', () => {
+        it('publishes the cleared, reopened attempt, once', () => {
             setupReplay();
-            let stateWhenHandedOver;
-            idevice().newQuestion.mockImplementation(() => {
+            let stateWhenReported;
+            idevice().sendScore.mockImplementation(() => {
                 const { hits, errors, gameOver, gameStarted } =
                     idevice().options[instance];
-                stateWhenHandedOver = { hits, errors, gameOver, gameStarted };
+                stateWhenReported = { hits, errors, gameOver, gameStarted };
             });
 
             idevice().startGame(instance);
 
-            // newQuestion publishes the live options object on either of its
-            // branches, so this is the state that reaches the LMS.
-            expect(stateWhenHandedOver).toEqual({
+            expect(idevice().sendScore).toHaveBeenCalledTimes(1);
+            expect(stateWhenReported).toEqual({
                 hits: 0,
                 errors: 0,
                 // The whole point: sendScoreNew reads gameOver as "the learner
@@ -623,16 +622,12 @@ describe('electrical-circuits iDevice export', () => {
             });
         });
 
-        // startGame used to report as well, so every start put the same zero
-        // on the wire twice, with two commits and two redraws of the LMS menu
-        // for one action.
-        it('does not report it a second time itself', () => {
+        it('then hands over to newQuestion for the first question', () => {
             setupReplay();
 
             idevice().startGame(instance);
 
             expect(idevice().newQuestion).toHaveBeenCalledWith(instance);
-            expect(idevice().sendScore).not.toHaveBeenCalled();
         });
     });
 
@@ -691,6 +686,105 @@ describe('electrical-circuits iDevice export', () => {
 
             expect($(`#elcpOverHits-${instance}`).html()).toBe('Hits: 3');
             expect($(`#elcpOverErrors-${instance}`).html()).toBe('Errors: 1');
+        });
+    });
+
+    /**
+     * One report per event, and no event reported twice. Answering used to
+     * publish the new mark and then, a moment later, the painting of the next
+     * question published the same value again — one extra commit and one extra
+     * redraw of the LMS menu per question. Measured over two questions the
+     * activity sent 0, 5, 5, 10, 10 where it should send 0, 5, 10.
+     */
+    describe('one report per event', () => {
+        const instance = 0;
+        const idevice = () => global.$eXeEC;
+
+        function setupGame(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="elcpMainContainer-${instance}">
+                    <div id="elcpGameContainer-${instance}"></div>
+                    <div id="elcpGamerOver-${instance}"></div>
+                    <div id="elcpHistGame-${instance}"></div>
+                    <div id="elcpOverScore-${instance}"></div>
+                    <div id="elcpOverHits-${instance}"></div>
+                    <div id="elcpOverErrors-${instance}"></div>
+                    <div id="elcpShowClue-${instance}"></div>
+                    <div id="elcpPNumber-${instance}"></div>
+                    <div id="elcpStartGame-${instance}"></div>
+                    <div id="elcpQuestionDiv-${instance}"></div>
+                    <div id="elcpAnswerDiv-${instance}"></div>
+                    <div id="elcpWordDiv-${instance}"></div>
+                    <div id="elcpTikzPreview-${instance}"></div>
+                    <div id="elcpDivModeBoard-${instance}"></div>
+                    <div id="elcpCover-${instance}"></div>
+                </div>`;
+            idevice().options[instance] = Object.assign(
+                {
+                    main: `elcpMainContainer-${instance}`,
+                    isScorm: 1,
+                    gameMode: 1,
+                    scoreGame: 4,
+                    scoreTotal: 4,
+                    hits: 4,
+                    errors: 0,
+                    score: 10,
+                    numberQuestions: 2,
+                    obtainedClue: false,
+                    itinerary: { showClue: false, percentageClue: 0, clueGame: '' },
+                    msgs: {
+                        msgCool: 'Bien',
+                        msgAllQuestions: 'Todas',
+                        msgScore: 'Score',
+                        msgHits: 'Hits',
+                        msgErrors: 'Errors',
+                        msgYouScore: 'Score',
+                        msgInformationLooking: 'Mira',
+                    },
+                },
+                overrides
+            );
+            vi.spyOn(idevice(), 'showMessage').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'showFeedBack').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'saveEvaluation').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'clearQuestions').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'updateTime').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'sendScore').mockImplementation(() => {});
+            previousMedia = global.$exeDevices.iDevice.gamification.media;
+            global.$exeDevices.iDevice.gamification.media = {
+                stopSound: () => {},
+            };
+        }
+
+        let previousMedia;
+
+        afterEach(() => {
+            global.$exeDevices.iDevice.gamification.media = previousMedia;
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        // The last answer raises gameOver and reports the finish itself, on
+        // purpose: the reveal delay that follows may be seconds long and a
+        // learner who leaves during it must still have the activity recorded as
+        // finished. gameOver() then republished it.
+        it('does not repeat the finish the last answer already reported', () => {
+            setupGame({ gameOver: true });
+
+            idevice().gameOver(0, instance);
+
+            expect(idevice().sendScore).not.toHaveBeenCalled();
+        });
+
+        // The case gameOver() alone covers: the clock ran out with the question
+        // unanswered, so nothing reported the finish.
+        it('reports the finish when nobody has, as when the clock runs out', () => {
+            setupGame({ gameOver: false });
+
+            idevice().gameOver(2, instance);
+
+            expect(idevice().sendScore).toHaveBeenCalledWith(true, instance);
+            expect(idevice().options[instance].gameOver).toBe(true);
         });
     });
 });

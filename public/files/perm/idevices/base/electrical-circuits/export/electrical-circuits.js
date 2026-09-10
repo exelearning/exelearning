@@ -1084,11 +1084,11 @@ var $eXeEC = {
         $(`#elcpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
-        // No report here: newQuestion() publishes the same opening state on
-        // the very next line, by either of its branches — showQuestion() when
-        // there is a question to ask, gameOver() when there is not. Reporting
-        // here as well put the same zero on the wire twice on every start,
-        // with two commits and two redraws of the LMS menu for one action.
+        // The opening zero, published here because starting the attempt is the
+        // event. It briefly lived in showQuestion() instead, which reported on
+        // every question and so republished the previous answer's mark; that
+        // one is gone and this is the one that belongs.
+        $eXeEC.saveScormScore(instance);
         $eXeEC.newQuestion(instance);
     },
 
@@ -1100,6 +1100,14 @@ var $eXeEC = {
 
     gameOver: function (type, instance) {
         const mOptions = $eXeEC.options[instance];
+        // Answering the last question raises gameOver and reports the finish
+        // itself, on purpose: the reveal delay that follows may be seconds
+        // long, and a learner who leaves during it must still have the activity
+        // recorded as finished. So by the time this runs the LMS may already
+        // know. Read that before the flag is raised below, and report only when
+        // nobody has — which is the case this function alone covers: the clock
+        // running out with the question unanswered.
+        const alreadyReportedFinished = mOptions.gameOver === true;
         mOptions.gameStarted = false;
         mOptions.gameActived = false;
         clearInterval(mOptions.counterClock);
@@ -1127,16 +1135,8 @@ var $eXeEC = {
 
         mOptions.gameOver = true;
 
-        if (mOptions.isScorm === 1) {
-            const score = (
-                (mOptions.scoreGame * 10) /
-                mOptions.scoreTotal
-            ).toFixed(2);
+        if (mOptions.isScorm === 1 && !alreadyReportedFinished) {
             $eXeEC.sendScore(true, instance);
-            $(`#elcpRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`
-            );
-            mOptions.initialScore = score;
         }
         $eXeEC.saveEvaluation(instance);
         $eXeEC.showFeedBack(instance);
@@ -1305,18 +1305,17 @@ var $eXeEC = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            const score = (
-                (mOptions.scoreGame * 10) /
-                mOptions.scoreTotal
-            ).toFixed(2);
-            $eXeEC.sendScore(true, instance);
-            $(`#elcpRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`
-            );
-        }
-
-
+        // No report here. Painting a question is not an event that changes the
+        // mark: the answer before it already published the new score, and this
+        // put the same value on the wire again a moment later — one extra
+        // commit and one extra redraw of the LMS menu per question. What starts
+        // the attempt reports in startGame(), what changes the mark reports in
+        // answerQuestion(), and what ends it reports in gameOver().
+        //
+        // The score line the removed block also wrote was dead: the id
+        // `elcpRepeatActivity-N` exists in no markup of this iDevice. The span
+        // the learner sees is the shared `.Games-RepeatActivity`, which
+        // sendScoreNew writes on every report.
         $eXeEC.saveEvaluation(instance);
     },
 

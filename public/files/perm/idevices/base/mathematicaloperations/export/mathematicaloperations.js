@@ -225,10 +225,16 @@ var $eXeMathOperations = {
         // running and hides the start button — so the restart has to publish
         // its own cleared state, and mark the attempt in progress for it:
         // sendScoreNew ignores a game that reports as neither started nor
-        // over. A timed restart lowers the flag again on the next line of the
-        // click handler, before startGame.
+        // over.
         options.gameStarted = true;
-        $eXeMathOperations.saveScormScore(instance);
+        // Timed, the click handler lowers the flag on its next line and calls
+        // startGame(), which publishes this same cleared state at its end.
+        // Reporting here as well put the same zero on the wire twice on every
+        // restart, with two commits and two redraws of the LMS menu for one
+        // action. Untimed there is no startGame to hand over to.
+        if (!(options.time > 0)) {
+            $eXeMathOperations.saveScormScore(instance);
+        }
     },
     createQuestions: function (instance) {
         const mOptions = $eXeMathOperations.options[instance];

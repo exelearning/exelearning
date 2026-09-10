@@ -1655,6 +1655,13 @@ var $eXe3Dmol = {
         $(`#dmolpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        // The opening zero, published here because starting the attempt is the
+        // event. It used to arrive from showQuestion(), which reported on every
+        // question and so republished the previous answer's mark a moment after
+        // the answer had already published it.
+        if (mOptions.isScorm === 1) {
+            $eXe3Dmol.sendScore(true, instance);
+        }
         $eXe3Dmol.newQuestion(instance);
     },
 
@@ -1666,6 +1673,14 @@ var $eXe3Dmol = {
 
     gameOver: function (type, instance) {
         const mOptions = $eXe3Dmol.options[instance];
+        // Answering the last question raises gameOver and reports the finish
+        // itself, on purpose: the reveal delay that follows may be seconds
+        // long, and a learner who leaves during it must still have the activity
+        // recorded as finished. So by the time this runs the LMS may already
+        // know. Read that before the flag is raised below, and report only when
+        // nobody has — which is the case this function alone covers: the clock
+        // running out with the question unanswered.
+        const alreadyReportedFinished = mOptions.gameOver === true;
         mOptions.gameStarted = false;
         mOptions.gameActived = false;
         $eXe3Dmol.setModelStyleControlVisibility(instance, false);
@@ -1702,15 +1717,8 @@ var $eXe3Dmol = {
         // (common.js updateScormNew), so it short-circuited the condition
         // before the learner touched anything. The activity registry owns what
         // has been recorded.
-        if (mOptions.isScorm === 1) {
-            const score = (
-                (mOptions.scoreGame * 10) /
-                mOptions.scoreTotal
-            ).toFixed(2);
+        if (mOptions.isScorm === 1 && !alreadyReportedFinished) {
             $eXe3Dmol.sendScore(true, instance);
-            $(`#dmolpRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`
-            );
         }
         $eXe3Dmol.saveEvaluation(instance);
         $eXe3Dmol.showFeedBack(instance);
@@ -1879,19 +1887,16 @@ var $eXe3Dmol = {
             }
         }
 
-        // No "score only once" lock — see gameOver().
-        if (mOptions.isScorm === 1) {
-            const score = (
-                (mOptions.scoreGame * 10) /
-                mOptions.scoreTotal
-            ).toFixed(2);
-            $eXe3Dmol.sendScore(true, instance);
-            $(`#dmolpRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`
-            );
-        }
-
-
+        // No report here. Painting a question is not an event that changes the
+        // mark: the answer before it already published the new score, and this
+        // put the same value on the wire again a moment later. What starts the
+        // attempt reports in startGame(), what changes the mark reports in
+        // answerQuestion(), and what ends it reports in gameOver().
+        //
+        // The score line the removed block also wrote was dead: the id
+        // `dmolpRepeatActivity-N` exists in no markup of this iDevice. The span
+        // the learner sees is the shared `.Games-RepeatActivity`, which
+        // sendScoreNew writes on every report.
         $eXe3Dmol.saveEvaluation(instance);
     },
 

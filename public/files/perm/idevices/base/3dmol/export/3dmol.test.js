@@ -524,11 +524,17 @@ describe('3dmol iDevice export', () => {
             );
             vi.spyOn(dmol, 'updateTime').mockImplementation(() => {});
             vi.spyOn(dmol, 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sendScore').mockImplementation(() => {});
 
             dmol.startGame(instance);
 
             expect(dmol.options[instance].gameOver).toBe(false);
             expect(dmol.options[instance].gameStarted).toBe(true);
+            // The opening zero, published here and only here. It used to arrive
+            // from showQuestion(), which reported on every question and so
+            // republished the previous answer's mark.
+            expect(dmol.sendScore).toHaveBeenCalledTimes(1);
+            expect(dmol.sendScore).toHaveBeenCalledWith(true, instance);
 
             clearInterval(dmol.options[instance].counterClock);
             vi.clearAllTimers();

@@ -185,10 +185,17 @@ var $trueorfalse = {
 
         data.isTest = typeof data.isTest === 'undefined' ? false : data.isTest;
 
-        // Number of attempts (retries) in test mode. Backward-compatible: packages
-        // exported before this field default to 1. The activity is still marked
-        // completed on the first Comprobar regardless of remaining attempts; this
-        // only limits how many times the learner can retry to improve the score.
+        // Number of attempts (checks) in test mode: 1 means one check and no
+        // retry. The activity is still marked completed on the first Comprobar
+        // regardless of remaining attempts; this only limits how many times the
+        // learner can retry to improve the score.
+        //
+        // An activity authored before this field existed has no value here and
+        // gets 1. That is a product decision, not backward compatibility: the
+        // retry button used to be shown unconditionally at the end of a check,
+        // so such an activity offered unlimited retries and now offers none.
+        // Already-exported packages are unaffected — the runtime travels inside
+        // the ZIP — but an old .elp reopened and exported today does change.
         data.attemptsNumber =
             typeof data.attemptsNumber === 'undefined'
                 ? 1

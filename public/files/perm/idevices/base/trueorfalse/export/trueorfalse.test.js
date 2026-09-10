@@ -871,7 +871,13 @@ describe('trueorfalse iDevice export', () => {
       };
     }
 
-    it('updateConfig defaults attemptsNumber to 1 when missing (backward compatible)', () => {
+    // A product decision, not backward compatibility: before this field existed
+    // the retry button was shown unconditionally at the end of a check, so an
+    // activity authored then offered unlimited retries and now offers one
+    // check and none. Already-exported packages are unaffected — the runtime
+    // travels inside the ZIP — but an old .elp reopened and exported today does
+    // change.
+    it('updateConfig gives a missing attemptsNumber one attempt', () => {
       const prevExeApp = eXe.app;
       eXe.app = {
         ...eXe.app,
