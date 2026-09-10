@@ -22,6 +22,22 @@ var $trueorfalse = {
     scormFunctions: 'libs/SCOFunctions.js',
     userName: '',
     previousScore: '',
+    /**
+     * The mark this SCO already held when the page opened.
+     *
+     * Kept for a use it does not yet have: nothing reads it, here or in the
+     * shared runtime — `previousScore` is what carries the restored mark into
+     * a report, and common.js's own `initialScore` is a local variable of
+     * createScoreScormHtml with no relation to this one. Every game iDevice
+     * declares it and writes it, and none reads it.
+     *
+     * Two blocks used to sit on top of it and look as if they protected
+     * something: `initialScore = typeof initialScore === 'undefined' ? '' :
+     * initialScore` on a property declared right here as an empty string —
+     * an assignment that could not change anything — and a copy of the result
+     * onto the options object, which nothing reads either. Those are gone. The
+     * property stays.
+     */
     initialScore: '',
     mScorm: null,
 
@@ -738,10 +754,6 @@ var $trueorfalse = {
                     .css({ 'background-color': bgcolor, color: color })
                     .fadeIn('fast');
                 if (mOptions.isScorm == 1) {
-                    mOptions.initialScore =
-                        typeof $trueorfalse.initialScore === 'undefined'
-                            ? ''
-                            : $trueorfalse.initialScore;
                     $trueorfalse.updateScoreData(mOptions);
                     $trueorfalse.sendScore(true, mOptions);
                 }
@@ -924,10 +936,6 @@ var $trueorfalse = {
             $('#tofRebootTest-' + instance).hide();
         }
         if (mOptions.isScorm == 1) {
-            $trueorfalse.initialScore =
-                typeof $trueorfalse.initialScore === 'undefined'
-                    ? ''
-                    : $trueorfalse.initialScore;
             $trueorfalse.sendScore(true, data);
         }
     },
