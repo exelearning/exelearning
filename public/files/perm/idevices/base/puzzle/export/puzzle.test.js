@@ -320,13 +320,12 @@ describe('puzzle iDevice export', () => {
         saveEvaluation: vi.fn(),
       };
       vi.spyOn($eXePuzzle, 'uptateTime').mockImplementation(() => {});
-      // Rebuilding the board is stubbed out, but the real showPuzzle raises
-      // gameStarted and the replay report depends on that: sendScoreNew drops
-      // a game that is neither started nor over. A bare no-op here would let
-      // the stub, not the code, decide whether the report carries.
-      vi.spyOn($eXePuzzle, 'showPuzzle').mockImplementation(() => {
-        $eXePuzzle.options[0].gameStarted = true;
-      });
+      // A bare no-op, deliberately. This used to raise gameStarted, on the
+      // stated grounds that "the real showPuzzle raises it" — which it does
+      // not: placePuzzlePieces does, from the image's own load event. So the
+      // stub was supplying the one thing the handler was missing, and these
+      // tests certified a replay that in a browser published nothing at all.
+      vi.spyOn($eXePuzzle, 'showPuzzle').mockImplementation(() => {});
       vi.spyOn($eXePuzzle, 'saveEvaluation').mockImplementation(() => {});
     }
 
@@ -497,6 +496,77 @@ describe('puzzle iDevice export', () => {
       expect(
         $exeDevices.iDevice.gamification.scorm.sendScoreNew
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * The pieces only appear once the image has loaded — placePuzzlePieces runs
+   * from its load event — and the replay declares the attempt started before
+   * that, so the LMS hears it immediately. Between the two the previous board
+   * is still on screen, and without this it answered to clicks.
+   */
+  describe('rebuilding the board', () => {
+    function setupBoard(type) {
+      document.body.innerHTML = `
+        <div id="pzlImagePuzzle-0">
+          <div class="PZLP-Tile" id="old-slide"></div>
+          <div class="PZLP-TileChange" id="old-swap"></div>
+          <div class="PZLP-Completed" id="old-done"></div>
+        </div>
+        <div id="pzlAuthor-0"></div>
+        <div id="pzlImage-0"></div>
+        <div id="pzlAudioDef-0"></div>
+        <div id="pzlAudioClue-0"></div>`;
+      $eXePuzzle.options[0] = {
+        id: 0,
+        active: 0,
+        gameActived: false,
+        selectedTile: $('#old-swap'),
+        puzzlesGame: [{ type, showTime: false, audioDefinition: '', author: '', atl: '' }],
+        msgs: { msgNoImage: 'no image' },
+      };
+      vi.spyOn($eXePuzzle, 'stopAllSounds').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'showImagePuzzle').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('shuts the board until the pieces are placed', () => {
+      setupBoard(0);
+
+      $eXePuzzle.showPuzzle(0, 0);
+
+      // The click handlers read this one: true means "busy, ignore". Only
+      // placePuzzlePieces clears it, as the last thing it does.
+      expect($eXePuzzle.options[0].gameActived).toBe(true);
+    });
+
+    // The truncated class name matched nothing, so the swap puzzle kept the
+    // previous attempt's pieces on screen through the rebuild.
+    it.each([
+      ['sliding pieces', '#old-slide'],
+      ['swap pieces', '#old-swap'],
+      ['the completed overlay', '#old-done'],
+    ])('removes %s from the previous board', (_label, selector) => {
+      setupBoard(1);
+
+      $eXePuzzle.showPuzzle(0, 0);
+
+      expect($(selector).length).toBe(0);
+    });
+
+    // The swap logic compares the next click against it, so a tile held from
+    // the previous attempt would pair with a node that no longer exists.
+    it('forgets the tile held from the previous attempt', () => {
+      setupBoard(1);
+
+      $eXePuzzle.showPuzzle(0, 0);
+
+      expect($eXePuzzle.options[0].selectedTile).toBeNull();
     });
   });
 });

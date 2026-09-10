@@ -264,6 +264,19 @@ var $eXePuzzle = {
     showPuzzle: function (num, instance) {
         const mOptions = $eXePuzzle.options[instance];
 
+        // Shut the board while it is being rebuilt. The pieces only appear
+        // once the image has loaded — placePuzzlePieces() runs from its load
+        // event — so between here and there the previous board is still on
+        // screen and, since the attempt is already declared started, its
+        // pieces would answer to clicks. This is the flag the click handlers
+        // already read: true means "busy, ignore", and placePuzzlePieces()
+        // clears it as the last thing it does.
+        mOptions.gameActived = true;
+        // A piece of the board being replaced, held from the previous attempt.
+        // The swap logic compares against it, so leaving it would let the first
+        // click of the new board pair with a tile that no longer exists.
+        mOptions.selectedTile = null;
+
         mOptions.active = num;
         mOptions.puzzle = mOptions.puzzlesGame[num];
         mOptions.attemps = 0;
@@ -297,9 +310,17 @@ var $eXePuzzle = {
             mOptions.puzzle.atl || mOptions.msgs.msgNoImage
         );
 
-        ['PZLP-Tile', 'PZLP-TileChang', 'PZLP-Completed'].forEach((cls) => {
+        // `PZLP-TileChange`, not `PZLP-TileChang`: the truncated name matched
+        // nothing, so the swap puzzle's pieces survived the rebuild and the
+        // learner was left clicking the previous attempt's board. Every other
+        // reference in this file spells it in full.
+        //
+        // Stopped before removed: a tile mid-animation keeps its timer, and
+        // jQuery would go on stepping a node that is no longer in the document.
+        ['PZLP-Tile', 'PZLP-TileChange', 'PZLP-Completed'].forEach((cls) => {
             $('#pzlImagePuzzle-' + instance)
                 .find(`.${cls}`)
+                .stop(true, true)
                 .remove();
         });
 
@@ -1177,10 +1198,19 @@ var $eXePuzzle = {
             // attempt's hits, errors and score into the new board.
             mOptions.gameStarted = false;
             $eXePuzzle.startGame(instance);
-            // showPuzzle raises gameStarted again, and the report has to follow
-            // it: sendScoreNew drops a game that reports as neither started nor
-            // over.
             $eXePuzzle.showPuzzle(0, instance);
+            // Declared here, not left to showPuzzle. It does not raise the flag
+            // itself: placePuzzlePieces does, and that is only reached from the
+            // image's own load event — so on the next line gameStarted was
+            // still false, gameOver had just been lowered, and sendScoreNew
+            // drops a game that reports as neither started nor over. The replay
+            // published nothing at all and the LMS kept the finished attempt's
+            // grade and terminal status. It looked intermittent because a
+            // cached image can fire load before the thread gets here.
+            //
+            // The learner has abandoned the previous attempt by pressing this,
+            // and that is true whether or not the picture has arrived.
+            mOptions.gameStarted = true;
             $eXePuzzle.saveScormScore(instance);
             $eXePuzzle.saveEvaluation(instance);
             $('#pzlCubierta-' + instance).hide();
