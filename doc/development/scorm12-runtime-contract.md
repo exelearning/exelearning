@@ -510,6 +510,13 @@ iDevice properties such as `gameOver`.
 `evaluable`/`completionRequired` from the iDevice's own `isScorm` flag and
 passing `completed` explicitly from the call site.
 
+**`initialScore` is not part of this contract.** Every game iDevice declares the
+property and writes it, and **nothing reads it** — not the registry, not the
+policy, not `common.js`. It is kept for a use it does not yet have; a reviewer
+finding those writes has found dead state, not a scoring defect. The
+`initialScore` inside `common.js`'s `createScoreScormHtml()` is an unrelated
+local variable.
+
 ### 9.1 Completion and success mapping **[POLICY]**
 
 SCORM 1.2 has a single status element, so eXeLearning's separate notions of
@@ -571,6 +578,21 @@ still reads `not attempted`.
   in. A package still running the previous runtime keeps the old numbers; they
   differ by at most one weight-point of a single activity (100/49/0 at equal
   weights: 50.17 before, 49.67 now).
+
+  **The default weight also changed, and that one moves the number much
+  further.** An activity with no usable weight counts as **100**, the value the
+  editor writes into its own form; it used to count as 1. Twenty-eight of the
+  thirty-five game iDevices never default `weighted` when they load for
+  playback, so an activity that had never been through the editor weighed a
+  hundredth of one that had, on the same page — and merely opening and saving an
+  iDevice re-weighted the page without the author changing anything. On a page
+  mixing the two the aggregate moves by far more than a point: two activities
+  scoring 100 and 0, one edited and one not, aggregated to
+  `(100×100 + 0×1) / 101 = 99.01` and now aggregate to `(100 + 0) / 2 = 50`.
+  That is the intended reading — the author declared no weight for either, so
+  neither outranks the other — but it is a real change of number for existing
+  content rendered by this runtime. Already-exported packages keep their own
+  numbers, since the runtime travels inside the ZIP.
 - **The policy may correct its own verdict, never someone else's.** A terminal
   status the policy wrote during this session is downgraded back to
   `incomplete` whenever the decision returns to `required-activities-pending`

@@ -217,6 +217,21 @@ scorm.activities.summary();
    single-source rule above is unchanged and is what made the correction one
    edit rather than several; the numbers move by at most one weight-point of a
    single activity (100/49/0 at equal weights: 50.17 before, 49.67 now).
+
+   A **second** correction moves them further, and this one is not about
+   rounding: an activity with no usable weight now counts as **100**, the value
+   the editor writes into its own form, where it used to count as 1. Twenty-eight
+   of the thirty-five game iDevices never default `weighted` when they load for
+   playback, so an activity that had never been through the editor weighed a
+   hundredth of one that had, on the same page — and merely opening and saving
+   an iDevice re-weighted the page without the author changing anything. On a
+   page mixing the two the aggregate moves by far more than a point: two
+   activities scoring 100 and 0, one edited and one not, aggregated to
+   `(100×100 + 0×1) / 101 = 99.01` and now aggregate to `(100 + 0) / 2 = 50`.
+   That is the intended reading — the author declared no weight for either, so
+   neither outranks the other — but it is a real change of number for existing
+   content rendered by this runtime. Packages already exported are unaffected:
+   the runtime travels inside the ZIP.
 10. **`setPageHasScoredActivities()` remains the fallback.** When no iDevice
    registers, the page-level flag decides exactly as before, so content that
    predates the registry is unaffected.
