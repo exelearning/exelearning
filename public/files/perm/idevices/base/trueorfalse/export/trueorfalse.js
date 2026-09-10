@@ -387,7 +387,6 @@ var $trueorfalse = {
             !mOptions.isTest || (mOptions.isTest && mOptions.time > 0)
                 ? 'TOFP-EHidden'
                 : '';
-        const display = mOptions.isScorm == 2 ? 'block' : 'none';
         const html = `
     <div class="game-evaluation-ids js-hidden" data-id="${mOptions.id}" data-evaluationb="${mOptions.evaluation}" data-evaluationid="${mOptions.evaluationID}"></div>
         <div class="TOFP-instructions">${mOptions.eXeGameInstructions}</div>
@@ -413,11 +412,7 @@ var $trueorfalse = {
                 </div>
         </div> 
         </div>
-        <div class="Games-BottonContainer">
-            <div class="Games-GetScore">
-                <input id="tofPSendScore-${instance}" type="button" value="${mOptions.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:${display}"/> <span class="Games-RepeatActivity"></span>
-            </div>
-        </div>
+        ${$exeDevices.iDevice.gamification.scorm.addButtonScoreNew(mOptions)}
         <div class="TOFP-After">${mOptions.eXeIdeviceTextAfter}</div>
         `;
         return html;
@@ -541,7 +536,9 @@ var $trueorfalse = {
     removeEvents: function (data) {
         const instance = data.id;
 
-        $(`#tofPSendScore-${instance}`).off('click');
+        $(`#tofPMainContainer-${instance}`)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore');
         $(`#tofPStartGame-${instance}`).off('click');
         $(`#tofPCheckTest-${instance}`).off('click');
         $(`#tofRebootTest-${instance}`).off('click');
@@ -700,14 +697,21 @@ var $trueorfalse = {
         mOptions.main = `tofPMainContainer-${instance}`;
         mOptions.idevice = 'trueorfalseIdevice';
 
-        $(`#tofPSendScore-${instance}`).attr('value', mOptions.textButtonScorm);
-        $(`#tofPSendScore-${instance}`).hide();
-
-        $(`#tofPSendScore-${instance}`).on('click', function (e) {
-            e.preventDefault();
-            $trueorfalse.sendScore(false, mOptions);
-            return true;
-        });
+        // The shared addButtonScoreNew emits the save button for isScorm 2
+        // alone, already visible and carrying the author's caption, so there is
+        // nothing here to caption, reveal or hide. This used to hide it
+        // unconditionally, and addEvents runs after registerActivity — which
+        // was what revealed it — so the button vanished the moment the runtime
+        // showed it, and under SCORM the winner depended on how fast the API
+        // wrapper loaded.
+        $(`#tofPMainContainer-${instance}`)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore')
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
+                $trueorfalse.sendScore(false, mOptions);
+                return true;
+            });
 
         $('#tofPGameContainer-' + instance).on(
             'click',

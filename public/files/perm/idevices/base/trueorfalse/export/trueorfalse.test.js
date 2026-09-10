@@ -302,6 +302,101 @@ describe('trueorfalse iDevice export', () => {
       expect(updateEvaluationIcon).toHaveBeenCalledWith(options, false);
     });
 
+    // The learner's press is what publishes the grade in manual mode, so the
+    // button has to be wired. It is delegated from the iDevice node and matched
+    // by class, because the shared markup gives it no id of its own.
+    it('wires the save button for the learner to press', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousScorm = $exeDevices.iDevice.gamification.scorm;
+      $exeDevices.iDevice.gamification.report = {
+        updateEvaluationIcon: vi.fn(),
+      };
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm = { sendScoreNew };
+      document.body.innerHTML = `
+        <div class="idevice_node trueorfalseIdevice" id="tof-1">
+          <div class="exe-trueorfalse-container">
+            <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
+              <div id="tofPGameContainer-tof-1"></div>
+            </div>
+            <input type="button" class="Games-SendScore" />
+          </div>
+        </div>
+      `;
+      const options = {
+        id: 'tof-1',
+        idevicePath: '/idevices/trueorfalse/',
+        msgs: { tofPStartGame: 'Start' },
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isScorm: 2,
+        showSlider: false,
+        isTest: true,
+        time: 0,
+        hits: 1,
+        questionsGame: [{}, {}],
+        evaluation: true,
+        evaluationID: 'eval-1',
+        isInExe: false,
+      };
+
+      try {
+        $trueorfalse.addEvents(options);
+        $trueorfalse.addEvents(options);
+
+        $('.Games-SendScore').trigger('click');
+
+        // Once, however many times the behaviour is wired.
+        expect(sendScoreNew).toHaveBeenCalledTimes(1);
+        expect(sendScoreNew.mock.calls[0][0]).toBe(false);
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+        $exeDevices.iDevice.gamification.scorm = previousScorm;
+      }
+    });
+
+    // The defect: this iDevice wrote its own markup with the grey
+    // `feedbackbutton` class and an inline `display` it then fought with
+    // addEvents over. The shared markup gives every iDevice the same green
+    // control, emitted only for manual mode and already visible.
+    describe('the save button in the rendered markup', () => {
+      function render(isScorm) {
+        return $trueorfalse.createInterfaceTrueOrFalse({
+          id: 'tof-2',
+          isScorm,
+          textButtonScorm: 'Guardar',
+          isTest: true,
+          time: 0,
+          tofPTime: '0',
+          attemptsNumber: 1,
+          pendingAttempts: 1,
+          questionsGame: [],
+          numberQuestions: 0,
+          eXeGameInstructions: '',
+          eXeIdeviceTextAfter: '',
+          evaluation: false,
+          evaluationID: '',
+          msgs: {},
+        });
+      }
+
+      it('renders it green and visible in manual mode', () => {
+        const html = render(2);
+
+        expect(html).toContain('Games-SendScore');
+        expect(html).toContain('btn btn-primary');
+        expect(html).not.toContain('feedbackbutton');
+      });
+
+      it('renders no button in automatic mode', () => {
+        const html = render(1);
+
+        expect(html).not.toContain('Games-SendScore');
+        // The runtime still needs somewhere to put its message.
+        expect(html).toContain('Games-RepeatActivity');
+      });
+    });
+
     it('starts with SCORM reporting when the learner clicks the start button', () => {
       const previousReport = $exeDevices.iDevice.gamification.report;
       $exeDevices.iDevice.gamification.report = {

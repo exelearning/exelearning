@@ -82,7 +82,12 @@ var $form = {
     renderView: function (data, accesibility, template, ideviceId) {
         const ldata = this.updateConfig(data, ideviceId);
         let display = $('body').hasClass('exe-export') ? 'none' : '';
-        if ($('body').hasClass('exe-scorm') && ldata.isScorm > 0) {
+        // Automatic mode only. There, "Comprobar" is also what publishes the
+        // grade, so it takes the author's wording for it. In manual mode the
+        // save button is a separate control with that same wording, and giving
+        // both the same label would leave the learner with two identical
+        // buttons doing different things.
+        if ($('body').hasClass('exe-scorm') && ldata.isScorm === 1) {
             ldata.msgs.msgCheck = ldata.textButtonScorm;
         }
 
@@ -127,11 +132,7 @@ var $form = {
 
                     </div>
                 </div>
-                <div class="Games-BottonContainer">
-                    <div class="Games-GetScore">
-                        <input id="frmPSendScore-${ldata.id}" type="button" value="${ldata.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:none"/> <span class="Games-RepeatActivity"></span>
-                    </div>
-                </div>
+                ${$exeDevices.iDevice.gamification.scorm.addButtonScoreNew(ldata)}
                 ${ldata.eXeIdeviceTextAfter ? `<div class="form-instructions">${ldata.eXeIdeviceTextAfter}</div>` : ''}
             </div>
             ${$form.extractMediaElements(data.questionsData)}
@@ -166,8 +167,11 @@ var $form = {
             data.scorm && data.scorm.buttonTextSave
                 ? data.scorm.buttonTextSave
                 : data.msgs.msgSaveScore;
+        // The stored mode wins and is kept as it is: 2 means the learner owns
+        // the save button. Only when there is no stored mode does the legacy
+        // `scorm.saveScore` boolean decide, and it can only ever say automatic.
         let lscorm = data.scorm && data.scorm.saveScore ? 1 : 0;
-        data.isScorm = lscorm || data.isScorm ? 1 : 0;
+        data.isScorm = Number(data.isScorm) > 0 ? Number(data.isScorm) : lscorm;
         data.weighted = data.weighted ?? 100;
         const title =
             $('#' + data.id)
@@ -226,6 +230,7 @@ var $form = {
         const bindBehaviour = () => {
             $form.setBehaviourButtonResetQuestions(ldata);
             $form.setBehaviourButtonCheckQuestions(ldata);
+            $form.setBehaviourButtonSendScore(ldata);
             if (addBtnAnswers) $form.setBehaviourButtonShowAnswers(ldata);
             $form.setBehaviourOptions(ldata);
             $form.hideScore(ldata.id);
@@ -870,22 +875,63 @@ var $form = {
      *
      * rebootGame() clears the answers and the counts, but nothing told the
      * LMS, so the menu kept the finished attempt's grade and its terminal
-     * status until the learner pressed Comprobar again.
+     * status until the learner pressed Comprobar again. The zero it publishes
+     * carries `gameOver` false, so it reopens the attempt rather than failing
+     * it.
      *
      * Mirrors the condition gameOver() already reports under, so both ways out
      * of an attempt agree on when this iDevice talks to the LMS.
+     *
+     * In manual mode this reaches the LMS no more than any other report the
+     * activity makes by itself: sendScoreNew drops it, and the grade the
+     * learner last saved stands until they press the button again. That is the
+     * point of the mode, and it is the one observable difference between the
+     * two on restart.
      */
     saveScormScore: function (data) {
+        // `> 0` is the "SCORM tracking is on" test, not the mode test. Which
+        // mode it is gets decided once, in sendScoreNew: an automatic report
+        // from a manual-mode activity is dropped there, so the button stays the
+        // only thing that writes the grade.
         if (!data || !(data.isScorm > 0)) return;
         if (!$('body').hasClass('exe-scorm')) return;
         $form.sendScore(data);
     },
 
-    sendScore: function (data) {
+    /**
+     * Wire the save button the learner owns in manual mode.
+     *
+     * The shared addButtonScoreNew emits it for isScorm 2 alone, so there is
+     * nothing to bind in the other modes and binding unconditionally costs
+     * nothing. Delegated from the iDevice node and bound by class, the way
+     * every other iDevice with this button does it.
+     *
+     * @param {Object} data The activity's options.
+     */
+    setBehaviourButtonSendScore: function (data) {
+        $('#frmMainContainer-' + data.id)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore')
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
+                $form.sendScore(data, false);
+            });
+    },
+
+    /**
+     * Report the current score.
+     *
+     * @param {Object} data The activity's options.
+     * @param {boolean} [auto] false when the learner asked for it by pressing
+     * the save button. It never decides completion — only `data.gameOver`
+     * does — but it is what tells the runtime to confirm the save to the
+     * learner, and what lets a manual-mode activity report at all.
+     */
+    sendScore: function (data, auto = true) {
         data.scorerp = (data.rightQuestions * 10) / data.totalQuestions;
         data.previousScore = $form.previousScore;
         data.userName = $form.userName;
-        $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, data);
         $form.previousScore = data.previousScore;
     },
 

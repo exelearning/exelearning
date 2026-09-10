@@ -176,6 +176,9 @@ var $exeDevice = {
                 "The score can't be saved because this page is not part of a SCORM package."
             ),
             msgYouScore: c_('You scores is'),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
             msgScore: c_('Score'),
             msgWeight: c_('Weight'),
             msgYouLastScore: c_('The last score saved is'),
@@ -1002,7 +1005,7 @@ var $exeDevice = {
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab($exeDevice.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 7, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(7)}

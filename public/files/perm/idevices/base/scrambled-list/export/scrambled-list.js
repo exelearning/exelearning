@@ -152,7 +152,13 @@ var $scrambledlist = {
         const index = $idevices.index($('#' + data.id)) + 1;
         data.ideviceNumber = index;
         data.title = title;
-        data.gameStarted = true;
+        // Not started until the learner checks the list. This used to be set
+        // true here, at load, which was invisible while nothing could report
+        // before a check — but the save button can, and it would have published
+        // a zero for a list nobody had answered instead of telling the learner
+        // to do the activity first. check(), retryGame() and sendScore() each
+        // set it at the moment they mean it.
+        data.gameStarted = false;
         data.options = this.normalizeOptions(data.options);
         data.scorerp = 0;
         data.main = 'sl' + data.id;
@@ -179,6 +185,8 @@ var $scrambledlist = {
         if ($node.length == 1) {
             $node.attr('data-idevice-json-data', JSON.stringify(ldata));
         }
+
+        $scrambledlist.setBehaviourButtonSendScore(ldata);
 
         $('.exe-sortableList').each(function (instance) {
             if ($('body').hasClass('exe-epub3')) {
@@ -412,14 +420,13 @@ var $scrambledlist = {
     },
 
     getScormHtml: function (data) {
-        const mOptions = data;
-        const instance = mOptions.id;
-        return mOptions.isScorm > 0
-            ? `<div class="Games-BottonContainer">
-            <div class="Games-GetScore">
-                <input id="tofPSendScore-${instance}" type="button" value="${mOptions.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:none"/> <span class="Games-RepeatActivity">${mOptions.msgScoreScorm}</span>
-            </div>
-        </div>`
+        // The shared markup, so this iDevice's button is the same control as
+        // every other one's. The hand-rolled copy this replaced carried
+        // `display:none` and relied on updateScormNew to reveal it, which only
+        // happens inside a SCORM package — so the button was missing from the
+        // editor and from every other export format, where the rest show it.
+        return data.isScorm > 0
+            ? $exeDevices.iDevice.gamification.scorm.addButtonScoreNew(data)
             : '';
     },
 
@@ -496,11 +503,22 @@ var $scrambledlist = {
             this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1)
         );
         data.pendingAttempts = Math.max(data.pendingAttempts - 1, 0);
+
+        this.saveEvaluation(nRightAnswers, userList[0].children.length, data);
+
+        // Store the state only once the mark exists. This used to be written
+        // above, before saveEvaluation computed it, so the node kept the
+        // previous attempt's score — and when the list is wrong with attempts
+        // left this function returns at the retry prompt without ever reaching
+        // sendScore, so nothing corrected it. The save button reads the node, so
+        // a learner pressing it while the prompt was up published a stale mark.
+        // The attempt is open here whatever the outcome: either the retry
+        // decision is still pending, or sendScore is about to close it.
+        data.gameStarted = true;
+        data.gameOver = false;
         $(e)
             .closest('.idevice_node')
             .attr('data-idevice-json-data', JSON.stringify(data));
-
-        this.saveEvaluation(nRightAnswers, userList[0].children.length, data);
 
         const errors = userList[0].children.length - nRightAnswers;
         if (!right && data.pendingAttempts > 0) {
@@ -717,6 +735,7 @@ var $scrambledlist = {
             data.scorerp = 0;
             data.gameStarted = true;
             data.gameOver = false;
+            $scrambledlist.persistState(data);
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
         }
     },
@@ -892,12 +911,74 @@ var $scrambledlist = {
         data.scorerp = (rightAnswers * 10) / totalOptions;
         data.gameStarted = true;
         // The learner pressed Check and the list has been graded, so the activity is
-        // finished. common.js derives completion from `gameOver === true || auto !== true`
-        // and this call passes auto = true, so without this flag the activity never
-        // completes and any page carrying a scrambled-list stays `incomplete` in the LMS
-        // even at 100%. Every other gradable iDevice sets it at the same point.
+        // finished. common.js derives completion from `gameOver` alone, so without this
+        // flag the activity never completes and any page carrying a scrambled-list stays
+        // `incomplete` in the LMS even at 100%. Every other gradable iDevice sets it at
+        // the same point.
         data.gameOver = true;
+        $scrambledlist.persistState(data);
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
+    },
+
+    /**
+     * Write the activity's state back onto its node.
+     *
+     * check() re-reads `data-idevice-json-data` on every grading and works on
+     * that copy, so anything it sets is gone by the next click unless it is
+     * stored. `pendingAttempts` already survived this way; the report state has
+     * to as well, or the save button would have nothing to publish.
+     *
+     * @param {Object} data The activity's options.
+     */
+    persistState: function (data) {
+        if (!data || !data.id) return;
+        const $node = $('#' + data.id);
+        if ($node.length !== 1) return;
+        $node.attr('data-idevice-json-data', JSON.stringify(data));
+    },
+
+    /**
+     * The state the node holds, which is what the learner has actually done.
+     *
+     * @param {Object} ldata The options built at render time, used as the base
+     * and as the fallback when the node holds nothing readable.
+     * @returns {Object} the activity's current options
+     */
+    readState: function (ldata) {
+        const stored = $('#' + ldata.id).attr('data-idevice-json-data');
+        if (!stored) return ldata;
+        try {
+            return Object.assign({}, ldata, JSON.parse(stored));
+        } catch (error) {
+            return ldata;
+        }
+    },
+
+    /**
+     * Wire the save button the learner owns in manual mode.
+     *
+     * The shared addButtonScoreNew emits it for isScorm 2 alone, so there is
+     * nothing to bind in the other modes and binding unconditionally costs
+     * nothing. Delegated from the iDevice node and bound by class, the way
+     * every other iDevice with this button does it.
+     *
+     * Pressing it publishes the state as it stands and changes nothing: a list
+     * the learner has not checked yet is not finished, and it is check() that
+     * decides what the state says.
+     *
+     * @param {Object} ldata The options built at render time.
+     */
+    setBehaviourButtonSendScore: function (ldata) {
+        $('#' + ldata.id)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore')
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
+                $exeDevices.iDevice.gamification.scorm.sendScoreNew(
+                    false,
+                    $scrambledlist.readState(ldata)
+                );
+            });
     },
     /**
      * Set up native touch drag-and-drop for a sortable list instance.

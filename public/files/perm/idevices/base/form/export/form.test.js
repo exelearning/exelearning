@@ -213,6 +213,25 @@ describe('form iDevice export', () => {
     it('does not throw when there is no saved data at all', () => {
       expect(() => $form.updateConfig(undefined, 'form-1')).not.toThrow();
     });
+
+    // The mode used to be flattened to 1 here, and this line — not the editor —
+    // was what actually kept manual mode out of this iDevice: hiding the radio
+    // was CSS, which anyone could undo and save a 2 through. The option is
+    // offered now, so a 2 has to survive the load or the button would never
+    // appear and the activity would grade the learner behind it.
+    it.each([
+      [2, 2],
+      [1, 1],
+      [0, 0],
+    ])('keeps a stored SCORM mode of %s', (stored, expected) => {
+      expect($form.updateConfig({ isScorm: stored }, 'form-1').isScorm).toBe(expected);
+    });
+
+    // The legacy shape carries a boolean, which can only ever mean automatic.
+    it('falls back to the legacy saveScore flag when no mode is stored', () => {
+      expect($form.updateConfig({ scorm: { saveScore: true } }, 'form-1').isScorm).toBe(1);
+      expect($form.updateConfig({ scorm: { saveScore: false } }, 'form-1').isScorm).toBe(0);
+    });
   });
 
   describe('renderBehaviour', () => {
@@ -499,6 +518,41 @@ describe('form iDevice export', () => {
 
       expect(gameOverCalls).toBe(1);
     });
+
+    // The save button is wired in the same step, and it is the only thing that
+    // publishes a grade in manual mode: leave it out of the bind step and the
+    // learner presses a button that does nothing.
+    it('binds the save-score button in the same step', () => {
+      const id = 'form-send';
+      document.body.innerHTML =
+        `<div id="${id}">` +
+        `<div id="form-questions-${id}"></div>` +
+        `<input type="button" class="Games-SendScore">` +
+        `</div>`;
+
+      let bound;
+      $form.setBehaviourButtonSendScore = data => {
+        bound = data.id;
+      };
+      for (const name of [
+        'setBehaviourButtonResetQuestions',
+        'setBehaviourButtonCheckQuestions',
+        'setBehaviourButtonShowAnswers',
+        'setBehaviourOptions',
+        'hideScore',
+        'setBehaviourTest',
+        'addEventsSlideShow',
+      ]) {
+        $form[name] = () => {};
+      }
+
+      $form.renderBehaviour({
+        id,
+        questionsData: [{ question: 'q', options: [], typeQuestion: 'text' }],
+      });
+
+      expect(bound).toBe(id);
+    });
   });
 
   // The SCORM bootstrap reaches a just-loaded script through an
@@ -668,6 +722,18 @@ describe('form iDevice export', () => {
       expect($form.sendScore).not.toHaveBeenCalled();
     });
 
+    // This gate only asks whether the activity is tracked at all. Which mode it
+    // is gets decided once, in sendScoreNew, which drops the automatic report a
+    // manual-mode activity makes — so the restart still offers its score and
+    // the runtime is what refuses it.
+    it('saveScormScore leaves the mode decision to the runtime', () => {
+      const data = gameData({ isScorm: 2 });
+
+      $form.saveScormScore(data);
+
+      expect($form.sendScore).toHaveBeenCalledWith(data);
+    });
+
     it('publishes the cleared state when the learner clicks the start button', () => {
       const data = gameData({
         time: 5,
@@ -707,8 +773,14 @@ describe('form iDevice export', () => {
   });
 
   describe('the countdown of a timed form', () => {
+    let previousDevices;
+
     beforeEach(() => {
       document.body.innerHTML = '<div id="frmMainContainer-f1"></div>';
+      // Put the shared mock back afterwards. Deleting it left every later
+      // describe in this file without it, which is a trap for the next test
+      // that needs a helper it does not stub itself.
+      previousDevices = global.$exeDevices;
       global.$exeDevices = {
         iDevice: {
           gamification: {
@@ -725,7 +797,7 @@ describe('form iDevice export', () => {
       vi.clearAllTimers();
       vi.useRealTimers();
       document.body.innerHTML = '';
-      delete global.$exeDevices;
+      global.$exeDevices = previousDevices;
       vi.restoreAllMocks();
     });
 
@@ -777,6 +849,147 @@ describe('form iDevice export', () => {
         ([, value]) => typeof value === 'string' && /[áéíóúñ¿¡]/i.test(value)
       );
       expect(nonEnglish).toEqual([]);
+    });
+  });
+
+  // The defect the unification left behind: this iDevice wrote its own markup
+  // with `display:none` and relied on updateScormNew to reveal the button,
+  // which only runs inside a SCORM package. So the button was missing from the
+  // editor and from every other export format, while the other thirty iDevices
+  // showed it — the author enabled the option and saw nothing.
+  describe('renderView, the save-score button', () => {
+    function render(isScorm) {
+      eXe.app.isInExe = vi.fn(() => false);
+      eXe.app.getIdeviceInstalledExportPath = vi.fn(() => '/idevices/form/');
+      return $form.renderView(
+        {
+          id: 'f2',
+          ideviceId: 'f2',
+          isScorm,
+          textButtonScorm: 'Guardar',
+          time: 0,
+          questionsData: [],
+          msgs: {},
+        },
+        0,
+        '{content}',
+        'f2'
+      );
+    }
+
+    it('renders it visible, not waiting on the SCORM runtime', () => {
+      const html = render(2);
+
+      expect(html).toContain('Games-SendScore');
+      expect(html).not.toContain('display:none"/> <span class="Games-RepeatActivity"');
+    });
+
+    // Its own markup also gave the button this iDevice's grey `feedbackbutton`
+    // class, so it did not even look like the same control as everywhere else.
+    it('renders the same green control as every other iDevice', () => {
+      const html = render(2);
+
+      expect(html).toContain('btn btn-primary');
+      expect(html).not.toContain('feedbackbutton Games-SendScore');
+    });
+
+    it('renders no button in automatic mode', () => {
+      const html = render(1);
+
+      expect(html).not.toContain('Games-SendScore');
+      // The runtime still needs somewhere to put its message.
+      expect(html).toContain('Games-RepeatActivity');
+    });
+  });
+
+  /**
+   * The save button the learner owns in manual mode, which this iDevice used to
+   * render and never wire: it was visible in the package and did nothing.
+   */
+  describe('the save-score button', () => {
+    function data(overrides = {}) {
+      return Object.assign(
+        {
+          id: 'f1',
+          main: 'frmMainContainer-f1',
+          isScorm: 2,
+          totalQuestions: 4,
+          rightQuestions: 2,
+          gameStarted: true,
+          msgs: {},
+        },
+        overrides
+      );
+    }
+
+    let sendScoreNew;
+    let previousDevices;
+
+    beforeEach(() => {
+      // Its own recorder rather than the shared mock, because what reaches the
+      // runtime is the whole point here.
+      sendScoreNew = vi.fn();
+      previousDevices = global.$exeDevices;
+      global.$exeDevices = {
+        iDevice: { gamification: { scorm: { sendScoreNew } } },
+      };
+      document.body.innerHTML = `
+        <div class="idevice_node">
+          <div id="frmMainContainer-f1">
+            <div class="Games-BottonContainer">
+              <div class="Games-GetScore">
+                <input type="button" class="Games-SendScore" />
+                <span class="Games-RepeatActivity"></span>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      global.$exeDevices = previousDevices;
+      vi.restoreAllMocks();
+    });
+
+    it('reports what the learner asked for, as a hand-sent score', () => {
+      $form.setBehaviourButtonSendScore(data());
+
+      $('.Games-SendScore').trigger('click');
+
+      expect(sendScoreNew).toHaveBeenCalledTimes(1);
+      expect(sendScoreNew.mock.calls[0][0]).toBe(false);
+      expect(sendScoreNew.mock.calls[0][1].scorerp).toBe(5);
+    });
+
+    // Binding twice is the normal path: renderBehaviour binds immediately and
+    // the poll may bind again. Two handlers would put the same score on the
+    // wire twice for one press.
+    it('binds once however many times the behaviour is wired', () => {
+      vi.spyOn($form, 'sendScore').mockImplementation(() => {});
+      const activity = data();
+
+      $form.setBehaviourButtonSendScore(activity);
+      $form.setBehaviourButtonSendScore(activity);
+
+      $('.Games-SendScore').trigger('click');
+
+      expect($form.sendScore).toHaveBeenCalledTimes(1);
+    });
+
+    // The other modes render no button at all, so there is nothing to bind and
+    // nothing to blow up on.
+    it('stands down when the activity renders no button', () => {
+      document.body.innerHTML = '';
+
+      expect(() => $form.setBehaviourButtonSendScore(data())).not.toThrow();
+    });
+
+    // Every other report in this iDevice is the activity speaking for itself.
+    it('sendScore reports automatically unless told otherwise', () => {
+      $form.sendScore(data());
+
+      expect(sendScoreNew.mock.calls[0][0]).toBe(true);
     });
   });
 });

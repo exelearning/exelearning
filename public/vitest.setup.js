@@ -1107,6 +1107,27 @@ const mockGamificationInstructions = {
 };
 
 const mockGamificationScorm = {
+  // Mirrors addButtonScoreNew in public/app/common/common.js: the save button
+  // for manual mode (isScorm 2), the message span alone for automatic mode, and
+  // an empty container otherwise. Rendered visible — the runtime does not have
+  // to reveal it — which is the contract the iDevices' markup relies on.
+  addButtonScoreNew: vi.fn(game => {
+    if (typeof game !== 'object' || game === null) return;
+    let html =
+      '<div class="Games-BottonContainer d-flex align-items-center justify-content-end mx-auto p-0 w-100">';
+    if (game.isScorm == 2) {
+      if (game.textButtonScorm != '') {
+        html +=
+          '<div class="Games-GetScore d-flex align-items-center justify-content-center w-100 mt-3">';
+        html += `<input type="button" value="${game.textButtonScorm}" class="Games-SendScore btn btn-primary btn-sm mx-1 my-1" /> <span class="Games-RepeatActivity"></span>`;
+        html += '</div>';
+      }
+    } else if (game.isScorm == 1) {
+      html +=
+        '<div class="Games-GetScore d-flex align-items-center justify-content-center w-100 mt-3"><span class="Games-RepeatActivity"></span></div>';
+    }
+    return `${html}</div>`;
+  }),
   getFieldset: vi.fn(() => '<fieldset class="exe-gamification-scorm"></fieldset>'),
   init: vi.fn(),
   save: vi.fn(() => ({})),

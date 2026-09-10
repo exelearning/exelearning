@@ -286,7 +286,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;

@@ -451,7 +451,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}          
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 6, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(6)}
             </div>
