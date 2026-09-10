@@ -94,7 +94,13 @@ var $eXeOrdena = {
                 (mOption.startAutomatically ||
                     (mOption.type == 0 && mOption.time == 0))
             ) {
-                $('#ordenaStartGame-' + i).click();
+                // Opened by the page, not by the learner. Going through the
+                // button's click handler would publish the opening zero over
+                // the mark the LMS is holding from a previous visit, and
+                // nobody has touched the activity yet. The handler's other
+                // job, hiding the button, is done here instead.
+                $eXeOrdena.startGame(i);
+                $('#ordenaStartGame-' + i).hide();
             }
 
             $('#ordenaMainContainer-' + i).show();
@@ -1034,7 +1040,7 @@ var $eXeOrdena = {
                 $(`#ordenaGameMinimize-${instance}`).hide();
                 if (!mOptions.gameStarted && !mOptions.gameOver) {
                     $eXeOrdena.refreshCards(instance);
-                    $eXeOrdena.startGame(instance);
+                    $eXeOrdena.startGame(instance, true);
                     $(`#ordenaStartGame-${instance}`).hide();
                 }
             }
@@ -1115,9 +1121,11 @@ var $eXeOrdena = {
 
         $(`#ordenaImage-${instance}`).hide();
 
+        // The learner pressing start, or enterCodeAccess() standing in for them
+        // once a valid code is accepted. Both open an attempt, so both publish.
         $(`#ordenaStartGame-${instance}`).on('click', function (e) {
             e.preventDefault();
-            $eXeOrdena.startGame(instance);
+            $eXeOrdena.startGame(instance, true);
             $(this).hide();
         });
 
@@ -1128,7 +1136,7 @@ var $eXeOrdena = {
                     mOptions.phrasesGame
                 );
             $eXeOrdena.showPhrase(0, instance);
-            $eXeOrdena.startGame(instance);
+            $eXeOrdena.startGame(instance, true);
             $(`#ordenaCubierta-${instance}`).hide();
             $(`#ordenaMultimedia-${instance}`)
                 .find('.ODNP-NewCard')
@@ -1875,7 +1883,7 @@ var $eXeOrdena = {
         $eXeOrdena.setSize(instance);
     },
 
-    startGame: function (instance) {
+    startGame: function (instance, reportScorm = false) {
         const mOptions = $eXeOrdena.options[instance];
 
         if (mOptions.gameStarted) return;
@@ -1953,9 +1961,13 @@ var $eXeOrdena = {
         }
 
         mOptions.gameStarted = true;
-        // After gameStarted, never before: sendScoreNew ignores a game that
-        // reports as neither started nor over.
-        $eXeOrdena.saveScormScore(instance);
+        // Only a learner action opens a new scored attempt. loadGame() also
+        // starts untimed phrase boards while the page loads, and that one must
+        // leave the LMS mark alone. After gameStarted, never before:
+        // sendScoreNew ignores a game that reports as neither started nor over.
+        if (reportScorm) {
+            $eXeOrdena.saveScormScore(instance);
+        }
     },
 
     uptateTime: function (tiempo, instance) {

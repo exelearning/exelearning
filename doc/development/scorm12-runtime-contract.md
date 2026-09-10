@@ -476,6 +476,17 @@ by score storage, SCORM 1.2 does not make the status depend on a stored
 score, and this matches the pre-rewrite behaviour. The failure stays visible
 in `setScoreDetailed()`'s report (`requiredWritten: false`).
 
+### 8.2 Follow-up work on redundant reports
+
+- Audit the eight iDevices identified in review as sending the terminal report
+  twice. Only `3dmol` and `electrical-circuits` currently guard with
+  `alreadyReportedFinished`. Cover completion and replay together: one terminal
+  report per attempt, with the guard reset when the learner starts again.
+- Coalesce the timers in `triggerMoodleDetection`: it currently schedules a
+  delayed commit for every report without retaining or clearing the timer.
+  Preserve the immediate commit and the later retry for status transitions;
+  verify a burst of reports and navigation with pending timers.
+
 ## 9. Activity registry and completion policy
 
 Full rationale: [ADR-2209-02](../architecture/adr/ADR-2209-02-scorm12-activity-completion-registry.md).

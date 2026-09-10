@@ -317,7 +317,7 @@ var $eXeRelaciona = {
         return `${randomNumber1}${timestamp}${randomNumber2}`;
     },
 
-    startGame: function (instance) {
+    startGame: function (instance, reportScorm = false) {
         let mOptions = $eXeRelaciona.options[instance];
 
         if (mOptions.gameStarted) return;
@@ -386,9 +386,11 @@ var $eXeRelaciona = {
         }
 
         mOptions.gameStarted = true;
-        // Same hole on the way in: pressing start cleared the board without
-        // telling the LMS either.
-        $eXeRelaciona.saveScormScore(instance);
+        // Only a learner action starts a new scored attempt. addEvents also
+        // opens untimed boards on page load, which must preserve the LMS mark.
+        if (reportScorm) {
+            $eXeRelaciona.saveScormScore(instance);
+        }
     },
     redibujarLineas: function (instance, isMoving) {
         const mOptions = $eXeRelaciona.options[instance];
@@ -682,7 +684,7 @@ var $eXeRelaciona = {
 
         if (mOptions.type == 2) {
             mOptions.counter = mOptions.time * 60;
-            $eXeRelaciona.startGame(instance);
+            $eXeRelaciona.startGame(instance, true);
         }
     },
 
@@ -835,7 +837,7 @@ var $eXeRelaciona = {
 
         $('#rlcStartGame-' + instance).on('click', function (e) {
             e.preventDefault();
-            $eXeRelaciona.startGame(instance);
+            $eXeRelaciona.startGame(instance, true);
         });
 
         $('#rlcLinkFullScreen-' + instance).on(
@@ -1556,7 +1558,7 @@ var $eXeRelaciona = {
             $(`#rlcCodeAccessDiv-${instance}, #rlcCubierta-${instance}`).hide();
             $(`#rlcContainerGame-${instance}`).show();
             $eXeRelaciona.refreshGame(instance);
-            $eXeRelaciona.startGame(instance);
+            $eXeRelaciona.startGame(instance, true);
         } else {
             $(`#rlcMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
