@@ -324,7 +324,7 @@ describe('puzzle iDevice export', () => {
       // stated grounds that "the real showPuzzle raises it" — which it does
       // not: placePuzzlePieces does, from the image's own load event. So the
       // stub was supplying the one thing the handler was missing, and these
-      // tests certified a replay that in a browser published nothing at all.
+      // tests certified a replay that in a browser sent no progress to SCORM.
       vi.spyOn($eXePuzzle, 'showPuzzle').mockImplementation(() => {});
       vi.spyOn($eXePuzzle, 'saveEvaluation').mockImplementation(() => {});
     }
@@ -496,6 +496,142 @@ describe('puzzle iDevice export', () => {
       expect(
         $exeDevices.iDevice.gamification.scorm.sendScoreNew
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * The tests above hand showPuzzle a no-op, which proves the replay does not
+   * lean on it but says nothing about the real order of events. This one runs
+   * showPuzzle and showImagePuzzle for real: the picture's load handler is
+   * attached and, as in a browser, has not run by the time the click handler
+   * finishes. Setting src queues the load event as a task even when the image
+   * is held in cache, so it can never overtake the code that follows.
+   */
+  describe('replaying before the picture arrives', () => {
+    let pictureArrived;
+
+    function setupSlowImage() {
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="pzlMainContainer-0"></div>
+          <a href="#" id="pzlStartGameEnd-0">Play again</a>
+          <div id="pzlCubierta-0"></div>
+          <div id="pzlGameOver-0"></div>
+          <div id="pzlShowClue-0"></div>
+          <div id="pzlPHits-0"></div>
+          <div id="pzlPNumber-0"></div>
+          <div id="pzlPScore-0"></div>
+          <div id="pzlPErrors-0"></div>
+          <div id="pzlTime-0"></div>
+          <div id="pzlImgTime-0"></div>
+          <div id="pzlAttemps-0"></div>
+          <div id="pzlImgAttemps-0"></div>
+          <div id="pzlCodeAccessDiv-0"></div>
+          <div id="pzlAudioDef-0"></div>
+          <div id="pzlAudioClue-0"></div>
+          <div id="pzlAuthor-0"></div>
+          <a href="#" id="pzlShowImage-0"></a>
+          <a href="#" id="pzlShowNumber-0"></a>
+          <img id="pzlImage-0" alt="" />
+          <div id="pzlImagePuzzle-0"></div>
+        </article>`;
+      $eXePuzzle.options[0] = {
+        id: 0,
+        main: 'pzlMainContainer-0',
+        isScorm: 1,
+        gameStarted: false,
+        gameOver: true,
+        gameActived: false,
+        hits: 3,
+        errors: 0,
+        score: 10,
+        numberQuestions: 3,
+        active: 0,
+        puzzlesGame: [
+          {
+            type: 1,
+            url: 'puzzle-image.png',
+            definition: '',
+            author: '',
+            alt: '',
+            atl: '',
+            audioDefinition: '',
+            showTime: false,
+            showImage: false,
+            showNumber: false,
+          },
+        ],
+        itinerary: { showCodeAccess: false },
+        time: 0,
+        author: '',
+        fullscreen: false,
+        msgs: { msgYouScore: 'Score', msgNoImage: 'no image' },
+      };
+      pictureArrived = false;
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = vi.fn();
+      vi.spyOn($eXePuzzle, 'uptateTime').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'stopAllSounds').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'showMessage').mockImplementation(() => {});
+      // Stands in for the browser delivering the picture. Nothing calls it
+      // during the click: jsdom does not fetch the image, exactly as a real
+      // browser does not fire load synchronously.
+      vi.spyOn($eXePuzzle, 'handleImageLoad').mockImplementation(() => {
+        pictureArrived = true;
+      });
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('tells the LMS the new attempt started while the board is still empty', () => {
+      setupSlowImage();
+      let reported;
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew.mockImplementation(
+        (auto, game) => {
+          reported = {
+            auto,
+            gameStarted: game.gameStarted,
+            gameOver: game.gameOver,
+            gameActived: game.gameActived,
+            pictureArrived,
+          };
+        }
+      );
+
+      $eXePuzzle.addEvents(0);
+      $('#pzlStartGameEnd-0').trigger('click');
+
+      // The report went out ahead of the picture, carrying a started attempt
+      // that has not finished — a zero the LMS can act on at once. Leave the
+      // flag to placePuzzlePieces and this call reports neither started nor
+      // over, which sendScoreNew drops in silence.
+      expect(reported).toEqual({
+        auto: true,
+        gameStarted: true,
+        gameOver: false,
+        gameActived: true,
+        pictureArrived: false,
+      });
+    });
+
+    // The flip side of declaring the attempt started early: the previous
+    // board is still on screen and the handlers now believe there is a game
+    // running, so gameActived is what keeps the learner off it.
+    it('leaves the board locked until the picture arrives', () => {
+      setupSlowImage();
+
+      $eXePuzzle.addEvents(0);
+      $('#pzlStartGameEnd-0').trigger('click');
+
+      expect($eXePuzzle.options[0].gameActived).toBe(true);
+
+      $('#pzlImage-0').trigger('load');
+
+      expect(pictureArrived).toBe(true);
     });
   });
 

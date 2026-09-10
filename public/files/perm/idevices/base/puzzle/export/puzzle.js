@@ -1199,17 +1199,13 @@ var $eXePuzzle = {
             mOptions.gameStarted = false;
             $eXePuzzle.startGame(instance);
             $eXePuzzle.showPuzzle(0, instance);
-            // Declared here, not left to showPuzzle. It does not raise the flag
-            // itself: placePuzzlePieces does, and that is only reached from the
-            // image's own load event — so on the next line gameStarted was
-            // still false, gameOver had just been lowered, and sendScoreNew
-            // drops a game that reports as neither started nor over. The replay
-            // published nothing at all and the LMS kept the finished attempt's
-            // grade and terminal status. It looked intermittent because a
-            // cached image can fire load before the thread gets here.
-            //
-            // The learner has abandoned the previous attempt by pressing this,
-            // and that is true whether or not the picture has arrived.
+            // Start the attempt before reporting to SCORM. placePuzzlePieces
+            // sets this flag from the image's load event, which runs after this
+            // synchronous handler, even for a cached image. Without it, both
+            // gameStarted and gameOver are false and sendScoreNew leaves the
+            // previous LMS score and status unchanged. The local evaluation
+            // report below still runs independently. gameActived keeps the
+            // board locked until the new pieces are ready.
             mOptions.gameStarted = true;
             $eXePuzzle.saveScormScore(instance);
             $eXePuzzle.saveEvaluation(instance);
