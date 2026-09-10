@@ -9,7 +9,7 @@
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,8 +26,9 @@ function loadExportIdevice(code) {
             ''
         );
 
+    // Give V8 the source filename so coverage includes this legacy runtime.
     // eslint-disable-next-line no-eval
-    (0, eval)(modifiedCode);
+    (0, eval)(`${modifiedCode}\n//# sourceURL=${pathToFileURL(join(__dirname, 'relate.js')).href}`);
     return global.$eXeRelaciona;
 }
 
@@ -41,12 +42,14 @@ describe('relate iDevice export', () => {
         global.$exeDevices.iDevice.gamification.colors = {
             borderColors: { red: 'red', green: 'green', blue: 'blue' },
         };
+        global.$exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
         const code = readFileSync(join(__dirname, 'relate.js'), 'utf-8');
         $eXeRelaciona = loadExportIdevice(code);
     });
 
     afterEach(() => {
         delete global.$exeDevices.iDevice.gamification.colors;
+        delete global.$exeDevices.iDevice.gamification.scorm.registerActivity;
         document.body.innerHTML = '';
         vi.restoreAllMocks();
     });
@@ -69,6 +72,7 @@ describe('relate iDevice export', () => {
                     <div id="rlcStartGame-0"></div>
                     <div id="rlcImgTime-0"></div>
                     <div id="rlcPTime-0"></div>
+                    <input id="rlcCodeAccessE-0" />
                 </div>`;
             $eXeRelaciona.options[0] = Object.assign(
                 {
@@ -76,6 +80,7 @@ describe('relate iDevice export', () => {
                     isScorm: 1,
                     type: 0,
                     time: 0,
+                    author: '',
                     gameStarted: false,
                     gameOver: false,
                     hits: 0,
@@ -98,6 +103,9 @@ describe('relate iDevice export', () => {
                 () => {}
             );
             vi.spyOn($eXeRelaciona, 'sendScore').mockImplementation(() => {});
+            vi.spyOn($eXeRelaciona, 'setupEventHandlers').mockImplementation(() => {});
+            vi.spyOn($eXeRelaciona, 'setupEventHandlersMovil').mockImplementation(() => {});
+            vi.spyOn($eXeRelaciona, 'refreshGame').mockImplementation(() => {});
         }
 
         it('saveScormScore reports only in automatic SCORM mode', () => {
@@ -144,7 +152,7 @@ describe('relate iDevice export', () => {
                 stateWhenReported = { hits, gameOver, gameStarted };
             });
 
-            $eXeRelaciona.startGame(0);
+            $eXeRelaciona.startGame(0, true);
 
             expect(stateWhenReported).toEqual({
                 hits: 0,
@@ -156,9 +164,62 @@ describe('relate iDevice export', () => {
         it('does not start a game that was already running', () => {
             setupGame({ gameStarted: true });
 
-            $eXeRelaciona.startGame(0);
+            $eXeRelaciona.startGame(0, true);
 
             expect($eXeRelaciona.sendScore).not.toHaveBeenCalled();
+        });
+
+        it.each([0, 1])('does not publish the opening zero when mode %s loads', (type) => {
+            setupGame({ type });
+
+            $eXeRelaciona.addEvents(0);
+
+            expect($eXeRelaciona.options[0].gameStarted).toBe(true);
+            expect($eXeRelaciona.sendScore).not.toHaveBeenCalled();
+        });
+
+        it('reports when the learner presses start', () => {
+            setupGame({ type: 2 });
+            $eXeRelaciona.addEvents(0);
+            expect($eXeRelaciona.sendScore).not.toHaveBeenCalled();
+
+            $('#rlcStartGame-0').trigger('click');
+
+            expect($eXeRelaciona.sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+        it('reports when the learner restarts an automatically opened board', () => {
+            setupGame();
+            $eXeRelaciona.addEvents(0);
+            expect($eXeRelaciona.sendScore).not.toHaveBeenCalled();
+
+            $('#rlcResetButton-0').trigger('click');
+
+            expect($eXeRelaciona.sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+        it('reports when the learner unlocks a board with the access code', () => {
+            setupGame({ itinerary: { showCodeAccess: true, codeAccess: 'OPEN' } });
+            $eXeRelaciona.addEvents(0);
+            expect($eXeRelaciona.options[0].gameStarted).toBe(false);
+            expect($eXeRelaciona.sendScore).not.toHaveBeenCalled();
+
+            $('#rlcCodeAccessE-0').val('open');
+            $eXeRelaciona.enterCodeAccess(0);
+
+            expect($eXeRelaciona.sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+        it('reports when rebuilding the timed board starts it again', () => {
+            setupGame({ type: 2 });
+            $eXeRelaciona.rebootCards.mockRestore();
+            vi.spyOn($eXeRelaciona, 'redibujarLineas').mockImplementation(() => {});
+            vi.spyOn($eXeRelaciona, 'createCards').mockImplementation(() => {});
+
+            $eXeRelaciona.rebootCards(0);
+
+            expect($eXeRelaciona.options[0].gameStarted).toBe(true);
+            expect($eXeRelaciona.sendScore).toHaveBeenCalledWith(true, 0);
         });
     });
 });

@@ -634,8 +634,15 @@ describe('sort iDevice export', () => {
             return mOptions;
         }
 
+        let sharedGamification;
+
         beforeEach(() => {
             reports = [];
+            // Replacing the whole surface drops everything vitest.setup.js put
+            // there, and nothing restored it, so every describe that ran after
+            // this one inherited a gamification object with no math, media or
+            // helpers on it.
+            sharedGamification = global.$exeDevices;
             global.$exeDevices = {
                 iDevice: {
                     gamification: {
@@ -663,6 +670,7 @@ describe('sort iDevice export', () => {
         });
 
         afterEach(() => {
+            global.$exeDevices = sharedGamification;
             vi.useRealTimers();
         });
 
@@ -794,7 +802,7 @@ describe('sort iDevice export', () => {
                 stateWhenReported = { hits, errors, gameOver, gameStarted };
             });
 
-            $eXeOrdena.startGame(0);
+            $eXeOrdena.startGame(0, true);
 
             expect(stateWhenReported).toEqual({
                 hits: 0,
@@ -809,9 +817,190 @@ describe('sort iDevice export', () => {
         it('does not report a game that was already running', () => {
             setupGame({ gameStarted: true });
 
-            $eXeOrdena.startGame(0);
+            $eXeOrdena.startGame(0, true);
 
             expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+        });
+
+        // Phrase boards with no timer are opened by loadGame() as the page
+        // loads. The board has to be laid out and playable, but the learner has
+        // not acted, and publishing here would overwrite the mark the LMS holds
+        // from an earlier visit with the zero of an attempt nobody started.
+        it('starts a board without publishing when nobody asked for it', () => {
+            setupGame({ hits: 4, score: 10, gameOver: true });
+
+            $eXeOrdena.startGame(0);
+
+            expect($eXeOrdena.options[0].gameStarted).toBe(true);
+            expect($eXeOrdena.options[0].hits).toBe(0);
+            expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+        });
+
+        /**
+         * Everything the learner can press to open an attempt still reports.
+         * The play link is also what enterCodeAccess() clicks once it accepts a
+         * code, so accepting a code reports through the same handler.
+         */
+        describe('what the learner presses', () => {
+            function givenWiredBoard(overrides = {}) {
+                setupGame(
+                    Object.assign(
+                        {
+                            itinerary: { showCodeAccess: false, codeAccess: '' },
+                            author: '',
+                            fullscreen: false,
+                        },
+                        overrides
+                    )
+                );
+                document.body.insertAdjacentHTML(
+                    'beforeend',
+                    `<div id="ordenaExtra-0">
+                        <a href="#" id="ordenaStartGame-0">Play</a>
+                        <a href="#" id="ordenaStartGameEnd-0">Play again</a>
+                        <a href="#" id="ordenaLinkMaximize-0">Open</a>
+                        <input id="ordenaCodeAccessE-0" />
+                        <div id="ordenaCodeAccessDiv-0"></div>
+                        <div id="ordenaMesajeAccesCodeE-0"></div>
+                        <div id="ordenaStartLevels-0"></div>
+                        <div id="ordenaPNumber-0"></div>
+                    </div>`
+                );
+                $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+                $exeDevices.iDevice.gamification.helpers.shuffleAds = vi.fn(
+                    (items) => items
+                );
+                vi.spyOn($eXeOrdena, 'refreshCards').mockImplementation(() => {});
+                vi.spyOn($eXeOrdena, 'showPhrase').mockImplementation(() => {});
+                vi.spyOn($eXeOrdena, 'saveEvaluation').mockImplementation(() => {});
+                $eXeOrdena.addEvents(0);
+                expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+            }
+
+            it('reports when the learner presses play', () => {
+                givenWiredBoard();
+
+                $('#ordenaStartGame-0').trigger('click');
+
+                expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+            });
+
+            it('reports when the learner plays again', () => {
+                givenWiredBoard({ gameOver: true, hits: 4 });
+
+                $('#ordenaStartGameEnd-0').trigger('click');
+
+                expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+            });
+
+            it('reports when the learner opens a minimised board', () => {
+                givenWiredBoard();
+
+                $('#ordenaLinkMaximize-0').trigger('click');
+
+                expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+            });
+
+            it('reports when a valid code opens the board', () => {
+                givenWiredBoard({
+                    itinerary: { showCodeAccess: true, codeAccess: 'OPEN' },
+                });
+                $('#ordenaCodeAccessE-0').val('OPEN');
+
+                $eXeOrdena.enterCodeAccess(0);
+
+                expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+            });
+
+            it('reports nothing for a wrong code', () => {
+                givenWiredBoard({
+                    itinerary: { showCodeAccess: true, codeAccess: 'OPEN' },
+                });
+                $('#ordenaCodeAccessE-0').val('nope');
+
+                $eXeOrdena.enterCodeAccess(0);
+
+                expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+            });
+        });
+    });
+
+    /**
+     * The load path used to open those boards by firing the play button's own
+     * click handler, which reported. It starts the game directly now, and the
+     * button keeps reporting for everyone who presses it — including
+     * enterCodeAccess(), which clicks it once a valid code is accepted.
+     */
+    describe('opening a board as the page loads', () => {
+        function setupLoad(overrides = {}) {
+            document.body.innerHTML = `
+                <div class="ordena-IDevice">
+                    <div class="ordena-DataGame">encoded</div>
+                </div>`;
+            const mOption = Object.assign(
+                {
+                    isScorm: 1,
+                    type: 0,
+                    time: 0,
+                    startAutomatically: false,
+                    showMinimize: false,
+                    itinerary: { showCodeAccess: false },
+                },
+                overrides
+            );
+            $eXeOrdena.activities = $('.ordena-IDevice');
+            $eXeOrdena.options = [];
+            vi.spyOn($eXeOrdena, 'loadDataGame').mockImplementation(() => mOption);
+            vi.spyOn($eXeOrdena, 'createInterfaceOrdena').mockImplementation(
+                (i) => `
+                    <div id="ordenaMainContainer-${i}">
+                        <div id="ordenaGameMinimize-${i}"></div>
+                        <div id="ordenaGameContainer-${i}"></div>
+                        <div id="ordenaDivFeedBack-${i}"></div>
+                        <div id="ordenaPhrasesContainer-${i}"></div>
+                        <a href="#" id="ordenaStartGame-${i}">Play</a>
+                    </div>`
+            );
+            vi.spyOn($eXeOrdena, 'addEvents').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'showPhrase').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'startGame').mockImplementation(() => {});
+            return mOption;
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            $eXeOrdena.activities = undefined;
+            $eXeOrdena.options = [];
+            vi.restoreAllMocks();
+        });
+
+        it.each([
+            ['an untimed phrase board', { type: 0, time: 0 }],
+            ['a board the author starts automatically', { startAutomatically: true, type: 1 }],
+        ])('starts %s without asking it to report', (_label, overrides) => {
+            setupLoad(overrides);
+
+            $eXeOrdena.loadGame();
+
+            // One argument, not two: reportScorm stays false.
+            expect($eXeOrdena.startGame).toHaveBeenCalledWith(0);
+            expect($('#ordenaStartGame-0').css('display')).toBe('none');
+        });
+
+        it('leaves a timed board for the learner to start', () => {
+            setupLoad({ type: 0, time: 2 });
+
+            $eXeOrdena.loadGame();
+
+            expect($eXeOrdena.startGame).not.toHaveBeenCalled();
+        });
+
+        it('leaves a board behind an access code alone', () => {
+            setupLoad({ itinerary: { showCodeAccess: true, codeAccess: 'OPEN' } });
+
+            $eXeOrdena.loadGame();
+
+            expect($eXeOrdena.startGame).not.toHaveBeenCalled();
         });
     });
 

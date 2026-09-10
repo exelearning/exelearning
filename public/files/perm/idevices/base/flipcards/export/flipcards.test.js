@@ -36,11 +36,16 @@ describe('flipcards iDevice export', () => {
     global.$eXeFlipCards = undefined;
     scoreCalls = [];
     // The runtime reaches for the shared gamification surface when it reports a
-    // score, so it has to exist before the file is evaluated.
+    // score, so it has to exist before the file is evaluated. Replacing the
+    // whole object drops what vitest.setup.js put there, so the progress report
+    // has to be named again here: addEvents() arms a 500 ms refresh of its icon
+    // that lands after the test is over, and a missing report turns that timer
+    // into an unhandled error that fails the run with every test still passing.
     global.$exeDevices = {
       iDevice: {
         gamification: {
           scorm: { sendScoreNew: (auto, game) => scoreCalls.push({ auto, game }) },
+          report: { updateEvaluationIcon: vi.fn(), saveEvaluation: vi.fn() },
         },
       },
     };

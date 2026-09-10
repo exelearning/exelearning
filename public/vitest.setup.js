@@ -79,6 +79,29 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Bare `localStorage` is not exposed as a global by every Node and happy-dom
+// combination, and specs written against the browser call it unqualified.
+// Bridge it once, here, and only when it is missing: installing it from a
+// beforeEach would run ahead of every test in the suite and overwrite the
+// storage a spec had stubbed for itself — unsavedChangesHelper.test.js keeps
+// its own spies across the file and asserts on them.
+if (typeof globalThis.localStorage === 'undefined') {
+  const fromWindow = typeof window !== 'undefined' ? window.localStorage : undefined;
+  if (fromWindow) {
+    globalThis.localStorage = fromWindow;
+  } else {
+    const storage = new Map();
+    globalThis.localStorage = {
+      getItem: (key) => storage.get(String(key)) ?? null,
+      setItem: (key, value) => { storage.set(String(key), String(value)); },
+      removeItem: (key) => { storage.delete(String(key)); },
+      clear: () => { storage.clear(); },
+      key: (index) => Array.from(storage.keys())[index] ?? null,
+      get length() { return storage.size; },
+    };
+  }
+}
+
 // ============================================================================
 // Mock fflate
 // ============================================================================

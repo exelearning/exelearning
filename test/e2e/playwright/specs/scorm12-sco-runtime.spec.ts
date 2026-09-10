@@ -47,7 +47,14 @@ import * as path from 'path';
 import { unzipSync } from '../../../../src/shared/export';
 import { buildResumeRaceScorm12Package } from '../../../helpers/scorm12-resume-package';
 import { expect, test } from '../fixtures/auth.fixture';
-import { addTextIdeviceWithContent, gotoWorkarea, waitForAppReady } from '../helpers/workarea-helpers';
+import {
+    addIdevice,
+    addTextIdeviceWithContent,
+    gotoWorkarea,
+    saveIdevice,
+    selectFirstPage,
+    waitForAppReady,
+} from '../helpers/workarea-helpers';
 
 /** Origin the exported package and the LMS harness page are served from. */
 const ORIGIN = 'http://scorm12-sco-harness.test';
@@ -655,6 +662,92 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             const signatures = await page.evaluate(() => (window as any).__scorm.signatures());
             expect(signatures.filter((s: string) => s === 'LMSFinish')).toHaveLength(1);
 
+            expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
+        } finally {
+            await page.unroute(`${ORIGIN}/**`);
+        }
+    });
+
+    test('preserves the stored Relate mark on load and reports a learner restart', async ({
+        authenticatedPage: page,
+        createProject,
+    }, testInfo) => {
+        test.setTimeout(180000);
+        const uuid = await createProject(page, 'Relate stored SCORM mark');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        await addIdevice(page, 'relate');
+        await page.locator('#rclEText').fill('France');
+        await page.locator('#rclETextBack').fill('Paris');
+        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Options', exact: true }).click();
+        await page.locator('#rclETypeNavigation').check();
+        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'SCORM', exact: true }).click();
+        await page.locator('#eXeGameSCORMAutoSave').check();
+        const ideviceId = await page.locator('#node-content .idevice_node.relate').getAttribute('id');
+        expect(ideviceId).toBeTruthy();
+        await saveIdevice(page, ideviceId!);
+        await expect(page.locator('#node-content .RLCP-Word')).toHaveCount(1);
+
+        // Straight to the export, as every other test in this file does. The
+        // preview panel is a second renderer of the same card, and the SCO
+        // itself is asserted on below — going through the panel first only
+        // added a way for this test to fail before reaching its subject.
+        const download = await exportScorm12(page);
+        const zipPath = testInfo.outputPath('relate-scorm.zip');
+        await download.saveAs(zipPath);
+        const zip = unzipSync(new Uint8Array(fs.readFileSync(zipPath)));
+        const seed = {
+            'cmi.core.lesson_status': 'incomplete',
+            'cmi.core.score.raw': '80',
+            'cmi.core.entry': 'resume',
+            'cmi.suspend_data': `exe12/1|${ideviceId};3;0;0;80;1;0;100`,
+        };
+        await page.route(`${ORIGIN}/**`, async route => {
+            const pathname = decodeURIComponent(new URL(route.request().url()).pathname);
+            if (pathname === '/lms.html') {
+                await route.fulfill({ contentType: 'text/html', body: harnessPage(seed) });
+                return;
+            }
+            const key = pathname.replace(/^\/package\//, '');
+            const bytes = zip[key];
+            await route.fulfill({
+                status: bytes ? 200 : 404,
+                contentType: exportContentType(key),
+                body: bytes ? Buffer.from(bytes) : `not in export: ${key}`,
+            });
+        });
+
+        try {
+            await page.goto(`${ORIGIN}/lms.html`);
+            const sco = page.frameLocator('#sco');
+            await expect(sco.locator('.RLCP-Word')).toHaveText('France');
+            await expect
+                .poll(() =>
+                    sco.locator('body').evaluate(() => {
+                        const win = window as any;
+                        return win.$eXeRelaciona?.options[0]?.gameStarted && win.exeScorm12?.policy.hasAppliedEntry();
+                    }),
+                )
+                .toBe(true);
+            expect(await page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe('80');
+            const storedScore = await sco
+                .locator('body')
+                .evaluate((_body, id) => (window as any).exeScorm12.activities.get(id).score, ideviceId);
+            expect(storedScore).toBe(80);
+            expect(await page.evaluate(() => (window as any).__scorm.signatures())).not.toContain(
+                'LMSSetValue(cmi.core.score.raw=0)',
+            );
+
+            await sco.locator('[id^="rlcCheckButton-"]').click();
+            await expect
+                .poll(() => page.evaluate(() => (window as any).__scorm.data['cmi.core.lesson_status']))
+                .toBe('failed');
+            await sco.locator('[id^="rlcResetButton-"]').click();
+            await expect.poll(() => page.evaluate(() => (window as any).__scorm.data['cmi.core.score.raw'])).toBe('0');
+            const stored = await page.evaluate(() => (window as any).__scorm.data);
+            expect(stored['cmi.core.lesson_status']).toBe('incomplete');
+            expect(stored['cmi.suspend_data']).not.toContain(';80;');
             expect(await page.evaluate(() => (window as any).__scorm.violations)).toEqual([]);
         } finally {
             await page.unroute(`${ORIGIN}/**`);
