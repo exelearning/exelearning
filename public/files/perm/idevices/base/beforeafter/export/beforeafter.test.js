@@ -127,14 +127,21 @@ describe('beforeafter iDevice export — completion signal', () => {
 
     /**
      * Minimal instance state: `sendScore` only reads the card count, how many have been
-     * seen, and the two fields it copies across for the report.
+     * seen, whether the activity is running, and the two fields it copies across for
+     * the report.
+     *
+     * Running by default, which is the only state the automatic path reports from:
+     * startGame is what sets the flag, and it runs before any report.
      *
      * @param {number} visiteds index of the card the learner has reached
      * @param {number} cards how many cards the activity has
+     * @param {boolean} [gameStarted] whether the learner has opened the activity
      * @returns {number} the instance index to pass to sendScore
      */
-    function givenInstance(visiteds, cards) {
-        bfaf.options = [{ visiteds, cardsGame: new Array(cards).fill({}), msgs: {} }];
+    function givenInstance(visiteds, cards, gameStarted = true) {
+        bfaf.options = [
+            { visiteds, gameStarted, cardsGame: new Array(cards).fill({}), msgs: {} },
+        ];
         return 0;
     }
 
@@ -166,6 +173,24 @@ describe('beforeafter iDevice export — completion signal', () => {
 
             expect(calls[0].game.scorerp).toBe(10);
             expect(calls[0].game.gameOver).toBe(true);
+        });
+
+        // `visiteds` counts the furthest card reached and begins at 0, so on a
+        // single-card activity "every card seen" holds before the learner has
+        // seen anything. Pressing the save button with the cover still up
+        // reported ten out of ten and closed the attempt — and the flag also
+        // carried the report past sendScoreNew's `gameStarted || gameOver`
+        // gate, which is what would otherwise have told the learner to start.
+        it('does not finish a single-card activity the learner has not opened', () => {
+            bfaf.sendScore(false, givenInstance(0, 1, false));
+
+            expect(calls[0].game.gameOver).toBeUndefined();
+        });
+
+        it('does not finish any activity the learner has not opened', () => {
+            bfaf.sendScore(false, givenInstance(3, 4, false));
+
+            expect(calls[0].game.gameOver).toBeUndefined();
         });
     });
 });
@@ -282,4 +307,141 @@ describe('beforeafter iDevice export — access code', () => {
         expect(bfaf.options[0].gameStarted).toBe(false);
         expect($('#bfafCodeAccessE-0').val()).toBe('');
     });
+});
+
+/**
+ * Manual SCORM mode (isScorm 2), which the editor now offers.
+ *
+ * This activity has no end: the learner walks the cards in any order and for as
+ * long as they like. So the save button is not a hand-in — it publishes the
+ * progress reached so far, and the learner goes on turning cards and may press
+ * it again. Nothing the button does finishes the activity: the attempt closes
+ * when every card has been seen, and that is the only thing that closes it.
+ */
+describe('beforeafter iDevice export — manual SCORM mode', () => {
+    let bfaf;
+    let calls;
+    let registered;
+    let previousScorm;
+    let previousReport;
+
+    beforeEach(() => {
+        global.$eXeBeforeAfter = undefined;
+        calls = [];
+        registered = [];
+        global.$exeDevices.iDevice.gamification.colors = PALETTE;
+        previousScorm = global.$exeDevices.iDevice.gamification.scorm;
+        previousReport = global.$exeDevices.iDevice.gamification.report;
+        global.$exeDevices.iDevice.gamification.scorm = {
+            sendScoreNew: (auto, game) =>
+                calls.push({
+                    auto,
+                    scorerp: game.scorerp,
+                    gameOver: game.gameOver,
+                }),
+            registerActivity: game => registered.push(game.isScorm),
+        };
+        global.$exeDevices.iDevice.gamification.report = {
+            saveEvaluation: vi.fn(),
+            updateEvaluationIcon: vi.fn(),
+        };
+        bfaf = loadExport();
+    });
+
+    afterEach(() => {
+        global.$exeDevices.iDevice.gamification.scorm = previousScorm;
+        global.$exeDevices.iDevice.gamification.report = previousReport;
+        delete global.$exeDevices.iDevice.gamification.colors;
+        delete global.$eXeBeforeAfter;
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+    });
+
+    /**
+     * A running activity in manual mode, with the button the shared
+     * addButtonScoreNew emits for isScorm 2 and nothing else it needs.
+     *
+     * @param {number} visiteds index of the furthest card reached
+     * @param {number} cards how many cards the activity has
+     */
+    function givenManualActivity(visiteds, cards = 4) {
+        bfaf.options = [
+            {
+                isScorm: 2,
+                gameStarted: true,
+                visiteds,
+                author: '',
+                cardsGame: new Array(cards).fill({}),
+                itinerary: { showCodeAccess: true },
+                msgs: {},
+                main: 'bfafMainContainer-0',
+            },
+        ];
+        document.body.innerHTML = `
+            <div class="beforeafter-IDevice">
+                <div class="BFAFP-MainContainer" id="bfafMainContainer-0">
+                    <div id="bfafGameContainer-0"></div>
+                    <div class="BFAFP-Cover" id="bfafCubierta-0"></div>
+                </div>
+                <div class="Games-BottonContainer">
+                    <input type="button" class="Games-SendScore" />
+                    <span class="Games-RepeatActivity"></span>
+                </div>
+            </div>`;
+    }
+
+    it('publishes the progress so far, by hand, without closing the attempt', () => {
+        givenManualActivity(1);
+        bfaf.addEvents(0);
+
+        $('.Games-SendScore').trigger('click');
+
+        // Two of four cards: half the marks, and the activity is not over —
+        // the learner can carry on and press the button again.
+        expect(calls).toEqual([
+            { auto: false, scorerp: 5, gameOver: undefined },
+        ]);
+    });
+
+    it('closes the attempt when the button is pressed on the last card', () => {
+        givenManualActivity(3);
+        bfaf.addEvents(0);
+
+        $('.Games-SendScore').trigger('click');
+
+        expect(calls[0].scorerp).toBe(10);
+        expect(calls[0].gameOver).toBe(true);
+    });
+
+    it('lets the learner send again after seeing more cards', () => {
+        givenManualActivity(1);
+        bfaf.addEvents(0);
+
+        $('.Games-SendScore').trigger('click');
+        bfaf.options[0].visiteds = 3;
+        $('.Games-SendScore').trigger('click');
+
+        expect(calls.map(call => call.scorerp)).toEqual([5, 10]);
+    });
+
+    it('wires the button once, so re-running addEvents does not double the report', () => {
+        givenManualActivity(1);
+        bfaf.addEvents(0);
+        bfaf.addEvents(0);
+
+        $('.Games-SendScore').trigger('click');
+
+        expect(calls).toHaveLength(1);
+    });
+
+    it('declares the activity to the registry in manual mode too', () => {
+        givenManualActivity(1);
+
+        bfaf.addEvents(0);
+
+        // Otherwise the page would not know an activity is pending, and could
+        // be completed without it ever being answered.
+        expect(registered).toEqual([2]);
+    });
+
 });

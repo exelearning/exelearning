@@ -132,6 +132,7 @@ var $eXeBeforeAfter = {
         return mOptions;
     },
 
+
     startGame: function (instance) {
         let mOptions = $eXeBeforeAfter.options[instance];
         if (mOptions.gameStarted) return;
@@ -142,6 +143,11 @@ var $eXeBeforeAfter = {
         mOptions.obtainedClue = false;
         $('#bfafCubierta-' + instance).hide();
         $('#bfafStartGame-' + instance).hide();
+        // Tracked or not, never which mode: this offers the opening progress
+        // and sendScoreNew decides whether to take it, dropping any automatic
+        // report from an activity in manual mode before it writes anything. So
+        // opening a manual-mode activity — a valid access code, say — cannot
+        // overwrite the grade the learner saved earlier with a zero.
         if (mOptions.isScorm > 0) {
             $eXeBeforeAfter.sendScore(true, instance);
         }
@@ -319,6 +325,8 @@ var $eXeBeforeAfter = {
                 `${mOptions.msgs.msgImage}: ${number + 1}/${mOptions.cardsGame.length}`
             );
 
+            // Offered, not published: see startGame. In manual mode the button
+            // is the only thing that writes a grade.
             if (mOptions.gameStarted && mOptions.isScorm > 0) {
                 $eXeBeforeAfter.sendScore(true, instance);
             }
@@ -521,6 +529,11 @@ var $eXeBeforeAfter = {
         $(`#bfafLinkMinimize-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessButton-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessE-${instance}`).off('keydown');
+        // Same element and same selector addEvents delegates on, so a second
+        // pass does not leave the previous handler behind and report twice.
+        $(`#bfafMainContainer-${instance}`)
+            .closest('.beforeafter-IDevice')
+            .off('click', '.Games-SendScore');
     },
 
     addEvents: function (instance) {
@@ -589,9 +602,22 @@ var $eXeBeforeAfter = {
             $('#bfafAuthorGame-' + instance).show();
         }
 
+        // Both modes: the activity has to be declared to the registry even when
+        // it reports nothing yet, or the page would not know it is pending.
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
+
+        // The save button only exists in manual mode — addButtonScoreNew emits
+        // it for isScorm 2 alone — but it is a sibling of the cover, so it can
+        // be clicked before the activity has been opened. The shared runtime
+        // answers that with msgEndGameScore instead of reporting.
+        $('#bfafMainContainer-' + instance)
+            .closest('.beforeafter-IDevice')
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
+                $eXeBeforeAfter.sendScore(false, instance);
+            });
 
         $('#bfafLinkFullScreen-' + instance).on(
             'click touchstart',
@@ -750,7 +776,19 @@ var $eXeBeforeAfter = {
         // Without the flag the page stays `incomplete` in the LMS even at 100%,
         // because completion is decided from what the activity reports, not from
         // the score.
-        if (mOptions.visiteds + 1 >= mOptions.cardsGame.length) {
+        //
+        // An activity that has not started cannot be finished, and asking for
+        // gameStarted is what says so. `visiteds` counts the furthest card
+        // reached and begins at 0, so on a single-card activity the condition
+        // below holds before the learner has seen anything: pressing the save
+        // button with the cover still up reported ten out of ten and closed the
+        // attempt. Without this it also slips past sendScoreNew's own
+        // `gameStarted || gameOver` gate, which exists to tell the learner to
+        // start first.
+        if (
+            mOptions.gameStarted &&
+            mOptions.visiteds + 1 >= mOptions.cardsGame.length
+        ) {
             mOptions.gameOver = true;
         }
         mOptions.previousScore = $eXeBeforeAfter.previousScore;
