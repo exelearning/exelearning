@@ -1714,6 +1714,31 @@ var $exeDevices = {
                     return Number(game.isScorm) === 1;
                 },
 
+                /**
+                 * Refuse a hand-sent score, and tell the learner why.
+                 *
+                 * sendScoreNew refuses on its own when the activity reports as
+                 * neither started nor over, and says so with the same message.
+                 * An iDevice whose board is live from the moment the page loads
+                 * cannot state "not started" through `gameStarted`: that is the
+                 * very flag its own handlers read to allow play, so lowering it
+                 * would freeze the board. Those iDevices test their own
+                 * condition and call this, which keeps one wording and one
+                 * presentation for a refusal the learner sees either way.
+                 *
+                 * Only for a hand-sent score: the alert belongs to the button,
+                 * and an automatic report that is refused says nothing.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 */
+                refuseHandSend: function (game) {
+                    if (typeof game !== 'object' || game === null) return;
+                    const $gmain = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
+                    const message = (game.msgs && game.msgs.msgEndGameScore) || '';
+                    $gmain.closest('.idevice_node').eq(0).find('.Games-RepeatActivity').text(message).show();
+                    if (message) alert(message);
+                },
+
                 sendScoreNew: function (auto, game) {
                     if (typeof game !== 'object' || game === null) {
                         return;

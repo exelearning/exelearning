@@ -204,6 +204,15 @@ var $eXePuzzle = {
         mOptions.active = 0;
         mOptions.selectedTile = null;
         mOptions.loading = false;
+        // Has the learner touched this board? `gameStarted` cannot answer that:
+        // it goes up on its own when the image loads, because it is what the
+        // tile handlers read to allow play. The save button needs the other
+        // question, and asks it here.
+        mOptions.engaged = false;
+        // Whether a valid access code has been accepted this visit. The button
+        // sits outside the cover, so without this it could be pressed by
+        // someone who never opened the activity.
+        mOptions.codeAccepted = false;
 
         for (let i = 0; i < mOptions.puzzlesGame.length; i++) {
             const q = mOptions.puzzlesGame[i];
@@ -677,15 +686,11 @@ var $eXePuzzle = {
         $('#pzlImagePuzzle-' + instance)
             .find('.PZLP-Completed')
             .fadeIn();
-        // Solving the last puzzle ends the activity. Raise the flag before the
-        // report updateScore is about to make, so it carries the completion:
-        // common.js derives it from `gameOver === true || auto !== true`, and
-        // leaving before the next/close button would otherwise record the page
-        // as `incomplete` however well the learner did.
-        if (mOptions.active >= mOptions.puzzlesGame.length - 1) {
-            mOptions.gameOver = true;
-        }
-        $eXePuzzle.updateScore(true, instance);
+        // Presentation only. The hit, the score and the completion flag are
+        // settled in checkIfSolved(), the moment the board comes out right;
+        // counting them here as well would have charged the learner twice, and
+        // counting them here *instead* left the LMS several seconds behind the
+        // screen.
     },
 
     resizePuzzlePieces: function (instance) {
@@ -984,18 +989,24 @@ var $eXePuzzle = {
                     q.audioClue
                 );
             }
-            $eXePuzzle.showSholution(instance);
-            if (mOptions.isScorm == 1) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.puzzlesGame.length
-                ).toFixed(2);
-                $eXePuzzle.sendScore(true, instance);
-                $('#pzlRepeatActivity-' + instance).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $eXePuzzle.initialScore = score;
+            // The board is solved, so it counts here — before the reveal, not
+            // after it. updateScore() used to be reached only from
+            // showCompletedWindows(), at the end of an animation that lasts
+            // (rows x columns + 1) x 300 ms, and the report sent from this
+            // point carried the mark of the *previous* puzzle. A learner who
+            // left, or who pressed the save button by hand, during those three
+            // to eight seconds stored a mark one puzzle short. Solving the last
+            // one ends the activity, so the flag goes up before the report
+            // updateScore is about to send.
+            if (mOptions.active >= mOptions.puzzlesGame.length - 1) {
+                mOptions.gameOver = true;
             }
+            $eXePuzzle.updateScore(true, instance);
+            $eXePuzzle.initialScore = (
+                (mOptions.hits * 10) /
+                mOptions.puzzlesGame.length
+            ).toFixed(2);
+            $eXePuzzle.showSholution(instance);
             clearInterval(mOptions.counterClock);
         }
     },
@@ -1033,6 +1044,41 @@ var $eXePuzzle = {
      * Automatic mode only: in manual mode the learner owns the send button,
      * and reporting here would submit an attempt they never asked to submit.
      */
+    /**
+     * May the save button write a score?
+     *
+     * Neither condition can be asked of `gameStarted`: the board is laid out
+     * and live from the moment the page loads, so that flag is already up
+     * before the learner has done anything, and it is the same flag the tile
+     * handlers read to allow play — lowering it would hand them a board they
+     * could look at and not touch.
+     *
+     * So the button asks two questions of its own: has this board been touched,
+     * and, when the activity is behind an access code, was that code accepted?
+     * The button sits outside the cover, within reach of someone who never
+     * opened the activity.
+     *
+     * The code comes first, and finishing does not excuse it. Being finished
+     * looks like proof the activity was opened properly, and it is not: the
+     * cover is a sibling of the game container, not a parent, so taking the
+     * container fullscreen leaves the cover behind — and its control is still
+     * in the tab order underneath. A learner who reaches the board that way can
+     * solve it without ever giving the code.
+     */
+    canSendScore: function (instance) {
+        const mOptions = $eXePuzzle.options[instance];
+        if (!mOptions) return false;
+        if (
+            mOptions.itinerary &&
+            mOptions.itinerary.showCodeAccess &&
+            mOptions.codeAccepted !== true
+        ) {
+            return false;
+        }
+        return mOptions.engaged === true || mOptions.gameOver === true;
+    },
+
+
     saveScormScore: function (instance) {
         const mOptions = $eXePuzzle.options[instance];
         if (!mOptions || mOptions.isScorm !== 1) return;
@@ -1187,6 +1233,12 @@ var $eXePuzzle = {
             .closest('.idevice_node')
             .on('click', '.Games-SendScore', function (e) {
                 e.preventDefault();
+                if (!$eXePuzzle.canSendScore(instance)) {
+                    $exeDevices.iDevice.gamification.scorm.refuseHandSend(
+                        mOptions
+                    );
+                    return;
+                }
                 $eXePuzzle.sendScore(false, instance);
                 $eXePuzzle.saveEvaluation(instance);
             });
@@ -1217,13 +1269,13 @@ var $eXePuzzle = {
             $('#pzlShowClue-' + instance).hide();
             $('#pzlCubierta-' + instance).fadeOut();
         });
-        if (mOptions.time == 0) {
-            $('#pzlTime-' + instance).hide();
-            $('#pzlImgTime-' + instance).hide();
-            $eXePuzzle.uptateTime(0, instance);
-        } else {
-            $eXePuzzle.uptateTime(0 * 60, instance);
-        }
+        // The clock starts at zero and counts up: it measures how long the
+        // learner takes, it is not a limit. Which puzzles show it is decided by
+        // their own `showTime`, in placePuzzlePieces(); the branch that used to
+        // stand here read `mOptions.time`, which this editor no longer writes,
+        // and both of its arms did the same thing anyway — the two hides above
+        // have already run.
+        $eXePuzzle.uptateTime(0, instance);
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $('#pzlAuthorGame-' + instance).html(
@@ -1268,6 +1320,7 @@ var $eXePuzzle = {
                 !mOptions.gameStarted
             )
                 return;
+            mOptions.engaged = true;
             let $tile = $(this),
                 tileX = $tile.data('x'),
                 tileY = $tile.data('y');
@@ -1304,6 +1357,7 @@ var $eXePuzzle = {
                     !mOptions.gameStarted
                 )
                     return;
+                mOptions.engaged = true;
                 let $tile = $(this);
                 if (!mOptions.selectedTile) {
                     mOptions.selectedTile = $tile;
@@ -1551,7 +1605,10 @@ var $eXePuzzle = {
                 $eXePuzzle.resizePuzzlePieces(instance);
             }, 300);
         } else {
-            $eXePuzzle.gameOver(1, instance);
+            // Every puzzle is behind them: this is the win. showScoreGame's
+            // type 1 shows the losing image, and it was the only value ever
+            // passed, so whoever finished the activity was told they had lost.
+            $eXePuzzle.gameOver(0, instance);
         }
     },
 
@@ -1562,6 +1619,7 @@ var $eXePuzzle = {
             mOptions.itinerary.codeAccess ===
             $(`#pzlCodeAccessE-${instance}`).val()
         ) {
+            mOptions.codeAccepted = true;
             $(`#pzlLinkMaximize-${instance}`).trigger('click');
             $(`#pzlCodeAccessDiv-${instance}`).hide();
             $(`#pzlCubierta-${instance}`).hide();
@@ -1594,6 +1652,9 @@ var $eXePuzzle = {
         mOptions.gameOver = false;
         mOptions.gameStarted = false;
         mOptions.obtainedClue = false;
+        // A new attempt is untouched again: the button asks for a move before
+        // it will write anything.
+        mOptions.engaged = false;
 
         $(`#pzlShowClue-${instance}`).hide();
         $(`#pzlPHits-${instance}`).text(mOptions.hits);
@@ -1759,12 +1820,16 @@ var $eXePuzzle = {
         $eXePuzzle.showScoreGame(type, instance);
         $eXePuzzle.saveEvaluation(instance);
 
+        // No report here. Reaching this point means the last puzzle was solved,
+        // and checkIfSolved() already published that mark with the activity
+        // closed; sending it again only made the LMS re-evaluate a verdict it
+        // had already reached. Replaying still reports, from startGame's own
+        // path and from updateScoreRepeat().
         if (mOptions.isScorm === 1) {
             const score = (
                 (mOptions.hits * 10) /
                 mOptions.puzzlesGame.length
             ).toFixed(2);
-            $eXePuzzle.sendScore(true, instance);
             $(`#pzlRepeatActivity-${instance}`).text(
                 `${mOptions.msgs.msgYouScore}: ${score}`
             );
