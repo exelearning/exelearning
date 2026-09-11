@@ -8,6 +8,11 @@
  */
 var $form = {
     ideviceId: '',
+    /**
+     * Live instance data by iDevice id, so the SCORM bootstrap can find the
+     * very object the activity's controls are bound to. See resolveInstance().
+     */
+    instances: {},
     dropdownPassRateId: 'dropdownPassRate',
     checkAddBtnAnswersId: 'checkAddBtnAnswers',
     passRate: '',
@@ -16,51 +21,59 @@ var $form = {
     iconTrueFalse: 'rule',
     iconDropdown: 'expand_more',
     iconFill: 'horizontal_rule',
+    /**
+     * Fallback texts, used by mergeFields() for any key the saved content does
+     * not carry — and for all of them when it carries no `msgs` at all.
+     *
+     * English, and word for word the source strings the edition passes through
+     * c_() (edition/form.js refreshTranslations). These are literals because
+     * this file runs inside the exported package, where c_() does not exist; so
+     * the source language is the only honest fallback. They used to be Spanish,
+     * which imposed Spanish on every project whose content missed a key.
+     */
     msgs: {
         msgScoreScorm:
-            'La puntuación no se puede guardar porque esta página no forma parte de un paquete SCORM.',
-        msgYouScore: 'Tu puntuación es',
-        msgScore: 'Puntuación',
-        msgWeight: 'Peso',
-        msgYouLastScore: 'La última puntuación guardada es',
-        msgOnlySaveScore: '¡Solo puedes guardar la puntuación una vez!',
-        msgOnlySave: 'Solo puedes guardar una vez',
+            "The score can't be saved because this page is not part of a SCORM package.",
+        msgYouScore: 'You scores is',
+        msgScore: 'Score',
+        msgWeight: 'Weight',
+        msgYouLastScore: 'The last score saved is',
+        msgOnlySaveScore: 'You can only save the score once!',
+        msgOnlySave: 'You can only save once',
         msgOnlySaveAuto:
-            'Tu puntuación se guardará después de cada pregunta. Solo puedes jugar una vez.',
+            'Your score will be saved after each question. You can only play once.',
         msgSaveAuto:
-            'Tu puntuación se guardará automáticamente después de cada pregunta.',
-        msgSeveralScore:
-            'Puedes guardar la puntuación tantas veces como quieras',
+            'Your score will be automatically saved after each question.',
+        msgSeveralScore: 'You can save the score as many times as you want',
         msgPlaySeveralTimes:
-            'Puedes realizar esta actividad tantas veces como quieras',
-        msgActityComply: 'Ya has realizado esta actividad.',
-        msgUncompletedActivity: 'Actividad incompleta',
-        msgSuccessfulActivity: 'Actividad: Superada. Puntuación: %s',
-        msgUnsuccessfulActivity: 'Actividad: No superada. Puntuación: %s',
-        msgTypeGame: 'Formulario',
-        msgStartGame: 'Haz clic aquí para empezar',
-        msgTime: 'Tiempo por pregunta',
-        msgSaveScore: 'Guardar puntuación',
-        msgResult: 'Resultado',
-        msgCheck: 'Comprobar',
-        msgReset: 'Reiniciar',
-        msgShowAnswers: 'Mostrar respuestas',
-        msgTestResultPass: '¡Enhorabuena! Has superado la prueba',
-        msgTestResultNotPass: 'Lo siento. No has superado la prueba',
-        msgTrueFalseHelp: 'Selecciona si la afirmación es verdadera o falsa',
-        msgDropdownHelp:
-            'Elige la respuesta correcta entre las opciones propuestas',
-        msgFillHelp: 'Rellena los espacios en blanco con la palabra adecuada',
-        msgSingleSelectionHelp:
-            'Opción múltiple con una sola respuesta correcta',
+            'You can do this activity as many times as you want',
+        msgActityComply: 'You have already done this activity.',
+        msgUncompletedActivity: 'Incomplete activity',
+        msgSuccessfulActivity: 'Activity: Passed. Score: %s',
+        msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
+        msgTypeGame: 'Form',
+        msgStartGame: 'Click here to start',
+        msgTime: 'Time per question',
+        msgSaveScore: 'Save score',
+        msgResult: 'Result',
+        msgCheck: 'Check',
+        msgReset: 'Reset',
+        msgShowAnswers: 'Show answers',
+        msgTestResultPass: 'Congratulations! You passed the test',
+        msgTestResultNotPass: 'Sorry. You failed the test',
+        msgTrueFalseHelp: 'Select whether the statement is true or false',
+        msgDropdownHelp: 'Choose the correct answer among the options proposed',
+        msgFillHelp: 'Fill in the blanks with the appropriate word',
+        msgSingleSelectionHelp: 'Multiple choice with only one correct answer',
         msgMultipleSelectionHelp:
-            'Opción múltiple con varias respuestas correctas',
-        msgPlayStart: 'Pulse aquí para comenzar',
-        msgTrue: 'Verdadero',
-        msgFalse: 'Falso',
-        msgOk: 'Correcto',
-        msgKO: 'Incorrecto',
-        msgSuggestion: 'Sugerencia',
+            'Multiple choice with multiple corrects answers',
+        msgPlayStart: 'Click here to start',
+        msgTrue: 'True',
+        msgFalse: 'False',
+        msgOk: 'Correct',
+        msgKO: 'Incorrect',
+        msgSuggestion: 'Suggestion',
+        msgHide: 'Hide',
     },
 
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
@@ -69,7 +82,12 @@ var $form = {
     renderView: function (data, accesibility, template, ideviceId) {
         const ldata = this.updateConfig(data, ideviceId);
         let display = $('body').hasClass('exe-export') ? 'none' : '';
-        if ($('body').hasClass('exe-scorm') && ldata.isScorm > 0) {
+        // Automatic mode only. There, "Comprobar" is also what publishes the
+        // grade, so it takes the author's wording for it. In manual mode the
+        // save button is a separate control with that same wording, and giving
+        // both the same label would leave the learner with two identical
+        // buttons doing different things.
+        if ($('body').hasClass('exe-scorm') && ldata.isScorm === 1) {
             ldata.msgs.msgCheck = ldata.textButtonScorm;
         }
 
@@ -114,11 +132,7 @@ var $form = {
 
                     </div>
                 </div>
-                <div class="Games-BottonContainer">
-                    <div class="Games-GetScore">
-                        <input id="frmPSendScore-${ldata.id}" type="button" value="${ldata.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:none"/> <span class="Games-RepeatActivity"></span>
-                    </div>
-                </div>
+                ${$exeDevices.iDevice.gamification.scorm.addButtonScoreNew(ldata)}
                 ${ldata.eXeIdeviceTextAfter ? `<div class="form-instructions">${ldata.eXeIdeviceTextAfter}</div>` : ''}
             </div>
             ${$form.extractMediaElements(data.questionsData)}
@@ -145,13 +159,19 @@ var $form = {
         data.evaluation = data.evaluation || false;
         data.evaluationID = data.evaluationID || '';
         data.time = data.time || 0;
-        data.repeatActivity = data.repeatActivity || false;
+        // Always true: activities may be replayed, whatever an older resource
+        // stored. common.js forces it anyway on the first registration, so
+        // reading the saved value here only made the two disagree in between.
+        data.repeatActivity = true;
         data.textButtonScorm =
             data.scorm && data.scorm.buttonTextSave
                 ? data.scorm.buttonTextSave
                 : data.msgs.msgSaveScore;
+        // The stored mode wins and is kept as it is: 2 means the learner owns
+        // the save button. Only when there is no stored mode does the legacy
+        // `scorm.saveScore` boolean decide, and it can only ever say automatic.
         let lscorm = data.scorm && data.scorm.saveScore ? 1 : 0;
-        data.isScorm = lscorm || data.isScorm ? 1 : 0;
+        data.isScorm = Number(data.isScorm) > 0 ? Number(data.isScorm) : lscorm;
         data.weighted = data.weighted ?? 100;
         const title =
             $('#' + data.id)
@@ -210,6 +230,7 @@ var $form = {
         const bindBehaviour = () => {
             $form.setBehaviourButtonResetQuestions(ldata);
             $form.setBehaviourButtonCheckQuestions(ldata);
+            $form.setBehaviourButtonSendScore(ldata);
             if (addBtnAnswers) $form.setBehaviourButtonShowAnswers(ldata);
             $form.setBehaviourOptions(ldata);
             $form.hideScore(ldata.id);
@@ -278,7 +299,7 @@ var $form = {
                                 .attr('src')
                                 .replace('showsuggestion', 'hidesuggestion')
                         );
-                        $icon.attr('alt', ldata.msgs.msgHide || 'Ocultar');
+                        $icon.attr('alt', ldata.msgs.msgHide);
                     } else {
                         $icon.attr(
                             'src',
@@ -305,12 +326,20 @@ var $form = {
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
 
+        // The object the Comprobar button is bound to. The SCORM bootstrap must
+        // reach this very object, never a copy of it — see `instances`.
+        $form.instances[ldata.id] = ldata;
+
         if (
             document.body.classList.contains('exe-scorm') &&
             ldata.isScorm > 0
         ) {
-            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
-                $form.initScormData(ldata);
+            // Do NOT gate on init()'s return value. Inside a SCORM package
+            // loadPage() opens the session first, and an already-open session
+            // is the normal case, not a failure; gating here sent the working
+            // path down the wrapper-loading fallback.
+            if (typeof window.scorm !== 'undefined') {
+                $form.initSCORM(ldata);
             } else {
                 this.loadSCORM_API_wrapper(ldata);
             }
@@ -650,25 +679,11 @@ var $form = {
 
     initScormData: function (ldata) {
         $form.mScorm = window.scorm;
-        $form.userName = $exeDevices.iDevice.gamification.scorm.getUserName(
+        const session = $exeDevices.iDevice.gamification.scorm.bindSession(
             $form.mScorm
         );
-        $form.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $form.mScorm
-            );
-        if (typeof $form.mScorm.SetScoreMax === 'function') {
-            $form.mScorm.SetScoreMax(100);
-        } else {
-            $form.mScorm.SetScoreMax(100);
-        }
-
-        if (typeof $form.mScorm.SetScoreMin === 'function') {
-            $form.mScorm.SetScoreMin(0);
-        } else {
-            $form.mScorm.SetScoreMin(0);
-        }
-
+        $form.userName = session.userName;
+        $form.previousScore = session.previousScore;
         $form.initialScore = $form.previousScore;
         $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
     },
@@ -696,7 +711,7 @@ var $form = {
         return `${hh}:${mm}:${ss}`;
     },
 
-    startGame: function (data) {
+    startGame: function (data, reportScorm = false) {
         if (data.gameStarted) return;
         const checkButton = document.querySelector(
             `#form-button-check-${data.id}`
@@ -717,6 +732,7 @@ var $form = {
         if (checkButton) checkButton.style.display = 'block';
         if (body) body.style.display = 'block';
         $form.resetScore(data);
+        data.gameOver = false;
         data.counter = data.time * 60;
         data.clock = setInterval(() => {
             if (data.gameStarted) {
@@ -732,7 +748,12 @@ var $form = {
 
                 data.counter--;
                 $form.updateTime(data.counter, data.id);
-                gameStarted = false;
+                // Nothing else here: an undeclared `gameStarted = false` used
+                // to sit on this line, writing a stray global once a second
+                // that nothing reads. Qualifying it as `data.gameStarted`
+                // would not be the fix either — it would fail the gate above
+                // on the next tick, freezing the countdown one second in and
+                // never reaching gameOver.
                 if (data.counter <= 0) {
                     $form.gameOver(data);
                 }
@@ -752,6 +773,9 @@ var $form = {
             $form.resizeSlideShow(data);
         }, 100);
         data.gameStarted = true;
+        if (reportScorm) {
+            $form.saveScormScore(data);
+        }
     },
 
     gameOver: function (data) {
@@ -828,22 +852,86 @@ var $form = {
         if (data.time > 0) {
             toggle($resetButton, false);
             toggle($showAnswers, false);
+            // Leaves gameStarted true, which is why the flag is cleared first:
+            // startGame returns early on a game it believes is already running.
             $form.startGame(data);
+        } else {
+            // An untimed form never goes through startGame, so nothing else
+            // marks the reopened attempt as in progress.
+            data.gameStarted = true;
         }
+        $form.saveScormScore(data);
     },
     saveEvaluation: function (data) {
-        data.scorerp = (data.rightQuestions * 10) / data.totalQuestions;
+        data.scorerp = $form.getScore(data);
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             data,
             data.isInExe
         );
     },
 
-    sendScore: function (data) {
-        data.scorerp = (data.rightQuestions * 10) / data.totalQuestions;
+    /**
+     * Publish the freshly reset state to the LMS when the form restarts.
+     *
+     * rebootGame() clears the answers and the counts, but nothing told the
+     * LMS, so the menu kept the finished attempt's grade and its terminal
+     * status until the learner pressed Comprobar again. The zero it publishes
+     * carries `gameOver` false, so it reopens the attempt rather than failing
+     * it.
+     *
+     * Mirrors the condition gameOver() already reports under, so both ways out
+     * of an attempt agree on when this iDevice talks to the LMS.
+     *
+     * In manual mode this reaches the LMS no more than any other report the
+     * activity makes by itself: sendScoreNew drops it, and the grade the
+     * learner last saved stands until they press the button again. That is the
+     * point of the mode, and it is the one observable difference between the
+     * two on restart.
+     */
+    saveScormScore: function (data) {
+        // `> 0` is the "SCORM tracking is on" test, not the mode test. Which
+        // mode it is gets decided once, in sendScoreNew: an automatic report
+        // from a manual-mode activity is dropped there, so the button stays the
+        // only thing that writes the grade.
+        if (!data || !(data.isScorm > 0)) return;
+        if (!$('body').hasClass('exe-scorm')) return;
+        $form.sendScore(data);
+    },
+
+    /**
+     * Wire the save button the learner owns in manual mode.
+     *
+     * The shared addButtonScoreNew emits it for isScorm 2 alone, so there is
+     * nothing to bind in the other modes and binding unconditionally costs
+     * nothing. Delegated from the iDevice node and bound by class, the way
+     * every other iDevice with this button does it.
+     *
+     * @param {Object} data The activity's options.
+     */
+    setBehaviourButtonSendScore: function (data) {
+        $('#frmMainContainer-' + data.id)
+            .closest('.idevice_node')
+            .off('click', '.Games-SendScore')
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
+                $form.sendScore(data, false);
+            });
+    },
+
+    /**
+     * Report the current score.
+     *
+     * @param {Object} data The activity's options.
+     * @param {boolean} [auto] false when the learner asked for it by pressing
+     * the save button. It never decides completion — only `data.gameOver`
+     * does — but it is what tells the runtime to confirm the save to the
+     * learner, and what lets a manual-mode activity report at all.
+     */
+    sendScore: function (data, auto = true) {
+        data.scorerp = $form.getScore(data);
         data.previousScore = $form.previousScore;
         data.userName = $form.userName;
-        $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, data);
         $form.previousScore = data.previousScore;
     },
 
@@ -1417,7 +1505,7 @@ var $form = {
                 .addClass('number-score-alone');
         }
 
-        const score = (data.rightQuestions * 10) / data.totalQuestions;
+        const score = $form.getScore(data);
         let finalScore = score % 1 === 0 ? score : score.toFixed(2);
         const scoreText = `${data.msgs.msgYouScore} ${finalScore} (${data.rightQuestions}/${data.totalQuestions})`;
         $scoreTest.text(scoreText);
@@ -1430,11 +1518,32 @@ var $form = {
         data.wrongQuestions = 0;
     },
 
+    /**
+     * The mark for this activity, on the 0..10 scale the runtime expects.
+     *
+     * `totalQuestions` is counted while the answers are checked, and
+     * resetScore() zeroes it — so between starting a timed activity and the
+     * first Comprobar there is nothing to divide by, and the division gave NaN.
+     * The only reason it never reached the LMS is sendScoreNew's own
+     * Number.isFinite guard, several files away. Nothing answered yet is a
+     * zero.
+     *
+     * @param {Object} data The activity's options.
+     * @returns {number} the mark, 0 when there is nothing to score
+     */
+    getScore: function (data) {
+        const total = parseFloat(data && data.totalQuestions);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+        const right = parseFloat(data.rightQuestions);
+        if (!Number.isFinite(right)) return 0;
+        return (right * 10) / total;
+    },
+
     setBehaviourTest: function (data) {
         const $startGame = $('#frmStartGame-' + data.id);
         if (!$startGame.length) return;
         $startGame.on('click', function () {
-            $form.startGame(data);
+            $form.startGame(data, true);
         });
     },
 
@@ -1793,15 +1902,17 @@ var $form = {
     },
 
     loadSCORM_API_wrapper: function (data) {
-        let parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+        const ldata = $form.resolveInstance(data);
+        if (!ldata) return;
         if (typeof pipwerks === 'undefined') {
-            const escapedData = $form.escapeForCallback(parsedData);
             eXe.app.loadScript(
                 this.scormAPIwrapper,
-                '$form.loadSCOFunctions("' + escapedData + '")'
+                '$form.loadSCOFunctions("' +
+                    $form.escapeIdForCallback(ldata.id) +
+                    '")'
             );
         } else {
-            this.loadSCOFunctions(parsedData);
+            this.loadSCOFunctions(ldata);
         }
     },
     escapeForCallback: function (obj) {
@@ -1810,24 +1921,68 @@ var $form = {
         return json;
     },
 
-    loadSCOFunctions: function (data) {
-        let parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-        if (typeof scorm === 'undefined') {
-            const escapedData = $form.escapeForCallback(parsedData);
-            eXe.app.loadScript(
-                this.scormFunctions,
-                '$form.initSCORM("' + escapedData + '")'
-            );
-        } else {
-            this.initSCORM(parsedData);
+    /**
+     * Escape an iDevice id for embedding in a loadScript callback string.
+     *
+     * @param {string} id The instance id.
+     * @returns {string} The id, safe to sit inside double quotes.
+     */
+    escapeIdForCallback: function (id) {
+        return String(id).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    },
+
+    /**
+     * Resolve the live instance data for a bootstrap step.
+     *
+     * The SCORM bootstrap can only reach a script it has just loaded through
+     * an `eXe.app.loadScript` callback, which is a string. The whole ldata
+     * used to travel through it as JSON and be parsed back, which produced a
+     * COPY: registerActivity resolves the iDevice identity (ideviceId,
+     * ideviceNumber, title, mainElement) from the DOM and wrote it onto that
+     * copy, while the object the Comprobar button is bound to received none of
+     * it. reportActivity then refused every score with its `!game.ideviceId`
+     * guard — silently, with no console error — so the mark never reached the
+     * LMS. Only the id travels through the callback now, and the live object
+     * is looked up here.
+     *
+     * @param {Object|string} data Instance data, or the id of one.
+     * @returns {Object|null} The live instance data, or null when unknown.
+     */
+    resolveInstance: function (data) {
+        if (data && typeof data === 'object') return data;
+        if (typeof data !== 'string') return null;
+        if ($form.instances[data]) return $form.instances[data];
+        // A JSON payload from a package built before the id-only callback.
+        // Parsing it back is the very copy this replaced, but a copy still
+        // beats dropping the activity altogether.
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            return null;
         }
     },
-    initSCORM: function (ldata) {
-        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
-        $form.mScorm = scorm;
-        if ($form.mScorm.init()) {
-            $form.initScormData(parsedData);
+
+    loadSCOFunctions: function (data) {
+        const ldata = $form.resolveInstance(data);
+        if (!ldata) return;
+        if (typeof scorm === 'undefined') {
+            eXe.app.loadScript(
+                this.scormFunctions,
+                '$form.initSCORM("' +
+                    $form.escapeIdForCallback(ldata.id) +
+                    '")'
+            );
+        } else {
+            this.initSCORM(ldata);
         }
+    },
+    initSCORM: function (data) {
+        const ldata = $form.resolveInstance(data);
+        if (!ldata) return;
+        $form.mScorm = typeof scorm !== 'undefined' ? scorm : window.scorm;
+        if (!$form.mScorm) return;
+        // bindSession, reached through initScormData, is what opens the session.
+        $form.initScormData(ldata);
     },
     endScorm: function () {
         if ($form.mScorm && typeof $form.mScorm.quit == 'function') {

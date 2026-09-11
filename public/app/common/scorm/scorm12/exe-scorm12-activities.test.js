@@ -56,7 +56,8 @@ describe('exe-scorm12-activities', () => {
                 score: null,
                 minimumScore: 0,
                 maximumScore: 100,
-                weight: 1,
+                // No usable weight means 100, as in common.js and the editor.
+                weight: 100,
             });
         });
 
@@ -100,10 +101,13 @@ describe('exe-scorm12-activities', () => {
             expect(activities.get('missing')).toBeNull();
         });
 
-        it('clamps a non-positive weight and a degenerate score range', () => {
+        // A zero or a negative is not a usable weight, so it gets the same 100
+        // a missing one gets — the answer getFinalScore() in common.js already
+        // gave. Flooring it at 1 instead made the two aggregations disagree.
+        it('treats a non-positive weight as missing, and clamps a degenerate score range', () => {
             const stored = activities.register('a', { weight: 0, minimumScore: 50, maximumScore: 10 });
 
-            expect(stored.weight).toBe(1);
+            expect(stored.weight).toBe(100);
             expect(stored.maximumScore).toBe(150);
         });
 
@@ -172,18 +176,36 @@ describe('exe-scorm12-activities', () => {
             expect(activities.summary().score).toBe(80);
         });
 
-        it('aggregates with the historical largest-remainder weighting, not an exact mean', () => {
+        it('aggregates as an exact weighted mean', () => {
             activities.register('a', { evaluable: true, completed: true, score: 100 });
             activities.register('b', { evaluable: true, completed: true, score: 49 });
             activities.register('c', { evaluable: true, completed: true, score: 0 });
 
-            // Three equal weights scale to the integer split 34/33/33
-            // (largest remainder), so the aggregate is 50.17 — an exact
-            // weighted mean (49.67) would flip this page from passed to
-            // failed at the default mastery threshold of 50. Published
-            // packages recorded cmi.core.score.raw with this rounding, and
-            // the completion policy must read the very same number.
-            expect(activities.summary().score).toBe(50.17);
+            // (100 + 49 + 0) / 3. The largest-remainder weighting this
+            // replaced scaled the three equal weights to the integer split
+            // 34/33/33 and answered 50.17, which is above the default mastery
+            // threshold of 50 for a learner whose real average is below it.
+            expect(activities.summary().score).toBe(49.67);
+        });
+
+        // The scaling that used to run here left one point over and handed it
+        // to the largest fraction. With equal weights every fraction ties, so
+        // it always went to whichever activity was registered first and
+        // multiplied that one's score: these same three scores came out 50.5
+        // in one order and 49.5 in the other — passed or failed on the order
+        // the author happened to place the iDevices in.
+        it('gives the same aggregate whatever order the activities register in', () => {
+            function aggregateInOrder(scores) {
+                activities.clear();
+                scores.forEach((score, index) => {
+                    activities.register(`a${index}`, { evaluable: true, completed: true, score });
+                });
+                return activities.summary().score;
+            }
+
+            expect(aggregateInOrder([100, 50, 0])).toBe(50);
+            expect(aggregateInOrder([0, 50, 100])).toBe(50);
+            expect(aggregateInOrder([50, 0, 100])).toBe(50);
         });
 
         it('clamps an out-of-range weight into 1-100 for the aggregate', () => {
@@ -276,7 +298,7 @@ describe('exe-scorm12-activities', () => {
 
             // Only structural fields: identifier, flags, counters, score,
             // weight and bounds.
-            expect(activities.serialize()).toBe('exe12/1|quiz-1;7;0;0;60;1;0;100');
+            expect(activities.serialize()).toBe('exe12/1|quiz-1;7;0;0;60;100;0;100');
         });
 
         it('stays inside the SCORM 1.2 4096-character limit and says what it dropped', () => {
@@ -349,7 +371,7 @@ describe('exe-scorm12-activities', () => {
             // The score is inherited; completion is NOT — the legacy format
             // carries no completion flag, so the live iDevice decides. The
             // declaration (weight, bounds) is the live one.
-            expect(stored).toMatchObject({ id: 'idevice-abc', score: 80, completed: false, weight: 1, total: 5 });
+            expect(stored).toMatchObject({ id: 'idevice-abc', score: 80, completed: false, weight: 100, total: 5 });
             expect(activities.pendingLegacy()).toBe(1);
             // The same activity registered under one id only — no positional
             // duplicate that would double the weight.
@@ -362,6 +384,29 @@ describe('exe-scorm12-activities', () => {
             const stored = activities.register('quiz-a', { evaluable: true, legacyIndex: 1 });
 
             expect(stored).toMatchObject({ score: 0, completed: false });
+        });
+
+        // Both pool readers answer the same "an unusable weight is 100" the
+        // rest of the runtime does. A pool record does not weigh until a live
+        // registration claims it, and claiming inherits the score alone — but
+        // serialize() writes the pool back out, so a bad value would round-trip
+        // through cmi.suspend_data on every visit.
+        it('gives a zero weight in the unversioned payload the usual 100', () => {
+            activities.load('1. "Quiz"; Score: 40%; Weight: 0%');
+
+            expect(activities.serialize()).toBe('exe12/1|1;40;100');
+        });
+
+        it.each([
+            ['a zero weight', 'exe12/1|1;40;0'],
+            // `|| 1` used to let this one through untouched: a negative number
+            // is truthy.
+            ['a negative weight', 'exe12/1|1;40;-5'],
+            ['an unreadable weight', 'exe12/1|1;40;abc'],
+        ])('gives %s in a versioned pool record the usual 100', (_label, payload) => {
+            activities.load(payload);
+
+            expect(activities.serialize()).toBe('exe12/1|1;40;100');
         });
 
         it('a claim only happens on the first registration', () => {
@@ -508,5 +553,68 @@ describe('exe-scorm12-activities', () => {
         expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('stable identifier'));
 
         consoleWarnSpy.mockRestore();
+    });
+    // The invariant aggregateScore()'s JSDoc declares, finally enforced. Two
+    // implementations compute the page mark: this registry for SCORM 1.2, and
+    // getFinalScore() in common.js for the runtimes that have none (SCORM 2004
+    // and pre-rewrite packages). If they drift, the same activity passes in one
+    // package and fails in another near the mastery threshold — and they had
+    // already drifted once, on what a missing weight defaults to, because the
+    // comment named a spec file that never existed and nothing checked.
+    describe('agrees with getFinalScore() in common.js', () => {
+        let getFinalScore;
+
+        beforeEach(() => {
+            require('../../common.js');
+            // getFinalScore delegates to the registry when window.exeScorm12
+            // exists. Removing it exercises the local implementation, which is
+            // the one that has to match.
+            delete global.window.exeScorm12;
+            getFinalScore = global.$exeDevices.iDevice.gamification.scorm.getFinalScore;
+        });
+
+        /**
+         * The same activities in both shapes: the registry's records and the
+         * legacy `lmsData` map keyed by page position.
+         *
+         * @param {Array<{score: number|null, weight?: number}>} entries
+         * @returns {object} the lmsData the legacy aggregation reads
+         */
+        function givenBoth(entries) {
+            const lmsData = {};
+            entries.forEach((entry, index) => {
+                const descriptor = { evaluable: true, score: entry.score };
+                if (entry.weight !== undefined) {
+                    descriptor.weight = entry.weight;
+                }
+                activities.register('a' + index, descriptor);
+                lmsData[index + 1] = {
+                    score: entry.score === null ? 0 : entry.score,
+                    weighted: entry.weight,
+                };
+            });
+            return lmsData;
+        }
+
+        it.each([
+            ['equal weights', [{ score: 100 }, { score: 49 }, { score: 0 }]],
+            ['different weights', [{ score: 100, weight: 3 }, { score: 20, weight: 1 }]],
+            // The default that had drifted: one activity carries a weight, the
+            // other does not.
+            ['a mixture of stored and missing weights', [{ score: 100, weight: 50 }, { score: 0 }]],
+            ['an activity with no score yet', [{ score: 100 }, { score: null }]],
+            ['a weight of zero', [{ score: 80, weight: 0 }, { score: 40 }]],
+            ['a negative weight', [{ score: 80, weight: -5 }, { score: 40 }]],
+            ['a weight above the ceiling', [{ score: 80, weight: 500 }, { score: 40 }]],
+            // Where a disagreement does damage: either side of the default
+            // mastery score of 50.
+            ['a mark just under the threshold', [{ score: 100 }, { score: 49 }, { score: 0 }]],
+            ['a mark just over the threshold', [{ score: 100 }, { score: 51 }, { score: 0 }]],
+            ['a single activity', [{ score: 73 }]],
+        ])('matches on %s', (_label, entries) => {
+            const lmsData = givenBoth(entries);
+
+            expect(activities.summary().score).toBe(getFinalScore(lmsData));
+        });
     });
 });

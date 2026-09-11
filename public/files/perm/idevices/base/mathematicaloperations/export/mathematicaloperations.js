@@ -114,6 +114,18 @@ var $eXeMathOperations = {
         );
     },
 
+    // The editor stores a boolean, but legacy and imported activities can carry
+    // it as the string "false" or "0", which is truthy in JS and popped the
+    // feedback panel open on an activity whose author never enabled it.
+    isFeedbackEnabled: function (feedBack) {
+        return (
+            feedBack === true ||
+            feedBack === 1 ||
+            feedBack === 'true' ||
+            feedBack === '1'
+        );
+    },
+
     loadDataGame: function (data, instance) {
         let json = data.text(),
             options =
@@ -129,6 +141,9 @@ var $eXeMathOperations = {
         options.solution =
             typeof options.solution == 'undefined' ? true : options.solution;
         options.mode = typeof options.mode == 'undefined' ? 0 : options.mode;
+        options.feedBack = $eXeMathOperations.isFeedbackEnabled(
+            options.feedBack
+        );
         options.negativeFractions =
             typeof options.negativeFractions == 'undefined'
                 ? false
@@ -157,6 +172,11 @@ var $eXeMathOperations = {
                 ? ''
                 : options.evaluationID;
         options.id = typeof options.id == 'undefined' ? false : options.id;
+        // This activity counts its operations in `number`; every other game
+        // iDevice calls the same thing `numberQuestions`, and that is the name
+        // registerActivity reads. Without this the activity registered with
+        // `total: 0` and the registry never knew how big it was.
+        options.numberQuestions = parseFloat(options.number) || 0;
 
         return options;
     },
@@ -173,6 +193,9 @@ var $eXeMathOperations = {
         options.solution =
             typeof options.solution == 'undefined' ? true : options.solution;
         options.mode = typeof options.mode == 'undefined' ? 0 : options.mode;
+        options.feedBack = $eXeMathOperations.isFeedbackEnabled(
+            options.feedBack
+        );
         options.negativeFractions =
             typeof options.negativeFractions == 'undefined'
                 ? false
@@ -198,6 +221,20 @@ var $eXeMathOperations = {
         $('#mthoPShowClue-' + instance).hide();
 
         $eXeMathOperations.createQuestions(instance);
+        // An untimed activity never reaches startGame — enable() marks it as
+        // running and hides the start button — so the restart has to publish
+        // its own cleared state, and mark the attempt in progress for it:
+        // sendScoreNew ignores a game that reports as neither started nor
+        // over.
+        options.gameStarted = true;
+        // Timed, the click handler lowers the flag on its next line and calls
+        // startGame(), which publishes this same cleared state at its end.
+        // Reporting here as well put the same zero on the wire twice on every
+        // restart, with two commits and two redraws of the LMS menu for one
+        // action. Untimed there is no startGame to hand over to.
+        if (!(options.time > 0)) {
+            $eXeMathOperations.saveScormScore(instance);
+        }
     },
     createQuestions: function (instance) {
         const mOptions = $eXeMathOperations.options[instance];
@@ -1533,6 +1570,23 @@ var $eXeMathOperations = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts or
+     * restarts.
+     *
+     * startGame() and reloadGame() both clear hits, errors and gameOver, but
+     * neither told the LMS, so the menu kept the finished attempt's grade and
+     * status until the learner answered again.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeMathOperations.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeMathOperations.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeMathOperations.options[instance];
 
@@ -1701,6 +1755,9 @@ var $eXeMathOperations = {
             $eXeMathOperations.uptateTime(mOptions.time * 60, instance);
         }
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeMathOperations.saveScormScore(instance);
     },
 
     enterCodeAccess: function (instance) {
@@ -1715,6 +1772,12 @@ var $eXeMathOperations = {
             if (mOptions.time > 0) {
                 mOptions.gameStarted = false;
                 $eXeMathOperations.startGame(instance);
+            } else {
+                // Untimed there is nothing to start — the load path already
+                // raised gameStarted and hid the play button, which only
+                // belongs to a timed activity — so the code is the last chance
+                // to publish the opening zero, and nothing was taking it.
+                $eXeMathOperations.saveScormScore(instance);
             }
             $('#mthoLinkMaximize-' + instance).trigger('click');
         } else {
@@ -1754,17 +1817,16 @@ var $eXeMathOperations = {
             .find('input[type="submit"]')
             .hide();
 
+        // No "score only once" lock: the end of the attempt is always
+        // reported. The lock this used to carry could never close anyway —
+        // registerActivity forces `repeatActivity` to true at page load
+        // (common.js updateScormNew), so it short-circuited the condition
+        // before the learner touched anything. The activity registry owns what
+        // has been recorded.
         if (mOptions.isScorm == 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeMathOperations.initialScore === ''
-            ) {
-                const score = ((mOptions.hits * 10) / mOptions.number).toFixed(
-                    2
-                );
-                $eXeMathOperations.sendScore(true, instance);
-                $eXeMathOperations.initialScore = score;
-            }
+            const score = ((mOptions.hits * 10) / mOptions.number).toFixed(2);
+            $eXeMathOperations.sendScore(true, instance);
+            mOptions.initialScore = score;
         }
 
         $eXeMathOperations.saveEvaluation(instance);
@@ -1808,13 +1870,10 @@ var $eXeMathOperations = {
 
         pendientes = mOptions.number - mOptions.errors - mOptions.hits;
         mOptions.score = (mOptions.hits / mOptions.number) * 10;
+        // Every answer is reported; see gameOver for why the lock that used to
+        // sit here is gone.
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeMathOperations.initialScore === ''
-            ) {
-                $eXeMathOperations.sendScore(true, instance);
-            }
+            $eXeMathOperations.sendScore(true, instance);
         }
 
         $eXeMathOperations.saveEvaluation(instance);

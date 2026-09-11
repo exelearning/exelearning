@@ -739,4 +739,29 @@ describe('form iDevice edition', () => {
   // Note: Form class tests removed because $exeDevice.Form
   // does not exist in the current version of form.js from main branch.
   // These tests were written for a modified version of the code.
+
+  // Issue #2263: these keys had no c_() counterpart here, so nothing ever
+  // translated them and the export's own default — Spanish — was the only value
+  // that reached the page, whatever the project language.
+  describe('the message keys the export expects', () => {
+    it('translates the per-question feedback and the suggestion toggle', () => {
+      $exeDevice.refreshTranslations();
+
+      expect($exeDevice.ci18n.msgOk).toBe('Correct');
+      expect($exeDevice.ci18n.msgKO).toBe('Incorrect');
+      expect($exeDevice.ci18n.msgHide).toBe('Hide');
+    });
+
+    // The values above would also be right if the strings were inlined, so pin
+    // the route: they have to go through c_() to reach the catalogue.
+    it('routes them through c_ rather than inlining them', () => {
+      c_.mockClear();
+
+      $exeDevice.refreshTranslations();
+
+      expect(c_).toHaveBeenCalledWith('Correct');
+      expect(c_).toHaveBeenCalledWith('Incorrect');
+      expect(c_).toHaveBeenCalledWith('Hide');
+    });
+  });
 });

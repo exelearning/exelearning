@@ -176,6 +176,9 @@ var $exeDevice = {
                 "The score can't be saved because this page is not part of a SCORM package."
             ),
             msgYouScore: c_('You scores is'),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
             msgScore: c_('Score'),
             msgWeight: c_('Weight'),
             msgYouLastScore: c_('The last score saved is'),
@@ -226,6 +229,16 @@ var $exeDevice = {
             msgNext: c_('Next'),
             msgPrevious: c_('Previous'),
             msgSuggestion: c_('Suggestion'),
+            // The per-question feedback (form.js export, showFeedback). Missing
+            // here, it never went through c_() and the export's own default was
+            // the only value that ever reached the page — in Spanish, whatever
+            // the project language.
+            msgOk: c_('Correct'),
+            msgKO: c_('Incorrect'),
+            // The suggestion toggle's alt text, which the export used to spell
+            // out as a literal 'Ocultar' when the key was absent — and it
+            // always was.
+            msgHide: c_('Hide'),
         };
     },
 
@@ -323,7 +336,7 @@ var $exeDevice = {
         this.ideviceBody.querySelector('#frmEShowSlider').checked =
             previousData.showSlider;
         previousData.weighted = previousData.weighted ?? 100;
-        previousData.repeatActivity = previousData.repeatActivity ?? false;
+        previousData.repeatActivity = true;
         let isscore =
             previousData.exportScorm && previousData.exportScorm.saveScore
                 ? 1
@@ -992,7 +1005,7 @@ var $exeDevice = {
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab($exeDevice.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 7, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(7)}

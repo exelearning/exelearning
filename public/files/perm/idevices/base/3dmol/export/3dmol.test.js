@@ -307,4 +307,380 @@ describe('3dmol iDevice export', () => {
             expect(rule).toContain('text-align: center;');
         });
     });
+
+    // Presentation mode has no questions: walking to the last model is the
+    // whole of the activity. The score already reached 10 there, but nothing
+    // said the activity was finished, so the page stayed `incomplete`.
+    describe('completion in presentation mode', () => {
+        const instance = 0;
+        let reported;
+
+        function setupShow(models) {
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <div id="dmolpMultimedia-${instance}"></div>
+                    <div id="dmolpShowPrev-${instance}"></div>
+                    <div id="dmolpShowNext-${instance}"></div>
+                    <div id="dmolpShowClue-${instance}"></div>
+                    <div id="dmolpDivFeedBack-${instance}"></div>
+                </div>`;
+            dmol.options[instance] = {
+                main: `dmolpMainContainer-${instance}`,
+                isScorm: 1,
+                activityMode: 'show',
+                gameOver: false,
+                gameStarted: false,
+                visiteds: 0,
+                showCurrentIndex: 0,
+                selectsGame: new Array(models).fill({}),
+                feedBack: false,
+                obtainedClue: false,
+                itinerary: { showClue: false, percentageClue: 0 },
+                msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+            };
+            reported = [];
+            dmol.showModelAtIndex = () => {};
+            dmol.setModelStyleControlVisibility = () => {};
+            dmol.saveEvaluation = () => {};
+            dmol.sendScore = (auto, i) => {
+                reported.push({
+                    auto,
+                    gameOver: dmol.options[i].gameOver,
+                    scorerp: dmol.getScoreRP(i),
+                });
+            };
+            dmol.initShowMode(instance);
+        }
+
+        /** Press Next once. */
+        function next() {
+            $(`#dmolpShowNext-${instance}`).trigger('click');
+        }
+
+        it('stays unfinished while models remain', () => {
+            setupShow(3);
+
+            next();
+
+            expect(reported).toHaveLength(1);
+            expect(reported[0].gameOver).toBe(false);
+        });
+
+        it('finishes on the last model, with the full mark', () => {
+            setupShow(3);
+
+            next();
+            next();
+
+            expect(reported).toHaveLength(2);
+            expect(reported[1].gameOver).toBe(true);
+            expect(reported[1].scorerp).toBe(10);
+        });
+
+        it('finishes on the first step of a two-model presentation', () => {
+            setupShow(2);
+
+            next();
+
+            expect(reported[0].gameOver).toBe(true);
+            expect(reported[0].scorerp).toBe(10);
+        });
+    });
+
+    // The quiz modes only reported when a NEXT question appeared (showQuestion)
+    // and from gameOver(), which is reached solely from the setTimeout that
+    // shows the solution. After the last answer there is no next question, so
+    // a learner who left while the solution was on screen had neither that
+    // answer's points nor the completion recorded.
+    describe('completion on the last answer', () => {
+        const instance = 0;
+        let reported;
+
+        function setupLastQuestion(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <input id="dmolpEdAnswer-${instance}" type="text" value="OHM">
+                    <button id="dmolpBtnReply-${instance}"></button>
+                    <button id="dmolpBtnMoveOn-${instance}"></button>
+                    <span id="dmolpPHits-${instance}"></span>
+                    <span id="dmolpPErrors-${instance}"></span>
+                    <span id="dmolpPScore-${instance}"></span>
+                    <div id="dmolpShowClue-${instance}"></div>
+                    <div id="dmolpPShowClue-${instance}"></div>
+                </div>`;
+            dmol.options[instance] = Object.assign(
+                {
+                    main: `dmolpMainContainer-${instance}`,
+                    isScorm: 1,
+                    activeQuestion: 0,
+                    numberQuestions: 1,
+                    gameActived: true,
+                    gameStarted: true,
+                    gameOver: false,
+                    respuesta: '',
+                    showSolution: false,
+                    timeShowSolution: 3,
+                    hits: 0,
+                    errors: 0,
+                    scoreGame: 0,
+                    scoreTotal: 1,
+                    gameMode: 1,
+                    itinerary: { showClue: false, percentageClue: 0 },
+                    msgs: { msgYouScore: 'Score' },
+                    selectsGame: [
+                        { typeSelect: 2, solutionQuestion: 'OHM', customScore: 1 },
+                    ],
+                },
+                overrides
+            );
+            reported = [];
+            vi.spyOn(dmol, 'sameQuestion').mockReturnValue(false);
+            vi.spyOn(dmol, 'showMessage').mockImplementation(() => {});
+            vi.spyOn(dmol, 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sendScore').mockImplementation((auto, i) => {
+                reported.push({ auto, gameOver: dmol.options[i].gameOver });
+            });
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports the completion in the same turn the learner answered', () => {
+            setupLastQuestion();
+
+            dmol.answerQuestion(instance);
+
+            expect(reported).toEqual([{ auto: true, gameOver: true }]);
+        });
+
+        it('does the same from the board buttons', () => {
+            setupLastQuestion();
+
+            dmol.answerQuestionBoard(true, instance);
+
+            expect(reported).toEqual([{ auto: true, gameOver: true }]);
+        });
+
+        // An intermediate answer must not close the attempt: the page would go
+        // to passed/failed while the learner is still playing.
+        it('leaves the attempt open while questions remain', () => {
+            setupLastQuestion({ numberQuestions: 3 });
+
+            dmol.answerQuestion(instance);
+
+            expect(dmol.options[instance].gameOver).toBe(false);
+            expect(reported).toEqual([]);
+        });
+
+        it('does not auto-report in manual SCORM mode', () => {
+            setupLastQuestion({ isScorm: 2 });
+
+            dmol.answerQuestion(instance);
+
+            expect(reported).toEqual([]);
+            // The flag still rises: the attempt is over either way, and the
+            // learner's own send button has to carry the completion.
+            expect(dmol.options[instance].gameOver).toBe(true);
+        });
+    });
+
+    describe('starting a new game after one has ended', () => {
+        const instance = 0;
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        // gameOver() renames the same button to New game and leaves its flag
+        // up. sendScoreNew derives completion from that flag, so a replay
+        // coming back in with it still raised reported every answer as a
+        // finished attempt, and the page stayed complete in the LMS from the
+        // very first one.
+        it('lowers the finished flag so the replay reports as unfinished', () => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <span id="dmolpPNumber-${instance}"></span>
+                    <span id="dmolpPHits-${instance}"></span>
+                    <span id="dmolpPErrors-${instance}"></span>
+                    <span id="dmolpPScore-${instance}"></span>
+                </div>`;
+            dmol.options[instance] = {
+                main: `dmolpMainContainer-${instance}`,
+                isScorm: 1,
+                numberQuestions: 2,
+                // The state gameOver() leaves behind.
+                gameOver: true,
+                gameStarted: false,
+                questionsRandom: false,
+                selectsGame: [{ answerScore: 1 }, { answerScore: 0 }],
+                msgs: {},
+            };
+            vi.spyOn(dmol, 'setModelStyleControlVisibility').mockImplementation(
+                () => {}
+            );
+            vi.spyOn(dmol, 'updateTime').mockImplementation(() => {});
+            vi.spyOn(dmol, 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sendScore').mockImplementation(() => {});
+
+            dmol.startGame(instance);
+
+            expect(dmol.options[instance].gameOver).toBe(false);
+            expect(dmol.options[instance].gameStarted).toBe(true);
+            // The opening zero, published here and only here. It used to arrive
+            // from showQuestion(), which reported on every question and so
+            // republished the previous answer's mark.
+            expect(dmol.sendScore).toHaveBeenCalledTimes(1);
+            expect(dmol.sendScore).toHaveBeenCalledWith(true, instance);
+
+            clearInterval(dmol.options[instance].counterClock);
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+    });
+
+    // The code opens both modes, but only one of them can be started by it.
+    describe('opening with an access code', () => {
+        const instance = 0;
+        let reported;
+
+        function setupCoded(activityMode, typed) {
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <div id="dmolpCodeAccessDiv-${instance}"></div>
+                    <div id="dmolpMesajeAccesCodeE-${instance}"></div>
+                    <a id="dmolpLinkMaximize-${instance}" href="#"></a>
+                    <input id="dmolpCodeAccessE-${instance}" value="${typed}">
+                </div>`;
+            dmol.options[instance] = {
+                main: `dmolpMainContainer-${instance}`,
+                isScorm: 1,
+                activityMode,
+                // initShowMode raises this at load in presentation mode; the
+                // quiz waits for its start.
+                gameStarted: activityMode === 'show',
+                gameOver: false,
+                visiteds: 0,
+                showCurrentIndex: 0,
+                selectsGame: [{}, {}],
+                itinerary: { codeAccess: 'abre', showCodeAccess: true },
+                msgs: { msgYouScore: 'Score' },
+            };
+            reported = [];
+            vi.spyOn(dmol, 'showCubiertaOptions').mockImplementation(() => {});
+            vi.spyOn(dmol, 'startGame').mockImplementation(() => {});
+            vi.spyOn(dmol, 'sendScore').mockImplementation((auto, i) => {
+                reported.push({
+                    auto,
+                    gameOver: dmol.options[i].gameOver,
+                    scorerp: dmol.getScoreRP(i),
+                });
+            });
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('starts the quiz, which publishes through its first question', () => {
+            setupCoded('quiz', 'AbrE');
+
+            dmol.enterCodeAccess(instance);
+
+            expect(dmol.startGame).toHaveBeenCalledWith(instance);
+        });
+
+        // startGame returns early on a presentation — that early return is what
+        // keeps the quiz interface off it — so the report has to come from here.
+        it('publishes the opening mark of a presentation itself', () => {
+            setupCoded('show', 'abre');
+
+            dmol.enterCodeAccess(instance);
+
+            expect(dmol.startGame).not.toHaveBeenCalled();
+            expect(reported).toEqual([
+                // One model of two seen, and nothing finished yet.
+                { auto: true, gameOver: false, scorerp: 5 },
+            ]);
+        });
+
+        it('reports nothing when the code is wrong', () => {
+            setupCoded('show', 'nope');
+
+            dmol.enterCodeAccess(instance);
+
+            expect(reported).toEqual([]);
+            expect($(`#dmolpCodeAccessE-${instance}`).val()).toBe('');
+        });
+
+        it('does not auto-report a presentation in manual SCORM mode', () => {
+            setupCoded('show', 'abre');
+            dmol.options[instance].isScorm = 2;
+
+            dmol.enterCodeAccess(instance);
+
+            expect(reported).toEqual([]);
+        });
+    });
+
+    // Dropping the lives option took the panel and the variable holding it,
+    // but left the hide() call at the top of showScoreGame. Every game-over
+    // threw ReferenceError there, before a single figure was painted — and
+    // the throw came from inside gameOver, so it took the report with it.
+    describe('the end-of-game panel', () => {
+        const instance = 0;
+
+        function setupPanel(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="dmolpMainContainer-${instance}">
+                    <div id="dmolpGameContainer-${instance}"></div>
+                    <div id="dmolpHistGame-${instance}"></div>
+                    <div id="dmolpOverScore-${instance}"></div>
+                    <div id="dmolpOverHits-${instance}"></div>
+                    <div id="dmolpOverErrors-${instance}"></div>
+                    <div id="dmolpShowClue-${instance}"></div>
+                    <div id="dmolpGamerOver-${instance}"></div>
+                </div>`;
+            dmol.options[instance] = Object.assign(
+                {
+                    main: `dmolpMainContainer-${instance}`,
+                    gameMode: 1,
+                    score: 7.5,
+                    hits: 3,
+                    errors: 1,
+                    obtainedClue: false,
+                    itinerary: { showClue: false, percentageClue: 0, clueGame: '' },
+                    msgs: {
+                        msgCool: 'Bien',
+                        msgAllQuestions: 'Todas',
+                        msgScore: 'Score',
+                        msgHits: 'Hits',
+                        msgErrors: 'Errors',
+                        msgInformationLooking: 'Mira',
+                    },
+                },
+                overrides
+            );
+            vi.spyOn(dmol, 'showMessage').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        // 0 is finishing every question, 2 is running out of time.
+        it.each([0, 2])('paints the totals when the game ends with type %i', type => {
+            setupPanel();
+
+            expect(() => dmol.showScoreGame(type, instance)).not.toThrow();
+
+            expect($(`#dmolpOverHits-${instance}`).html()).toBe('Hits: 3');
+            expect($(`#dmolpOverErrors-${instance}`).html()).toBe('Errors: 1');
+        });
+    });
 });

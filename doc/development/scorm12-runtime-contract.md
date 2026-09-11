@@ -269,9 +269,45 @@ count as applied.
    one in 0–100 it becomes the success threshold; otherwise the eXeLearning
    default of 50 stays in force **[POLICY]**.
 3. Restore the activity registry from `cmi.suspend_data` (§9).
+4. **Adopt a restored terminal status the restored registry derives** **[POLICY]**.
+   When the stored `cmi.core.lesson_status` is terminal *and* the just-restored
+   registry decides that same status on its own, it is this policy's own earlier
+   verdict returning across a page load, so it is claimed as the session's. That
+   claim is what lets the replay correction in §9.1 downgrade it later. Without
+   it, a learner who finishes a page, navigates away, comes back and restarts an
+   activity gets the score reset to 0 while the LMS keeps showing `passed`.
+   The registry is what keeps this narrow: a status content wrote explicitly, or
+   one left by a genuinely different attempt, does not match what the restored
+   payload derives, so rule 1 preserves it. This is not the same as *agreeing*
+   with a stored value mid-session, which never claims ownership — here the
+   agreement comes from the payload the LMS just handed back.
+5. Publish the restored score when the registry can account for one
+   (`summary().scored > 0`).
+6. **Flush what was reported before the session opened** **[POLICY]**. iDevices
+   register and report on jQuery `ready`, while `loadPage()` runs on
+   `<body onload>` — after every image and video has finished loading. A report
+   landing in that window reaches the registry, which needs no session, but the
+   publish in `showFinalScore` is refused because the entry policy has not run.
+   Those reports would then sit unseen by the LMS until the next flush, so the
+   learner's mark only surfaced on leaving the page. When the registry already
+   held a score *before* step 3 merged the stored payload over it, the status is
+   decided from the registry and the session is committed. Only then: deciding a
+   status from a purely restored registry would rewrite an attempt this session
+   has not touched, which rule 1 forbids.
 
 `"not attempted"` is never written by the runtime: SCORM 1.2 requires the LMS to
 refuse that value from a SCO **[SCORM]**.
+
+### 6.1 Writing is not storing **[SCORM] + [POLICY]**
+
+The entry policy writes the status but does not store it: writing is
+`LMSSetValue`, storing is `LMSCommit`, and the entry path never commits.
+
+The first commit comes with the first score, on hiding the tab, or on leaving
+the page (§7, §8.1). Until then the LMS's reports still show the state from
+before the visit — `not attempted` on a first one. §9.1 and §11 describe what
+the runtime reports, not what the LMS displays. Note that hiding the tab stores
+it without the learner having done anything.
 
 ## 7. Browser lifecycle **[BROWSER]**
 
@@ -283,6 +319,9 @@ The runtime registers exactly three listeners and no unload-family handler:
 | `pagehide` | `event.persisted === false` (or absent) | Full end of session: exit policy → `cmi.core.session_time` → `LMSCommit` → `LMSFinish`, exactly once. |
 | `pagehide` | `event.persisted === true` | The page is being frozen into the back/forward cache. Persist (same sequence as `hidden`) and **pause the session clock**; do **not** terminate — the page may be restored intact. |
 | `pageshow` | `event.persisted === true` | Restored from the cache. Resume the session clock. Nothing is re-initialized: the LMS session was never closed. |
+
+These are also the moments at which anything the entry policy wrote becomes
+durable, and therefore visible to a teacher reading the LMS's reports (§6.1).
 
 Why the split matters: a document frozen into the back/forward cache can be
 evicted later with **no further event of any kind**. All durable work therefore
@@ -352,12 +391,101 @@ LMS skipping an optional element, so nothing is logged for it — the report
 still records `unsupported: true`. Every other error code is reported as
 usual.
 
+### 8.1 The deferred retry commit, and Moodle's beacon transport **[BROWSER]**
+
+Every score report commits twice: `updateActivity` commits synchronously — that
+is the guarantee, and it is what a learner who navigates immediately relies on —
+and `triggerMoodleDetection` schedules a second commit
+`moodleDetectionDelay` ms later. The second one exists for two reasons: it
+carries writes that land after the first (a status settled by a timer or an
+animation), and it is the only one that can make Moodle redraw its
+course-structure menu from stored data.
+
+That second reason comes from a defect in `useBeaconAPI()`, nested inside
+`DoRequest()` in `mod/scorm/request.js` — read from `MOODLE_405_STABLE`, and
+identical in `MOODLE_500_STABLE`:
+
+```js
+var useBeaconAPI = function() {
+    if (typeof window.mod_scorm_useBeaconAPI === 'undefined' || window.mod_scorm_useBeaconAPI === false) {
+        // Last ditch effort, the SCORM package may have introduced its own listeners before our listeners.
+        // This is OLD API, window.event is not reliable and is not recommended API.
+        if (window.event && ['beforeunload', 'unload', 'pagehide'].indexOf(window.event.type)) {
+            window.mod_scorm_useBeaconAPI = true;
+        }
+    }
+    return (window.mod_scorm_useBeaconAPI && canUseBeaconAPI());
+};
+```
+
+The comparison is missing its `!== -1`. `indexOf` answers `-1` for any event
+type **not** in that list, and `-1` is truthy, so the test is inverted: a
+`click` turns the flag on while `beforeunload` (index 0, falsy) does not. Every
+commit an iDevice issues runs inside a click handler, so the flag is on from the
+learner's first answer. It then stays on: the outer guard re-reads it only while
+it is `undefined` or `false`, nothing ever lowers it, and it lives on the window
+that loaded `request.js` — the LMS player, which outlives every SCO navigation.
+
+Once it is on, Moodle sends the commit through `navigator.sendBeacon`, which
+does not wait and whose result it fabricates (*"Make it look like it was a
+success"*). `LMSCommit` then fires its TOC refresh — a GET to `prereqs.php` —
+straight afterwards, and that GET reaches the server **before** the
+fire-and-forget POST, so the menu is redrawn from the pre-commit state.
+Measured against a live Moodle: beacon 337–877 ms, TOC refresh 224–572 ms.
+
+The retry needs nothing but time to put that right. `LMSCommit` fires the TOC
+refresh whatever the transport — the GET does not look at the result of the
+POST — and the retry carries **no data of its own**: `CollectData` advanced its
+`defaultvalue` during the first commit, so its datastring is empty. What is
+wanted is the refresh behind it, reading a server that has by then received the
+first beacon.
+
+`moodleDetectionDelay` is therefore a **margin, not a guarantee**. A beacon
+slower than the delay leaves the icon as it was, and `LMSFinish` refreshes the
+menu again on the way out (unconditionally — it does not check `hidetoc`), so a
+missed window heals when the learner leaves the page. The retry can never make
+things worse than not running at all.
+
+**The report that moves the status gets a second attempt**, at
+`moodleStatusRetryDelay` (4000 ms), on top of the first one. The two cases are
+not equally costly to miss. An intermediate score that loses the race shows
+stale in the menu until the learner's next answer, whose own commit repairs it —
+the miss is self-correcting. The report that turns the page `passed` or `failed`
+has no next answer behind it: if its refresh loses the race, the icon stays
+wrong for the rest of the visit. `sendScoreNew` reads `cmi.core.lesson_status`
+on both sides of `updateActivity` — the call that writes it — and passes the
+comparison to `triggerMoodleDetection`, so the extra request rides on the one
+report per attempt that needs it rather than on every answer.
+
+Confirmed against a live Moodle (September 2025): with the icon left stale, the
+same console trace showed `cmi.core.lesson_status` already `failed`, the policy
+deciding `failed` from `threshold-evaluated`, and every required activity
+complete. Nothing about the write was wrong — only the redraw.
+
+Deliberately **not** done: clearing `window.mod_scorm_useBeaconAPI` on the
+player window to force Moodle back onto its synchronous XHR. It would make the
+ordering deterministic — `window.event` is unset outside an event dispatch, so
+`useBeaconAPI()` would answer false — but that XHR **blocks the tab** for the
+length of the POST (200–900 ms on the LMS measured above), and it means writing
+to a global that belongs to the LMS. The margin is cheaper and self-healing.
+
 When the mandatory `cmi.core.score.raw` write itself fails (a broken LMS —
 the triplet was already validated), the completion policy still decides and
 records `cmi.core.lesson_status` **[POLICY]**: completion is not held hostage
 by score storage, SCORM 1.2 does not make the status depend on a stored
 score, and this matches the pre-rewrite behaviour. The failure stays visible
 in `setScoreDetailed()`'s report (`requiredWritten: false`).
+
+### 8.2 Follow-up work on redundant reports
+
+- Audit the eight iDevices identified in review as sending the terminal report
+  twice. Only `3dmol` and `electrical-circuits` currently guard with
+  `alreadyReportedFinished`. Cover completion and replay together: one terminal
+  report per attempt, with the guard reset when the learner starts again.
+- Coalesce the timers in `triggerMoodleDetection`: it currently schedules a
+  delayed commit for every report without retaining or clearing the timer.
+  Preserve the immediate commit and the later retry for status transitions;
+  verify a burst of reports and navigation with pending timers.
 
 ## 9. Activity registry and completion policy
 
@@ -393,6 +521,13 @@ iDevice properties such as `gameOver`.
 `evaluable`/`completionRequired` from the iDevice's own `isScorm` flag and
 passing `completed` explicitly from the call site.
 
+**`initialScore` is not part of this contract.** Every game iDevice declares the
+property and writes it, and **nothing reads it** — not the registry, not the
+policy, not `common.js`. It is kept for a use it does not yet have; a reviewer
+finding those writes has found dead state, not a scoring defect. The
+`initialScore` inside `common.js`'s `createScoreScormHtml()` is an unrelated
+local variable.
+
 ### 9.1 Completion and success mapping **[POLICY]**
 
 SCORM 1.2 has a single status element, so eXeLearning's separate notions of
@@ -406,28 +541,69 @@ completion and success collapse onto `cmi.core.lesson_status`:
 | All required complete, aggregate ≥ threshold | `passed` | `""` |
 | All required complete, aggregate < threshold | `failed` | `""` |
 
+The table is the status the runtime *reports*. When it becomes visible in the
+LMS is decided by the commit points in §7 — see §6.1: a page open and untouched
+still reads `not attempted`.
+
 - **Presentation-only and exploration activities never block completion.** They
   register with `completionRequired: false`. This is the chosen policy of the
   two the requirement allowed; it means such an iDevice does not need to report
   a "viewed" state to let the page complete.
-- **A manually submitted score counts as completing the activity** **[POLICY]**.
-  The gamification bridge reports `completed: true` when the game is over *or*
-  the learner pressed the send-score button (`sendScoreNew(auto=false)`).
-  Submitting is the learner's explicit act of finishing the attempt, and it is
-  the only completion signal games without a game-over state can give — without
-  it, such an activity would hold its page at `incomplete` forever. An iDevice
-  with a richer notion of completion can report `completed` itself through
+- **Only the activity finishes the activity** **[POLICY]**. The gamification
+  bridge reports `completed: true` when the game is over, and never because of
+  how the score was sent. The send-score button is not a hand-in: it exists so
+  the learner decides when — if ever — their grade is written, so pressing it
+  mid-game must not publish a terminal state for an activity still being played.
+  An activity whose only end is the act of saving — an applet the learner may
+  keep manipulating, such as `geogebra-activity` — sets its own game-over state,
+  keeping the decision in the iDevice that knows it. An iDevice with a richer
+  notion of completion can also report `completed` itself through
   `scorm.activities.update()`.
+- **In manual mode only the button reports** **[POLICY]**. `sendScoreNew` drops
+  any automatic report (`auto === true`) from an activity that is not in
+  automatic mode (`isScorm === 1`), so nothing an iDevice publishes on its own
+  reaches the LMS while the learner owns the button. The guard lives in the
+  bridge rather than at each of the hundred-odd places the iDevices report,
+  where forgetting one meant a manual-mode activity quietly grading the learner
+  behind the button. Every SCORM-capable iDevice offers the three modes, so a
+  stored 2 always has a working button behind it.
 - **One aggregation algorithm** **[POLICY]**. The registry's
-  `summary().score` is the historical eXeLearning weighting (weights scaled to
-  integers summing to exactly 100 by largest-remainder rounding, then a
-  weight-scaled sum). `common.js`'s `getFinalScore()` delegates to it whenever
-  the runtime is present, so the displayed score, the recorded
+  `summary().score` is the weighted mean of the evaluable activities'
+  normalised scores, each weight clamped into 1–100. `common.js`'s
+  `getFinalScore()` delegates to it whenever the runtime is present and
+  carries the same arithmetic for the runtimes that have none (SCORM 2004,
+  pre-rewrite packages), so the displayed score, the recorded
   `cmi.core.score.raw`, the in-session status decision and the exit decision
-  all read the same number. Two algorithms (the historical one in-session, an
-  exact weighted mean at exit) could disagree near the mastery threshold —
-  e.g. 100/49/0 at equal weights is 50.17 historically but 49.67 exactly —
-  and flip a passed page to failed on the way out.
+  all read the same number. Two algorithms could disagree near the mastery
+  threshold and flip a passed page to failed on the way out;
+  `common.test.js` pins the two implementations against each other.
+
+  This replaces the historical eXeLearning weighting, which scaled the weights
+  to integers summing to exactly 100 by largest-remainder rounding before the
+  weight-scaled sum. That scaling leaves one point over and awards it to the
+  largest fraction, but with equal weights every fraction ties, so a stable
+  sort gave it to whichever activity was registered first and multiplied that
+  one activity's score: three equally weighted activities scoring 100/50/0
+  aggregated to 50.5 and the same three as 0/50/100 to 49.5 — the same work by
+  the learner, passed or failed on the order the author placed the iDevices
+  in. A package still running the previous runtime keeps the old numbers; they
+  differ by at most one weight-point of a single activity (100/49/0 at equal
+  weights: 50.17 before, 49.67 now).
+
+  **The default weight also changed, and that one moves the number much
+  further.** An activity with no usable weight counts as **100**, the value the
+  editor writes into its own form; it used to count as 1. Twenty-eight of the
+  thirty-five game iDevices never default `weighted` when they load for
+  playback, so an activity that had never been through the editor weighed a
+  hundredth of one that had, on the same page — and merely opening and saving an
+  iDevice re-weighted the page without the author changing anything. On a page
+  mixing the two the aggregate moves by far more than a point: two activities
+  scoring 100 and 0, one edited and one not, aggregated to
+  `(100×100 + 0×1) / 101 = 99.01` and now aggregate to `(100 + 0) / 2 = 50`.
+  That is the intended reading — the author declared no weight for either, so
+  neither outranks the other — but it is a real change of number for existing
+  content rendered by this runtime. Already-exported packages keep their own
+  numbers, since the runtime travels inside the ZIP.
 - **The policy may correct its own verdict, never someone else's.** A terminal
   status the policy wrote during this session is downgraded back to
   `incomplete` whenever the decision returns to `required-activities-pending`
@@ -456,6 +632,34 @@ completion and success collapse onto `cmi.core.lesson_status`:
   still in force (typically `suspend`), never from the decision the LMS
   refused — reporting a normal end for a still-incomplete attempt would close
   it prematurely.
+- **The exit is cleared the moment the attempt turns terminal**, not only at
+  page unload. A resumed attempt starts with the previous visit's `suspend`
+  stored at the LMS, and writing the status alone would leave the two
+  disagreeing for the whole visit. Measured on Moodle 4.5: a page finished
+  after a resume kept the unfinished icon in the course-structure menu until
+  `cmi.core.exit` was cleared, with `cmi.core.lesson_status` sitting at
+  `passed` the whole time — Moodle redraws that menu on `LMSCommit`, which
+  happens while the stale `suspend` is still there.
+
+  `suspend` is written mid-session **only to undo that clearing**, when the
+  attempt this session closed reopens — the learner restarts an activity, so
+  the status goes back to `incomplete`. Without it the LMS keeps a `""`
+  describing an end that has not happened, and the only path that would
+  correct it is the exit policy, which runs from `lifecycle.finish()` alone: a
+  tab the mobile browser kills, or an iframe the LMS replaces without firing
+  `pagehide`, never reaches it, and `persist()` does not touch the exit. On a
+  page that was never terminal nothing is written, because a page the learner
+  is still working through is not suspended; that value belongs to the exit.
+
+  An unchanged value is not re-sent, and the check reads the **client's** write
+  cache (`client.hasWrittenValue()` / `getCachedValue()`) rather than a copy
+  held by the policy: `scorm.SetExit()` lets content write the element
+  directly, so a policy-local copy would go stale and skip the write that
+  matters. Both accessors are called behind a **capability check**, for the
+  reason `showFinalScore()` gives: the policy resolves its client off the
+  global, and a host that vendored this runtime before those accessors existed
+  would otherwise throw inside the exit write — taking the exit, the session
+  time and `LMSFinish` with it.
 - The success threshold is `cmi.student_data.mastery_score` when the LMS
   publishes one, otherwise **50**, which is the threshold eXeLearning game
   iDevices have always applied. `policy.setSuccessThreshold(null)` disables the
@@ -609,10 +813,13 @@ LMSGetValue("cmi.core.lesson_status")               → entry policy
 [LMSSetValue("cmi.core.lesson_status", "incomplete")]   (only when "" / "not attempted")
 LMSGetValue("cmi.student_data.mastery_score")       → optional success threshold
 LMSGetValue("cmi.suspend_data")                     → restore the activity registry
+-- nothing committed yet: everything above is in the LMS's data model only (§6.1) --
 … content traffic (scores, suspend_data, explicit status) …
+[LMSSetValue("cmi.core.exit", "")]                  (once, when the attempt turns terminal)
 -- visibilitychange → hidden (any number of times) --
 [LMSGetValue("cmi.core.lesson_status")]             (reconcile, only with required work pending)
 [LMSSetValue("cmi.core.lesson_status", "incomplete")]   (only when correcting the policy's own stale verdict)
+[LMSSetValue("cmi.core.exit", "suspend")]           (with it, when this session had cleared the exit)
 [LMSSetValue("cmi.suspend_data", …)]                (only when activities are registered)
 LMSSetValue("cmi.core.session_time", "HHHH:MM:SS.SS")
 LMSCommit("")

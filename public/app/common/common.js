@@ -1180,6 +1180,49 @@ var $exeDevices = {
                     }
                 },
 
+                /**
+                 * Opens the SCORM session for an iDevice and reads back what it
+                 * needs from it: the learner name, the score already stored for
+                 * this SCO, and the 0..100 bounds the LMS grades against.
+                 *
+                 * Deliberately does NOT gate on what init() returns. It answers
+                 * false when the session is already open, which inside a SCORM
+                 * package is the normal case — loadPage() opens it first — so
+                 * gating on it skipped the binding for exactly the sessions
+                 * that were working. Two iDevices grew that bug separately;
+                 * this is where the fix lives so a third cannot.
+                 *
+                 * @param {Object} scormgame The SCORM API wrapper.
+                 * @returns {Object} `{ userName, previousScore }`, defaulted
+                 *   when there is no session to read.
+                 */
+                bindSession: function (scormgame) {
+                    if (!scormgame) {
+                        return { userName: '', previousScore: '0' };
+                    }
+
+                    if (typeof scormgame.init === 'function') {
+                        scormgame.init();
+                    }
+
+                    if (typeof scormgame.SetScoreMax === 'function') {
+                        scormgame.SetScoreMax(100);
+                    } else if (typeof scormgame.set === 'function') {
+                        scormgame.set('cmi.core.score.max', '100');
+                    }
+
+                    if (typeof scormgame.SetScoreMin === 'function') {
+                        scormgame.SetScoreMin(0);
+                    } else if (typeof scormgame.set === 'function') {
+                        scormgame.set('cmi.core.score.min', '0');
+                    }
+
+                    return {
+                        userName: $exeDevices.iDevice.gamification.scorm.getUserName(scormgame),
+                        previousScore: $exeDevices.iDevice.gamification.scorm.getPreviousScore(scormgame),
+                    };
+                },
+
                 // Nueva función: Obtener puntuación de una actividad específica desde suspend_data
                 getActivityScore: function (ideviceNumber) {
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
@@ -1279,7 +1322,16 @@ var $exeDevices = {
                                 // required: it must never hold the page at
                                 // "incomplete".
                                 completionRequired: evaluable,
-                                weight: Number.isNaN(weight) || weight <= 0 ? 1 : weight,
+                                // No usable weight means 100, the same default
+                                // the editor writes into the form. It used to
+                                // be 1, and 28 of the 35 game iDevices never
+                                // default `weighted` when they load for
+                                // playback — so an activity that had never been
+                                // through the editor weighed a hundredth of one
+                                // that had, on the same page. Merely opening and
+                                // saving an iDevice re-weighted the page without
+                                // the author changing anything.
+                                weight: Number.isNaN(weight) || weight <= 0 ? 100 : weight,
                                 minimumScore: 0,
                                 maximumScore: 100,
                             },
@@ -1416,44 +1468,58 @@ var $exeDevices = {
 
                     const $sendScore = $gmain.closest('article').find(".Games-SendScore"),
                         $repeatActivity = $gmain.closest('article').find(".Games-RepeatActivity");
+                    // Every activity may be replayed. The four-way chains this
+                    // used to carry branched on `repeatActivity` too, but the
+                    // line below sets it unconditionally, so the two "you may
+                    // only do this once" arms were unreachable from here — and
+                    // from nowhere else, because this is the only place that
+                    // builds the text. What is left is the same partition the
+                    // live arms already made: whether the LMS handed back a
+                    // score from a previous visit.
+                    //
+                    // Their strings stay in every iDevice's msgsdefault and in
+                    // translations/, untouched: dropping the unreachable code
+                    // is not a decision to retire the "only once" option, and
+                    // restoring it must not mean translating them again.
                     game.repeatActivity = true;
                     let text = '';
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
                         text = game.msgs.msgScoreScorm;
                     } else if (game.isScorm === 1) {
-                        if (game.repeatActivity && previouScore !== '') {
-                            text = game.msgs.msgYouLastScore + ': ' + previouScore;
-                        } else if (game.repeatActivity && previouScore === "") {
-                            text = game.msgs.msgSaveAuto + ' ' + game.msgs.msgPlaySeveralTimes;
-                        } else if (!game.repeatActivity && previouScore === "") {
-                            text = game.msgs.msgOnlySaveAuto;
-                        } else if (!game.repeatActivity && previouScore !== "") {
-                            text = game.msgs.msgActityComply + ' ' + game.msgs.msgYouLastScore + ': ' + previouScore;
-                        }
+                        text = previouScore !== ''
+                            ? game.msgs.msgYouLastScore + ': ' + previouScore
+                            : game.msgs.msgSaveAuto + ' ' + game.msgs.msgPlaySeveralTimes;
                     } else if (game.isScorm === 2) {
                         $sendScore.show();
-                        if (game.repeatActivity && previouScore !== '') {
-                            text = game.msgs.msgYouLastScore + ': ' + previouScore;
-                        } else if (game.repeatActivity && previouScore === '') {
-                            text = game.msgs.msgSeveralScore;
-                        } else if (!game.repeatActivity && previouScore === '') {
-                            text = game.msgs.msgOnlySaveScore;
-                        } else if (!game.repeatActivity && previouScore !== '') {
-                            $sendScore.hide();
-                            text = game.msgs.msgActityComply + ' ' + game.msgs.msgYouScore + ': ' + previouScore;
-                        }
+                        text = previouScore !== ''
+                            ? game.msgs.msgYouLastScore + ': ' + previouScore
+                            : game.msgs.msgSeveralScore;
                     }
                     $repeatActivity.text(text).fadeIn();
                 },
 
                 getFinalScore: function (lmsData) {
                     // Single aggregation algorithm: when the SCORM 1.2
-                    // registry is present, its summary() owns the historical
-                    // weighting, so the displayed score, cmi.core.score.raw
-                    // and the completion policy always read the same number.
-                    // The local implementation below serves only the legacy
-                    // runtimes (SCORM 2004 and pre-rewrite packages), which
-                    // have no registry.
+                    // registry is present, its summary() owns the weighting,
+                    // so the displayed score, cmi.core.score.raw and the
+                    // completion policy always read the same number. The local
+                    // implementation below serves only the legacy runtimes
+                    // (SCORM 2004 and pre-rewrite packages), which have no
+                    // registry, and must stay arithmetically identical to
+                    // aggregateScore() in exe-scorm12-activities.js.
+                    //
+                    // Both used to scale the weights to integers summing to
+                    // exactly 100 by largest-remainder rounding. That made the
+                    // page's mark depend on the order the author placed the
+                    // iDevices in: the scaling leaves one point over, it goes
+                    // to the largest fraction, and with equal weights every
+                    // fraction ties — so a stable sort handed it to whichever
+                    // activity came first, multiplying that one activity's
+                    // score. Three equally weighted activities scoring
+                    // 100/50/0 aggregated to 50.5, and the same three as
+                    // 0/50/100 to 49.5: same work by the learner, opposite
+                    // verdict against a mastery score of 50. A weighted mean
+                    // is symmetric, so it cannot.
                     const scoreRegistry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
                     if (scoreRegistry) {
                         const aggregate = scoreRegistry.summary().score;
@@ -1471,51 +1537,27 @@ var $exeDevices = {
                         return Math.max(min, Math.min(num, max));
                     }
 
-                    let interactionsData = keys.map(key => {
-                        const activity = lmsData[key] || {};
-                        const scoreVal = parseFloat(activity.score) || 0;
-                        const weightVal = parseFloat(activity.weighted) || 1;
-                        return {
-                            score: clamp(scoreVal, 0, 100),
-                            weighted: clamp(weightVal, 1, 100),
-                        };
-                    });
-
-                    let sumWeights = interactionsData.reduce((acc, item) => acc + item.weighted, 0);
-                    const factor = (sumWeights !== 0) ? 100 / sumWeights : 1;
-                    const tempWeights = interactionsData.map(item => {
-                        const scaled = item.weighted * factor;
-                        const floored = Math.floor(scaled);
-                        const fraction = scaled - floored;
-                        return {
-                            score: item.score,
-                            floored,
-                            fraction
-                        };
-                    });
-
-                    let sumFloors = tempWeights.reduce((acc, w) => acc + w.floored, 0);
-                    let diff = 100 - sumFloors;
-
-                    tempWeights.sort((a, b) => b.fraction - a.fraction);
-
-                    for (let i = 0; i < tempWeights.length && diff !== 0; i++) {
-                        if (diff > 0) {
-                            tempWeights[i].floored += 1;
-                            diff--;
-                        }
-                    }
-
-                    function round2(num) {
-                        return Math.round(num * 100) / 100;
-                    }
-
+                    let sumWeights = 0;
                     let sumWeighted = 0;
-                    tempWeights.forEach(item => {
-                        sumWeighted += (item.score * item.floored);
+                    keys.forEach(key => {
+                        const activity = lmsData[key] || {};
+                        const score = clamp(parseFloat(activity.score) || 0, 0, 100);
+                        // Same rule as reportActivity: no usable weight is 100,
+                        // not 1. The two aggregations must stay arithmetically
+                        // identical, so their defaults cannot differ either.
+                        const storedWeight = parseFloat(activity.weighted);
+                        const weight = clamp(
+                            Number.isNaN(storedWeight) || storedWeight <= 0 ? 100 : storedWeight,
+                            1,
+                            100
+                        );
+                        sumWeighted += score * weight;
+                        sumWeights += weight;
                     });
-                    const finalScore = round2(sumWeighted / 100);
-                    return finalScore;
+
+                    // clamp() forces every weight to at least 1, so the sum of
+                    // one or more of them is never zero.
+                    return Math.round((sumWeighted / sumWeights) * 100) / 100;
                 },
 
                 registerActivity: function (game) {
@@ -1650,11 +1692,43 @@ var $exeDevices = {
                     return obj;
                 },
 
+                /**
+                 * Whether an activity publishes its progress by itself.
+                 *
+                 * Only automatic mode (isScorm 1) does. In manual mode the
+                 * learner owns the save button and decides when — if ever —
+                 * their grade is written, so nothing the activity reports on
+                 * its own may reach the LMS.
+                 *
+                 * Every SCORM-capable iDevice offers the three modes, so there
+                 * is nothing to except: a stored 2 always has a button behind
+                 * it. form, trueorfalse, scrambled-list and complete were the
+                 * four that hid the option and shipped a button that was
+                 * missing, dead or hidden; they behave like the rest now.
+                 *
+                 * @param {Object} game The iDevice options object.
+                 * @returns {boolean} true when the activity reports on its own.
+                 */
+                reportsAutomatically: function (game) {
+                    if (typeof game !== 'object' || game === null) return false;
+                    return Number(game.isScorm) === 1;
+                },
+
                 sendScoreNew: function (auto, game) {
                     if (typeof game !== 'object' || game === null) {
                         return;
                     }
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
+                        return;
+                    }
+                    // One guard for every iDevice, instead of the same
+                    // condition repeated at each of the hundred-odd places an
+                    // activity reports its progress — where it was easy to
+                    // forget one, and where forgetting it meant a manual-mode
+                    // activity quietly grading the learner behind the button.
+                    // A hand-sent score is never dropped: it came from the
+                    // button, which only exists in manual mode.
+                    if (auto === true && !$exeDevices.iDevice.gamification.scorm.reportsAutomatically(game)) {
                         return;
                     }
                     const $gmain = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
@@ -1666,14 +1740,22 @@ var $exeDevices = {
                     if (game.gameStarted || game.gameOver) {
                         game.repeatActivity = true;
                         // Explicit completion signal for the activity registry:
-                        // the learner either finished the activity (gameOver)
-                        // or submitted their score by hand (!auto). Counting a
-                        // manual submission as completion is a documented
-                        // policy decision (ADR-2209-02): submitting is the
-                        // learner's explicit act of finishing the attempt, and
-                        // it is the only completion signal games without a
-                        // game-over state can give.
-                        const activityCompleted = game.gameOver === true || auto !== true;
+                        // the activity is finished when, and only when, it says
+                        // it is. No button finishes anything.
+                        //
+                        // This used to read `gameOver === true || auto !== true`,
+                        // counting any hand-sent score as completion. The save
+                        // button is not a hand-in: it exists so the learner
+                        // decides when their grade is written, if ever, and
+                        // pressing it mid-game published a terminal state for an
+                        // activity still being played — and republished it on
+                        // every further press, which is what made the LMS
+                        // re-evaluate a verdict it had already reached.
+                        //
+                        // The learner who presses it before starting is told to
+                        // start first: that is the else branch below, which
+                        // reports nothing at all.
+                        const activityCompleted = game.gameOver === true;
                         // Single owner of cmi.suspend_data: the registry when
                         // the SCORM 1.2 runtime is present, the legacy line
                         // format otherwise.
@@ -1683,39 +1765,60 @@ var $exeDevices = {
                             : $exeDevices.iDevice.gamification.scorm.parseSuspendData(
                                   pipwerks.SCORM.get("cmi.suspend_data") || ""
                               );
-                        const scoreVal = parseFloat(lmsData[game.ideviceNumber]?.score);
-                        const previousScore = !Number.isNaN(scoreVal) ? (scoreVal / 10).toFixed(2) : '';
+                        // The restored score used to feed the "you may only save
+                        // once" arm below, which could never be taken. lmsData
+                        // is still needed: updateActivity carries it.
 
+                        // Number.isFinite, not !isNaN: an iDevice computes its
+                        // mark as hits over a total it reads from its own data,
+                        // and a total of zero — an activity saved with no
+                        // questions, a deck that failed to load — makes that
+                        // division Infinity. isNaN lets Infinity through, and
+                        // it travelled into the registry and out to
+                        // cmi.core.score.raw as the learner's grade.
                         const scoreNumber = parseFloat(game.scorerp);
-                        const formattedScore = !isNaN(scoreNumber) ? scoreNumber.toFixed(2) : '0';
+                        const formattedScore = Number.isFinite(scoreNumber) ? scoreNumber.toFixed(2) : '0';
                         game.scorerp = formattedScore;
 
+                        // Read across updateActivity, which is what writes the
+                        // status. A report that moves it is the one whose icon
+                        // the learner is waiting on, and it gets a second,
+                        // later retry (see triggerMoodleDetection).
+                        const statusBefore =
+                            $exeDevices.iDevice.gamification.scorm.readLessonStatus();
+
                         if (!auto) {
+                            // No "you may only save once" arm, and no hiding of
+                            // the send button: both branched on
+                            // `repeatActivity`, which the line above sets
+                            // unconditionally, so neither could ever be taken.
+                            // A manual submit always reports, and the button
+                            // stays available for the next one. msgOnlySaveScore
+                            // keeps its string and its translations.
                             $sendScore.show();
-                            if (!game.repeatActivity && previousScore !== '') {
-                                message = game.userName !== ''
-                                    ? (game.userName + ' ' + game.msgs.msgOnlySaveScore)
-                                    : game.msgs.msgOnlySaveScore;
-                            } else {
-                                game.previousScore = formattedScore;
-                                $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);
+                            game.previousScore = formattedScore;
+                            $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);
 
-                                message = game.userName !== ''
-                                    ? (game.userName + '. ' + game.msgs.msgYouScore + ': ' + formattedScore)
-                                    : (game.msgs.msgYouScore + ': ' + formattedScore);
+                            message = game.userName !== ''
+                                ? (game.userName + '. ' + game.msgs.msgYouScore + ': ' + formattedScore)
+                                : (game.msgs.msgYouScore + ': ' + formattedScore);
 
-                                if (!game.repeatActivity) {
-                                    $sendScore.hide();
-                                }
-
-                                $repeatActivity.text(game.msgs.msgYouScore + ': ' + formattedScore).show();
-                            }
+                            $repeatActivity.text(game.msgs.msgYouScore + ': ' + formattedScore).show();
                         } else {
                             game.previousScore = formattedScore;
                             $exeDevices.iDevice.gamification.scorm.updateActivity(game, lmsData, activityCompleted);
                             message = game.msgs.msgYouScore + ': ' + formattedScore;
                             $repeatActivity.text(message).show();
                         }
+
+                        // updateActivity committed synchronously above; this
+                        // schedules the deferred retry that carries whatever
+                        // settles after it. See triggerMoodleDetection.
+                        const statusAfter =
+                            $exeDevices.iDevice.gamification.scorm.readLessonStatus();
+                        $exeDevices.iDevice.gamification.scorm.triggerMoodleDetection(
+                            statusBefore !== statusAfter
+                        );
 
                     } else {
                         message = game.msgs.msgEndGameScore;
@@ -1737,10 +1840,162 @@ var $exeDevices = {
                  * activity. Supplied explicitly by the caller — the completion
                  * policy never infers it from a game property.
                  */
+                /**
+                 * Persist the session (LMSCommit), through the SCORM 1.2
+                 * runtime when it is present and the vendored wrapper
+                 * otherwise.
+                 *
+                 * Branches on the capability, not on the runtime object, for
+                 * the same reason showFinalScore does: the Moodle plugin
+                 * injects its own vendored copy of the runtime, which may come
+                 * from a different release. isActive() is checked first —
+                 * iDevices register on jQuery ready, before loadPage(), and
+                 * commit() warns when there is no session.
+                 */
+                commitSession: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) return;
+                    const runtime = typeof window !== 'undefined' ? window.exeScorm12 : null;
+                    if (
+                        runtime &&
+                        runtime.client &&
+                        typeof runtime.client.commit === 'function' &&
+                        typeof runtime.client.isActive === 'function' &&
+                        runtime.client.isActive()
+                    ) {
+                        runtime.client.commit();
+                        return;
+                    }
+                    if (typeof pipwerks.SCORM.save === 'function') {
+                        pipwerks.SCORM.save();
+                    }
+                },
+
+                /**
+                 * Deferred retry commit, so a value written just as the
+                 * interface settles still reaches the LMS — and so Moodle
+                 * redraws its course-structure menu from stored data.
+                 *
+                 * Moodle redraws the SCO status only on LMSCommit — it does not
+                 * observe the DOM inside the SCO's iframe, so nudging the markup
+                 * is a no-op for detection. updateActivity already commits
+                 * synchronously, and that remains the guarantee: a
+                 * deferred-only commit would be lost if the learner navigates
+                 * within the delay. This covers the writes that land after that
+                 * commit — a status settled by a timer or an animation — which
+                 * an activity reporting once, from a check button, has no later
+                 * report to carry for it.
+                 *
+                 * It also carries the menu refresh, which the synchronous
+                 * commit cannot. Moodle picks the transport for a commit in
+                 * useBeaconAPI(), nested inside DoRequest() in
+                 * mod/scorm/request.js (MOODLE_405_STABLE, identical in
+                 * MOODLE_500_STABLE):
+                 *
+                 *     if (window.event && ['beforeunload', 'unload', 'pagehide']
+                 *             .indexOf(window.event.type)) {
+                 *         window.mod_scorm_useBeaconAPI = true;
+                 *     }
+                 *
+                 * The comparison is missing its `!== -1`: indexOf answers -1 for
+                 * any event type NOT in that list, and -1 is truthy, so the test
+                 * is inverted — a `click` turns the flag on while `beforeunload`
+                 * (index 0, falsy) does not. Every commit an iDevice issues runs
+                 * inside a click handler, so from the learner's first answer
+                 * Moodle sends commits through navigator.sendBeacon: the data
+                 * POST does not block, and the TOC refresh LMSCommit fires
+                 * straight afterwards (a GET to prereqs.php) overtakes it and
+                 * redraws the course-structure menu from the pre-commit state.
+                 *
+                 * This retry is what puts the icon right, and it needs nothing
+                 * but time: LMSCommit fires that refresh whatever the transport,
+                 * and this commit carries no data of its own — CollectData
+                 * advanced `defaultvalue` during the first one, so its
+                 * datastring is empty. What is wanted is the refresh behind it,
+                 * reading a server that has by then received the first beacon.
+                 *
+                 * The delay is therefore a margin, not a guarantee. Measured
+                 * against a live Moodle: beacon 337-877 ms, TOC refresh
+                 * 224-572 ms. At the 50 ms this used to carry it always redrew
+                 * the old status. A beacon slower than the delay leaves the icon
+                 * as it is today, and LMSFinish refreshes the menu again on the
+                 * way out — the retry can never make things worse.
+                 */
+                moodleDetectionDelay: 1200,
+
+                /**
+                 * Second, later attempt, for the report that moves the status.
+                 *
+                 * Every report gets the 1200 ms retry above, and that margin is
+                 * usually enough. When it is not, an intermediate score simply
+                 * shows stale in the menu until the next answer commits again —
+                 * a self-correcting miss. The report that turns the page
+                 * passed or failed has no next answer behind it: if its refresh
+                 * loses the race, the icon stays wrong for the rest of the
+                 * visit. That one is worth a second look, far enough out to
+                 * clear a beacon that was slower than the first margin.
+                 *
+                 * Only on a status change, so the extra request rides on the
+                 * one report per attempt that needs it rather than on every
+                 * answer.
+                 */
+                moodleStatusRetryDelay: 4000,
+
+                /**
+                 * @returns {string} cmi.core.lesson_status, or '' when the API
+                 * is absent or refuses the read — callers only compare it with
+                 * itself, so an unreadable status simply reports no change.
+                 */
+                readLessonStatus: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) return '';
+                    try {
+                        return pipwerks.SCORM.get('cmi.core.lesson_status') || '';
+                    } catch (e) {
+                        return '';
+                    }
+                },
+
+                /**
+                 * @param {boolean} [statusChanged] True when this report moved
+                 * cmi.core.lesson_status, which buys it the later second try.
+                 */
+                triggerMoodleDetection: function (statusChanged) {
+                    if (typeof setTimeout !== 'function') return;
+                    const scorm = $exeDevices.iDevice.gamification.scorm;
+                    const retry = function () {
+                        try {
+                            scorm.commitSession();
+                        } catch (e) {
+                            // The API may not be in a committable state; the
+                            // synchronous commit is the guarantee, not this.
+                        }
+                    };
+                    setTimeout(retry, scorm.moodleDetectionDelay);
+                    if (statusChanged === true) {
+                        setTimeout(retry, scorm.moodleStatusRetryDelay);
+                    }
+                },
+
                 updateActivity: function (game, lmsData, completed) {
                     if (typeof pipwerks === 'undefined' || !pipwerks.SCORM || typeof game !== 'object' || game === null) {
                         return;
                     }
+
+                    // Everything the branches below write is an LMSSetValue, which
+                    // only reaches the LMS's in-memory data model. Moodle refreshes
+                    // its course-structure menu on LMSCommit and nowhere else
+                    // (mod/scorm/datamodels/scorm_12.js LMSCommit ->
+                    // connectPrereqCallback, unless hidetoc === '3'), so without a
+                    // commit the mark the learner has just earned stays out of the
+                    // index for the rest of the visit. Moodle's own autocommit is no
+                    // substitute: it ships disabled and, when enabled, is a
+                    // 60-second timer.
+                    //
+                    // Committing mid-activity is safe: LMSCommit runs
+                    // StoreData(cmi, false), and with storetotaltime false it
+                    // neither promotes the status nor applies the mastery_score
+                    // override. It persists what was written; it decides nothing.
+                    const commitSession =
+                        $exeDevices.iDevice.gamification.scorm.commitSession;
 
                     const registry = $exeDevices.iDevice.gamification.scorm.getActivityRegistry();
                     if (registry) {
@@ -1758,10 +2013,24 @@ var $exeDevices = {
                         if (runtime.policy && typeof runtime.policy.persistActivities === 'function') {
                             runtime.policy.persistActivities();
                         }
-                        $exeDevices.iDevice.gamification.scorm.showFinalScore(
-                            $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry(),
-                            game
-                        );
+                        try {
+                            $exeDevices.iDevice.gamification.scorm.showFinalScore(
+                                $exeDevices.iDevice.gamification.scorm.buildLmsDataFromRegistry(),
+                                game
+                            );
+                        } finally {
+                            // In a `finally`, because showFinalScore writes the score
+                            // and the status and only then paints the result: a failure
+                            // while painting — a missing message, a node an iDevice
+                            // expects and its markup does not have — would otherwise
+                            // leave the LMS holding the values with nothing to persist
+                            // them, which is exactly "the score is right but the menu
+                            // never updates". An activity that reports once, from a
+                            // check button, has no second chance; one that reports per
+                            // answer hides it, because the next report commits what the
+                            // last one left behind.
+                            commitSession();
+                        }
                         return;
                     }
 
@@ -1778,8 +2047,11 @@ var $exeDevices = {
 
                     pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
 
-                    $exeDevices.iDevice.gamification.scorm.showFinalScore(lmsData, game);
-
+                    try {
+                        $exeDevices.iDevice.gamification.scorm.showFinalScore(lmsData, game);
+                    } finally {
+                        commitSession();
+                    }
                 },
 
                 showFinalScore: function (lmsData, game) {
@@ -2045,8 +2317,20 @@ var $exeDevices = {
                     }
                     if (game && game.id && game.evaluation && game.evaluationID.length > 0) {
                         const $main = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
+                        // Number.isFinite, not !isNaN, and here rather than in
+                        // each iDevice: twenty of them compute the mark as hits
+                        // over a count they read from their own data, and an
+                        // activity saved with nothing scorable makes that
+                        // division 0/0. sendScoreNew already refuses the result
+                        // on the way to the LMS; this path had no such guard, so
+                        // the NaN was stored in localStorage and decided the
+                        // icon through `parseFloat(score) >= 5`, which a NaN
+                        // fails — an activity the learner passed could be shown
+                        // as failed. isNaN would let Infinity through, which a
+                        // count of zero also produces.
+                        const rawScore = parseFloat(game.scorerp);
+                        const score = Number.isFinite(rawScore) ? rawScore : 0;
                         const name = $exeDevices.iDevice.gamification.report.getNameIdevice($main),
-                            score = game.scorerp,
                             formattedDate = $exeDevices.iDevice.gamification.report.getDateString(),
                             scorm = {
                                 'id': game.id,

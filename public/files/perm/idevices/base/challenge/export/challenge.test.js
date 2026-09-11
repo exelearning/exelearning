@@ -457,6 +457,51 @@ describe('challenge iDevice export', () => {
       expect(calls[0].scorerp).toBe(2.5);
     });
 
+    // padlock, which behaves correctly in the LMS, raises the flag and reports
+    // with nothing in between, then paints. challenge used to paint the whole
+    // results screen first, so anything failing there — a missing message, a
+    // node the markup does not have — took the one report that can carry the
+    // completion with it.
+    it('reports before painting the results screen', () => {
+      const instance = givenInstance({
+        solvedsChallenges: [0, 1, 2],
+        desafioSolved: true,
+      });
+      let reportedBeforePainting = false;
+      const previousShowScoreGame = $eXeDesafio.showScoreGame;
+      $eXeDesafio.showScoreGame = () => {
+        reportedBeforePainting = calls.length > 0;
+      };
+
+      try {
+        $eXeDesafio.gameOver(0, instance);
+      } finally {
+        $eXeDesafio.showScoreGame = previousShowScoreGame;
+      }
+
+      expect(reportedBeforePainting).toBe(true);
+    });
+
+    it('still reports when painting the results screen throws', () => {
+      const instance = givenInstance({
+        solvedsChallenges: [0, 1, 2],
+        desafioSolved: true,
+      });
+      const previousShowScoreGame = $eXeDesafio.showScoreGame;
+      $eXeDesafio.showScoreGame = () => {
+        throw new Error('missing node');
+      };
+
+      try {
+        expect(() => $eXeDesafio.gameOver(0, instance)).toThrow();
+      } finally {
+        $eXeDesafio.showScoreGame = previousShowScoreGame;
+      }
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].gameOver).toBe(true);
+    });
+
     it('sends the terminal report after the intermediate one on the solving path', () => {
       // answerChallenge saves (and so reports) before calling gameOver, so the LMS
       // must see an unfinished report followed by a finished one.

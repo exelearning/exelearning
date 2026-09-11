@@ -16,7 +16,6 @@ var $eXe3Dmol = {
     options: {},
     userName: '',
     previousScore: '',
-    initialScore: '',
     msgs: '',
     hasSCORMbutton: false,
     isInExe: false,
@@ -180,14 +179,6 @@ var $eXe3Dmol = {
                         <div class="exeQuextIcons exeQuextIcons-Score" title="${msgs.msgScore}"></div>
                         <p><span class="sr-av">${msgs.msgScore}: </span><span id="dmolpPScore-${instance}">0</span></p>
                     </div>
-                    <div class="DMOLP-LifesGame" id="dmolpLifesGame-${instance}">
-                        ${$eXe3Dmol.createLives(msgs)}
-                    </div>
-                    <div class="DMOLP-NumberLifesGame" id="dmolpNumberLivesGame-${instance}">
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life"></div>
-                        <p id="dmolpPLifes-${instance}">0</p>
-                    </div>
                     <div class="DMOLP-TimeNumber">
                         <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
                         <div class="exeQuextIcons exeQuextIcons-Time" title="${msgs.msgTime}"></div>
@@ -214,7 +205,6 @@ var $eXe3Dmol = {
                     <div class="DMOLP-GameOver" id="dmolpGamerOver-${instance}">
                         <div class="DMOLP-DataImage">
                             <img src="${path}exequextwon.png" class="DMOLP-HistGGame" id="dmolpHistGame-${instance}" alt="${msgs.msgAllQuestions}" />
-                            <img src="${path}exequextlost.png" class="DMOLP-LostGGame" id="dmolpLostGame-${instance}" alt="${msgs.msgLostLives}" />
                         </div>
                         <div class="DMOLP-DataScore">
                             <p id="dmolpOverScore-${instance}">Score: 0</p>
@@ -316,18 +306,6 @@ var $eXe3Dmol = {
          ${$exeDevices.iDevice.gamification.scorm.addButtonScoreNew(mOptions, this.isInExe)}
         `;
         return html;
-    },
-
-    createLives: function (msgs) {
-        let lives = [...Array(5)]
-            .map(
-                () => `
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life" title="${msgs.msgLive}"></div>
-                    `
-            )
-            .join('');
-        return lives;
     },
 
     createOptions: function (msgs, instance) {
@@ -469,7 +447,6 @@ var $eXe3Dmol = {
             typeof mOptions.percentajeFB != 'undefined'
                 ? mOptions.percentajeFB
                 : 100;
-        mOptions.useLives = mOptions.gameMode != 0 ? false : mOptions.useLives;
         mOptions.gameOver = false;
         mOptions.evaluation =
             typeof mOptions.evaluation == 'undefined'
@@ -729,7 +706,6 @@ var $eXe3Dmol = {
         $eXe3Dmol.applyModelViewportScale(instance);
         $eXe3Dmol.updateFullscreenLayout(instance);
 
-        mOptions.livesLeft = mOptions.numberLives;
 
         $(`#dmolpOptionsDiv-${instance}`)
             .find('.DMOLP-Options')
@@ -761,7 +737,6 @@ var $eXe3Dmol = {
             );
         });
 
-        $eXe3Dmol.updateLives(instance);
         $(`#dmolpPNumber-${instance}`).text(mOptions.numberQuestions);
         $(`#dmolpGameContainer-${instance} .DMOLP-StartGame`).show();
         $(`#dmolpQuestionDiv-${instance}`).hide();
@@ -933,6 +908,16 @@ var $eXe3Dmol = {
                     }
                 }
                 $eXe3Dmol.showModelAtIndex(mOptions.showCurrentIndex, instance);
+                // Reaching the last model is the end of a presentation: there
+                // is nothing further to visit. common.js derives completion
+                // from `gameOver === true || auto !== true`, and this report is
+                // automatic, so without the flag the page stayed `incomplete`
+                // even with every model seen and the score already at 10.
+                // Raised before the report, so the one carrying the full mark
+                // is the one that says the activity is finished.
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 if (mOptions.isScorm > 0) {
                     $eXe3Dmol.sendScore(true, instance);
                 }
@@ -1447,7 +1432,19 @@ var $eXe3Dmol = {
 
         if (codeEntered === correctCode) {
             $eXe3Dmol.showCubiertaOptions(false, instance);
-            $eXe3Dmol.startGame(instance);
+            // Quiz mode starts here, and startGame publishes the opening mark
+            // through the first showQuestion. Presentation mode cannot: it was
+            // already started by initShowMode behind the cover, so startGame
+            // returns early — which is what stops it laying the quiz interface
+            // over the presentation, and also what left the LMS hearing
+            // nothing. Report it here instead.
+            if (mOptions.activityMode === 'show') {
+                if (mOptions.isScorm === 1) {
+                    $eXe3Dmol.sendScore(true, instance);
+                }
+            } else {
+                $eXe3Dmol.startGame(instance);
+            }
             $(`#dmolpLinkMaximize-${instance}`).trigger('click');
         } else {
             $(`#dmolpMesajeAccesCodeE-${instance}`)
@@ -1482,7 +1479,6 @@ var $eXe3Dmol = {
         const mOptions = $eXe3Dmol.options[instance],
             msgs = mOptions.msgs,
             $histGame = $(`#dmolpHistGame-${instance}`),
-            $lostGame = $(`#dmolpLostGame-${instance}`),
             $overPoint = $(`#dmolpOverScore-${instance}`),
             $overHits = $(`#dmolpOverHits-${instance}`),
             $overErrors = $(`#dmolpOverErrors-${instance}`),
@@ -1493,7 +1489,6 @@ var $eXe3Dmol = {
             messageColor = 2;
 
         $histGame.hide();
-        $lostGame.hide();
         $overPoint.show();
         $overHits.show();
         $overErrors.show();
@@ -1506,29 +1501,6 @@ var $eXe3Dmol = {
                 if (mOptions.itinerary.showClue) {
                     if (mOptions.obtainedClue) {
                         message = msgs.msgAllQuestions;
-                        $showClue
-                            .text(
-                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
-                            )
-                            .show();
-                    } else {
-                        $showClue
-                            .text(
-                                msgs.msgTryAgain.replace(
-                                    '%s',
-                                    mOptions.itinerary.percentageClue
-                                )
-                            )
-                            .show();
-                    }
-                }
-                break;
-            case 1:
-                message = msgs.msgLostLives;
-                messageColor = 1;
-                $lostGame.show();
-                if (mOptions.itinerary.showClue) {
-                    if (mOptions.obtainedClue) {
                         $showClue
                             .text(
                                 `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
@@ -1608,9 +1580,14 @@ var $eXe3Dmol = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
-        mOptions.livesLeft = mOptions.numberLives;
+        // gameOver() leaves this true and renames the same button to New game,
+        // so a replay came back in with the finished attempt's flag still up.
+        // sendScoreNew derives completion from it, so every report of the new
+        // round said the activity was over and the page stayed complete in the
+        // LMS from the first answer. Its twin electrical-circuits lowers it
+        // here for the same reason.
+        mOptions.gameOver = false;
 
-        $eXe3Dmol.updateLives(instance);
         $(`#dmolpPNumber-${instance}`).text(mOptions.numberQuestions);
 
         mOptions.selectsGame.forEach((question) => {
@@ -1678,6 +1655,13 @@ var $eXe3Dmol = {
         $(`#dmolpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        // The opening zero, published here because starting the attempt is the
+        // event. It used to arrive from showQuestion(), which reported on every
+        // question and so republished the previous answer's mark a moment after
+        // the answer had already published it.
+        if (mOptions.isScorm === 1) {
+            $eXe3Dmol.sendScore(true, instance);
+        }
         $eXe3Dmol.newQuestion(instance);
     },
 
@@ -1689,6 +1673,14 @@ var $eXe3Dmol = {
 
     gameOver: function (type, instance) {
         const mOptions = $eXe3Dmol.options[instance];
+        // Answering the last question raises gameOver and reports the finish
+        // itself, on purpose: the reveal delay that follows may be seconds
+        // long, and a learner who leaves during it must still have the activity
+        // recorded as finished. So by the time this runs the LMS may already
+        // know. Read that before the flag is raised below, and report only when
+        // nobody has — which is the case this function alone covers: the clock
+        // running out with the question unanswered.
+        const alreadyReportedFinished = mOptions.gameOver === true;
         mOptions.gameStarted = false;
         mOptions.gameActived = false;
         $eXe3Dmol.setModelStyleControlVisibility(instance, false);
@@ -1704,10 +1696,7 @@ var $eXe3Dmol = {
 
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        const message =
-            type === 0
-                ? mOptions.msgs.msgAllQuestions
-                : mOptions.msgs.msgLostLives;
+        const message = mOptions.msgs.msgAllQuestions;
         $eXe3Dmol.showMessage(2, message, instance);
         $eXe3Dmol.showScoreGame(type, instance);
         $eXe3Dmol.clearQuestions(instance);
@@ -1722,21 +1711,14 @@ var $eXe3Dmol = {
 
         mOptions.gameOver = true;
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXe3Dmol.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXe3Dmol.sendScore(true, instance);
-                $(`#dmolpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $eXe3Dmol.initialScore = score;
-            }
+        // No "score only once" lock: the end of the attempt is always reported.
+        // The lock this used to carry could never close anyway —
+        // registerActivity forces `repeatActivity` to true at page load
+        // (common.js updateScormNew), so it short-circuited the condition
+        // before the learner touched anything. The activity registry owns what
+        // has been recorded.
+        if (mOptions.isScorm === 1 && !alreadyReportedFinished) {
+            $eXe3Dmol.sendScore(true, instance);
         }
         $eXe3Dmol.saveEvaluation(instance);
         $eXe3Dmol.showFeedBack(instance);
@@ -1905,50 +1887,21 @@ var $eXe3Dmol = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXe3Dmol.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXe3Dmol.sendScore(true, instance);
-                $(`#dmolpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
-
+        // No report here. Painting a question is not an event that changes the
+        // mark: the answer before it already published the new score, and this
+        // put the same value on the wire again a moment later. What starts the
+        // attempt reports in startGame(), what changes the mark reports in
+        // answerQuestion(), and what ends it reports in gameOver().
+        //
+        // The score line the removed block also wrote was dead: the id
+        // `dmolpRepeatActivity-N` exists in no markup of this iDevice. The span
+        // the learner sees is the shared `.Games-RepeatActivity`, which
+        // sendScoreNew writes on every report.
         $eXe3Dmol.saveEvaluation(instance);
-    },
-
-    updateLives: function (instance) {
-        const mOptions = $eXe3Dmol.options[instance];
-        $(`#dmolpPLifes-${instance}`).text(mOptions.livesLeft);
-        const $livesIcons = $(`#dmolpLifesGame-${instance}`).find(
-            '.exeQuextIcons-Life'
-        );
-
-        if (mOptions.useLives) {
-            $livesIcons.each((index, element) => {
-                $(element).toggle(index < mOptions.livesLeft);
-            });
-        } else {
-            $livesIcons.hide();
-            $(`#dmolpNumberLivesGame-${instance}`).hide();
-        }
     },
 
     newQuestion: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
-
-        if (mOptions.useLives && mOptions.livesLeft <= 0) {
-            $eXe3Dmol.gameOver(1, instance);
-            return;
-        }
 
         const mActiveQuestion =
             $eXe3Dmol.updateNumberQuestion(
@@ -2056,6 +2009,20 @@ var $eXe3Dmol = {
 
         $eXe3Dmol.updateScore(correct, instance);
 
+        // Answering the last question ends the attempt. Raise the flag and
+        // report here, before the reveal delay below: gameOver() is only
+        // reached from the setTimeout that follows it, so a learner who leaves
+        // while the solution is on screen used to have neither this answer's
+        // points nor the completion recorded. There is no later report to
+        // carry them — showQuestion only reports when a NEXT question appears,
+        // and after the last one there is none.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+            if (mOptions.isScorm === 1) {
+                $eXe3Dmol.sendScore(true, instance);
+            }
+        }
+
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 1000;
@@ -2121,7 +2088,21 @@ var $eXe3Dmol = {
 
         $eXe3Dmol.updateScore(value, instance);
 
-         let timeShowSolution = mOptions.showSolution
+        // Answering the last question ends the attempt. Raise the flag and
+        // report here, before the reveal delay below: gameOver() is only
+        // reached from the setTimeout that follows it, so a learner who leaves
+        // while the solution is on screen used to have neither this answer's
+        // points nor the completion recorded. There is no later report to
+        // carry them — showQuestion only reports when a NEXT question appears,
+        // and after the last one there is none.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+            if (mOptions.isScorm === 1) {
+                $eXe3Dmol.sendScore(true, instance);
+            }
+        }
+
+        let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
             : 1000;
         const percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
@@ -2217,10 +2198,6 @@ var $eXe3Dmol = {
             } else {
                 obtainedPoints = -330 * question.customScore;
                 points = obtainedPoints;
-                if (mOptions.useLives) {
-                    mOptions.livesLeft--;
-                    $eXe3Dmol.updateLives(instance);
-                }
             }
         }
 
@@ -2264,9 +2241,7 @@ var $eXe3Dmol = {
             pts = mOptions.msgs.msgPoints || 'puntos';
         let message = '';
 
-        message = mOptions.useLives
-                ? `${messageError} ${mOptions.msgs.msgLoseLive}`
-                : `${messageError} ${npts} ${pts}`;
+        message = `${messageError} ${npts} ${pts}`;
             if (mOptions.gameMode > 0) {
                 message = messageError;
             }

@@ -1130,6 +1130,9 @@ var $quickquestions = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
+        // gameOver() leaves this true; a replay starts as unfinished before the
+        // automatic zero-score report is sent to SCORM.
+        mOptions.gameOver = false;
         mOptions.livesLeft = mOptions.numberLives;
 
         $quickquestions.updateLives(instance);
@@ -1172,6 +1175,7 @@ var $quickquestions = {
         $('#quextPErrors-' + instance).text(mOptions.errors);
         $('#quextPScore-' + instance).text(mOptions.score);
         mOptions.gameStarted = true;
+        $quickquestions.saveScormScore(instance);
         $quickquestions.newQuestion(instance);
     },
 
@@ -1249,20 +1253,15 @@ var $quickquestions = {
         mOptions.gameOver = true;
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestions.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestions.sendScore(true, instance);
-                $('#quextRepeatActivity-' + instance).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $quickquestions.initialScore = score;
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $quickquestions.sendScore(true, instance);
+            $('#quextRepeatActivity-' + instance).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
+            mOptions.initialScore = score;
         }
 
         $quickquestions.saveEvaluation(instance);
@@ -1326,19 +1325,14 @@ var $quickquestions = {
         $quickquestions.showMessage(0, '', instance);
 
         if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $quickquestions.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $quickquestions.sendScore(true, instance);
-                $('#quextRepeatActivity-' + instance).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
+            const score = (
+                (mOptions.scoreGame * 10) /
+                mOptions.scoreTotal
+            ).toFixed(2);
+            $quickquestions.sendScore(true, instance);
+            $('#quextRepeatActivity-' + instance).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
+            );
         }
 
         $quickquestions.saveEvaluation(instance);
@@ -1725,6 +1719,17 @@ var $quickquestions = {
             answord = parseInt(respuesta, 10);
 
         $quickquestions.updateScore(solution === answord, instance);
+        // Answering the last question ends the attempt — either the questions
+        // ran out or the lives did. Raise the flag before the report so it
+        // carries the completion, and so a learner who leaves during the reveal
+        // delay below still has the activity recorded as finished.
+        if (
+            mOptions.activeQuestion + 1 >= mOptions.numberQuestions ||
+            (mOptions.useLives && mOptions.livesLeft <= 0)
+        ) {
+            mOptions.gameOver = true;
+        }
+        $quickquestions.saveScormScore(instance);
 
         const percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
 
@@ -1853,6 +1858,30 @@ var $quickquestions = {
             mOptions,
             $quickquestions.isInExe
         );
+    },
+
+    /**
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen only from showQuestion(), i.e. once
+     * the setTimeout that reveals the next question had elapsed. That put the
+     * mark in the LMS seconds late, and a learner who left during that window
+     * lost the answer: the timer never fired.
+     *
+     * Carries the same non-repeat lock showQuestion applies, so an activity
+     * that may only be scored once is not scored twice through this path.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $quickquestions.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        // No "score only once" lock: every answer is reported. The lock this
+        // used to carry could never close anyway — registerActivity forces
+        // `repeatActivity` to true at page load (common.js updateScormNew), so
+        // it short-circuited the condition before the learner touched
+        // anything. The activity registry owns what has been recorded.
+        $quickquestions.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {

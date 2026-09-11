@@ -76,7 +76,8 @@ var $interactivevideo = {
     scorm: {
         isScorm: 0,
         textButtonScorm: 'Save score',
-        repeatActivity: false,
+        // Activities may be replayed by default, as everywhere else.
+        repeatActivity: true,
     },
     userName: '',
     previousScore: '',
@@ -135,34 +136,76 @@ var $interactivevideo = {
     },
 
     initSCORM: function () {
-        $interactivevideo.mScorm = scorm;
-        const callSucceeded = $interactivevideo.mScorm.init();
-        if (!callSucceeded) {
+        $interactivevideo.mScorm =
+            typeof scorm !== 'undefined' ? scorm : window.scorm;
+        if (!$interactivevideo.mScorm) {
             this.enable();
             return;
         }
-
-        $interactivevideo.userName =
-            $exeDevices.iDevice.gamification.scorm.getUserName(
-                $interactivevideo.mScorm
-            );
-        $interactivevideo.previousScore =
-            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
-                $interactivevideo.mScorm
-            );
-
-        if (typeof $interactivevideo.mScorm.SetScoreMax === 'function') {
-            $interactivevideo.mScorm.SetScoreMax(100);
-        } else {
-            $interactivevideo.mScorm.set('cmi.core.score.max', '100');
-        }
-        if (typeof $interactivevideo.mScorm.SetScoreMin === 'function') {
-            $interactivevideo.mScorm.SetScoreMin(0);
-        } else {
-            $interactivevideo.mScorm.set('cmi.core.score.min', '0');
-        }
+        const session = $exeDevices.iDevice.gamification.scorm.bindSession(
+            $interactivevideo.mScorm
+        );
+        $interactivevideo.userName = session.userName;
+        $interactivevideo.previousScore = session.previousScore;
 
         this.enable();
+        this.registerScormActivity();
+    },
+
+    /**
+     * Root element holding the shared SCORM markup.
+     *
+     * addButtonScoreNew (common.js) renders `.Games-SendScore` and
+     * `.Games-RepeatActivity` inside this container and gives them classes,
+     * never ids — so they have to be reached by class from here.
+     *
+     * @returns {Object} The jQuery-wrapped container.
+     */
+    getIdeviceRoot: function () {
+        return $('.exe-interactive-video').eq(0);
+    },
+
+    /**
+     * Declare the activity to the page's SCORM tracking on load.
+     *
+     * This used to happen only from cover.hide(), i.e. when the learner pressed
+     * start, which left this the one scored iDevice missing from the page's
+     * tracking until it was played. Two things broke: the page's weighted
+     * average was computed over whichever activities happened to be registered,
+     * so answering another one first scored it over the wrong denominator; and
+     * a page whose only scored iDevice is a video looked content-only on entry,
+     * which the completion policy reports as `completed` with no score.
+     *
+     * It registers `mOptions`, the very object the saves use. registerActivity
+     * resolves ideviceId, ideviceNumber, title and mainElement from the DOM and
+     * writes them onto whatever it is handed, so registering a throwaway copy
+     * left sendScore working off a different, unidentified object — and
+     * reportActivity refuses those with its `!game.ideviceId` guard, silently.
+     *
+     * Runs after enable() so the shared markup registerActivity looks up
+     * already exists, and is safe to run again: createScoreScormHtml updates
+     * the score node rather than duplicating it.
+     */
+    registerScormActivity: function () {
+        if (
+            typeof InteractiveVideo === 'undefined' ||
+            !InteractiveVideo ||
+            !InteractiveVideo.scorm ||
+            !(InteractiveVideo.scorm.isScorm > 0)
+        ) {
+            return;
+        }
+        // `mOptions` starts life as `{}`, which is truthy, so testing it alone
+        // would leave an empty object registered — with no `main`, which
+        // sendScoreNew dereferences (`game.main.charAt(0)`) and would throw,
+        // killing the report. Rebuild whenever it is missing or incomplete.
+        if (!$interactivevideo.mOptions || !$interactivevideo.mOptions.main) {
+            $interactivevideo.mOptions =
+                $interactivevideo.getOptions(InteractiveVideo);
+        }
+        $exeDevices.iDevice.gamification.scorm.registerActivity(
+            $interactivevideo.mOptions
+        );
     },
 
     enable: function () {
@@ -486,11 +529,30 @@ var $interactivevideo = {
         // $interactivevideo.ready();
     },
 
+    /**
+     * The mark for this activity, on the 0..10 scale the runtime expects.
+     *
+     * A SCORM-enabled video need not carry a single scored question, and
+     * `numSlides` counts the scoring slides — so it is 0 for a video of plain
+     * markers, and this division yielded NaN. The learner saw "NaN" on the
+     * score line for the whole visit and the progress report stored it; only
+     * sendScoreNew's own Number.isFinite guard kept it out of the LMS. Nothing
+     * to score is a zero.
+     *
+     * @returns {number} the mark, 0 when there is nothing to score
+     */
+    getScore: function () {
+        const total = parseFloat($interactivevideo.numSlides);
+        if (!Number.isFinite(total) || total <= 0) return 0;
+        const score = parseFloat($interactivevideo.score);
+        if (!Number.isFinite(score)) return 0;
+        return (score * 10) / total;
+    },
+
     saveEvaluation: function () {
         let options = $interactivevideo.mOptions;
         options.gameStarted = true;
-        options.scorerp =
-            ($interactivevideo.score * 10) / $interactivevideo.numSlides;
+        options.scorerp = $interactivevideo.getScore();
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             options,
             options.isInExe
@@ -507,10 +569,33 @@ var $interactivevideo = {
         return false;
     },
 
+    /**
+     * Mark the activity finished once every question has been answered.
+     *
+     * updateScore() reports on each element the learner resolves, but nothing
+     * ever declared the activity complete: common.js derives completion from
+     * `gameOver === true || auto !== true`, so an activity in automatic mode
+     * left its page `incomplete` in the LMS however well the learner did. The
+     * results viewer already computes that condition — every scoring slide
+     * answered — and this is where it lands.
+     *
+     * Manual mode (isScorm 2) carries the flag on its next send; automatic
+     * mode (isScorm 1) reports it now.
+     */
+    finalizeScorm: function () {
+        const scorm = InteractiveVideo.scorm;
+        if (!scorm || !(scorm.isScorm > 0) || !$interactivevideo.mOptions) {
+            return;
+        }
+        $interactivevideo.mOptions.gameOver = true;
+        if (scorm.isScorm == 1) {
+            $interactivevideo.sendScore(true);
+        }
+    },
+
     sendScore: function (auto) {
         let options = $interactivevideo.mOptions;
-        options.scorerp =
-            ($interactivevideo.score * 10) / $interactivevideo.numSlides;
+        options.scorerp = $interactivevideo.getScore();
         options.gameStarted = true;
         options.userName = $interactivevideo.userName || '';
 
@@ -539,18 +624,35 @@ var $interactivevideo = {
             e.score = point;
             $interactivevideo.score += point;
         }
-        if (InteractiveVideo.scorm.isScorm == 1) {
-            var scoref = (
-                ($interactivevideo.score * 10) /
-                $interactivevideo.numSlides
-            ).toFixed(2);
-            $('#interactiveRepeatActivity').text(
-                InteractiveVideo.i18n.msgYouScore + ': ' + scoref
-            );
-            $('#interactiveRepeatActivity').show();
-            $interactivevideo.sendScore(true);
-        }
+        $interactivevideo.reportScore();
         $interactivevideo.saveEvaluation();
+    },
+
+    /**
+     * Show the current mark and report it, in automatic SCORM mode.
+     *
+     * Called when the activity starts — so the attempt appears in the LMS from
+     * the first moment with a 0 — and again on every answer, until the
+     * questions run out.
+     */
+    reportScore: function () {
+        if (
+            typeof InteractiveVideo === 'undefined' ||
+            !InteractiveVideo ||
+            !InteractiveVideo.scorm ||
+            InteractiveVideo.scorm.isScorm != 1
+        ) {
+            return;
+        }
+        const scoref = $interactivevideo.getScore().toFixed(2);
+        // By class, not by id: `#interactiveRepeatActivity` matches nothing —
+        // the node is the shared `.Games-RepeatActivity` span.
+        $interactivevideo
+            .getIdeviceRoot()
+            .find('.Games-RepeatActivity')
+            .text(InteractiveVideo.i18n.msgYouScore + ': ' + scoref)
+            .show();
+        $interactivevideo.sendScore(true);
     },
 
     inIframe: function () {
@@ -581,19 +683,19 @@ var $interactivevideo = {
                         $interactivevideo.isInExe
                     );
                 }
-                if (
-                    InteractiveVideo &&
-                    InteractiveVideo.scorm &&
-                    InteractiveVideo.scorm.isScorm > 0
-                ) {
-                    let goptions =
-                        $interactivevideo.getOptions(InteractiveVideo);
-                    $exeDevices.iDevice.gamification.scorm.registerActivity(
-                        goptions
-                    );
-                }
+                // Normally a no-op: initSCORM already registered on page load.
+                // Kept so the activity is still tracked if that path did not
+                // run, and because it registers mOptions rather than a
+                // throwaway copy — see registerScormActivity.
+                $interactivevideo.registerScormActivity();
 
                 var activeSlide = 0;
+                // Rebuild from scratch. cover.hide() runs again on every
+                // restart (restart() leads back to the start link), and
+                // appending without clearing duplicated every slide: numSlides
+                // doubled, and since the score is (score * 10) / numSlides the
+                // mark stored in the LMS was halved on each restart.
+                $interactivevideo.scoreSlides = [];
                 for (var i = 0; i < InteractiveVideo.slides.length; i++) {
                     var sr = {
                         type: InteractiveVideo.slides[i].type,
@@ -615,12 +717,40 @@ var $interactivevideo = {
                     ? $interactivevideo.scoreSlides.length
                     : activeSlide;
                 $interactivevideo.gameStarted = true;
-                $('#interactiveSendScore').off('click');
-                $('#interactiveSendScore').on('click', function (e) {
-                    e.preventDefault();
-                    $interactivevideo.sendScore(false);
-                    $interactivevideo.saveEvaluation();
-                });
+                // Starting resets the attempt and reports it, so it shows in the
+                // LMS from the first moment and a restart does not leave the
+                // previous run's mark standing. From here on updateScore()
+                // reports on every answer until the questions run out.
+                //
+                // gameOver has to come down too: finalizeScorm() raises it when
+                // the questions run out and nothing ever lowered it, so
+                // repeating the activity reported "finished, score 0" on the
+                // first report and the page stayed in a terminal status instead
+                // of going back to in-progress. Every other iDevice clears the
+                // flag in its own startGame.
+                $interactivevideo.score = 0;
+                if ($interactivevideo.mOptions) {
+                    $interactivevideo.mOptions.gameOver = false;
+                }
+                $interactivevideo.reportScore();
+                // Delegate on the container, by class. The button is the shared
+                // `.Games-SendScore` that addButtonScoreNew renders; binding by
+                // id matched nothing, so in manual mode (isScorm == 2) pressing
+                // "save score" did nothing at all and the result never reached
+                // the LMS. Delegation also survives the innerHTML rebuild that
+                // enable() does.
+                $interactivevideo
+                    .getIdeviceRoot()
+                    .off('click.interactivevideo', '.Games-SendScore')
+                    .on(
+                        'click.interactivevideo',
+                        '.Games-SendScore',
+                        function (e) {
+                            e.preventDefault();
+                            $interactivevideo.sendScore(false);
+                            $interactivevideo.saveEvaluation();
+                        }
+                    );
             }
             if (play) $interactivevideo.controls.play();
         },
@@ -1263,6 +1393,7 @@ var $interactivevideo = {
                         '%</span>'
                 );
                 $('BODY').addClass('activity-completed');
+                $interactivevideo.finalizeScorm();
             }
         },
         toggle: function (e) {
@@ -1503,8 +1634,15 @@ var $interactivevideo = {
     updateResult: function (question, result) {
         var tds = $('.result', $interactivevideo.table);
         tds.eq(question).html('<span>' + result + '</span>');
-        $interactivevideo.resultsViewer.getFinalResult(tds);
+        // The point first. getFinalResult() closes the attempt through
+        // finalizeScorm(), and sendScore() reads $interactivevideo.score, which
+        // updateScore() is what advances: run it second and the completed
+        // report goes out one answer short — (n-1)/n with everything right —
+        // leaving the true mark to a later report that Moodle's fire-and-forget
+        // commits can reorder past it. Only the cells getFinalResult() reads
+        // matter for the order, and they are painted above.
         $interactivevideo.updateScore(question, result);
+        $interactivevideo.resultsViewer.getFinalResult(tds);
     },
 
     dropdownActivity: {
@@ -2824,7 +2962,11 @@ var $interactivevideo = {
         return {
             id: IV.ideviceID,
             scorerp: 0,
-            weighted: IV.weighted != null ? IV.weighted : 100,
+            // IV.scorm.weighted, not IV.weighted: the editor saves the whole
+            // SCORM tab under `scorm` (activityToSave.scorm = getValues()), so
+            // nothing has ever written the root-level key this used to read.
+            // Every activity therefore weighed 100 whatever the author chose.
+            weighted: IV.scorm.weighted != null ? IV.scorm.weighted : 100,
             evaluation: !!IV.evaluation,
             evaluationID: IV.evaluationID || '',
             isInExe: this.isInExe,

@@ -420,10 +420,12 @@ var $eXeDesafio = {
 
         $(window).on('pagehide.eXeChallenger', () => {
             if (mOptions.gameStarted || mOptions.gameOver) {
+                // Persist only. The endScorm() call that used to follow was
+                // dead twice over: the helper is intentionally empty in
+                // common.js — the SCORM 1.2 runtime owns end-of-session
+                // handling — and $eXeDesafio.mScorm is declared null and never
+                // assigned, so it passed null to a no-op.
                 $eXeDesafio.saveDataStorage(instance);
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeDesafio.mScorm
-                );
             }
         });
         $(`#desafioSolutionDiv-${instance}`).hide();
@@ -1034,6 +1036,22 @@ var $eXeDesafio = {
 
         clearInterval(mOptions.counterClock);
 
+        // The attempt ends here and only here: the desafío was solved (type 0) or
+        // the clock ran out (type 1). Every other saveDataStorage call runs while
+        // the game is still going, so this is the only report that can carry
+        // `gameOver`. common.js derives completion from
+        // `gameOver === true || auto !== true`, so with no report after the flag
+        // the page stays `incomplete` in the LMS however well the learner did.
+        // saveDataStorage is reused rather than calling sendScore directly so the
+        // `isScorm === 1` auto-report gate stays in one place.
+        //
+        // Reported BEFORE the results screen is painted, the way padlock does
+        // it: the LMS write must not depend on the painting succeeding. Safe
+        // because showScoreGame only reads solvedsChallenges, never changes it.
+        mOptions.gameOver = true;
+        mOptions.endGame = true;
+        $eXeDesafio.saveDataStorage(instance);
+
         $(`#desafioTitle-${instance}`).hide();
         $(`#desafioDescription-${instance}`).hide();
         $(`#desafioSolutionDiv-${instance}`).hide();
@@ -1049,17 +1067,6 @@ var $eXeDesafio = {
                 : mOptions.msgs.msgEndTime;
         $eXeDesafio.showMessage(2, message, instance);
         $eXeDesafio.showScoreGame(type, instance);
-        mOptions.gameOver = true;
-        mOptions.endGame = true;
-        // The attempt ends here and only here: the desafío was solved (type 0) or
-        // the clock ran out (type 1). Every other saveDataStorage call runs while
-        // the game is still going, so this is the only report that can carry
-        // `gameOver`. common.js derives completion from
-        // `gameOver === true || auto !== true`, so with no report after the flag
-        // the page stays `incomplete` in the LMS however well the learner did.
-        // saveDataStorage is reused rather than calling sendScore directly so the
-        // `isScorm === 1` auto-report gate stays in one place.
-        $eXeDesafio.saveDataStorage(instance);
     },
 
     getRetroFeedMessages: function (iHit, instance) {

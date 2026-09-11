@@ -67,6 +67,160 @@ describe('dragdrop iDevice export', () => {
     });
   });
 
+  describe('SCORM reporting on explicit replay', () => {
+    const instance = 0;
+
+    function setupGame(overrides = {}) {
+      document.body.innerHTML = `
+        <div id="dadPMainContainer-0">
+          <div id="dadPContainerGame-0"></div>
+          <div id="dadPImgTime-0"></div>
+          <div id="dadPPTime-0"></div>
+          <div id="dadPButtons-0"></div>
+          <div id="dadPResetButton-0"></div>
+          <div id="dadPCheckButton-0"></div>
+          <div id="dadPPShowClue-0"></div>
+          <div id="dadPShowClue-0"></div>
+          <div id="dadPPHits-0"></div>
+          <div id="dadPPErrors-0"></div>
+          <div id="dadPCubierta-0"></div>
+          <div id="dadPStartGame-0"></div>
+          <div id="dadPMessage-0"></div>
+        </div>`;
+      $eXeDragDrop.options[instance] = Object.assign(
+        {
+          main: 'dadPMainContainer-0',
+          isScorm: 1,
+          type: 0,
+          time: 0,
+          gameStarted: false,
+          gameOver: false,
+          hits: 0,
+          errors: 0,
+          score: 0,
+          active: 0,
+          obtainedClue: false,
+          realNumberCards: 4,
+          itinerary: { showClue: false, showCodeAccess: false },
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeDragDrop, 'initializeDragAndDrop').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'createDrags').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'showScoreGame').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'updateTime').mockImplementation(() => {});
+      vi.spyOn($eXeDragDrop, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupGame({ isScorm: 1 });
+      $eXeDragDrop.saveScormScore(instance);
+      expect($eXeDragDrop.sendScore).toHaveBeenCalledWith(true, instance);
+
+      $eXeDragDrop.sendScore.mockClear();
+      $eXeDragDrop.options[instance].isScorm = 2;
+      $eXeDragDrop.saveScormScore(instance);
+      expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('publishes the cleared state when the board is restarted', () => {
+      setupGame({ hits: 4, errors: 2, gameOver: true });
+      let stateWhenReported;
+      $eXeDragDrop.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } =
+          $eXeDragDrop.options[instance];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+
+      $eXeDragDrop.reboot(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('restarts a board whose game flag was still up', () => {
+      setupGame({ hits: 4, gameStarted: true, gameOver: false });
+
+      $eXeDragDrop.reboot(instance);
+
+      expect($eXeDragDrop.sendScore).toHaveBeenCalledWith(true, instance);
+      expect($eXeDragDrop.options[instance].hits).toBe(0);
+    });
+
+    it('does not publish a score when a game starts', () => {
+      setupGame({ hits: 3, gameOver: true });
+
+      $eXeDragDrop.startGame(instance);
+
+      expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
+      expect($eXeDragDrop.options[instance].hits).toBe(0);
+      expect($eXeDragDrop.options[instance].gameOver).toBe(false);
+      expect($eXeDragDrop.options[instance].gameStarted).toBe(true);
+    });
+
+    /** The code field, its cover and the maximize link the code entry drives. */
+    function addCodeAccessDom(typed) {
+      $('#dadPMainContainer-0').append(`
+        <div id="dadPCodeAccessDiv-0"></div>
+        <div id="dadPMesajeAccesCodeE-0"></div>
+        <a id="dadPLinkMaximize-0" href="#"></a>
+        <input id="dadPCodeAccessE-0" value="${typed}" />`);
+    }
+
+    // Behind a code the board never reported: the cover only hides it, and
+    // startGame is silent on purpose because loading and minimizing reach it
+    // too. The LMS kept the previous attempt's grade until the learner checked.
+    it('publishes a zero and an unfinished attempt when a valid code opens the board', () => {
+      setupGame({
+        hits: 3,
+        errors: 1,
+        gameOver: true,
+        itinerary: { showClue: false, showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('AbrE');
+      let stateWhenReported;
+      $eXeDragDrop.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } =
+          $eXeDragDrop.options[instance];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+
+      $eXeDragDrop.enterCodeAccess(instance);
+
+      // No maximize handler is bound here: the report has to survive without
+      // the click side effect that normally starts the board.
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('neither starts nor reports when the code is wrong', () => {
+      setupGame({
+        itinerary: { showClue: false, showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('nope');
+
+      $eXeDragDrop.enterCodeAccess(instance);
+
+      expect($eXeDragDrop.sendScore).not.toHaveBeenCalled();
+      expect($eXeDragDrop.options[instance].gameStarted).toBe(false);
+      expect($('#dadPCodeAccessE-0').val()).toBe('');
+    });
+  });
+
   describe('setupTouchDragAndDrop', () => {
     it('exists as a function', () => {
       expect(typeof $eXeDragDrop.setupTouchDragAndDrop).toBe('function');

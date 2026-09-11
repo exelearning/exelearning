@@ -495,10 +495,30 @@
          * returns true when the session is already active — iDevice
          * bootstrap code gates its SCORM setup on this.
          *
+         * Applies the entry policy too, because opening the session is what
+         * makes writes stop being refused. iDevices call this from their own
+         * setup (common.js's initGame, and trueorfalse, adaptative-quiz and
+         * scrambled-list directly), and that setup runs before loadPage():
+         * exe_export.js registers the iDevice poller before the SCORM one, on
+         * the same 50 ms delay. Initialising without restoring would leave a
+         * live session over a registry that holds nothing but this page's
+         * declarations, and the first report's persistActivities() would then
+         * serialise that registry over cmi.suspend_data — wiping the stored
+         * marks of every OTHER activity on the page, and committing it.
+         *
+         * Not session.open(): that settles who owns the page lifecycle, and an
+         * iDevice must not take that decision away from a host that opened
+         * with ownsLifecycle false. applyEntryPolicy() is idempotent, so the
+         * loadPage() that follows still decides ownership and repeats nothing.
+         *
          * @returns {boolean} True when the session is active.
          */
         init: function () {
-            return client.initialize();
+            if (!client.initialize()) {
+                return false;
+            }
+            policy.applyEntryPolicy();
+            return true;
         },
         /**
          * @param {string} element - cmi element name.

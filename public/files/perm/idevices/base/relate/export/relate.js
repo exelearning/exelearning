@@ -317,7 +317,7 @@ var $eXeRelaciona = {
         return `${randomNumber1}${timestamp}${randomNumber2}`;
     },
 
-    startGame: function (instance) {
+    startGame: function (instance, reportScorm = false) {
         let mOptions = $eXeRelaciona.options[instance];
 
         if (mOptions.gameStarted) return;
@@ -386,6 +386,11 @@ var $eXeRelaciona = {
         }
 
         mOptions.gameStarted = true;
+        // Only a learner action starts a new scored attempt. addEvents also
+        // opens untimed boards on page load, which must preserve the LMS mark.
+        if (reportScorm) {
+            $eXeRelaciona.saveScormScore(instance);
+        }
     },
     redibujarLineas: function (instance, isMoving) {
         const mOptions = $eXeRelaciona.options[instance];
@@ -650,6 +655,9 @@ var $eXeRelaciona = {
             }
         }
         $('#rlcMessage-' + instance).hide();
+        // After gameStarted/gameOver above, never before: sendScoreNew ignores
+        // a game that reports as neither started nor over.
+        $eXeRelaciona.saveScormScore(instance);
     },
 
     rebootCards: function (instance) {
@@ -676,7 +684,7 @@ var $eXeRelaciona = {
 
         if (mOptions.type == 2) {
             mOptions.counter = mOptions.time * 60;
-            $eXeRelaciona.startGame(instance);
+            $eXeRelaciona.startGame(instance, true);
         }
     },
 
@@ -829,7 +837,7 @@ var $eXeRelaciona = {
 
         $('#rlcStartGame-' + instance).on('click', function (e) {
             e.preventDefault();
-            $eXeRelaciona.startGame(instance);
+            $eXeRelaciona.startGame(instance, true);
         });
 
         $('#rlcLinkFullScreen-' + instance).on(
@@ -1550,7 +1558,7 @@ var $eXeRelaciona = {
             $(`#rlcCodeAccessDiv-${instance}, #rlcCubierta-${instance}`).hide();
             $(`#rlcContainerGame-${instance}`).show();
             $eXeRelaciona.refreshGame(instance);
-            $eXeRelaciona.startGame(instance);
+            $eXeRelaciona.startGame(instance, true);
         } else {
             $(`#rlcMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
@@ -1607,12 +1615,30 @@ var $eXeRelaciona = {
             ));
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts or
+     * restarts.
+     *
+     * reboot() and startGame() both clear hits, errors and gameOver, but
+     * neither told the LMS, so the menu kept the finished attempt's grade and
+     * its terminal status until the learner checked the board again.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeRelaciona.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeRelaciona.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeRelaciona.options[instance];
 
-        ((mOptions.scorerp = score =
-            (mOptions.hits * 10) / mOptions.realNumberCards),
-            (mOptions.previousScore = $eXeRelaciona.previousScore));
+        // Was a comma expression assigning through an undeclared `score`,
+        // which wrote a global on every report and was read by nobody.
+        mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards;
+        mOptions.previousScore = $eXeRelaciona.previousScore;
         mOptions.userName = $eXeRelaciona.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);

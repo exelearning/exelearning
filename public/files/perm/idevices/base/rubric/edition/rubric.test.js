@@ -971,4 +971,23 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect($exeDevice.ci18n.msgWeight).toBe('Weight');
     });
   });
+
+  // Only 1-100 is stored. The previous `value || 100` let -1 through — which
+  // is exactly what the shared SCORM tab returns for an emptied weight field —
+  // and any number above 100 as well.
+  describe('normalizeWeight', () => {
+    it('keeps every weight inside the range, including the ends', () => {
+      expect($exeDevice.normalizeWeight(1)).toBe(1);
+      expect($exeDevice.normalizeWeight(40)).toBe(40);
+      expect($exeDevice.normalizeWeight(100)).toBe(100);
+    });
+
+    it('falls back to 100 outside the range or when unreadable', () => {
+      expect($exeDevice.normalizeWeight(0)).toBe(100);
+      expect($exeDevice.normalizeWeight(-1)).toBe(100);
+      expect($exeDevice.normalizeWeight(101)).toBe(100);
+      expect($exeDevice.normalizeWeight(undefined)).toBe(100);
+      expect($exeDevice.normalizeWeight('abc')).toBe(100);
+    });
+  });
 });

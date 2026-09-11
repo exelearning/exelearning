@@ -36,7 +36,8 @@ var $exeDevice = {
     scorm: {
         isScorm: 0,
         textButtonScorm: c_('Save score'),
-        repeatActivity: false,
+        // Activities may be replayed by default, as everywhere else.
+        repeatActivity: true,
     },
 
     refreshTranslations: function () {
@@ -458,10 +459,17 @@ var $exeDevice = {
                 $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                     InteractiveVideo.i18n
                 );
+                // The weight too: setValues defaults it to 100 when the
+                // argument is missing, so the stored value never reached the
+                // field — and the next save read that 100 back out of the form
+                // and overwrote it. `undefined` still lands on the helper's
+                // default, which is what a game saved before the field existed
+                // needs.
                 $exeDevicesEdition.iDevice.gamification.scorm.setValues(
                     InteractiveVideo.scorm.isScorm,
                     InteractiveVideo.scorm.textButtonScorm,
-                    InteractiveVideo.scorm.repeatActivity
+                    InteractiveVideo.scorm.repeatActivity,
+                    InteractiveVideo.scorm.weighted
                 );
                 InteractiveVideo.scoreNIA =
                     typeof InteractiveVideo.scoreNIA == 'undefined'
@@ -638,6 +646,37 @@ var $exeDevice = {
         return ideviceid;
     },
 
+    /**
+     * Whether the activity has anything the runtime can score.
+     *
+     * The same criterion the export counts with, so the editor and the runtime
+     * cannot disagree: with "score every slide" ticked every slide counts, and
+     * without it only the six interactive types do — the rest are images, text
+     * and pauses, which the learner cannot answer.
+     *
+     * @param {Array} slides The activity's slides.
+     * @param {boolean} scoreNIA Whether every slide counts towards the mark.
+     * @returns {boolean} True when at least one slide can be scored.
+     */
+    hasScorableSlide: function (slides, scoreNIA) {
+        if (!Array.isArray(slides) || slides.length === 0) return false;
+        if (scoreNIA) return true;
+        var scorable = [
+            'singleChoice',
+            'multipleChoice',
+            'dropdown',
+            'matchElements',
+            'sortableList',
+            'cloze',
+        ];
+        for (var i = 0; i < slides.length; i++) {
+            if (slides[i] && scorable.indexOf(slides[i].type) !== -1) {
+                return true;
+            }
+        }
+        return false;
+    },
+
     save: function () {
         var myVideo = '';
 
@@ -712,6 +751,33 @@ var $exeDevice = {
             }
             var slides = activity.slides;
 
+            // Before the loop below, which rewrites slide.url in place on the
+            // editor's own activity — absolute URLs cut down to `resources/…`,
+            // legacy relative ones replaced by their index. A rejected save
+            // must leave nothing behind, so everything that can refuse has to
+            // run first.
+            //
+            // Saving a score needs something to score: the mark is hits over
+            // the number of scorable slides, so with none of them the division
+            // has no denominator and the activity could only ever report a zero
+            // the learner did nothing to earn. Refused here rather than papered
+            // over at runtime, the way every other iDevice asks for at least
+            // one question.
+            var scormValues =
+                $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+            var scoreNIA = $('#interactiveVideoScoreNIA').is(':checked');
+            if (
+                scormValues.isScorm > 0 &&
+                !$exeDevice.hasScorableSlide(slides, scoreNIA)
+            ) {
+                eXe.app.alert(
+                    _(
+                        'To save the score, the activity needs at least one question.'
+                    )
+                );
+                return false;
+            }
+
             if (slides) {
                 for (var i = 0; i < slides.length; i++) {
                     var slide = slides[i];
@@ -762,11 +828,8 @@ var $exeDevice = {
             }
 
             top.interactiveVideoEditor.activityToSave.i18n = i18n;
-            top.interactiveVideoEditor.activityToSave.scorm =
-                $exeDevicesEdition.iDevice.gamification.scorm.getValues();
-            top.interactiveVideoEditor.activityToSave.scoreNIA = $(
-                '#interactiveVideoScoreNIA'
-            ).is(':checked');
+            top.interactiveVideoEditor.activityToSave.scorm = scormValues;
+            top.interactiveVideoEditor.activityToSave.scoreNIA = scoreNIA;
             top.interactiveVideoEditor.activityToSave.evaluation = seval;
             top.interactiveVideoEditor.activityToSave.evaluationID = sevalid;
             top.interactiveVideoEditor.activityToSave.ideviceID = ideviceID;

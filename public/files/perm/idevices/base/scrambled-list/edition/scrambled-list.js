@@ -45,6 +45,9 @@ var $exeDevice = {
                 "The score can't be saved because this page is not part of a SCORM package."
             ),
             msgYouScore: c_('Your score'),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
             msgScore: c_('Score'),
             msgWeight: c_('Weight'),
             msgYouLastScore: c_('The last score saved is'),
@@ -349,7 +352,7 @@ var $exeDevice = {
 
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(8)}
             </div>`;
@@ -581,7 +584,7 @@ var $exeDevice = {
             this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1);
 
         data.weighted = data.weighted || 100;
-        data.repeatActivity = data.repeatActivity || false;
+        data.repeatActivity = true;
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 

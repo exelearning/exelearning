@@ -199,4 +199,740 @@ describe('discover iDevice export', () => {
       expect($eXeDescubre.options).toEqual([]);
     });
   });
+
+  // common.js derives completion from `gameOver === true || auto !== true`, and
+  // the report below is automatic, so without the flag a page carrying a
+  // discover stayed `incomplete` in the LMS however well the learner did.
+  describe('clicking the sound icon on a card', () => {
+    function setupCard(overrides = {}) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreMultimedia-0">
+            <div class="DescubreQP-CardContainer" data-state="0" data-number="1">
+              <div class="DescubreQP-Card1">
+                <a href="#" data-audio="sound.mp3" class="DescubreQP-LinkAudio">
+                  <img class="DescubreQP-Audio" alt="Audio">
+                </a>
+              </div>
+            </div>
+          </div>
+          <div id="descubreMessage-0"></div>
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 0,
+          gameMode: 0,
+          gameActived: true,
+          gameStarted: true,
+          gameOver: false,
+          showCards: false,
+          selecteds: [],
+          hits: 0,
+          errors: 0,
+          nattempts: 0,
+          wordsGame: [{}, {}],
+          numberQuestions: 2,
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: { msgSelectCard: 'select' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
+      global.$exeDevices.iDevice.gamification.media = {
+        stopSound: vi.fn(),
+        playSound: vi.fn(),
+      };
+    }
+
+    afterEach(() => {
+      delete global.$exeDevices.iDevice.gamification.media;
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    // The icon sits inside the card, so the learner should not have to aim
+    // around the speaker: clicking it selects the card like any other part.
+    it('selects the card the icon belongs to', () => {
+      setupCard();
+      const $card = $('.DescubreQP-CardContainer');
+
+      $eXeDescubre.cardClick($card[0], 0, false);
+
+      expect($card.data('state')).toBe('1');
+      expect($eXeDescubre.options[0].selecteds).toEqual([1]);
+    });
+
+    // The audio link starts the sound itself; cardClick starting it again in
+    // the same turn would restart it under the learner.
+    it('does not start the sound a second time', () => {
+      setupCard();
+
+      $eXeDescubre.cardClick($('.DescubreQP-CardContainer')[0], 0, false);
+
+      expect(
+        global.$exeDevices.iDevice.gamification.media.playSound
+      ).not.toHaveBeenCalled();
+    });
+
+    it('still plays the sound when the card itself is clicked', () => {
+      setupCard();
+
+      $eXeDescubre.cardClick($('.DescubreQP-CardContainer')[0], 0);
+
+      expect(
+        global.$exeDevices.iDevice.gamification.media.playSound
+      ).toHaveBeenCalledWith('sound.mp3');
+    });
+
+    // cardClick used to silence the player on the way in, unconditionally. The
+    // icon's own handler runs first — it is nearer the click target — so the
+    // clip started and cardClick killed it microseconds later, which is
+    // exactly what "the speaker does nothing" looked like.
+    it('does not silence the clip the icon has just started', () => {
+      setupCard();
+
+      $eXeDescubre.cardClick($('.DescubreQP-CardContainer')[0], 0, false);
+
+      expect(
+        global.$exeDevices.iDevice.gamification.media.stopSound
+      ).not.toHaveBeenCalled();
+    });
+
+    it('still silences a previous clip when the card itself is clicked', () => {
+      setupCard();
+
+      $eXeDescubre.cardClick($('.DescubreQP-CardContainer')[0], 0);
+
+      expect(
+        global.$exeDevices.iDevice.gamification.media.stopSound
+      ).toHaveBeenCalled();
+    });
+
+    // End to end through the real handlers: the icon must both sound and
+    // select, and nothing in the chain may cut the sound off.
+    it('sounds and selects when the icon itself is clicked', () => {
+      setupCard({ time: 0, author: '', fullscreen: false });
+      $exeDevices.iDevice.gamification.scorm = { registerActivity: vi.fn() };
+      $exeDevices.iDevice.gamification.helpers.getTimeToString = () => '00:00';
+      $eXeDescubre.addEvents(0);
+
+      $('.DescubreQP-LinkAudio .DescubreQP-Audio').trigger('click');
+
+      const media = global.$exeDevices.iDevice.gamification.media;
+      expect(media.playSound).toHaveBeenCalledWith('sound.mp3');
+      expect(media.stopSound).not.toHaveBeenCalled();
+      expect($('.DescubreQP-CardContainer').data('state')).toBe('1');
+    });
+  });
+
+  describe('the countdown across attempts', () => {
+    function setupTimedGame(overrides = {}) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreMultimedia-0"></div>
+          <div id="descubrePShowClue-0"></div>
+          <div id="descubreShowClue-0"></div>
+          <div id="descubrePHits-0"></div>
+          <div id="descubrePErrors-0"></div>
+          <div id="descubreCubierta-0"></div>
+          <div id="descubreGameOver-0"></div>
+          <div id="descubreStartLevels-0"></div>
+          <div id="descubreMessage-0"></div>
+          <div id="descubrePTime-0"></div>
+          <div id="descubreImgTime-0"></div>
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 0,
+          // 3 seconds: the interval ticks once a second.
+          time: 3 / 60,
+          gameStarted: false,
+          gameOver: false,
+          hits: 0,
+          errors: 0,
+          attempts: 0,
+          wordsGame: [{}, {}],
+          wordsGameFix: [{}, {}],
+          gameLevels: 1,
+          numberQuestions: 2,
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: { msgSelectLevel: '', msgRookie: '', msgStar: '' },
+        },
+        overrides
+      );
+      // Builds the deck for the chosen level through the shared shuffle
+      // helper; irrelevant to the countdown and absent from the test stubs.
+      vi.spyOn($eXeDescubre, 'getCardsLevels').mockReturnValue([]);
+      vi.spyOn($eXeDescubre, 'addCards').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'initCards').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'uptateTime').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'showScoreGame').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'showFeedBack').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation(() => {});
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      // gameOver() silences the statement audio; absent from the test stubs.
+      global.$exeDevices.iDevice.gamification.media = { stopSound: vi.fn() };
+    });
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      delete global.$exeDevices.iDevice.gamification.media;
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    // Asserted on the live timer count, not on the counter: gameOver() clears
+    // gameStarted, and the interval body only decrements while that is set, so
+    // a surviving interval is invisible in the counter alone.
+    // The early return that ends the attempt used to skip the last paint, so
+    // the clock jumped from 00:01 to the results screen.
+    it('shows the clock reaching zero before ending the attempt', () => {
+      setupTimedGame();
+      $eXeDescubre.startGame(0, 0);
+      $eXeDescubre.options[0].gameStarted = true;
+      let clockWhenEnded;
+      vi.spyOn($eXeDescubre, 'gameOver').mockImplementation(() => {
+        const painted = $eXeDescubre.uptateTime.mock.calls;
+        clockWhenEnded = painted[painted.length - 1][0];
+      });
+
+      vi.advanceTimersByTime(3000);
+
+      expect(clockWhenEnded).toBe(0);
+    });
+
+    // The level buttons and the play-again button all route through startGame,
+    // so one report there covers choosing a level as well as starting.
+    it.each([0, 1, 2])('publishes a zero when level %s is chosen', level => {
+      setupTimedGame({ isScorm: 1, hits: 3, gameOver: true });
+      let stateWhenReported;
+      $eXeDescubre.sendScore.mockImplementation(() => {
+        const { hits, gameOver, gameStarted } = $eXeDescubre.options[0];
+        stateWhenReported = { hits, gameOver, gameStarted };
+      });
+
+      $eXeDescubre.startGame(0, level);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        // sendScoreNew ignores a game that reports as neither started nor over.
+        gameStarted: true,
+      });
+    });
+
+    it('does not report outside automatic SCORM mode', () => {
+      setupTimedGame({ isScorm: 2 });
+
+      $eXeDescubre.startGame(0, 0);
+
+      expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+    });
+
+    it('stops the countdown when the attempt ends', () => {
+      setupTimedGame();
+      $eXeDescubre.startGame(0, 0);
+      $eXeDescubre.options[0].gameStarted = true;
+      expect(vi.getTimerCount()).toBe(1);
+
+      $eXeDescubre.gameOver(2, 0);
+
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    // The level buttons and the play-again button re-enter startGame without
+    // passing through rebootGame, so a second game used to run two intervals
+    // over the same counter: its clock ticked twice per second and the time
+    // ran out in half the time.
+    it('never leaves two countdowns running over the same game', () => {
+      setupTimedGame();
+      $eXeDescubre.startGame(0, 0);
+      // Whatever reopened the activity left the flag down without ending the
+      // attempt through gameOver().
+      $eXeDescubre.options[0].gameStarted = false;
+
+      $eXeDescubre.startGame(0, 0);
+      $eXeDescubre.options[0].gameStarted = true;
+      vi.advanceTimersByTime(1000);
+
+      expect(vi.getTimerCount()).toBe(1);
+      expect($eXeDescubre.options[0].counter).toBe(2);
+    });
+  });
+
+  describe('completion when every group is discovered', () => {
+    function setupPair(overrides) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreMultimedia-0"></div>
+          <div id="descubrePShowClue-0"></div>
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameOver: false,
+          hits: 3,
+          errors: 0,
+          selecteds: [0],
+          activeQuestion: 0,
+          wordsGame: [{}, {}, {}],
+          obtainedClue: false,
+          itinerary: { showClue: false, percentageClue: 0 },
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeDescubre, 'updateCovers').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'updateScore').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'saveEvaluation').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('marks the activity finished on the last group', () => {
+      setupPair({ hits: 3, wordsGame: [{}, {}, {}] });
+
+      $eXeDescubre.correctPair(0, 0);
+
+      expect($eXeDescubre.options[0].gameOver).toBe(true);
+    });
+
+    // An intermediate pair must not close the attempt.
+    it('leaves the activity unfinished while groups remain', () => {
+      setupPair({ hits: 1, wordsGame: [{}, {}, {}] });
+
+      $eXeDescubre.correctPair(0, 0);
+
+      expect($eXeDescubre.options[0].gameOver).toBe(false);
+    });
+
+    it('raises the flag before it reports, so the two cannot disagree', () => {
+      setupPair({ hits: 3, wordsGame: [{}, {}, {}] });
+      let flagWhenReported;
+      $eXeDescubre.sendScore.mockImplementation(() => {
+        flagWhenReported = $eXeDescubre.options[0].gameOver;
+      });
+
+      $eXeDescubre.correctPair(0, 0);
+
+      expect(flagWhenReported).toBe(true);
+    });
+  });
+
+  // Entering the code opens the level panel, not a round: the learner still
+  // has to pick a level (or press the single start button when the activity
+  // has only one). The LMS hears about the opening all the same.
+  describe('opening the activity with an access code', () => {
+    function setupCodeAccess(typed, overrides) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreCodeAccessDiv-0"></div>
+          <div id="descubreMesajeAccesCodeE-0"></div>
+          <div id="descubreCubierta-0"></div>
+          <div id="descubreStartLevels-0"></div>
+          <a id="descubreLinkMaximize-0" href="#"></a>
+          <input id="descubreCodeAccessE-0" value="${typed}" />
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: false,
+          gameOver: false,
+          hits: 0,
+          wordsGame: [{}, {}, {}],
+          itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('publishes a zero and an unfinished attempt on a valid code', () => {
+      setupCodeAccess('AbrE');
+      let stateWhenReported;
+      $eXeDescubre.sendScore.mockImplementation((auto, instance, engaged) => {
+        const { hits, gameOver } = $eXeDescubre.options[0];
+        // `engaged` is what tells the runtime the learner has opened the
+        // activity: sendScoreNew drops a game that is neither started nor over,
+        // and it is reported on a copy so the live flag stays where it is.
+        stateWhenReported = { hits, gameOver, engaged };
+      });
+
+      $eXeDescubre.enterCodeAccess(0);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        engaged: true,
+      });
+    });
+
+    // startGame's early return reads this flag, so raising it would make every
+    // level button dead and the activity unplayable.
+    it('leaves the game unstarted, so the level buttons still work', () => {
+      setupCodeAccess('abre');
+
+      $eXeDescubre.enterCodeAccess(0);
+
+      expect($eXeDescubre.options[0].gameStarted).toBe(false);
+    });
+
+    it('reports nothing when the code is wrong', () => {
+      setupCodeAccess('nope');
+
+      $eXeDescubre.enterCodeAccess(0);
+
+      expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+      expect($('#descubreCodeAccessE-0').val()).toBe('');
+    });
+
+    it('does not auto-report in manual SCORM mode', () => {
+      setupCodeAccess('abre', { isScorm: 2 });
+
+      $eXeDescubre.enterCodeAccess(0);
+
+      expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+    });
+
+    // What the code does next depends on the level count and on nothing else,
+    // the clock included: one level means the panel is a single play button
+    // and the code stands in for it; two or three mean the learner still has a
+    // choice to make, so the code only publishes and gets out of the way.
+    describe('what the code does after opening the activity', () => {
+      it('starts the round itself when there is only one level', () => {
+        setupCodeAccess('abre', { time: 2, gameLevels: 1 });
+        const startGame = vi
+          .spyOn($eXeDescubre, 'startGame')
+          .mockImplementation(() => {});
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        // Level 0, which is what every other single-level entry point passes.
+        // getCardsLevels ignores the index when there is only one level but
+        // still names the level from it on screen, so a 2 here announced the
+        // same game as "Level: Master" while playing it again announced it as
+        // "Level: Rookie".
+        expect(startGame).toHaveBeenCalledWith(0, 0);
+        // Not reported twice: startGame publishes the opening zero itself, so
+        // reporting here as well would put the same zero on the wire twice.
+        // The test below proves that zero really does go out.
+        expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+      });
+
+      // The one above only proves startGame was called. This runs the real
+      // one, because what was asked for is that BOTH paths publish 0 and an
+      // unfinished attempt — and on this path the publication belongs to
+      // startGame, which could stop doing it without that test noticing.
+      it('publishes a zero and an unfinished attempt for the single level too', () => {
+        setupCodeAccess('abre', {
+          time: 2,
+          gameLevels: 1,
+          hits: 7,
+          errors: 3,
+          score: 40,
+          attempts: 0,
+          showCards: false,
+          gameMode: 0,
+          wordsGameFix: [{}, {}],
+          msgs: { mgsGameStart: '', msgRookie: '', msgMaster: '' },
+        });
+        $('#descubreMainContainer-0').append(
+          `<div id="descubreMultimedia-0"></div>
+           <div id="descubreGameOver-0"></div>
+           <div id="descubreMessage-0"></div>
+           <div id="descubrePHits-0"></div>
+           <div id="descubrePErrors-0"></div>
+           <div id="descubrePShowClue-0"></div>
+           <div id="descubreShowClue-0"></div>
+           <div id="descubrePTime-0"></div>
+           <div id="descubreImgTime-0"></div>
+           <div id="descubreInfo-0"></div>`
+        );
+        vi.spyOn($eXeDescubre, 'createCardsData').mockReturnValue([]);
+        vi.spyOn($eXeDescubre, 'addCards').mockImplementation(() => {});
+        vi.spyOn($eXeDescubre, 'showMessage').mockImplementation(() => {});
+        vi.spyOn($eXeDescubre, 'uptateTime').mockImplementation(() => {});
+        let stateWhenReported;
+        $eXeDescubre.sendScore.mockImplementation((auto, instance, engaged) => {
+          const { hits, errors, score, gameOver } = $eXeDescubre.options[0];
+          stateWhenReported = { hits, errors, score, gameOver, engaged };
+        });
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        expect(stateWhenReported).toEqual({
+          hits: 0,
+          errors: 0,
+          score: 0,
+          gameOver: false,
+          // sendScoreNew drops a game that is neither started nor over.
+          engaged: true,
+        });
+      });
+
+      it.each([2, 3])('only publishes and shows the panel for %i levels', (gameLevels) => {
+        setupCodeAccess('abre', { time: 2, gameLevels });
+        const startGame = vi
+          .spyOn($eXeDescubre, 'startGame')
+          .mockImplementation(() => {});
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        expect(startGame).not.toHaveBeenCalled();
+        expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0, true);
+        expect($eXeDescubre.options[0].gameStarted).toBe(false);
+      });
+
+      // The clock does not enter into it: what decides is whether the learner
+      // has a level to choose. One level is one play button either way.
+      it('starts an untimed single-level game as well', () => {
+        setupCodeAccess('abre', { time: 0, gameLevels: 1 });
+        const startGame = vi
+          .spyOn($eXeDescubre, 'startGame')
+          .mockImplementation(() => {});
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        expect(startGame).toHaveBeenCalledWith(0, 0);
+      });
+
+      it.each([2, 3])('leaves an untimed game with %i levels to its panel', (gameLevels) => {
+        setupCodeAccess('abre', { time: 0, gameLevels });
+        const startGame = vi
+          .spyOn($eXeDescubre, 'startGame')
+          .mockImplementation(() => {});
+
+        $eXeDescubre.enterCodeAccess(0);
+
+        expect(startGame).not.toHaveBeenCalled();
+        expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0, true);
+      });
+    });
+  });
+
+  // Play again abandons the finished attempt. With a single level it starts the
+  // next one straight away and startGame reports; with several it only brings
+  // the level panel back, and it used to report nothing — so the LMS kept the
+  // finished attempt's grade over a board the learner had already left. Same
+  // rule the access code above already follows.
+  describe('playing again with several levels', () => {
+    function setupFinishedGame(overrides) {
+      document.body.innerHTML = `
+        <div id="descubreMainContainer-0">
+          <div id="descubreCubierta-0"></div>
+          <div id="descubreStartLevels-0"></div>
+          <div id="descubreMultimedia-0"></div>
+          <a id="descubreStartGameEnd-0" href="#"></a>
+          <a id="descubreReboot-0" href="#"></a>
+          <a id="descubreShowSolution-0" href="#"></a>
+          <a id="descubreClueButton-0" href="#"></a>
+        </div>`;
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          main: 'descubreMainContainer-0',
+          isScorm: 1,
+          gameLevels: 3,
+          // The attempt that just finished.
+          gameStarted: false,
+          gameOver: true,
+          hits: 6,
+          errors: 2,
+          score: 100,
+          wordsGame: [{}, {}, {}],
+          numberQuestions: 6,
+          time: 0,
+          author: '',
+          fullscreen: false,
+          itinerary: { showCodeAccess: false },
+          msgs: {},
+        },
+        overrides
+      );
+      vi.spyOn($eXeDescubre, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'startGame').mockImplementation(() => {});
+      vi.spyOn($eXeDescubre, 'uptateTime').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports the abandoned attempt as unfinished with no score', () => {
+      setupFinishedGame();
+      let stateWhenReported;
+      $eXeDescubre.sendScore.mockImplementation((auto, instance, engaged) => {
+        const { hits, errors, gameOver } = $eXeDescubre.options[0];
+        stateWhenReported = { hits, errors, gameOver, engaged };
+      });
+      $eXeDescubre.addEvents(0);
+
+      document.getElementById('descubreStartGameEnd-0').click();
+
+      expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0, true);
+      // sendScoreNew drops a game that is neither started nor over, and it
+      // derives completion from gameOver.
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        engaged: true,
+      });
+    });
+
+    it('leaves no game running: the level buttons still start one', () => {
+      setupFinishedGame();
+      $eXeDescubre.addEvents(0);
+
+      document.getElementById('descubreStartGameEnd-0').click();
+
+      // startGame() returns early on a game it believes is already going.
+      expect($eXeDescubre.options[0].gameStarted).toBe(false);
+    });
+
+    // The reboot icon abandons a game in progress and sends the learner back to
+    // the level panel. It used to leave the LMS holding whatever the answers so
+    // far had scored.
+    it('reports giving up mid-game as unfinished with no score', () => {
+      setupFinishedGame({ gameStarted: true, gameOver: false, hits: 4, errors: 1 });
+      // rebootGame silences the card audio on its way out.
+      global.$exeDevices.iDevice.gamification.media = { stopSound: vi.fn() };
+      let stateWhenReported;
+      $eXeDescubre.sendScore.mockImplementation((auto, instance, engaged) => {
+        const { hits, errors, gameOver } = $eXeDescubre.options[0];
+        stateWhenReported = { hits, errors, gameOver, engaged };
+      });
+      $eXeDescubre.addEvents(0);
+
+      document.getElementById('descubreReboot-0').click();
+
+      expect($eXeDescubre.sendScore).toHaveBeenCalledWith(true, 0, true);
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        engaged: true,
+      });
+      // Back at the panel: no game is running.
+      expect($eXeDescubre.options[0].gameStarted).toBe(false);
+    });
+
+    it('starts the next game itself when there is only one level', () => {
+      setupFinishedGame({ gameLevels: 1 });
+      $eXeDescubre.addEvents(0);
+
+      document.getElementById('descubreStartGameEnd-0').click();
+
+      // startGame publishes the zero on its own in that branch.
+      expect($eXeDescubre.startGame).toHaveBeenCalledWith(0, 0);
+      expect($eXeDescubre.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * sendScoreNew's gate asks whether the learner has engaged with the activity.
+   * In this iDevice `gameStarted` answers something narrower — whether a round
+   * is running — and both startGame() and the card clicks read it, so three
+   * call sites used to raise it, report, and lower it again, mutating live
+   * state to satisfy a guard about something else. The report carries its own
+   * answer now, on a copy.
+   */
+  describe('reporting a state with no round running', () => {
+    let published;
+
+    function givenActivity(overrides = {}) {
+      published = [];
+      global.$exeDevices.iDevice.gamification.scorm.sendScoreNew = (auto, game) =>
+        published.push({ auto, game });
+      $eXeDescubre.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: false,
+          gameOver: false,
+          hits: 2,
+          wordsGame: [{}, {}, {}, {}],
+          msgs: {},
+        },
+        overrides
+      );
+    }
+
+    afterEach(() => {
+      delete global.$exeDevices.iDevice.gamification.scorm.sendScoreNew;
+    });
+
+    it('tells the runtime the learner has engaged, on a copy', () => {
+      givenActivity();
+
+      $eXeDescubre.sendScore(true, 0, true);
+
+      expect(published[0].game.gameStarted).toBe(true);
+      // The flag the level buttons and the card clicks read is untouched.
+      expect($eXeDescubre.options[0].gameStarted).toBe(false);
+    });
+
+    it('reports the live state when nothing is asserted', () => {
+      givenActivity();
+
+      $eXeDescubre.sendScore(false, 0);
+
+      // A press of the save button before the learner started anything must be
+      // refused by the runtime, not scored as a zero.
+      expect(published[0].game.gameStarted).toBe(false);
+      expect(published[0].game).toBe($eXeDescubre.options[0]);
+    });
+
+    describe('getScore', () => {
+      it('scales the hits over the deck the level cut out', () => {
+        givenActivity();
+
+        expect($eXeDescubre.getScore(0)).toBe(5);
+      });
+
+      // getCardsLevels floors the division that builds wordsGame, so a
+      // three-level game with two words leaves it empty and dividing by its
+      // length gave NaN.
+      it('is zero when the deck is empty', () => {
+        givenActivity({ wordsGame: [] });
+
+        expect($eXeDescubre.getScore(0)).toBe(0);
+      });
+
+      it('is a number, never NaN, whatever the counters hold', () => {
+        for (const overrides of [
+          { wordsGame: [] },
+          { wordsGame: undefined },
+          { hits: Number.NaN },
+          { hits: undefined },
+        ]) {
+          givenActivity(overrides);
+
+          expect(Number.isFinite($eXeDescubre.getScore(0))).toBe(true);
+        }
+      });
+    });
+  });
 });

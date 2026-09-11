@@ -75,4 +75,122 @@ describe('interactive-video iDevice edition', () => {
     expect(helpIcon.getAttribute('src')).toBe(`${path}quextIEHelp.png`);
     expect(existsSync(join(__dirname, 'quextIEHelp.png'))).toBe(true);
   });
+
+  // The defect: loadPreviousValues called scorm.setValues with three
+  // arguments, so the helper's own default (100) filled the weight field
+  // instead of the stored value — and the next save read that 100 back out of
+  // the form and overwrote what the author had chosen.
+  describe('the SCORM weight reaches the form', () => {
+    let setValues;
+
+    /** The exported markup the editor parses, carrying just the SCORM block. */
+    function previousDataWith(scorm) {
+      const json = JSON.stringify({ slides: [], scorm });
+      return `<div><script id="exe-interactive-video-contents" type="application/json">${json}</script></div>`;
+    }
+
+    beforeEach(() => {
+      setValues = vi.fn();
+      $exeDevicesEdition.iDevice.gamification.scorm.setValues = setValues;
+      global.top = { interactiveVideoEditor: {} };
+    });
+
+    afterEach(() => {
+      delete global.top;
+    });
+
+    it('hands over the weight the author stored', () => {
+      $exeDevice.idevicePreviousData = previousDataWith({
+        isScorm: 1,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 40,
+      });
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValues).toHaveBeenCalledWith(1, 'Save score', true, 40);
+    });
+
+    it('passes a weight of 0 through instead of falling back to 100', () => {
+      $exeDevice.idevicePreviousData = previousDataWith({
+        isScorm: 1,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 0,
+      });
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValues.mock.calls[0][3]).toBe(0);
+    });
+
+    // Saved before the field existed: undefined must reach the helper so its
+    // own default applies, rather than the argument being dropped entirely.
+    it('leaves the helper to default an activity with no stored weight', () => {
+      $exeDevice.idevicePreviousData = previousDataWith({
+        isScorm: 1,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+      });
+
+      $exeDevice.loadPreviousValues();
+
+      expect(setValues.mock.calls[0]).toHaveLength(4);
+      expect(setValues.mock.calls[0][3]).toBeUndefined();
+    });
+  });
+
+  /**
+   * Saving a score needs something to score. The mark is hits over the number
+   * of scorable slides, so with none of them the division has no denominator
+   * and the activity could only ever report a zero the learner did nothing to
+   * earn. This is the same criterion the export counts with, so the editor and
+   * the runtime cannot disagree.
+   */
+  describe('hasScorableSlide', () => {
+    const question = { type: 'singleChoice' };
+    const picture = { type: 'image' };
+
+    it.each([
+      ['singleChoice'],
+      ['multipleChoice'],
+      ['dropdown'],
+      ['matchElements'],
+      ['sortableList'],
+      ['cloze'],
+    ])('counts a %s slide', type => {
+      expect($exeDevice.hasScorableSlide([picture, { type }], false)).toBe(true);
+    });
+
+    it('does not count slides the learner cannot answer', () => {
+      expect(
+        $exeDevice.hasScorableSlide(
+          [picture, { type: 'text' }, { type: 'pause' }],
+          false
+        )
+      ).toBe(false);
+    });
+
+    // With "score every slide" ticked the export counts them all, so anything
+    // at all gives the division a denominator.
+    it('counts any slide when every slide scores', () => {
+      expect($exeDevice.hasScorableSlide([picture], true)).toBe(true);
+    });
+
+    it.each([
+      ['no slides', [], true],
+      ['a missing list', undefined, true],
+      ['no slides without the option', [], false],
+    ])('answers false for %s', (_label, slides, scoreNIA) => {
+      expect($exeDevice.hasScorableSlide(slides, scoreNIA)).toBe(false);
+    });
+
+    it('survives a malformed slide', () => {
+      expect(() =>
+        $exeDevice.hasScorableSlide([null, question], false)
+      ).not.toThrow();
+      expect($exeDevice.hasScorableSlide([null, question], false)).toBe(true);
+    });
+  });
 });

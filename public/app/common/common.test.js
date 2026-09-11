@@ -1694,6 +1694,43 @@ describe('common.js $exeDevices', () => {
       expect(scorm.getPreviousScore(mockScorm)).toBe('85');
     });
 
+    // The bug this helper exists to prevent: init() answers false when the
+    // session is already open, which inside a SCORM package is the normal case
+    // — loadPage() opens it first. Two iDevices separately gated their whole
+    // setup on that return value and so skipped the binding for exactly the
+    // sessions that were working.
+    it('bindSession binds even when init() reports the session as already open', () => {
+      const scorm = getScorm();
+      const api = {
+        init: vi.fn(() => false),
+        SetScoreMax: vi.fn(),
+        SetScoreMin: vi.fn(),
+        GetLearnerName: () => 'Ada',
+        GetScoreRaw: () => '42',
+      };
+
+      expect(scorm.bindSession(api)).toEqual({ userName: 'Ada', previousScore: '42' });
+      expect(api.init).toHaveBeenCalled();
+      expect(api.SetScoreMax).toHaveBeenCalledWith(100);
+      expect(api.SetScoreMin).toHaveBeenCalledWith(0);
+    });
+
+    it('bindSession writes the bounds through the data model when the setters are absent', () => {
+      const scorm = getScorm();
+      const set = vi.fn();
+      const api = { init: vi.fn(), set };
+
+      scorm.bindSession(api);
+
+      expect(set).toHaveBeenCalledWith('cmi.core.score.max', '100');
+      expect(set).toHaveBeenCalledWith('cmi.core.score.min', '0');
+    });
+
+    it('bindSession answers defaults when there is no wrapper at all', () => {
+      const scorm = getScorm();
+      expect(scorm.bindSession(null)).toEqual({ userName: '', previousScore: '0' });
+    });
+
     it('parseJSONSafe returns empty object for invalid JSON', () => {
       const scorm = getScorm();
       expect(scorm.parseJSONSafe('invalid')).toEqual({});
@@ -1793,6 +1830,96 @@ describe('common.js $exeDevices', () => {
       const result = scorm.getFinalScore(lmsData);
       expect(result).toBe(50);
     });
+
+    // The legacy path (SCORM 2004 and pre-rewrite packages, which have no
+    // registry) used to scale the weights to integers summing to 100 by
+    // largest-remainder rounding. That handed the leftover point to whichever
+    // activity came first whenever the fractions tied, so the page's mark
+    // moved with the order the author placed the iDevices in.
+    it('getFinalScore gives the same result whatever order the activities are in', () => {
+      const scorm = getScorm();
+      const equalWeight = score => ({ score, weighted: 100 });
+
+      const forwards = scorm.getFinalScore({
+        1: equalWeight(100),
+        2: equalWeight(50),
+        3: equalWeight(0),
+      });
+      const backwards = scorm.getFinalScore({
+        1: equalWeight(0),
+        2: equalWeight(50),
+        3: equalWeight(100),
+      });
+
+      expect(forwards).toBe(50);
+      expect(backwards).toBe(50);
+    });
+
+    // An iDevice computes its mark as hits over a total it reads from its own
+    // data, and a total of zero — an activity saved with no questions, a deck
+    // that failed to load — makes that division Infinity. The old isNaN test
+    // let it through, and it travelled out to cmi.core.score.raw as the
+    // learner's grade.
+    it('sendScoreNew reduces a non-finite score to zero', () => {
+      const scorm = getScorm();
+      document.body.innerHTML = `
+        <article>
+          <div class="idevice_node" id="n-1">
+            <div id="main-1"></div>
+            <div class="Games-SendScore"></div>
+            <span class="Games-RepeatActivity"></span>
+          </div>
+        </article>`;
+      const reported = [];
+      const previous = scorm.updateActivity;
+      const previousPipwerks = global.pipwerks;
+      scorm.updateActivity = game => reported.push(game.scorerp);
+      // sendScoreNew stands down without the wrapper; the guard under test is
+      // downstream of that.
+      global.pipwerks = { SCORM: { get: () => '', set: () => true } };
+
+      try {
+        for (const scorerp of [1 / 0, -1 / 0, Number.NaN]) {
+          scorm.sendScoreNew(true, {
+            main: 'main-1',
+            gameStarted: true,
+            isScorm: 1,
+            scorerp,
+            weighted: 100,
+            msgs: { msgYouScore: 'Score' },
+          });
+        }
+      } finally {
+        scorm.updateActivity = previous;
+        document.body.innerHTML = '';
+      }
+
+      expect(reported).toEqual(['0', '0', '0']);
+    });
+
+    it('getFinalScore is an exact weighted mean', () => {
+      const scorm = getScorm();
+
+      // (100 + 49 + 0) / 3. The largest-remainder weighting this replaced
+      // answered 50.17, putting a page over the usual mastery threshold of 50
+      // for a learner whose real average is below it.
+      expect(
+        scorm.getFinalScore({
+          1: { score: 100, weighted: 100 },
+          2: { score: 49, weighted: 100 },
+          3: { score: 0, weighted: 100 },
+        })
+      ).toBe(49.67);
+
+      // Unequal weights still count in proportion: 100x3 + 20x1 over 4.
+      expect(
+        scorm.getFinalScore({
+          1: { score: 100, weighted: 75 },
+          2: { score: 20, weighted: 25 },
+        })
+      ).toBe(80);
+    });
+
 
     it('parseSuspendData returns object', () => {
       const scorm = getScorm();
@@ -1932,7 +2059,7 @@ describe('common.js $exeDevices', () => {
 
       expect(registry.register).toHaveBeenCalledWith(
         'id-2',
-        expect.objectContaining({ evaluable: false, completionRequired: false, weight: 1 })
+        expect.objectContaining({ evaluable: false, completionRequired: false, weight: 100 })
       );
     });
 
@@ -1964,12 +2091,67 @@ describe('common.js $exeDevices', () => {
       expect(getScorm().getFinalScore({ 1: { score: 80, weighted: 1 } })).toBe(0);
     });
 
-    it('reportActivity falls back to weight 1 for a missing or invalid weight', () => {
+    // The legacy aggregation (SCORM 2004 and pre-rewrite packages, where there
+    // is no registry) must stay arithmetically identical to the registry's, so
+    // its default for a missing weight has to be 100 as well.
+    describe('the legacy aggregation, with no registry', () => {
+      let previousGetRegistry;
+
+      beforeEach(() => {
+        previousGetRegistry = getScorm().getActivityRegistry;
+        getScorm().getActivityRegistry = () => null;
+      });
+
+      // Restored, or every later test in the file would run without a registry.
+      afterEach(() => {
+        getScorm().getActivityRegistry = previousGetRegistry;
+      });
+
+      it('weighs an entry with no stored weight the same as an explicit 100', () => {
+        const missing = getScorm().getFinalScore({
+          1: { score: 100 },
+          2: { score: 0, weighted: 100 },
+        });
+
+        expect(missing).toBe(50);
+        expect(missing).toBe(
+          getScorm().getFinalScore({
+            1: { score: 100, weighted: 100 },
+            2: { score: 0, weighted: 100 },
+          })
+        );
+      });
+
+      it('still honours a weight the author chose', () => {
+        expect(
+          getScorm().getFinalScore({
+            1: { score: 100, weighted: 1 },
+            2: { score: 0, weighted: 100 },
+          })
+        ).toBe(0.99);
+      });
+    });
+
+    // 100, not 1: it is the default the editor writes, and 28 of the 35 game
+    // iDevices never set `weighted` when they load for playback. At 1, an
+    // activity that had never been through the editor weighed a hundredth of
+    // one that had, on the same page.
+    it('reportActivity falls back to weight 100 for a missing or invalid weight', () => {
       getScorm().reportActivity({ ideviceId: 'id-3', isScorm: 1, weighted: 'x' });
       getScorm().reportActivity({ ideviceId: 'id-4', isScorm: 1, weighted: -2 });
+      getScorm().reportActivity({ ideviceId: 'id-5', isScorm: 1 });
 
-      expect(registry.register).toHaveBeenNthCalledWith(1, 'id-3', expect.objectContaining({ weight: 1 }));
-      expect(registry.register).toHaveBeenNthCalledWith(2, 'id-4', expect.objectContaining({ weight: 1 }));
+      expect(registry.register).toHaveBeenNthCalledWith(1, 'id-3', expect.objectContaining({ weight: 100 }));
+      expect(registry.register).toHaveBeenNthCalledWith(2, 'id-4', expect.objectContaining({ weight: 100 }));
+      expect(registry.register).toHaveBeenNthCalledWith(3, 'id-5', expect.objectContaining({ weight: 100 }));
+    });
+
+    it('reportActivity keeps a weight the author actually chose', () => {
+      getScorm().reportActivity({ ideviceId: 'id-6', isScorm: 1, weighted: 1 });
+      getScorm().reportActivity({ ideviceId: 'id-7', isScorm: 1, weighted: 40 });
+
+      expect(registry.register).toHaveBeenNthCalledWith(1, 'id-6', expect.objectContaining({ weight: 1 }));
+      expect(registry.register).toHaveBeenNthCalledWith(2, 'id-7', expect.objectContaining({ weight: 40 }));
     });
 
     it('reportActivity passes the legacy page position through for migration claims', () => {
@@ -2089,7 +2271,11 @@ describe('common.js $exeDevices', () => {
     it.each([
       ['a finished game reported automatically', { gameOver: true, gameStarted: true }, true, true],
       ['an unfinished game reported automatically', { gameOver: false, gameStarted: true }, true, false],
-      ['a score the learner submitted by hand', { gameOver: false, gameStarted: true }, false, true],
+      // The save button is not a hand-in: it says when the grade is written,
+      // never that the activity is over. Only gameOver says that, in either
+      // direction and whichever way the score was sent.
+      ['a score the learner submitted by hand mid-game', { gameOver: false, gameStarted: true, isScorm: 2 }, false, false],
+      ['a finished game whose score the learner sent by hand', { gameOver: true, gameStarted: true, isScorm: 2 }, false, true],
     ])('sendScoreNew reports %s with the right completion flag', (_label, flags, auto, expected) => {
       // The manual-submit branch ends with an alert(); happy-dom has none.
       const originalAlert = window.alert;
@@ -2131,6 +2317,156 @@ describe('common.js $exeDevices', () => {
       expect(registry.register).toHaveBeenCalledWith('id-1', expect.objectContaining({ completed: expected }));
       container.remove();
       window.alert = originalAlert;
+    });
+
+    // In manual mode the learner owns the save button and decides when — if
+    // ever — their grade is written. So an activity reporting on its own must
+    // reach nothing, and it is worth guarding once here rather than at each of
+    // the hundred-odd places the iDevices publish their progress.
+    describe('manual mode silences the activity, not the button', () => {
+      /**
+       * A game ready to report, with the SCORM mode under test.
+       *
+       * @param {number} isScorm 0 untracked, 1 automatic, 2 manual
+       * @returns {Object} the options object sendScoreNew receives
+       */
+      function gameInMode(isScorm) {
+        return {
+          ideviceId: 'id-1',
+          ideviceNumber: 1,
+          isScorm,
+          weighted: 100,
+          scorerp: 7,
+          gameStarted: true,
+          gameOver: false,
+          main: 'game-main',
+          title: 'Quiz',
+          userName: '',
+          msgs: { msgYouScore: 'Score', msgEndGameScore: 'end' },
+        };
+      }
+
+      let container;
+      let originalAlert;
+
+      beforeEach(() => {
+        originalAlert = window.alert;
+        window.alert = vi.fn();
+        global.pipwerks = { SCORM: { get: () => '', set: vi.fn(() => true) } };
+        container = document.createElement('div');
+        container.id = 'game-main';
+        container.className = 'idevice_node';
+        document.body.appendChild(container);
+      });
+
+      afterEach(() => {
+        container.remove();
+        window.alert = originalAlert;
+      });
+
+      it('drops an automatic report in manual mode', () => {
+        getScorm().sendScoreNew(true, gameInMode(2));
+
+        expect(registry.register).not.toHaveBeenCalled();
+      });
+
+      it('publishes an automatic report in automatic mode', () => {
+        getScorm().sendScoreNew(true, gameInMode(1));
+
+        expect(registry.register).toHaveBeenCalledWith('id-1', expect.objectContaining({ score: 70 }));
+      });
+
+      it('publishes what the button asks for, in manual mode', () => {
+        getScorm().sendScoreNew(false, gameInMode(2));
+
+        expect(registry.register).toHaveBeenCalledWith('id-1', expect.objectContaining({ score: 70 }));
+      });
+
+      it('drops an automatic report from an untracked activity', () => {
+        getScorm().sendScoreNew(true, gameInMode(0));
+
+        expect(registry.register).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        [1, true],
+        [2, false],
+        [0, false],
+        ['1', true],
+      ])('reportsAutomatically(%s) is %s', (isScorm, expected) => {
+        expect(getScorm().reportsAutomatically({ isScorm })).toBe(expected);
+      });
+
+      it('reportsAutomatically says no without a game', () => {
+        expect(getScorm().reportsAutomatically(null)).toBe(false);
+        expect(getScorm().reportsAutomatically(undefined)).toBe(false);
+      });
+    });
+
+    // The status is read on both sides of updateActivity, which is what writes
+    // it. Only the report that moves it earns the second, later retry.
+    it.each([
+      ['asks for a late retry when the status moved', 'incomplete', 'failed', true],
+      ['does not when the status stood still', 'failed', 'failed', false],
+    ])('sendScoreNew %s', (_label, before, after, expected) => {
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      vi.spyOn(getScorm(), 'readLessonStatus')
+        .mockReturnValueOnce(before)
+        .mockReturnValueOnce(after);
+      const trigger = vi
+        .spyOn(getScorm(), 'triggerMoodleDetection')
+        .mockImplementation(() => {});
+      const game = {
+        ideviceId: 'id-1',
+        ideviceNumber: 1,
+        isScorm: 1,
+        weighted: 1,
+        scorerp: 7,
+        gameOver: true,
+        gameStarted: true,
+        main: 'game-main',
+        title: 'Quiz',
+        userName: '',
+        msgs: {
+          msgScore: 'Score',
+          msgWeight: 'Weight',
+          msgYouScore: 'Score',
+          msgEndGameScore: 'end',
+          msgOnlySaveScore: 'only',
+          msgSaveAuto: 'auto',
+          msgPlaySeveralTimes: 'again',
+          msgActityComply: 'ok',
+          msgYouLastScore: 'last',
+          msgScoreScorm: 'scorm',
+        },
+      };
+      const container = document.createElement('div');
+      container.id = 'game-main';
+      container.className = 'idevice_node';
+      document.body.appendChild(container);
+
+      getScorm().sendScoreNew(true, game);
+
+      expect(trigger).toHaveBeenCalledWith(expected);
+      container.remove();
+      vi.restoreAllMocks();
+    });
+
+    it('readLessonStatus reports no status rather than throwing', () => {
+      global.pipwerks = {
+        SCORM: {
+          get: () => {
+            throw new Error('not initialised');
+          },
+          set: vi.fn(),
+        },
+      };
+
+      expect(getScorm().readLessonStatus()).toBe('');
+
+      global.pipwerks = undefined;
+      expect(getScorm().readLessonStatus()).toBe('');
     });
 
     it('showFinalScore delegates score and status to the SCORM 1.2 runtime', () => {
@@ -2410,6 +2746,293 @@ describe('common.js $exeDevices', () => {
       delete window.API;
     });
 
+    // ADR-2209-02 requires one aggregation algorithm, so the displayed score,
+    // cmi.core.score.raw, the in-session status decision and the exit decision
+    // all read the same number. The registry and getFinalScore's legacy branch
+    // are necessarily two implementations — a package without the registry
+    // cannot call into it — so the guarantee is tested rather than structural.
+    it('getFinalScore agrees with the registry aggregate on the same activities', () => {
+      const cases = [
+        [
+          { score: 100, weight: 100 },
+          { score: 49, weight: 100 },
+          { score: 0, weight: 100 },
+        ],
+        [
+          { score: 100, weight: 75 },
+          { score: 20, weight: 25 },
+        ],
+        [
+          { score: 33, weight: 1 },
+          { score: 66, weight: 7 },
+          { score: 99, weight: 13 },
+        ],
+        [{ score: 0, weight: 50 }],
+      ];
+
+      for (const activityCase of cases) {
+        activities.clear();
+        const lmsData = {};
+        activityCase.forEach((activity, index) => {
+          activities.register(`agg-${index}`, {
+            evaluable: true,
+            completed: true,
+            score: activity.score,
+            weight: activity.weight,
+          });
+          lmsData[index + 1] = {
+            score: activity.score,
+            weighted: activity.weight,
+          };
+        });
+
+        const fromRegistry = activities.summary().score;
+
+        // getFinalScore delegates to the registry whenever one is installed,
+        // so the legacy branch is only reachable with it detached — which is
+        // exactly the shape of a SCORM 2004 or pre-rewrite package.
+        const installed = window.exeScorm12.activities;
+        delete window.exeScorm12.activities;
+        try {
+          expect(getScorm().getFinalScore(lmsData)).toBe(fromRegistry);
+        } finally {
+          window.exeScorm12.activities = installed;
+        }
+      }
+      activities.clear();
+    });
+
+    // Moodle refreshes its course-structure menu on LMSCommit and nowhere else
+    // (mod/scorm/datamodels/scorm_12.js LMSCommit -> connectPrereqCallback),
+    // and its own autocommit ships disabled and is a 60-second timer when on.
+    // Without an explicit commit here the mark the learner just earned is
+    // absent from the index until they leave the page.
+    describe('committing a scored interaction', () => {
+      it('commits so the LMS index picks the new mark up', () => {
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        getScorm().updateActivity(game(), {}, true);
+
+        expect(api.callNames()).toContain('LMSCommit');
+      });
+
+      it('commits after the writes, never before them', () => {
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        getScorm().updateActivity(game(), {}, true);
+
+        const scoreWrite = api.calls.findIndex(
+          call => call.method === 'LMSSetValue' && call.args[0] === 'cmi.core.score.raw'
+        );
+        const commit = api.calls.findIndex(call => call.method === 'LMSCommit');
+        expect(scoreWrite).toBeGreaterThanOrEqual(0);
+        expect(commit).toBeGreaterThan(scoreWrite);
+      });
+
+      // iDevices register on jQuery ready, before loadPage(). client.commit()
+      // refuses without a session but warns while doing it, which is the noise
+      // #2209 removed from reconcilePendingActivities — do not reintroduce it.
+      //
+      // The single warning asserted here is the pre-existing one from
+      // persistActivities' setValue (exe-scorm12-client.js:336), unrelated to
+      // the commit; pinning the count is what would catch a second one
+      // appearing because the isActive() guard was dropped.
+      it('neither commits nor adds a warning before the session is open', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        getScorm().updateActivity(game(), {}, true);
+
+        expect(api.callNames()).not.toContain('LMSCommit');
+        expect(warn).toHaveBeenCalledTimes(1);
+      });
+
+      // The commit persists what was written; it decides nothing. LMSCommit
+      // runs StoreData(cmi, false), which promotes no status.
+      // showFinalScore writes the score and the status and only then paints the
+      // result. A failure while painting — a missing message, a node an iDevice
+      // expects and its markup does not have — used to leave the LMS holding
+      // the values with nothing to persist them: "the score is right but the
+      // menu never updates". An activity that reports once, from a check
+      // button, has no second chance; one that reports per answer hides it,
+      // because the next report commits what the last one left behind.
+      it('commits even when painting the result throws', () => {
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+        const showFinalScore = vi
+          .spyOn(getScorm(), 'showFinalScore')
+          .mockImplementation(() => {
+            throw new Error('painting failed');
+          });
+
+        try {
+          expect(() => getScorm().updateActivity(game(), {}, true)).toThrow(
+            'painting failed'
+          );
+        } finally {
+          showFinalScore.mockRestore();
+        }
+
+        expect(api.callNames()).toContain('LMSCommit');
+      });
+
+      // Moodle redraws the SCO status in its menu only on LMSCommit. The
+      // synchronous commit is the guarantee; this deferred retry carries the
+      // writes that land after it — a status settled by a timer or an
+      // animation — which an activity reporting once, from a check button, has
+      // no later report to carry for it.
+      //
+      // Its delay also has to outlast the first commit's beacon: that commit
+      // runs inside the click, so Moodle sends it fire-and-forget, and this
+      // refresh reads what the server has stored by the time it runs. Measured
+      // beacons took 337-877 ms; at the 50 ms this used to carry it always
+      // redrew the old status.
+      it('retries the commit late enough to outlast a beacon round-trip', () => {
+        vi.useFakeTimers();
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        try {
+          getScorm().triggerMoodleDetection();
+          // Nothing yet: the retry is deferred, so it cannot be what carries
+          // a report the learner navigates away from.
+          expect(api.callNames()).not.toContain('LMSCommit');
+
+          // Asserted against the configured delay rather than a literal, so
+          // tuning it cannot silently leave the test measuring nothing. The
+          // floor is the slowest beacon measured (877 ms), rounded up: below
+          // it the refresh can still read the pre-commit state, which is the
+          // defect this delay exists to avoid.
+          expect(getScorm().moodleDetectionDelay).toBeGreaterThanOrEqual(900);
+          vi.advanceTimersByTime(getScorm().moodleDetectionDelay - 1);
+          expect(api.callNames()).not.toContain('LMSCommit');
+
+          vi.advanceTimersByTime(1);
+
+          expect(api.callNames()).toContain('LMSCommit');
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
+      it('does not throw when the retry finds no committable session', () => {
+        vi.useFakeTimers();
+
+        try {
+          getScorm().triggerMoodleDetection();
+
+          expect(() =>
+            vi.advanceTimersByTime(getScorm().moodleDetectionDelay)
+          ).not.toThrow();
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
+      // An intermediate score that misses the race corrects itself: the next
+      // answer commits again and the menu catches up. The report that turns
+      // the page passed or failed has no next answer behind it, so a missed
+      // refresh there leaves the icon wrong for the rest of the visit. That
+      // one, and only that one, gets a second attempt further out.
+      it('tries again later when the report moved the status', () => {
+        vi.useFakeTimers();
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        try {
+          getScorm().triggerMoodleDetection(true);
+          vi.advanceTimersByTime(getScorm().moodleDetectionDelay);
+          const afterFirst = api
+            .callNames()
+            .filter((name) => name === 'LMSCommit').length;
+
+          expect(getScorm().moodleStatusRetryDelay).toBeGreaterThan(
+            getScorm().moodleDetectionDelay
+          );
+          vi.advanceTimersByTime(getScorm().moodleStatusRetryDelay);
+
+          expect(
+            api.callNames().filter((name) => name === 'LMSCommit').length
+          ).toBe(afterFirst + 1);
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
+      // Every answer reports, so a second attempt on each of them would double
+      // the traffic for a miss that the next answer already repairs.
+      it('does not try again when the status did not move', () => {
+        vi.useFakeTimers();
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        try {
+          getScorm().triggerMoodleDetection(false);
+          vi.advanceTimersByTime(getScorm().moodleDetectionDelay);
+          const afterFirst = api
+            .callNames()
+            .filter((name) => name === 'LMSCommit').length;
+
+          vi.advanceTimersByTime(getScorm().moodleStatusRetryDelay);
+
+          expect(
+            api.callNames().filter((name) => name === 'LMSCommit').length
+          ).toBe(afterFirst);
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
+      // A deferred-only commit would be lost if the learner navigates within
+      // the delay, so the synchronous one has to stand on its own.
+      it('commits synchronously as well, without waiting for the retry', () => {
+        vi.useFakeTimers();
+        getScorm().reportActivity(game(), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        try {
+          getScorm().updateActivity(game(), {}, true);
+
+          expect(api.callNames()).toContain('LMSCommit');
+        } finally {
+          vi.clearAllTimers();
+          vi.useRealTimers();
+        }
+      });
+
+      it('leaves a page with pending required work incomplete', () => {
+        getScorm().reportActivity(game(), { total: 4 });
+        getScorm().reportActivity(game({ ideviceId: 'quiz-2', ideviceNumber: 2 }), { total: 4 });
+        runtime.setPageHasScoredActivities(true);
+        window.loadPage();
+        api.resetCalls();
+
+        getScorm().updateActivity(game(), {}, true);
+
+        expect(api.callNames()).toContain('LMSCommit');
+        expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+      });
+    });
+
     it('registering before the session opens is silent, and reconciles once it is open', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -2527,6 +3150,9 @@ describe('common.js $exeDevices', () => {
       expect(api.data['cmi.suspend_data']).toBe('1. "Quiz"; Score: 90%; Weight: 1%');
       expect(api.data['cmi.core.score.raw']).toBe('90');
       expect(api.data['cmi.core.lesson_status']).toBe('passed');
+      // The legacy path needs the same commit as the runtime one, and for the
+      // same reason: Moodle refreshes its index on LMSCommit alone.
+      expect(api.callNames()).toContain('LMSCommit');
     });
 
     it('showFinalScore parses the legacy cmi.suspend_data when given no lmsData and there is no registry', () => {
@@ -3019,6 +3645,68 @@ describe('common.js $exeDevices', () => {
     it('getDataStorage is a function', () => {
       const report = getReport();
       expect(typeof report.getDataStorage).toBe('function');
+    });
+
+    /**
+     * Twenty iDevices compute their mark as hits over a count they read from
+     * their own data, and an activity saved with nothing scorable makes that
+     * division 0/0. sendScoreNew already refuses the result on the way to the
+     * LMS; this path had no guard, so the NaN was stored and then decided the
+     * icon through `parseFloat(score) >= 5`, which a NaN fails — an activity
+     * the learner passed could be shown as failed.
+     */
+    describe('saveEvaluation with an unusable mark', () => {
+      const instance = 'rep-1';
+
+      function givenActivity(scorerp) {
+        document.body.innerHTML = `
+          <article>
+            <header><h1 class="box-title">Game</h1></header>
+            <div id="${instance}" class="idevice_node">
+              <div id="main-${instance}"></div>
+            </div>
+          </article>`;
+        localStorage.removeItem('dataEvaluation-eval-1');
+        return {
+          main: `main-${instance}`,
+          evaluation: true,
+          evaluationID: 'eval-1',
+          scorerp,
+          idevicePath: 'p/',
+          idevice: 'idevice_node',
+          msgs: {
+            msgTypeGame: 'Game',
+            msgUncompletedActivity: 'x',
+            msgSuccessfulActivity: 'Passed: %s',
+            msgUnsuccessfulActivity: 'Not passed: %s',
+          },
+        };
+      }
+
+      function storedScore() {
+        const raw = localStorage.getItem('dataEvaluation-eval-1');
+        return JSON.parse(raw).activities[0].score;
+      }
+
+      it.each([
+        ['a division by zero', Number.NaN],
+        ['a count of zero', Number.POSITIVE_INFINITY],
+      ])('records a zero for %s', (_label, scorerp) => {
+        getReport().saveEvaluation(givenActivity(scorerp));
+
+        expect(storedScore()).toBe(0);
+      });
+
+      it('leaves a usable mark alone', () => {
+        getReport().saveEvaluation(givenActivity(7.5));
+
+        expect(storedScore()).toBe(7.5);
+      });
+
+      afterEach(() => {
+        localStorage.removeItem('dataEvaluation-eval-1');
+        document.body.innerHTML = '';
+      });
     });
 
     it('scrollToHash does nothing when in eXe', () => {

@@ -839,6 +839,11 @@ var $eXeIdentifica = {
         if (codeInput === requiredCode) {
             $eXeIdentifica.showCubiertaOptions(false, instance);
             $(`#idfLinkMaximize-${instance}`).trigger('click');
+            // A valid code is the learner opening the activity. Nothing needs
+            // starting — startGame ran while the page loaded, behind the cover
+            // — but nothing had told the LMS either: showQuestion holds its
+            // report until initGame, which only a clue or an answer raises.
+            $eXeIdentifica.saveScormScore(instance);
         } else {
             $(`#idfMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
@@ -943,6 +948,12 @@ var $eXeIdentifica = {
     gameOver: function (instance) {
         let mOptions = $eXeIdentifica.options[instance];
         mOptions.gameStarted = false;
+        // The attempt ends here and only here. common.js derives completion
+        // from `gameOver === true || auto !== true`, and the report below is
+        // automatic, so without this flag the page stays `incomplete` in the
+        // LMS however well the learner did. Raised before the report, so the
+        // score and the completion signal cannot disagree.
+        mOptions.gameOver = true;
         $eXeIdentifica.showCluesLinks(0, instance);
         $('#idfLinkAudio-' + instance).hide();
         $exeDevices.iDevice.gamification.media.stopSound();
@@ -1299,6 +1310,19 @@ var $eXeIdentifica = {
             mOptions,
             $eXeIdentifica.isInExe
         );
+    },
+
+    /**
+     * Publish the freshly cleared state to the LMS when the learner opens the
+     * activity from an explicit control.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeIdentifica.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeIdentifica.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {

@@ -291,6 +291,19 @@ describe('exe-scorm12-client', () => {
             expect(api.callsFor('LMSGetValue')).toEqual([]);
         });
 
+        it('tells "never written" apart from "written as an empty string"', () => {
+            useWindow('self');
+            client.initialize();
+
+            expect(client.hasWrittenValue('cmi.core.exit')).toBe(false);
+            expect(client.getCachedValue('cmi.core.exit')).toBe('');
+
+            expect(client.setValue('cmi.core.exit', '')).toBe(true);
+
+            expect(client.hasWrittenValue('cmi.core.exit')).toBe(true);
+            expect(client.getCachedValue('cmi.core.exit')).toBe('');
+        });
+
         it('still reads the readable interaction keywords from the LMS', () => {
             useWindow('self');
             client.initialize();

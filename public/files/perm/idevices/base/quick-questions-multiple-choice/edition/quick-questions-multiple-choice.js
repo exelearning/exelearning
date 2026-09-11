@@ -2748,7 +2748,7 @@ var $exeDevice = {
             });
 
         $('#seleccionaETimeSilence').on('keyup', function () {
-            let v = this.value.replace(/\D/g, '').substring(0, 1);
+            let v = this.value.replace(/\D/g, '').substring(0, 3);
             this.value = v;
         });
 

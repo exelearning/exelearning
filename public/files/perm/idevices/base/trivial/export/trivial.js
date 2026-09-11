@@ -558,6 +558,24 @@ var $eXeTrivial = {
         }
     },
 
+    /**
+     * Publish the opening state to the LMS when a game starts.
+     *
+     * startGame() rebuilds the players through loadPlayers — every score back
+     * to 0, every cheese board empty — but nothing told the LMS, so its menu
+     * kept the previous game's grade and status until the first answer.
+     *
+     * Called after loadPlayers, so the report is a genuine zero.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit a game they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeTrivial.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeTrivial.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         let mOptions = $eXeTrivial.options[instance],
             score = 10,
@@ -697,23 +715,37 @@ var $eXeTrivial = {
         $('#trivialSelectsGamers-' + instance).show();
         $('#trivialDado-' + instance).hide();
 
+        // Records the game that just ended. The SCORM report that used to sit
+        // next to it is gone: it ran BEFORE any of the resets below, so it
+        // published the finished game's score all over again — and with
+        // `gameOver` still up, so the LMS was told the discarded game was the
+        // final word. The end-of-game path already reported that result; what
+        // the LMS needs next is the zero, and startGame publishes it when the
+        // learner actually starts playing again.
         $eXeTrivial.saveEvaluation(instance);
-        $eXeTrivial.sendScore(true, instance);
-        $eXeTrivial.initialScore = (
-            ((mOptions.gamers[0].casilla + 1) * 10) /
-            mOptions.numeroCasillas
-        ).toFixed(2);
+
         mOptions.gameStarted = false;
         mOptions.activePlayer = 0;
         mOptions.gameOver = false;
 
         for (let i = 0; i < mOptions.numeroJugadores; i++) {
+            // The board was put back but the players were not: only the on-screen
+            // points were zeroed, while `score`, `quesos` and `cheeses` kept the
+            // finished game's values — which is what sendScore reads.
+            mOptions.gamers[i].score = 0;
+            mOptions.gamers[i].quesos = [];
+            mOptions.gamers[i].cheeses = [];
             mOptions.gamers[i].casilla = mOptions.pT.length - 1;
             $eXeTrivial.placePlayerToken(i, instance);
             $('#trivialJugadores-' + instance + ' > .trivialj' + i)
                 .find('.trivial-Puntos')
                 .text('0');
         }
+
+        $eXeTrivial.initialScore = (
+            ((mOptions.gamers[0].casilla + 1) * 10) /
+            mOptions.numeroCasillas
+        ).toFixed(2);
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 6; j++) {
                 $eXeTrivial.activeCheese(i, j, false, instance);
@@ -808,6 +840,9 @@ var $eXeTrivial = {
         }, 1000);
 
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeTrivial.saveScormScore(instance);
         $eXeTrivial.saveDataStorage(instance);
         setTimeout(function () {
             if (mOptions.numeroJugadores === 1) {
@@ -930,8 +965,28 @@ var $eXeTrivial = {
         }
 
         $exeDevices.iDevice.gamification.media.stopSound();
-        $eXeTrivial.saveEvaluation(instance);
+        $eXeTrivial.saveQuestionScore(instance);
         $eXeTrivial.saveDataStorage(instance);
+    },
+
+    /**
+     * Report the score in the same turn the learner answered, right or wrong.
+     *
+     * The report used to live at the end of correctAnswer(), so a wrong answer
+     * changed nothing in the LMS until the next correct one or the end of the
+     * game — and a win reported twice, once there and once from gameOver().
+     * Reporting here covers both branches, and the gameOver guard leaves the
+     * terminal report to gameOver() alone.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveQuestionScore: function (instance) {
+        const mOptions = $eXeTrivial.options[instance];
+
+        if (mOptions.isScorm == 1 && !mOptions.gameOver) {
+            $eXeTrivial.sendScore(true, instance);
+        }
+        $eXeTrivial.saveEvaluation(instance);
     },
 
     correctAnswer: function (instance) {
@@ -1019,7 +1074,9 @@ var $eXeTrivial = {
                 $eXeTrivial.loadGameBoard(instance);
             }, 3000);
         }
-        $eXeTrivial.sendScore(true, instance);
+        // The report moved to saveQuestionScore(), which questionAnswer() calls
+        // for a wrong answer too, and which stands down once the game is over
+        // so the win is not reported both here and from gameOver().
     },
 
     cheesePositions: function (numasi) {

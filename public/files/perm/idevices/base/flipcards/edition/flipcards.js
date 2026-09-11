@@ -1389,7 +1389,7 @@ var $exeDevice = {
         $('#flipcardsETime').on('keyup', function () {
             let v = this.value;
             v = v.replace(/\D/g, '');
-            v = v.substring(0, 1);
+            v = v.substring(0, 2);
             this.value = v;
         });
 

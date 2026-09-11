@@ -337,6 +337,24 @@ var $exeDevice = {
         this.originalData = data;
     },
 
+    /**
+     * The SCORM weight, held to the 1-100 range the form offers.
+     *
+     * Anything outside it, or unreadable, is the 100 default. The previous
+     * `value || 100` did not enforce the range: 0 and NaN fell back because
+     * they are falsy, but -1 — which getValues() returns for an emptied field
+     * — and any number above 100 are truthy and were stored as they came.
+     * Mirrors normalizeWeight() in the export runtime.
+     *
+     * @param {number|string} value - Weight read from the SCORM tab.
+     * @returns {number} A weight between 1 and 100.
+     */
+    normalizeWeight: function (value) {
+        var weight = parseFloat(value);
+        if (Number.isNaN(weight) || weight < 1 || weight > 100) return 100;
+        return weight;
+    },
+
     getStoredRubricData: function (container) {
         var node = $('.exe-rubrics-DataGame', container).first();
         if (node.length !== 1) return null;
@@ -1722,7 +1740,7 @@ var $exeDevice = {
         data.isScorm = scorm.isScorm;
         data.textButtonScorm = scorm.textButtonScorm;
         data.repeatActivity = scorm.repeatActivity;
-        data.weighted = scorm.weighted || 100;
+        data.weighted = $exeDevice.normalizeWeight(scorm.weighted);
 
         var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
         var textAfter = textAfterEditor

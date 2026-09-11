@@ -548,6 +548,297 @@ describe('complete iDevice export', () => {
    * or every gap right. These tests pin the flag to that condition and to nothing else:
    * a check with attempts still left must NOT complete the activity.
    */
+  describe('starting a timed activity', () => {
+    const instance = 7;
+
+    function setupStart(overrides = {}) {
+      const container = document.createElement('div');
+      container.id = `cmptMainContainer-${instance}`;
+      container.innerHTML = `
+        <div id="cmptGameContainer-${instance}">
+          <div class="CMPT-ButtonsDiv"></div>
+        </div>
+        <div id="cmptButonsDiv-${instance}"></div>
+        <div id="cmptMultimedia-${instance}"></div>
+        <div id="cmptDivImgHome-${instance}"></div>
+        <span id="cmptPHits-${instance}"></span>
+        <span id="cmptPScore-${instance}"></span>
+        <div id="cmptStartGame-${instance}"></div>`;
+      document.body.appendChild(container);
+      $eXeCompleta.options[instance] = Object.assign(
+        {
+          main: `cmptMainContainer-${instance}`,
+          isScorm: 1,
+          type: 0,
+          time: 1,
+          gameStarted: false,
+          gameOver: true,
+          hits: 4,
+          errors: 2,
+          score: 10,
+          number: 4,
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeCompleta, 'updateTime').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'sendScore').mockImplementation(() => {});
+      vi.useFakeTimers();
+    }
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    // Trying again empties the gaps and zeroes the counters, so the mark the
+    // LMS holds from the last check stops describing anything on screen. It
+    // used to stay there, and a learner who walked away left the previous
+    // score standing over a blank board.
+    it('publishes the zero when the learner tries the phrase again', () => {
+      setupStart({ gameStarted: true, gameOver: false, hits: 3, errors: 1 });
+      document.getElementById(`cmptMainContainer-${instance}`).innerHTML +=
+        `<div id="cmptReloadPhrase-${instance}"></div>
+         <div id="cmptCheckPhrase-${instance}"></div>`;
+      let stateWhenReported;
+      $eXeCompleta.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } = $eXeCompleta.options[instance];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+      vi.spyOn($eXeCompleta, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'updateGameBoard').mockImplementation(() => {});
+
+      $eXeCompleta.reloadGame(instance);
+
+      expect($eXeCompleta.sendScore).toHaveBeenCalledWith(true, instance);
+      // The report describes the blank board, and says the attempt goes on:
+      // this button only appears while attempts remain.
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupStart({ isScorm: 1 });
+      $eXeCompleta.saveScormScore(instance);
+      expect($eXeCompleta.sendScore).toHaveBeenCalledWith(true, instance);
+
+      $eXeCompleta.sendScore.mockClear();
+      $eXeCompleta.options[instance].isScorm = 2;
+      $eXeCompleta.saveScormScore(instance);
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+    });
+
+    // The defect: pressing start left the LMS holding the previous attempt's
+    // grade and status until the learner checked the phrase again.
+    it('publishes the cleared state when a finished game is restarted', () => {
+      setupStart();
+      let stateWhenReported;
+      $eXeCompleta.sendScore.mockImplementation(() => {
+        const { hits, errors, score, gameOver, gameStarted } =
+          $eXeCompleta.options[instance];
+        stateWhenReported = { hits, errors, score, gameOver, gameStarted };
+      });
+
+      $eXeCompleta.startGame(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        score: 0,
+        gameOver: false,
+        // sendScoreNew ignores a game that reports as neither started nor over.
+        gameStarted: true,
+      });
+    });
+
+    // The counters used to be cleared on `$eXeCompleta` — the module object,
+    // which nothing reads — instead of on the instance, so a replayed activity
+    // carried the previous attempt's hits until the next check recomputed
+    // them, and opened showing them.
+    it('clears the counters on the instance, not on the module', () => {
+      setupStart({ hits: 4, errors: 2, score: 10 });
+
+      $eXeCompleta.startGame(instance);
+
+      expect($eXeCompleta.options[instance]).toMatchObject({
+        hits: 0,
+        errors: 0,
+        score: 0,
+      });
+      expect($eXeCompleta.hits).toBeUndefined();
+      expect($eXeCompleta.score).toBeUndefined();
+    });
+
+    it('does not report a game that was already running', () => {
+      setupStart({ gameStarted: true });
+
+      $eXeCompleta.startGame(instance);
+
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+    });
+
+    /** The code field and the cover the entry drives. */
+    function addCodeAccessDom(typed) {
+      $(`#cmptMainContainer-${instance}`).append(`
+        <div id="cmptCodeAccessDiv-${instance}"></div>
+        <div id="cmptCubierta-${instance}"></div>
+        <div id="cmptMesajeAccesCodeE-${instance}"></div>
+        <a id="cmptLinkMaximize-${instance}" href="#"></a>
+        <input id="cmptCodeAccessE-${instance}" value="${typed}" />`);
+      vi.spyOn($eXeCompleta, 'showCubiertaOptions').mockImplementation(
+        () => {}
+      );
+    }
+
+    // Untimed and behind a code, the board is already laid out under the cover:
+    // there is no startGame to run, so the entry used to raise the flag and
+    // say nothing, and the LMS kept the previous attempt's grade until the
+    // learner checked the phrase.
+    it('publishes a zero and an unfinished attempt when an untimed code opens it', () => {
+      setupStart({
+        time: 0,
+        gameStarted: false,
+        gameOver: false,
+        hits: 0,
+        itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('AbrE');
+      let stateWhenReported;
+      $eXeCompleta.sendScore.mockImplementation(() => {
+        const { hits, gameOver, gameStarted } = $eXeCompleta.options[instance];
+        stateWhenReported = { hits, gameOver, gameStarted };
+      });
+
+      $eXeCompleta.enterCodeAccess(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('starts a timed activity when the code opens it', () => {
+      setupStart({
+        time: 1,
+        gameStarted: false,
+        itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('abre');
+
+      $eXeCompleta.enterCodeAccess(instance);
+
+      expect($eXeCompleta.sendScore).toHaveBeenCalledWith(true, instance);
+      expect($eXeCompleta.options[instance].gameStarted).toBe(true);
+    });
+
+    it('neither starts nor reports when the code is wrong', () => {
+      setupStart({
+        time: 0,
+        gameStarted: false,
+        itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('nope');
+
+      $eXeCompleta.enterCodeAccess(instance);
+
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+      expect($eXeCompleta.options[instance].gameStarted).toBe(false);
+      expect($(`#cmptCodeAccessE-${instance}`).val()).toBe('');
+    });
+
+    // No timer and no code: the board is live from the moment the page loads,
+    // and the learner has given no signal yet. Maximizing must not become one.
+    it('stays silent when an untimed, uncoded board is maximized', () => {
+      setupStart({ time: 0, gameStarted: true });
+
+      $eXeCompleta.startGame(instance);
+
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+    });
+
+    // The guard read mOptions.cmptStarted, a key nothing in the iDevice ever
+    // writes, so it always passed and startGame was called on every maximize —
+    // harmless only because startGame returns early on its own.
+    /**
+     * Wire the real handlers and click the maximize link.
+     *
+     * @param {number} time minutes on the clock; 0 leaves addEvents raising
+     * gameStarted, above 0 leaves it waiting for the play button.
+     */
+    function maximizeAfterAddEvents(time) {
+      setupStart({
+        time,
+        gameStarted: false,
+        // setupStart's default is a finished game; these two cases are about a
+        // board the learner has not played yet, which is what the guard now
+        // tells apart.
+        gameOver: false,
+        author: '',
+        text: 'uno @@dos@@ tres',
+        itinerary: { showCodeAccess: false, showClue: false },
+      });
+      $(`#cmptMainContainer-${instance}`).append(`
+        <a id="cmptLinkMaximize-${instance}" href="#"></a>
+        <div id="cmptGameMinimize-${instance}"></div>
+        <input id="cmptSolution-${instance}" />`);
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      vi.spyOn($eXeCompleta, 'startGame').mockImplementation(() => {});
+
+      $eXeCompleta.addEvents(instance);
+      $(`#cmptLinkMaximize-${instance}`).trigger('click');
+    }
+
+    it('does not start an untimed board again when it is maximized', () => {
+      maximizeAfterAddEvents(0);
+
+      expect($eXeCompleta.startGame).not.toHaveBeenCalled();
+    });
+
+    it('starts a timed board when it is maximized before the play button', () => {
+      maximizeAfterAddEvents(1);
+
+      expect($eXeCompleta.startGame).toHaveBeenCalledWith(instance);
+    });
+
+    // The defect: finishing leaves gameStarted false, so testing that flag
+    // alone let restoring a minimized activity call startGame — which clears
+    // hits, errors and the score and then publishes that zero to the LMS. The
+    // learner ended with a grade, minimized, restored, and lost it.
+    it('does not restart a finished board when it is maximized', () => {
+      setupStart({
+        time: 1,
+        gameStarted: false,
+        author: '',
+        text: 'uno @@dos@@ tres',
+        itinerary: { showCodeAccess: false, showClue: false },
+      });
+      $(`#cmptMainContainer-${instance}`).append(`
+        <a id="cmptLinkMaximize-${instance}" href="#"></a>
+        <div id="cmptGameMinimize-${instance}"></div>
+        <input id="cmptSolution-${instance}" />`);
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      vi.spyOn($eXeCompleta, 'startGame').mockImplementation(() => {});
+      $eXeCompleta.addEvents(instance);
+
+      // What gameOver() leaves behind, on the same object the handler closed
+      // over. Then the learner restores the panel.
+      Object.assign($eXeCompleta.options[instance], {
+        gameStarted: false,
+        gameOver: true,
+      });
+      $(`#cmptLinkMaximize-${instance}`).trigger('click');
+
+      expect($eXeCompleta.startGame).not.toHaveBeenCalled();
+    });
+  });
+
   describe('completion signal on the automatic report', () => {
     let reports;
     let originalScorm;
@@ -718,8 +1009,53 @@ describe('complete iDevice export', () => {
         vi.useRealTimers();
       }
 
-      expect(reports).toHaveLength(1);
-      expect(reports[0].gameOver).toBe(true);
+      // Two reports: startGame publishes the cleared state on the way in, and
+      // the forced check publishes the result. The last one is the verdict.
+      expect(reports).toHaveLength(2);
+      expect(reports[0].gameOver).toBe(false);
+      expect(reports[1].gameOver).toBe(true);
+    });
+
+    // While the clock runs and attempts remain, offering another try is the
+    // whole point of a check.
+    it('keeps the retry on an intermediate check', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      expect($(`#cmptReloadPhrase-${instance}`).css('display')).not.toBe(
+        'none'
+      );
+    });
+
+    // Time up ends the attempt, so the retry has to go with it. The forced
+    // check gets there first and offers one, because attempts were left, and
+    // reloadGame would re-enable the gaps and bring back a Check that no
+    // longer does anything — checkPhrase returns on a game that is not started.
+    it('takes the retry away when the clock runs out', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+      const mOptions = $eXeCompleta.options[instance];
+      mOptions.time = 1;
+      mOptions.gameStarted = false;
+
+      vi.useFakeTimers();
+      try {
+        $eXeCompleta.startGame(instance);
+        vi.advanceTimersByTime(60000);
+      } finally {
+        clearInterval(mOptions.counterClock);
+        vi.useRealTimers();
+      }
+
+      expect($(`#cmptReloadPhrase-${instance}`).css('display')).toBe('none');
     });
   });
 });
