@@ -1234,9 +1234,14 @@ var $eXePuzzle = {
             .on('click', '.Games-SendScore', function (e) {
                 e.preventDefault();
                 if (!$eXePuzzle.canSendScore(instance)) {
-                    $exeDevices.iDevice.gamification.scorm.refuseHandSend(
-                        mOptions
-                    );
+                    // The wording sendScoreNew already uses to refuse a game
+                    // that reports as neither started nor over. The puzzle
+                    // cannot say that with `gameStarted` — it rises on its own
+                    // when the image loads, and it is what the tile handlers
+                    // read to allow play — so it says it here.
+                    const message =
+                        mOptions.msgs && mOptions.msgs.msgEndGameScore;
+                    if (message) alert(message);
                     return;
                 }
                 $eXePuzzle.sendScore(false, instance);

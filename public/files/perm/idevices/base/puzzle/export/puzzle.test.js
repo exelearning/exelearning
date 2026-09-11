@@ -400,7 +400,8 @@ describe('puzzle iDevice export', () => {
         overrides
       );
       $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
-      $exeDevices.iDevice.gamification.scorm.refuseHandSend = vi.fn();
+      // The refusal ends in an alert, and happy-dom has none.
+      window.alert = vi.fn();
       vi.spyOn($eXePuzzle, 'uptateTime').mockImplementation(() => {});
       vi.spyOn($eXePuzzle, 'sendScore').mockImplementation(() => {});
       vi.spyOn($eXePuzzle, 'saveEvaluation').mockImplementation(() => {});
@@ -420,9 +421,7 @@ describe('puzzle iDevice export', () => {
 
       expect($eXePuzzle.sendScore).not.toHaveBeenCalled();
       expect($eXePuzzle.saveEvaluation).not.toHaveBeenCalled();
-      expect(
-        $exeDevices.iDevice.gamification.scorm.refuseHandSend
-      ).toHaveBeenCalledWith($eXePuzzle.options[0]);
+      expect(window.alert).toHaveBeenCalledWith('Please start the game first.');
     });
 
     it('sends by hand once the learner has played', () => {
@@ -432,9 +431,16 @@ describe('puzzle iDevice export', () => {
 
       expect($eXePuzzle.sendScore).toHaveBeenCalledWith(false, 0);
       expect($eXePuzzle.saveEvaluation).toHaveBeenCalledWith(0);
-      expect(
-        $exeDevices.iDevice.gamification.scorm.refuseHandSend
-      ).not.toHaveBeenCalled();
+      expect(window.alert).not.toHaveBeenCalled();
+    });
+
+    it('stays quiet when the activity has no message for it', () => {
+      setupButton({ msgs: {} });
+
+      $('.Games-SendScore').trigger('click');
+
+      expect($eXePuzzle.sendScore).not.toHaveBeenCalled();
+      expect(window.alert).not.toHaveBeenCalled();
     });
 
     // What counts as touching the board: a click the handlers accept, in
