@@ -156,23 +156,34 @@ describe('puzzle iDevice export', () => {
     });
   });
 
-  // common.js derives completion from `gameOver === true || auto !== true`, and
-  // updateScore reports automatically, so without the flag a page carrying a
-  // puzzle stayed `incomplete` in the LMS however well the learner did.
-  describe('completion on the last puzzle', () => {
+  /**
+   * A solved board is counted where it is solved. It used to be counted at the
+   * end of the reveal animation, which runs one 300 ms tick per tile: three to
+   * eight seconds during which the LMS held the previous puzzle's mark, and
+   * during which a hand-sent score saved that same short mark. common.js
+   * derives completion from `gameOver === true`, so the flag has to be up
+   * before updateScore reports, or a finished page stays `incomplete`.
+   */
+  describe('counting a solved puzzle', () => {
     function setupSolved(overrides) {
-      document.body.innerHTML = `<div id="pzlImagePuzzle-0"></div>`;
+      document.body.innerHTML = `
+        <div id="pzlImagePuzzle-0"></div>
+        <div id="pzlAttemps-0"></div>`;
+      const silent = { audioDefinition: '', audioClue: '' };
       $eXePuzzle.options[0] = Object.assign(
         {
           id: 0,
           isScorm: 1,
           gameOver: false,
           active: 2,
-          puzzlesGame: [{}, {}, {}],
+          attemps: 0,
+          puzzlesGame: [silent, silent, silent],
           msgs: {},
         },
         overrides
       );
+      vi.spyOn($eXePuzzle, 'checkCorrectPlaces').mockImplementation(() => true);
+      vi.spyOn($eXePuzzle, 'showSholution').mockImplementation(() => {});
       vi.spyOn($eXePuzzle, 'updateScore').mockImplementation(() => {});
     }
 
@@ -182,9 +193,9 @@ describe('puzzle iDevice export', () => {
     });
 
     it('marks the activity finished when the last puzzle is solved', () => {
-      setupSolved({ active: 2, puzzlesGame: [{}, {}, {}] });
+      setupSolved({ active: 2 });
 
-      $eXePuzzle.showCompletedWindows(0);
+      $eXePuzzle.checkIfSolved(0);
 
       expect($eXePuzzle.options[0].gameOver).toBe(true);
     });
@@ -192,23 +203,351 @@ describe('puzzle iDevice export', () => {
     // Solving an intermediate puzzle must not close the attempt: the page would
     // go to passed/failed while the learner is still playing.
     it('leaves the activity unfinished while puzzles remain', () => {
-      setupSolved({ active: 0, puzzlesGame: [{}, {}, {}] });
+      setupSolved({ active: 0 });
 
-      $eXePuzzle.showCompletedWindows(0);
+      $eXePuzzle.checkIfSolved(0);
 
       expect($eXePuzzle.options[0].gameOver).toBe(false);
     });
 
     it('raises the flag before it reports, so the two cannot disagree', () => {
-      setupSolved({ active: 2, puzzlesGame: [{}, {}, {}] });
+      setupSolved({ active: 2 });
       let flagWhenReported;
       $eXePuzzle.updateScore.mockImplementation(() => {
         flagWhenReported = $eXePuzzle.options[0].gameOver;
       });
 
-      $eXePuzzle.showCompletedWindows(0);
+      $eXePuzzle.checkIfSolved(0);
 
       expect(flagWhenReported).toBe(true);
+    });
+
+    // The order is the whole point: count first, then show. Reversed, the
+    // report goes out while the tiles are still appearing and carries a mark
+    // that does not include the puzzle the learner has just solved.
+    it('counts the hit before the reveal starts', () => {
+      setupSolved({ active: 1 });
+      const order = [];
+      $eXePuzzle.updateScore.mockImplementation(() => order.push('count'));
+      $eXePuzzle.showSholution.mockImplementation(() => order.push('reveal'));
+
+      $eXePuzzle.checkIfSolved(0);
+
+      expect(order).toEqual(['count', 'reveal']);
+    });
+
+    it('does not count an unsolved board', () => {
+      setupSolved({ active: 2 });
+      $eXePuzzle.checkCorrectPlaces.mockImplementation(() => false);
+
+      $eXePuzzle.checkIfSolved(0);
+
+      expect($eXePuzzle.updateScore).not.toHaveBeenCalled();
+      expect($eXePuzzle.options[0].gameOver).toBe(false);
+    });
+
+    // The reveal window only shows the result now. Counting there as well
+    // would charge the learner twice for one puzzle.
+    it('leaves the completed window with nothing to count', () => {
+      setupSolved({ active: 2, msgs: { msgsCompletedPuzzle: '', msgsRepeat: '', msgsNext: '', msgsTerminate: '' } });
+
+      $eXePuzzle.showCompletedWindows(0);
+
+      expect($eXePuzzle.updateScore).not.toHaveBeenCalled();
+      expect($eXePuzzle.options[0].gameOver).toBe(false);
+    });
+  });
+
+  /**
+   * The save button of manual mode. `gameStarted` goes up on its own when the
+   * image loads — it is what the tile handlers read to allow play — so it
+   * cannot stand for "the learner has done something", and the runtime's own
+   * refusal never fires here. Without a question of its own, a learner who came
+   * back and pressed save before touching a tile wrote a 0 over the mark the
+   * LMS was holding.
+   */
+  describe('what the save button will write', () => {
+    function given(overrides) {
+      $eXePuzzle.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 2,
+          gameStarted: true,
+          gameOver: false,
+          engaged: false,
+          codeAccepted: false,
+          itinerary: { showCodeAccess: false },
+        },
+        overrides
+      );
+    }
+
+    afterEach(() => {
+      $eXePuzzle.options = [];
+      vi.restoreAllMocks();
+    });
+
+    it('refuses a board nobody has touched', () => {
+      given();
+
+      expect($eXePuzzle.canSendScore(0)).toBe(false);
+    });
+
+    it('allows it once a tile has been moved', () => {
+      given({ engaged: true });
+
+      expect($eXePuzzle.canSendScore(0)).toBe(true);
+    });
+
+    // The button sits outside the cover, so it is within reach of someone who
+    // never opened the activity.
+    it('refuses while the access code has not been accepted', () => {
+      given({ engaged: true, itinerary: { showCodeAccess: true } });
+
+      expect($eXePuzzle.canSendScore(0)).toBe(false);
+    });
+
+    it('allows it once the code has been accepted', () => {
+      given({
+        engaged: true,
+        codeAccepted: true,
+        itinerary: { showCodeAccess: true },
+      });
+
+      expect($eXePuzzle.canSendScore(0)).toBe(true);
+    });
+
+    // A finished activity is the mark the learner came to save, so being
+    // finished stands in for having touched the board.
+    it('allows a finished activity that is not locked', () => {
+      given({ gameOver: true, engaged: false });
+
+      expect($eXePuzzle.canSendScore(0)).toBe(true);
+    });
+
+    // But being finished is not proof the code was ever given. The cover is a
+    // sibling of the game container, so taking the container fullscreen leaves
+    // it behind, and its control is still in the tab order underneath: the
+    // board can be reached, and solved, without the code.
+    it('refuses a finished activity that never took the code', () => {
+      given({
+        gameOver: true,
+        engaged: true,
+        codeAccepted: false,
+        itinerary: { showCodeAccess: true },
+      });
+
+      expect($eXePuzzle.canSendScore(0)).toBe(false);
+    });
+
+    it('allows a finished activity once the code has been accepted', () => {
+      given({
+        gameOver: true,
+        codeAccepted: true,
+        itinerary: { showCodeAccess: true },
+      });
+
+      expect($eXePuzzle.canSendScore(0)).toBe(true);
+    });
+
+    it('answers no for an instance that does not exist', () => {
+      expect($eXePuzzle.canSendScore(7)).toBe(false);
+    });
+  });
+  describe('pressing the save button', () => {
+    function setupButton(overrides) {
+      document.body.innerHTML = `
+        <article class="idevice_node">
+          <div id="pzlMainContainer-0"></div>
+          <div id="pzlAudioDef-0"></div>
+          <div id="pzlAudioClue-0"></div>
+          <div id="pzlShowClue-0"></div>
+          <div id="pzlPHits-0"></div>
+          <div id="pzlPNumber-0"></div>
+          <div id="pzlPScore-0"></div>
+          <div id="pzlPErrors-0"></div>
+          <div id="pzlCubierta-0"></div>
+          <div id="pzlGameOver-0"></div>
+          <div id="pzlTime-0"></div>
+          <div id="pzlImgTime-0"></div>
+          <div id="pzlAttemps-0"></div>
+          <div id="pzlImgAttemps-0"></div>
+          <div id="pzlCodeAccessDiv-0"></div>
+          <div id="pzlMultimedia-0"><div class="PZLP-Tile" id="slide-0"></div></div>
+          <div id="pzlImagePuzzle-0"><div class="PZLP-TileChange" id="swap-0"></div></div>
+          <input type="button" class="Games-SendScore" />
+          <span class="Games-RepeatActivity"></span>
+        </article>`;
+      $eXePuzzle.options[0] = Object.assign(
+        {
+          id: 0,
+          main: 'pzlMainContainer-0',
+          isScorm: 2,
+          gameStarted: true,
+          gameOver: false,
+          engaged: false,
+          codeAccepted: false,
+          hits: 0,
+          errors: 0,
+          score: 0,
+          numberQuestions: 3,
+          time: 0,
+          author: '',
+          fullscreen: false,
+          itinerary: { showCodeAccess: false },
+          msgs: { msgEndGameScore: 'Please start the game first.' },
+        },
+        overrides
+      );
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.refuseHandSend = vi.fn();
+      vi.spyOn($eXePuzzle, 'uptateTime').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'sendScore').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'saveEvaluation').mockImplementation(() => {});
+      $eXePuzzle.addEvents(0);
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      $eXePuzzle.options = [];
+      vi.restoreAllMocks();
+    });
+
+    it('writes nothing and says so when the board is untouched', () => {
+      setupButton();
+
+      $('.Games-SendScore').trigger('click');
+
+      expect($eXePuzzle.sendScore).not.toHaveBeenCalled();
+      expect($eXePuzzle.saveEvaluation).not.toHaveBeenCalled();
+      expect(
+        $exeDevices.iDevice.gamification.scorm.refuseHandSend
+      ).toHaveBeenCalledWith($eXePuzzle.options[0]);
+    });
+
+    it('sends by hand once the learner has played', () => {
+      setupButton({ engaged: true });
+
+      $('.Games-SendScore').trigger('click');
+
+      expect($eXePuzzle.sendScore).toHaveBeenCalledWith(false, 0);
+      expect($eXePuzzle.saveEvaluation).toHaveBeenCalledWith(0);
+      expect(
+        $exeDevices.iDevice.gamification.scorm.refuseHandSend
+      ).not.toHaveBeenCalled();
+    });
+
+    // What counts as touching the board: a click the handlers accept, in
+    // either mode of play. The sliding puzzle marks it even for a tile that
+    // cannot move — the learner tried.
+    it.each([
+      ['a sliding tile', '#slide-0'],
+      ['a tile to swap', '#swap-0'],
+    ])('takes %s as the learner engaging', (_label, selector) => {
+      setupButton({
+        gameActived: false,
+        active: 0,
+        puzzlesGame: [{ type: 1, columns: 2, rows: 2 }],
+      });
+      expect($eXePuzzle.canSendScore(0)).toBe(false);
+
+      $(selector).trigger('click');
+
+      expect($eXePuzzle.options[0].engaged).toBe(true);
+      expect($eXePuzzle.canSendScore(0)).toBe(true);
+    });
+
+    it('ignores a click on a board that is busy', () => {
+      setupButton({
+        gameActived: true,
+        active: 0,
+        puzzlesGame: [{ type: 1, columns: 2, rows: 2 }],
+      });
+
+      $('#swap-0').trigger('click');
+
+      expect($eXePuzzle.options[0].engaged).toBe(false);
+    });
+  });
+
+  /**
+   * Finishing is reached from the completed window's own button, which is only
+   * there because the last puzzle was solved — and solving it already reported
+   * the final mark with the activity closed. Repeating that report made the LMS
+   * re-evaluate a verdict it had already reached.
+   */
+  describe('finishing the activity', () => {
+    function setupFinish(overrides) {
+      document.body.innerHTML = `
+        <div id="pzlImagePuzzle-0"></div>
+        <div id="pzlCubierta-0"></div>
+        <div id="pzlRepeatActivity-0"></div>
+        <div id="pzlCodeAccessDiv-0"></div>`;
+      $eXePuzzle.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: true,
+          gameOver: true,
+          hits: 3,
+          errors: 0,
+          active: 2,
+          puzzlesGame: [{}, {}, {}],
+          numberQuestions: 3,
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXePuzzle, 'stopAllSounds').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'showScoreGame').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'showFeedBack').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'saveEvaluation').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('does not send the terminal mark a second time', () => {
+      setupFinish();
+
+      $eXePuzzle.gameOver(0, 0);
+
+      expect($eXePuzzle.sendScore).not.toHaveBeenCalled();
+      expect($eXePuzzle.saveEvaluation).toHaveBeenCalledWith(0);
+      expect($eXePuzzle.options[0].gameStarted).toBe(false);
+    });
+
+    it('still shows the learner their mark', () => {
+      setupFinish();
+
+      $eXePuzzle.gameOver(0, 0);
+
+      expect($('#pzlRepeatActivity-0').text()).toBe('Score: 10.00');
+    });
+
+    // showScoreGame's type 1 shows the losing image, and it was the only value
+    // ever passed: whoever solved every puzzle was told they had lost.
+    it('closes a completed activity as a win', () => {
+      setupFinish({ active: 2 });
+      vi.spyOn($eXePuzzle, 'gameOver').mockImplementation(() => {});
+
+      $eXePuzzle.nextPuzzle(0);
+
+      expect($eXePuzzle.gameOver).toHaveBeenCalledWith(0, 0);
+    });
+
+    it('moves on instead of finishing while puzzles remain', () => {
+      setupFinish({ active: 0 });
+      vi.spyOn($eXePuzzle, 'gameOver').mockImplementation(() => {});
+      vi.spyOn($eXePuzzle, 'showPuzzle').mockImplementation(() => {});
+
+      $eXePuzzle.nextPuzzle(0);
+
+      expect($eXePuzzle.gameOver).not.toHaveBeenCalled();
+      expect($eXePuzzle.showPuzzle).toHaveBeenCalledWith(1, 0);
     });
   });
 
@@ -383,6 +722,18 @@ describe('puzzle iDevice export', () => {
       expect($eXePuzzle.options[0].score).toBe(0);
     });
 
+    // A new attempt is untouched again, so in manual mode the button waits for
+    // a move before it will overwrite the mark the last attempt saved.
+    it('asks for a move again before the button will write', () => {
+      setupPlayAgain({ isScorm: 2, engaged: true });
+
+      $eXePuzzle.addEvents(0);
+      $('#pzlStartGameEnd-0').trigger('click');
+
+      expect($eXePuzzle.options[0].engaged).toBe(false);
+      expect($eXePuzzle.canSendScore(0)).toBe(false);
+    });
+
     it('does not auto-report a manual SCORM replay', () => {
       setupPlayAgain({ isScorm: 2 });
       vi.spyOn($eXePuzzle, 'sendScore').mockImplementation(() => {});
@@ -496,6 +847,35 @@ describe('puzzle iDevice export', () => {
       expect(
         $exeDevices.iDevice.gamification.scorm.sendScoreNew
       ).not.toHaveBeenCalled();
+    });
+
+    // The save button sits outside the cover, so until the code is in it has
+    // to know the activity was never opened.
+    it('remembers that the code was accepted, so the button may write', () => {
+      setupCodeAccess('abre', {
+        isScorm: 2,
+        engaged: true,
+        codeAccepted: false,
+      });
+      expect($eXePuzzle.canSendScore(0)).toBe(false);
+
+      $eXePuzzle.enterCodeAccess(0);
+
+      expect($eXePuzzle.options[0].codeAccepted).toBe(true);
+      expect($eXePuzzle.canSendScore(0)).toBe(true);
+    });
+
+    it('keeps the button shut after a wrong code', () => {
+      setupCodeAccess('nope', {
+        isScorm: 2,
+        engaged: true,
+        codeAccepted: false,
+      });
+
+      $eXePuzzle.enterCodeAccess(0);
+
+      expect($eXePuzzle.options[0].codeAccepted).toBe(false);
+      expect($eXePuzzle.canSendScore(0)).toBe(false);
     });
   });
 

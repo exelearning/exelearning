@@ -2268,6 +2268,61 @@ describe('common.js $exeDevices', () => {
       node.remove();
     });
 
+    /**
+     * The same refusal sendScoreNew gives an activity that has not started,
+     * for iDevices that cannot state it that way: puzzle lays its board out
+     * and raises gameStarted from the image's load event, because that flag is
+     * what its tile handlers read to allow play. They ask their own question
+     * and call this, so the learner meets one wording either way.
+     */
+    describe('refuseHandSend', () => {
+      let originalAlert;
+
+      function givenActivity(msgs) {
+        const container = document.createElement('div');
+        container.id = 'refuse-main';
+        container.className = 'idevice_node';
+        container.innerHTML = '<span class="Games-RepeatActivity"></span>';
+        document.body.appendChild(container);
+        return { main: 'refuse-main', msgs };
+      }
+
+      beforeEach(() => {
+        originalAlert = window.alert;
+        window.alert = vi.fn();
+      });
+
+      afterEach(() => {
+        window.alert = originalAlert;
+        document.body.innerHTML = '';
+      });
+
+      it('shows the message where the activity speaks to the learner', () => {
+        const game = givenActivity({ msgEndGameScore: 'Start the game first.' });
+
+        getScorm().refuseHandSend(game);
+
+        expect($('.Games-RepeatActivity').text()).toBe('Start the game first.');
+        expect(window.alert).toHaveBeenCalledWith('Start the game first.');
+      });
+
+      it('stays quiet when the activity has no message for it', () => {
+        const game = givenActivity({});
+
+        getScorm().refuseHandSend(game);
+
+        expect(window.alert).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        ['nothing', null],
+        ['something that is not an activity', 'puzzle'],
+      ])('does nothing given %s', (_label, game) => {
+        expect(() => getScorm().refuseHandSend(game)).not.toThrow();
+        expect(window.alert).not.toHaveBeenCalled();
+      });
+    });
+
     it.each([
       ['a finished game reported automatically', { gameOver: true, gameStarted: true }, true, true],
       ['an unfinished game reported automatically', { gameOver: false, gameStarted: true }, true, false],

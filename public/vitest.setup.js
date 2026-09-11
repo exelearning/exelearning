@@ -1151,6 +1151,10 @@ const mockGamificationScorm = {
     }
     return `${html}</div>`;
   }),
+  // Refusal of a hand-sent score, for iDevices whose board is live from page
+  // load and so cannot say "not started" through gameStarted. A no-op here: the
+  // real one writes the message into .Games-RepeatActivity and alerts.
+  refuseHandSend: vi.fn(),
   getFieldset: vi.fn(() => '<fieldset class="exe-gamification-scorm"></fieldset>'),
   init: vi.fn(),
   save: vi.fn(() => ({})),
