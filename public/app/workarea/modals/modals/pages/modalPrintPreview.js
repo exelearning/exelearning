@@ -1,7 +1,8 @@
 /**
  * Print Preview Overlay
  *
- * Simple fullscreen overlay for print preview (no Bootstrap dependency)
+ * Simple fullscreen overlay for print preview (no Bootstrap dependency).
+ * Uses window.open for printing to ensure @media print CSS is applied correctly.
  */
 export default class ModalPrintPreview {
     constructor(manager) {
@@ -12,6 +13,7 @@ export default class ModalPrintPreview {
         this.printBtn = this.overlay?.querySelector('.print-preview-print-btn');
         this.closeBtn = this.overlay?.querySelector('.print-preview-close-btn');
         this.blobUrl = null;
+        this.printWindowUrl = null;
     }
 
     /**
@@ -46,6 +48,24 @@ export default class ModalPrintPreview {
     }
 
     /**
+     * Read the current state of print option checkboxes.
+     * Returns defaults if the checkboxes don't exist in the DOM.
+     * @returns {{ showPageNumbers: boolean, showWatermark: boolean, showLinkUrls: boolean }}
+     */
+    getPrintOptions() {
+        const getChecked = (selector, defaultValue) => {
+            const el = this.overlay?.querySelector(selector);
+            return el ? el.checked : defaultValue;
+        };
+
+        return {
+            showPageNumbers: getChecked('#printOptPageNumbers', true),
+            showWatermark: getChecked('#printOptWatermark', false),
+            showLinkUrls: getChecked('#printOptLinkUrls', true),
+        };
+    }
+
+    /**
      * Show the print preview
      */
     async show() {
@@ -77,6 +97,23 @@ export default class ModalPrintPreview {
     }
 
     /**
+     * Build the options object for generatePrintPreview from current config.
+     * @param {object} [extraOptions] - Additional options to merge (e.g., printMode).
+     * @returns {object}
+     */
+    buildPreviewOptions(extraOptions) {
+        return {
+            baseUrl: window.eXeLearning?.config?.isStaticMode
+                ? window.location.origin
+                : (window.eXeLearning?.config?.baseURL || window.location.origin),
+            basePath: window.eXeLearning?.config?.basePath || '',
+            version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
+            ...this.getPrintOptions(),
+            ...extraOptions,
+        };
+    }
+
+    /**
      * Generate and load the print preview
      */
     async generatePreview() {
@@ -88,14 +125,6 @@ export default class ModalPrintPreview {
         const yjsBridge = eXeLearning.app.project?._yjsBridge;
         if (!yjsBridge?.documentManager) {
             throw new Error(_('Document manager not available'));
-        }
-
-        console.log('[ModalPrintPreview] yjsBridge available:', !!yjsBridge);
-        console.log('[ModalPrintPreview] AssetManager available:', !!yjsBridge?.assetManager);
-        if (yjsBridge?.assetManager) {
-             console.log('[ModalPrintPreview] AssetManager details:', yjsBridge.assetManager);
-        } else {
-             console.warn('[ModalPrintPreview] AssetManager is MISSING in yjsBridge');
         }
 
         // Get generatePrintPreview function
@@ -110,14 +139,7 @@ export default class ModalPrintPreview {
         const result = await generatePrintPreviewFn(
             yjsBridge.documentManager,
             yjsBridge.resourceFetcher || null,
-            {
-                // Static mode requires absolute URLs for Blob compatibility
-                baseUrl: window.eXeLearning?.config?.isStaticMode 
-                    ? window.location.origin 
-                    : (window.eXeLearning?.config?.baseURL || window.location.origin),
-                basePath: window.eXeLearning?.config?.basePath || '',
-                version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
-            },
+            this.buildPreviewOptions(),
             yjsBridge.assetManager || null
         );
 
@@ -143,11 +165,68 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * Print the preview content
+     * Print the preview content.
+     * Opens a new window with printMode enabled so @media print CSS is applied correctly.
+     * Falls back to iframe.contentWindow.print() if the window cannot be opened.
      */
-    print() {
-        if (this.iframe?.contentWindow) {
-            this.iframe.contentWindow.print();
+    async print() {
+        try {
+            await this.openPrintWindow();
+        } catch (error) {
+            console.warn('[PrintPreview] window.open print failed, falling back to iframe print:', error);
+            if (this.iframe?.contentWindow) {
+                this.iframe.contentWindow.print();
+            }
+        }
+    }
+
+    /**
+     * Open a standalone browser window with printMode=true and trigger window.print().
+     * This ensures @media print CSS rules are applied correctly, unlike iframe printing.
+     */
+    async openPrintWindow() {
+        if (!eXeLearning.app.project?._yjsEnabled) {
+            throw new Error(_('Print preview requires server mode'));
+        }
+
+        const yjsBridge = eXeLearning.app.project?._yjsBridge;
+        if (!yjsBridge?.documentManager) {
+            throw new Error(_('Document manager not available'));
+        }
+
+        const generatePrintPreviewFn =
+            window.generatePrintPreview || window.SharedExporters?.generatePrintPreview;
+
+        if (typeof generatePrintPreviewFn !== 'function') {
+            throw new Error(_('Print preview not available'));
+        }
+
+        // Generate with printMode: true for auto-print on load
+        const result = await generatePrintPreviewFn(
+            yjsBridge.documentManager,
+            yjsBridge.resourceFetcher || null,
+            this.buildPreviewOptions({ printMode: true }),
+            yjsBridge.assetManager || null
+        );
+
+        if (!result.success || !result.html) {
+            throw new Error(result.error || _('Failed to generate print preview'));
+        }
+
+        // Cleanup previous print window URL
+        if (this.printWindowUrl) {
+            URL.revokeObjectURL(this.printWindowUrl);
+        }
+
+        const blob = new Blob([result.html], { type: 'text/html' });
+        this.printWindowUrl = URL.createObjectURL(blob);
+
+        // Open in new window — the injected onload script will call window.print()
+        const printWindow = window.open(this.printWindowUrl, '_blank');
+        if (!printWindow) {
+            URL.revokeObjectURL(this.printWindowUrl);
+            this.printWindowUrl = null;
+            throw new Error(_('Could not open print window. Please allow pop-ups.'));
         }
     }
 
@@ -187,6 +266,10 @@ export default class ModalPrintPreview {
         if (this.blobUrl) {
             URL.revokeObjectURL(this.blobUrl);
             this.blobUrl = null;
+        }
+        if (this.printWindowUrl) {
+            URL.revokeObjectURL(this.printWindowUrl);
+            this.printWindowUrl = null;
         }
         if (this.iframe) {
             this.iframe.src = 'about:blank';
