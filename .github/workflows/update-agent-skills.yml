@@ -1,0 +1,70 @@
+name: Update Agent Skills
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: update-agent-skills
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+
+      - id: update
+        uses: devantler-tech/actions/update-agent-skills@v13.3.3
+        with:
+          dir: .agents/skills
+
+      - name: Copy skills for Claude (Windows-compatible files)
+        id: claude
+        run: |
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          import shutil
+
+          source = Path('.agents/skills')
+          target = Path('.claude/skills')
+          assert source.is_dir(), 'Canonical skills directory is missing'
+          if target.is_symlink():
+              target.unlink()
+          elif target.exists():
+              shutil.rmtree(target)
+          shutil.copytree(source, target)
+          PYTHON
+          if [ -n "$(git status --porcelain -- .claude/skills)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open pull request
+        if: steps.update.outputs.changed == 'true' || steps.claude.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          base: main
+          branch: feature/update-agent-skills
+          delete-branch: true
+          add-paths: |
+            .agents/skills/**
+            .claude/skills/**
+          commit-message: 'chore(deps): update agent skills'
+          title: 'chore(deps): update agent skills'
+          labels: documentation
+          body: |
+            Updates installed skills with `gh skills update --all`.
+            Review upstream instructions and provenance before merging.
+            Local skills without GitHub provenance are not updated from upstream.
+            Claude receives identical regular-file copies, including removed files.
+            Default-token PRs do not trigger CI automatically.
