@@ -136,3 +136,9 @@ scripts/upload-bundle-analysis.js
 scripts/check-coverage.ts
 scripts/check-test-coverage.ts
 scripts/**/*.spec.ts
+
+# Agent instructions and vendored skill resources
+.agents/
+.claude/
+AGENTS.md
+CLAUDE.md
