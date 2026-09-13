@@ -11,6 +11,7 @@
 - Administrators can now reset local account passwords from Admin → Users
 - Added `make change-password EMAIL=user@example.com` command to change a user's password without showing it on screen
 - Password changes are unavailable for guest accounts; users signed in through CAS, OpenID Connect or SAML change their password with their identity provider
+- Form, True/False, Scrambled list, Complete and Before/After iDevices: added the option to show a button to save the score
 - True/False iDevice: added configurable number of attempts
 - Word Search iDevice: added the option to hide the time icon in timed activities
 - Platform integration: `PROVIDER_URLS` now supports wildcard subdomains and matches against the address host, allowing multi-tenant deployments to be authorised without widening the allow-list
@@ -25,10 +26,12 @@
 - Project assets are now stored in sharded folders with paths relative to the data directory, improving scalability and allowing the data directory to be moved, remounted or restored without invalidating projects; existing installations are converted automatically at startup
 - SCORM 1.2: rewritten the runtime shipped in exported packages, with clear licensing and a full regression suite, keeping the same LMS behaviour while removing `onunload` and `onbeforeunload` handlers
 - SCORM, IMS: exported packages now group pages under a project root entry, which appears above the pages in the LMS table of contents
-- SCORM: fixed previous and next page navigation in Moodle for projects with nested pages
-- SCORM: page status and score are now based on learner interaction with its activities; pages remain incomplete until every activity has been started, are marked failed while the score is below 50 and passed from there on, while pages without activities are completed on entry
-- SCORM: the score is sent and committed to the LMS on every answer, so the platform index updates while the learner is still working on the page
+- SCORM: page status and score are now based on learner interaction with its activities; pages remain incomplete until every activity has been finished, are marked failed while the score is below 50 and passed from there on, while pages without activities are completed when the learner leaves them
+- SCORM: activities that save the score automatically now send and commit it on every answer, so the platform index updates while the learner is still working on the page
 - SCORM: opening or leaving a page no longer decides its result on its own; only what the learner does with the activities does
+- SCORM: entering the access code now starts the activity and records it as started, just like clicking the start button
+- SCORM: activities without a set weight now count the same as other activities, which may change scores on pages combining both types
+- iDevices: activities can always be repeated
 - Base and Universal styles: fully revised for accessibility, presentation and third-party licences, meeting WCAG 2.2 level AA
 - Effects: improved accessibility and presentation of accordion, tab, pagination, carousel and timeline controls, with clearer focus indicators and improved contrast
 - Universal style: dark mode is now disabled by default, except when exporting as a website
@@ -39,14 +42,18 @@
 
 ### Fixed
 
-- SCORM 1.2: exported pages no longer rely on browser `onunload` and `onbeforeunload` handlers, preventing scores from being lost in Moodle; results are now saved through the page lifecycle, including when the tab is hidden, frozen or discarded
-- SCORM: opening a page no longer marks it as started
+- SCORM 1.2: exported pages no longer rely on browser `onunload` and `onbeforeunload` handlers, preventing scores from being lost in Moodle
+- SCORM: opening a page no longer records a score of zero and a failed result
 - SCORM: leaving an untouched page no longer prevents the rest of the package from saving its results
 - SCORM: results now reach the platform index without requiring the whole page to be completed
 - SCORM: pass or fail results no longer depend on the order of activities on the page
-- SCORM: Interactive Video now registers when the page loads, so the page score includes all its activities
-- SCORM: activities no longer score on their own when the page loads, and no longer lose their score when they finish
-- SCORM: moving between the contents of a page no longer marks it as completed
+- SCORM: fixed the buttons that jump to the previous and next page of the same level in Moodle, for projects with nested pages
+- SCORM: activity weights are now correctly applied to the page score
+- SCORM: restarting an activity now clears its previous score and result in the platform
+- SCORM: pages completed after resuming are now correctly marked as finished in the platform index
+- SCORM: Interactive Video now registers when the page loads, ensuring all its activities are included in the page score
+- SCORM: activities no longer score automatically when the page loads or lose their score when they finish
+- SCORM: moving between page contents no longer marks the page as completed
 - Workarea: fixed failures when dragging an iDevice into a page while its content is being refreshed
 - iDevices: activities made up of several scripts, such as the 360° panorama viewer and Select media files, now load correctly
 - iDevices: closing an activity editor no longer causes errors from actions that are still in progress
