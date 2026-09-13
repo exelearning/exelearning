@@ -210,6 +210,171 @@ describe('map iDevice export — completion signal', () => {
         return 0;
     }
 
+    describe('reporting when the learner presses start', () => {
+        /**
+         * Minimal state for a map waiting on its start button.
+         *
+         * @param {number} evaluationG the game mode
+         * @returns {number} the instance index
+         */
+        function givenWaitingToStart(evaluationG) {
+            const instance = 0;
+            document.body.innerHTML = `
+                <div id="mapaMainContainer-${instance}">
+                    <div id="mapaCheckOrder-${instance}"></div>
+                    <div id="mapaMessageFindP-${instance}"></div>
+                    <div id="mapaStartGame-${instance}"></div>
+                </div>`;
+            m.options[instance] = {
+                main: `mapaMainContainer-${instance}`,
+                isScorm: 1,
+                evaluationG,
+                gameStarted: false,
+                gameOver: false,
+                hits: 0,
+                errors: 0,
+                score: 0,
+                numberQuestions: 4,
+                order: [],
+                msgs: { msgYouScore: 'Score' },
+            };
+            // Paints the first prompt of the identify/find modes from the
+            // shuffled title deck; irrelevant to the report.
+            vi.spyOn(m, 'showFind').mockImplementation(() => {});
+            return instance;
+        }
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        // The defect: pressing start revealed the interface and told the LMS
+        // nothing, so its menu kept the previous attempt's grade and status
+        // until the learner answered.
+        it.each([
+            ['Identify', 2],
+            ['Find', 3],
+            ['Quiz', 4],
+            ['Order', 5],
+        ])('publishes a zero on start in %s mode', (_name, evaluationG) => {
+            m.startGame(givenWaitingToStart(evaluationG));
+
+            expect(calls).toHaveLength(1);
+            expect(calls[0].auto).toBe(true);
+            // Raw, not formatted: the recording mock stands in for the runtime,
+            // and it is common.js that rounds a report on the way out.
+            expect(calls[0].game.scorerp).toBe(0);
+            // Starting is not finishing.
+            expect(calls[0].game.gameOver).toBe(false);
+            expect(calls[0].game.gameStarted).toBe(true);
+        });
+
+        it('does not report outside automatic SCORM mode', () => {
+            const i = givenWaitingToStart(2);
+            m.options[i].isScorm = 2;
+
+            m.startGame(i);
+
+            expect(calls).toHaveLength(0);
+        });
+    });
+
+    // Play again is the learner's own start too. Every branch of the game-over
+    // dialog clears the score and lowers gameOver, so the LMS has to be told:
+    // restarting silently left it holding the finished attempt's mark and
+    // status while a fresh round sat at zero on screen.
+    describe('reporting when the learner plays again', () => {
+        let restoreHelpers = null;
+
+        /**
+         * Minimal state for a finished map showing its game-over dialog.
+         *
+         * @param {number} evaluationG the game mode
+         * @returns {number} the instance index
+         */
+        function givenFinishedGame(evaluationG) {
+            const instance = 0;
+            document.body.innerHTML = `
+                <div id="mapaMainContainer-${instance}">
+                    <div id="mapaMessageGOYes-${instance}"></div>
+                    <div id="mapaCheckOrder-${instance}"></div>
+                    <div id="mapaTest-${instance}"></div>
+                    <div id="mapaGameContainer-${instance}"></div>
+                    <div id="mapaPNumber-${instance}"></div>
+                    <div id="mapaPScore-${instance}"></div>
+                    <div id="mapaPHits-${instance}"></div>
+                    <div id="mapaPErrors-${instance}"></div>
+                    <div id="mapaShowClue-${instance}"></div>
+                    <div id="mapaGameClue-${instance}"></div>
+                </div>`;
+            m.options[instance] = {
+                main: `mapaMainContainer-${instance}`,
+                isScorm: 1,
+                evaluationG,
+                gameStarted: false,
+                gameOver: true,
+                hits: 4,
+                errors: 0,
+                score: 100,
+                numberQuestions: 4,
+                selectsGame: [],
+                orderResponse: ['a'],
+                order: [],
+                titles: [],
+                activeMap: { pts: [] },
+                msgs: { msgYouScore: 'Score' },
+            };
+            vi.spyOn(m, 'hideCover').mockImplementation(() => {});
+            // startFinds runs for real: it is what lowers gameOver in the find
+            // modes, so mocking it would hide what the report has to carry.
+            vi.spyOn(m, 'resetPoints').mockImplementation(() => {});
+            vi.spyOn(m, 'paintPoints').mockImplementation(() => {});
+            vi.spyOn(m, 'showFind').mockImplementation(() => {});
+            vi.spyOn(m, 'showQuestionaire').mockImplementation(() => {});
+            // rebootGame reshuffles the deck on its way through.
+            restoreHelpers = swapGamification('helpers', { shuffleAds: deck => deck });
+            return instance;
+        }
+
+        afterEach(() => {
+            if (restoreHelpers) {
+                restoreHelpers();
+                restoreHelpers = null;
+            }
+            vi.restoreAllMocks();
+            document.body.innerHTML = '';
+        });
+
+        // Order mode returns early, the find modes go through startFinds and
+        // the quiz modes through rebootGame: all three have to report.
+        it.each([
+            ['Order', 5],
+            ['Find', 3],
+            ['Quiz', 4],
+        ])('publishes the restart in %s mode', (_name, evaluationG) => {
+            const i = givenFinishedGame(evaluationG);
+            m.addEvents(i);
+
+            document.getElementById(`mapaMessageGOYes-${i}`).click();
+
+            expect(calls).toHaveLength(1);
+            expect(calls[0].auto).toBe(true);
+            // The report describes the restart, not the attempt it replaces.
+            expect(calls[0].game.gameOver).toBe(false);
+            expect(calls[0].game.gameStarted).toBe(true);
+        });
+
+        it('does not report outside automatic SCORM mode', () => {
+            const i = givenFinishedGame(4);
+            m.options[i].isScorm = 2;
+            m.addEvents(i);
+
+            document.getElementById(`mapaMessageGOYes-${i}`).click();
+
+            expect(calls).toHaveLength(0);
+        });
+    });
+
     describe('sendScore in exposition mode', () => {
         it('reports progress as a fraction of the points visited', () => {
             m.sendScore(true, givenExposition(['p1'], 4));
@@ -295,6 +460,104 @@ describe('map iDevice export — completion signal', () => {
             expect(calls).toHaveLength(1);
             expect(calls[0].auto).toBe(true);
             expect(calls[0].game.gameOver).toBe(true);
+        });
+    });
+
+    // The access code stood in for nothing: it dismissed its own dialog and
+    // left the LMS holding the previous attempt's grade. What it should do
+    // depends on the mode, because only four of them have a start link.
+    describe('opening the map with an access code', () => {
+        /**
+         * A covered map waiting on its code, in the given mode.
+         *
+         * @param {number} evaluationG the game mode
+         * @param {string} typed what the learner puts in the code field
+         * @returns {number} the instance index
+         */
+        function givenCodedMap(evaluationG, typed) {
+            const instance = 0;
+            document.body.innerHTML = `
+                <div id="mapaMainContainer-${instance}">
+                    <div id="mapaCheckOrder-${instance}"></div>
+                    <div id="mapaMessageFindP-${instance}"></div>
+                    <div id="mapaStartGame-${instance}"></div>
+                    <div id="mapaMesajeAccesCodeE-${instance}"></div>
+                    <input id="mapaCodeAccessE-${instance}" value="${typed}" />
+                </div>`;
+            m.options[instance] = {
+                main: `mapaMainContainer-${instance}`,
+                isScorm: 1,
+                evaluationG,
+                // Visited points and quiz are live from load; the rest wait
+                // for their start link (loadDataGame decides this).
+                gameStarted: evaluationG === 0 || evaluationG === 4,
+                gameOver: false,
+                showData: true,
+                hits: 0,
+                errors: 0,
+                score: 0,
+                numberQuestions: 4,
+                visiteds: [],
+                order: [],
+                itinerary: { codeAccess: 'abre' },
+                msgs: { msgYouScore: 'Score' },
+            };
+            vi.spyOn(m, 'hideCover').mockImplementation(() => {});
+            vi.spyOn(m, 'showFind').mockImplementation(() => {});
+            return instance;
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        // Visited points has no start link — the map is already live — so the
+        // code is the only explicit opening the learner ever gives it.
+        it('publishes a zero and an unfinished attempt in visited-points mode', () => {
+            m.enterCodeAccess(givenCodedMap(0, 'abre'));
+
+            expect(calls).toHaveLength(1);
+            expect(calls[0].auto).toBe(true);
+            expect(Number(calls[0].game.scorerp)).toBe(0);
+            expect(calls[0].game.gameOver).toBe(false);
+        });
+
+        // The modes that carry the link: the code has to do its job, which is
+        // more than reporting — each mode's board is set up in startGame.
+        it.each([
+            ['Identify Spot', 1],
+            ['Identify', 2],
+            ['Find', 3],
+            ['Order', 5],
+        ])('presses start for the learner in %s mode', (_name, evaluationG) => {
+            const i = givenCodedMap(evaluationG, 'abre');
+            vi.spyOn(m, 'startGame');
+
+            m.enterCodeAccess(i);
+
+            expect(m.startGame).toHaveBeenCalledWith(i);
+            expect(m.options[i].gameStarted).toBe(true);
+            expect(calls).toHaveLength(1);
+            expect(calls[0].game.gameOver).toBe(false);
+        });
+
+        it('reports nothing when the code is wrong', () => {
+            const i = givenCodedMap(0, 'nope');
+
+            m.enterCodeAccess(i);
+
+            expect(calls).toHaveLength(0);
+            expect($(`#mapaCodeAccessE-${i}`).val()).toBe('');
+        });
+
+        it('does not auto-report in manual SCORM mode', () => {
+            const i = givenCodedMap(0, 'abre');
+            m.options[i].isScorm = 2;
+
+            m.enterCodeAccess(i);
+
+            expect(calls).toHaveLength(0);
         });
     });
 });

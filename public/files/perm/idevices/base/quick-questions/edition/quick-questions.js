@@ -2497,7 +2497,7 @@ var $exeDevice = {
         });
 
         $('#quextETimeSilence').on('keyup', function () {
-            this.value = this.value.replace(/\D/g, '').substring(0, 1);
+            this.value = this.value.replace(/\D/g, '').substring(0, 3);
         });
 
         $('#quextEVideoTime').on('click', (e) => {
