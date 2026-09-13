@@ -88,15 +88,17 @@
 
 ### Upgraded
 
-- fast-xml-parser: 5.4.1 → 5.11.0
+- fast-xml-parser: 5.4.1 → 5.11.1
 - mathjax: 3.2.2 → 4.1.3
 - edicuatex: 1.4.1 → 1.5.5
 - pdfjs-dist: 6.2.108 → 6.3.289
 - mermaid: 11.12.3 → 11.17.2
 - @xmldom/xmldom: 0.9.10 → 0.9.12
 - jose: 6.1.3 → 6.2.10
+- i18n: 0.15.3 → 0.15.4
 - sass: 1.97.3 → 1.103.1
-- electron: 43.2.0 → 44.0.0
+- electron: 43.2.0 → 44.2.0
+- electron-context-menu: 4.1.2 → 5.0.0
 - @biomejs/biome: 2.4.5 → 2.5.11
 - Several other dependencies updated to their latest compatible versions, clearing all known security advisories
 
