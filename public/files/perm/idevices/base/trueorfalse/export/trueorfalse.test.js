@@ -184,11 +184,29 @@ describe('trueorfalse iDevice export', () => {
       expect(typeof $trueorfalse.msgsdefault).toBe('object');
     });
 
-    it('has required messages', () => {
-      expect($trueorfalse.msgsdefault.msgTrue).toBe('Verdadero');
-      expect($trueorfalse.msgsdefault.msgFalse).toBe('Falso');
-      expect($trueorfalse.msgsdefault.msgOk).toBe('Correcto');
-      expect($trueorfalse.msgsdefault.msgKO).toBe('Incorrecto');
+    // English, not Spanish: these are the fallback for content that arrives
+    // without a translated `msgs`, so they have to be the source language.
+    // Spanish here imposed Spanish on every project, whatever its language —
+    // issue #2263.
+    it('has required messages, in the source language', () => {
+      expect($trueorfalse.msgsdefault.msgTrue).toBe('True');
+      expect($trueorfalse.msgsdefault.msgFalse).toBe('False');
+      expect($trueorfalse.msgsdefault.msgOk).toBe('Correct');
+      expect($trueorfalse.msgsdefault.msgKO).toBe('Incorrect');
+    });
+
+    it('carries the SCORM button caption the edition now translates', () => {
+      expect($trueorfalse.msgsdefault.textButtonScorm).toBe('Save score');
+    });
+
+    // The fallback is only useful if it is the same text the translator sees,
+    // so no default may be left in another language. Accented characters are a
+    // cheap, reliable proxy for the Spanish this replaced.
+    it('leaves no default in another language', () => {
+      const nonEnglish = Object.entries($trueorfalse.msgsdefault).filter(
+        ([, value]) => typeof value === 'string' && /[áéíóúñ¿¡]/i.test(value)
+      );
+      expect(nonEnglish).toEqual([]);
     });
   });
 
@@ -282,6 +300,379 @@ describe('trueorfalse iDevice export', () => {
 
       expect(options.idevice).toBe('trueorfalseIdevice');
       expect(updateEvaluationIcon).toHaveBeenCalledWith(options, false);
+    });
+
+    // The learner's press is what publishes the grade in manual mode, so the
+    // button has to be wired. It is delegated from the iDevice node and matched
+    // by class, because the shared markup gives it no id of its own.
+    it('wires the save button for the learner to press', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousScorm = $exeDevices.iDevice.gamification.scorm;
+      $exeDevices.iDevice.gamification.report = {
+        updateEvaluationIcon: vi.fn(),
+      };
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm = { sendScoreNew };
+      document.body.innerHTML = `
+        <div class="idevice_node trueorfalseIdevice" id="tof-1">
+          <div class="exe-trueorfalse-container">
+            <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
+              <div id="tofPGameContainer-tof-1"></div>
+            </div>
+            <input type="button" class="Games-SendScore" />
+          </div>
+        </div>
+      `;
+      const options = {
+        id: 'tof-1',
+        idevicePath: '/idevices/trueorfalse/',
+        msgs: { tofPStartGame: 'Start' },
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isScorm: 2,
+        showSlider: false,
+        isTest: true,
+        time: 0,
+        hits: 1,
+        questionsGame: [{}, {}],
+        evaluation: true,
+        evaluationID: 'eval-1',
+        isInExe: false,
+      };
+
+      try {
+        $trueorfalse.addEvents(options);
+        $trueorfalse.addEvents(options);
+
+        $('.Games-SendScore').trigger('click');
+
+        // Once, however many times the behaviour is wired.
+        expect(sendScoreNew).toHaveBeenCalledTimes(1);
+        expect(sendScoreNew.mock.calls[0][0]).toBe(false);
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+        $exeDevices.iDevice.gamification.scorm = previousScorm;
+      }
+    });
+
+    // The defect: this iDevice wrote its own markup with the grey
+    // `feedbackbutton` class and an inline `display` it then fought with
+    // addEvents over. The shared markup gives every iDevice the same green
+    // control, emitted only for manual mode and already visible.
+    describe('the save button in the rendered markup', () => {
+      function render(isScorm) {
+        return $trueorfalse.createInterfaceTrueOrFalse({
+          id: 'tof-2',
+          isScorm,
+          textButtonScorm: 'Guardar',
+          isTest: true,
+          time: 0,
+          tofPTime: '0',
+          attemptsNumber: 1,
+          pendingAttempts: 1,
+          questionsGame: [],
+          numberQuestions: 0,
+          eXeGameInstructions: '',
+          eXeIdeviceTextAfter: '',
+          evaluation: false,
+          evaluationID: '',
+          msgs: {},
+        });
+      }
+
+      it('renders it green and visible in manual mode', () => {
+        const html = render(2);
+
+        expect(html).toContain('Games-SendScore');
+        expect(html).toContain('btn btn-primary');
+        expect(html).not.toContain('feedbackbutton');
+      });
+
+      it('renders no button in automatic mode', () => {
+        const html = render(1);
+
+        expect(html).not.toContain('Games-SendScore');
+        // The runtime still needs somewhere to put its message.
+        expect(html).toContain('Games-RepeatActivity');
+      });
+    });
+
+    it('starts with SCORM reporting when the learner clicks the start button', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      $exeDevices.iDevice.gamification.report = {
+        updateEvaluationIcon: vi.fn(),
+      };
+      document.body.innerHTML = `
+        <div class="idevice_body trueorfalseIdevice" id="tof-1">
+          <div class="exe-trueorfalse-container">
+            <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
+              <div id="tofPGameContainer-tof-1"></div>
+              <button id="tofPStartGame-tof-1"></button>
+              <button id="tofPCheckTest-tof-1"></button>
+              <button id="tofRebootTest-tof-1"></button>
+              <input id="tofPSendScore-tof-1" />
+            </div>
+          </div>
+        </div>
+      `;
+      const options = {
+        id: 'tof-1',
+        idevicePath: '/idevices/trueorfalse/',
+        msgs: { tofPStartGame: 'Start' },
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isScorm: 1,
+        showSlider: false,
+        isTest: true,
+        time: 0,
+        evaluation: false,
+        isInExe: false,
+      };
+      vi.spyOn($trueorfalse, 'startGame').mockImplementation(() => {});
+
+      try {
+        $trueorfalse.addEvents(options);
+        document.getElementById('tofPStartGame-tof-1').click();
+      } finally {
+        $trueorfalse.removeEvents(options);
+        $exeDevices.iDevice.gamification.report = previousReport;
+        document.body.innerHTML = '';
+      }
+
+      expect($trueorfalse.startGame).toHaveBeenCalledWith(options, true);
+    });
+
+    // Play again is the learner's own start too, and it clears the answers and
+    // the score. Restarting silently left the LMS holding the finished
+    // attempt's mark and status while a blank quiz sat at zero on screen.
+    it('starts with SCORM reporting when the learner plays again', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      $exeDevices.iDevice.gamification.report = {
+        updateEvaluationIcon: vi.fn(),
+      };
+      document.body.innerHTML = `
+        <div class="idevice_body trueorfalseIdevice" id="tof-1">
+          <div class="exe-trueorfalse-container">
+            <div class="TOFP-MainContainer" id="tofPMainContainer-tof-1">
+              <div id="tofPMultimedia-tof-1"></div>
+              <div id="tofPGameContainer-tof-1"></div>
+              <button id="tofPStartGame-tof-1"></button>
+              <button id="tofPCheckTest-tof-1"></button>
+              <button id="tofRebootTest-tof-1"></button>
+              <input id="tofPSendScore-tof-1" />
+            </div>
+          </div>
+        </div>
+      `;
+      const options = {
+        id: 'tof-1',
+        idevicePath: '/idevices/trueorfalse/',
+        msgs: { tofPStartGame: 'Start' },
+        textButtonScorm: 'Send',
+        tofPTime: '0',
+        isScorm: 1,
+        showSlider: false,
+        isTest: true,
+        time: 0,
+        evaluation: false,
+        isInExe: false,
+        percentageQuestions: 100,
+        questionsRandom: false,
+        questionsGame: [{ solution: '1' }],
+        gameStarted: true,
+        gameOver: true,
+      };
+      vi.spyOn($trueorfalse, 'startGame').mockImplementation(() => {});
+      vi.spyOn($trueorfalse, 'generateTrueFalseQuizHtml').mockReturnValue('');
+
+      try {
+        $trueorfalse.addEvents(options);
+        document.getElementById('tofRebootTest-tof-1').click();
+      } finally {
+        $trueorfalse.removeEvents(options);
+        $exeDevices.iDevice.gamification.report = previousReport;
+        document.body.innerHTML = '';
+      }
+
+      expect($trueorfalse.startGame).toHaveBeenCalledWith(options, true);
+      // The report has to describe the restart, not the attempt it replaces.
+      expect(options.gameOver).toBe(false);
+    });
+  });
+
+  describe('SCORM reporting on start', () => {
+    function setupStartDom() {
+      document.body.innerHTML = `
+        <div id="tofPMainContainer-tof-1">
+          <div id="tofPMultimedia-tof-1">
+            <div class="TOFP-Suggestion"></div>
+            <div class="TOFP-Feedback"></div>
+          </div>
+          <div id="tofPCheckTestDiv-tof-1"></div>
+          <div id="tofPStartGameDiv-tof-1"></div>
+          <button id="tofRebootTest-tof-1"></button>
+          <button id="tofPCheckTest-tof-1"></button>
+          <div id="tofPGameContainer-tof-1">
+            <input class="TOFP-Answer" type="radio" checked disabled />
+          </div>
+          <div id="tofPMessage-tof-1"></div>
+        </div>`;
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('publishes zero score when an explicit start opens the attempt', () => {
+      setupStartDom();
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      const options = {
+        id: 'tof-1',
+        isScorm: 1,
+        isTest: true,
+        time: 0,
+        gameStarted: false,
+        gameOver: true,
+        hits: 2,
+        errors: 1,
+        scorerp: 8,
+        questionsGame: [{ solution: '1' }, { solution: '0' }],
+        msgs: {},
+      };
+
+      try {
+        $trueorfalse.startGame(options, true);
+      } finally {
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+      }
+
+      expect(sendScoreNew).toHaveBeenCalledWith(true, options);
+      expect(options.gameStarted).toBe(true);
+      expect(options.gameOver).toBe(false);
+      expect(options.hits).toBe(0);
+      expect(options.errors).toBe(0);
+      expect(options.scorerp).toBe(0);
+    });
+
+    it('does not publish when startGame is called without explicit interaction', () => {
+      setupStartDom();
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      const options = {
+        id: 'tof-1',
+        isScorm: 1,
+        isTest: true,
+        time: 0,
+        gameStarted: false,
+        gameOver: false,
+        hits: 0,
+        errors: 0,
+        scorerp: 0,
+        questionsGame: [{ solution: '1' }],
+        msgs: {},
+      };
+
+      try {
+        $trueorfalse.startGame(options);
+      } finally {
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+      }
+
+      expect(sendScoreNew).not.toHaveBeenCalled();
+    });
+
+    // The edition form stores isScorm through parseInt, but content written
+    // straight through the REST API can carry the string. gameOver() has always
+    // compared loosely, so the start has to agree: a package that reported when
+    // it finished but not when it started would look arbitrary.
+    it('publishes when isScorm arrives as a string', () => {
+      setupStartDom();
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      const options = {
+        id: 'tof-1',
+        isScorm: '1',
+        isTest: true,
+        time: 0,
+        gameStarted: false,
+        gameOver: true,
+        hits: 2,
+        errors: 1,
+        scorerp: 8,
+        questionsGame: [{ solution: '1' }, { solution: '0' }],
+        msgs: {},
+      };
+
+      try {
+        $trueorfalse.startGame(options, true);
+      } finally {
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+      }
+
+      expect(sendScoreNew).toHaveBeenCalledWith(true, options);
+    });
+
+    it('publishes the completed status when the countdown finishes', () => {
+      vi.useFakeTimers();
+      setupStartDom();
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const previousGetTimeToString =
+        $exeDevices.iDevice.gamification.helpers.getTimeToString;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      $exeDevices.iDevice.gamification.helpers.getTimeToString = vi.fn((seconds) =>
+        String(seconds)
+      );
+      const options = {
+        id: 'tof-1',
+        isScorm: 1,
+        isTest: true,
+        time: 1 / 60,
+        gameStarted: false,
+        gameOver: false,
+        hits: 0,
+        errors: 0,
+        scorerp: 0,
+        questionsGame: [{ solution: '1' }],
+        numberQuestions: 1,
+        pendingAttempts: 1,
+        msgs: { msgKO: 'KO', msgOk: 'OK', msgYouScore: 'Score' },
+        isInExe: false,
+      };
+
+      try {
+        $trueorfalse.startGame(options, true);
+        vi.advanceTimersByTime(1000);
+      } finally {
+        $trueorfalse.stopCounter(options);
+        $exeDevices.iDevice.gamification.report = previousReport;
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+        $exeDevices.iDevice.gamification.helpers.getTimeToString =
+          previousGetTimeToString;
+        vi.useRealTimers();
+      }
+
+      expect(sendScoreNew).toHaveBeenCalledTimes(2);
+      expect(sendScoreNew).toHaveBeenLastCalledWith(true, options);
+      expect(options.gameStarted).toBe(false);
+      expect(options.gameOver).toBe(true);
+      expect(options.scorerp).toBe(0);
+      expect(options.pendingAttempts).toBe(0);
     });
   });
 
@@ -452,6 +843,137 @@ describe('trueorfalse iDevice export', () => {
       }
 
       expect($trueorfalse.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('attempts (retries)', () => {
+    function setupGameOverDom() {
+      document.body.innerHTML = `
+        <button id="tofPCheckTest-tof-1"></button>
+        <button id="tofRebootTest-tof-1"></button>
+        <div id="tofPMessage-tof-1"></div>
+        <div id="tofPMultimedia"></div>
+        <div id="tofPGameContainer-tof-1">
+          <div class="TOFP-QuestionDiv">
+            <input class="TOFP-Answer" type="radio" value="1" checked />
+            <div class="TOFP-Feedback"><span class="TOFP-SolutionMessage"></span></div>
+          </div>
+        </div>`;
+    }
+
+    function baseOptions() {
+      return {
+        id: 'tof-1',
+        questionsGame: [{ solution: '1' }],
+        numberQuestions: 1,
+        msgs: { msgKO: 'KO', msgOk: 'OK', msgYouScore: 'Score' },
+        isInExe: false,
+      };
+    }
+
+    // A product decision, not backward compatibility: before this field existed
+    // the retry button was shown unconditionally at the end of a check, so an
+    // activity authored then offered unlimited retries and now offers one
+    // check and none. Already-exported packages are unaffected — the runtime
+    // travels inside the ZIP — but an old .elp reopened and exported today does
+    // change.
+    it('updateConfig gives a missing attemptsNumber one attempt', () => {
+      const prevExeApp = eXe.app;
+      eXe.app = {
+        ...eXe.app,
+        isInExe: () => false,
+        getIdeviceInstalledExportPath: () => '',
+      };
+      const prevGetQuestions =
+        $exeDevices.iDevice.gamification.helpers.getQuestions;
+      $exeDevices.iDevice.gamification.helpers.getQuestions = q => q;
+
+      try {
+        const result = $trueorfalse.updateConfig(
+          { id: 'x', questionsData: [] },
+          'x'
+        );
+        expect(result.attemptsNumber).toBe(1);
+      } finally {
+        eXe.app = prevExeApp;
+        $exeDevices.iDevice.gamification.helpers.getQuestions = prevGetQuestions;
+      }
+    });
+
+    it('default (1 attempt): completes and hides the retry button on the first check', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      const previousSendScoreNew =
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew;
+      const sendScoreNew = vi.fn();
+      $exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      $exeDevices.iDevice.gamification.scorm.sendScoreNew = sendScoreNew;
+      setupGameOverDom();
+      const options = { ...baseOptions(), isScorm: 1, pendingAttempts: 1 };
+
+      try {
+        $trueorfalse.gameOver(options);
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew =
+          previousSendScoreNew;
+      }
+
+      // Completed regardless of attempts.
+      expect(options.gameOver).toBe(true);
+      expect(sendScoreNew).toHaveBeenCalled();
+      // One attempt consumed -> no retry offered.
+      expect(options.pendingAttempts).toBe(0);
+      expect(document.getElementById('tofRebootTest-tof-1').style.display).toBe(
+        'none'
+      );
+    });
+
+    it('several attempts: offers the retry button and decrements pendingAttempts', () => {
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      $exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      setupGameOverDom();
+      const options = { ...baseOptions(), isScorm: 0, pendingAttempts: 3 };
+
+      try {
+        $trueorfalse.gameOver(options);
+      } finally {
+        $exeDevices.iDevice.gamification.report = previousReport;
+      }
+
+      expect(options.pendingAttempts).toBe(2);
+      expect(
+        document.getElementById('tofRebootTest-tof-1').style.display
+      ).not.toBe('none');
+    });
+
+    // addEvents seeds the per-play counter from the configured value, so a
+    // package saved before the field existed still gets exactly one attempt
+    // through updateConfig's default.
+    it('addEvents seeds pendingAttempts from attemptsNumber', () => {
+      document.body.innerHTML = `
+        <div id="tofPMainContainer-tof-1"></div>
+        <input id="tofPSendScore-tof-1" type="button" />`;
+      const previousReport = $exeDevices.iDevice.gamification.report;
+      $exeDevices.iDevice.gamification.report = {
+        saveEvaluation: vi.fn(),
+        updateEvaluationIcon: vi.fn(),
+      };
+      const options = {
+        ...baseOptions(),
+        attemptsNumber: 4,
+        tofPTime: 0,
+        isScorm: 0,
+      };
+
+      try {
+        $trueorfalse.addEvents(options);
+      } finally {
+        $trueorfalse.removeEvents(options);
+        $exeDevices.iDevice.gamification.report = previousReport;
+        document.body.innerHTML = '';
+      }
+
+      expect(options.pendingAttempts).toBe(4);
     });
   });
 });
