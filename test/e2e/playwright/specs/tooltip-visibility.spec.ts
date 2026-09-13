@@ -20,7 +20,7 @@ test.describe('Tooltip visibility (#2335)', () => {
                 panel.id = 'tooltip-test-panel';
                 panel.style.cssText = 'position:fixed;top:200px;left:200px;z-index:99999';
                 panel.innerHTML =
-                    '<button id="tooltip-test-trigger" class="exe-app-tooltip" title="Tooltip regression" data-bs-delay="150" data-bs-animation="false">Tooltip test</button>';
+                    '<button id="tooltip-test-trigger" class="exe-app-tooltip" title="Tooltip regression" data-bs-delay="150" data-bs-animation="false">Tooltip test</button><button id="tooltip-test-next">Next control</button>';
                 document.body.appendChild(panel);
                 (window as any).eXeLearning.app.common.initTooltips(panel);
             });
@@ -43,7 +43,7 @@ test.describe('Tooltip visibility (#2335)', () => {
             await page.evaluate(() => {
                 const trigger = (window as any).__tooltipTestTrigger as HTMLElement;
                 const panel = document.getElementById('tooltip-test-panel')!;
-                panel.appendChild(trigger);
+                panel.prepend(trigger);
                 panel.hidden = false;
                 trigger.style.display = '';
             });
@@ -51,7 +51,9 @@ test.describe('Tooltip visibility (#2335)', () => {
             await page.clock.runFor(200);
             await expect(page.getByRole('tooltip')).toHaveText('Tooltip regression');
             await expect(trigger).toHaveAttribute('aria-describedby', /tooltip/);
+            // Keep Tab inside the document: Firefox can retain focus on its last control.
             await trigger.press('Tab');
+            await expect(page.locator('#tooltip-test-next')).toBeFocused();
             await page.clock.runFor(200);
             await expect(page.locator('.tooltip.show')).toHaveCount(0);
             expect(errors).toEqual([]);
