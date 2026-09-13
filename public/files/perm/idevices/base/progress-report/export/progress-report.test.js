@@ -47,6 +47,7 @@ function loadIdevice(code) {
       gamification: {
         helpers: {
           supportedBrowser: () => true,
+          sanitizeJSONString: (str) => str,
           isJsonString: (str) => {
             if (!str) return false;
             try {
@@ -718,6 +719,184 @@ describe('progress-report iDevice (export)', () => {
       } finally {
         global.DOMParser = originalDOMParser;
       }
+    });
+  });
+
+  describe('parseComponentProperties', () => {
+    it('returns an empty object for a missing or blank payload', () => {
+      expect($eXeInforme.parseComponentProperties(undefined)).toEqual({});
+      expect($eXeInforme.parseComponentProperties('')).toEqual({});
+      expect($eXeInforme.parseComponentProperties('   ')).toEqual({});
+    });
+
+    it('returns an empty object for a malformed payload', () => {
+      expect($eXeInforme.parseComponentProperties('{not json')).toEqual({});
+    });
+
+    it('returns an empty object for a payload that is not an object', () => {
+      expect($eXeInforme.parseComponentProperties('42')).toEqual({});
+      expect($eXeInforme.parseComponentProperties('null')).toEqual({});
+    });
+
+    it('parses a valid payload', () => {
+      expect($eXeInforme.parseComponentProperties('{"typeGame":"Adivina"}')).toEqual({
+        typeGame: 'Adivina',
+      });
+    });
+  });
+
+  describe('parseOdeXmlToJson component listing', () => {
+    // The exporter wraps htmlView in CDATA, so the markup reaches the parser as
+    // text: escaping it here reproduces that. Quotes need no escaping inside XML
+    // text, so the JSON payload goes in verbatim.
+    const escapeXml = (value) =>
+      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const buildComponent = ({ id, type = '', html = '', json = '' }) => `
+      <odeComponent>
+        <odeIdeviceId>${id}</odeIdeviceId>
+        <odeIdeviceTypeName>${type}</odeIdeviceTypeName>
+        <htmlView>${escapeXml(html)}</htmlView>
+        <jsonProperties>${json}</jsonProperties>
+      </odeComponent>`;
+
+    const buildXml = (components, blockName = 'Block') => `<ode>
+      <odeNavStructures>
+        <odeNavStructure>
+          <odePageId>page-1</odePageId>
+          <odeParentPageId></odeParentPageId>
+          <pageName>Page 1</pageName>
+          <odeNavStructureOrder>1</odeNavStructureOrder>
+          <odePagStructures>
+            <odePagStructure>
+              <blockName>${blockName}</blockName>
+              <odeComponents>${components.map(buildComponent).join('')}</odeComponents>
+            </odePagStructure>
+          </odePagStructures>
+        </odeNavStructure>
+      </odeNavStructures>
+    </ode>`;
+
+    const componentsOfFirstPage = (xml) => $eXeInforme.parseOdeXmlToJson(xml)[0].components;
+
+    it('lists a component once when its payload carries a stale id', () => {
+      // Duplicating a page gives the copy a new id but keeps the old one
+      // inside jsonProperties, which used to list the activity twice.
+      const components = componentsOfFirstPage(
+        buildXml([
+          {
+            id: 'idevice-copy',
+            type: 'crossword',
+            json: '{"id":"20250605150704JMURGS"}',
+          },
+        ])
+      );
+
+      expect(components).toHaveLength(1);
+      expect(components[0].odeIdeviceId).toBe('idevice-copy');
+      expect(components[0].odeIdeviceTypeName).toBe('crossword');
+    });
+
+    it('lists a component once when its payload carries no id', () => {
+      const components = componentsOfFirstPage(
+        buildXml([{ id: 'idevice-1', type: 'interactive-video', json: '{"sources":[]}' }])
+      );
+
+      expect(components).toHaveLength(1);
+      expect(components[0].odeIdeviceTypeName).toBe('interactive-video');
+    });
+
+    it('keeps every component of a block, in document order', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          { id: 'idevice-1', type: 'text', json: '{"ideviceId":"idevice-1"}' },
+          { id: 'idevice-2', type: 'interactive-video', json: '{"sources":[]}' },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['idevice-1', 'idevice-2']);
+    });
+
+    it('preserves document order for integer-like legacy ids', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          { id: '10', type: 'text' },
+          { id: '2', type: 'text' },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['10', '2']);
+    });
+
+    it('keeps components that carry no id at all', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          { id: '', type: 'text' },
+          { id: '', type: 'crossword' },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceTypeName)).toEqual(['text', 'crossword']);
+    });
+
+    it('keeps the first entry when a damaged file repeats an id', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          { id: 'idevice-1', type: 'text' },
+          { id: 'idevice-1', type: 'crossword' },
+        ])
+      );
+
+      expect(components).toHaveLength(1);
+      expect(components[0].odeIdeviceTypeName).toBe('text');
+    });
+
+    it('falls back to the payload type when the component declares none', () => {
+      const components = componentsOfFirstPage(
+        buildXml([{ id: 'idevice-1', json: '{"typeGame":"Adivina"}' }])
+      );
+
+      expect(components[0].odeIdeviceTypeName).toBe('Adivina');
+    });
+
+    it('takes the evaluation data from the htmlView', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          {
+            id: 'idevice-1',
+            type: 'guess',
+            html: '<div data-evaluationid="FROM-HTML" data-evaluationb="true"></div>',
+            json: '{"data-evaluationid":"FROM-JSON","data-evaluationb":true}',
+          },
+        ])
+      );
+
+      expect(components[0].evaluationID).toBe('FROM-HTML');
+      expect(components[0].evaluation).toBe(true);
+    });
+
+    it('falls back to the payload evaluation data when the htmlView has none', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          {
+            id: 'idevice-1',
+            type: 'guess',
+            json: '{"data-evaluationid":"FROM-JSON","data-evaluationb":true}',
+          },
+        ])
+      );
+
+      expect(components[0].evaluationID).toBe('FROM-JSON');
+      expect(components[0].evaluation).toBe(true);
+    });
+
+    it('lists a component whose payload is malformed', () => {
+      const components = componentsOfFirstPage(
+        buildXml([{ id: 'idevice-1', type: 'crossword', json: '{broken' }])
+      );
+
+      expect(components).toHaveLength(1);
+      expect(components[0].odeIdeviceTypeName).toBe('crossword');
     });
   });
 

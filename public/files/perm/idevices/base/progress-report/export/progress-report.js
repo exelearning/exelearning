@@ -75,6 +75,14 @@ var $eXeInforme = {
             });
     },
 
+    /**
+     * Build the page tree from an exported content.xml.
+     *
+     * `jsonProperties` is written inside every <odeComponent> and nowhere
+     * else, so it must be read from the component itself: reading it from the
+     * block descends into the first component and lists that component twice,
+     * which is what duplicated a page's activities in exported packages.
+     */
     parseOdeXmlToJson: function (xmlString) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
@@ -101,27 +109,6 @@ var $eXeInforme = {
             pagStructures.forEach((pagStruct) => {
                 const blockName =
                     pagStruct.querySelector('blockName')?.textContent || '';
-                const jsonProp = pagStruct.querySelector('jsonProperties');
-                if (
-                    jsonProp &&
-                    jsonProp.textContent &&
-                    jsonProp.textContent.trim().length > 0
-                ) {
-                    try {
-                        const sanitized = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(jsonProp.textContent);
-                        const json = JSON.parse(sanitized);
-                        components.push({
-                            odeIdeviceId: json.id || json.ideviceId || '',
-                            odeIdeviceTypeName:
-                                json.typeGame || json.type || '',
-                            blockName: blockName,
-                            evaluationID: json['data-evaluationid'] || '',
-                            evaluation: json['data-evaluationb'] || null,
-                        });
-                    } catch (e) {
-                        //
-                    }
-                }
 
                 const odeComponents = pagStruct.querySelectorAll(
                     'odeComponents > odeComponent'
@@ -149,9 +136,24 @@ var $eXeInforme = {
                             evaluation = true;
                     }
 
+                    // The payload only fills the gaps the htmlView left: it is
+                    // the older of the two sources and iDevices that store an
+                    // outdated copy of their own data must not override it.
+                    let typeFromJson = '';
+                    if (!typeName || !evaluationID) {
+                        const json = $eXeInforme.parseComponentProperties(
+                            comp.querySelector('jsonProperties')?.textContent
+                        );
+                        typeFromJson = json.typeGame || json.type || '';
+                        if (!evaluationID && json['data-evaluationid']) {
+                            evaluationID = json['data-evaluationid'];
+                            evaluation = Boolean(json['data-evaluationb']);
+                        }
+                    }
+
                     components.push({
                         odeIdeviceId: ideviceId,
-                        odeIdeviceTypeName: typeName,
+                        odeIdeviceTypeName: typeName || typeFromJson,
                         blockName,
                         evaluationID,
                         evaluation,
@@ -159,23 +161,16 @@ var $eXeInforme = {
                 });
             });
 
-            const filtered = {};
-            components.forEach((comp) => {
-                const prev = filtered[comp.odeIdeviceId];
-                if (!prev) {
-                    filtered[comp.odeIdeviceId] = comp;
-                } else {
-                    if (!prev.evaluationID && comp.evaluationID) {
-                        filtered[comp.odeIdeviceId] = comp;
-                    } else if (
-                        !prev.odeIdeviceTypeName &&
-                        comp.odeIdeviceTypeName
-                    ) {
-                        filtered[comp.odeIdeviceId] = comp;
-                    }
-                }
+            // An id repeats only in a damaged file; keep the first entry and
+            // preserve document order, which an object keyed by id would lose
+            // (integer-like legacy ids get hoisted to the front).
+            const seenIds = new Set();
+            components = components.filter((comp) => {
+                if (!comp.odeIdeviceId) return true;
+                if (seenIds.has(comp.odeIdeviceId)) return false;
+                seenIds.add(comp.odeIdeviceId);
+                return true;
             });
-            components = Object.values(filtered);
 
             flatPages.push({
                 odePageId,
@@ -217,6 +212,27 @@ var $eXeInforme = {
         sortTree(roots);
 
         return roots;
+    },
+
+    /**
+     * Parse the <jsonProperties> payload of a single <odeComponent>.
+     *
+     * A missing or malformed payload resolves to an empty object: the
+     * component is still listed, only without what the payload would have
+     * contributed.
+     */
+    parseComponentProperties: function (rawJson) {
+        if (!rawJson || rawJson.trim().length === 0) return {};
+        try {
+            const sanitized =
+                $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                    rawJson
+                );
+            const parsed = JSON.parse(sanitized);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (e) {
+            return {};
+        }
     },
 
     enable: function () {
