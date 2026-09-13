@@ -128,7 +128,7 @@
     "kill-port": "^2.0.1",
     "mathjax": "4.1.3",
     "sass": "^1.103.1",
-    "scorm-again": "3.3.0",
+    "scorm-again": "3.3.2",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11",
