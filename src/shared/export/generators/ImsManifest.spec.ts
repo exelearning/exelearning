@@ -109,6 +109,26 @@ describe('ImsManifestGenerator', () => {
     });
 
     describe('generateResources', () => {
+        it('should emit a single resource for a duplicated page id', () => {
+            // `identifier` is an xsd:ID, so two <resource> elements sharing one
+            // would make the package schema-invalid.
+            const pages = createTestPages();
+            pages.push({ id: 'page-2', title: 'Chapter 1 again', parentId: null, order: 3, blocks: [] });
+            const duplicated = new ImsManifestGenerator('test-project-123', pages, { title: 'Test Course' });
+
+            const originalWarn = console.warn;
+            console.warn = () => {};
+            let xml: string;
+            try {
+                xml = duplicated.generate();
+            } finally {
+                console.warn = originalWarn;
+            }
+
+            expect(xml.match(/identifier="RES-page-2"/g)?.length).toBe(1);
+            expect(xml.match(/identifier="ITEM-page-2"/g)?.length).toBe(1);
+        });
+
         it('should not include scormtype attribute', () => {
             const xml = generator.generate();
 
@@ -171,6 +191,15 @@ describe('ImsManifestGenerator', () => {
             const xml = generator.generate();
 
             expect(xml).toContain('isvisible="true"');
+        });
+
+        it('should wrap every page in a non-launchable root item (#2222)', () => {
+            const xml = generator.generate();
+
+            const rootTag = /<item identifier="ITEM-ROOT-test-project-123"[^>]*>/.exec(xml)?.[0];
+            expect(rootTag).toBeDefined();
+            expect(rootTag).not.toContain('identifierref');
+            expect(xml.indexOf('identifier="ITEM-page-1"')).toBeGreaterThan(xml.indexOf('ITEM-ROOT-test-project-123'));
         });
     });
 
