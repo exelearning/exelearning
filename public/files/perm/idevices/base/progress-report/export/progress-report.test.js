@@ -630,6 +630,49 @@ describe('progress-report iDevice (export)', () => {
   });
 
   describe('ordering regressions', () => {
+    it.each(['ode_block_id', 'ode_pag_structure_sync_id'])(
+      'keeps tied blocks together using %s, even when input rows are interleaved',
+      (blockIdField) => {
+        const row = (id, blockId, componentOrder) => ({
+          odePageId: 'page-1',
+          pageName: 'Page 1',
+          componentId: id,
+          ode_idevice_id: id,
+          [blockIdField]: blockId,
+          blockName: 'Same title',
+          blockOrder: 1,
+          ode_components_sync_order: componentOrder,
+        });
+        const rows = [
+          row('a1', '10', 1),
+          row('b0', '2', 0),
+          row('a0', '10', 0),
+          row('b1', '2', 1),
+        ];
+
+        const result = $eXeInforme.buildNestedPages(rows);
+
+        expect(result[0].components.map((component) => component.componentId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+        expect(rows.map((row) => row.componentId)).toEqual(['a1', 'b0', 'a0', 'b1']);
+      }
+    );
+
+    it('keeps legacy rows without block ids grouped by their block order', () => {
+      const row = (id, blockOrder, componentOrder) => ({
+        odePageId: 'page-1',
+        pageName: 'Page 1',
+        componentId: id,
+        ode_idevice_id: id,
+        blockOrder,
+        ode_components_sync_order: componentOrder,
+      });
+      const result = $eXeInforme.buildNestedPages([
+        row('b1', 2, 1), row('a1', 1, 1), row('b0', 2, 0), row('a0', 1, 0),
+      ]);
+
+      expect(result[0].components.map((component) => component.componentId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+    });
+
     it('buildNestedPages identifies a row by the component id, not the embedded copy', () => {
       // Duplicating a page leaves the original's id inside the htmlView and the
       // payload; the learner's result is stored under the component's own id.
@@ -701,6 +744,31 @@ describe('progress-report iDevice (export)', () => {
       ]);
 
       expect(result[0].components.map((c) => c.componentId)).toEqual(['a0', 'a1', 'b0']);
+    });
+
+    it('buildNestedPages keeps a block together when two blocks share an order', () => {
+      const row = (componentId, blockId, blockOrder, componentOrder) => ({
+        odePageId: 'page-1',
+        odeParentPageId: null,
+        pageName: 'Page 1',
+        ode_nav_structure_sync_id: 'page-1',
+        ode_nav_structure_sync_order: 1,
+        navIsActive: 1,
+        componentId: componentId,
+        ode_idevice_id: componentId,
+        ode_block_id: blockId,
+        blockOrder: blockOrder,
+        ode_components_sync_order: componentOrder,
+      });
+
+      const result = $eXeInforme.buildNestedPages([
+        row('a0', 'block-a', 1, 0),
+        row('a1', 'block-a', 1, 1),
+        row('b0', 'block-b', 1, 0),
+        row('b1', 'block-b', 1, 1),
+      ]);
+
+      expect(result[0].components.map((c) => c.componentId)).toEqual(['a0', 'a1', 'b0', 'b1']);
     });
 
     it('buildNestedPages keeps rows without a block order in document order', () => {
@@ -903,6 +971,33 @@ describe('progress-report iDevice (export)', () => {
 
     const componentsOfFirstPage = (xml) => $eXeInforme.parseOdeXmlToJson(xml)[0].components;
 
+    it.each([1, 0, '', '   ', undefined, 'invalid'])('keeps XML blocks with order %s together', (order) => {
+      const components = componentsOfFirstPage(buildXmlWithBlocks([
+        { name: 'Same title', order, components: [{ id: 'a1', order: 1 }, { id: 'a0', order: 0 }] },
+        { name: 'Same title', order, components: [{ id: 'b1', order: 1 }, { id: 'b0', order: 0 }] },
+      ]));
+
+      expect(components.map((component) => component.odeIdeviceId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+    });
+
+    it('uses source positions for blank component orders without moving them before explicit orders', () => {
+      const components = componentsOfFirstPage(buildXml([
+        { id: 'first', order: 0 }, { id: 'second', order: 1 }, { id: 'third', order: ' ' },
+      ]));
+
+      expect(components.map((component) => component.odeIdeviceId)).toEqual(['first', 'second', 'third']);
+    });
+
+    it('does not let blank block orders precede blocks with an explicit order', () => {
+      const components = componentsOfFirstPage(buildXmlWithBlocks([
+        { order: 0, components: [{ id: 'first' }] },
+        { order: 1, components: [{ id: 'second' }] },
+        { order: ' ', components: [{ id: 'third' }] },
+      ]));
+
+      expect(components.map((component) => component.odeIdeviceId)).toEqual(['first', 'second', 'third']);
+    });
+
     it('lists a component once when its payload carries a stale id', () => {
       // Duplicating a page gives the copy a new id but keeps the old one
       // inside jsonProperties, which used to list the activity twice.
@@ -1034,6 +1129,56 @@ describe('progress-report iDevice (export)', () => {
       );
 
       expect(components.map((c) => c.odeIdeviceId)).toEqual(['a0', 'a1', 'b0']);
+    });
+
+    it('keeps a block together when two blocks share the same order', () => {
+      const components = componentsOfFirstPage(
+        buildXmlWithBlocks([
+          {
+            name: 'First block',
+            order: 1,
+            components: [
+              { id: 'a0', type: 'text', order: 0 },
+              { id: 'a1', type: 'text', order: 1 },
+            ],
+          },
+          {
+            name: 'Second block',
+            order: 1,
+            components: [
+              { id: 'b0', type: 'text', order: 0 },
+              { id: 'b1', type: 'text', order: 1 },
+            ],
+          },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+    });
+
+    it('keeps a block together when the block order fields are empty', () => {
+      const components = componentsOfFirstPage(
+        buildXmlWithBlocks([
+          {
+            name: 'First block',
+            order: '',
+            components: [
+              { id: 'a0', type: 'text', order: 0 },
+              { id: 'a1', type: 'text', order: 1 },
+            ],
+          },
+          {
+            name: 'Second block',
+            order: '',
+            components: [
+              { id: 'b0', type: 'text', order: 0 },
+              { id: 'b1', type: 'text', order: 1 },
+            ],
+          },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['a0', 'a1', 'b0', 'b1']);
     });
 
     it('falls back to the position in the file when the order fields are missing', () => {

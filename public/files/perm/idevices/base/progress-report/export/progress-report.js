@@ -109,12 +109,11 @@ var $eXeInforme = {
             pagStructures.forEach((pagStruct, blockIndex) => {
                 const blockName =
                     pagStruct.querySelector('blockName')?.textContent || '';
-                const parsedBlockOrder = Number(
-                    pagStruct.querySelector('odePagStructureOrder')?.textContent
+                const blockOrder = $eXeInforme.readOrder(
+                    pagStruct,
+                    'odePagStructureOrder',
+                    blockIndex
                 );
-                const blockOrder = Number.isFinite(parsedBlockOrder)
-                    ? parsedBlockOrder
-                    : blockIndex;
 
                 const odeComponents = pagStruct.querySelectorAll(
                     'odeComponents > odeComponent'
@@ -157,8 +156,10 @@ var $eXeInforme = {
                         }
                     }
 
-                    const parsedComponentOrder = Number(
-                        comp.querySelector('odeComponentsOrder')?.textContent
+                    const componentOrder = $eXeInforme.readOrder(
+                        comp,
+                        'odeComponentsOrder',
+                        componentIndex
                     );
 
                     components.push({
@@ -168,21 +169,21 @@ var $eXeInforme = {
                         evaluationID,
                         evaluation,
                         blockOrder,
-                        componentOrder: Number.isFinite(parsedComponentOrder)
-                            ? parsedComponentOrder
-                            : componentIndex,
+                        // The position in the file identifies the block and
+                        // breaks ties between blocks that declare one order.
+                        blockIndex,
+                        componentOrder,
                     });
                 });
             });
 
-            // A page lists its iDevices block by block, and `odeComponentsOrder`
-            // counts inside its own block. Both are authoritative: the position
-            // in the file is only the fallback for an export that omits them.
-            components.sort(
-                (a, b) =>
-                    a.blockOrder - b.blockOrder ||
-                    a.componentOrder - b.componentOrder
-            );
+            // The order fields are authoritative; the position in the file is
+            // only the fallback for an export that omits them.
+            $eXeInforme.sortComponentsByBlock(components, {
+                blockId: ['blockIndex'],
+                blockOrder: 'blockOrder',
+                componentOrder: 'componentOrder',
+            });
 
             // An id repeats only in a damaged file; keep the first entry and
             // preserve the order computed above, which an object keyed by id
@@ -237,6 +238,59 @@ var $eXeInforme = {
         sortTree(roots);
 
         return roots;
+    },
+
+    /**
+     * Order the iDevices a page shows, block by block.
+     *
+     * The order of an iDevice counts only inside its own block, and two blocks
+     * of the same page routinely carry the same order (or none at all), so the
+     * block is the outer unit: its declared order first, its position in the
+     * source as the tie-break, and only then the order inside the block.
+     * Comparing the inner order across blocks interleaves them.
+     *
+     * `keys.blockId` lists the fields that may carry the block id, in order of
+     * preference, because the sources name it differently.
+     */
+    sortComponentsByBlock: function (components, keys) {
+        const blockOf = (component) => {
+            for (const key of keys.blockId) {
+                const value = component[key];
+                if (value !== undefined && value !== null && value !== '') {
+                    return String(value);
+                }
+            }
+            return '';
+        };
+        const blockSequence = new Map();
+        components.forEach((component) => {
+            const blockId = blockOf(component);
+            if (!blockSequence.has(blockId)) {
+                blockSequence.set(blockId, blockSequence.size);
+            }
+        });
+
+        components.sort(
+            (a, b) =>
+                a[keys.blockOrder] - b[keys.blockOrder] ||
+                blockSequence.get(blockOf(a)) - blockSequence.get(blockOf(b)) ||
+                a[keys.componentOrder] - b[keys.componentOrder]
+        );
+        return components;
+    },
+
+    /**
+     * Read an order field of the XML.
+     *
+     * A missing, blank or non-numeric value resolves to `fallback` -- the
+     * element's position in the file -- and not to 0, which would push it
+     * ahead of everything that does declare an order.
+     */
+    readOrder: function (node, selector, fallback) {
+        const raw = node?.querySelector(selector)?.textContent;
+        if (raw == null || String(raw).trim() === '') return fallback;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? parsed : fallback;
     },
 
     /**
@@ -959,16 +1013,13 @@ var $eXeInforme = {
             }
         });
 
-        // A page lists its iDevices block by block: `ode_components_sync_order`
-        // counts inside its own block, so on its own it interleaves the blocks.
         Object.values(pageIndex).forEach((p) => {
             if (Array.isArray(p.components) && p.components.length > 1) {
-                p.components.sort(
-                    (a, b) =>
-                        a.blockOrder - b.blockOrder ||
-                        a.ode_components_sync_order -
-                            b.ode_components_sync_order
-                );
+                $eXeInforme.sortComponentsByBlock(p.components, {
+                    blockId: ['ode_block_id', 'ode_pag_structure_sync_id'],
+                    blockOrder: 'blockOrder',
+                    componentOrder: 'ode_components_sync_order',
+                });
             }
         });
 
