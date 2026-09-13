@@ -106,14 +106,20 @@ var $eXeInforme = {
             const pagStructures = pageNode.querySelectorAll(
                 'odePagStructures > odePagStructure'
             );
-            pagStructures.forEach((pagStruct) => {
+            pagStructures.forEach((pagStruct, blockIndex) => {
                 const blockName =
                     pagStruct.querySelector('blockName')?.textContent || '';
+                const parsedBlockOrder = Number(
+                    pagStruct.querySelector('odePagStructureOrder')?.textContent
+                );
+                const blockOrder = Number.isFinite(parsedBlockOrder)
+                    ? parsedBlockOrder
+                    : blockIndex;
 
                 const odeComponents = pagStruct.querySelectorAll(
                     'odeComponents > odeComponent'
                 );
-                odeComponents.forEach((comp) => {
+                odeComponents.forEach((comp, componentIndex) => {
                     const ideviceId =
                         comp.querySelector('odeIdeviceId')?.textContent || '';
                     const typeName =
@@ -151,19 +157,36 @@ var $eXeInforme = {
                         }
                     }
 
+                    const parsedComponentOrder = Number(
+                        comp.querySelector('odeComponentsOrder')?.textContent
+                    );
+
                     components.push({
                         odeIdeviceId: ideviceId,
                         odeIdeviceTypeName: typeName || typeFromJson,
                         blockName,
                         evaluationID,
                         evaluation,
+                        blockOrder,
+                        componentOrder: Number.isFinite(parsedComponentOrder)
+                            ? parsedComponentOrder
+                            : componentIndex,
                     });
                 });
             });
 
+            // A page lists its iDevices block by block, and `odeComponentsOrder`
+            // counts inside its own block. Both are authoritative: the position
+            // in the file is only the fallback for an export that omits them.
+            components.sort(
+                (a, b) =>
+                    a.blockOrder - b.blockOrder ||
+                    a.componentOrder - b.componentOrder
+            );
+
             // An id repeats only in a damaged file; keep the first entry and
-            // preserve document order, which an object keyed by id would lose
-            // (integer-like legacy ids get hoisted to the front).
+            // preserve the order computed above, which an object keyed by id
+            // would lose (integer-like legacy ids get hoisted to the front).
             const seenIds = new Set();
             components = components.filter((comp) => {
                 if (!comp.odeIdeviceId) return true;
@@ -923,17 +946,21 @@ var $eXeInforme = {
                     odeIdeviceTypeName: row.odeIdeviceTypeName,
                     ode_components_sync_order:
                         Number(row.ode_components_sync_order) || 0,
+                    blockOrder: Number(row.blockOrder) || 0,
                     componentIsActive: row.componentIsActive,
                 });
             }
         });
 
+        // A page lists its iDevices block by block: `ode_components_sync_order`
+        // counts inside its own block, so on its own it interleaves the blocks.
         Object.values(pageIndex).forEach((p) => {
             if (Array.isArray(p.components) && p.components.length > 1) {
                 p.components.sort(
                     (a, b) =>
+                        a.blockOrder - b.blockOrder ||
                         a.ode_components_sync_order -
-                        b.ode_components_sync_order
+                            b.ode_components_sync_order
                 );
             }
         });

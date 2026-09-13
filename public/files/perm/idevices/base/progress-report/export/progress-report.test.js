@@ -630,6 +630,51 @@ describe('progress-report iDevice (export)', () => {
   });
 
   describe('ordering regressions', () => {
+    it('buildNestedPages orders the iDevices of a page block by block', () => {
+      // `ode_components_sync_order` counts inside its own block, so the first
+      // iDevice of every block shares order 0: without the block order the
+      // second block's iDevice lands between the first block's two.
+      const row = (componentId, blockId, blockOrder, componentOrder) => ({
+        odePageId: 'page-1',
+        odeParentPageId: null,
+        pageName: 'Page 1',
+        ode_nav_structure_sync_id: 'page-1',
+        ode_nav_structure_sync_order: 1,
+        navIsActive: 1,
+        componentId: componentId,
+        ode_idevice_id: componentId,
+        ode_block_id: blockId,
+        blockOrder: blockOrder,
+        ode_components_sync_order: componentOrder,
+      });
+
+      const result = $eXeInforme.buildNestedPages([
+        row('a0', 'block-a', 0, 0),
+        row('a1', 'block-a', 0, 1),
+        row('b0', 'block-b', 1, 0),
+      ]);
+
+      expect(result[0].components.map((c) => c.componentId)).toEqual(['a0', 'a1', 'b0']);
+    });
+
+    it('buildNestedPages keeps rows without a block order in document order', () => {
+      const row = (componentId, componentOrder) => ({
+        odePageId: 'page-1',
+        odeParentPageId: null,
+        pageName: 'Page 1',
+        ode_nav_structure_sync_id: 'page-1',
+        ode_nav_structure_sync_order: 1,
+        navIsActive: 1,
+        componentId: componentId,
+        ode_idevice_id: componentId,
+        ode_components_sync_order: componentOrder,
+      });
+
+      const result = $eXeInforme.buildNestedPages([row('first', 0), row('second', 1)]);
+
+      expect(result[0].components.map((c) => c.componentId)).toEqual(['first', 'second']);
+    });
+
     it('extractIdevicesFromYjs uses page order instead of navigation index', () => {
       const makeYMap = (data) => ({
         get: (key) => data[key],
@@ -752,30 +797,36 @@ describe('progress-report iDevice (export)', () => {
     const escapeXml = (value) =>
       value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    const buildComponent = ({ id, type = '', html = '', json = '' }) => `
+    const buildComponent = ({ id, type = '', html = '', json = '', order }) => `
       <odeComponent>
         <odeIdeviceId>${id}</odeIdeviceId>
         <odeIdeviceTypeName>${type}</odeIdeviceTypeName>
         <htmlView>${escapeXml(html)}</htmlView>
         <jsonProperties>${json}</jsonProperties>
+        ${order === undefined ? '' : `<odeComponentsOrder>${order}</odeComponentsOrder>`}
       </odeComponent>`;
 
-    const buildXml = (components, blockName = 'Block') => `<ode>
+    const buildBlock = ({ name = 'Block', order, components }) => `
+      <odePagStructure>
+        <blockName>${name}</blockName>
+        ${order === undefined ? '' : `<odePagStructureOrder>${order}</odePagStructureOrder>`}
+        <odeComponents>${components.map(buildComponent).join('')}</odeComponents>
+      </odePagStructure>`;
+
+    const buildXmlWithBlocks = (blocks) => `<ode>
       <odeNavStructures>
         <odeNavStructure>
           <odePageId>page-1</odePageId>
           <odeParentPageId></odeParentPageId>
           <pageName>Page 1</pageName>
           <odeNavStructureOrder>1</odeNavStructureOrder>
-          <odePagStructures>
-            <odePagStructure>
-              <blockName>${blockName}</blockName>
-              <odeComponents>${components.map(buildComponent).join('')}</odeComponents>
-            </odePagStructure>
-          </odePagStructures>
+          <odePagStructures>${blocks.map(buildBlock).join('')}</odePagStructures>
         </odeNavStructure>
       </odeNavStructures>
     </ode>`;
+
+    const buildXml = (components, blockName = 'Block') =>
+      buildXmlWithBlocks([{ name: blockName, components }]);
 
     const componentsOfFirstPage = (xml) => $eXeInforme.parseOdeXmlToJson(xml)[0].components;
 
@@ -888,6 +939,39 @@ describe('progress-report iDevice (export)', () => {
 
       expect(components[0].evaluationID).toBe('FROM-JSON');
       expect(components[0].evaluation).toBe(true);
+    });
+
+    it('orders the components of a page by block, then within the block', () => {
+      const components = componentsOfFirstPage(
+        buildXmlWithBlocks([
+          {
+            name: 'Second block',
+            order: 1,
+            components: [{ id: 'b0', type: 'text', order: 0 }],
+          },
+          {
+            name: 'First block',
+            order: 0,
+            components: [
+              { id: 'a1', type: 'text', order: 1 },
+              { id: 'a0', type: 'text', order: 0 },
+            ],
+          },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['a0', 'a1', 'b0']);
+    });
+
+    it('falls back to the position in the file when the order fields are missing', () => {
+      const components = componentsOfFirstPage(
+        buildXmlWithBlocks([
+          { name: 'First block', components: [{ id: 'a0', type: 'text' }] },
+          { name: 'Second block', components: [{ id: 'b0', type: 'text' }] },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['a0', 'b0']);
     });
 
     it('lists a component whose payload is malformed', () => {
