@@ -1,7 +1,7 @@
 ---
 id: ADR-2390-01
 title: "Version export resource requests"
-status: Proposed
+status: Accepted
 date: 2026-09-13
 tracking_issue: 2390
 deciders:
