@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v4.0.4 – 2026-09-10
+## v4.0.4 – 2026-09-15
 
 ### Added
 
@@ -24,6 +24,8 @@
 
 - Project assets are now stored in sharded folders with paths relative to the data directory, improving scalability and allowing the data directory to be moved, remounted or restored without invalidating projects; existing installations are converted automatically at startup
 - SCORM 1.2: rewritten the runtime shipped in exported packages, with clear licensing and a full regression suite, keeping the same LMS behaviour while removing `onunload` and `onbeforeunload` handlers
+- SCORM, IMS: exported packages now group pages under a project root entry, which appears above the pages in the LMS table of contents
+- SCORM: fixed previous and next page navigation in Moodle for projects with nested pages
 - SCORM: page status and score are now based on learner interaction with its activities; pages remain incomplete until every activity has been started, are marked failed while the score is below 50 and passed from there on, while pages without activities are completed on entry
 - SCORM: the score is sent and committed to the LMS on every answer, so the platform index updates while the learner is still working on the page
 - SCORM: opening or leaving a page no longer decides its result on its own; only what the learner does with the activities does
