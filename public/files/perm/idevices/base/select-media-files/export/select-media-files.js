@@ -30,7 +30,6 @@ var $eXeSeleccionaMedias = {
     isInExe: false,
     userName: '',
     previousScore: '',
-    initialScore: '',
     mScorm: null,
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
@@ -520,6 +519,22 @@ var $eXeSeleccionaMedias = {
         );
     },
 
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, errors, the score and gameOver, but nothing
+     * told the LMS, so the menu kept the previous attempt's grade and status
+     * until the learner answered.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeSeleccionaMedias.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeSeleccionaMedias.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
 
@@ -591,6 +606,10 @@ var $eXeSeleccionaMedias = {
                 $sonidoEnlace = $('<a>', {
                     href: '#',
                     class: 'SLCMP-LinkAudio',
+                    // Also on the element, not only in the closure below:
+                    // checkAudio reads it from here when the learner clicks
+                    // the card rather than the speaker.
+                    'data-audio': card.audio,
                 }).append(
                     $('<img>', {
                         src: `${$eXeSeleccionaMedias.idevicePath}exequextplayaudio.svg`,
@@ -696,17 +715,14 @@ var $eXeSeleccionaMedias = {
                     : mOptions.msgs.msgAllOK;
             $eXeSeleccionaMedias.showMessage(2, msg, instance);
 
-            if (
-                mOptions.isScorm === 1 &&
-                (mOptions.repeatActivity ||
-                    $eXeSeleccionaMedias.initialScore === '')
-            ) {
-                const score = (
-                    (mOptions.hits * 10) /
-                    mOptions.phrasesGame.length
-                ).toFixed(2);
+            // No "score only once" lock: every resolved question is reported.
+            // The lock this used to carry could never close anyway —
+            // registerActivity forces `repeatActivity` to true at page load
+            // (common.js updateScormNew), so it short-circuited the condition
+            // before the learner touched anything. The activity registry owns
+            // what has been recorded.
+            if (mOptions.isScorm === 1) {
                 $eXeSeleccionaMedias.sendScore(true, instance);
-                $eXeSeleccionaMedias.initialScore = score;
             }
         } else {
             let msg = $eXeSeleccionaMedias.getMessageErrorAnswer(instance);
@@ -729,17 +745,8 @@ var $eXeSeleccionaMedias = {
                 $(`#slcmpReboot-${instance}`).show();
             } else {
                 $eXeSeleccionaMedias.updateScore(false, instance);
-                if (
-                    mOptions.isScorm === 1 &&
-                    (mOptions.repeatActivity ||
-                        $eXeSeleccionaMedias.initialScore === '')
-                ) {
-                    const score = (
-                        (mOptions.hits * 10) /
-                        mOptions.phrasesGame.length
-                    ).toFixed(2);
+                if (mOptions.isScorm === 1) {
                     $eXeSeleccionaMedias.sendScore(true, instance);
-                    $eXeSeleccionaMedias.initialScore = score;
                 }
             }
         }
@@ -763,6 +770,13 @@ var $eXeSeleccionaMedias = {
             function (e) {
                 e.preventDefault();
                 $(this).toggleClass('SLCMP-Select');
+                // The speaker sits inside the card, so its own click reaches
+                // here too — and it has already started the clip. Only the
+                // rest of the card has to start it, or the learner would get
+                // the same sound twice from one click.
+                if ($(e.target).closest('.SLCMP-LinkAudio').length === 0) {
+                    $eXeSeleccionaMedias.checkAudio(this);
+                }
             }
         );
     },
@@ -864,14 +878,14 @@ var $eXeSeleccionaMedias = {
 
         $('#slcmpStartGame-' + instance).on('click', function (e) {
             e.preventDefault();
-            $eXeSeleccionaMedias.startGame(instance);
+            $eXeSeleccionaMedias.startGame(instance, true);
             $(this).hide();
         });
 
         $('#slcmpStartGameEnd-' + instance).on('click', function (e) {
             e.preventDefault();
             $eXeSeleccionaMedias.showPhrase(0, instance);
-            $eXeSeleccionaMedias.startGame(instance);
+            $eXeSeleccionaMedias.startGame(instance, true);
             $('#slcmpCubierta-' + instance).hide();
         });
 
@@ -1123,10 +1137,20 @@ var $eXeSeleccionaMedias = {
         ) {
             $('#slcmpCodeAccessDiv-' + instance).hide();
             $('#slcmpCubierta-' + instance).hide();
+            // Before the maximize click, not after. That handler starts the
+            // game too, without the reporting flag, so triggering it first
+            // raised gameStarted and the call below returned at its own
+            // `if (mOptions.gameStarted) return` — the opening zero was never
+            // published, with or without a timer.
+            //
+            // Unconditionally, and reporting: the load path only starts an
+            // untimed game when there is no code, so gating this on the timer
+            // left a coded, untimed activity with nobody to start it — no
+            // check button, no hover and no opening zero, since startGame is
+            // the only place that shows the button bar addEvents hid. A valid
+            // code is the learner opening the activity, so it publishes.
+            $eXeSeleccionaMedias.startGame(instance, true);
             $('#slcmpLinkMaximize-' + instance).trigger('click');
-            if (mOptions.time > 0) {
-                $eXeSeleccionaMedias.startGame(instance);
-            }
         } else {
             $('#slcmpMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
@@ -1137,7 +1161,16 @@ var $eXeSeleccionaMedias = {
         }
     },
 
-    startGame: function (instance) {
+    /**
+     * @param {number} instance - Activity index.
+     * @param {boolean} [reportScorm] - True only when the learner started the
+     * activity from an explicit control: the play button, the replay link or a
+     * valid access code. Loading an untimed activity and maximizing the board
+     * both reach here too, and a zero recorded there is one the learner never
+     * asked for — an untimed activity with no code publishes nothing until the
+     * first answer (checkQuestion).
+     */
+    startGame: function (instance, reportScorm = false) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
 
         if (mOptions.gameStarted) return;
@@ -1187,6 +1220,13 @@ var $eXeSeleccionaMedias = {
                 if (mOptions.gameStarted) {
                     mOptions.counter--;
                     if (mOptions.counter <= 0) {
+                        // Painted before ending: the early return used to skip
+                        // this last update, so the clock jumped from 00:01 to
+                        // the results screen and never showed 00:00.
+                        $eXeSeleccionaMedias.uptateTime(
+                            mOptions.counter,
+                            instance
+                        );
                         $eXeSeleccionaMedias.gameOver(2, instance);
                         return;
                     }
@@ -1203,6 +1243,11 @@ var $eXeSeleccionaMedias = {
 
         mOptions.gameStarted = true;
         $eXeSeleccionaMedias.activateHover(instance);
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        if (reportScorm) {
+            $eXeSeleccionaMedias.saveScormScore(instance);
+        }
     },
 
     uptateTime: function (tiempo, instance) {
@@ -1231,12 +1276,7 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.showScoreGame(type, instance);
         $eXeSeleccionaMedias.saveEvaluation(instance);
         if (mOptions.isScorm == 1) {
-            const score = (
-                (mOptions.hits * 10) /
-                mOptions.phrasesGame.length
-            ).toFixed(2);
             $eXeSeleccionaMedias.sendScore(true, instance);
-            $eXeSeleccionaMedias.initialScore = score;
         }
         $eXeSeleccionaMedias.showFeedBack(instance);
         $('#slcmpCodeAccessDiv-' + instance).hide();

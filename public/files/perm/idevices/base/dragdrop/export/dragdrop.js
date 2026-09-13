@@ -767,6 +767,11 @@ var $eXeDragDrop = {
 
     reboot: function (instance) {
         const mOptions = $eXeDragDrop.options[instance];
+        // Lowered before rebootDrags, which reaches startGame: that returns
+        // early on a game it believes is already running, so a restart while
+        // the flag was still up did none of its work — including the report
+        // that puts the LMS back to zero.
+        mOptions.gameStarted = false;
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
@@ -776,6 +781,7 @@ var $eXeDragDrop = {
         $eXeDragDrop.showScoreGame(instance);
         mOptions.gameStarted = true;
         mOptions.gameOver = false;
+        $eXeDragDrop.saveScormScore(instance);
 
         $('#dadPMessage-' + instance).hide();
     },
@@ -1057,6 +1063,14 @@ var $eXeDragDrop = {
                 `#dadPCodeAccessDiv-${instance}, #dadPCubierta-${instance}`
             ).hide();
             $(`#dadPLinkMaximize-${instance}`).trigger('click');
+            // A valid code is the learner opening the activity. startGame is
+            // silent by design — loading and minimizing also route through it —
+            // so the opening zero is published here instead. Starting first is
+            // what makes the report land: sendScoreNew drops a game that says
+            // it is neither started nor over, and startGame returns early when
+            // the maximize click above already started it.
+            $eXeDragDrop.startGame(instance);
+            $eXeDragDrop.saveScormScore(instance);
         } else {
             $(`#dadPMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
@@ -1113,10 +1127,27 @@ var $eXeDragDrop = {
         );
     },
 
+    /**
+     * Publish the freshly reset state only after the learner explicitly asks
+     * to play again.
+     *
+     * Loading/minimizing can route through startGame(), so reporting there
+     * submits a zero score before the learner interacts with the activity.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeDragDrop.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeDragDrop.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeDragDrop.options[instance];
-        mOptions.scorerp = score =
-            (mOptions.hits * 10) / mOptions.realNumberCards;
+        // Was assigning through an undeclared `score`, which wrote a global on
+        // every report and was read by nobody.
+        mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards;
         mOptions.previousScore = $eXeDragDrop.previousScore;
         mOptions.userName = $eXeDragDrop.userName;
 
