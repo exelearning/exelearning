@@ -158,6 +158,7 @@ var myTheme = {
     },
     navExpanded: function (visible) {
         $('#siteNavToggler').attr('aria-expanded', visible ? 'true' : 'false');
+        $('#siteNav').prop('inert', !visible);
     },
     // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {

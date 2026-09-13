@@ -39,7 +39,7 @@ var myTheme = {
         // Check the current NAV status
         if (new URLSearchParams(window.location.search).get('nav') === 'false') {
             $('body').addClass('siteNav-off');
-            $('#siteNavToggler').attr('aria-expanded', 'false');
+            myTheme.navExpanded(false);
             myTheme.params('add');
         }
         // Menu toggler
@@ -62,7 +62,7 @@ var myTheme = {
                     $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
-            $(this).attr('aria-expanded', !$('body').hasClass('siteNav-off'));
+            myTheme.navExpanded(!$('body').hasClass('siteNav-off'));
         });
         // Search bar toggler
         $('#searchBarToggler').on('click', function () {
@@ -72,7 +72,7 @@ var myTheme = {
             } else {
                 if (myTheme.isLowRes()) {
                     $('body').addClass('siteNav-off');
-                    $('#siteNavToggler').attr('aria-expanded', 'false');
+                    myTheme.navExpanded(false);
                 }
                 bar.show();
                 $('#exe-client-search-text').focus();
@@ -110,6 +110,10 @@ var myTheme = {
         navH = navH + 50;
         if (navH < $(window).height()) wrapper.addClass('fixed');
         else wrapper.removeClass('fixed');
+    },
+    navExpanded: function (visible) {
+        $('#siteNavToggler').attr('aria-expanded', visible ? 'true' : 'false');
+        $('#siteNav').prop('inert', !visible);
     },
     // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
