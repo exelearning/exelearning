@@ -1134,8 +1134,13 @@ var $eXeInforme = {
 
         const url = new URL(window.location.href);
 
-        let base = url.pathname.replace(/\/html(\/.*)?$/i, '');
-        base = base.replace(/\/$/, '');
+        // Walk up to the root of the package: drop the file name of the page
+        // holding the report -- on the cover that is `index.html`, and keeping
+        // it produced `/index.html/html/page.html` -- and then the `html`
+        // folder that every page but the cover lives in.
+        let base = url.pathname.replace(/\/[^/]*\.[^/]*$/, '');
+        base = base.replace(/\/+$/, '');
+        base = base.replace(/\/html$/i, '');
 
         if (pageId === 'index') {
             url.pathname = `${base}/index.html`;

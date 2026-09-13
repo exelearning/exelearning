@@ -429,8 +429,50 @@ describe('progress-report iDevice (export)', () => {
   });
 
   describe('getURLPage', () => {
+    // Swapping the descriptor keeps the environment from navigating.
+    const from = (href, pageId) => {
+      const original = Object.getOwnPropertyDescriptor(window, 'location');
+      Object.defineProperty(window, 'location', { value: { href }, configurable: true });
+      try {
+        return $eXeInforme.getURLPage(pageId);
+      } finally {
+        Object.defineProperty(window, 'location', original);
+      }
+    };
+
     it('is defined as a function', () => {
       expect(typeof $eXeInforme.getURLPage).toBe('function');
+    });
+
+    it('returns an empty string without a page', () => {
+      expect(from('http://host/index.html', '')).toBe('');
+    });
+
+    it('links to a page from the cover', () => {
+      expect(from('http://host/index.html', 'leaf')).toBe('http://host/html/leaf.html');
+    });
+
+    it('links to a page from another page', () => {
+      expect(from('http://host/html/other.html', 'leaf')).toBe('http://host/html/leaf.html');
+    });
+
+    it('keeps the subdirectory the package is served from', () => {
+      expect(from('http://host/course/index.html', 'leaf')).toBe('http://host/course/html/leaf.html');
+      expect(from('http://host/course/html/other.html', 'leaf')).toBe('http://host/course/html/leaf.html');
+    });
+
+    it('handles a directory URL with no file name', () => {
+      expect(from('http://host/course/', 'leaf')).toBe('http://host/course/html/leaf.html');
+      expect(from('http://host/', 'leaf')).toBe('http://host/html/leaf.html');
+    });
+
+    it('links back to the cover', () => {
+      expect(from('http://host/html/other.html', 'index')).toBe('http://host/index.html');
+      expect(from('http://host/course/html/other.html', 'index')).toBe('http://host/course/index.html');
+    });
+
+    it('keeps a directory whose name contains a dot', () => {
+      expect(from('http://host/my.course/index.html', 'leaf')).toBe('http://host/my.course/html/leaf.html');
     });
   });
 
