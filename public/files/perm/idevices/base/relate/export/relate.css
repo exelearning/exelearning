@@ -461,7 +461,7 @@
 
 .RLCP-Definition .RLCP-FullLinkImage {
     top: 0;
-    left: px;
+    left: 0;
     position: absolute;
     z-index: 10;
     display: block;

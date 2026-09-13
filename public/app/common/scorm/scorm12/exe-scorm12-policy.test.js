@@ -92,6 +92,196 @@ describe('exe-scorm12-policy', () => {
             ]);
         });
 
+        // iDevices register and report on jQuery ready; loadPage() runs on body
+        // onload, after every image and video has loaded. A report that lands in
+        // that window reaches the registry — which needs no session — but
+        // showFinalScore's own publish is refused, so it stayed unseen by the
+        // LMS until something else flushed it, which is why the mark only
+        // surfaced on leaving the page.
+        it('flushes a report that arrived before the session opened', () => {
+            activities.register('quiz', {
+                evaluable: true,
+                completionRequired: true,
+                completed: true,
+                score: 90,
+            });
+            startSession({ 'cmi.core.lesson_status': '' });
+
+            policy.applyEntryPolicy();
+
+            expect(api.data['cmi.core.score.raw']).toBe('90');
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+            expect(api.callNames()).toContain('LMSCommit');
+        });
+
+        // The flush commits a mark drawn from the registry, and the registry is
+        // the restored attempt plus what arrived before the session opened —
+        // only the first of which the stored payload holds. Committing without
+        // rewriting it would leave the LMS showing a score its own suspend_data
+        // cannot rebuild on the next visit.
+        it('persists the registry before the entry flush commits', () => {
+            activities.register('essay', {
+                evaluable: true,
+                completionRequired: true,
+                completed: true,
+                score: 80,
+            });
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.suspend_data': 'exe12/1|quiz;7;0;0;40;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+
+            // Both activities travel: the one restored and the one that only
+            // ever existed in this session.
+            expect(api.data['cmi.suspend_data']).toContain('essay');
+            expect(api.data['cmi.suspend_data']).toContain('quiz');
+            const names = api.callNames();
+            const suspendWrite = names.indexOf('LMSSetValue');
+            expect(suspendWrite).toBeGreaterThanOrEqual(0);
+            expect(suspendWrite).toBeLessThan(names.indexOf('LMSCommit'));
+        });
+
+        describe('a report made before the session survives the restore', () => {
+            it('keeps it when it beats the stored attempt', () => {
+                activities.register('quiz', {
+                    evaluable: true,
+                    completionRequired: true,
+                    completed: true,
+                    score: 90,
+                });
+                // Flags 3: evaluable and required, not completed.
+                startSession({
+                    'cmi.core.lesson_status': 'incomplete',
+                    'cmi.suspend_data': 'exe12/1|quiz;3;0;0;40;1;0;100',
+                });
+
+                policy.applyEntryPolicy();
+
+                expect(activities.get('quiz')).toMatchObject({ score: 90, completed: true });
+                expect(api.data['cmi.core.score.raw']).toBe('90');
+            });
+
+            // The decisive case, and the reason the fix lives here rather than
+            // in activities.load(). The learner returns to a page they had
+            // passed and restarts the activity before the session opened, so
+            // the report says score 0, not completed — and the status has to
+            // follow it down. It only works because the stored attempt is
+            // recognised FIRST (the adoption, which needs decideStatus() to
+            // read the registry exactly as the payload left it) and the report
+            // re-applied AFTER. Merge the report inside load() instead and the
+            // adoption never happens, so applyDecidedStatus preserves the
+            // stored "passed" over a registry that now says 0.
+            it('lets a restart downgrade a stored pass', () => {
+                activities.register('quiz', { evaluable: true, completionRequired: true, score: 0 });
+                startSession({
+                    'cmi.core.lesson_status': 'passed',
+                    'cmi.core.score.raw': '90',
+                    'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100',
+                });
+
+                policy.applyEntryPolicy();
+
+                expect(activities.get('quiz')).toMatchObject({ score: 0, completed: false });
+                expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+                expect(api.data['cmi.core.score.raw']).toBe('0');
+            });
+
+            it('leaves the other activities on the page restored', () => {
+                activities.register('quiz', { evaluable: true, completionRequired: true, score: 0 });
+                activities.register('essay', { evaluable: true, completionRequired: true });
+                startSession({
+                    'cmi.core.lesson_status': 'incomplete',
+                    'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100|essay;7;0;0;70;1;0;100',
+                });
+
+                policy.applyEntryPolicy();
+
+                expect(activities.get('quiz')).toMatchObject({ score: 0, completed: false });
+                expect(activities.get('essay')).toMatchObject({ score: 70, completed: true });
+            });
+
+            it('restores the stored attempt when the activity was only declared', () => {
+                // registerActivity() declares total and legacyIndex, no score.
+                activities.register('quiz', { evaluable: true, completionRequired: true, total: 5 });
+                startSession({
+                    'cmi.core.lesson_status': 'passed',
+                    'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100',
+                });
+
+                policy.applyEntryPolicy();
+
+                expect(activities.get('quiz')).toMatchObject({ score: 90, completed: true });
+                // Nothing was reported this session, so nothing is flushed.
+                expect(api.callNames()).not.toContain('LMSCommit');
+            });
+        });
+
+        // Deciding the status from a purely restored registry would rewrite an
+        // attempt this session has not touched, which the entry contract forbids.
+        it('does not decide a status for a registry that only came from the restore', () => {
+            startSession({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100',
+            });
+            api.resetCalls();
+
+            policy.applyEntryPolicy();
+
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+            expect(
+                api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.lesson_status')
+            ).toEqual([]);
+        });
+
+        // The learner finishes a page, navigates away and comes back, then
+        // restarts an activity. The restart resets the score to 0, but the
+        // status the LMS restored was written in the previous visit, so the
+        // policy no longer recognised it as its own and refused the downgrade:
+        // the menu showed "passed" next to a 0.
+        it('adopts a restored terminal status the restored registry derives', () => {
+            startSession({
+                'cmi.core.lesson_status': 'passed',
+                'cmi.suspend_data': 'exe12/1|quiz;7;4;4;90;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+            // The learner presses start: the activity replays as unfinished.
+            activities.register('quiz', {
+                evaluable: true,
+                completionRequired: true,
+                completed: false,
+                score: 0,
+            });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({
+                status: 'incomplete',
+                written: true,
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+        });
+
+        // The narrowing that keeps the adoption honest: content's own verdict
+        // is not derivable from the registry, so it is not the policy's to
+        // downgrade, however many page loads later.
+        it('leaves a restored terminal status the registry does not account for', () => {
+            startSession({
+                'cmi.core.lesson_status': 'passed',
+                'cmi.suspend_data': 'exe12/1|quiz;3;0;4;0;1;0;100',
+            });
+
+            policy.applyEntryPolicy();
+            activities.register('quiz-2', { evaluable: true, completionRequired: true, total: 4 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({
+                status: 'passed',
+                written: false,
+                reason: 'terminal-status-preserved',
+            });
+            expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
         it('writes no score at all when an evaluable activity is registered but unanswered', () => {
             // The real ordering, which the other entry-policy cases invert: iDevices
             // bootstrap on jQuery ready and register BEFORE loadPage() runs the entry
@@ -715,21 +905,42 @@ describe('exe-scorm12-policy', () => {
         });
 
         it('decides the same status during the session and at exit near the threshold', () => {
-            // 100/49/0 with equal weights: the historical largest-remainder
-            // weighting yields 50.17 (passed at the default threshold of
-            // 50), where an exact mean would yield 49.67 (failed). Both the
-            // mid-session decision and the exit decision must read the same
-            // aggregate — a page must never pass while in use and fail on
-            // the way out.
+            // 100/51/0 with equal weights aggregates to 50.33, just over the
+            // default threshold of 50. Both the mid-session decision and the
+            // exit decision must read the same aggregate — a page must never
+            // pass while in use and fail on the way out.
             startSession({ 'cmi.core.lesson_status': 'incomplete' });
             register('a', { evaluable: true, completionRequired: true, completed: true, score: 100 });
-            register('b', { evaluable: true, completionRequired: true, completed: true, score: 49 });
+            register('b', { evaluable: true, completionRequired: true, completed: true, score: 51 });
             register('c', { evaluable: true, completionRequired: true, completed: true, score: 0 });
 
             expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
 
             expect(policy.applyExitPolicy()).toMatchObject({ status: 'passed', exit: '' });
             expect(api.data['cmi.core.lesson_status']).toBe('passed');
+        });
+
+        // The aggregate is what separates the two verdicts, so the order the
+        // activities registered in must not reach the status either. Under the
+        // largest-remainder weighting this replaced, these three scores passed
+        // in one order and failed in the other.
+        it('reaches the same verdict whatever order the activities register in', () => {
+            function verdictFor(scores) {
+                activities.clear();
+                startSession({ 'cmi.core.lesson_status': 'incomplete' });
+                scores.forEach((score, index) => {
+                    register(`a${index}`, {
+                        evaluable: true,
+                        completionRequired: true,
+                        completed: true,
+                        score,
+                    });
+                });
+                return policy.recordActivityOutcome().status;
+            }
+
+            expect(verdictFor([100, 50, 0])).toBe('passed');
+            expect(verdictFor([0, 50, 100])).toBe('passed');
         });
     });
 
@@ -861,6 +1072,186 @@ describe('exe-scorm12-policy', () => {
         });
     });
 
+    describe('cmi.core.exit while the session is still open', () => {
+        it('clears a resumed attempt\'s stale "suspend" as soon as the page turns terminal', () => {
+            // The previous visit left the attempt suspended and this one
+            // finishes it. Without the clear, the LMS holds "passed" and
+            // "suspend" together for the whole visit.
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+
+            expect(api.data['cmi.core.exit']).toBe('');
+        });
+
+        it('leaves the exit suspended while the page is still incomplete', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+
+            policy.recordActivityOutcome();
+
+            expect(api.callsFor('LMSSetValue')).toEqual([]);
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+
+        it('sends the cleared exit once, however many reports follow', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            policy.recordActivityOutcome();
+            api.resetCalls();
+
+            policy.recordActivityOutcome();
+            policy.applyExitPolicy();
+
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.exit')).toEqual([]);
+        });
+
+        it('re-sends the cleared exit after content suspended the attempt itself', () => {
+            // scorm.SetExit() writes straight through the client, bypassing
+            // this policy. A dedupe cache kept inside the policy would still
+            // read '' and skip the write, leaving the LMS holding "suspend"
+            // next to a terminal status — the very state this clears.
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            policy.recordActivityOutcome();
+            expect(api.data['cmi.core.exit']).toBe('');
+
+            client.setValue('cmi.core.exit', 'suspend');
+
+            expect(policy.applyExitPolicy()).toMatchObject({ status: 'passed', exit: '' });
+            expect(api.data['cmi.core.exit']).toBe('');
+        });
+
+        // The window the clearing itself opened: the attempt turned terminal,
+        // the exit was cleared, and then the learner restarted an activity, so
+        // the status went back to "incomplete". Nothing rewrote the exit. The
+        // only path that would is applyExitPolicy, and that runs from
+        // lifecycle.finish() alone — a tab the mobile browser kills, or an
+        // iframe Moodle replaces without firing pagehide, never reaches it, and
+        // persist() does not touch the exit. The LMS would close an unfinished
+        // attempt as a normal completion.
+        it('suspends the exit again when the attempt reopens', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            expect(policy.recordActivityOutcome()).toMatchObject({ status: 'passed', written: true });
+            expect(api.data['cmi.core.exit']).toBe('');
+
+            // The learner plays the activity again: it reports itself unfinished.
+            activities.update('quiz-1', { completed: false, score: 0 });
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({ status: 'incomplete', written: true });
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+
+        // The reopen is written early in updateActivity() and the commit that
+        // ships it comes last, with persistActivities() and showFinalScore() in
+        // between — and showFinalScore calls recordActivityOutcome(), which
+        // runs the whole status decision again. Whatever the LMS holds when
+        // the commit goes out is what Moodle redraws its menu from, so the
+        // question is what survives to the end of that sequence, not what the
+        // reconcile wrote.
+        it('holds the suspended exit through the rest of the report cycle', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+            policy.recordActivityOutcome();
+            activities.update('quiz-1', { completed: false, score: 0 });
+            policy.reconcilePendingActivities();
+            api.resetCalls();
+
+            // What follows the reconcile inside updateActivity().
+            policy.persistActivities();
+            policy.recordActivityOutcome();
+
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+            expect(api.data['cmi.core.lesson_status']).toBe('incomplete');
+            // And nothing re-sent: the write cache is what makes the repeat a
+            // no-op, so the commit carries one exit value, not a pair.
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.exit')).toEqual([]);
+        });
+
+        // The same window opened by a previous visit instead of by this one:
+        // the learner finished the page, left, and comes back. applyEntryPolicy
+        // adopts the stored terminal status as this session's claim, and the ""
+        // that goes with it was written when that visit closed the attempt.
+        //
+        // Deliberately with NO intermediate re-evaluation of the terminal
+        // status before the restart: the full iDevice flow happens to make one,
+        // which hid this in Moodle 5.0.7 for every path except a minimal SCO
+        // driving the policy directly.
+        it('suspends the exit again for a terminal attempt restored from a previous visit', () => {
+            startSession({
+                'cmi.core.lesson_status': 'passed',
+                // What closing the attempt wrote when the previous visit ended.
+                'cmi.core.exit': '',
+                // Evaluable, required and completed (flags 7), scored 90.
+                'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;100;0;100',
+            });
+
+            policy.applyEntryPolicy();
+            // Straight from the restore to the restart, nothing in between.
+            activities.update('quiz', { completed: false, score: 0 });
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({ status: 'incomplete', written: true });
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+
+        // Only inside that window. Writing "suspend" as soon as any page
+        // reports progress would mark attempts the learner is still working on
+        // as suspended, which is a much wider change than the case it fixes.
+        it('writes no exit for a page that was never terminal', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+
+            policy.recordActivityOutcome();
+
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.exit')).toEqual([]);
+        });
+
+        // The terminal status belongs to a previous attempt or to content, so
+        // this branch deliberately touches nothing — including the exit.
+        it('writes no exit when a terminal status it does not own is preserved', () => {
+            startSession({ 'cmi.core.lesson_status': 'passed', 'cmi.core.exit': 'suspend' });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, total: 4 });
+            api.resetCalls();
+
+            expect(policy.reconcilePendingActivities()).toMatchObject({ reason: 'terminal-status-preserved' });
+            expect(api.callsFor('LMSSetValue').filter(call => call[0] === 'cmi.core.exit')).toEqual([]);
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+
+        // getClient() resolves exeScorm12.client off the global, and the Moodle
+        // plugin injects its own vendored copy of this runtime into content
+        // exported by whichever release the author used. Both write-cache
+        // accessors arrived with the exit clearing itself, so a client from
+        // before it has neither — and this runs inside applyExitPolicy, where a
+        // throw would take the exit, the session time and LMSFinish with it.
+        it('still writes the exit through a client with no write cache', () => {
+            startSession({ 'cmi.core.lesson_status': 'incomplete' });
+            const olderClient = {
+                isActive: () => client.isActive(),
+                getValue: element => client.getValue(element),
+                setValue: (element, value) => client.setValue(element, value),
+            };
+            policy.configure({ getClient: () => olderClient, getActivities: () => activities, warn: warnSpy });
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            expect(() => policy.recordActivityOutcome()).not.toThrow();
+            expect(api.data['cmi.core.exit']).toBe('');
+        });
+
+        it('keeps the exit suspended when the LMS rejects the terminal status', () => {
+            startSession(
+                { 'cmi.core.lesson_status': 'incomplete', 'cmi.core.exit': 'suspend' },
+                { elementFailures: { 'cmi.core.lesson_status': { errorCode: 101 } } },
+            );
+            activities.register('quiz-1', { evaluable: true, completionRequired: true, completed: true, score: 90 });
+
+            expect(policy.recordActivityOutcome()).toMatchObject({ written: false, effective: 'incomplete' });
+            expect(api.data['cmi.core.exit']).toBe('suspend');
+        });
+    });
+
     describe('exit policy', () => {
         it('completes an unscored page and ends the attempt normally', () => {
             startSession({ 'cmi.core.lesson_status': 'incomplete' });
@@ -896,7 +1287,7 @@ describe('exe-scorm12-policy', () => {
             policy.applyExitPolicy();
 
             expect(api.callSignatures()).toEqual([
-                'LMSSetValue(cmi.suspend_data=exe12/1|quiz-1;7;0;0;90;1;0;100)',
+                'LMSSetValue(cmi.suspend_data=exe12/1|quiz-1;7;0;0;90;100;0;100)',
                 'LMSGetValue(cmi.core.lesson_status)',
                 'LMSSetValue(cmi.core.lesson_status=passed)',
                 'LMSSetValue(cmi.core.exit=)',
