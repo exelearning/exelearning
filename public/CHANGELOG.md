@@ -34,6 +34,7 @@
 - iDevices: activities can always be repeated
 - Base and Universal styles: fully revised for accessibility, presentation and third-party licences, meeting WCAG 2.2 level AA
 - Effects: improved accessibility and presentation of accordion, tab, pagination, carousel and timeline controls, with clearer focus indicators and improved contrast
+- Styles: improved accessibility of menu and search controls in exported websites
 - Universal style: dark mode is now disabled by default, except when exporting as a website
 - Math: accessibility is now provided through browser MathML support, with hidden MathML always enabled so screen readers can announce formulas; removed the non-functional expression explorer, braille and read-aloud options from the MathJax menu
 - Static distribution: removed unused resources, duplicated bundles and unreachable third-party files, and improved compression of the largest datasets
