@@ -172,4 +172,292 @@ describe('quick-questions-multiple-choice export', () => {
             expect(question.solution).toBe('');
         });
     });
+
+    // The automatic report used to happen only from showQuestion(), i.e. once
+    // the setTimeout that reveals the next question had elapsed. That put the
+    // mark in the LMS seconds late, and a learner who left during that window
+    // lost the answer: the timer never fired.
+    describe('reporting in the same turn the learner answered', () => {
+        const idevice = () => global.$quickquestionsmultiplechoice;
+
+        function setupAnswer(overrides) {
+            document.body.innerHTML =
+                '<div id="seleccionaMainContainer-0">' +
+                '<div id="seleccionaPShowClue-0"></div>' +
+                '<div id="seleccionaLinkAudio-0"></div>' +
+                '</div>';
+            idevice().initialScore = '';
+            idevice().options[0] = Object.assign(
+                {
+                    id: 0,
+                    isScorm: 1,
+                    repeatActivity: true,
+                    gameStarted: true,
+                    gameActived: true,
+                    gameOver: false,
+                    order: 0,
+                    hits: 1,
+                    errors: 0,
+                    numberQuestions: 4,
+                    activeQuestion: 0,
+                    activeCounter: true,
+                    showSolution: false,
+                    audioFeedBach: false,
+                    obtainedClue: false,
+                    selectsGame: [
+                        { audio: '' },
+                        { audio: '' },
+                        { audio: '' },
+                        { audio: '' },
+                    ],
+                    itinerary: { showClue: false, percentageClue: 0 },
+                    msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn(idevice(), 'updateScore').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'sendScore').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'showMessage').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('reports before the reveal timer runs, not after it', () => {
+            vi.useFakeTimers();
+            setupAnswer();
+
+            idevice().answerQuestionBoard(true, 0);
+
+            // No timer has been advanced: the report has to have gone out.
+            expect(idevice().sendScore).toHaveBeenCalledWith(true, 0);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('does not report outside automatic SCORM mode', () => {
+            vi.useFakeTimers();
+            setupAnswer({ isScorm: 0 });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().sendScore).not.toHaveBeenCalled();
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // An intermediate answer must not close the attempt: the page would go
+        // to passed/failed while the learner is still playing.
+        it('leaves the activity unfinished while questions remain', () => {
+            vi.useFakeTimers();
+            setupAnswer({ activeQuestion: 0, numberQuestions: 4 });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(false);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // The last answer must carry the completion, so leaving during the
+        // reveal delay still records a finished activity.
+        it('marks the activity finished on the last question, before reporting', () => {
+            vi.useFakeTimers();
+            setupAnswer({ activeQuestion: 3, numberQuestions: 4 });
+            let flagWhenReported;
+            idevice().sendScore.mockImplementation(() => {
+                flagWhenReported = idevice().options[0].gameOver;
+            });
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(flagWhenReported).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // In itinerary mode the next question is whatever the answered one
+        // points at, so the index of the active question decides nothing: a
+        // learner can finish on the second question of four, or still be
+        // playing on the last.
+        it('finishes where the itinerary says, not on the last index', () => {
+            vi.useFakeTimers();
+            setupAnswer({
+                order: 2,
+                activeQuestion: 1,
+                numberQuestions: 4,
+                selectsGame: [
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -2, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                ],
+            });
+            vi.spyOn(idevice(), 'updateScoreThree').mockImplementation(() => {});
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        it('keeps playing on the last index when the itinerary jumps back', () => {
+            vi.useFakeTimers();
+            setupAnswer({
+                order: 2,
+                activeQuestion: 3,
+                numberQuestions: 4,
+                selectsGame: [
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: -1, error: -1 },
+                    { audio: '', hit: 0, error: 0 },
+                ],
+            });
+            vi.spyOn(idevice(), 'updateScoreThree').mockImplementation(() => {});
+
+            idevice().answerQuestionBoard(true, 0);
+
+            expect(idevice().options[0].gameOver).toBe(false);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // Running out of lives ends the attempt in every mode. newQuestion
+        // checks it before anything else, and the score update has already
+        // spent this answer's life by the time the flag is decided.
+        it('finishes when the last life is gone, whatever question it was', () => {
+            vi.useFakeTimers();
+            setupAnswer({
+                activeQuestion: 0,
+                numberQuestions: 4,
+                useLives: true,
+                livesLeft: 0,
+            });
+
+            idevice().answerQuestionBoard(false, 0);
+
+            expect(idevice().options[0].gameOver).toBe(true);
+
+            vi.clearAllTimers();
+            vi.useRealTimers();
+        });
+
+        // showQuestion applies the same lock; the new path must not bypass it
+        // and score a non-repeatable activity twice.
+        // No "score only once" lock any more: every report goes out. The one
+        // that used to sit here could never close anyway — registerActivity
+        // forces repeatActivity to true at page load (common.js
+        // updateScormNew) — and a stale mark in the LMS is worse than a
+        // repeated one.
+        it('reports again after a previous score, with repeating disabled', () => {
+            setupAnswer({ repeatActivity: false });
+            idevice().options[0].initialScore = '5.00';
+
+            idevice().saveScormScore(0);
+
+            expect(idevice().sendScore).toHaveBeenCalledWith(true, 0);
+        });
+
+    });
+
+    // Replaying a finished attempt from the New game link: its sibling
+    // quick-questions lowers gameOver in startGame, this one did not, so the
+    // opening report carried the previous attempt's completion and the LMS
+    // never went back to incomplete.
+    describe('replaying a finished attempt', () => {
+        const idevice = () => global.$quickquestionsmultiplechoice;
+
+        function setupReplay(overrides) {
+            document.body.innerHTML = `
+                <div id="seleccionaMainContainer-0">
+                    <div id="seleccionaGameContainer-0">
+                        <div class="SLCNP-StartGame"></div>
+                    </div>
+                    <div id="seleccionaVideoIntroContainer-0"></div>
+                    <div id="seleccionaLinkVideoIntroShow-0"></div>
+                    <div id="seleccionaPShowClue-0"></div>
+                    <div id="seleccionaQuestion-0"></div>
+                    <div id="seleccionaQuestionDiv-0"></div>
+                    <div id="seleccionaWordDiv-0"></div>
+                    <div id="seleccionaPNumber-0"></div>
+                    <div id="seleccionaGamerOver-0"></div>
+                    <div id="seleccionaPHits-0"></div>
+                    <div id="seleccionaPErrors-0"></div>
+                    <div id="seleccionaPScore-0"></div>
+                </div>`;
+            idevice().options[0] = Object.assign(
+                {
+                    id: 0,
+                    isScorm: 1,
+                    order: 0,
+                    // What gameOver() left behind: finished, with a grade.
+                    gameStarted: false,
+                    gameOver: true,
+                    hits: 4,
+                    errors: 0,
+                    score: 10,
+                    scoreGame: 4,
+                    scoreTotal: 4,
+                    numberQuestions: 4,
+                    numberLives: 3,
+                    time: 0,
+                    selectsGame: [{}, {}, {}, {}],
+                    itinerary: { showClue: false },
+                    msgs: { msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn(idevice(), 'updateLives').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'updateTime').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'newQuestion').mockImplementation(() => {});
+            vi.spyOn(idevice(), 'sendScore').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.clearAllTimers();
+            vi.useRealTimers();
+            vi.restoreAllMocks();
+        });
+
+        it('reports the replay as unfinished, with the counts cleared', () => {
+            vi.useFakeTimers();
+            setupReplay();
+            let stateWhenReported;
+            idevice().sendScore.mockImplementation(() => {
+                const { hits, errors, scoreGame, gameOver, gameStarted } =
+                    idevice().options[0];
+                stateWhenReported = {
+                    hits,
+                    errors,
+                    scoreGame,
+                    gameOver,
+                    gameStarted,
+                };
+            });
+
+            idevice().startGame(0);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                scoreGame: 0,
+                // The whole point: sendScoreNew reads gameOver as "the learner
+                // finished", and a replay has not.
+                gameOver: false,
+                gameStarted: true,
+            });
+        });
+    });
 });
