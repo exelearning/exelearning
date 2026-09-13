@@ -2198,13 +2198,15 @@ describe('exe_export.js', () => {
         return result;
       });
 
-      window.$exeExport.searchBar.deepLinking = true;
-      window.$exeExport.searchBar.checkBlockLinks();
-      clickHandler.call(wrapper.querySelector('a'));
+      try {
+        window.$exeExport.searchBar.deepLinking = true;
+        window.$exeExport.searchBar.checkBlockLinks();
+        clickHandler.call(wrapper.querySelector('a'));
 
-      expect(toggler.getAttribute('aria-expanded')).toBe('false');
-
-      window.$ = originalJQuery;
+        expect(toggler.getAttribute('aria-expanded')).toBe('false');
+      } finally {
+        window.$ = originalJQuery;
+      }
     });
 
     it('click handler carries exe-teacher=1 onto search hits', () => {
