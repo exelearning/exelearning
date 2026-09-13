@@ -336,8 +336,8 @@ var $eXeSopa = {
                     </div>
                     <div class="SPP-LifesGame" id="sopaLifesSopa-${instanceId}"></div>
                     <div class="SPP-TimeNumber">
-                        <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
-                        <div class="exeQuextIcons exeQuextIcons-Time" title="${msgs.msgTime}"></div>
+                        <strong id="sopaPTimeTitle-${instanceId}"><span class="sr-av">${msgs.msgTime}:</span></strong>
+                        <div class="exeQuextIcons exeQuextIcons-Time" id="sopaPTimeIcon-${instanceId}" title="${msgs.msgTime}"></div>
                         <p id="sopaPTime-${instanceId}" class="SPP-PTime">00:00</p>
                         <a href="#" class="SPP-LinkMinimize" id="sopaLinkMinimize-${instanceId}" title="${msgs.msgMinimize}">
                             <strong><span class="sr-av">${msgs.msgMinimize}:</span></strong>
@@ -518,12 +518,42 @@ var $eXeSopa = {
                 }
             }
         }, 1000);
+
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeSopa.saveScormScore(instanceId);
     },
 
     uptateTime: function (time, instanceId) {
         $('#sopaPTime-' + instanceId).text(
             $exeDevices.iDevice.gamification.helpers.getTimeToString(time)
         );
+    },
+
+    /**
+     * Show or hide the three pieces that make up the countdown indicator: the
+     * screen-reader label, the clock icon and the counter itself. They are one
+     * unit — showing the icon without the counter, or announcing a time limit
+     * that does not exist, is worse than showing nothing.
+     *
+     * @param {number|string} instanceId Instance whose indicator to toggle.
+     * @param {boolean} visible Whether the activity has a time limit.
+     */
+    showTimeIndicator: function (instanceId, visible) {
+        const $indicator = $(
+            '#sopaPTimeTitle-' +
+                instanceId +
+                ', #sopaPTimeIcon-' +
+                instanceId +
+                ', #sopaPTime-' +
+                instanceId
+        );
+
+        if (visible) {
+            $indicator.show();
+        } else {
+            $indicator.hide();
+        }
     },
 
     showMessage: function (type, message, instanceId) {
@@ -630,6 +660,25 @@ var $eXeSopa = {
             mOptions,
             $eXeSopa.isInExe
         );
+    },
+
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, the score and gameOver, but nothing told the
+     * LMS, so the menu kept the previous attempt's grade and status until the
+     * learner found a word.
+     *
+     * Only reachable on a timed activity: without a time limit the game is
+     * already running when enable() finishes and the start button is hidden.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeSopa.sendScore(true, instanceId);
     },
 
     sendScore: function (auto, instanceId) {
@@ -800,13 +849,12 @@ var $eXeSopa = {
             $eXeSopa.startGame(instanceId);
         });
 
+        // The countdown indicator is deliberately absent from this list:
+        // showTimeIndicator below is its single owner, so its visibility is
+        // decided in one place from the one thing that determines it.
         $container
             .find(
-                '#sopaPTimeTitle-' +
-                    instanceId +
-                    ', #sopaPTime-' +
-                    instanceId +
-                    ', #sopaStartGame-' +
+                '#sopaStartGame-' +
                     instanceId +
                     ', #sopaDivImgHome-' +
                     instanceId +
@@ -836,16 +884,18 @@ var $eXeSopa = {
                 .find(
                     '#sopaDivImgHome-' +
                         instanceId +
-                        ', #sopaPTimeTitle-' +
-                        instanceId +
-                        ', #sopaPTime-' +
-                        instanceId +
                         ', #sopaStartGame-' +
                         instanceId
                 )
                 .show();
-            $container.find('.exeQuextIcons-Time').show();
         }
+
+        // The countdown indicator — accessible label, clock icon and counter —
+        // belongs to a timed activity and only to one. Without a time limit
+        // there is nothing to count, so it is hidden instead of sitting there
+        // frozen at 00:00 next to a clock that never moves. The icon used to be
+        // left visible in that case because only the counter was hidden.
+        $eXeSopa.showTimeIndicator(instanceId, mOptions.time > 0);
 
         $container
             .find('#sopaFullLinkImage-' + instanceId)
@@ -904,6 +954,21 @@ var $eXeSopa = {
         ) {
             $eXeSopa.showCubiertaOptions(false, instanceId);
             $container.find('#sopaLinkMaximize-' + instanceId).trigger('click');
+            if (mOptions.time === 0) {
+                // Nothing to start: an untimed grid is live from the moment the
+                // page loads, and it has no play button either — that one only
+                // appears with a clock. So the code is the last chance to
+                // publish the opening zero, and nothing was taking it.
+                $eXeSopa.saveScormScore(instanceId);
+            } else {
+                // A valid code is the learner opening the attempt, so it stands
+                // in for the play button rather than merely uncovering it — the
+                // same thing the code does in every other timed iDevice. The
+                // code used to leave the grid waiting behind a start button the
+                // learner had already earned. startGame runs the clock and
+                // publishes the opening zero from there.
+                $eXeSopa.startGame(instanceId);
+            }
         } else {
             $container
                 .find('#sopaMesajeAccesCodeE-' + instanceId)
