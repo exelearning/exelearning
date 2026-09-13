@@ -66,6 +66,7 @@
 - Form iDevice: the Check button now works as soon as the activity is displayed
 - Sort iDevice: fixed its height and the count of correctly positioned items
 - iDevice editing: fixed digit limits in time and percentage fields in eight iDevices
+- Export and preview: after upgrading eXeLearning, the browser no longer reuses cached files from the previous version
 - Export: the theme stylesheet is now loaded last in single-page exports, preventing it from being overridden
 - Export: the `nav=false` parameter no longer discards teacher mode, xAPI credentials or other URL parameters, and search results now preserve the parameters used to open the page
 - Effects: fixed the timeline opening and closing again on a single click
