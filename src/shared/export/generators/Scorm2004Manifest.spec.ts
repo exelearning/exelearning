@@ -69,14 +69,34 @@ describe('Scorm2004ManifestGenerator', () => {
         it('should include sequencing for items with children', () => {
             const xml = generator.generate();
 
-            // Chapter 1 has a child (Section 1.1), so it should have sequencing
-            // Count the number of imsss:sequencing elements (should be 2: organization + Chapter 1)
+            // Three clusters carry sequencing: the organization, the root item
+            // wrapping every page, and Chapter 1 (which has Section 1.1).
             const sequencingMatches = xml.match(/<imsss:sequencing>/g);
-            expect(sequencingMatches?.length).toBe(2);
+            expect(sequencingMatches?.length).toBe(3);
         });
     });
 
     describe('generateResources', () => {
+        it('should emit a single resource for a duplicated page id', () => {
+            // `identifier` is an xsd:ID, so two <resource> elements sharing one
+            // would make the package schema-invalid.
+            const pages = createTestPages();
+            pages.push({ id: 'page-2', title: 'Chapter 1 again', parentId: null, order: 3, blocks: [] });
+            const duplicated = new Scorm2004ManifestGenerator('test-project-123', pages, { title: 'Test Course' });
+
+            const originalWarn = console.warn;
+            console.warn = () => {};
+            let xml: string;
+            try {
+                xml = duplicated.generate();
+            } finally {
+                console.warn = originalWarn;
+            }
+
+            expect(xml.match(/identifier="RES-page-2"/g)?.length).toBe(1);
+            expect(xml.match(/identifier="ITEM-page-2"/g)?.length).toBe(1);
+        });
+
         it('should use adlcp:scormType (capital T) for SCORM 2004', () => {
             const xml = generator.generate();
 
@@ -115,6 +135,15 @@ describe('Scorm2004ManifestGenerator', () => {
             const section11Index = xml.indexOf('identifier="ITEM-page-3"');
 
             expect(section11Index).toBeGreaterThan(chapter1Index);
+        });
+
+        it('should wrap every page in a non-launchable root item (#2222)', () => {
+            const xml = generator.generate();
+
+            const rootTag = /<item identifier="ITEM-ROOT-test-project-123"[^>]*>/.exec(xml)?.[0];
+            expect(rootTag).toBeDefined();
+            expect(rootTag).not.toContain('identifierref');
+            expect(xml.indexOf('identifier="ITEM-page-1"')).toBeGreaterThan(xml.indexOf('ITEM-ROOT-test-project-123'));
         });
     });
 
