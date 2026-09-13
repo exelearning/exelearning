@@ -63,10 +63,6 @@ Skip PRs that only touch tests, CI, linting, or internal tooling with no behavio
 
 Apply the same classification table and style rules as Mode B (see [B.3](#b3-classify-each-change) and [B.4](#b4-write-the-entries) above) to whatever survives the filter in A.4.
 
-For **Upgraded** entries, follow [Dependency versions](#dependency-versions): the `OLD` value is
-the one at the previous release tag, never the one in the PR title, and a package already listed
-in the draft gets its existing bullet edited instead of a second one added.
-
 ### A.6 Insert into the existing top block
 
 Find the **first** `## vX.Y.Z...` block in `public/CHANGELOG.md` (the topmost one — this is the active draft). For each new entry:
@@ -175,7 +171,7 @@ Follow the **exact style** of the existing changelog entries in `public/CHANGELO
   - ✅ `Sort iDevice: exercises with identical cards are now correctly validated`
   - ❌ `Fixed a bug in the validation logic of SortIdevice.js`
 - **Avoid technical jargon** unless already used in the existing changelog (e.g. `blob:`, `asset://`, `SCORM`).
-- **Dependency upgrades:** `package-name: OLD → NEW` (lowercase, `→`, no extra words). See [Dependency versions](#dependency-versions) — never copy `OLD` from the PR title.
+- **Dependency upgrades:** `package-name: OLD → NEW` (lowercase, `→`, no extra words).
 - **Group related items** within each section (all TinyMCE entries together, all iDevice entries together, etc.).
 
 ### What NOT to include
@@ -185,36 +181,6 @@ Follow the **exact style** of the existing changelog entries in `public/CHANGELO
 - Dependency-only PRs with no user-visible effect may be grouped into one bullet if there are many minor bumps.
 - Merge commits and version-bump-only PRs.
 - Purely internal changes (CI tweaks, test additions, linting) unless significant.
-
----
-
-### Dependency versions
-
-A changelog entry compares the release being written with **the previous release**, not with
-whatever the bumping PR happened to start from. A dependency bumped three times in one cycle
-produces three PRs, and only the first one's `OLD` is the released version; the same package can
-also have been bumped after the last release by a PR you already recorded, so the entry already
-in the draft is the one to edit rather than a second bullet to add.
-
-So never take `OLD` from the PR title, the PR body or the current `bun.lock`. Read it from the
-previous release tag:
-
-```bash
-git show vX.Y.Z:bun.lock | grep -E '"<package>@'          # root dependencies
-git show vX.Y.Z:app/package.json | grep '"<package>"'     # Electron app dependencies
-```
-
-Use the **resolved** version from the lockfile, not the `^` range declared in `package.json`. When
-a tree has no lockfile at that tag (`app/`), the declared range plus the package's release dates
-tell you what an install at release time resolved to.
-
-Then, per package:
-
-- **Present at the previous tag** → `package: <version at the tag> → <version after this PR>`. If
-  the draft already has a bullet for that package, edit its `NEW` and leave `OLD` alone.
-- **Absent at the previous tag** → it is a new dependency, not an upgrade. It does not belong in
-  **Upgraded** at all; mention it under **Added** only if users can see it.
-- **Gone in this release** → **Removed**.
 
 ---
 
