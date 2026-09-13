@@ -724,6 +724,33 @@ describe('progress-report iDevice (export)', () => {
       expect(rowB.ode_nav_structure_sync_order).toBe(1);
     });
 
+    it('parseOdeXmlToJson sorts the children of a page that is an only child', () => {
+      // The recursion used to stop at any page with a single child, leaving
+      // everything below it in the order the file happened to list it.
+      const page = ({ id, parent = '', name, order }) => `
+        <odeNavStructure>
+          <odePageId>${id}</odePageId>
+          <odeParentPageId>${parent}</odeParentPageId>
+          <pageName>${name}</pageName>
+          <odeNavStructureOrder>${order}</odeNavStructureOrder>
+          <odePagStructures></odePagStructures>
+        </odeNavStructure>`;
+
+      const xml = `<ode>
+        <odeNavStructures>
+          ${page({ id: 'root', name: 'Root', order: 1 })}
+          ${page({ id: 'only-child', parent: 'root', name: 'Only child', order: 1 })}
+          ${page({ id: 'second', parent: 'only-child', name: 'Second', order: 2 })}
+          ${page({ id: 'first', parent: 'only-child', name: 'First', order: 1 })}
+        </odeNavStructures>
+      </ode>`;
+
+      const result = $eXeInforme.parseOdeXmlToJson(xml);
+      const grandChildren = result[0].children[0].children;
+
+      expect(grandChildren.map((p) => p.id)).toEqual(['first', 'second']);
+    });
+
     it('parseOdeXmlToJson sorts pages by odeNavStructureOrder', () => {
       const originalDOMParser = global.DOMParser;
 

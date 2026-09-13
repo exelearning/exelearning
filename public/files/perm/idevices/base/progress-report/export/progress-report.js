@@ -224,10 +224,12 @@ var $eXeInforme = {
         });
 
         const sortByOrder = (a, b) => (a.order || 0) - (b.order || 0);
+        // Every level is visited, including below a page with a single child:
+        // sorting one node is a no-op, but its own subtree still needs sorting.
         const sortTree = (nodes) => {
             nodes.sort(sortByOrder);
             nodes.forEach((node) => {
-                if (Array.isArray(node.children) && node.children.length > 1) {
+                if (Array.isArray(node.children) && node.children.length > 0) {
                     sortTree(node.children);
                 }
             });
