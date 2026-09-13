@@ -630,6 +630,52 @@ describe('progress-report iDevice (export)', () => {
   });
 
   describe('ordering regressions', () => {
+    it('buildNestedPages identifies a row by the component id, not the embedded copy', () => {
+      // Duplicating a page leaves the original's id inside the htmlView and the
+      // payload; the learner's result is stored under the component's own id.
+      const result = $eXeInforme.buildNestedPages([
+        {
+          odePageId: 'page-1',
+          odeParentPageId: null,
+          pageName: 'Page 1',
+          ode_nav_structure_sync_id: 'page-1',
+          ode_nav_structure_sync_order: 1,
+          navIsActive: 1,
+          componentId: 'idevice-copy',
+          ode_idevice_id: 'idevice-copy',
+          htmlViewer:
+            '<div data-id="idevice-original" data-evaluationb="true" data-evaluationid="EV1"></div>',
+          jsonProperties: '{"id":"idevice-original","evaluationID":"EV1"}',
+          ode_components_sync_order: 0,
+        },
+      ]);
+
+      const component = result[0].components[0];
+
+      expect(component.ideviceID).toBe('idevice-copy');
+      // The evaluation data still comes from the htmlView.
+      expect(component.evaluationID).toBe('EV1');
+      expect(component.evaluation).toBe(true);
+    });
+
+    it('buildNestedPages falls back to the embedded id when the row has none', () => {
+      const result = $eXeInforme.buildNestedPages([
+        {
+          odePageId: 'page-1',
+          odeParentPageId: null,
+          pageName: 'Page 1',
+          ode_nav_structure_sync_id: 'page-1',
+          ode_nav_structure_sync_order: 1,
+          navIsActive: 1,
+          componentId: 'row-without-idevice-id',
+          htmlViewer: '<div data-id="idevice-embedded" data-evaluationid="EV1"></div>',
+          ode_components_sync_order: 0,
+        },
+      ]);
+
+      expect(result[0].components[0].ideviceID).toBe('idevice-embedded');
+    });
+
     it('buildNestedPages orders the iDevices of a page block by block', () => {
       // `ode_components_sync_order` counts inside its own block, so the first
       // iDevice of every block shares order 0: without the block order the

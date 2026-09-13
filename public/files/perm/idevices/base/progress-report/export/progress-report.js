@@ -928,7 +928,12 @@ var $eXeInforme = {
                     row.htmlViewer,
                     row.jsonProperties
                 );
-                const ideviceID = dataIDs.ideviceID || row.ode_idevice_id || '';
+                // The learner's result is stored under the id of the iDevice's
+                // own node in the page, which is the component id, so the row
+                // has to carry that one: the copy embedded in the htmlView or
+                // in the payload still points at the original after a page is
+                // duplicated, and the score would never reach its row.
+                const ideviceID = row.ode_idevice_id || dataIDs.ideviceID || '';
                 // Use row.evaluationID as fallback if not found in htmlViewer/jsonProperties
                 const evaluationID = dataIDs.evaluationID || row.evaluationID || '';
                 // Use row.evaluation as fallback
