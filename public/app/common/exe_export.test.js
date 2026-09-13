@@ -2165,6 +2165,48 @@ describe('exe_export.js', () => {
       window.$ = originalJQuery;
     });
 
+    it('click handler resets the search toggler to aria-expanded="false"', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML = '<li><a href="html/page.html#block-1">A</a></li>';
+      document.body.appendChild(wrapper);
+
+      const main = document.createElement('main');
+      main.appendChild(document.createElement('header'));
+      document.body.appendChild(main);
+      for (const id of ['exe-client-search-reset', 'exe-client-search', 'exe-client-search-text']) {
+        const el = document.createElement('div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+      const toggler = document.createElement('button');
+      toggler.id = 'searchBarToggler';
+      toggler.setAttribute('aria-expanded', 'true');
+      document.body.appendChild(toggler);
+
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') clickHandler = handler;
+            return result;
+          });
+        }
+        if (selector === '#siteNav') result.is = vi.fn(() => true);
+        return result;
+      });
+
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+      clickHandler.call(wrapper.querySelector('a'));
+
+      expect(toggler.getAttribute('aria-expanded')).toBe('false');
+
+      window.$ = originalJQuery;
+    });
+
     it('click handler carries exe-teacher=1 onto search hits', () => {
       const wrapper = document.createElement('div');
       wrapper.id = 'exe-client-search-results-list';
