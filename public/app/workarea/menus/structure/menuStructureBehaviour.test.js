@@ -416,6 +416,23 @@ describe('MenuStructureBehaviour', () => {
             expect(selectSpy).toHaveBeenCalled();
         });
 
+        it.each([false, true])('only rechecks editing for a pending rename (already selected: %s)', async (alreadySelected) => {
+            const node = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.nodeSelected = alreadySelected ? node : null;
+            vi.spyOn(behaviour, 'selectNode').mockResolvedValue(node);
+            const renameSpy = vi.spyOn(behaviour, 'startInlinePageRename').mockImplementation(() => {});
+            const checkOpenIdevice = eXeLearning.app.project.checkOpenIdevice;
+
+            behaviour.addEventNavElementOnclick();
+            node.querySelector('.nav-element-text').click();
+            // Editing starts after the click but before selectNode's delayed completion.
+            checkOpenIdevice.mockReturnValue(true);
+            await Promise.resolve();
+
+            expect(checkOpenIdevice).toHaveBeenCalledTimes(alreadySelected ? 2 : 1);
+            expect(renameSpy).not.toHaveBeenCalled();
+        });
+
         it('does NOT select node when clicking a dropdown item (propagation stopped)', async () => {
             const selectSpy = vi.spyOn(behaviour, 'selectNode');
 
