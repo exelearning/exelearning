@@ -313,7 +313,18 @@ class ResourceCache {
   }
 
   /**
-   * Clear cached resources except for current version
+   * Match plain app versions and resource versions with hash or timestamp suffixes.
+   * @param {string} version - Cached resource version
+   * @param {string} currentVersion - Current app version
+   * @returns {boolean}
+   */
+  static isCurrentVersion(version, currentVersion) {
+    return typeof version === 'string' &&
+      (version === currentVersion || version.startsWith(`${currentVersion}-`));
+  }
+
+  /**
+   * Clear cached resources except for current version, including composite versions
    * @param {string} currentVersion - Version to keep
    * @returns {Promise<number>} Number of entries deleted
    */
@@ -332,7 +343,7 @@ class ResourceCache {
       request.onsuccess = (event) => {
         const cursor = event.target.result;
         if (cursor) {
-          if (cursor.value.version !== currentVersion) {
+          if (!ResourceCache.isCurrentVersion(cursor.value.version, currentVersion)) {
             store.delete(cursor.primaryKey);
             deletedCount++;
           }

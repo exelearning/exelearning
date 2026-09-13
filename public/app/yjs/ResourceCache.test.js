@@ -419,6 +419,31 @@ describe('ResourceCache', () => {
       await cache.init();
     });
 
+    it.each(['v4.0.4', 'v4.0.4-rc.1'])('preserves plain and composite entries for %s', async (version) => {
+      const files = new Map([['test.js', new Blob(['cached resource'])]]);
+      await cache.set('theme', 'base', version, files);
+      await cache.set('libs', 'base', `${version}-abcdef12`, files);
+      await cache.set('theme', 'site-1', `${version}-1712345678`, files);
+      await cache.set('theme', 'base', 'v4.0.3', files);
+      await cache.set('libs', 'base', 'v4.0.3-abcdef12', files);
+      await cache.set('theme', 'site-1', 'v4.0.3-1712345678', files);
+      await cache.set('libs', 'base', `${version}0-abcdef12`, files);
+
+      expect(await cache.clearOldVersions(version)).toBe(4);
+      expect(storedResources.size).toBe(3);
+      expect(await cache.get('theme', 'base', version)).toEqual(files);
+      expect(await cache.get('libs', 'base', `${version}-abcdef12`)).toEqual(files);
+      expect(await cache.get('theme', 'site-1', `${version}-1712345678`)).toEqual(files);
+      expect(await cache.clearOldVersions(version)).toBe(0);
+    });
+
+    it.each([undefined, null, 404])('removes invalid version %s without interrupting cleanup', async (version) => {
+      await cache.set('libs', 'base', version, new Map());
+
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(1);
+      expect(storedResources.size).toBe(0);
+    });
+
     it('keeps only current version entries', async () => {
       storedResources.set('theme:base:v3.0.0', { key: 'theme:base:v3.0.0', version: 'v3.0.0' });
       storedResources.set('theme:base:v3.1.0', { key: 'theme:base:v3.1.0', version: 'v3.1.0' });
