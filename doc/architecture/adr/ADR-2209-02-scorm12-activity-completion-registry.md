@@ -138,12 +138,15 @@ scorm.activities.summary();
    game iDevices onto it (`reportActivity`), deriving `evaluable` and
    `completionRequired` from the iDevice's own `isScorm` flag and passing
    `completed` explicitly from the call site. The bridge reports
-   `completed: true` when the game is over **or** the learner submitted their
-   score by hand (`sendScoreNew(auto=false)`): submitting is the learner's
-   explicit act of finishing the attempt, and it is the only completion signal
-   games without a game-over state can give — without it, such an activity
-   would hold its page at `incomplete` forever. This is a deliberate product
-   policy, recorded here rather than implied by the code.
+   `completed: true` when the activity says it is over, and never because of how
+   the score was sent. The save-score button is not a hand-in: it exists so the
+   learner decides when — if ever — their grade is written, and pressing it
+   mid-game must not publish a terminal state for an activity still being
+   played, nor republish one on every further press. An activity whose only end
+   is the act of saving — an applet the learner may keep manipulating, such as
+   `geogebra-activity` — declares its own game-over state, which keeps the
+   decision in the iDevice that knows it. This is a deliberate product policy,
+   recorded here rather than implied by the code.
 4. **The registry is the single owner of `cmi.suspend_data`.** When the SCORM
    1.2 runtime is present, every `common.js` helper that used to read or write
    the legacy line format directly goes through the registry instead
@@ -194,14 +197,41 @@ scorm.activities.summary();
    computed from the status the LMS actually stored, never from a decision
    the LMS rejected.
 9. **The score stays single-source, inside the registry.** The registry's
-   `summary()` owns the historical weighting algorithm published packages
-   depend on (weights scaled to integers summing to 100 by largest-remainder
-   rounding); `common.js`'s `getFinalScore()` delegates to it whenever the
-   runtime is present. The displayed score, the recorded
+   `summary()` owns the aggregation; `common.js`'s `getFinalScore()` delegates
+   to it whenever the runtime is present. The displayed score, the recorded
    `cmi.core.score.raw`, the in-session status decision and the exit decision
    therefore all read the same number — a second algorithm could disagree
-   near the mastery threshold (100/49/0 at equal weights: 50.17 historically,
-   49.67 as an exact mean) and flip a passed page to failed at exit.
+   near the mastery threshold and flip a passed page to failed at exit.
+
+   As first written, this decision also kept the *historical* weighting
+   algorithm (weights scaled to integers summing to 100 by largest-remainder
+   rounding), on the grounds that published packages recorded
+   `cmi.core.score.raw` with it. That algorithm was later found to make the
+   page's mark depend on the order the author placed the iDevices in: the
+   scaling leaves one point over, it goes to the largest fraction, and with
+   equal weights every fraction ties, so a stable sort awarded it to whichever
+   activity registered first. Three equally weighted activities scoring
+   100/50/0 aggregated to 50.5 and the same three as 0/50/100 to 49.5 — the
+   same work by the learner, opposite verdicts against a mastery score of 50.
+   `aggregateScore()` is now the exact weighted mean, which is symmetric. The
+   single-source rule above is unchanged and is what made the correction one
+   edit rather than several; the numbers move by at most one weight-point of a
+   single activity (100/49/0 at equal weights: 50.17 before, 49.67 now).
+
+   A **second** correction moves them further, and this one is not about
+   rounding: an activity with no usable weight now counts as **100**, the value
+   the editor writes into its own form, where it used to count as 1. Twenty-eight
+   of the thirty-five game iDevices never default `weighted` when they load for
+   playback, so an activity that had never been through the editor weighed a
+   hundredth of one that had, on the same page — and merely opening and saving
+   an iDevice re-weighted the page without the author changing anything. On a
+   page mixing the two the aggregate moves by far more than a point: two
+   activities scoring 100 and 0, one edited and one not, aggregated to
+   `(100×100 + 0×1) / 101 = 99.01` and now aggregate to `(100 + 0) / 2 = 50`.
+   That is the intended reading — the author declared no weight for either, so
+   neither outranks the other — but it is a real change of number for existing
+   content rendered by this runtime. Packages already exported are unaffected:
+   the runtime travels inside the ZIP.
 10. **`setPageHasScoredActivities()` remains the fallback.** When no iDevice
    registers, the page-level flag decides exactly as before, so content that
    predates the registry is unaffected.
