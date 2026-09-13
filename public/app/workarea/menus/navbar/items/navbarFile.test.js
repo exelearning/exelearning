@@ -1,3 +1,5 @@
+vi.mock('../../../../common/app_tooltip.js', () => ({ default: vi.fn(() => ({ hide: vi.fn() })) }));
+import createTooltip from '../../../../common/app_tooltip.js';
 /**
  * navbarFile Tests
  *
@@ -192,6 +194,17 @@ describe('NavbarFile', () => {
         delete global._;
         delete global.eXe;
         global.$.fn.tooltip = originalTooltip;
+    });
+
+    it('creates a guarded tooltip for the sidebar toggle and cancels it on click', () => {
+        navbarFile = new NavbarFile(mockMenu);
+        const button = mockButtons.leftPanelsTogglerButton;
+        delete button.addEventListener;
+        navbarFile.setLeftPanelsTogglerEvents();
+        expect(createTooltip).toHaveBeenCalledWith(button);
+        const tooltip = createTooltip.mock.results.at(-1).value;
+        button.click();
+        expect(tooltip.hide).toHaveBeenCalled();
     });
 
     describe('constructor', () => {
