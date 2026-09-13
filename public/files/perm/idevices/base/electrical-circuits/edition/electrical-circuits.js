@@ -1085,6 +1085,9 @@ var $exeDevice = {
     // caching the (promise of the) result. Overridable in tests.
     loadTikzFont: function (family) {
         if (!$exeDevice.tikzFontCache[family]) {
+            // Capture the edition's signal now: the pack lookup is async, and
+            // a later edition must not own this fallback fetch.
+            const signal = this.$lifecycle && this.$lifecycle.signal;
             $exeDevice.tikzFontCache[family] = $exeDevice
                 .loadTikzFontPack()
                 .then((pack) => {
@@ -1099,9 +1102,7 @@ var $exeDevice = {
                         ($exeDevice.idevicePath || '') + 'fonts/' + family + '.ttf';
                     // Loose-file fallback is aborted with the edition. The zstd
                     // pack is session-wide and must not be cancelled here.
-                    return fetch(url, {
-                        signal: this.$lifecycle.signal,
-                    })
+                    return fetch(url, { signal })
                         .then((response) =>
                             response.ok ? response.arrayBuffer() : null
                         )

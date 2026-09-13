@@ -795,16 +795,24 @@ var $exeDevice = {
             // which can be long after this edition closed. Bind it to this
             // edition and restore the previous value on teardown.
             const ready = $exeDevice.youTubeReady;
+            const lifecycle = $exeDevice.$lifecycle;
             const previousReady = window.onYouTubeIframeAPIReady;
-            window.onYouTubeIframeAPIReady = typeof ready === 'function' ? $exeDevice.$lifecycle.bind(ready) : ready;
-            $exeDevice.$lifecycle.own(() => {
-                window.onYouTubeIframeAPIReady = previousReady;
-            });
+            window.onYouTubeIframeAPIReady =
+                typeof ready === 'function' && lifecycle ? lifecycle.bind(ready) : ready;
+            if (lifecycle) {
+                lifecycle.own(() => {
+                    window.onYouTubeIframeAPIReady = previousReady;
+                });
+            }
             const tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
             let firstScriptTag = document.getElementsByTagName('script')[0];
-            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            if (firstScriptTag && firstScriptTag.parentNode) {
+                firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+            } else if (document.head) {
+                document.head.appendChild(tag);
+            }
         } else {
             $exeDevice.loadPlayerYoutube();
         }

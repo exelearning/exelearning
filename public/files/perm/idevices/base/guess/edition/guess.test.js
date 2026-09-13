@@ -27,6 +27,7 @@ function loadIdevice(code) {
   // Execute the modified code using eval in global context
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
+  global.attachEditionLifecycle(global.$exeDevice);
   return global.$exeDevice;
 }
 
@@ -286,6 +287,9 @@ describe('guess iDevice', () => {
   // so an author aiming for 10 silently ended up with 1.
   describe('numeric field limits', () => {
     let previousItinerary;
+    let originalYT;
+    let originalReady;
+    let scriptTag;
 
     beforeEach(() => {
       previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
@@ -297,6 +301,17 @@ describe('guess iDevice', () => {
         init: () => {},
         setValues: () => {},
       };
+      // loadYoutubeApi inserts its tag before the first script of the page
+      // and binds the ready callback through $lifecycle.
+      scriptTag = document.createElement('script');
+      document.head.appendChild(scriptTag);
+      originalYT = global.YT;
+      originalReady = window.onYouTubeIframeAPIReady;
+      global.$exeDevices.iDevice.gamification.media = {
+        getIDYoutube: () => false,
+        getURLVideoMediaTeca: () => false,
+        extractURLGD: (url) => url,
+      };
       document.body.innerHTML = `
         <script></script>
         <form id="gameQEIdeviceForm">
@@ -306,7 +321,13 @@ describe('guess iDevice', () => {
     });
 
     afterEach(() => {
+      if ($exeDevice && $exeDevice.$lifecycle) {
+        $exeDevice.$lifecycle.destroy();
+      }
       $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      global.YT = originalYT;
+      window.onYouTubeIframeAPIReady = originalReady;
+      scriptTag.remove();
       document.body.innerHTML = '';
     });
 

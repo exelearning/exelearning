@@ -1408,9 +1408,7 @@ describe('fetchJsonMaybeGzipped decompression tiers (.zst / plain / XHR)', () =>
     beforeEach(async () => {
         el = buildMockElement();
         const raw = await import('./lomloe.js?raw').then(m => m.default);
-        dev = new Function('globalThis', '_', 'CSS', raw + '\nreturn $exeDevice;')(
-            globalThis, globalThis._, globalThis.CSS
-        );
+        dev = instantiateDevice(raw);
     });
     afterEach(() => {
         el && el.remove();

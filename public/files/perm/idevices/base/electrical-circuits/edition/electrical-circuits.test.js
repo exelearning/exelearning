@@ -957,15 +957,27 @@ describe('electrical-circuits iDevice edition', () => {
         });
 
         describe('loadTikzFont', () => {
-            it('aborts the pending font download when the edition closes', () => {
+            it('aborts the pending font download when the edition closes', async () => {
                 let received = null;
+                let sawTtf;
+                const ttfFetched = new Promise((resolve) => {
+                    sawTtf = resolve;
+                });
                 global.fetch = vi.fn((url, options) => {
-                    received = options;
+                    if (String(url).endsWith('.ttf')) {
+                        received = options;
+                        sawTtf();
+                    }
                     return new Promise(() => {});
                 });
                 $exeDevice.tikzFontCache = {};
+                $exeDevice.tikzFontPackPromise = null;
+                window.fzstd = undefined;
 
                 $exeDevice.loadTikzFont('cmr10');
+                await ttfFetched;
+                expect(received.signal.aborted).toBe(false);
+
                 $exeDevice.$lifecycle.destroy();
 
                 expect(received.signal.aborted).toBe(true);
@@ -1044,6 +1056,7 @@ describe('loadTikzFontPack (static-dist zstd font pack)', () => {
         $exeDevice.tikzFontCache = {};
         $exeDevice.tikzFontPackPromise = null;
         $exeDevice.idevicePath = '/idevice/';
+        global.attachEditionLifecycle($exeDevice);
     });
 
     afterEach(() => {
@@ -1086,7 +1099,9 @@ describe('loadTikzFontPack (static-dist zstd font pack)', () => {
         const font = await $exeDevice.loadTikzFont('cmmi10');
 
         expect(font.unitsPerEm).toBeGreaterThan(0);
-        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmmi10.ttf');
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmmi10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
     });
 
     it('falls back to the loose TTF when fzstd is unavailable (server mode)', async () => {
@@ -1098,7 +1113,9 @@ describe('loadTikzFontPack (static-dist zstd font pack)', () => {
         expect(font.unitsPerEm).toBeGreaterThan(0);
         // No pack request at all — straight to the loose file.
         expect(global.fetch).toHaveBeenCalledTimes(1);
-        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf');
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
     });
 
     it('falls back to the loose TTF when the pack request fails', async () => {
@@ -1115,6 +1132,8 @@ describe('loadTikzFontPack (static-dist zstd font pack)', () => {
 
         expect(font.unitsPerEm).toBeGreaterThan(0);
         expect(window.fzstd.decompress).not.toHaveBeenCalled();
-        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf');
+        expect(global.fetch).toHaveBeenCalledWith('/idevice/fonts/cmr10.ttf', {
+            signal: $exeDevice.$lifecycle.signal,
+        });
     });
 });
