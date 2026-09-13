@@ -27,14 +27,20 @@ var myTheme = {
             $exe_i18n.menu +
             '</span>\
             </button>\
-            <button type="button" id="searchBarToggler" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
-            $exe_i18n.search +
-            '">\
-                <span class="sr-av">' +
-            $exe_i18n.search +
-            '</span>\
-            </button>\
         ';
+        // The search box is optional: only add its toggler when it exists
+        if ($('#exe-client-search').length) {
+            togglers +=
+                '\
+                <button type="button" id="searchBarToggler" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
+                $exe_i18n.search +
+                '">\
+                    <span class="sr-av">' +
+                $exe_i18n.search +
+                '</span>\
+                </button>\
+            ';
+        }
         $('#siteNav').before(togglers);
         // The pre-paint guard above set .siteNav-off on <html>; mirror it onto
         // <body> for selectors and jQuery checks that target body specifically.

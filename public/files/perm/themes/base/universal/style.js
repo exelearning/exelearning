@@ -52,14 +52,20 @@ var eXeUniversalStyle = {
             $exe_i18n.menu +
             '</span>\
             </button>\
-            <button type="button" id="searchBarToggler" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
-            $exe_i18n.search +
-            '">\
-                <span>' +
-            $exe_i18n.search +
-            '</span>\
-            </button>\
         ';
+        // The search box is optional: only add its toggler when it exists
+        if ($('#exe-client-search').length) {
+            togglers +=
+                '\
+                <button type="button" id="searchBarToggler" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
+                $exe_i18n.search +
+                '">\
+                    <span>' +
+                $exe_i18n.search +
+                '</span>\
+                </button>\
+            ';
+        }
         $('#siteNav').before(togglers);
         // Check the current NAV status
         if (new URLSearchParams(window.location.search).get('nav') == 'false') {
