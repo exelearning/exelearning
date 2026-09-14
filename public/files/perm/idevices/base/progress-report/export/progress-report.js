@@ -734,14 +734,28 @@ var $eXeInforme = {
                 $eXeInforme.addEvents();
             }
 
-            if ($eXeInforme._hasPagesMetadata() || $eXeInforme.isPreviewMode()) {
-                $eXeInforme.loadFromDom(mOption, i);
-            } else if (eXe.app.isInExe()) {
-                $eXeInforme.getIdevicesBySessionId(true, mOption, i);
-            } else {
-                $eXeInforme.loadFromContentXml(mOption, i);
-            }
+            $eXeInforme.loadCourseMap(mOption, i, true);
         });
+    },
+
+    /**
+     * Load the course map of one instance from the best source available.
+     *
+     * Inside the preview the surrounding workarea holds the live document, and
+     * in the workarea itself the Y.Doc does. An exported package reads
+     * content.xml, the only source that carries the page tree: the search index
+     * that ships with the search box lists the same pages but stores no parent,
+     * so it flattens the report. It stays as the fallback of
+     * `loadFromContentXml`, for a package where content.xml cannot be fetched.
+     */
+    loadCourseMap: function (mOption, instanceIndex, init) {
+        if ($eXeInforme.isPreviewMode()) {
+            $eXeInforme.loadFromDom(mOption, instanceIndex);
+        } else if (eXe.app.isInExe()) {
+            $eXeInforme.getIdevicesBySessionId(init, mOption, instanceIndex);
+        } else {
+            $eXeInforme.loadFromContentXml(mOption, instanceIndex);
+        }
     },
     async getIdevicesBySessionId(init, mOption, instanceIndex) {
         const idx = instanceIndex || 0;
@@ -1837,13 +1851,7 @@ var $eXeInforme = {
                     'dataEvaluation-' + mOption.evaluationID
                 );
                 mOption.dataIDevices = [];
-                if ($eXeInforme._hasPagesMetadata() || $eXeInforme.isPreviewMode()) {
-                    $eXeInforme.loadFromDom(mOption, idx);
-                } else if (eXe.app.isInExe()) {
-                    $eXeInforme.getIdevicesBySessionId(false, mOption, idx);
-                } else {
-                    $eXeInforme.loadFromContentXml(mOption, idx);
-                }
+                $eXeInforme.loadCourseMap(mOption, idx, false);
             }
         });
 

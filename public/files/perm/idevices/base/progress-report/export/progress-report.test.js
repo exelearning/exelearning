@@ -428,6 +428,60 @@ describe('progress-report iDevice (export)', () => {
     });
   });
 
+  describe('loadCourseMap', () => {
+    const spyOnLoaders = () => {
+      const calls = [];
+      $eXeInforme.loadFromDom = (...args) => calls.push(['loadFromDom', ...args]);
+      $eXeInforme.loadFromContentXml = (...args) => calls.push(['loadFromContentXml', ...args]);
+      $eXeInforme.getIdevicesBySessionId = (...args) => calls.push(['getIdevicesBySessionId', ...args]);
+      return calls;
+    };
+
+    it('reads the surrounding workarea in preview mode', () => {
+      const calls = spyOnLoaders();
+      $eXeInforme.isPreviewMode = () => true;
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      $eXeInforme.loadCourseMap({}, 0, true);
+
+      expect(calls[0][0]).toBe('loadFromDom');
+    });
+
+    it('reads the Y.Doc inside the workarea, passing the init flag', () => {
+      const calls = spyOnLoaders();
+      $eXeInforme.isPreviewMode = () => false;
+      $eXeInforme._hasPagesMetadata = () => false;
+      global.eXe.app.isInExe = () => true;
+
+      $eXeInforme.loadCourseMap({}, 2, false);
+
+      expect(calls[0]).toEqual(['getIdevicesBySessionId', false, {}, 2]);
+      global.eXe.app.isInExe = () => false;
+    });
+
+    it('reads content.xml in an exported package that ships a search index', () => {
+      // The search index carries no parent page, so preferring it flattened
+      // the report in web exports with the search box enabled.
+      const calls = spyOnLoaders();
+      $eXeInforme.isPreviewMode = () => false;
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      $eXeInforme.loadCourseMap({}, 0, true);
+
+      expect(calls[0][0]).toBe('loadFromContentXml');
+    });
+
+    it('reads content.xml in an exported package without a search index', () => {
+      const calls = spyOnLoaders();
+      $eXeInforme.isPreviewMode = () => false;
+      $eXeInforme._hasPagesMetadata = () => false;
+
+      $eXeInforme.loadCourseMap({}, 0, true);
+
+      expect(calls[0][0]).toBe('loadFromContentXml');
+    });
+  });
+
   describe('getURLPage', () => {
     // Swapping the descriptor keeps the environment from navigating.
     const from = (href, pageId) => {
