@@ -566,6 +566,9 @@ test-integration: check-bun check-env bundle ## Run integration tests
 test-frontend: check-bun check-env bundle ## Run frontend tests (with Vitest + happy-dom) with coverage
 	bun test:frontend
 
+.PHONY: test-coverage
+test-coverage: test-unit test-frontend ## Run backend and frontend tests with coverage
+
 .PHONY: test-unit-ci
 test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov coverage for CI/Codecov
 	@echo "Running unit tests with lcov coverage..."

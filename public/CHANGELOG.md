@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v4.0.4 – 2026-09-10
+## v4.0.4 – 2026-09-15
 
 ### Added
 
@@ -11,12 +11,13 @@
 - Administrators can now reset local account passwords from Admin → Users
 - Added `make change-password EMAIL=user@example.com` command to change a user's password without showing it on screen
 - Password changes are unavailable for guest accounts; users signed in through CAS, OpenID Connect or SAML change their password with their identity provider
+- Form, True/False, Scrambled list, Complete and Before/After iDevices: added the option to show a button to save the score
 - True/False iDevice: added configurable number of attempts
 - Word Search iDevice: added the option to hide the time icon in timed activities
 - Platform integration: `PROVIDER_URLS` now supports wildcard subdomains and matches against the address host, allowing multi-tenant deployments to be authorised without widening the allow-list
 - Added `assets:conflicts` command to list and resolve asset storage conflicts, keeping either the old or new copy
 - Updated development documentation and improved development tools
-- Reviewed and completed the Spanish (ES) translation
+- Reviewed and completed the Spanish (ES) and Galician (GL) translations
 - Restored the French (FR) translation from version 3, corrected its errors and added new automatic placeholder translations for previously untranslated strings
 - Added automatic placeholder translations for new strings in incomplete translations
 
@@ -24,11 +25,16 @@
 
 - Project assets are now stored in sharded folders with paths relative to the data directory, improving scalability and allowing the data directory to be moved, remounted or restored without invalidating projects; existing installations are converted automatically at startup
 - SCORM 1.2: rewritten the runtime shipped in exported packages, with clear licensing and a full regression suite, keeping the same LMS behaviour while removing `onunload` and `onbeforeunload` handlers
-- SCORM: page status and score are now based on learner interaction with its activities; pages remain incomplete until every activity has been started, are marked failed while the score is below 50 and passed from there on, while pages without activities are completed on entry
-- SCORM: the score is sent and committed to the LMS on every answer, so the platform index updates while the learner is still working on the page
+- SCORM, IMS: exported packages now group pages under a project root entry, which appears above the pages in the LMS table of contents
+- SCORM: page status and score are now based on learner interaction with its activities; pages remain incomplete until every activity has been finished, are marked failed while the score is below 50 and passed from there on, while pages without activities are completed when the learner leaves them
+- SCORM: activities that save the score automatically now send and commit it on every answer, so the platform index updates while the learner is still working on the page
 - SCORM: opening or leaving a page no longer decides its result on its own; only what the learner does with the activities does
+- SCORM: entering the access code now starts the activity and records it as started, just like clicking the start button
+- SCORM: activities without a set weight now count the same as other activities, which may change scores on pages combining both types
+- iDevices: activities can always be repeated
 - Base and Universal styles: fully revised for accessibility, presentation and third-party licences, meeting WCAG 2.2 level AA
 - Effects: improved accessibility and presentation of accordion, tab, pagination, carousel and timeline controls, with clearer focus indicators and improved contrast
+- Styles: improved accessibility of menu and search controls in exported websites
 - Universal style: dark mode is now disabled by default, except when exporting as a website
 - Math: accessibility is now provided through browser MathML support, with hidden MathML always enabled so screen readers can announce formulas; removed the non-functional expression explorer, braille and read-aloud options from the MathJax menu
 - Static distribution: removed unused resources, duplicated bundles and unreachable third-party files, and improved compression of the largest datasets
@@ -37,15 +43,20 @@
 
 ### Fixed
 
-- SCORM 1.2: exported pages no longer rely on browser `onunload` and `onbeforeunload` handlers, preventing scores from being lost in Moodle; results are now saved through the page lifecycle, including when the tab is hidden, frozen or discarded
-- SCORM: opening a page no longer marks it as started
+- SCORM 1.2: exported pages no longer rely on browser `onunload` and `onbeforeunload` handlers, preventing scores from being lost in Moodle
+- SCORM: opening a page no longer records a score of zero and a failed result
 - SCORM: leaving an untouched page no longer prevents the rest of the package from saving its results
 - SCORM: results now reach the platform index without requiring the whole page to be completed
 - SCORM: pass or fail results no longer depend on the order of activities on the page
-- SCORM: Interactive Video now registers when the page loads, so the page score includes all its activities
-- SCORM: activities no longer score on their own when the page loads, and no longer lose their score when they finish
-- SCORM: moving between the contents of a page no longer marks it as completed
+- SCORM: fixed the buttons that jump to the previous and next page of the same level in Moodle, for projects with nested pages
+- SCORM: activity weights are now correctly applied to the page score
+- SCORM: restarting an activity now clears its previous score and result in the platform
+- SCORM: pages completed after resuming are now correctly marked as finished in the platform index
+- SCORM: Interactive Video now registers when the page loads, ensuring all its activities are included in the page score
+- SCORM: activities no longer score automatically when the page loads or lose their score when they finish
+- SCORM: moving between page contents no longer marks the page as completed
 - Workarea: fixed failures when dragging an iDevice into a page while its content is being refreshed
+- Workarea: selecting a different page while an iDevice editor is opening no longer shows an unsaved-changes alert
 - iDevices: activities made up of several scripts, such as the 360° panorama viewer and Select media files, now load correctly
 - iDevices: closing an activity editor no longer causes errors from actions that are still in progress
 - iDevices: Before-After, Hidden image, Map and Drag & Drop activities no longer fail when the page is left while they are loading
@@ -56,9 +67,12 @@
 - Form iDevice: the Check button now works as soon as the activity is displayed
 - Sort iDevice: fixed its height and the count of correctly positioned items
 - iDevice editing: fixed digit limits in time and percentage fields in eight iDevices
+- Export and preview: after upgrading eXeLearning, the browser no longer reuses cached files from the previous version
+- Export and preview: cached libraries and styles are now reused between reloads, and outdated copies are removed automatically
 - Export: the theme stylesheet is now loaded last in single-page exports, preventing it from being overridden
 - Export: the `nav=false` parameter no longer discards teacher mode, xAPI credentials or other URL parameters, and search results now preserve the parameters used to open the page
 - Effects: fixed the timeline opening and closing again on a single click
+- Neo and Flux styles: fixed responsive layout detection
 - Styles: fixed a misnamed icon in Neo; all styles except Universal now provide the same 50 icons under the same names
 - Styles: reviewed the licences of third-party materials used in styles, updated their credits and include the required licences with every style
 - File → Open: fixed the colours of the Delete button
@@ -71,6 +85,7 @@
 - Import: activities with damaged data now retain their original content instead of being emptied, and the user is notified
 - Uploads: large files are now staged in the configured data directory instead of the application folder
 - Sign-in no longer slows down the rest of the server when many users log in simultaneously
+- OpenID Connect: consent is now handled entirely by the identity provider, avoiding repeated consent prompts and allowing non-administrative users to sign in
 - Collaboration: closed connections are now released, preventing servers from accumulating them
 - Fixed misaligned translations that showed unrelated texts in Catalan (CA), German (DE), Esperanto (EO), Galician (GL), Italian (IT), Portuguese (PT), Romanian (RO) and Valencian (VA), affecting True/False activities, the AI question generator, the math editor, rubrics and download blocks
 - Basque (EU) translation: fixed typos, wording and missing formatting placeholders
@@ -78,15 +93,17 @@
 
 ### Upgraded
 
-- fast-xml-parser: 5.4.1 → 5.11.0
+- fast-xml-parser: 5.4.1 → 5.11.1
 - mathjax: 3.2.2 → 4.1.3
 - edicuatex: 1.4.1 → 1.5.5
 - pdfjs-dist: 6.2.108 → 6.3.289
 - mermaid: 11.12.3 → 11.17.2
 - @xmldom/xmldom: 0.9.10 → 0.9.12
 - jose: 6.1.3 → 6.2.10
+- i18n: 0.15.3 → 0.15.4
 - sass: 1.97.3 → 1.103.1
-- electron: 43.2.0 → 44.0.0
+- electron: 43.2.0 → 44.2.0
+- electron-context-menu: 4.1.2 → 5.0.0
 - @biomejs/biome: 2.4.5 → 2.5.11
 - Several other dependencies updated to their latest compatible versions, clearing all known security advisories
 

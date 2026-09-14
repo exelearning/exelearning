@@ -75,6 +75,63 @@ describe('ResourceFetcher', () => {
     });
   });
 
+  describe('HTTP cache versioning', () => {
+    it('encodes build identifiers and preserves subdirectory paths', () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.version = 'v4.0.4+build & test';
+      expect(fetcher.getResourceUrl('/web/exelearning/app/common/exe_export.js'))
+        .toBe('/web/exelearning/app/common/exe_export.js?v=v4.0.4%2Bbuild%20%26%20test');
+    });
+
+    it.each([
+      ['fetchBaseLibraries', undefined, 'libs', { libs: { hash: 'libs-new' } }],
+      ['fetchTheme', 'base', 'theme/base', { themes: { base: { hash: 'theme-new' } } }],
+      ['loadIdevicesBundle', undefined, 'idevices', { idevices: { hash: 'idevices-new' } }],
+      ['fetchContentCss', undefined, 'content-css', { contentCss: { hash: 'css-new' } }],
+    ])('%s requests the manifest hash', async (method, name, endpoint, manifest) => {
+      const fetcher = new ResourceFetcher();
+      fetcher.bundlesAvailable = true;
+      fetcher.bundleManifest = manifest;
+      mockFetch.mockResolvedValue({ ok: true, headers: { get: () => '1' }, arrayBuffer: async () => new ArrayBuffer(1) });
+      vi.spyOn(fetcher, 'extractZipBundle').mockResolvedValue(new Map([['text/file.js', new Blob(['new'])]]));
+      await fetcher[method](name);
+      const hash = endpoint === 'theme/base' ? manifest.themes.base.hash : Object.values(manifest)[0].hash;
+      expect(mockFetch).toHaveBeenCalledWith(`/web/exelearning/api/resources/bundle/${endpoint}?v=${hash}`);
+    });
+
+    it('versions common bundles even without a manifest', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValue({ ok: false, status: 404 });
+      await fetcher.fetchBundle(`${fetcher.apiBase}/bundle/common`);
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/common?v=v3.1.0');
+    });
+
+    it('versions theme downloads with the bundle hash or site update timestamp', async () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.bundleManifest = { themes: { base: { hash: 'theme-new' } } };
+      fetcher.siteThemeVersions = new Map([['site-theme', 123]]);
+      mockFetch.mockResolvedValue({ ok: true, blob: async () => new Blob(['zip']) });
+      await fetcher.fetchThemeBundleBlob({ dirName: 'base' });
+      await fetcher.fetchThemeBundleBlob({ dirName: 'site-theme', type: 'site' });
+      await fetcher.fetchThemeBundleBlob({ dirName: 'site-theme', type: 'site', updatedAt: 456 });
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/bundles/themes/base.zip?v=theme-new');
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/theme/site-theme?v=123');
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/theme/site-theme?v=456');
+    });
+
+    it('versions static SCORM runtime files and both i18n fallback requests', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValue({ ok: true, blob: async () => new Blob(['runtime']) });
+      await fetcher.fetchScormFilesStatic('2004');
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/app/common/scorm/SCOFunctions.js?v=v3.1.0');
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 })
+        .mockResolvedValueOnce({ ok: true, text: async () => 'English' });
+      expect(await fetcher.fetchI18nFile('es')).toBe('English');
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/app/common/i18n/common_i18n.es.js?v=v3.1.0');
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/app/common/i18n/common_i18n.en.js?v=v3.1.0');
+    });
+  });
+
   describe('fetchTheme', () => {
     it('returns cached theme if available', async () => {
       const fetcher = new ResourceFetcher();
@@ -849,7 +906,7 @@ describe('ResourceFetcher', () => {
 
       await fetcher.init();
 
-      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/manifest');
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/manifest', { cache: 'no-cache' });
     });
   });
 
@@ -1567,7 +1624,7 @@ describe('ResourceFetcher', () => {
 
       const result = await fetcher.fetchTheme('base');
 
-      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/theme/base');
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/theme/base?v=v3.1.0');
       expect(result.size).toBe(1);
 
       delete window.fflate;
@@ -1638,7 +1695,7 @@ describe('ResourceFetcher', () => {
 
       const result = await fetcher.fetchBaseLibraries();
 
-      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/libs');
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/libs?v=v3.1.0');
       expect(result.size).toBe(1);
 
       delete window.fflate;
@@ -1744,7 +1801,7 @@ describe('ResourceFetcher', () => {
 
       const result = await fetcher.fetchContentCss();
 
-      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/content-css');
+      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/bundle/content-css?v=v3.1.0');
       expect(result.size).toBe(1);
 
       delete window.fflate;
@@ -2200,7 +2257,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
       await fetcher.fetchGlobalFontFiles('opendyslexic');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        '/web/exelearning/files/perm/fonts/global/opendyslexic/OpenDyslexic-Regular.woff2'
+        '/web/exelearning/files/perm/fonts/global/opendyslexic/OpenDyslexic-Regular.woff2?v=v3.1.0'
       );
     });
   });
@@ -2257,7 +2314,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         await fetcher.init();
 
-        expect(mockFetch).toHaveBeenCalledWith('/bundles/manifest.json');
+        expect(mockFetch).toHaveBeenCalledWith('/bundles/manifest.json?v=v3.1.0');
         expect(fetcher.bundleManifest).toEqual(manifest);
       });
     });
@@ -2281,8 +2338,8 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         const result = await fetcher.fetchThemeStatic('base');
 
-        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/base/style.css');
-        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/base/config.xml');
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/base/style.css?v=v3.1.0');
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/base/config.xml?v=v3.1.0');
         expect(result.size).toBe(2);
         expect(result.has('style.css')).toBe(true);
         expect(result.has('config.xml')).toBe(true);
@@ -2476,7 +2533,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
           const result = await fetcher.fetchThemeStatic('acme');
 
-          expect(mockFetch).toHaveBeenNthCalledWith(2, '/files/perm/themes/base/acme/style.css');
+          expect(mockFetch).toHaveBeenNthCalledWith(2, '/files/perm/themes/base/acme/style.css?v=v3.1.0');
           expect(result.size).toBe(1);
           expect(result.has('style.css')).toBe(true);
         });
@@ -2502,7 +2559,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
           const result = await fetcher.fetchThemeStatic('acme');
 
           // Non-absolute admin URL is ignored; assembly uses the loose manifest.
-          expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/acme/style.css');
+          expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/acme/style.css?v=v3.1.0');
           expect(result.size).toBe(1);
         });
 
@@ -2546,7 +2603,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         const result = await fetcher.fetchIdeviceStatic('text');
 
-        expect(mockFetch).toHaveBeenCalledWith('/files/perm/idevices/base/text/export/text.js');
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/idevices/base/text/export/text.js?v=v3.1.0');
         expect(result.size).toBe(2);
         expect(result.has('text.js')).toBe(true);
         expect(result.has('text.css')).toBe(true);
@@ -2569,7 +2626,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
         await fetcher.fetchIdeviceStatic('text');
 
         expect(mockFetch).toHaveBeenCalledTimes(1);
-        expect(mockFetch).toHaveBeenCalledWith('/files/perm/idevices/base/text/export/text.js');
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/idevices/base/text/export/text.js?v=v3.1.0');
       });
 
       it('returns empty Map when iDevice is not in the manifest', async () => {
@@ -2601,7 +2658,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         const result = await fetcher.fetchContentCssStatic();
 
-        expect(mockFetch).toHaveBeenCalledWith('/style/workarea/base.css');
+        expect(mockFetch).toHaveBeenCalledWith('/style/workarea/base.css?v=v3.1.0');
         expect(result.size).toBe(2);
         expect(result.has('content/css/base.css')).toBe(true);
         expect(result.has('content/css/custom.css')).toBe(true);
@@ -2636,8 +2693,8 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         const result = await fetcher.fetchBaseLibrariesStatic();
 
-        expect(mockFetch).toHaveBeenCalledWith('/libs/jquery/jquery.min.js');
-        expect(mockFetch).toHaveBeenCalledWith('/app/common/common.js');
+        expect(mockFetch).toHaveBeenCalledWith('/libs/jquery/jquery.min.js?v=v3.1.0');
+        expect(mockFetch).toHaveBeenCalledWith('/app/common/common.js?v=v3.1.0');
         expect(result.size).toBe(2);
         expect(result.has('jquery/jquery.min.js')).toBe(true);
         expect(result.has('common.js')).toBe(true);
@@ -2674,7 +2731,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         const result = await fetcher.fetchLibraryDirectory('exe_effects');
 
-        expect(mockFetch).toHaveBeenCalledWith('/app/common/exe_effects/exe_effects.js');
+        expect(mockFetch).toHaveBeenCalledWith('/app/common/exe_effects/exe_effects.js?v=v3.1.0');
         expect(result.size).toBe(2);
         expect(result.has('exe_effects/exe_effects.js')).toBe(true);
         expect(result.has('exe_effects/exe_effects.css')).toBe(true);
@@ -2756,7 +2813,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         await fetcher.fetchLibraryFile('exe_effects/exe_effects.js');
 
-        expect(mockFetch).toHaveBeenCalledWith('/app/common/exe_effects/exe_effects.js');
+        expect(mockFetch).toHaveBeenCalledWith('/app/common/exe_effects/exe_effects.js?v=v3.1.0');
       });
     });
 
@@ -2772,7 +2829,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         await fetcher.fetchExeLogo();
 
-        expect(mockFetch).toHaveBeenCalledWith('/app/common/exe_powered_logo/exe_powered_logo.png');
+        expect(mockFetch).toHaveBeenCalledWith('/app/common/exe_powered_logo/exe_powered_logo.png?v=v3.1.0');
       });
     });
 
@@ -2790,7 +2847,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         const result = await fetcher.fetchTheme('custom-theme');
 
-        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/custom-theme/style.css');
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/custom-theme/style.css?v=v3.1.0');
         expect(result.size).toBe(1);
       });
 
@@ -2810,7 +2867,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         // Only the single loose-file probe; no /api/resources/theme fallback.
         expect(mockFetch).toHaveBeenCalledTimes(1);
-        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/missing-theme/style.css');
+        expect(mockFetch).toHaveBeenCalledWith('/files/perm/themes/base/missing-theme/style.css?v=v3.1.0');
         expect(result.size).toBe(0);
       });
     });
@@ -3001,7 +3058,7 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
 
         const blob = await fetcher.fetchThemeBundleBlob({ dirName: 'clean', type: 'base' });
 
-        expect(mockFetch).toHaveBeenCalledWith('/base/bundles/themes/clean.zip');
+        expect(mockFetch).toHaveBeenCalledWith('/base/bundles/themes/clean.zip?v=v3.1.0');
         expect(blob).toBe(bundleBlob);
       });
 
@@ -3014,11 +3071,11 @@ it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
         const zipBlobSpy = vi.spyOn(fetcher, 'fetchThemeZipBlob');
 
         const siteBlob = await fetcher.fetchThemeBundleBlob({ dirName: 'site-1', type: 'site' });
-        expect(mockFetch).toHaveBeenCalledWith('/base/api/resources/bundle/theme/site-1');
+        expect(mockFetch).toHaveBeenCalledWith('/base/api/resources/bundle/theme/site-1?v=v3.1.0');
         expect(siteBlob).toBe(apiBlob);
 
         const adminBlob = await fetcher.fetchThemeBundleBlob({ dirName: 'admin-1', type: 'admin' });
-        expect(mockFetch).toHaveBeenCalledWith('/base/api/resources/bundle/theme/admin-1');
+        expect(mockFetch).toHaveBeenCalledWith('/base/api/resources/bundle/theme/admin-1?v=v3.1.0');
         expect(adminBlob).toBe(apiBlob);
 
         // Server themes never go through the loose-file assembler.
