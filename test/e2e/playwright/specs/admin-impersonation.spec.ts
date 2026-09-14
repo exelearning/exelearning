@@ -33,6 +33,10 @@ test.describe('Admin Impersonation', () => {
         await page.locator('.admin-nav-link[data-section="users"]').click();
         await page.fill('#userSearch', targetEmail);
         const targetRow = page.locator('#usersTableBody tr').filter({ hasText: targetEmail }).first();
+        // The search is debounced and re-renders the whole table when its response lands. The row can
+        // already be visible from the unfiltered render, so wait for the narrowed result before opening
+        // the row menu — otherwise the re-render detaches the open dropdown and the click times out.
+        await expect(page.locator('#usersTableBody tr')).toHaveCount(1);
         await expect(targetRow).toBeVisible();
 
         // Row actions live in a Bootstrap dropdown (#2261). After the table

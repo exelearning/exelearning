@@ -83,7 +83,7 @@ global.eXeLearning = {
 };
 
 // Import after setting up mocks
-import IdeviceBlockNode from './blockNode.js';
+import IdeviceBlockNode, { sortThemeIcons } from './blockNode.js';
 
 describe('IdeviceBlockNode', () => {
     let block;
@@ -914,6 +914,27 @@ describe('IdeviceBlockNode', () => {
             expect(themeIcons[0].getAttribute('title')).toBe('Icon 1');
             expect(themeIcons[0].classList.contains('theme-block-icon')).toBe(true);
             expect(firstThemeIndex).toBeLessThan(firstMaterialIndex);
+        });
+
+        it('lists theme icons alphabetically regardless of source order (#2411)', () => {
+            // Static bundles built on Linux ship icons in raw readdir order
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                udl_rep_informarse: { id: 'udl_rep_informarse', value: '/i/udl_rep_informarse.svg' },
+                udl_exp_grupohomogeneo: { id: 'udl_exp_grupohomogeneo', value: '/i/udl_exp_grupohomogeneo.svg' },
+                udl_eng_reto: { id: 'udl_eng_reto', value: '/i/udl_eng_reto.svg' },
+                udl_eng_curiosidad: { id: 'udl_eng_curiosidad', value: '/i/udl_eng_curiosidad.svg' },
+            }));
+            const body = block.makeModalChangeIconBody();
+            const values = [...body.querySelectorAll('.option-block-icon[data-icon-source="theme"]')].map((el) =>
+                el.getAttribute('data-icon-value')
+            );
+
+            expect(values).toEqual([
+                'udl_eng_curiosidad',
+                'udl_eng_reto',
+                'udl_exp_grupohomogeneo',
+                'udl_rep_informarse',
+            ]);
         });
 
         it('adds section titles separating theme and general icons', () => {
@@ -4386,4 +4407,32 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+});
+
+describe('sortThemeIcons', () => {
+    it('returns icons sorted by id with numeric awareness', () => {
+        const sorted = sortThemeIcons({
+            icon10: { id: 'icon10', value: '/i/icon10.svg' },
+            icon2: { id: 'icon2', value: '/i/icon2.svg' },
+            icon1: { id: 'icon1', value: '/i/icon1.svg' },
+        });
+
+        expect(sorted.map((icon) => icon.id)).toEqual(['icon1', 'icon2', 'icon10']);
+    });
+
+    it('drops entries without a value and falls back to value when id is missing', () => {
+        const sorted = sortThemeIcons({
+            b: { id: 'b', value: '/i/b.svg' },
+            broken: { id: 'broken' },
+            empty: null,
+            a: { value: '/i/a.svg' },
+        });
+
+        expect(sorted.map((icon) => icon.id || icon.value)).toEqual(['/i/a.svg', 'b']);
+    });
+
+    it('returns an empty list for null or undefined input', () => {
+        expect(sortThemeIcons(null)).toEqual([]);
+        expect(sortThemeIcons(undefined)).toEqual([]);
+    });
 });
