@@ -612,7 +612,7 @@ window.$exeExport = {
      * Keyboard navigation for exported/previewed content, inspired by the
      * legacy eXeLearning 2.9 "Presentation" style. Works with any theme that
      * exposes the standard nav elements (#siteNav, .nav-buttons,
-     * #siteNavToggler, #searchBarTogger, #teacher-mode-toggler) and is a
+     * #siteNavToggler, #searchBarToggler, #teacher-mode-toggler) and is a
      * no-op when they are absent.
      *
      * "t" toggles the Teacher Mode content layer, but only where it is
@@ -770,7 +770,9 @@ window.$exeExport = {
         },
 
         focusSearch: function () {
-            var toggler = document.getElementById('searchBarTogger');
+            // Legacy eXe 2.x themes spell the id without the trailing "l".
+            var toggler =
+                document.getElementById('searchBarToggler') || document.getElementById('searchBarTogger');
             if (!toggler) return false;
             var bar = document.getElementById('exe-client-search');
             if (this.isHidden(bar)) {

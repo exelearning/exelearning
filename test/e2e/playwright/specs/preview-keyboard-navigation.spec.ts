@@ -140,7 +140,7 @@ test.describe('Keyboard navigation in preview', () => {
             .toBe(navOffBefore);
 
         // Alt+/ reveals and focuses the search input (search was enabled above).
-        const searchToggler = iframe.locator('#searchBarTogger');
+        const searchToggler = iframe.locator('#searchBarToggler');
         await searchToggler.waitFor({ state: 'visible', timeout: 10000 });
         await focusPreviewContent(iframe);
         await page.keyboard.press('Alt+/');
@@ -171,7 +171,7 @@ test.describe('Keyboard navigation in preview', () => {
         await openPreviewAndWaitForContent(page);
         const iframe = getPreviewFrame(page);
 
-        const searchToggler = iframe.locator('#searchBarTogger');
+        const searchToggler = iframe.locator('#searchBarToggler');
         await searchToggler.waitFor({ state: 'visible', timeout: 10000 });
         await searchToggler.click();
 
@@ -282,7 +282,7 @@ test.describe('Keyboard navigation in preview', () => {
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        // Enable search so #searchBarTogger exists too, isolating "option not
+        // Enable search so #searchBarToggler exists too, isolating "option not
         // enabled" as the only reason nothing happens (not a missing element).
         await enableSearchOption(page);
 

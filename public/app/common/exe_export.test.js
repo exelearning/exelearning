@@ -3098,7 +3098,7 @@ describe('exe_export.js', () => {
     });
 
     describe('focusSearch', () => {
-      it('does nothing and returns false when #searchBarTogger is absent', () => {
+      it('does nothing and returns false when #searchBarToggler is absent', () => {
         document.body.innerHTML = '<input id="exe-client-search-text">';
         const input = document.getElementById('exe-client-search-text');
         const focusSpy = vi.spyOn(input, 'focus');
@@ -3113,11 +3113,11 @@ describe('exe_export.js', () => {
 
       it('clicks the toggler, focuses the input, and returns true when the search bar is hidden', () => {
         document.body.innerHTML =
-          '<button id="searchBarTogger"></button>' +
+          '<button id="searchBarToggler"></button>' +
           '<div id="exe-client-search" style="display:none">' +
           '<input id="exe-client-search-text">' +
           '</div>';
-        const toggler = document.getElementById('searchBarTogger');
+        const toggler = document.getElementById('searchBarToggler');
         const input = document.getElementById('exe-client-search-text');
         const clickSpy = vi.fn();
         toggler.addEventListener('click', clickSpy);
@@ -3131,11 +3131,11 @@ describe('exe_export.js', () => {
 
       it('only focuses the input, without re-clicking, when the search bar is already visible', () => {
         document.body.innerHTML =
-          '<button id="searchBarTogger"></button>' +
+          '<button id="searchBarToggler"></button>' +
           '<div id="exe-client-search">' +
           '<input id="exe-client-search-text">' +
           '</div>';
-        const toggler = document.getElementById('searchBarTogger');
+        const toggler = document.getElementById('searchBarToggler');
         const input = document.getElementById('exe-client-search-text');
         const clickSpy = vi.fn();
         toggler.addEventListener('click', clickSpy);
@@ -3148,8 +3148,23 @@ describe('exe_export.js', () => {
       });
 
       it('does not throw when the search input is missing', () => {
-        document.body.innerHTML = '<button id="searchBarTogger"></button>';
+        document.body.innerHTML = '<button id="searchBarToggler"></button>';
         expect(() => window.$exeExport.keyboardNav.focusSearch()).not.toThrow();
+      });
+
+      it('falls back to the legacy eXe 2.x #searchBarTogger id', () => {
+        document.body.innerHTML =
+          '<button id="searchBarTogger"></button>' +
+          '<div id="exe-client-search" style="display:none">' +
+          '<input id="exe-client-search-text">' +
+          '</div>';
+        const clickSpy = vi.fn();
+        document.getElementById('searchBarTogger').addEventListener('click', clickSpy);
+        const focusSpy = vi.spyOn(document.getElementById('exe-client-search-text'), 'focus');
+
+        expect(window.$exeExport.keyboardNav.focusSearch()).toBe(true);
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(focusSpy).toHaveBeenCalledTimes(1);
       });
     });
 
@@ -3422,9 +3437,9 @@ describe('exe_export.js', () => {
 
       it('focuses the search input on Alt+/', () => {
         document.body.innerHTML =
-          '<button id="searchBarTogger"></button>' +
+          '<button id="searchBarToggler"></button>' +
           '<div id="exe-client-search" style="display:none"><input id="exe-client-search-text"></div>';
-        const toggler = document.getElementById('searchBarTogger');
+        const toggler = document.getElementById('searchBarToggler');
         const input = document.getElementById('exe-client-search-text');
         const clickSpy = vi.fn();
         toggler.addEventListener('click', clickSpy);
@@ -3555,7 +3570,7 @@ describe('exe_export.js', () => {
         expect(event.preventDefault).not.toHaveBeenCalled();
       });
 
-      it('does not call preventDefault for Alt+/ when #searchBarTogger is absent', () => {
+      it('does not call preventDefault for Alt+/ when #searchBarToggler is absent', () => {
         document.body.innerHTML = '';
         const event = makeEvent({ altKey: true, code: 'Slash', key: '/' });
 
@@ -3666,11 +3681,11 @@ describe('exe_export.js', () => {
 
         it('ignores Alt+/ (search shortcut) while an overlay is open', () => {
           document.body.innerHTML =
-            '<button id="searchBarTogger"></button>' +
+            '<button id="searchBarToggler"></button>' +
             '<div id="exe-client-search" style="display:none"><input id="exe-client-search-text"></div>' +
             '<div class="sl-wrapper"></div>';
           const clickSpy = vi.fn();
-          document.getElementById('searchBarTogger').addEventListener('click', clickSpy);
+          document.getElementById('searchBarToggler').addEventListener('click', clickSpy);
 
           window.$exeExport.keyboardNav.handleKeydown(makeEvent({ altKey: true, code: 'Slash', key: '/' }));
 
