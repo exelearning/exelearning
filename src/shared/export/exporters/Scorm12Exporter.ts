@@ -319,7 +319,7 @@ export class Scorm12Exporter extends Html5Exporter {
             // already honour (#2415). Both the files and their manifest entries
             // are skipped together, so the manifest never references a file
             // that was not written.
-            if (meta.exportSource !== false) {
+            if (this.shipsEditableSource(meta, options)) {
                 try {
                     const contentXml = await this.getContentXml();
                     if (contentXml) {

@@ -770,6 +770,19 @@ describe('Scorm2004Exporter', () => {
             expect(zip.files.has('content.dtd')).toBe(false);
         });
 
+        it('includes content.xml when a host forces the editable source', async () => {
+            // A host that stores the package AS the project and re-opens it
+            // later (Moodle mod_exescorm) must never get a package it cannot
+            // read back, whatever the author chose.
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm2004Exporter(document, resources, assets, zip);
+
+            await exporter.export({ forceEditableSource: true });
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
         it('does NOT reference content.xml in the manifest when exportSource is false', async () => {
             document = new MockDocumentWithSource({ exportSource: false }, samplePages);
             exporter = new Scorm2004Exporter(document, resources, assets, zip);

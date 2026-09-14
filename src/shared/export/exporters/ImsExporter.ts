@@ -322,7 +322,7 @@ export class ImsExporter extends Html5Exporter {
             // honour (#2415). Both the files and their manifest entries are
             // skipped together, so the manifest never references a file that
             // was not written.
-            if (meta.exportSource !== false) {
+            if (this.shipsEditableSource(meta, options)) {
                 const contentXml = generateOdeXml(meta, allPagesForContentXml);
                 addFile('content.xml', contentXml);
                 addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
