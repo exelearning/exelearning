@@ -15689,6 +15689,10 @@
         <source>Huger text</source>
         <target>~Texte encore plus énorme</target>
       </trans-unit>
+      <trans-unit id="yq3uylt" resname="To save the score, the activity needs at least one question.">
+        <source>To save the score, the activity needs at least one question.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
