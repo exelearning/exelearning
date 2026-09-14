@@ -543,6 +543,76 @@ describe('form iDevice edition', () => {
     });
   });
 
+  // The threshold the author picks here never reached the exported activity:
+  // save() collected the dropdown into `this.dropdownPassRate`, pushed its id
+  // onto `dataIds` — which this iDevice never iterates — and getDataJson()
+  // wrote a hardcoded 5 into `passRate` instead. The export then ignored that
+  // too and graded against a literal 50.
+  describe('the pass rate the author configures', () => {
+    const renderEditionForm = () => {
+      document.body.innerHTML = `
+        <div idevice-id="f1">
+          <textarea id="eXeGameInstructions"></textarea>
+          <textarea id="eXeIdeviceTextAfter"></textarea>
+          <select id="dropdownPassRate_f1">
+            <option value="" selected></option>
+            <option value="50">50%</option>
+            <option value="70">70%</option>
+          </select>
+          <input type="checkbox" id="checkAddBtnAnswers" />
+          <input type="checkbox" id="frmEQuestionsRandom" />
+          <input id="frmEPercentageQuestions" value="100" />
+          <input id="frmETime" value="0" />
+          <input type="checkbox" id="frmEShowSlider" />
+        </div>
+      `;
+      $exeDevice.ideviceBody = document.body.firstElementChild;
+    };
+
+    const storedDropdown = () =>
+      document.querySelector('#dropdownPassRate_f1').value;
+
+    beforeEach(() => {
+      renderEditionForm();
+      vi.spyOn($exeDevice, 'updateQuestionsNumber').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('travels from the dropdown into the saved data under both names', () => {
+      $exeDevice.passRate = '70';
+      $exeDevice[$exeDevice.dropdownPassRateId] = '70';
+
+      const data = $exeDevice.getDataJson();
+
+      expect(data.passRate).toBe('70');
+      expect(data[$exeDevice.dropdownPassRateId]).toBe('70');
+    });
+
+    it('comes back into the dropdown when the activity is reopened', () => {
+      $exeDevice.idevicePreviousData = { dropdownPassRate: '70' };
+
+      $exeDevice.loadPreviousValues();
+
+      expect(storedDropdown()).toBe('70');
+    });
+
+    // Content saved before this fix carries no threshold at all and was graded
+    // against the 50 the export hardcoded. Leaving the control blank would
+    // have silently regraded it the moment the author saved again.
+    it('shows the 50 in force when the activity carries none', () => {
+      $exeDevice.idevicePreviousData = { questionsRandom: false };
+
+      $exeDevice.loadPreviousValues();
+
+      expect(storedDropdown()).toBe('50');
+      expect($exeDevice.defaultPassRate).toBe(50);
+    });
+  });
+
   describe('checkFormValues', () => {
     beforeEach(() => {
       eXe.app.alert = vi.fn();
