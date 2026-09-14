@@ -116,6 +116,13 @@ test.describe('Block Icon Selection Modal', () => {
             }
         }
 
+        // Style icons must be listed alphabetically, not in filesystem order (#2411)
+        const themeIconIds = await page
+            .locator('#change-block-icon-modal-content .theme-block-icon')
+            .evaluateAll(elements => elements.map(element => element.getAttribute('icon-id') || ''));
+        const collator = new Intl.Collator('en', { numeric: true });
+        expect(themeIconIds).toEqual([...themeIconIds].sort(collator.compare));
+
         // Verify the empty icon is present and properly structured
         const emptyIcon = page.locator('#change-block-icon-modal-content .empty-block-icon');
         await expect(emptyIcon).toBeVisible();
