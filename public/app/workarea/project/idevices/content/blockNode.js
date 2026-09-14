@@ -90,6 +90,23 @@ const localBlockIconRuntime = {
 };
 
 const blockIconRuntime = window.eXeBlockIconRuntime || localBlockIconRuntime;
+
+// JS twin of THEME_ICON_COLLATOR in src/shared/parsers/theme-parser.ts — keep both in sync.
+const THEME_ICON_COLLATOR = new Intl.Collator('en', { numeric: true });
+
+/**
+ * Theme icons in picker display order (alphabetical by id, numeric-aware).
+ * The source order is not reliable: static bundles built on Linux keep Bun's raw
+ * readdir order and user themes keep ZIP entry order (#2411).
+ *
+ * @param {Record<string, {id?: string, title?: string, value?: string}>|null|undefined} themeIcons
+ * @returns {Array<{id?: string, title?: string, value?: string}>}
+ */
+export function sortThemeIcons(themeIcons) {
+    return Object.values(themeIcons || {})
+        .filter((themeIcon) => themeIcon && themeIcon.value)
+        .sort((a, b) => THEME_ICON_COLLATOR.compare(a.id || a.value, b.id || b.value));
+}
 /**
  * eXeLearning
  *
@@ -1831,8 +1848,7 @@ export default class IdeviceBlockNode {
             { className: 'empty-block-icon', iconId: '0', innerHtml: this.getModalNoIconSvg() }
         );
 
-        const themeIcons = eXeLearning.app?.themes?.getThemeIcons?.() || {};
-        const themeIconList = Object.values(themeIcons).filter((themeIcon) => themeIcon && themeIcon.value);
+        const themeIconList = sortThemeIcons(eXeLearning.app?.themes?.getThemeIcons?.());
         if (themeIconList.length > 0) {
             appendSectionTitle(_('Style icons'));
             for (const themeIcon of themeIconList) {
