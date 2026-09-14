@@ -316,11 +316,18 @@ export class ImsExporter extends Html5Exporter {
 
             // 8b. Add content.xml (ODE format) and content.dtd for re-editing.
             // Use the full page list (incl. hidden pages) so nothing is lost on
-            // re-import — see allPagesForContentXml above.
-            const contentXml = generateOdeXml(meta, allPagesForContentXml);
-            addFile('content.xml', contentXml);
-            addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
-            commonFiles.push('content.xml', ODE_DTD_FILENAME);
+            // re-import — see allPagesForContentXml above. Skipped when the
+            // author disabled the "Editable export" project property
+            // (`exportSource`), which the website and ePub exporters already
+            // honour (#2415). Both the files and their manifest entries are
+            // skipped together, so the manifest never references a file that
+            // was not written.
+            if (meta.exportSource !== false) {
+                const contentXml = generateOdeXml(meta, allPagesForContentXml);
+                addFile('content.xml', contentXml);
+                addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                commonFiles.push('content.xml', ODE_DTD_FILENAME);
+            }
 
             // 9. Generate ELPX manifest file if download-source-file is used
             if (needsElpxDownload && fileList) {

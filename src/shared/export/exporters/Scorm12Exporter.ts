@@ -313,17 +313,24 @@ export class Scorm12Exporter extends Html5Exporter {
                 commonFiles.push(`libs/${filePath}`);
             }
 
-            // 6b. Copy content.xml and DTD (always include for re-editing capability)
-            try {
-                const contentXml = await this.getContentXml();
-                if (contentXml) {
-                    addFile('content.xml', contentXml);
-                    commonFiles.push('content.xml');
-                    addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
-                    commonFiles.push(ODE_DTD_FILENAME);
+            // 6b. Copy content.xml and DTD so the package stays re-editable.
+            // Skipped when the author disabled the "Editable export" project
+            // property (`exportSource`), which the website and ePub exporters
+            // already honour (#2415). Both the files and their manifest entries
+            // are skipped together, so the manifest never references a file
+            // that was not written.
+            if (meta.exportSource !== false) {
+                try {
+                    const contentXml = await this.getContentXml();
+                    if (contentXml) {
+                        addFile('content.xml', contentXml);
+                        commonFiles.push('content.xml');
+                        addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                        commonFiles.push(ODE_DTD_FILENAME);
+                    }
+                } catch {
+                    // content.xml is optional
                 }
-            } catch {
-                // content.xml is optional
             }
 
             // 7. Fetch and add iDevice assets
