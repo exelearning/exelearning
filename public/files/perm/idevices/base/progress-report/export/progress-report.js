@@ -50,29 +50,93 @@ var $eXeInforme = {
     },
     loadFromContentXml: function (mOption, instanceIndex) {
         const idx = instanceIndex || 0;
-        const isExeIndex =
-            document.documentElement &&
-            document.documentElement.id === 'exe-index';
-        const rutaContent = isExeIndex ? './content.xml' : '../content.xml';
-        fetch(rutaContent)
-            .then((response) => response.text())
+        // content.xml sits at the package root. Resolving it as `../content.xml`
+        // only worked from a page inside `html/`: on the cover, which is the
+        // root's own index.html, it pointed one level above the package and
+        // always 404'd, even when the file was right there.
+        const rutaContent = `${$eXeInforme.getPackageRoot(
+            window.location.pathname
+        )}/content.xml`;
+        // Returned so callers -- and tests -- can wait for the report to settle.
+        return fetch(rutaContent)
+            .then((response) => {
+                // A package exported without the editable source ships no
+                // content.xml at all, and a web server answers that request
+                // with a 404 whose HTML body `fetch` resolves happily. Reject
+                // it, or the error page parses to zero pages and the report
+                // renders empty instead of falling back below.
+                if (!response.ok) {
+                    throw new Error(
+                        `content.xml unavailable (${response.status})`
+                    );
+                }
+                return response.text();
+            })
             .then((xmlString) => {
                 const pagesJson = this.parseOdeXmlToJson(xmlString);
+                // Same outcome, different cause: a server that rewrites an
+                // unknown path to a 200 page, or a truncated content.xml,
+                // parses without throwing and yields nothing.
+                if (!pagesJson.length) {
+                    throw new Error('content.xml carried no pages');
+                }
                 const pagesHtml = this.generateHtmlFromJsonPages(pagesJson);
                 $eXeInforme.createTableIdevices(pagesHtml, idx);
                 $eXeInforme.updatePages(mOption.dataIDevices, idx);
                 $eXeInforme.applyTypeShow(mOption.typeshow, idx);
             })
             .catch(() => {
-                if ($eXeInforme._hasPagesMetadata()) {
-                    $eXeInforme.loadFromDom(mOption, idx);
-                    return;
-                }
-                const $msg = $(`#informeNotLocal-${idx}`);
-                if ($msg.length) {
-                    $msg.show();
-                }
+                if ($eXeInforme.loadFromStoredStructure(mOption, idx)) return;
+                $eXeInforme.loadFromPagesMetadata(mOption, idx);
             });
+    },
+
+    /**
+     * Build the report from the course map stored inside the iDevice itself.
+     *
+     * The editor captures the page tree every time the author saves the report
+     * (`sessionIdevices`), and it travels inside the activity's own payload, so
+     * it is the one source that survives an export with no content.xml --
+     * SCORM and IMS packages among them, which never carry the search index
+     * either. It keeps the page hierarchy, which that index cannot.
+     *
+     * It is a snapshot, so content.xml is always preferred: this only runs when
+     * that fetch failed. A project edited after the last save of this report
+     * shows here as it was then, which is what the 'Update' button in the
+     * editor is for.
+     *
+     * @returns true when the stored map was usable and the report was built
+     */
+    loadFromStoredStructure: function (mOption, instanceIndex) {
+        const idx = instanceIndex || 0;
+        const stored = mOption && mOption.sessionIdevices;
+        if (!Array.isArray(stored) || stored.length === 0) return false;
+
+        const pages = $eXeInforme.createPagesHtml(stored);
+        $eXeInforme.createTableIdevices(pages, idx);
+        $eXeInforme.updatePages(mOption.dataIDevices, idx);
+        $eXeInforme.applyTypeShow(mOption.typeshow, idx);
+        return true;
+    },
+
+    /**
+     * Fall back to the page metadata shipped with the search box.
+     *
+     * It lists the same pages but stores no parent, so the report comes out
+     * flat. That is still the best available answer when content.xml cannot be
+     * read — which is the normal state of a package exported with the editable
+     * source disabled, not an error the author can act on.
+     */
+    loadFromPagesMetadata: function (mOption, instanceIndex) {
+        const idx = instanceIndex || 0;
+        if ($eXeInforme._hasPagesMetadata()) {
+            $eXeInforme.loadFromDom(mOption, idx);
+            return;
+        }
+        const $msg = $(`#informeNotLocal-${idx}`);
+        if ($msg.length) {
+            $msg.show();
+        }
     },
 
     /**
@@ -746,7 +810,8 @@ var $eXeInforme = {
      * content.xml, the only source that carries the page tree: the search index
      * that ships with the search box lists the same pages but stores no parent,
      * so it flattens the report. It stays as the fallback of
-     * `loadFromContentXml`, for a package where content.xml cannot be fetched.
+     * `loadFromContentXml`, which a package exported with the editable source
+     * disabled always takes: it ships no content.xml at all.
      */
     loadCourseMap: function (mOption, instanceIndex, init) {
         if ($eXeInforme.isPreviewMode()) {
@@ -1143,18 +1208,27 @@ var $eXeInforme = {
         return mOptions;
     },
 
+    /**
+     * Path of the package root, given the path of the page showing the report.
+     *
+     * The exporter writes the cover to `index.html` at the root and every other
+     * page to `html/<name>.html`, so walking up means dropping the file name
+     * and then the `html` folder if the page was in one. Both the page links
+     * and the content.xml fetch resolve from here: they used to compute it
+     * separately, and each got it wrong in a different place.
+     */
+    getPackageRoot: function (pathname) {
+        return String(pathname || '')
+            .replace(/\/[^/]*\.[^/]*$/, '')
+            .replace(/\/+$/, '')
+            .replace(/\/html$/i, '');
+    },
+
     getURLPage: function (pageId) {
         if (!pageId) return '';
 
         const url = new URL(window.location.href);
-
-        // Walk up to the root of the package: drop the file name of the page
-        // holding the report -- on the cover that is `index.html`, and keeping
-        // it produced `/index.html/html/page.html` -- and then the `html`
-        // folder that every page but the cover lives in.
-        let base = url.pathname.replace(/\/[^/]*\.[^/]*$/, '');
-        base = base.replace(/\/+$/, '');
-        base = base.replace(/\/html$/i, '');
+        const base = $eXeInforme.getPackageRoot(url.pathname);
 
         if (pageId === 'index') {
             url.pathname = `${base}/index.html`;

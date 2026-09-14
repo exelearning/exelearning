@@ -520,6 +520,220 @@ describe('progress-report iDevice (export)', () => {
     });
   });
 
+  describe('getPackageRoot', () => {
+    // The cover lives at the package root and every other page under html/,
+    // so the report must walk up a different number of levels depending on
+    // where it sits. Getting this wrong 404'd content.xml on the cover.
+    it('walks up from a page inside the html folder', () => {
+      expect($eXeInforme.getPackageRoot('/pkg/html/pagina.html')).toBe('/pkg');
+    });
+
+    it('walks up from the cover, which is the root index.html', () => {
+      expect($eXeInforme.getPackageRoot('/pkg/index.html')).toBe('/pkg');
+    });
+
+    it('resolves a package served at the site root', () => {
+      expect($eXeInforme.getPackageRoot('/index.html')).toBe('');
+      expect($eXeInforme.getPackageRoot('/html/pagina.html')).toBe('');
+    });
+
+    it('handles a path with no file name', () => {
+      expect($eXeInforme.getPackageRoot('/pkg/')).toBe('/pkg');
+    });
+
+    it('handles empty input', () => {
+      expect($eXeInforme.getPackageRoot('')).toBe('');
+      expect($eXeInforme.getPackageRoot(null)).toBe('');
+    });
+  });
+
+  describe('loadFromContentXml fallback', () => {
+    // A package exported with the editable source disabled ships no
+    // content.xml (Html5Exporter.addEditableContentXml). Over HTTP that is a
+    // 404 with an HTML body, and fetch() resolves it instead of rejecting, so
+    // only an explicit check keeps the error page out of the parser and lets
+    // the search-index metadata take over.
+    const pageXml = `<ode>
+      <odeNavStructures>
+        <odeNavStructure>
+          <odePageId>page-1</odePageId>
+          <odeParentPageId></odeParentPageId>
+          <pageName>Page 1</pageName>
+          <odeNavStructureOrder>1</odeNavStructureOrder>
+          <odePagStructures></odePagStructures>
+        </odeNavStructure>
+      </odeNavStructures>
+    </ode>`;
+    const notFoundBody = '<!DOCTYPE html><html><body><h1>404 Not Found</h1></body></html>';
+
+    let calls;
+
+    const respondWith = (ok, status, body) => {
+      global.fetch = () => Promise.resolve({ ok, status, text: () => Promise.resolve(body) });
+    };
+
+    beforeEach(() => {
+      calls = [];
+      $eXeInforme.loadFromDom = (...args) => calls.push(['loadFromDom', ...args]);
+      $eXeInforme.createTableIdevices = (...args) => calls.push(['createTableIdevices', ...args]);
+      $eXeInforme.updatePages = () => {};
+      $eXeInforme.applyTypeShow = () => {};
+      $eXeInforme.generateHtmlFromJsonPages = (pages) => pages;
+      $eXeInforme.createPagesHtml = (pages) => pages;
+    });
+
+    afterEach(() => {
+      delete global.fetch;
+    });
+
+    it.each([
+      ['/pkg/html/pagina.html', '/pkg/content.xml'],
+      ['/pkg/index.html', '/pkg/content.xml'],
+      ['/index.html', '/content.xml'],
+    ])('fetches content.xml at the package root from %s', async (pathname, expected) => {
+      const requested = [];
+      global.fetch = (url) => {
+        requested.push(url);
+        return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(pageXml) });
+      };
+      const original = Object.getOwnPropertyDescriptor(window, 'location');
+      Object.defineProperty(window, 'location', { value: { pathname }, configurable: true });
+      try {
+        await $eXeInforme.loadFromContentXml({}, 0);
+      } finally {
+        Object.defineProperty(window, 'location', original);
+      }
+
+      expect(requested).toEqual([expected]);
+    });
+
+    it('falls back to the page metadata when the package ships no content.xml', async () => {
+      respondWith(false, 404, notFoundBody);
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      await $eXeInforme.loadFromContentXml({}, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['loadFromDom']);
+    });
+
+    it('falls back when the server answers 200 with something that is not content.xml', async () => {
+      respondWith(true, 200, notFoundBody);
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      await $eXeInforme.loadFromContentXml({}, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['loadFromDom']);
+    });
+
+    it('tells the author when neither content.xml nor the metadata is available', async () => {
+      respondWith(false, 404, notFoundBody);
+      $eXeInforme._hasPagesMetadata = () => false;
+      const shown = [];
+      global.$ = (selector) => ({ length: 1, show: () => shown.push(selector) });
+
+      await $eXeInforme.loadFromContentXml({}, 3);
+
+      expect(calls).toEqual([]);
+      expect(shown).toEqual(['#informeNotLocal-3']);
+    });
+
+    it('builds the report from content.xml when it parses to pages', async () => {
+      respondWith(true, 200, pageXml);
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      await $eXeInforme.loadFromContentXml({}, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['createTableIdevices']);
+      expect(calls[0][1][0].name).toBe('Page 1');
+    });
+  });
+
+  /**
+   * The editor captures the page tree into `sessionIdevices` on every save, and
+   * it travels inside the activity's own payload. It is the only course map a
+   * SCORM or IMS package carries, since those ship neither content.xml (without
+   * the editable source) nor the search index (never).
+   */
+  describe('loadFromStoredStructure', () => {
+    const storedMap = [
+      { id: 'page-1', title: 'Cover', url: 'index', components: [], children: [] },
+    ];
+
+    let calls;
+
+    beforeEach(() => {
+      calls = [];
+      $eXeInforme.loadFromDom = (...args) => calls.push(['loadFromDom', ...args]);
+      $eXeInforme.createTableIdevices = (...args) => calls.push(['createTableIdevices', ...args]);
+      $eXeInforme.updatePages = () => {};
+      $eXeInforme.applyTypeShow = () => {};
+      $eXeInforme.createPagesHtml = (pages) => pages;
+      global.fetch = () =>
+        Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('<html>404</html>') });
+    });
+
+    afterEach(() => {
+      delete global.fetch;
+    });
+
+    it('builds the report from the map stored with the iDevice', () => {
+      expect($eXeInforme.loadFromStoredStructure({ sessionIdevices: storedMap }, 2)).toBe(true);
+      expect(calls).toEqual([['createTableIdevices', storedMap, 2]]);
+    });
+
+    it('rescues a package that ships neither content.xml nor a search index', async () => {
+      $eXeInforme._hasPagesMetadata = () => false;
+
+      await $eXeInforme.loadFromContentXml({ sessionIdevices: storedMap }, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['createTableIdevices']);
+    });
+
+    it('keeps the page hierarchy the search index would have flattened', async () => {
+      // The stored map is preferred over the metadata precisely because it
+      // carries children; the search index has no parent at all.
+      $eXeInforme._hasPagesMetadata = () => true;
+      const nested = [{ ...storedMap[0], children: [{ id: 'page-2', title: 'Child', children: [] }] }];
+
+      await $eXeInforme.loadFromContentXml({ sessionIdevices: nested }, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['createTableIdevices']);
+      expect(calls[0][1][0].children[0].title).toBe('Child');
+    });
+
+    it.each([undefined, null, [], 'not an array', {}])(
+      'declines a stored map of %p and lets the next source try',
+      async (sessionIdevices) => {
+        $eXeInforme._hasPagesMetadata = () => true;
+
+        expect($eXeInforme.loadFromStoredStructure({ sessionIdevices }, 0)).toBe(false);
+
+        await $eXeInforme.loadFromContentXml({ sessionIdevices }, 0);
+        expect(calls.map(([name]) => name)).toEqual(['loadFromDom']);
+      },
+    );
+
+    it('prefers content.xml, which is current, over the stored snapshot', async () => {
+      global.fetch = () =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () =>
+            Promise.resolve(`<ode><odeNavStructures><odeNavStructure>
+              <odePageId>fresh</odePageId><odeParentPageId></odeParentPageId>
+              <pageName>Fresh page</pageName><odeNavStructureOrder>1</odeNavStructureOrder>
+              <odePagStructures></odePagStructures>
+            </odeNavStructure></odeNavStructures></ode>`),
+        });
+      $eXeInforme.generateHtmlFromJsonPages = (pages) => pages;
+
+      await $eXeInforme.loadFromContentXml({ sessionIdevices: storedMap }, 0);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1][0].name).toBe('Fresh page');
+    });
+  });
+
   describe('getURLPage', () => {
     // Swapping the descriptor keeps the environment from navigating.
     const from = (href, pageId) => {
