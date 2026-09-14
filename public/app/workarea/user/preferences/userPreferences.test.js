@@ -70,6 +70,7 @@ describe('UserPreferences', () => {
     vi.restoreAllMocks();
     delete globalThis.eXeLearning;
     delete globalThis._;
+    delete window.electronAPI;
     window.localStorage = originalLocalStorage;
   });
 
@@ -122,6 +123,76 @@ describe('UserPreferences', () => {
       // After setPreferences, the values should be updated
       expect(userPreferences.preferences.advancedMode.value).toBe('true');
       expect(userPreferences.preferences.locale.value).toBe('fr');
+    });
+  });
+
+  describe('desktop spell checker preferences', () => {
+    it('adds the available languages on Windows and Linux desktop builds', async () => {
+      for (const preference of Object.values(
+        globalThis.eXeLearning.app.api.parameters.userPreferencesConfig
+      )) {
+        preference.category = 'General settings';
+      }
+      window.electronAPI = {
+        getSpellCheckerSettings: vi.fn().mockResolvedValue({
+          supported: true,
+          availableLanguages: ['en-US', 'es'],
+          selectedLanguages: ['es'],
+          systemDefault: false,
+        }),
+      };
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences.spellCheckerLanguages).toEqual(expect.objectContaining({
+        type: 'multiselect',
+        category: 'General settings',
+        value: ['es'],
+        options: { __system_default__: 'System default', 'en-US': 'en-US', es: 'es' },
+      }));
+      delete window.electronAPI;
+    });
+
+    it('keeps the spell checker uncategorized when fallback preferences have no categories', async () => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({});
+      window.electronAPI = {
+        getSpellCheckerSettings: vi.fn().mockResolvedValue({
+          supported: true,
+          availableLanguages: ['en-US'],
+          selectedLanguages: ['en-US'],
+          systemDefault: false,
+        }),
+      };
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences.locale.category).toBeUndefined();
+      expect(userPreferences.preferences.spellCheckerLanguages.category).toBeUndefined();
+    });
+
+    it('continues saving other preferences when the desktop IPC save fails', async () => {
+      window.electronAPI = {
+        setSpellCheckerLanguages: vi.fn().mockRejectedValue(new Error('IPC unavailable')),
+      };
+      userPreferences.preferences = {
+        spellCheckerLanguages: { value: ['es'] },
+        advancedMode: { value: 'false' },
+      };
+      await userPreferences.apiSaveProperties({ spellCheckerLanguages: ['es'], advancedMode: 'true' });
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith({ advancedMode: 'true' });
+      expect(mockManager.reloadMode).toHaveBeenCalledWith('true');
+    });
+
+    it('does not add a selector when language selection is OS-controlled', async () => {
+      window.electronAPI = {
+        getSpellCheckerSettings: vi.fn().mockResolvedValue({ supported: false }),
+      };
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences.spellCheckerLanguages).toBeUndefined();
+      delete window.electronAPI;
     });
   });
 
@@ -381,6 +452,74 @@ describe('UserPreferences', () => {
         expect.any(String)
       );
       expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('saves spell checker languages through Electron instead of localStorage', async () => {
+      window.electronAPI = { setSpellCheckerLanguages: vi.fn().mockResolvedValue({
+        systemDefault: false,
+        selectedLanguages: ['es', 'en-US'],
+      }) };
+      userPreferences.preferences = {
+        spellCheckerLanguages: { value: [] },
+        advancedMode: { value: 'false' },
+      };
+
+      await userPreferences.apiSaveProperties({
+        spellCheckerLanguages: ['es', 'en-US'],
+        advancedMode: 'true',
+      });
+
+      expect(window.electronAPI.setSpellCheckerLanguages).toHaveBeenCalledWith(['es', 'en-US']);
+      expect(userPreferences.preferences.spellCheckerLanguages.value).toEqual(['es', 'en-US']);
+      const saved = JSON.parse(localStorage.setItem.mock.calls.at(-1)[1]);
+      expect(saved.userPreferences.spellCheckerLanguages).toBeUndefined();
+      delete window.electronAPI;
+    });
+
+    it('warns when spell checker languages apply only to the current session', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      window.electronAPI = { setSpellCheckerLanguages: vi.fn().mockResolvedValue({
+        systemDefault: false,
+        selectedLanguages: ['es'],
+        applied: true,
+        persisted: false,
+      }) };
+      userPreferences.preferences = {
+        spellCheckerLanguages: { value: [] },
+      };
+
+      await userPreferences.apiSaveProperties({ spellCheckerLanguages: ['es'] });
+
+      expect(warn).toHaveBeenCalledWith(
+        '[UserPreferences] Spell checker languages were applied for this session but could not be persisted.'
+      );
+      warn.mockRestore();
+      delete window.electronAPI;
+    });
+
+    it('does not mutate the submitted preferences object', async () => {
+      window.electronAPI = { setSpellCheckerLanguages: vi.fn().mockResolvedValue({
+        systemDefault: false,
+        selectedLanguages: ['es'],
+        applied: true,
+        persisted: true,
+      }) };
+      userPreferences.preferences = {
+        spellCheckerLanguages: { value: [] },
+        advancedMode: { value: 'false' },
+      };
+      const submitted = {
+        spellCheckerLanguages: ['es'],
+        advancedMode: 'true',
+      };
+
+      await userPreferences.apiSaveProperties(submitted);
+
+      expect(submitted).toEqual({
+        spellCheckerLanguages: ['es'],
+        advancedMode: 'true',
+      });
+      delete window.electronAPI;
     });
 
     it('should not call server API in static mode', async () => {
