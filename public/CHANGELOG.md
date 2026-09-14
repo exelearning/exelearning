@@ -43,6 +43,7 @@
 
 ### Fixed
 
+- Import: the "Missing files" notice no longer lists files that only survive in the text template eXeLearning 3 left on html-type activities (Map, Flipcards, Select media files…); that stale copy of the activity is dropped on import, so removing a file from an activity is honoured in the next export and packages stop carrying a duplicate of each of those activities
 - SCORM 1.2: exported pages no longer rely on browser `onunload` and `onbeforeunload` handlers, preventing scores from being lost in Moodle
 - SCORM: opening a page no longer records a score of zero and a failed result
 - SCORM: leaving an untouched page no longer prevents the rest of the package from saving its results
