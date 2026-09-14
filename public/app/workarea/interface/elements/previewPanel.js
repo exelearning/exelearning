@@ -4,6 +4,25 @@
  * with auto-refresh capability when content changes.
  */
 
+import {
+    PREVIEW_TRANSPORTS,
+    PREVIEW_TRUST_STATES,
+    canEnableActivePreviewContent,
+    createPreviewContentPolicy,
+    createReportingPreviewContentPolicy,
+    disableActivePreviewContent,
+    enableActivePreviewContent,
+    getActivePreviewTrustState,
+    invalidateActivePreviewAuthorization,
+    isActivePreviewContentEnabled,
+    resolvePreviewTransport,
+    shouldRevokeOnYdocUpdate,
+} from '../../../utils/previewContentPolicy.js';
+import { EmbeddedPreviewSnapshot, selfHostedPreviewSnapshotConfig } from './preview/EmbeddedPreviewSnapshot.js';
+import { applyPreviewEmbedShim, EMBED_CHILD_SCRIPT_PATH } from './preview/previewEmbedShim.js';
+import { applyPreviewExternalMediaFallback } from './preview/previewExternalMediaFallback.js';
+import { PreviewEmbedHost } from './preview/previewEmbedHost.js';
+
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
@@ -20,6 +39,7 @@ export default class PreviewPanelManager {
         this.pinButton = document.getElementById('preview-pin-button');
         this.refreshButton = document.getElementById('preview-refresh-button');
         this.mobileButton = document.getElementById('preview-mobile-button');
+        this.activeContentButton = document.getElementById('preview-active-content-button');
         this.iframe = document.getElementById('preview-iframe');
 
         // DOM Elements - Pinned mode
@@ -29,6 +49,7 @@ export default class PreviewPanelManager {
         this.unpinButton = document.getElementById('preview-unpin-button');
         this.pinnedRefreshButton = document.getElementById('preview-pinned-refresh-button');
         this.pinnedMobileButton = document.getElementById('preview-pinned-mobile-button');
+        this.pinnedActiveContentButton = document.getElementById('preview-pinned-active-content-button');
 
         // State
         this.isOpen = false;
@@ -51,6 +72,16 @@ export default class PreviewPanelManager {
         this._popupWindow = null;
         this._popupMonitorTimer = null;
         this._recoveryChannel = null;
+        this._activeContentReport = null;
+        this._embeddedPreviewSnapshot = null;
+        this._selfHostedPreviewSnapshot = null;
+        // External-media relay for the opaque preview (lazy: most previews never
+        // hold a provider embed, and the bridge scripts load on demand).
+        this._embedHost = null;
+        // Memoized fetch of the embed shim (see _loadEmbedShimSource).
+        this._embedShimPromise = null;
+        // Iframe the relay is currently attached to, so we attach only once.
+        this._embedHostIframe = null;
     }
 
     /**
@@ -83,6 +114,11 @@ export default class PreviewPanelManager {
 
         const workarea = document.getElementById('workarea');
         workarea?.setAttribute('data-preview-pinned', 'false');
+        disableActivePreviewContent(this._projectId());
+        this._updateActiveContentIndicator(null);
+        this._disposeEmbeddedSnapshot();
+        this._disposeSelfHostedSnapshot();
+        this._clearOpaqueSandbox();
     }
 
     /** sessionStorage key used to persist the viewport choice for the session */
@@ -322,6 +358,7 @@ export default class PreviewPanelManager {
         this.pinButton?.addEventListener('click', () => this.pin());
         this.refreshButton?.addEventListener('click', () => this.refresh());
         this.mobileButton?.addEventListener('click', () => this.toggleViewport());
+        this.activeContentButton?.addEventListener('click', () => this._showActiveContentDialog());
 
         // Keyboard on close button
         this.closeButton?.addEventListener('keydown', (e) => {
@@ -336,6 +373,7 @@ export default class PreviewPanelManager {
         this.unpinButton?.addEventListener('click', () => this.unpin());
         this.pinnedRefreshButton?.addEventListener('click', () => this.refresh());
         this.pinnedMobileButton?.addEventListener('click', () => this.toggleViewport());
+        this.pinnedActiveContentButton?.addEventListener('click', () => this._showActiveContentDialog());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -561,6 +599,12 @@ export default class PreviewPanelManager {
      * including text edits in iDevices, titles, and collaborative updates
      */
     subscribeToChanges() {
+        // Idempotent: init() calls this before a project may be loaded (the
+        // interface is built before the Yjs bridge is ready), so it returns
+        // early then. open()/refresh() call it again once the project exists.
+        // Guard against double-subscription on those later calls.
+        if (this._onYdocUpdate) return;
+
         const project = eXeLearning?.app?.project;
         if (!project?._yjsEnabled || !project._yjsBridge) {
             Logger.log('[PreviewPanel] Yjs not enabled, auto-refresh disabled');
@@ -586,6 +630,21 @@ export default class PreviewPanelManager {
 
                 // Skip system-originated updates (initial sync, etc.)
                 if (origin === 'system' || origin === 'initial') return;
+
+                // D1 (ADR-2199-03): a positively identified LOCAL edit keeps the
+                // active-content grant — the person who enabled is the one
+                // editing. Anything else (remote collaborator, import, unknown
+                // origin) revokes it, and any live opaque snapshot session is
+                // disposed on the way out.
+                if (
+                    isActivePreviewContentEnabled(this._projectId()) &&
+                    shouldRevokeOnYdocUpdate(origin, documentManager)
+                ) {
+                    invalidateActivePreviewAuthorization(this._projectId());
+                    this._updateActiveContentIndicator(this._activeContentReport);
+                    this._disposeSelfHostedSnapshot();
+                    this._clearOpaqueSandbox();
+                }
 
                 this.scheduleRefresh();
             };
@@ -655,6 +714,9 @@ export default class PreviewPanelManager {
         this.isOpen = false;
         this.panel?.classList.remove('active');
         this.overlay?.classList.remove('active');
+        // The relay's players live on the editor's own body; the panel only
+        // slides away via transform, so they would linger over the workarea.
+        this._embedHost?.hideOverlays();
 
         Logger.log('[PreviewPanel] Panel closed');
     }
@@ -728,6 +790,11 @@ export default class PreviewPanelManager {
     async refresh() {
         if (this.isLoading) return;
 
+        // Ensure the Yjs change subscription is live: init() may have run before
+        // the project loaded, in which case the ydoc update handler (auto-refresh
+        // and active-content revocation) was never attached. Idempotent.
+        this.subscribeToChanges();
+
         this.isLoading = true;
         this.showLoadingState();
 
@@ -738,12 +805,20 @@ export default class PreviewPanelManager {
                 try { await app.waitForPreviewServiceWorker(); } catch { /* SW not available */ }
             }
 
-            if (this.isServiceWorkerPreviewAvailable()) {
-                await this.refreshWithServiceWorker();
+            if (this._previewTrustState() === PREVIEW_TRUST_STATES.OPAQUE_ENABLED) {
+                // Active content enabled: isolate the unfiltered snapshot in an
+                // opaque-origin iframe — the host's routes when embedded, eXe's own
+                // routes when self-hosted. Both fail closed to the filtered preview.
+                if (this._isEmbeddedPreview()) {
+                    await this._refreshEmbeddedOpaqueOrStayFiltered();
+                } else {
+                    await this._refreshOpaqueOrStayFiltered();
+                }
             } else {
-                // Fallback for cross-origin iframes where SW can't register
-                Logger.log('[PreviewPanel] SW not available, using blob URL fallback');
-                await this.refreshWithBlobUrl();
+                // Default (filtered) — including the default embedded preview — and
+                // consented same-origin: a same-origin surface. Filtered content is
+                // sanitized, so whitelisted external videos play inline.
+                await this._refreshFiltered();
             }
         } catch (error) {
             Logger.error('[PreviewPanel] Error generating preview:', error);
@@ -751,6 +826,250 @@ export default class PreviewPanelManager {
         } finally {
             this.isLoading = false;
             this.hideLoadingState();
+        }
+    }
+
+    _isEmbeddedPreview() {
+        return Boolean(eXeLearning?.app?.runtimeConfig?.isEmbedded);
+    }
+
+    _previewTrustState() {
+        return getActivePreviewTrustState(this._projectId(), eXeLearning?.app?.runtimeConfig);
+    }
+
+    _previewTransport() {
+        return resolvePreviewTransport(eXeLearning?.app?.runtimeConfig);
+    }
+
+    _getEmbeddedPreviewSnapshot() {
+        if (this._embeddedPreviewSnapshot) return this._embeddedPreviewSnapshot;
+        const config = eXeLearning?.app?.runtimeConfig?.embeddingConfig?.previewSnapshot;
+        this._embeddedPreviewSnapshot = new EmbeddedPreviewSnapshot(config);
+        return this._embeddedPreviewSnapshot;
+    }
+
+    _getSelfHostedPreviewSnapshot() {
+        if (this._selfHostedPreviewSnapshot) return this._selfHostedPreviewSnapshot;
+        const basePath = eXeLearning?.app?.getBasePath?.() || '';
+        this._selfHostedPreviewSnapshot = new EmbeddedPreviewSnapshot(selfHostedPreviewSnapshotConfig(basePath));
+        return this._selfHostedPreviewSnapshot;
+    }
+
+    /** Best-effort client delete; server-side TTL guarantees eventual expiry. */
+    _disposeSelfHostedSnapshot() {
+        if (!this._selfHostedPreviewSnapshot) return;
+        this._selfHostedPreviewSnapshot
+            .dispose()
+            .catch(error => Logger.warn('[PreviewPanel] Opaque snapshot cleanup failed:', error));
+    }
+
+    /**
+     * The same for the embedded snapshot, which had no disposer of its own.
+     *
+     * Its dispose-and-null block was copy-pasted at each teardown site and MISSING from the
+     * failure path, so an embedded preview that failed to load left its snapshot behind on
+     * the host until the server's TTL swept it.
+     */
+    _disposeEmbeddedSnapshot() {
+        if (!this._embeddedPreviewSnapshot) return;
+        this._embeddedPreviewSnapshot
+            .dispose()
+            .catch(error => Logger.warn('[PreviewPanel] Embedded snapshot cleanup failed:', error));
+        this._embeddedPreviewSnapshot = null;
+    }
+
+    /** Remove the opaque sandbox attribute before a same-origin (SW/blob) load. */
+    _clearOpaqueSandbox() {
+        this.iframe?.removeAttribute('sandbox');
+        this.pinnedIframe?.removeAttribute('sandbox');
+    }
+
+    /**
+     * Opaque-enabled refresh with the fail-closed contract of the transport
+     * matrix: when the snapshot routes cannot be reached the enable attempt
+     * fails VISIBLY (alert modal), the grant is dropped, and the preview
+     * re-renders filtered — never a silent same-origin fallback of unfiltered
+     * content.
+     */
+    async _refreshOpaqueOrStayFiltered() {
+        await this._refreshOpaqueOr(
+            () => this.refreshWithOpaqueSnapshot(),
+            () => this._disposeSelfHostedSnapshot(),
+            'Opaque',
+        );
+    }
+
+    /**
+     * The shared fail-closed body. Both transports must drop the grant, throw away the
+     * snapshot they were publishing into, and fall back to the filtered render — the
+     * embedded copy of this used to skip the disposal step, which is the kind of difference
+     * two near-identical methods hide.
+     *
+     * @param {() => Promise<void>} refresh The opaque refresh to attempt.
+     * @param {() => void} disposeSnapshot Throws away that transport's snapshot.
+     * @param {string} kind Names the transport in the log line.
+     */
+    async _refreshOpaqueOr(refresh, disposeSnapshot, kind) {
+        try {
+            await refresh();
+        } catch (error) {
+            Logger.error(`[PreviewPanel] ${kind} preview failed, staying filtered:`, error);
+            disableActivePreviewContent(this._projectId());
+            disposeSnapshot();
+            this._clearOpaqueSandbox();
+            eXeLearning?.app?.modals?.alert?.show?.({
+                title: _('External scripts unavailable'),
+                body: _(
+                    'The isolated preview could not be loaded, so external scripts stay blocked and the filtered preview is shown instead.',
+                ),
+                contentId: 'error',
+            });
+            await this._refreshFiltered();
+        }
+    }
+
+    /** Filtered same-origin preview: sanitized content over SW (or blob fallback). */
+    async _refreshFiltered() {
+        this._clearOpaqueSandbox();
+        // Leaving the opaque transport: drop any relayed players, the filtered
+        // preview renders whitelisted videos inline by itself.
+        this._embedHost?.hideOverlays();
+        if (this.isServiceWorkerPreviewAvailable()) {
+            await this.refreshWithServiceWorker();
+        } else {
+            // Fallback for cross-origin iframes where a Service Worker can't register.
+            Logger.log('[PreviewPanel] SW not available, using blob URL fallback');
+            await this.refreshWithBlobUrl();
+        }
+    }
+
+    /**
+     * Embedded opaque-enabled refresh with the same fail-closed contract as the
+     * self-hosted path: if the host's snapshot routes cannot be reached, the
+     * enable attempt fails visibly, the grant is dropped, and the preview
+     * re-renders filtered — never a silent same-origin fallback of unfiltered
+     * content.
+     */
+    async _refreshEmbeddedOpaqueOrStayFiltered() {
+        await this._refreshOpaqueOr(
+            () => this.refreshWithEmbeddedSnapshot(),
+            () => this._disposeEmbeddedSnapshot(),
+            'Embedded opaque',
+        );
+    }
+
+    /**
+     * Generate an UNFILTERED snapshot (author content byte-identical, active
+     * detection still reported), apply the external-media fallback, upload it
+     * to eXe's own capability routes, and point the active iframe — sandboxed
+     * without allow-same-origin — at the capability URL.
+     */
+    async refreshWithOpaqueSnapshot() {
+        await this._refreshWithSnapshot(() => this._getSelfHostedPreviewSnapshot(), 'opaque');
+    }
+
+    async refreshWithEmbeddedSnapshot() {
+        await this._refreshWithSnapshot(() => this._getEmbeddedPreviewSnapshot(), 'embedded');
+    }
+
+    /**
+     * The shared body of the two above, which differed only in which snapshot they asked
+     * for and in the wording of their errors — and so were a standing invitation for a fix
+     * to land in one host's path and not the other's.
+     *
+     * @param {() => object} getSnapshot The snapshot to publish into.
+     * @param {string} kind Names the transport in the errors this throws.
+     */
+    async _refreshWithSnapshot(getSnapshot, kind) {
+        const result = await this._generatePreviewFiles({ forOpaqueSnapshot: true });
+        if (!result.success || !result.files) {
+            throw new Error(result.error || `Failed to generate ${kind} preview`);
+        }
+        const { files, shimmed } = await this._prepareOpaqueMedia(result.files);
+        const snapshot = getSnapshot();
+        const previewUrl = await snapshot.replace(files);
+        snapshot.applySandbox(this.iframe);
+        snapshot.applySandbox(this.pinnedIframe);
+        const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
+        if (!targetIframe) throw new Error(`The ${kind} preview iframe is unavailable`);
+        targetIframe.src = previewUrl;
+        if (shimmed) this._startEmbedHost(targetIframe);
+    }
+
+    /**
+     * External media in the opaque snapshot. Preferred: inject the embed shim so
+     * the editor-side relay can overlay the real player in place (videos play
+     * without leaving the preview). If the shim source cannot be fetched we fall
+     * back to the placeholder that links "open in a new tab", so the author is
+     * never left with a blank box.
+     *
+     * @param {Record<string, string|Uint8Array|ArrayBuffer>} generatedFiles
+     * @returns {Promise<Record<string, string|Uint8Array|ArrayBuffer>>}
+     */
+    async _prepareOpaqueMedia(generatedFiles) {
+        const shimSource = await this._loadEmbedShimSource();
+        if (shimSource) {
+            const { files } = applyPreviewEmbedShim(generatedFiles, shimSource);
+            return { files, shimmed: true };
+        }
+        const { files } = applyPreviewExternalMediaFallback(generatedFiles);
+        return { files, shimmed: false };
+    }
+
+    /**
+     * Fetch (once) the canonical embed shim so it can travel with the opaque
+     * snapshot. Same-origin read from the editor's own assets; resolves to `null`
+     * when unavailable, which falls the preview back to the media placeholders.
+     *
+     * The PROMISE is memoized, not its value: two refreshes starting together
+     * then share one request instead of both issuing it.
+     *
+     * @returns {Promise<string|null>}
+     */
+    _loadEmbedShimSource() {
+        if (!this._embedShimPromise) {
+            const url = `${this._basePath()}/${EMBED_CHILD_SCRIPT_PATH}`;
+            this._embedShimPromise = fetch(url, { credentials: 'same-origin' })
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.text();
+                })
+                .catch(error => {
+                    Logger.warn('[PreviewPanel] Embed shim unavailable, using media placeholders:', error);
+                    return null;
+                });
+        }
+        return this._embedShimPromise;
+    }
+
+    /** Base path of the editor's own assets. */
+    _basePath() {
+        return eXeLearning?.app?.getBasePath?.() || '';
+    }
+
+    /**
+     * Start the editor-side embed relay for the opaque preview iframe.
+     *
+     * The relay is page-global — it finds preview iframes by `event.source` —
+     * so it is started once. This runs on every opaque refresh, so a repeat on
+     * the same iframe is skipped, and a switch between the panel and pinned
+     * iframes drops the overlays left over the previous one.
+     *
+     * @param {HTMLIFrameElement} iframe
+     */
+    _startEmbedHost(iframe) {
+        if (!iframe || this._embedHostIframe === iframe) return;
+        try {
+            if (!this._embedHost) {
+                this._embedHost = new PreviewEmbedHost({ basePath: this._basePath() });
+            }
+            this._embedHost.hideOverlays();
+            this._embedHostIframe = iframe;
+            this._embedHost.start().catch(error => {
+                Logger.warn('[PreviewPanel] Embed relay start failed:', error);
+            });
+        } catch (error) {
+            Logger.warn('[PreviewPanel] Embed relay unavailable:', error);
         }
     }
 
@@ -812,7 +1131,7 @@ export default class PreviewPanelManager {
      * @returns {Promise<{success: boolean, files?: Object, error?: string}>}
      * @private
      */
-    async _generatePreviewFiles() {
+    async _generatePreviewFiles({ forOpaqueSnapshot = false } = {}) {
         const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
         if (!yjsBridge?.documentManager) {
             throw new Error('Yjs document manager not available');
@@ -826,13 +1145,127 @@ export default class PreviewPanelManager {
         const selectedTheme = eXeLearning.app?.themes?.selected;
         const theme = selectedTheme?.id || selectedTheme?.name || 'base';
 
-        return SharedExporters.generatePreviewForSW(
+        // The opaque snapshot (self-hosted OR embedded, taken only once active
+        // content is enabled) retains the authored content byte-identical while
+        // keeping DETECTION running (report-only policy) so the indicator stays
+        // fresh. Every same-origin surface — including the DEFAULT embedded
+        // preview — gets the state-aware policy, which sanitizes author active
+        // content but keeps whitelisted external videos playable inline.
+        const previewContentPolicy = forOpaqueSnapshot
+            ? createReportingPreviewContentPolicy()
+            : createPreviewContentPolicy(this._projectId());
+
+        const result = await SharedExporters.generatePreviewForSW(
             yjsBridge.documentManager,
             null, // assetCache (legacy)
             yjsBridge.resourceFetcher || null,
             yjsBridge.assetManager || null,
-            { theme },
+            {
+                theme,
+                previewContentPolicy,
+            },
         );
+        this._updateActiveContentIndicator(result.activeContentReport);
+        return result;
+    }
+
+    _projectId() {
+        return eXeLearning?.app?.project?._yjsBridge?.documentManager?.projectId ?? null;
+    }
+
+    _updateActiveContentIndicator(report) {
+        this._activeContentReport = report || null;
+        const visible = Boolean(report?.activeContentFound);
+        const enabled = visible && isActivePreviewContentEnabled(this._projectId());
+        const label = enabled
+            ? _('External scripts are active — click to block them again')
+            : _('External scripts are disabled in the editor preview');
+        const shortLabel = enabled
+            ? _('External scripts active')
+            : _('Allow external scripts');
+
+        for (const button of [this.activeContentButton, this.pinnedActiveContentButton]) {
+            if (!button) continue;
+            button.hidden = !visible;
+            button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+            button.setAttribute('aria-label', label);
+            button.setAttribute('title', label);
+            button.classList.toggle('is-active', enabled);
+            const labelEl = button.querySelector('.active-content-label');
+            if (labelEl) labelEl.textContent = shortLabel;
+        }
+    }
+
+    _showActiveContentDialog() {
+        if (!this._activeContentReport?.activeContentFound) return;
+        const modal = eXeLearning?.app?.modals?.confirm;
+        if (!modal) return;
+
+        const projectId = this._projectId();
+        const enabled = isActivePreviewContentEnabled(projectId);
+        const transport = this._previewTransport();
+        const electronRestricted = transport === PREVIEW_TRANSPORTS.ELECTRON_BLOCKED;
+
+        // The dialog reuses the toolbar pill's shield so both read as the same
+        // control: amber shield-with-"!" to allow, teal shield-with-check to
+        // block. The primary button repeats the shield in currentColor.
+        const SHIELD = 'M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z';
+        const titleIcon = enabled
+            ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#078e8e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-inline-end:6px" aria-hidden="true"><path d="${SHIELD}"/><polyline points="9 11.5 11.2 13.7 15.2 9.3"/></svg>`
+            : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c68a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px;margin-inline-end:6px" aria-hidden="true"><path d="${SHIELD}"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="15.4" r="0.6" fill="#c68a1a" stroke="none"/></svg>`;
+        // Confirm-button glyph: crossed shield to block, check shield to allow.
+        const confirmIcon = enabled
+            ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-inline-end:6px" aria-hidden="true"><path d="${SHIELD}"/><line x1="4.5" y1="4" x2="19.5" y2="20"/></svg>`
+            : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-inline-end:6px" aria-hidden="true"><path d="${SHIELD}"/><polyline points="9 11.5 11.2 13.7 15.2 9.3"/></svg>`;
+
+        let title;
+        let body;
+        let confirmButtonText;
+        let confirmHasIcon = true;
+        if (electronRestricted) {
+            title = _('External scripts blocked in the preview');
+            body =
+                `<p>${_('This project contains external scripts, disabled for security in the editor preview.')}</p>` +
+                `<p>${_('External scripts cannot be allowed in the desktop application because the editor has access to native application features.')}</p>`;
+            confirmButtonText = _('Keep blocked');
+            confirmHasIcon = false;
+        } else if (enabled) {
+            title = _('Block external scripts in the preview');
+            body =
+                `<p>${_('External scripts are allowed in this preview.')}</p>` +
+                `<p>${_('You can block them again at any time. Remember: allowing them was a trust decision and does not make the content safe.')}</p>`;
+            confirmButtonText = _('Block external scripts');
+        } else {
+            title = _('Allow external scripts in the preview');
+            body =
+                `<p>${_('This project contains external scripts, disabled for security in the editor preview.')}</p>` +
+                `<p>${_('Allowing them lets that code access the data available to the preview. This is a trust decision and does not make the content safe. Allow them only if you trust the project.')}</p>`;
+            confirmButtonText = _('Allow external scripts');
+            if (transport === PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE) {
+                body += `<p>${_('The preview will reload in an isolated context that cannot access your editor session. External videos (YouTube, Vimeo) will offer an "open in a new tab" link while scripts are allowed.')}</p>`;
+            } else if (transport === PREVIEW_TRANSPORTS.CONSENT_SAME_ORIGIN) {
+                body += `<p>${_('This version of the editor cannot isolate the preview, so the code will run with the same access as the editor itself. Enable it only for projects you fully trust.')}</p>`;
+            }
+        }
+
+        modal.show({
+            title: titleIcon + title,
+            body,
+            confirmButtonText: confirmHasIcon ? confirmIcon + confirmButtonText : confirmButtonText,
+            cancelButtonText: _('Cancel'),
+            focusCancelButton: !enabled,
+            confirmExec: async () => {
+                if (enabled || electronRestricted) {
+                    disableActivePreviewContent(projectId);
+                    this._disposeSelfHostedSnapshot();
+                    this._clearOpaqueSandbox();
+                } else {
+                    enableActivePreviewContent(projectId);
+                }
+                this._updateActiveContentIndicator(this._activeContentReport);
+                await this.refresh();
+            },
+        });
     }
 
     /**
@@ -1343,6 +1776,28 @@ export default class PreviewPanelManager {
      * Opens the SW-served preview in a new tab
      */
     async extractToNewTab() {
+        // Opaque-enabled: only the capability URL may carry unfiltered content
+        // (its sandbox-first CSP keeps the new tab opaque too). Embedded uses the
+        // host snapshot, self-hosted its own; never hand unfiltered files to the
+        // same-origin SW here. If the snapshot is not ready, fail quietly — do
+        // NOT throw, or the click handler surfaces an uncaught rejection.
+        if (this._previewTrustState() === PREVIEW_TRUST_STATES.OPAQUE_ENABLED) {
+            const snapshot = this._isEmbeddedPreview()
+                ? this._embeddedPreviewSnapshot
+                : this._selfHostedPreviewSnapshot;
+            const previewUrl = snapshot?.previewUrl;
+            if (!previewUrl) {
+                Logger.warn('[PreviewPanel] Opaque preview not ready; cannot open in a new tab');
+                return;
+            }
+            window.open(previewUrl, '_blank', 'noopener');
+            return;
+        }
+        // Filtered (default) — INCLUDING the embedded filtered preview: the
+        // sanitized content is served same-origin by the SW at /viewer/, so we
+        // open that (the same URL the panel iframe uses). This is why the
+        // embedded filtered preview no longer needs an opaque snapshot to be
+        // "opened in a new tab".
         try {
             Logger.log('[PreviewPanel] Extracting preview to new tab...');
 
@@ -1355,14 +1810,13 @@ export default class PreviewPanelManager {
             // Refresh SW content before opening new tab
             await this.refreshWithServiceWorker();
 
-            // Build the viewer URL - derive base path from current URL for subdirectory deployments
-            const pathname = window.location.pathname;
-            // Remove trailing 'workarea', 'workarea.html', or 'workarea/' to get base directory
-            // Also remove any trailing slash to avoid double slashes
-            const basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
+            // Same viewer URL the panel iframe uses (loadPreviewFromServiceWorker):
+            // getBasePath() resolves both the standalone layout and the plugin's
+            // static base, so the old /workarea pathname hack is gone.
+            const basePath = eXeLearning?.app?.getBasePath?.() || '';
             // Preview makes the Teacher Mode toggle available (the author is the teacher);
             // see loadPreviewFromServiceWorker(). Exported packages stay hidden by default.
-            const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html?exe-teacher=1`;
+            const viewerUrl = `${basePath}/viewer/index.html?exe-teacher=1`;
 
             // Open in new tab
             const newTab = window.open(viewerUrl, '_blank');
@@ -1572,6 +2026,15 @@ export default class PreviewPanelManager {
             this._pdfEmbedBlobUrls.forEach(url => URL.revokeObjectURL(url));
             this._pdfEmbedBlobUrls = null;
         }
+
+        this._disposeEmbeddedSnapshot();
+
+        this._disposeSelfHostedSnapshot();
+        this._selfHostedPreviewSnapshot = null;
+
+        this._embedHost?.stop();
+        this._embedHost = null;
+        this._embedHostIframe = null;
 
         Logger.log('[PreviewPanel] Destroyed');
     }
