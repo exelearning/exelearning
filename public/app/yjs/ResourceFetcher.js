@@ -332,7 +332,7 @@ class ResourceFetcher {
     try {
       const manifestUrl = `${this.apiBase}/bundle/manifest`;
       console.log('[ResourceFetcher] Loading bundle manifest from:', manifestUrl);
-      const response = await fetch(manifestUrl);
+      const response = await fetch(manifestUrl, { cache: 'no-cache' });
       if (response.ok) {
         this.bundleManifest = await response.json();
         this.bundlesAvailable = true;
@@ -383,11 +383,24 @@ class ResourceFetcher {
   }
 
   /**
+   * Version an application resource path (without query or fragment) for the
+   * HTTP cache before its contents can be persisted under a new IndexedDB key.
+   * @param {string} path
+   * @param {string|number} [version] - Bundle hash or site theme updatedAt
+   * @returns {string}
+   */
+  getResourceUrl(path, version) {
+    return `${path}?v=${encodeURIComponent(version || this.version)}`;
+  }
+
+  /**
    * Fetch ZIP bundle from server
-   * @param {string} bundleUrl - URL to the ZIP bundle
+   * @param {string} bundleUrl - Path to the ZIP bundle
+   * @param {string|number} [version] - Bundle hash or site theme updatedAt
    * @returns {Promise<Map<string, Blob>|null>} Extracted files or null on failure
    */
-  async fetchBundle(bundleUrl) {
+  async fetchBundle(bundleUrl, version) {
+    bundleUrl = this.getResourceUrl(bundleUrl, version);
     try {
       Logger.log(`[ResourceFetcher] Fetching bundle: ${bundleUrl}`);
       const response = await fetch(bundleUrl);
@@ -421,7 +434,7 @@ class ResourceFetcher {
    */
   async loadStaticManifest() {
     try {
-      const manifestUrl = `${this.basePath}/bundles/manifest.json`;
+      const manifestUrl = this.getResourceUrl(`${this.basePath}/bundles/manifest.json`);
       const response = await fetch(manifestUrl);
       if (response.ok) {
         this.bundleManifest = await response.json();
@@ -464,7 +477,7 @@ class ResourceFetcher {
 
     const results = await Promise.all(entries.map(async ({ s, t }) => {
       try {
-        const response = await fetch(`${this.basePath}/${s}`);
+        const response = await fetch(this.getResourceUrl(`${this.basePath}/${s}`));
         if (response.ok) {
           const buffer = await response.arrayBuffer();
           return { t, blob: new Blob([buffer], { type: mimeTypeForPath(t) }) };
@@ -541,7 +554,10 @@ class ResourceFetcher {
     const bundleUrl = isServerTheme
       ? `${this.basePath}/api/resources/bundle/theme/${dirName}`
       : `${this.basePath}/bundles/themes/${dirName}.zip`;
-    const response = await fetch(bundleUrl);
+    const bundleVersion = isServerTheme
+      ? theme.updatedAt || this.getThemeVersion(dirName)
+      : this.bundleManifest?.themes?.[dirName]?.hash;
+    const response = await fetch(this.getResourceUrl(bundleUrl, bundleVersion));
     if (!response.ok) {
       throw new Error(`Theme bundle not found: ${response.status}`);
     }
@@ -641,14 +657,10 @@ class ResourceFetcher {
     }
     // 6. Try ZIP bundle (faster, single request)
     else if (this.bundlesAvailable) {
-      // Include the theme's updated_at as a query param so re-uploads bypass the
-      // browser HTTP cache (the server ignores the param and just serves the
-      // current bundle).
-      const bundleUrl = themeUpdatedAt
-        ? `${this.apiBase}/bundle/theme/${themeName}?v=${themeUpdatedAt}`
-        : `${this.apiBase}/bundle/theme/${themeName}`;
+      const bundleUrl = `${this.apiBase}/bundle/theme/${themeName}`;
+      const bundleVersion = themeUpdatedAt || this.bundleManifest?.themes?.[themeName]?.hash;
       console.log(`[ResourceFetcher] 📦 Fetching theme '${themeName}' via bundle:`, bundleUrl);
-      themeFiles = await this.fetchBundle(bundleUrl);
+      themeFiles = await this.fetchBundle(bundleUrl, bundleVersion);
       if (themeFiles && themeFiles.size > 0) {
         console.log(`[ResourceFetcher] ✅ Theme '${themeName}' loaded from bundle (${themeFiles.size} files)`);
       }
@@ -906,7 +918,7 @@ class ResourceFetcher {
    */
   async loadIdevicesBundle() {
     const bundleUrl = `${this.apiBase}/bundle/idevices`;
-    const allFiles = await this.fetchBundle(bundleUrl);
+    const allFiles = await this.fetchBundle(bundleUrl, this.bundleManifest?.idevices?.hash);
 
     if (!allFiles || allFiles.size === 0) {
       this.cache.set('idevices:all', new Map()); // Mark as tried
@@ -1075,7 +1087,7 @@ class ResourceFetcher {
     // 4. Try ZIP bundle (faster, single request)
     else if (this.bundlesAvailable) {
       const bundleUrl = `${this.apiBase}/bundle/libs`;
-      libFiles = await this.fetchBundle(bundleUrl);
+      libFiles = await this.fetchBundle(bundleUrl, libsHash);
     }
 
     // 5. Fallback to individual file fetches (server mode only)
@@ -1294,7 +1306,7 @@ class ResourceFetcher {
 
     // In static mode, SCORM files are in app/common/scorm/
     for (const fileName of scormFileNames) {
-      const url = `${this.basePath}/app/common/scorm/${fileName}`;
+      const url = this.getResourceUrl(`${this.basePath}/app/common/scorm/${fileName}`);
       try {
         const response = await fetch(url);
         if (response.ok) {
@@ -1413,7 +1425,7 @@ class ResourceFetcher {
 
     for (const url of possiblePaths) {
       try {
-        const response = await fetch(url);
+        const response = await fetch(this.isStaticMode ? this.getResourceUrl(url) : url);
         if (response.ok) {
           const blob = await response.blob();
           this.cache.set(cacheKey, blob);
@@ -1555,13 +1567,13 @@ class ResourceFetcher {
    */
   async fetchI18nFile(language) {
     const lang = (language || 'en').split('-')[0];
-    const url = `${this.basePath}/app/common/i18n/common_i18n.${lang}.js`;
+    const url = this.getResourceUrl(`${this.basePath}/app/common/i18n/common_i18n.${lang}.js`);
     try {
       const response = await fetch(url);
       if (!response.ok) {
         // Fall back to English
         if (lang !== 'en') {
-          const enUrl = `${this.basePath}/app/common/i18n/common_i18n.en.js`;
+          const enUrl = this.getResourceUrl(`${this.basePath}/app/common/i18n/common_i18n.en.js`);
           try {
             const enResponse = await fetch(enUrl);
             if (enResponse.ok) return enResponse.text();
@@ -1723,7 +1735,7 @@ class ResourceFetcher {
     const versionPrefix = this.isStaticMode ? '' : `/${this.version}`;
     const logoUrl = `${this.basePath}${versionPrefix}/app/common/exe_powered_logo/exe_powered_logo.png`;
     try {
-      const response = await fetch(logoUrl);
+      const response = await fetch(this.isStaticMode ? this.getResourceUrl(logoUrl) : logoUrl);
       if (response.ok) {
         const blob = await response.blob();
         this.cache.set(cacheKey, blob);
@@ -1779,7 +1791,7 @@ class ResourceFetcher {
     // 4. Try ZIP bundle
     else if (this.bundlesAvailable) {
       const bundleUrl = `${this.apiBase}/bundle/content-css`;
-      cssFiles = await this.fetchBundle(bundleUrl);
+      cssFiles = await this.fetchBundle(bundleUrl, this.bundleManifest?.contentCss?.hash);
     }
 
     // 5. Fallback to individual file fetches (server mode only)
@@ -1922,7 +1934,7 @@ class ResourceFetcher {
 
     // Fetch all font files in parallel
     const fetchPromises = files.map(async filename => {
-      const url = `${basePath}/${filename}`;
+      const url = this.getResourceUrl(`${basePath}/${filename}`);
       try {
         const response = await fetch(url);
         if (response.ok) {
