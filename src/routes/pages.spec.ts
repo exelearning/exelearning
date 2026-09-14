@@ -2030,6 +2030,61 @@ describe('Pages Routes', () => {
             expect(res.headers.get('content-type')).toContain('text/html');
         });
 
+        it('masks stored AI API keys in the admin view-model (never the raw value)', async () => {
+            mockUsers.set(12, {
+                id: 12,
+                email: 'admin3@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            // db mock whose getAllSettings (app_settings) returns stored AI secrets.
+            const aiSecretDb = {
+                selectFrom: (table: string) => ({
+                    selectAll: () => ({
+                        execute: async () =>
+                            table === 'app_settings'
+                                ? [
+                                      { key: 'AI_AZURE_API_KEY', value: 'stored-secret-value', type: 'string' },
+                                      { key: 'AI_COMPAT_API_KEY', value: 'stored-secret-value', type: 'string' },
+                                  ]
+                                : [],
+                    }),
+                }),
+            } as any;
+
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+            const customApp = new Elysia().use(
+                createPagesRoutes({ ...mockDeps, db: aiSecretDb, template: customTemplate }),
+            );
+
+            const jwt = await import('@elysiajs/jwt');
+            const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 12,
+                email: 'admin3@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            const res = await customApp.handle(
+                new Request('http://localhost/admin', { headers: { Cookie: `auth=${token}` } }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(templateData).not.toBeNull();
+            expect(templateData.adminSettings.ai.azure_api_key_set).toBe(true);
+            expect(templateData.adminSettings.ai.compat_api_key_set).toBe(true);
+            // The raw secret must never reach the template/browser.
+            expect(JSON.stringify(templateData.adminSettings.ai)).not.toContain('stored-secret-value');
+        });
+
         it('should detect locale from Accept-Language header', async () => {
             let templateData: any = null;
             const customTemplate: PagesTemplateDeps = {

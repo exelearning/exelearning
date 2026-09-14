@@ -32,6 +32,7 @@ import { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES } from './static-bundl
 import { buildConfigParams } from '../src/routes/config-params';
 import { STATIC_ROUTES } from '../src/routes/api-routes';
 import { buildParameterResponse } from '../src/routes/parameter-response';
+import { parseAiConfig, toPublicAiConfig } from '../src/services/ai';
 import { VOID_ELEMENTS } from '../src/shared/utils/html-constants';
 
 // Re-export config for external use
@@ -862,18 +863,27 @@ export function buildApiParameters() {
         THEMES[theme.dirName] = theme.title || theme.dirName;
     }
 
+    // Static/offline builds cannot run a managed (server-side) provider, so AI is
+    // forced to the external mode and reflects only the build-time enable flag.
+    // No secrets are ever embedded in the bundle.
+    const staticAi = toPublicAiConfig(
+        parseAiConfig({ AI_FEATURES_ENABLED: process.env.AI_FEATURES_ENABLED, AI_PROVIDER: 'external' }),
+    );
+
     const configParams = buildConfigParams({
         TRANS_PREFIX: '',
         LICENSES,
         PACKAGE_LOCALES,
         LOCALES: LOCALE_NAMES,
         THEMES,
+        INCLUDE_DEFAULT_AI: staticAi.enabled,
     });
 
     return buildParameterResponse({
         configParams,
         routes: STATIC_ROUTES,
         disableThemeEdition: true,
+        ai: staticAi,
     });
 }
 
