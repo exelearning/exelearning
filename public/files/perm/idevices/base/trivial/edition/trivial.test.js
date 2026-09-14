@@ -302,6 +302,40 @@ describe('trivial iDevice edition lifecycle', () => {
             expect(ready).toHaveBeenCalledTimes(1);
             ready.mockRestore();
         });
+
+        it('restores the global API ready callback on teardown', () => {
+            const previous = vi.fn();
+            window.onYouTubeIframeAPIReady = previous;
+            global.YT = undefined;
+            window.YT = undefined;
+            document.body.appendChild(document.createElement('script'));
+
+            $exeDevice.loadYoutubeApi();
+            expect(window.onYouTubeIframeAPIReady).not.toBe(previous);
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(window.onYouTubeIframeAPIReady).toBe(previous);
+            expect(previous).not.toHaveBeenCalled();
+        });
+
+        /**
+         * A later edition owns the global by the time this one closes, so
+         * putting the old value back would undo the newer registration.
+         */
+        it('leaves a callback installed after it alone', () => {
+            global.YT = undefined;
+            window.YT = undefined;
+            document.body.appendChild(document.createElement('script'));
+
+            $exeDevice.loadYoutubeApi();
+            const laterCallback = vi.fn();
+            window.onYouTubeIframeAPIReady = laterCallback;
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(window.onYouTubeIframeAPIReady).toBe(laterCallback);
+        });
     });
 
     describe('local video element', () => {

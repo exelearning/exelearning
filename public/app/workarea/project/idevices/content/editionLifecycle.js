@@ -105,6 +105,22 @@ function buildNamespace(id) {
 }
 
 /**
+ * Error used to settle work that teardown interrupted.
+ *
+ * It carries the `AbortError` name `fetch()` rejects an aborted request with,
+ * so a caller that already recognises an aborted download needs no second
+ * branch for an interrupted file read.
+ *
+ * @param {String} name iDevice type name, for diagnostics.
+ * @returns {Error}
+ */
+function editionClosedError(name) {
+    const error = new Error(`The ${name} edition closed before the operation finished`);
+    error.name = 'AbortError';
+    return error;
+}
+
+/**
  * Resolve the jQuery factory lazily: edition scripts always run with jQuery
  * loaded, but the workarea bundle must not hard-depend on it.
  *
@@ -138,6 +154,8 @@ export default class EditionLifecycle {
         this.controller = typeof AbortController === 'function' ? new AbortController() : null;
 
         this.disposers = [];
+        /** Single-occupancy resource slots, see `ownMedia()`. */
+        this.slots = new Map();
         this.timeouts = new Set();
         this.intervals = new Set();
         this.animationFrames = new Set();
@@ -275,6 +293,43 @@ export default class EditionLifecycle {
     }
 
     /**
+     * Read a file through an owned `FileReader`, as a promise that **always**
+     * settles.
+     *
+     * `ownFileReader()` aborts an in-flight read and `bind()` keeps a queued
+     * `loadend` from touching a closed edition, but neither of them settles a
+     * promise wrapped around the reader: `abort()` fires no `error` event, and
+     * a bound handler no-ops. A caller awaiting such a read would hang for the
+     * lifetime of the page, holding the file, the reader and its own
+     * continuation. Teardown rejects instead, exactly as an aborted `fetch()`
+     * on this lifecycle's `signal` does.
+     *
+     * @param {Blob} file
+     * @param {String} [method] `FileReader` read method to use.
+     * @returns {Promise<*>} Resolves with the reader's result.
+     */
+    readFile(file, method = 'readAsText') {
+        return new Promise((resolve, reject) => {
+            if (!this.isActive()) {
+                reject(editionClosedError(this.name));
+                return;
+            }
+            const reader = new FileReader();
+            if (typeof reader[method] !== 'function') {
+                reject(new TypeError(`FileReader has no ${method}() method`));
+                return;
+            }
+            this.ownFileReader(reader);
+            // Rejecting a promise that already settled is a no-op, so this
+            // disposer needs no unregistering when the read finishes normally.
+            this.own(() => reject(editionClosedError(this.name)));
+            reader.onload = this.bind((event) => resolve(event && event.target ? event.target.result : undefined));
+            reader.onerror = this.bind(() => reject(reader.error || new Error('Could not read the file')));
+            reader[method](file);
+        });
+    }
+
+    /**
      * Own a media element so playback and its network activity stop when the
      * edition closes. Clearing the source and calling `load()` is what actually
      * releases the stream; `pause()` alone does not.
@@ -283,14 +338,32 @@ export default class EditionLifecycle {
      * `load()` simply re-selects one of them and starts the download again,
      * which is the opposite of what teardown wants.
      *
+     * `slot` names a single-occupancy place in the edition: owning a new
+     * element under a slot releases whatever that slot held. Editions rebuild
+     * the audio preview on every click, so without it `playSound()` leaves one
+     * more live `Audio` — and one more disposer — behind on each click, for as
+     * long as the editor stays open.
+     *
      * @param {HTMLMediaElement} media
+     * @param {String} [slot] Single-occupancy slot to own the element under.
      * @returns {Function}
      */
-    ownMedia(media) {
+    ownMedia(media, slot) {
         if (!media || typeof media.pause !== 'function') {
             return () => undefined;
         }
-        return this.own(() => {
+        if (slot) {
+            const held = this.slots.get(slot);
+            // Re-owning what the slot already holds must do nothing: releasing
+            // first would stop the very element the edition asked to keep.
+            if (held && held.media === media) return held.release;
+            if (held) held.release();
+        }
+        // Declared before `own()`, which runs the disposer at once when the
+        // edition is already closed.
+        const entry = { media, release: null };
+        entry.release = this.own(() => {
+            if (slot && this.slots.get(slot) === entry) this.slots.delete(slot);
             media.pause();
             media.removeAttribute('src');
             if (typeof media.querySelectorAll === 'function') {
@@ -298,6 +371,8 @@ export default class EditionLifecycle {
             }
             if (typeof media.load === 'function') media.load();
         });
+        if (slot && this.isActive()) this.slots.set(slot, entry);
+        return entry.release;
     }
 
     /*******************************************************************************

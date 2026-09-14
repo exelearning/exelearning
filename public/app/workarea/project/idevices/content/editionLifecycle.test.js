@@ -689,6 +689,203 @@ describe('EditionLifecycle', () => {
             expect(media.querySelectorAll('source')).toHaveLength(0);
             expect(media.load).toHaveBeenCalledTimes(1);
         });
+
+        it('tolerates a value that is not a media element', () => {
+            expect(() => lifecycle.ownMedia(null, 'preview')).not.toThrow();
+            expect(lifecycle.slots.has('preview')).toBe(false);
+        });
+
+        /**
+         * Editions rebuild the audio preview on every click. Without a slot,
+         * each click leaves one more live `Audio` and one more disposer behind
+         * until the editor closes.
+         */
+        it('releases the element a slot already held', () => {
+            const first = document.createElement('audio');
+            first.setAttribute('src', 'first.mp3');
+            first.pause = vi.fn();
+            first.load = vi.fn();
+            const second = document.createElement('audio');
+            second.setAttribute('src', 'second.mp3');
+            second.pause = vi.fn();
+            second.load = vi.fn();
+
+            lifecycle.ownMedia(first, 'preview');
+            lifecycle.ownMedia(second, 'preview');
+
+            expect(first.pause).toHaveBeenCalledTimes(1);
+            expect(first.hasAttribute('src')).toBe(false);
+            expect(second.pause).not.toHaveBeenCalled();
+            expect(lifecycle.disposers).toHaveLength(1);
+        });
+
+        it('still releases the element left in a slot on teardown', () => {
+            const media = document.createElement('audio');
+            media.setAttribute('src', 'clip.mp3');
+            media.pause = vi.fn();
+            media.load = vi.fn();
+            lifecycle.ownMedia(media, 'preview');
+
+            lifecycle.destroy();
+
+            expect(media.pause).toHaveBeenCalledTimes(1);
+            expect(media.hasAttribute('src')).toBe(false);
+        });
+
+        /**
+         * Releasing first would stop the very clip the edition just asked to
+         * keep, so re-owning the same element under its own slot does nothing.
+         */
+        it('leaves the element alone when the same one is re-owned', () => {
+            const media = document.createElement('audio');
+            media.setAttribute('src', 'clip.mp3');
+            media.pause = vi.fn();
+            media.load = vi.fn();
+
+            lifecycle.ownMedia(media, 'preview');
+            lifecycle.ownMedia(media, 'preview');
+
+            expect(media.pause).not.toHaveBeenCalled();
+            expect(media.hasAttribute('src')).toBe(true);
+            expect(lifecycle.disposers).toHaveLength(1);
+        });
+
+        it('keeps one element per slot name', () => {
+            const clip = document.createElement('audio');
+            clip.pause = vi.fn();
+            clip.load = vi.fn();
+            const intro = document.createElement('audio');
+            intro.pause = vi.fn();
+            intro.load = vi.fn();
+
+            lifecycle.ownMedia(clip, 'clip');
+            lifecycle.ownMedia(intro, 'intro');
+
+            expect(clip.pause).not.toHaveBeenCalled();
+            expect(intro.pause).not.toHaveBeenCalled();
+            expect(lifecycle.disposers).toHaveLength(2);
+        });
+
+        it('stacks a disposer per call when no slot is given', () => {
+            const first = document.createElement('audio');
+            first.pause = vi.fn();
+            first.load = vi.fn();
+            const second = document.createElement('audio');
+            second.pause = vi.fn();
+            second.load = vi.fn();
+
+            lifecycle.ownMedia(first);
+            lifecycle.ownMedia(second);
+
+            expect(lifecycle.disposers).toHaveLength(2);
+        });
+
+        /**
+         * `own()` runs a late registration at once rather than leaking it, and
+         * a slot must not get in the way of that.
+         */
+        it('releases an element handed to a slot after teardown', () => {
+            const media = document.createElement('audio');
+            media.setAttribute('src', 'clip.mp3');
+            media.pause = vi.fn();
+            media.load = vi.fn();
+            lifecycle.destroy();
+
+            lifecycle.ownMedia(media, 'preview');
+
+            expect(media.pause).toHaveBeenCalledTimes(1);
+            expect(media.hasAttribute('src')).toBe(false);
+            expect(lifecycle.slots.has('preview')).toBe(false);
+        });
+
+        it('frees the slot when the element is released early', () => {
+            const first = document.createElement('audio');
+            first.pause = vi.fn();
+            first.load = vi.fn();
+            const release = lifecycle.ownMedia(first, 'preview');
+
+            release();
+
+            expect(lifecycle.slots.has('preview')).toBe(false);
+            expect(lifecycle.disposers).toHaveLength(0);
+        });
+    });
+
+    /*******************************************************************************
+     * PROMISED FILE READS
+     *******************************************************************************/
+
+    describe('readFile()', () => {
+        it('resolves with the reader result', async () => {
+            const file = new Blob(['hello'], { type: 'text/plain' });
+
+            await expect(lifecycle.readFile(file, 'readAsText')).resolves.toBe('hello');
+        });
+
+        it('reads through the method it is given', async () => {
+            const file = new Blob(['hello'], { type: 'text/plain' });
+
+            const result = await lifecycle.readFile(file, 'readAsArrayBuffer');
+
+            expect(result.byteLength).toBe(5);
+        });
+
+        it('defaults to reading text', async () => {
+            const file = new Blob(['hello'], { type: 'text/plain' });
+
+            await expect(lifecycle.readFile(file)).resolves.toBe('hello');
+        });
+
+        /**
+         * `abort()` fires no `error` event and a bound `loadend` no-ops, so
+         * without this the caller awaiting the read would hang forever, holding
+         * the file, the reader and its own continuation.
+         */
+        it('rejects a read that teardown interrupts', async () => {
+            const file = new Blob(['hello'], { type: 'text/plain' });
+            const pending = lifecycle.readFile(file, 'readAsText');
+
+            lifecycle.destroy();
+
+            await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+        });
+
+        it('rejects at once when the edition is already closed', async () => {
+            lifecycle.destroy();
+
+            await expect(lifecycle.readFile(new Blob(['hello']), 'readAsText')).rejects.toMatchObject({
+                name: 'AbortError',
+            });
+        });
+
+        it('leaves a completed read settled when teardown follows', async () => {
+            const file = new Blob(['hello'], { type: 'text/plain' });
+
+            const result = await lifecycle.readFile(file, 'readAsText');
+            lifecycle.destroy();
+
+            expect(result).toBe('hello');
+        });
+
+        it('rejects an unusable read method instead of hanging', async () => {
+            await expect(lifecycle.readFile(new Blob(['hello']), 'readAsNothing')).rejects.toBeInstanceOf(TypeError);
+        });
+
+        it('rejects when the reader fails', async () => {
+            const reader = { readyState: 1, abort: vi.fn(), error: new Error('boom'), readAsText() {} };
+            const originalFileReader = window.FileReader;
+            window.FileReader = function () {
+                return reader;
+            };
+
+            try {
+                const pending = lifecycle.readFile(new Blob(['hello']), 'readAsText');
+                reader.onerror();
+                await expect(pending).rejects.toThrow('boom');
+            } finally {
+                window.FileReader = originalFileReader;
+            }
+        });
     });
 
     /*******************************************************************************

@@ -1576,7 +1576,7 @@ var $exeDevice = {
         let selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.$lifecycle.ownMedia($exeDevice.playerAudio);
+        $exeDevice.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
         $exeDevice.playerAudio.play().catch(error => console.error('Error playing audio:', error));
     },
 

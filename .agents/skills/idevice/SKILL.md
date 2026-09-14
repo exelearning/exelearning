@@ -113,10 +113,24 @@ init: function (element, data) {
     this.$lifecycle.ownFileReader(reader);            // abort an in-flight read
     this.$lifecycle.own(() => widget.teardown());     // anything else
 
-    // Abortable requests.
+    // Abortable requests, and file reads that always settle.
     fetch(url, { signal: this.$lifecycle.signal });
+    const text = await this.$lifecycle.readFile(file, 'readAsText');
 }
 ```
+
+A resource the edition **rebuilds on every user action** — the audio preview, say — must name a
+slot, or each action leaves one more live resource and one more disposer behind until the editor
+closes. Owning into a slot releases whatever that slot held:
+
+```javascript
+this.$lifecycle.ownMedia(new Audio(url), 'previewAudio');
+```
+
+Wrapping a `FileReader` in a promise by hand is the one case the primitives get wrong on their own:
+`abort()` fires no `error` event and a bound `loadend` no-ops, so the promise never settles and the
+caller awaits it for the lifetime of the page. Use `readFile(file, method)`, which rejects with an
+`AbortError` on teardown exactly as an aborted `fetch()` does.
 
 **Never dereference the global inside a deferred callback.** When it finally runs, `$exeDevice`
 usually holds a valid *different* device, so a `?.` guard passes and the callback edits the wrong

@@ -243,6 +243,22 @@ test.describe('iDevice edition lifecycle (#2293)', () => {
         const globals = await readEditionGlobals(page);
         expect(globals.lifecycle).toBe(false);
 
+        // Teardown touches state the whole workarea shares — the page loading
+        // overlay an upload borrows, and the scroll lock a modal editor sets.
+        // Leaving either behind covers the page the switch just loaded. The
+        // overlay is legitimately up while that page loads, so wait for it to
+        // come down rather than sampling mid-switch.
+        await expect(
+            page.locator('#load-screen-node-content'),
+            'the page loading overlay stayed on screen',
+        ).toHaveAttribute('data-visible', 'false', { timeout: 15000 });
+        const shared = await page.evaluate(() => ({
+            scrollLocked: document.body.classList.contains('modal-open'),
+            backdrops: document.querySelectorAll('.modal-backdrop').length,
+        }));
+        expect(shared.scrollLocked, 'teardown left the page scroll-locked').toBe(false);
+        expect(shared.backdrops, 'teardown left a modal backdrop behind').toBe(0);
+
         expect(errors, `errors while switching pages:\n${errors.join('\n')}`).toEqual([]);
     });
 });

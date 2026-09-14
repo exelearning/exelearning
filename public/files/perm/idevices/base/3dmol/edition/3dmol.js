@@ -547,37 +547,17 @@ var $exeDevice = {
         );
     },
 
-    // A read still in flight is aborted when the editor closes, and the
-    // callbacks are bound to this edition, so a `loadend` already queued
-    // settles nothing once the form is gone.
+    // The read is owned by the edition: closing the editor aborts it and
+    // rejects the promise, so a caller awaiting a model file is never left
+    // hanging on a form that no longer exists.
     readFileAsText: function (file) {
-        const lifecycle = this.$lifecycle;
-        return new Promise(function (resolve, reject) {
-            const reader = new FileReader();
-            lifecycle.ownFileReader(reader);
-            reader.onload = lifecycle.bind(function (ev) {
-                resolve((ev.target.result || '').toString());
-            });
-            reader.onerror = lifecycle.bind(() => {
-                reject(new Error('Could not read model file as text'));
-            });
-            reader.readAsText(file);
-        });
+        return this.$lifecycle
+            .readFile(file, 'readAsText')
+            .then((result) => (result || '').toString());
     },
 
     readFileAsArrayBuffer: function (file) {
-        const lifecycle = this.$lifecycle;
-        return new Promise(function (resolve, reject) {
-            const reader = new FileReader();
-            lifecycle.ownFileReader(reader);
-            reader.onload = lifecycle.bind(function (ev) {
-                resolve(ev.target.result);
-            });
-            reader.onerror = lifecycle.bind(() => {
-                reject(new Error('Could not read model file as binary'));
-            });
-            reader.readAsArrayBuffer(file);
-        });
+        return this.$lifecycle.readFile(file, 'readAsArrayBuffer');
     },
 
     decodeBytesAsText: function (bytes) {

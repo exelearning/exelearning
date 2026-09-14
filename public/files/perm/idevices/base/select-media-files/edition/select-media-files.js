@@ -1265,7 +1265,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
         // Closing the editor must silence the preview and drop its stream.
-        this.$lifecycle.ownMedia($exeDevice.playerAudio);
+        this.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
         $exeDevice.playerAudio
             .play()
             .catch((error) => console.error('Error playing audio:', error));

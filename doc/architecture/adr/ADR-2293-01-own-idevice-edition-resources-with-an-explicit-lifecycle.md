@@ -210,7 +210,13 @@ change than the defect. The #2278 guards are kept.
 - **Speculative API.** Migrating the scripts is the experiment that says which
   helpers earn their place; those that ended it unused were removed. A helper is
   justified only when it encodes a cleanup recipe a bare `own()` disposer would
-  get wrong at each site — as `ownMedia()` and `ownFileReader()` do.
+  get wrong at each site — as `ownMedia()` and `ownFileReader()` do. Review added
+  two more on the same test: `readFile()`, because `abort()` fires no `error`
+  event and a bound `loadend` no-ops, so a promise wrapped around a reader by
+  hand never settles and its caller awaits it for the lifetime of the page; and
+  the optional slot on `ownMedia()`, because a resource the edition rebuilds on
+  every click — the audio preview — otherwise leaves one more live element and
+  one more disposer behind per click.
 - **Over-eager teardown.** Emptying the form at the wrong moment would destroy
   data the editor still needs. Mitigated by ordering: `$exeDevice.save()` runs in
   `saveIdeviceProcess()` before `loadInitScriptIdevice('export')` reaches

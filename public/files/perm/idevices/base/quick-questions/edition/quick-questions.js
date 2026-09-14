@@ -522,7 +522,7 @@ var $exeDevice = {
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.$lifecycle.ownMedia($exeDevice.playerAudio);
+        $exeDevice.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
         $exeDevice.$lifecycle.addEventListener($exeDevice.playerAudio, 'canplaythrough', function () {
             this.playerAudio.play();
         });

@@ -335,19 +335,10 @@ var $exeDevice = {
      *
      */
     readFile: function (file) {
-        // A read still in flight is aborted when the editor closes, and the
-        // callbacks are bound to this edition, so a `loadend` already queued
-        // cannot feed an image into another iDevice.
-        const lifecycle = this.$lifecycle;
-        return new Promise((resolve, reject) => {
-            let reader = new FileReader();
-            lifecycle.ownFileReader(reader);
-            reader.onload = lifecycle.bind((field) => {
-                resolve(field.target.result);
-            });
-            reader.onerror = lifecycle.bind(reject);
-            reader.readAsDataURL(file);
-        });
+        // The read is owned by the edition: closing the editor aborts it and
+        // rejects the promise, so the image can neither be fed into another
+        // iDevice nor leave `processFile()` awaiting a read that never ends.
+        return this.$lifecycle.readFile(file, 'readAsDataURL');
     },
 
     /**
@@ -382,6 +373,9 @@ var $exeDevice = {
             );
             $exeDevice.addSortableBehaviour(images[images.length - 1]);
         } catch (err) {
+            // Closing the editor rejects the read it interrupted; that is the
+            // expected end of the operation, not a failure worth reporting.
+            if (!this.$lifecycle.isActive()) return;
             console.error('[ImageGallery] Error processing file:', err);
         }
     },

@@ -88,6 +88,33 @@ describe('sort iDevice edition lifecycle', () => {
             expect(FakeAudio.instances).toHaveLength(2);
             FakeAudio.instances.forEach(audio => expect(audio.pause).toHaveBeenCalledTimes(1));
         });
+
+        /**
+         * The preview is rebuilt on every click. Owning each clip in the same
+         * slot keeps one live `Audio` — and one disposer — per edition instead
+         * of one per click, for as long as the author keeps the editor open.
+         */
+        it('releases the previous clip as soon as the next one starts', () => {
+            $exeDevice.playSound('one.mp3');
+            const first = FakeAudio.instances[0];
+
+            $exeDevice.playSound('two.mp3');
+
+            expect(first.pause).toHaveBeenCalledTimes(1);
+            expect(first.removeAttribute).toHaveBeenCalledWith('src');
+            expect(FakeAudio.instances[1].pause).not.toHaveBeenCalled();
+        });
+
+        it('keeps one media disposer however many clips are previewed', () => {
+            $exeDevice.playSound('one.mp3');
+            const afterFirst = $exeDevice.$lifecycle.disposers.length;
+
+            $exeDevice.playSound('two.mp3');
+            $exeDevice.playSound('three.mp3');
+
+            expect($exeDevice.$lifecycle.slots.size).toBe(1);
+            expect($exeDevice.$lifecycle.disposers.length).toBeLessThan(afterFirst + 3);
+        });
     });
 
     describe('upload overlay', () => {
@@ -154,6 +181,52 @@ describe('sort iDevice edition lifecycle', () => {
             $exeDevice.$lifecycle.destroy();
 
             expect(overlay.className).toBe('someone-elses-state');
+        });
+
+        /**
+         * The overlay is the workarea's own page loading screen. Teardown must
+         * undo what this edition did to it, not force it hidden: a page switch
+         * that tears an upload down while the page is loading would otherwise
+         * uncover a page that is not ready yet.
+         */
+        it('puts the overlay back the way the upload found it', () => {
+            openEdition($exeDevice);
+            overlay.className = 'loading';
+            overlay.setAttribute('style', 'z-index: 990;');
+
+            $exeDevice.lockScreen();
+            expect(overlay.style.position).toBe('fixed');
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(overlay.className).toBe('loading');
+            expect(overlay.getAttribute('style')).toBe('z-index: 990;');
+            expect($exeDevice.screenLocked).toBe(false);
+        });
+
+        it('drops the inline styles when the overlay had none', () => {
+            openEdition($exeDevice);
+            overlay.removeAttribute('style');
+
+            $exeDevice.lockScreen();
+            $exeDevice.$lifecycle.destroy();
+
+            expect(overlay.hasAttribute('style')).toBe(false);
+        });
+
+        /**
+         * A second lock during the same upload must not overwrite the state the
+         * first one recorded, or unlocking would restore the locked overlay.
+         */
+        it('keeps the state recorded by the first lock', () => {
+            openEdition($exeDevice);
+            overlay.className = 'hide hidden';
+
+            $exeDevice.lockScreen();
+            $exeDevice.lockScreen();
+            $exeDevice.$lifecycle.destroy();
+
+            expect(overlay.className).toBe('hide hidden');
         });
 
         it('does not run the fade-out timer after the edition closed', () => {

@@ -29,6 +29,8 @@ var $exeDevice = {
     checkAltImage: true,
     playerAudio: '',
     screenLocked: false,
+    /** Overlay state recorded by `lockScreen()`, restored when it unlocks. */
+    loadScreenState: null,
     version: 1.5,
     id: false,
     ci18n: {},
@@ -818,8 +820,19 @@ var $exeDevice = {
     },
 
     lockScreen: function () {
-        let $loadScreen = $('#load-screen-node-content');
-        $loadScreen
+        const loadScreen = document.getElementById('load-screen-node-content');
+        if (!loadScreen) return;
+        // The overlay is the workarea's own page loading screen, not part of
+        // this form. Record the state this upload found it in so unlocking can
+        // hand it back untouched, instead of forcing a hidden overlay on
+        // whatever else may be using it by then.
+        if (!this.screenLocked) {
+            this.loadScreenState = {
+                className: loadScreen.className,
+                style: loadScreen.getAttribute('style') || '',
+            };
+        }
+        $(loadScreen)
             .css({ zIndex: 9999, position: 'fixed', top: 0, left: 0 })
             .removeClass('hide hidden')
             .addClass('loading');
@@ -832,11 +845,13 @@ var $exeDevice = {
      */
     hideLoadScreen: function () {
         this.screenLocked = false;
-        $('#load-screen-node-content')
-            .addClass('hide hidden')
-            .removeClass('loading hidding')
-            .css({ zIndex: 990, position: 'absolute' })
-            .removeAttr('top left');
+        const state = this.loadScreenState;
+        this.loadScreenState = null;
+        const loadScreen = document.getElementById('load-screen-node-content');
+        if (!loadScreen || !state) return;
+        loadScreen.className = state.className;
+        if (state.style) loadScreen.setAttribute('style', state.style);
+        else loadScreen.removeAttribute('style');
     },
 
     unlockScreen: function (delay = 1000) {
@@ -1440,7 +1455,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
         // Closing the editor must silence the preview and drop its stream.
-        this.$lifecycle.ownMedia($exeDevice.playerAudio);
+        this.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
         $exeDevice.playerAudio
             .play()
             .catch((error) => console.error('Error playing audio:', error));

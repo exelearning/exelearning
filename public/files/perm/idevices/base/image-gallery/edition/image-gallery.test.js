@@ -188,10 +188,34 @@ describe('image-gallery iDevice', () => {
       it('aborts a read still in flight when the edition closes', () => {
         const abort = vi.spyOn(window.FileReader.prototype, 'abort');
 
-        $exeDevice.readFile(new Blob(['data']));
+        $exeDevice.readFile(new Blob(['data'])).catch(() => {});
         $exeDevice.$lifecycle.destroy();
 
         expect(abort).toHaveBeenCalledTimes(1);
+      });
+
+      /**
+       * `processFile()` awaits this read. Aborting the reader fires no `error`
+       * event and the bound `loadend` no-ops, so without a rejection the await
+       * would never return and would hold the file for the lifetime of the page.
+       */
+      it('rejects a read that the edition closes mid-flight', async () => {
+        const pending = $exeDevice.readFile(new Blob(['data']));
+
+        $exeDevice.$lifecycle.destroy();
+
+        await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+      });
+
+      it('lets processFile give up quietly when the edition closed mid-read', async () => {
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+        window.eXeLearning = { app: { project: {} } };
+
+        const pending = $exeDevice.processFile(new Blob(['data']));
+        $exeDevice.$lifecycle.destroy();
+        await pending;
+
+        expect(logged).not.toHaveBeenCalled();
       });
     });
 

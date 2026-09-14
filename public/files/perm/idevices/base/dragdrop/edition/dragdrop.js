@@ -903,7 +903,7 @@ var $exeDevice = {
         $exeDevice.playerAudio = new Audio(selectFile);
         // The element is never inserted in the form, so closing the editor
         // would otherwise leave it playing and downloading.
-        lifecycle.ownMedia($exeDevice.playerAudio);
+        lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
         lifecycle.addEventListener($exeDevice.playerAudio, 'canplaythrough', () => {
             $exeDevice?.playerAudio.play();
         });

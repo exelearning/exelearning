@@ -358,23 +358,36 @@ describe('3dmol iDevice edition', () => {
             it('aborts a read still in flight when the edition closes', () => {
                 const abort = vi.spyOn(window.FileReader.prototype, 'abort');
 
-                dmol.readFileAsText(new Blob(['MOL DATA']));
+                dmol.readFileAsText(new Blob(['MOL DATA'])).catch(() => {});
                 dmol.$lifecycle.destroy();
 
                 expect(abort).toHaveBeenCalledTimes(1);
             });
 
-            it('does not settle a read that completes after the edition closed', async () => {
-                let settled = false;
-                const promise = dmol.readFileAsArrayBuffer(new Blob(['MOL DATA'])).then(() => {
-                    settled = true;
-                });
+            /**
+             * Aborting the reader fires no `error` event and the bound
+             * `loadend` no-ops, so the promise would otherwise never settle and
+             * `loadModelFromFile()` would await it for the lifetime of the page.
+             */
+            it('rejects a read that the edition closes mid-flight', async () => {
+                let resolvedWith = 'not-settled';
+                const promise = dmol.readFileAsArrayBuffer(new Blob(['MOL DATA']));
+                promise.then((value) => {
+                    resolvedWith = value;
+                }).catch(() => {});
 
                 dmol.$lifecycle.destroy();
-                await Promise.race([promise, Promise.resolve()]);
-                await new Promise(resolve => setTimeout(resolve, 0));
 
-                expect(settled).toBe(false);
+                await expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+                expect(resolvedWith).toBe('not-settled');
+            });
+
+            it('rejects a text read that the edition closes mid-flight', async () => {
+                const promise = dmol.readFileAsText(new Blob(['MOL DATA']));
+
+                dmol.$lifecycle.destroy();
+
+                await expect(promise).rejects.toMatchObject({ name: 'AbortError' });
             });
         });
 

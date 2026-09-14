@@ -204,8 +204,18 @@ var $exeDevice = {
         if (typeof YT == 'undefined') {
             // The YouTube API script calls this global whenever it finishes
             // loading, which can be long after this edition was closed. Binding
-            // it keeps the callback tied to this instance and inert afterwards.
-            onYouTubeIframeAPIReady = this.$lifecycle.bind(this.youTubeReady);
+            // it keeps the callback tied to this instance and inert afterwards,
+            // and teardown puts back whatever was there before — unless a later
+            // edition has already claimed the global, which must not be undone.
+            const lifecycle = this.$lifecycle;
+            const previousReady = window.onYouTubeIframeAPIReady;
+            const onApiReady = lifecycle.bind(this.youTubeReady);
+            window.onYouTubeIframeAPIReady = onApiReady;
+            lifecycle.own(() => {
+                if (window.onYouTubeIframeAPIReady === onApiReady) {
+                    window.onYouTubeIframeAPIReady = previousReady;
+                }
+            });
             let tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;

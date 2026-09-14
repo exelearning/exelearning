@@ -1884,7 +1884,7 @@ var $exeDevice = {
         const player = new Audio(selectFile);
         $exeDevice.playerAudio = player;
         // Playback and its network activity stop when the editor closes.
-        this.$lifecycle.ownMedia(player);
+        this.$lifecycle.ownMedia(player, 'previewAudio');
         this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
             player
                 .play()

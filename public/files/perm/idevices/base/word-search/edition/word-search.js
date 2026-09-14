@@ -945,7 +945,7 @@ var $exeDevice = {
         // Closing the editor must silence the preview and drop its stream; the
         // `canplaythrough` handler goes with it, so a clip that finishes
         // buffering after teardown never starts playing.
-        this.$lifecycle.ownMedia($exeDevice.playerAudio);
+        this.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
         this.$lifecycle.addEventListener(
             $exeDevice.playerAudio,
             'canplaythrough',
