@@ -77,9 +77,15 @@
 *   Package: @xmldom/xmldom
     *   Copyright: Christopher J. Brody and other contributors
     *   License: MIT
+*   Package: abcjs
+    *   Copyright: Paul Rosen
+    *   License: MIT
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
+*   Package: bootstrap
+    *   Copyright: The Bootstrap Authors
+    *   License: MIT
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
     *   License: MIT
@@ -110,6 +116,9 @@
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta
     *   License: MIT
+*   Package: fflate
+    *   Copyright: Arjun Barrett
+    *   License: MIT
 *   Package: fs-extra
     *   Copyright: JP Richardson
     *   License: MIT
@@ -119,17 +128,29 @@
 *   Package: happy-dom
     *   Copyright: David Ortner
     *   License: MIT
+*   Package: html2canvas
+    *   Copyright: Niklas von Hertzen
+    *   License: MIT
 *   Package: http-proxy-middleware
     *   Copyright: Steven Chim
     *   License: MIT
 *   Package: i18n
     *   Copyright: Marcus Spiegel
     *   License: MIT
+*   Package: interactjs
+    *   Copyright: Taye Adeyemi
+    *   License: MIT
 *   Package: ioredis
     *   Copyright: Zihua Li
     *   License: MIT
 *   Package: jose
     *   Copyright: Filip Skokan
+    *   License: MIT
+*   Package: jquery
+    *   Copyright: OpenJS Foundation and other contributors
+    *   License: MIT
+*   Package: jquery-ui
+    *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
 *   Package: jsdom
     *   Copyright: Elijah Insua, Domenic Denicola, Sebastian Mayr
@@ -169,6 +190,12 @@
     *   License: MIT
 *   Package: scorm-again
     *   Copyright: Jonathan Putney
+    *   License: MIT
+*   Package: showdown
+    *   Copyright: Estevão Santos
+    *   License: MIT
+*   Package: simplelightbox
+    *   Copyright: Andre Rinas
     *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.
