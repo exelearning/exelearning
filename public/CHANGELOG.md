@@ -56,6 +56,7 @@
 - SCORM: activities no longer score automatically when the page loads or lose their score when they finish
 - SCORM: moving between page contents no longer marks the page as completed
 - Workarea: fixed failures when dragging an iDevice into a page while its content is being refreshed
+- Workarea: selecting a different page while an iDevice editor is opening no longer shows an unsaved-changes alert
 - iDevices: activities made up of several scripts, such as the 360° panorama viewer and Select media files, now load correctly
 - iDevices: closing an activity editor no longer causes errors from actions that are still in progress
 - iDevices: Before-After, Hidden image, Map and Drag & Drop activities no longer fail when the page is left while they are loading
@@ -67,6 +68,7 @@
 - Sort iDevice: fixed its height and the count of correctly positioned items
 - iDevice editing: fixed digit limits in time and percentage fields in eight iDevices
 - Export and preview: after upgrading eXeLearning, the browser no longer reuses cached files from the previous version
+- Export and preview: cached libraries and styles are now reused between reloads, and outdated copies are removed automatically
 - Export: the theme stylesheet is now loaded last in single-page exports, preventing it from being overridden
 - Export: the `nav=false` parameter no longer discards teacher mode, xAPI credentials or other URL parameters, and search results now preserve the parameters used to open the page
 - Effects: fixed the timeline opening and closing again on a single click
