@@ -328,6 +328,30 @@ describe('scanThemeIcons', () => {
     });
 });
 
+describe('scanThemeIcons ordering', () => {
+    it('returns icons in alphabetical order independently of filesystem order (#2411)', () => {
+        const tmp = makeTempDir('theme-icons-order');
+        try {
+            const icons = path.join(tmp, 'icons');
+            fs.mkdirSync(icons, { recursive: true });
+            // Written out of order: on ext4 Bun's readdirSync would return hash order
+            for (const name of ['udl_rep_informarse.svg', 'udl_exp_grupohomogeneo.svg', 'udl_eng_reto.svg', 'udl_eng_curiosidad.svg']) {
+                fs.writeFileSync(path.join(icons, name), '');
+            }
+
+            const result = scanThemeIcons(tmp, '/themes/x');
+            expect(Object.keys(result)).toEqual([
+                'udl_eng_curiosidad',
+                'udl_eng_reto',
+                'udl_exp_grupohomogeneo',
+                'udl_rep_informarse',
+            ]);
+        } finally {
+            fs.rmSync(tmp, { recursive: true, force: true });
+        }
+    });
+});
+
 describe('buildThemesList', () => {
     it('discovers the base themes shipped in the repository', () => {
         const { themes } = buildThemesList();

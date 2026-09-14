@@ -684,10 +684,10 @@ body.siteNav-off #siteFooter {
 }
 
 /* Search bar */
-button#searchBarTogger {
+button#searchBarToggler {
     display: none;
 }
-.exe-search-on #searchBarTogger {
+.exe-search-on #searchBarToggler {
     display: inline;
 }
 #exe-client-search {
@@ -758,7 +758,7 @@ button#searchBarTogger {
 
 /* Top navigation bar */
 #siteNavToggler span,
-#searchBarTogger span,
+#searchBarToggler span,
 #darkModeToggler span,
 .nav-buttons a span,
 .nav-buttons span span {
@@ -787,7 +787,7 @@ button#searchBarTogger {
     height: 50px;
     z-index: 100;
 }
-#searchBarTogger {
+#searchBarToggler {
     position: fixed;
     top: 0;
     left: 60px;
@@ -1139,7 +1139,7 @@ body.exe-web-site {
     .exe-web-site .nav-buttons,
     .exe-export button.toggler,
     .exe-export #siteNavToggler,
-    .exe-export #searchBarTogger,
+    .exe-export #searchBarToggler,
     .exe-export #darkModeToggler {
         display: none;
     }
