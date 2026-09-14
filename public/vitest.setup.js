@@ -79,6 +79,29 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Bare `localStorage` is not exposed as a global by every Node and happy-dom
+// combination, and specs written against the browser call it unqualified.
+// Bridge it once, here, and only when it is missing: installing it from a
+// beforeEach would run ahead of every test in the suite and overwrite the
+// storage a spec had stubbed for itself — unsavedChangesHelper.test.js keeps
+// its own spies across the file and asserts on them.
+if (typeof globalThis.localStorage === 'undefined') {
+  const fromWindow = typeof window !== 'undefined' ? window.localStorage : undefined;
+  if (fromWindow) {
+    globalThis.localStorage = fromWindow;
+  } else {
+    const storage = new Map();
+    globalThis.localStorage = {
+      getItem: (key) => storage.get(String(key)) ?? null,
+      setItem: (key, value) => { storage.set(String(key), String(value)); },
+      removeItem: (key) => { storage.delete(String(key)); },
+      clear: () => { storage.clear(); },
+      key: (index) => Array.from(storage.keys())[index] ?? null,
+      get length() { return storage.size; },
+    };
+  }
+}
+
 // ============================================================================
 // Mock fflate
 // ============================================================================
@@ -1107,6 +1130,27 @@ const mockGamificationInstructions = {
 };
 
 const mockGamificationScorm = {
+  // Mirrors addButtonScoreNew in public/app/common/common.js: the save button
+  // for manual mode (isScorm 2), the message span alone for automatic mode, and
+  // an empty container otherwise. Rendered visible — the runtime does not have
+  // to reveal it — which is the contract the iDevices' markup relies on.
+  addButtonScoreNew: vi.fn(game => {
+    if (typeof game !== 'object' || game === null) return;
+    let html =
+      '<div class="Games-BottonContainer d-flex align-items-center justify-content-end mx-auto p-0 w-100">';
+    if (game.isScorm == 2) {
+      if (game.textButtonScorm != '') {
+        html +=
+          '<div class="Games-GetScore d-flex align-items-center justify-content-center w-100 mt-3">';
+        html += `<input type="button" value="${game.textButtonScorm}" class="Games-SendScore btn btn-primary btn-sm mx-1 my-1" /> <span class="Games-RepeatActivity"></span>`;
+        html += '</div>';
+      }
+    } else if (game.isScorm == 1) {
+      html +=
+        '<div class="Games-GetScore d-flex align-items-center justify-content-center w-100 mt-3"><span class="Games-RepeatActivity"></span></div>';
+    }
+    return `${html}</div>`;
+  }),
   getFieldset: vi.fn(() => '<fieldset class="exe-gamification-scorm"></fieldset>'),
   init: vi.fn(),
   save: vi.fn(() => ({})),
@@ -1240,6 +1284,26 @@ const mockGamificationObservers = {
   }),
 };
 
+/**
+ * Local progress report, mirroring gamification.report in
+ * public/app/common/common.js. It has to be here rather than in each spec:
+ * addEvents() in several iDevices refreshes the icon from a 500 ms timer, so
+ * the call lands after the test that armed it has finished and cleared its own
+ * mocks. In a browser common.js has always defined this object; leaving it out
+ * of the harness turned that timer into an uncaught TypeError, which Vitest
+ * reports as an unhandled error and fails the whole run on — with every test
+ * still passing. A spec that wants to assert on the report installs its own.
+ */
+const mockGamificationReport = {
+  updateEvaluationIcon: vi.fn(),
+  showEvaluationIcon: vi.fn(),
+  updateEvaluation: vi.fn(),
+  getDateString: vi.fn(() => ''),
+  getNodeIdevice: vi.fn(() => ''),
+  getNameIdevice: vi.fn(() => ''),
+  saveEvaluation: vi.fn(),
+};
+
 global.$exeDevices = {
   iDevice: {
     gamification: {
@@ -1249,6 +1313,7 @@ global.$exeDevices = {
       helpers: mockGamificationHelpers,
       math: mockGamificationMath,
       observers: mockGamificationObservers,
+      report: mockGamificationReport,
     },
   },
 };

@@ -635,7 +635,12 @@ var $eXeFlipCards = {
 
         $('#flcdsStartLevels-' + instance).hide();
         $('#flcdsCubierta-' + instance).hide();
-        $eXeFlipCards.startGameMemory(instance);
+        // Play again is the learner's own start, like the play button and the
+        // access code: it resets the board and the score, so it has to say so.
+        // Without the report the LMS kept the finished attempt's mark and
+        // status while a fresh game sat at zero on screen, and a learner who
+        // walked away there left the previous grade standing.
+        $eXeFlipCards.startGameMemory(instance, true);
     },
     updateTimeMemory: function (tiempo, instance) {
         const mOptions = $eXeFlipCards.options[instance];
@@ -788,7 +793,28 @@ var $eXeFlipCards = {
             $noImage.hide();
         }
     },
-    startGameMemory: function (instance) {
+    /**
+     * Publish the freshly reset state to the LMS.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     *
+     * @param {number} instance - Activity index.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeFlipCards.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeFlipCards.sendScore(true, instance);
+    },
+
+    /**
+     * @param {number} instance - Activity index.
+     * @param {boolean} [reportScorm] - Publish the opening zero. Only the
+     * learner's own start does: the play button and a valid access code. The
+     * automatic start an untimed memory game gets while the page loads must
+     * stay silent, or merely opening the page would score it.
+     */
+    startGameMemory: function (instance, reportScorm = false) {
         const mOptions = $eXeFlipCards.options[instance];
         if (mOptions.gameStarted) return;
 
@@ -852,8 +878,17 @@ var $eXeFlipCards = {
             mOptions.msgs.mgsClickCard,
             instance
         );
-        $eXeFlipCards.refreshCards(instance);
+        // Memory, not the card modes: addCardsMemory has just replaced every
+        // card, and refreshCards looks for `.FLCDSP-CardDraw`, which this mode
+        // never builds. It matched nothing, so the new cards kept the
+        // stylesheet's 2.5em and their text spilled out of the box.
+        $eXeFlipCards.refreshCardsMemory(instance);
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        if (reportScorm) {
+            $eXeFlipCards.saveScormScore(instance);
+        }
     },
 
     showActivity: function (instance) {
@@ -1329,6 +1364,11 @@ var $eXeFlipCards = {
         $('#flcdsLinkF-' + instance).css('opacity', 1);
         mOptions.gameStarted = true;
         mOptions.gameOver = false;
+        // The card modes reboot without going through startGameMemory, so the
+        // report has to be made here. After the two flags, never before:
+        // sendScoreNew ignores a game that reports as neither started nor over,
+        // and it derives completion from gameOver.
+        $eXeFlipCards.saveScormScore(instance);
         $eXeFlipCards.refreshGame(instance);
     },
 
@@ -1609,7 +1649,9 @@ var $eXeFlipCards = {
 
         $('#flcdsStartGame-' + instance).on('click', (e) => {
             e.preventDefault();
-            $eXeFlipCards.startGameMemory(instance);
+            // The learner pressing play is the start of the attempt, so it
+            // publishes the opening zero.
+            $eXeFlipCards.startGameMemory(instance, true);
         });
 
         $('#flcdsGameOver-' + instance).hide();
@@ -1626,10 +1668,18 @@ var $eXeFlipCards = {
             mOptions.type === 3 && mOptions.time > 0
         );
 
-        if (mOptions.type === 3 && mOptions.time === 0) {
-            $eXeFlipCards.startGameMemory(instance);
-        } else if (mOptions.type === 3) {
-            $('#flcdsStartLevels-' + instance).show();
+        if (mOptions.type === 3) {
+            if (mOptions.time > 0) {
+                $('#flcdsStartLevels-' + instance).show();
+            } else if (!mOptions.itinerary.showCodeAccess) {
+                // Untimed and not behind a code, so it starts itself. Behind a
+                // code it must not: startGameMemory hides the cover on its way
+                // in, so it wiped out the dialog the lines above had just put
+                // up — the learner played without ever entering a code and
+                // only met the dialog when the cover returned at game over.
+                // enterCodeAccess starts it instead.
+                $eXeFlipCards.startGameMemory(instance);
+            }
         }
 
         $('#flcdsLinkFullScreen-' + instance).on('click touchstart', (e) => {
@@ -2199,6 +2249,21 @@ var $eXeFlipCards = {
         ) {
             $('#flcdsCodeAccessDiv-' + instance).hide();
             $('#flcdsCubierta-' + instance).hide();
+            if (mOptions.type === 3) {
+                // A valid code is the learner opening the attempt, so it
+                // stands in for the play button — the same thing the code does
+                // in every other timed iDevice. Untimed there is no button at
+                // all and the load path deliberately skipped the start, so the
+                // code is the only thing left that can begin the game.
+                $eXeFlipCards.startGameMemory(instance, true);
+            } else {
+                // Every other mode is live from the moment the page loads, so
+                // there is nothing to start. The code is still the learner's
+                // first interaction, and nothing was publishing the opening
+                // zero for it: the LMS kept the previous attempt's grade until
+                // a card was turned.
+                $eXeFlipCards.saveScormScore(instance);
+            }
         } else {
             $('#flcdsMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
@@ -2209,40 +2274,44 @@ var $eXeFlipCards = {
         }
     },
 
+    /**
+     * Size one text box, by measurement or by card count when it holds maths.
+     *
+     * Each box decides for itself: a card can carry a formula on one face and
+     * plain text on the other, and reading the front's content to choose for
+     * the back sized half of them by the wrong rule.
+     *
+     * @param {jQuery} $text - `.FLCDSP-EText` / `.FLCDSP-ETextMemory`.
+     * @param {number} instance - Activity index.
+     */
+    fitTextBox: function ($text, instance) {
+        if ($text.length === 0) return;
+
+        const latex =
+            $text.find('mjx-container').length > 0 ||
+            $exeDevices.iDevice.gamification.math.hasLatex($text.text());
+
+        if (latex) {
+            $eXeFlipCards.setFontSizeMath($text, instance);
+        } else {
+            $eXeFlipCards.adjustFontSize($text);
+        }
+    },
+
     setFontSize: function (instance) {
         const $flcds = $('#flcdsMultimedia-' + instance).find(
             '.FLCDSP-CardDraw'
         );
         $flcds.each(function () {
-            const $card = $(this),
-                $text = $card
-                    .find('.FLCDSP-FlipCardFront')
-                    .find('.FLCDSP-EText'),
-                latex =
-                    $text.find('mjx-container').length > 0 ||
-                    $exeDevices.iDevice.gamification.math.hasLatex(
-                        $text.text()
-                    );
-
-            if (!latex) {
-                $eXeFlipCards.adjustFontSize($text);
-            } else {
-                $eXeFlipCards.setFontSizeMath($text, instance);
-            }
-
-            const $textb = $card
-                    .find('.FLCDSP-FlipCardBack')
-                    .find('.FLCDSP-EText'),
-                latexb =
-                    $textb.find('mjx-container').length > 0 ||
-                    $exeDevices.iDevice.gamification.math.hasLatex(
-                        $text.text()
-                    );
-            if (!latexb) {
-                $eXeFlipCards.adjustFontSize($textb);
-            } else {
-                $eXeFlipCards.setFontSizeMath($textb, instance);
-            }
+            const $card = $(this);
+            $eXeFlipCards.fitTextBox(
+                $card.find('.FLCDSP-FlipCardFront').find('.FLCDSP-EText'),
+                instance
+            );
+            $eXeFlipCards.fitTextBox(
+                $card.find('.FLCDSP-FlipCardBack').find('.FLCDSP-EText'),
+                instance
+            );
         });
     },
 
@@ -2251,18 +2320,10 @@ var $eXeFlipCards = {
             '.FLCDSP-CardContainerMemory'
         );
         $flcds.each(function () {
-            const $card = $(this),
-                $text = $card.find('.FLCDSP-ETextMemory'),
-                latex =
-                    $text.find('mjx-container').length > 0 ||
-                    $exeDevices.iDevice.gamification.math.hasLatex(
-                        $text.text()
-                    );
-            if (!latex) {
-                $eXeFlipCards.adjustFontSize($text);
-            } else {
-                $eXeFlipCards.setFontSizeMath($text, instance);
-            }
+            $eXeFlipCards.fitTextBox(
+                $(this).find('.FLCDSP-ETextMemory'),
+                instance
+            );
         });
     },
 
@@ -2293,7 +2354,7 @@ var $eXeFlipCards = {
                 break;
             }
         }
-        $text.css({ 'font-size': `${fontSize} px` });
+        $text.css({ 'font-size': `${fontSize}px` });
     },
 
     isFullScreen: function () {
@@ -2305,39 +2366,108 @@ var $eXeFlipCards = {
         );
     },
 
+    /**
+     * Run `measure` with every `display: none` between `$el` and the root
+     * lifted, then put them back.
+     *
+     * jQuery 3 reports zero for anything inside a hidden subtree — the swap it
+     * used to do for that was dropped in 3.0 — and every mode but the grid
+     * hides all the cards but the active one, so most boxes here are
+     * unmeasurable when the fit runs. Nothing is painted in between: the
+     * browser only repaints once the call stack unwinds, and the styles are
+     * back by then.
+     *
+     * @param {jQuery} $el - Element whose subtree has to be measurable.
+     * @param {Function} measure - Called once, with the layout available.
+     * @returns {*} Whatever `measure` returns.
+     */
+    measureVisible: function ($el, measure) {
+        const el = $el.length ? $el[0] : null;
+        if (!el) return measure();
+
+        const restore = [];
+        for (let node = el; node && node.nodeType === 1; node = node.parentElement) {
+            if (window.getComputedStyle(node).display !== 'none') continue;
+            restore.push([node, node.style.display]);
+            // Clearing the inline value first keeps the stylesheet's own
+            // display — `.FLCDSP-EText` is a centring flex box, and forcing it
+            // to `block` would measure a layout the card never renders.
+            node.style.display = '';
+            if (window.getComputedStyle(node).display === 'none') {
+                node.style.display = 'block';
+            }
+        }
+
+        try {
+            return measure();
+        } finally {
+            for (const [node, display] of restore) {
+                node.style.display = display;
+            }
+        }
+    },
+
+    /**
+     * Whether the text spills out of the box that holds it.
+     *
+     * The width comes from `scrollWidth`: the text block is `width: 100%`, so
+     * its own box can never report more than the container's and a word too
+     * long to break would go unnoticed. The height comes from the block's own
+     * box, which does grow with the wrapped lines — `scrollHeight` would not,
+     * since the block is `height: auto` and always contains itself.
+     *
+     * @param {jQuery} $text - The text block.
+     * @param {number} width - Content width of the container, in px.
+     * @param {number} height - Content height of the container, in px.
+     * @returns {boolean} True when it does not fit.
+     */
+    textOverflows: function ($text, width, height) {
+        const text = $text[0];
+        return (
+            text.scrollWidth > Math.ceil(width) ||
+            $text.outerHeight() > height
+        );
+    },
+
+    /**
+     * Shrink the text of a card until it fits its box.
+     *
+     * @param {jQuery} $container - `.FLCDSP-EText` / `.FLCDSP-ETextMemory`.
+     * @returns {boolean} True when a size was applied.
+     */
     adjustFontSize: function ($container) {
         const $text = $container.find('.FLCDSP-ETextDinamyc').eq(0),
             minFontSize = 10,
-            maxFontSize = 26,
-            widthc = $container.innerWidth(),
-            heightc = $container.innerHeight();
+            maxFontSize = 26;
 
-        let fontSize = maxFontSize;
+        if ($text.length === 0 || $text.text().trim().length === 0) return false;
 
-        $text.css('font-size', fontSize + 'px');
+        const fit = function () {
+            const width = $container.width(),
+                height = $container.height();
 
-        while (
-            ($text.outerWidth() > widthc || $text.outerHeight() > heightc) &&
-            fontSize > minFontSize
-        ) {
-            fontSize--;
-            $text.css('font-size', fontSize + 'px');
-        }
+            // A box with no layout cannot be fitted, and stamping the maximum
+            // on it regardless is how the text used to end up cut off.
+            if (!(width > 0) || !(height > 0)) return false;
 
-        while (
-            $text.outerWidth() < widthc &&
-            $text.outerHeight() < heightc &&
-            fontSize < maxFontSize
-        ) {
-            fontSize++;
+            let fontSize = maxFontSize;
             $text.css('font-size', fontSize + 'px');
 
-            if ($text.outerWidth() > widthc || $text.outerHeight() > heightc) {
+            while (
+                fontSize > minFontSize &&
+                $eXeFlipCards.textOverflows($text, width, height)
+            ) {
                 fontSize--;
                 $text.css('font-size', fontSize + 'px');
-                break;
             }
-        }
+
+            return true;
+        };
+
+        // A zero box means the card is hidden rather than empty: every mode but
+        // the grid shows one card at a time, so most of them are hidden when
+        // the fit runs. Uncover it and measure again.
+        return fit() || $eXeFlipCards.measureVisible($container, fit);
     },
 
     initCards: function (instance) {

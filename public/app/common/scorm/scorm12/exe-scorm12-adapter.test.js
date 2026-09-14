@@ -526,6 +526,63 @@ describe('exe-scorm12-adapter (legacy globals contract)', () => {
             expect(api.calls.length).toBe(callCount);
         });
 
+        // iDevices gate their SCORM setup on scorm.init(), and that setup runs
+        // before loadPage() — exe_export.js registers the iDevice poller first,
+        // on the same 50 ms delay. Initialising without restoring would leave a
+        // live session over a registry that holds only this page's
+        // declarations, and the first report would serialise that over
+        // cmi.suspend_data.
+        it('init() restores the registry, so an iDevice opening the session sees the stored attempt', () => {
+            useLms({ 'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100' });
+
+            expect(pageWindow.scorm.init()).toBe(true);
+
+            expect(activities.get('quiz')).toMatchObject({ score: 90, completed: true });
+            expect(policy.hasAppliedEntry()).toBe(true);
+        });
+
+        // Entering stores nothing. The entry policy writes "incomplete" into
+        // the LMS's data model, but writing is not storing: until a commit the
+        // teacher's report and the learner's icon both still show the state
+        // from before the visit. Opening the page must not change that, so the
+        // restore added above may not bring a commit with it — only work the
+        // learner actually did is flushed.
+        it('init() does not commit on a visit with no learner interaction', () => {
+            activities.register('quiz', { evaluable: true, completionRequired: true, total: 5 });
+            useLms({ 'cmi.suspend_data': 'exe12/1|quiz;7;0;0;90;1;0;100' });
+
+            pageWindow.scorm.init();
+
+            expect(api.callNames()).not.toContain('LMSCommit');
+        });
+
+        it('init() leaves the other activities intact when the first report persists', () => {
+            // Two activities stored; only one of them plays.
+            activities.register('quiz', { evaluable: true, completionRequired: true });
+            useLms({
+                'cmi.core.lesson_status': 'incomplete',
+                'cmi.suspend_data': 'exe12/1|quiz;3;0;0;40;1;0;100|essay;7;0;0;70;1;0;100',
+            });
+
+            pageWindow.scorm.init();
+            activities.update('quiz', { score: 100, completed: true });
+            policy.persistActivities();
+
+            expect(api.data['cmi.suspend_data']).toContain('essay;7;0;0;70');
+            expect(activities.get('essay')).toMatchObject({ score: 70, completed: true });
+        });
+
+        it('init() does not take the lifecycle decision away from the host', () => {
+            useLms({});
+            // The host opened first and declined ownership.
+            pageWindow.exeScorm12.session.open({ ownsLifecycle: false });
+
+            expect(pageWindow.scorm.init()).toBe(true);
+
+            // Still the host's page: the SCO lifecycle was never installed.
+            expect(fakeWindow.listeners.pagehide).toBeUndefined();
+        });
+
         it('exposes get/set/save with working LMS traffic', () => {
             useLms({});
             pageWindow.loadPage();
