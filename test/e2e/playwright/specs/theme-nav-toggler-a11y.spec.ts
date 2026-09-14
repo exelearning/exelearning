@@ -106,7 +106,7 @@ test.describe('Theme navigation and search togglers', () => {
             expect(await canFocus(firstNavLink)).toBe(true);
             expect(await nextButton.getAttribute('href')).not.toContain('nav=false');
 
-            // Educablue has no search toggler: the search form is always visible.
+            // Some styles have no search toggler: the search form is always visible.
             const searchToggler = iframe.locator('#searchBarToggler');
             if ((await searchToggler.count()) === 0) return;
 
