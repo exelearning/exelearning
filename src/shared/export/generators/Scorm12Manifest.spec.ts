@@ -97,9 +97,51 @@ describe('Scorm12ManifestGenerator', () => {
             expect(section11Index).toBeGreaterThan(chapter1Index);
             expect(closingItemIndex).toBeGreaterThan(section11Index);
         });
+
+        it('should wrap every page in a non-launchable root item (#2222)', () => {
+            const xml = generator.generate();
+
+            const rootTag = /<item identifier="ITEM-ROOT-test-project-123"[^>]*>/.exec(xml)?.[0];
+            expect(rootTag).toBeDefined();
+            expect(rootTag).not.toContain('identifierref');
+            expect(rootTag).toContain('isvisible="true"');
+        });
+
+        it('should keep top-level pages as siblings of each other (#2222)', () => {
+            const xml = generator.generate();
+            const indentOf = (needle: string): number => {
+                const line = xml.split('\n').find(l => l.includes(needle)) ?? '';
+                return (/^\s*/.exec(line)?.[0] ?? '').length;
+            };
+
+            // Introduction and Chapter 1 are both root pages: Moodle only links
+            // them as siblings when they share a parent item in the manifest.
+            expect(indentOf('identifier="ITEM-page-2"')).toBe(indentOf('identifier="ITEM-page-1"'));
+            expect(indentOf('identifier="ITEM-page-3"')).toBeGreaterThan(indentOf('identifier="ITEM-page-2"'));
+        });
     });
 
     describe('generateResources', () => {
+        it('should emit a single resource for a duplicated page id', () => {
+            // `identifier` is an xsd:ID, so two <resource> elements sharing one
+            // would make the package schema-invalid.
+            const pages = createTestPages();
+            pages.push({ id: 'page-2', title: 'Chapter 1 again', parentId: null, order: 3, blocks: [] });
+            const duplicated = new Scorm12ManifestGenerator('test-project-123', pages, { title: 'Test Course' });
+
+            const originalWarn = console.warn;
+            console.warn = () => {};
+            let xml: string;
+            try {
+                xml = duplicated.generate();
+            } finally {
+                console.warn = originalWarn;
+            }
+
+            expect(xml.match(/identifier="RES-page-2"/g)?.length).toBe(1);
+            expect(xml.match(/identifier="ITEM-page-2"/g)?.length).toBe(1);
+        });
+
         it('should generate resources for each page', () => {
             const xml = generator.generate();
 

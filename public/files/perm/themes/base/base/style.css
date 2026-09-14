@@ -328,12 +328,12 @@ button.toggler {
     background-position: -120px 0;
 }
 
-button#searchBarTogger {
+button#searchBarToggler {
     background-position: -40px 0;
     display: none;
 }
 
-.exe-search-on #searchBarTogger {
+.exe-search-on #searchBarToggler {
     display: inline;
 }
 
@@ -341,7 +341,7 @@ button#siteNavToggler {
     left: 280px;
 }
 
-button#searchBarTogger {
+button#searchBarToggler {
     left: 330px;
 }
 
@@ -349,7 +349,7 @@ body.siteNav-off button#siteNavToggler {
     left: 65px;
 }
 
-body.siteNav-off button#searchBarTogger {
+body.siteNav-off button#searchBarToggler {
     left: 115px;
 }
 
@@ -742,7 +742,7 @@ button.toggler:focus-visible,
         left: 232px;
     }
 
-    button#searchBarTogger {
+    button#searchBarToggler {
         left: 282px;
     }
 
@@ -797,7 +797,7 @@ button.toggler:focus-visible,
         left: 65px;
     }
 
-    button#searchBarTogger {
+    button#searchBarToggler {
         left: 115px;
     }
 
