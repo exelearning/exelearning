@@ -192,7 +192,7 @@ test.describe('Search in preview - subpage navigation', () => {
         );
 
         // 8. Click on search button - now we are on the subpage
-        const searchToggler = iframe.locator('#searchBarTogger');
+        const searchToggler = iframe.locator('#searchBarToggler');
         await searchToggler.waitFor({ state: 'visible', timeout: 15000 });
         await searchToggler.click();
 
@@ -229,7 +229,7 @@ test.describe('Search in preview - subpage navigation', () => {
 
         // 13. Try clicking on another result from this page (if multiple results exist)
         if (resultsCount >= 2) {
-            const searchToggler2 = iframe.locator('#searchBarTogger');
+            const searchToggler2 = iframe.locator('#searchBarToggler');
             await searchToggler2.waitFor({ state: 'visible', timeout: 10000 });
             await searchToggler2.click();
 
