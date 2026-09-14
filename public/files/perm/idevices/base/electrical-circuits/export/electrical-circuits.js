@@ -38,6 +38,30 @@ var $eXeEC = {
         $eXeEC.loadGame();
     },
 
+    /**
+     * Report the score in the same turn the learner acted in.
+     *
+     * The automatic report used to happen only from showQuestion(), i.e. once
+     * the setTimeout that reveals the next question had elapsed. That put the
+     * mark in the LMS seconds late, and a learner who left during that window
+     * lost the answer: the timer never fired.
+     *
+     * Carries the same non-repeat lock showQuestion applies, so an activity
+     * that may only be scored once is not scored twice through this path.
+     *
+     * @param {number|string} instance The activity instance.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeEC.options[instance];
+        if (mOptions.isScorm !== 1) return;
+        // No "score only once" lock: every answer is reported. The lock this
+        // used to carry could never close anyway — registerActivity forces
+        // `repeatActivity` to true at page load (common.js updateScormNew), so
+        // it short-circuited the condition before the learner touched
+        // anything. The activity registry owns what has been recorded.
+        $eXeEC.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeEC.options[instance];
 
@@ -143,14 +167,6 @@ var $eXeEC = {
                         <div class="exeQuextIcons exeQuextIcons-Score" title="${msgs.msgScore}"></div>
                         <p><span class="sr-av">${msgs.msgScore}: </span><span id="elcpPScore-${instance}">0</span></p>
                     </div>
-                    <div class="ELCP-LifesGame" id="elcpLifesGame-${instance}">
-                        ${$eXeEC.createLives(msgs)}
-                    </div>
-                    <div class="ELCP-NumberLifesGame" id="elcpNumberLivesGame-${instance}">
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life"></div>
-                        <p id="elcpPLifes-${instance}">0</p>
-                    </div>
                     <div class="ELCP-TimeNumber">
                         <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
                         <div class="exeQuextIcons exeQuextIcons-Time" title="${msgs.msgTime}"></div>
@@ -182,7 +198,6 @@ var $eXeEC = {
                     <div class="ELCP-GameOver" id="elcpGamerOver-${instance}">
                         <div class="ELCP-DataImage">
                             <img src="${path}exequextscore.svg" class="ELCP-HistGGame" id="elcpHistGame-${instance}" alt="${msgs.msgAllQuestions}" />
-                            <img src="${path}exequextlost.png" class="ELCP-LostGGame" id="elcpLostGame-${instance}" alt="${msgs.msgLostLives}" />
                         </div>
                         <div class="ELCP-DataScore">
                             <p id="elcpOverScore-${instance}">Score: 0</p>
@@ -263,18 +278,6 @@ var $eXeEC = {
         return html;
     },
 
-    createLives: function (msgs) {
-        let lives = [...Array(5)]
-            .map(
-                () => `
-                        <strong class="sr-av">${msgs.msgLive}:</strong>
-                        <div class="exeQuextIcons exeQuextIcons-Life" title="${msgs.msgLive}"></div>
-                    `
-            )
-            .join('');
-        return lives;
-    },
-
     createOptions: function (msgs, instance) {
         let optionss = ['A', 'B', 'C', 'D']
             .map(
@@ -353,7 +356,6 @@ var $eXeEC = {
             typeof mOptions.percentajeFB != 'undefined'
                 ? mOptions.percentajeFB
                 : 100;
-        mOptions.useLives = mOptions.gameMode != 0 ? false : mOptions.useLives;
         mOptions.gameOver = false;
         mOptions.evaluation =
             typeof mOptions.evaluation == 'undefined'
@@ -493,7 +495,6 @@ var $eXeEC = {
             return true;
         });
 
-        mOptions.livesLeft = mOptions.numberLives;
 
         $(`#elcpOptionsDiv-${instance}`)
             .find('.ELCP-Options')
@@ -524,7 +525,6 @@ var $eXeEC = {
         );
 
         $eXeEC.updateFullscreenLayout(instance);
-        $eXeEC.updateLives(instance);
         $(`#elcpInstructions-${instance}`).text(mOptions.instructions);
         $(`#elcpPNumber-${instance}`).text(mOptions.numberQuestions);
         $(`#elcpGameContainer-${instance} .ELCP-StartGame`).show();
@@ -684,6 +684,16 @@ var $eXeEC = {
                 mOptions.showCurrentIndex++;
                 mOptions.visiteds++;
                 $eXeEC.showCircuitAtIndex(mOptions.showCurrentIndex, instance);
+                // Reaching the last circuit is the end of a presentation:
+                // there is nothing further to visit. common.js derives
+                // completion from `gameOver === true || auto !== true`, and
+                // this report is automatic, so without the flag the page
+                // stayed `incomplete` even with every circuit seen and the
+                // score already at 10. Raised before the report, so the one
+                // carrying the full mark is the one that says it is finished.
+                if (mOptions.showCurrentIndex >= mOptions.selectsGame.length - 1) {
+                    mOptions.gameOver = true;
+                }
                 if (mOptions.isScorm > 0) {
                     $eXeEC.sendScore(true, instance);
                 }
@@ -875,7 +885,18 @@ var $eXeEC = {
 
         if (codeEntered === correctCode) {
             $eXeEC.showCubiertaOptions(false, instance);
-            $eXeEC.startGame(instance);
+            // Quiz mode starts here, and startGame publishes the opening zero.
+            // Presentation mode cannot: it was already started by initShowMode
+            // behind the cover, so startGame returns early — which is what
+            // stops it laying the quiz interface over the presentation, and
+            // also what left the LMS hearing nothing. Report it here instead.
+            if (mOptions.activityMode === 'show') {
+                if (mOptions.isScorm === 1) {
+                    $eXeEC.sendScore(true, instance);
+                }
+            } else {
+                $eXeEC.startGame(instance);
+            }
             $(`#elcpLinkMaximize-${instance}`).trigger('click');
         } else {
             $(`#elcpMesajeAccesCodeE-${instance}`)
@@ -891,7 +912,6 @@ var $eXeEC = {
         const mOptions = $eXeEC.options[instance],
             msgs = mOptions.msgs,
             $histGame = $(`#elcpHistGame-${instance}`),
-            $lostGame = $(`#elcpLostGame-${instance}`),
             $overPoint = $(`#elcpOverScore-${instance}`),
             $overHits = $(`#elcpOverHits-${instance}`),
             $overErrors = $(`#elcpOverErrors-${instance}`),
@@ -902,7 +922,6 @@ var $eXeEC = {
             messageColor = 2;
 
         $histGame.hide();
-        $lostGame.hide();
         $overPoint.show();
         $overHits.show();
         $overErrors.show();
@@ -915,29 +934,6 @@ var $eXeEC = {
                 if (mOptions.itinerary.showClue) {
                     if (mOptions.obtainedClue) {
                         message = msgs.msgAllQuestions;
-                        $showClue
-                            .text(
-                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
-                            )
-                            .show();
-                    } else {
-                        $showClue
-                            .text(
-                                msgs.msgTryAgain.replace(
-                                    '%s',
-                                    mOptions.itinerary.percentageClue
-                                )
-                            )
-                            .show();
-                    }
-                }
-                break;
-            case 1:
-                message = msgs.msgLostLives;
-                messageColor = 1;
-                $lostGame.show();
-                if (mOptions.itinerary.showClue) {
-                    if (mOptions.obtainedClue) {
                         $showClue
                             .text(
                                 `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
@@ -1014,9 +1010,13 @@ var $eXeEC = {
         mOptions.validQuestions = mOptions.numberQuestions;
         mOptions.counter = 0;
         mOptions.gameStarted = false;
-        mOptions.livesLeft = mOptions.numberLives;
+        // gameOver() leaves this true and renames the same button to New game;
+        // a replay starts as unfinished before the automatic zero-score report
+        // below. Without it that report carries the finished attempt's flag and
+        // sendScoreNew reads the replay as a completed one, so the activity
+        // stayed complete in the LMS instead of going back to incomplete.
+        mOptions.gameOver = false;
 
-        $eXeEC.updateLives(instance);
         $(`#elcpPNumber-${instance}`).text(mOptions.numberQuestions);
 
         mOptions.selectsGame.forEach((question) => {
@@ -1084,6 +1084,11 @@ var $eXeEC = {
         $(`#elcpPScore-${instance}`).text(mOptions.score);
 
         mOptions.gameStarted = true;
+        // The opening zero, published here because starting the attempt is the
+        // event. It briefly lived in showQuestion() instead, which reported on
+        // every question and so republished the previous answer's mark; that
+        // one is gone and this is the one that belongs.
+        $eXeEC.saveScormScore(instance);
         $eXeEC.newQuestion(instance);
     },
 
@@ -1095,6 +1100,14 @@ var $eXeEC = {
 
     gameOver: function (type, instance) {
         const mOptions = $eXeEC.options[instance];
+        // Answering the last question raises gameOver and reports the finish
+        // itself, on purpose: the reveal delay that follows may be seconds
+        // long, and a learner who leaves during it must still have the activity
+        // recorded as finished. So by the time this runs the LMS may already
+        // know. Read that before the flag is raised below, and report only when
+        // nobody has — which is the case this function alone covers: the clock
+        // running out with the question unanswered.
+        const alreadyReportedFinished = mOptions.gameOver === true;
         mOptions.gameStarted = false;
         mOptions.gameActived = false;
         clearInterval(mOptions.counterClock);
@@ -1107,10 +1120,7 @@ var $eXeEC = {
 
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        const message =
-            type === 0
-                ? mOptions.msgs.msgAllQuestions
-                : mOptions.msgs.msgLostLives;
+        const message = mOptions.msgs.msgAllQuestions;
         $eXeEC.showMessage(2, message, instance);
         $eXeEC.showScoreGame(type, instance);
         $eXeEC.clearQuestions(instance);
@@ -1125,21 +1135,8 @@ var $eXeEC = {
 
         mOptions.gameOver = true;
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeEC.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXeEC.sendScore(true, instance);
-                $(`#elcpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-                $eXeEC.initialScore = score;
-            }
+        if (mOptions.isScorm === 1 && !alreadyReportedFinished) {
+            $eXeEC.sendScore(true, instance);
         }
         $eXeEC.saveEvaluation(instance);
         $eXeEC.showFeedBack(instance);
@@ -1308,50 +1305,22 @@ var $eXeEC = {
             }
         }
 
-        if (mOptions.isScorm === 1) {
-            if (
-                mOptions.repeatActivity ||
-                $eXeEC.initialScore === ''
-            ) {
-                const score = (
-                    (mOptions.scoreGame * 10) /
-                    mOptions.scoreTotal
-                ).toFixed(2);
-                $eXeEC.sendScore(true, instance);
-                $(`#elcpRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`
-                );
-            }
-        }
-
-
+        // No report here. Painting a question is not an event that changes the
+        // mark: the answer before it already published the new score, and this
+        // put the same value on the wire again a moment later — one extra
+        // commit and one extra redraw of the LMS menu per question. What starts
+        // the attempt reports in startGame(), what changes the mark reports in
+        // answerQuestion(), and what ends it reports in gameOver().
+        //
+        // The score line the removed block also wrote was dead: the id
+        // `elcpRepeatActivity-N` exists in no markup of this iDevice. The span
+        // the learner sees is the shared `.Games-RepeatActivity`, which
+        // sendScoreNew writes on every report.
         $eXeEC.saveEvaluation(instance);
-    },
-
-    updateLives: function (instance) {
-        const mOptions = $eXeEC.options[instance];
-        $(`#elcpPLifes-${instance}`).text(mOptions.livesLeft);
-        const $livesIcons = $(`#elcpLifesGame-${instance}`).find(
-            '.exeQuextIcons-Life'
-        );
-
-        if (mOptions.useLives) {
-            $livesIcons.each((index, element) => {
-                $(element).toggle(index < mOptions.livesLeft);
-            });
-        } else {
-            $livesIcons.hide();
-            $(`#elcpNumberLivesGame-${instance}`).hide();
-        }
     },
 
     newQuestion: function (instance) {
         const mOptions = $eXeEC.options[instance];
-
-        if (mOptions.useLives && mOptions.livesLeft <= 0) {
-            $eXeEC.gameOver(1, instance);
-            return;
-        }
 
         const mActiveQuestion =
             $eXeEC.updateNumberQuestion(
@@ -1458,6 +1427,14 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(correct, instance);
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $eXeEC.saveScormScore(instance);
 
         let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -1523,6 +1500,14 @@ var $eXeEC = {
         }
 
         $eXeEC.updateScore(value, instance);
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, and so a learner who leaves
+        // during the reveal delay below still has the activity recorded as
+        // finished.
+        if (mOptions.activeQuestion + 1 >= mOptions.numberQuestions) {
+            mOptions.gameOver = true;
+        }
+        $eXeEC.saveScormScore(instance);
 
          let timeShowSolution = mOptions.showSolution
             ? mOptions.timeShowSolution * 1000
@@ -1620,10 +1605,6 @@ var $eXeEC = {
             } else {
                 obtainedPoints = -330 * question.customScore;
                 points = obtainedPoints;
-                if (mOptions.useLives) {
-                    mOptions.livesLeft--;
-                    $eXeEC.updateLives(instance);
-                }
             }
         }
 
@@ -1668,9 +1649,7 @@ var $eXeEC = {
             question = mOptions.selectsGame[mOptions.activeQuestion];
         let message = '';
 
-        message = mOptions.useLives
-                ? `${messageError} ${mOptions.msgs.msgLoseLive}`
-                : `${messageError} ${npts} ${pts}`;
+        message = `${messageError} ${npts} ${pts}`;
             if (mOptions.gameMode > 0) {
                 message = messageError;
             }

@@ -228,7 +228,7 @@ body:has(#teacher-mode-toggler-wrapper) .package-title {
 }
 
 .exe-content .box-head .box-icon {
-    color: var(--exe-icon-color, #fff);
+    color: var(--exe-icon-color);
 }
 
 #node-content-container.exe-content .box-head .exe-icon img {

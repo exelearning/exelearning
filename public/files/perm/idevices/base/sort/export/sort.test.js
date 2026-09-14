@@ -634,8 +634,15 @@ describe('sort iDevice export', () => {
             return mOptions;
         }
 
+        let sharedGamification;
+
         beforeEach(() => {
             reports = [];
+            // Replacing the whole surface drops everything vitest.setup.js put
+            // there, and nothing restored it, so every describe that ran after
+            // this one inherited a gamification object with no math, media or
+            // helpers on it.
+            sharedGamification = global.$exeDevices;
             global.$exeDevices = {
                 iDevice: {
                     gamification: {
@@ -663,6 +670,7 @@ describe('sort iDevice export', () => {
         });
 
         afterEach(() => {
+            global.$exeDevices = sharedGamification;
             vi.useRealTimers();
         });
 
@@ -691,6 +699,28 @@ describe('sort iDevice export', () => {
             expect(reports[0].scorerp).toBe(10);
         });
 
+        // The validate handler reports as soon as nextPhrase returns, without
+        // waiting for the timeShowSolution delay. Raising the flag only inside
+        // the delayed gameOver() left that report carrying the final score with
+        // completed: false, so a learner who left during the delay stayed at
+        // 100% on a page the LMS still called incomplete.
+        it('marks the last phrase finished before the reveal delay elapses', () => {
+            const mOptions = givenInstance(2, 3);
+
+            $eXeOrdena.nextPhrase(instance);
+
+            // No timer advanced: this is what the validate handler would send.
+            expect(mOptions.gameOver).toBe(true);
+        });
+
+        it('leaves the flag down while phrases remain, before the delay too', () => {
+            const mOptions = givenInstance(0, 3);
+
+            $eXeOrdena.nextPhrase(instance);
+
+            expect(mOptions.gameOver).toBe(false);
+        });
+
         it('handles a single-phrase activity, which ends on its first validation', () => {
             givenInstance(0, 1);
 
@@ -699,6 +729,299 @@ describe('sort iDevice export', () => {
 
             expect(reports).toHaveLength(1);
             expect(reports[0].gameOver).toBe(true);
+        });
+    });
+
+    // The count used to subtract gameColumns from response.valids in the
+    // ordered-columns mode, so the feedback undercounted the learner's own
+    // result — with three columns, three correct positions read as none.
+    describe('SCORM reporting on start', () => {
+        function setupGame(overrides = {}) {
+            document.body.innerHTML = `
+                <div id="ordenaMainContainer-0">
+                    <div id="ordenaPhrasesContainer-0"></div>
+                    <div id="ordenaGameButtons-0"></div>
+                    <div id="ordenaPShowClue-0"></div>
+                    <div id="ordenaShowClue-0"></div>
+                    <div id="ordenaPHits-0"></div>
+                    <div id="ordenaPErrors-0"></div>
+                    <div id="ordenaCubierta-0"></div>
+                    <div id="ordenaGameOver-0"></div>
+                    <div id="ordenaPTime-0"></div>
+                    <div id="ordenaImgTime-0"></div>
+                    <div id="ordenaMultimedia-0"></div>
+                </div>`;
+            $eXeOrdena.options[0] = Object.assign(
+                {
+                    main: 'ordenaMainContainer-0',
+                    isScorm: 1,
+                    type: 0,
+                    time: 0,
+                    attempts: 0,
+                    gameStarted: false,
+                    gameOver: false,
+                    hits: 0,
+                    errors: 0,
+                    score: 0,
+                    scorerp: 0,
+                    numberQuestions: 4,
+                    msgs: { msgYouScore: 'Score' },
+                },
+                overrides
+            );
+            vi.spyOn($eXeOrdena, 'initCards').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'showMessage').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'uptateTime').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'sendScore').mockImplementation(() => {});
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+        });
+
+        it('saveScormScore reports only in automatic SCORM mode', () => {
+            setupGame({ isScorm: 1 });
+            $eXeOrdena.saveScormScore(0);
+            expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+
+            $eXeOrdena.sendScore.mockClear();
+            $eXeOrdena.options[0].isScorm = 2;
+            $eXeOrdena.saveScormScore(0);
+            expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+        });
+
+        // The defect: clicking the play link cleared the board, but the LMS
+        // menu kept the previous attempt's grade and its terminal status.
+        it('publishes the cleared state when a finished game is restarted', () => {
+            setupGame({ hits: 4, errors: 2, score: 10, gameOver: true });
+            let stateWhenReported;
+            $eXeOrdena.sendScore.mockImplementation(() => {
+                const { hits, errors, gameOver, gameStarted } =
+                    $eXeOrdena.options[0];
+                stateWhenReported = { hits, errors, gameOver, gameStarted };
+            });
+
+            $eXeOrdena.startGame(0, true);
+
+            expect(stateWhenReported).toEqual({
+                hits: 0,
+                errors: 0,
+                gameOver: false,
+                // sendScoreNew ignores a game that reports as neither started
+                // nor over.
+                gameStarted: true,
+            });
+        });
+
+        it('does not report a game that was already running', () => {
+            setupGame({ gameStarted: true });
+
+            $eXeOrdena.startGame(0, true);
+
+            expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+        });
+
+        // Phrase boards with no timer are opened by loadGame() as the page
+        // loads. The board has to be laid out and playable, but the learner has
+        // not acted, and publishing here would overwrite the mark the LMS holds
+        // from an earlier visit with the zero of an attempt nobody started.
+        it('starts a board without publishing when nobody asked for it', () => {
+            setupGame({ hits: 4, score: 10, gameOver: true });
+
+            $eXeOrdena.startGame(0);
+
+            expect($eXeOrdena.options[0].gameStarted).toBe(true);
+            expect($eXeOrdena.options[0].hits).toBe(0);
+            expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+        });
+
+        /**
+         * Everything the learner can press to open an attempt still reports.
+         * The play link is also what enterCodeAccess() clicks once it accepts a
+         * code, so accepting a code reports through the same handler.
+         */
+        describe('what the learner presses', () => {
+            function givenWiredBoard(overrides = {}) {
+                setupGame(
+                    Object.assign(
+                        {
+                            itinerary: { showCodeAccess: false, codeAccess: '' },
+                            author: '',
+                            fullscreen: false,
+                        },
+                        overrides
+                    )
+                );
+                document.body.insertAdjacentHTML(
+                    'beforeend',
+                    `<div id="ordenaExtra-0">
+                        <a href="#" id="ordenaStartGame-0">Play</a>
+                        <a href="#" id="ordenaStartGameEnd-0">Play again</a>
+                        <a href="#" id="ordenaLinkMaximize-0">Open</a>
+                        <input id="ordenaCodeAccessE-0" />
+                        <div id="ordenaCodeAccessDiv-0"></div>
+                        <div id="ordenaMesajeAccesCodeE-0"></div>
+                        <div id="ordenaStartLevels-0"></div>
+                        <div id="ordenaPNumber-0"></div>
+                    </div>`
+                );
+                $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+                $exeDevices.iDevice.gamification.helpers.shuffleAds = vi.fn(
+                    (items) => items
+                );
+                vi.spyOn($eXeOrdena, 'refreshCards').mockImplementation(() => {});
+                vi.spyOn($eXeOrdena, 'showPhrase').mockImplementation(() => {});
+                vi.spyOn($eXeOrdena, 'saveEvaluation').mockImplementation(() => {});
+                $eXeOrdena.addEvents(0);
+                expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+            }
+
+            it('reports when the learner presses play', () => {
+                givenWiredBoard();
+
+                $('#ordenaStartGame-0').trigger('click');
+
+                expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+            });
+
+            it('reports when the learner plays again', () => {
+                givenWiredBoard({ gameOver: true, hits: 4 });
+
+                $('#ordenaStartGameEnd-0').trigger('click');
+
+                expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+            });
+
+            it('reports when the learner opens a minimised board', () => {
+                givenWiredBoard();
+
+                $('#ordenaLinkMaximize-0').trigger('click');
+
+                expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+            });
+
+            it('reports when a valid code opens the board', () => {
+                givenWiredBoard({
+                    itinerary: { showCodeAccess: true, codeAccess: 'OPEN' },
+                });
+                $('#ordenaCodeAccessE-0').val('OPEN');
+
+                $eXeOrdena.enterCodeAccess(0);
+
+                expect($eXeOrdena.sendScore).toHaveBeenCalledWith(true, 0);
+            });
+
+            it('reports nothing for a wrong code', () => {
+                givenWiredBoard({
+                    itinerary: { showCodeAccess: true, codeAccess: 'OPEN' },
+                });
+                $('#ordenaCodeAccessE-0').val('nope');
+
+                $eXeOrdena.enterCodeAccess(0);
+
+                expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
+            });
+        });
+    });
+
+    /**
+     * The load path used to open those boards by firing the play button's own
+     * click handler, which reported. It starts the game directly now, and the
+     * button keeps reporting for everyone who presses it — including
+     * enterCodeAccess(), which clicks it once a valid code is accepted.
+     */
+    describe('opening a board as the page loads', () => {
+        function setupLoad(overrides = {}) {
+            document.body.innerHTML = `
+                <div class="ordena-IDevice">
+                    <div class="ordena-DataGame">encoded</div>
+                </div>`;
+            const mOption = Object.assign(
+                {
+                    isScorm: 1,
+                    type: 0,
+                    time: 0,
+                    startAutomatically: false,
+                    showMinimize: false,
+                    itinerary: { showCodeAccess: false },
+                },
+                overrides
+            );
+            $eXeOrdena.activities = $('.ordena-IDevice');
+            $eXeOrdena.options = [];
+            vi.spyOn($eXeOrdena, 'loadDataGame').mockImplementation(() => mOption);
+            vi.spyOn($eXeOrdena, 'createInterfaceOrdena').mockImplementation(
+                (i) => `
+                    <div id="ordenaMainContainer-${i}">
+                        <div id="ordenaGameMinimize-${i}"></div>
+                        <div id="ordenaGameContainer-${i}"></div>
+                        <div id="ordenaDivFeedBack-${i}"></div>
+                        <div id="ordenaPhrasesContainer-${i}"></div>
+                        <a href="#" id="ordenaStartGame-${i}">Play</a>
+                    </div>`
+            );
+            vi.spyOn($eXeOrdena, 'addEvents').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'showPhrase').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'startGame').mockImplementation(() => {});
+            return mOption;
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            $eXeOrdena.activities = undefined;
+            $eXeOrdena.options = [];
+            vi.restoreAllMocks();
+        });
+
+        it.each([
+            ['an untimed phrase board', { type: 0, time: 0 }],
+            ['a board the author starts automatically', { startAutomatically: true, type: 1 }],
+        ])('starts %s without asking it to report', (_label, overrides) => {
+            setupLoad(overrides);
+
+            $eXeOrdena.loadGame();
+
+            // One argument, not two: reportScorm stays false.
+            expect($eXeOrdena.startGame).toHaveBeenCalledWith(0);
+            expect($('#ordenaStartGame-0').css('display')).toBe('none');
+        });
+
+        it('leaves a timed board for the learner to start', () => {
+            setupLoad({ type: 0, time: 2 });
+
+            $eXeOrdena.loadGame();
+
+            expect($eXeOrdena.startGame).not.toHaveBeenCalled();
+        });
+
+        it('leaves a board behind an access code alone', () => {
+            setupLoad({ itinerary: { showCodeAccess: true, codeAccess: 'OPEN' } });
+
+            $eXeOrdena.loadGame();
+
+            expect($eXeOrdena.startGame).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('getCorrectPositionsCount', () => {
+        it('counts every correct position', () => {
+            expect(
+                $eXeOrdena.getCorrectPositionsCount({ valids: [0, 1, 2] })
+            ).toBe(3);
+        });
+
+        it('does not discount anything in the ordered-columns mode', () => {
+            // Three columns, three correct positions: the learner got them all.
+            const response = { valids: [0, 1, 2], correct: true };
+
+            expect($eXeOrdena.getCorrectPositionsCount(response)).toBe(3);
+        });
+
+        it('answers zero when there is nothing to count', () => {
+            expect($eXeOrdena.getCorrectPositionsCount({ valids: [] })).toBe(0);
+            expect($eXeOrdena.getCorrectPositionsCount({})).toBe(0);
+            expect($eXeOrdena.getCorrectPositionsCount(undefined)).toBe(0);
         });
     });
 });

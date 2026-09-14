@@ -639,6 +639,16 @@
     text-align: center;
 }
 
+/* The cover is a sibling of CQP-GameContainer, not a child, so the rule that
+   sizes this icon inside the game never reaches it. Its background comes from
+   CQP-MainContainer, but an empty div with no box collapses to nothing and the
+   submit icon was invisible. Same rule 3dmol, az-quiz-game and beforeafter
+   carry for their own covers. */
+.CQP-Cubierta .exeQuextIcons-Submit {
+    height: 1.7em;
+    width: 1.7em;
+}
+
 /* Inicio juego */
 .CQP-StartNivel {
     display: flex;

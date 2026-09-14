@@ -116,6 +116,13 @@ test.describe('Block Icon Selection Modal', () => {
             }
         }
 
+        // Style icons must be listed alphabetically, not in filesystem order (#2411)
+        const themeIconIds = await page
+            .locator('#change-block-icon-modal-content .theme-block-icon')
+            .evaluateAll(elements => elements.map(element => element.getAttribute('icon-id') || ''));
+        const collator = new Intl.Collator('en', { numeric: true });
+        expect(themeIconIds).toEqual([...themeIconIds].sort(collator.compare));
+
         // Verify the empty icon is present and properly structured
         const emptyIcon = page.locator('#change-block-icon-modal-content .empty-block-icon');
         await expect(emptyIcon).toBeVisible();
@@ -123,7 +130,7 @@ test.describe('Block Icon Selection Modal', () => {
         expect(emptyIconId).toBe('0'); // Empty icon should have id "0"
     });
 
-    test('should render an applied Material icon as a self-contained data: URI', async ({
+    test('should render an applied Material icon as a self-contained data: URI tinted by the style', async ({
         authenticatedPage,
         createProject,
     }, testInfo) => {
@@ -176,6 +183,40 @@ test.describe('Block Icon Selection Modal', () => {
             undefined,
             { timeout: 10000 },
         );
+
+        // The tint is a theme-CSS contract (ADR-1247-04): the active style declares
+        // --exe-icon-color on .exe-content, the block header inherits it because custom
+        // properties inherit, and the masked glyph takes it through currentColor. Only a real
+        // browser can check that chain -- the unit tests set the property straight onto the
+        // element they read, so they never exercise the inheritance a style relies on, and
+        // nothing else in E2E looks at a colour.
+        const tint = await page.evaluate(() => {
+            const icon = document.querySelector('#node-content article.box header.box-head .box-icon');
+            const glyph = icon?.querySelector('.exe-material-icon');
+            if (!icon || !glyph) return null;
+
+            const declared = getComputedStyle(icon).getPropertyValue('--exe-icon-color').trim();
+            // Resolve the declared value through the browser so a hex can be compared with
+            // the rgb() a computed style reports.
+            const probe = document.createElement('span');
+            probe.style.color = declared;
+            document.body.appendChild(probe);
+            const expected = getComputedStyle(probe).color;
+            probe.remove();
+
+            return {
+                declared,
+                expected,
+                headerColor: getComputedStyle(icon).color,
+                glyphInk: getComputedStyle(glyph).backgroundColor,
+            };
+        });
+
+        expect(tint).not.toBeNull();
+        // Every bundled style declares the tint; src/shared/block-icon.spec.ts pins that.
+        expect(tint?.declared).not.toBe('');
+        expect(tint?.headerColor).toBe(tint?.expected);
+        expect(tint?.glyphInk).toBe(tint?.expected);
     });
 
     test('should return icons with proper ThemeIcon structure from API', async ({ authenticatedPage }, testInfo) => {

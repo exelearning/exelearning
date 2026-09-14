@@ -711,26 +711,89 @@ var $eXeDescubre = {
         return html;
     },
 
+    /**
+     * The mark for this activity, on the 0..10 scale the runtime expects.
+     *
+     * `wordsGame` is the deck the chosen level cut out of the full one, and
+     * getCardsLevels floors that division — so a three-level game with two
+     * words leaves it empty, and dividing by its length gave NaN. Nothing to
+     * score is a zero.
+     *
+     * @param {number} instance the activity index
+     * @returns {number} the mark, 0 when there is nothing to score
+     */
+    getScore: function (instance) {
+        const mOptions = $eXeDescubre.options[instance];
+        const total = mOptions.wordsGame ? mOptions.wordsGame.length : 0;
+        if (!total) return 0;
+        const hits = parseFloat(mOptions.hits);
+        if (!Number.isFinite(hits)) return 0;
+        return (hits * 10) / total;
+    },
+
     saveEvaluation: function (instance) {
         const mOptions = $eXeDescubre.options[instance];
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.wordsGame.length;
+        mOptions.scorerp = $eXeDescubre.getScore(instance);
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $eXeDescubre.isInExe
         );
     },
 
-    sendScore: function (auto, instance) {
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears hits, errors and gameOver, but nothing told the LMS,
+     * so the menu kept the previous attempt's grade and status until the
+     * learner uncovered a group. It is the single entry point for both ways
+     * in — the level buttons and the play-again button — so one call site
+     * covers choosing a level as well as starting.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
         const mOptions = $eXeDescubre.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        // sendScoreNew's gate asks whether the learner has engaged with the
+        // activity, and by the time any of the four moments that reach this
+        // function happen — opening it with a code, starting it, abandoning it,
+        // asking to play again — they have. But in this iDevice `gameStarted`
+        // answers a narrower question, whether a round is running, and both
+        // startGame() and the card clicks read it: leaving it up would make the
+        // level buttons dead and the activity unplayable. So the report says so
+        // on a copy and the live flag is left alone. Three call sites used to
+        // raise it, report, and lower it again.
+        $eXeDescubre.sendScore(true, instance, true);
+    },
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.wordsGame.length;
-        mOptions.previousScore = $eXeDescubre.previousScore;
-        mOptions.userName = $eXeDescubre.userName;
+    /**
+     * Report the current state.
+     *
+     * @param {boolean} auto false when the learner asked for it by pressing the
+     * save button
+     * @param {number} instance the activity index
+     * @param {boolean} [engaged] true to state that the learner has engaged with
+     * the activity even though no round is running. Reported on a copy, so the
+     * live `gameStarted` — which here means "a round is running" and is read by
+     * startGame() and by the card clicks — is never touched. Without it, a
+     * press of the save button before the learner started anything is refused
+     * by the runtime rather than scored as a zero.
+     */
+    sendScore: function (auto, instance, engaged) {
+        const mOptions = $eXeDescubre.options[instance];
+        const game = engaged
+            ? Object.assign({}, mOptions, { gameStarted: true })
+            : mOptions;
 
-        $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
+        game.scorerp = $eXeDescubre.getScore(instance);
+        game.previousScore = $eXeDescubre.previousScore;
+        game.userName = $eXeDescubre.userName;
 
-        $eXeDescubre.previousScore = mOptions.previousScore;
+        $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, game);
+
+        $eXeDescubre.previousScore = game.previousScore;
     },
 
     addCards: function (instance, cardsGame) {
@@ -1027,6 +1090,16 @@ var $eXeDescubre = {
             $('#descubreMultimedia-' + instance)
                 .find('.DescubreQP-Card1')
                 .removeClass('flipped');
+            // Play again abandons the finished attempt even though the next one
+            // does not begin until a level is picked, so the LMS is told now,
+            // as in every other iDevice: score 0 and unfinished. Leaving it to
+            // the level buttons kept the previous grade standing over a board
+            // the learner had already left.
+            mOptions.hits = 0;
+            mOptions.errors = 0;
+            mOptions.score = 0;
+            mOptions.gameOver = false;
+            $eXeDescubre.saveScormScore(instance);
         });
 
         $('#descubreReboot-' + instance).on('click', function (e) {
@@ -1048,8 +1121,11 @@ var $eXeDescubre = {
         $('#descubreMultimedia-' + instance).on(
             'click',
             '.DescubreQP-CardContainer',
-            function () {
-                $eXeDescubre.cardClick(this, instance);
+            function (e) {
+                // The audio link plays the sound itself, so tell cardClick not
+                // to start it a second time when the click came from there.
+                const fromAudioLink = $(e.target).closest('a[data-audio]').length > 0;
+                $eXeDescubre.cardClick(this, instance, !fromAudioLink);
             }
         );
 
@@ -1058,7 +1134,10 @@ var $eXeDescubre = {
         $container.off('click', 'a[data-audio]');
 
         $container.on('click', 'a[data-audio]', function (e) {
-            e.stopPropagation();
+            // Deliberately NOT stopping propagation. The icon sits inside the
+            // card, so the click has to reach the card container and select or
+            // deselect it like a click anywhere else on the card would; the
+            // learner should not have to aim around the speaker.
             e.preventDefault();
             const audioId = this.dataset.audio;
             if (audioId && audioId.length > 3) {
@@ -1137,7 +1216,16 @@ var $eXeDescubre = {
         }
     },
 
-    cardClick: function (cc, instance) {
+    /**
+     * Select the card the learner clicked.
+     *
+     * @param {HTMLElement} cc the card container
+     * @param {number} instance activity instance
+     * @param {boolean} [playAudio=true] false when the click came from the
+     * card's own audio link, which has already started the sound — playing it
+     * again here would restart it in the same turn.
+     */
+    cardClick: function (cc, instance, playAudio) {
         const mOptions = $eXeDescubre.options[instance],
             $cc = $(cc);
         let maxsel = 1;
@@ -1147,7 +1235,14 @@ var $eXeDescubre = {
         } else if (mOptions.gameMode == 2) {
             maxsel = 3;
         }
-        $exeDevices.iDevice.gamification.media.stopSound();
+        // Not when the click came from the audio link. That link has already
+        // started the clip the learner asked for, and playSound stops whatever
+        // was playing before it, so there is nothing left here to silence —
+        // only the new sound, a few microseconds after it began. That is why
+        // the speaker icon looked mute while clicking the card worked.
+        if (playAudio !== false) {
+            $exeDevices.iDevice.gamification.media.stopSound();
+        }
 
         if (
             !mOptions.gameActived ||
@@ -1177,7 +1272,7 @@ var $eXeDescubre = {
             $cc.find('.DescubreQP-LinkAudioBig').data('audio') ||
             '';
 
-        if (sound.length > 3) {
+        if (playAudio !== false && sound.length > 3) {
             $exeDevices.iDevice.gamification.media.playSound(sound);
         }
 
@@ -1338,6 +1433,13 @@ var $eXeDescubre = {
         mOptions.selecteds = [];
         $eXeDescubre.updateCovers(instance, true);
         $eXeDescubre.updateScore(true, instance);
+        // Every group discovered ends the activity. Raise the flag now, so the
+        // report below carries the completion and leaving during the reveal
+        // that precedes gameOver() still records the page as finished rather
+        // than `incomplete`.
+        if (mOptions.hits >= mOptions.wordsGame.length) {
+            mOptions.gameOver = true;
+        }
         const percentageHits =
             (mOptions.hits / mOptions.wordsGame.length) * 100;
         if (
@@ -1623,8 +1725,30 @@ var $eXeDescubre = {
         ) {
             $('#descubreCodeAccessDiv-' + instance).hide();
             $('#descubreCubierta-' + instance).hide();
-            $('#descubreStartLevels-' + instance).show();
             $('#descubreLinkMaximize-' + instance).trigger('click');
+
+            if (mOptions.gameLevels == 1) {
+                // A single level, with a clock or without one: the panel
+                // behind the code is one play button, so there is nothing for
+                // the learner to choose and the code stands in for it. No
+                // report here — startGame publishes the opening zero itself,
+                // at its end, and doing it twice would put the same zero on
+                // the wire twice.
+                //
+                // Level 0, which is what every other single-level entry point
+                // passes. getCardsLevels ignores the index when there is only
+                // one level, but still names the level from it on screen, so a
+                // 2 here announced the same game as "Level: Master" while
+                // playing it again announced it as "Level: Rookie".
+                $eXeDescubre.startGame(instance, 0);
+            } else {
+                $('#descubreStartLevels-' + instance).show();
+                // A valid code is the learner opening the activity, and the
+                // LMS should hear that even though no round is running yet:
+                // with more than one level, what comes next is the panel, not
+                // the game.
+                $eXeDescubre.saveScormScore(instance);
+            }
         } else {
             $('#descubreMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
@@ -1751,6 +1875,11 @@ var $eXeDescubre = {
             $('#descubreImgTime-' + instance).hide();
         }
 
+        // Never leave a previous countdown running: the level buttons and the
+        // play-again button re-enter startGame directly, without passing
+        // through rebootGame, so without this a second game ran two intervals
+        // over the same counter and its clock ticked twice per second.
+        clearInterval(mOptions.counterClock);
         if (mOptions.time > 0) {
             mOptions.counterClock = setInterval(function () {
                 let $node = $('#descubreMainContainer-' + instance);
@@ -1765,6 +1894,10 @@ var $eXeDescubre = {
                 if (mOptions.gameStarted) {
                     mOptions.counter--;
                     if (mOptions.counter <= 0) {
+                        // Painted before ending: the early return used to skip
+                        // this last update, so the clock jumped from 00:01 to
+                        // the results screen and never showed 00:00.
+                        $eXeDescubre.uptateTime(mOptions.counter, instance);
                         $eXeDescubre.gameOver(2, instance);
                         return;
                     }
@@ -1779,6 +1912,9 @@ var $eXeDescubre = {
                 .addClass('flipped');
         }
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeDescubre.saveScormScore(instance);
     },
 
     uptateTime: function (tiempo, instance) {
@@ -1799,6 +1935,10 @@ var $eXeDescubre = {
         mOptions.gameStarted = false;
         mOptions.gameActived = false;
         mOptions.gameOver = true;
+        // The attempt is over, so the countdown has no reason to survive it.
+        // It used to run for the life of the page, and a second game started
+        // from the level buttons then added its own on top.
+        clearInterval(mOptions.counterClock);
         $exeDevices.iDevice.gamification.media.stopSound();
         $('#descubreCubierta-' + instance).show();
         $eXeDescubre.showScoreGame(type, instance);
@@ -1848,6 +1988,10 @@ var $eXeDescubre = {
         $('#descubreStartLevels-' + instance).show();
         $('#descubreCubierta-' + instance).hide();
         $('#descubreInfo-' + instance).text(mOptions.msgs.msgSelectLevel);
+        // Abandoning mid-game is the learner giving up the attempt, so the LMS
+        // is told here rather than left holding whatever the last answers had
+        // scored. Same rule as the play-again button and the access code.
+        $eXeDescubre.saveScormScore(instance);
     },
 
     showFeedBack: function (instance) {

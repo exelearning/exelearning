@@ -3,8 +3,18 @@ const blockIconRuntime = window.eXeBlockIconRuntime
   || (typeof require === 'function' ? require('../common/blockIconRuntime.js') : null);
 
 function normalizeBlockIcon(icon, iconName = '') {
-  // A structured icon descriptor wins verbatim (it may carry extra fields).
-  if (icon && typeof icon === 'object' && icon.source) return icon;
+  // A structured icon descriptor wins (it may carry extra fields), but a theme icon name
+  // a style has since renamed still has to be mapped: _syncBlockIcon() and
+  // _applyBlockUpdate() look this value up in getThemeIcons(), and the raw old name misses.
+  if (icon && typeof icon === 'object' && icon.source) {
+    if (icon.source !== 'theme') return icon;
+    // `icon.value || ''` on both sides: a descriptor that omits `value` normalises to '',
+    // and comparing the mapped '' against an absent one would rewrite it for no reason.
+    const stored = icon.value || '';
+    const value = blockIconRuntime.resolveRenamedThemeIcon(stored);
+    if (value === stored) return icon;
+    return { ...icon, value, name: value };
+  }
   // Otherwise derive from the legacy iconName via the shared derivation
   // (JS twin of src/shared/block-icon.ts).
   return blockIconRuntime.deriveBlockIcon(iconName);
@@ -1525,14 +1535,15 @@ class YjsProjectBridge {
         this._syncBlockTitle(blockNode.blockNameElementText, blockData.blockName, blockNode);
       }
 
-      // Update icon if changed. Compare both legacy iconName and structured icon
-      // because collaborative updates now propagate the structured descriptor.
+      // Update icon if changed. Both sides go through normalizeBlockIcon() first: the
+      // descriptors are what the block actually renders, and a renamed name arrives raw
+      // (`objetives`) while the node already holds the mapped one (`objectives`). Comparing
+      // the raw `blockData.iconName` against the normalised `blockNode.iconName` reported a
+      // change on every remote update of such a block, re-running makeIconNameElement()
+      // without end until someone re-saved it.
       const nextIcon = normalizeBlockIcon(blockData.icon, blockData.iconName);
       const currentIcon = normalizeBlockIcon(blockNode.icon, blockNode.iconName);
-      const iconChanged =
-        blockData.iconName !== undefined && blockNode.iconName !== blockData.iconName ||
-        currentIcon.source !== nextIcon.source ||
-        currentIcon.value !== nextIcon.value;
+      const iconChanged = currentIcon.source !== nextIcon.source || currentIcon.value !== nextIcon.value;
       if (iconChanged) {
         blockNode.icon = nextIcon;
         blockNode.iconName = nextIcon.source === 'material' ? `mi-${nextIcon.value}` : (nextIcon.value || '');
