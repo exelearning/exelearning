@@ -800,6 +800,7 @@ $exeExport.searchBar = {
             $("#exe-client-search-reset").removeClass("visible");
             $('#exe-client-search-results-list').html('');
             $('#exe-client-search').hide();
+            $('#searchBarToggler').attr('aria-expanded', 'false');
             $('#exe-client-search-text').val('');
         });
     },
