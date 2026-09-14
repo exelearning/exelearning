@@ -71,6 +71,7 @@
 - Import: activities with damaged data now retain their original content instead of being emptied, and the user is notified
 - Uploads: large files are now staged in the configured data directory instead of the application folder
 - Sign-in no longer slows down the rest of the server when many users log in simultaneously
+- OpenID Connect: consent is now handled entirely by the identity provider, avoiding repeated consent prompts and allowing non-administrative users to sign in
 - Collaboration: closed connections are now released, preventing servers from accumulating them
 - Fixed misaligned translations that showed unrelated texts in Catalan (CA), German (DE), Esperanto (EO), Galician (GL), Italian (IT), Portuguese (PT), Romanian (RO) and Valencian (VA), affecting True/False activities, the AI question generator, the math editor, rubrics and download blocks
 - Basque (EU) translation: fixed typos, wording and missing formatting placeholders
