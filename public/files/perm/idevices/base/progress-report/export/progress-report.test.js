@@ -85,6 +85,18 @@ describe('progress-report iDevice (export)', () => {
   });
 
   describe('normalizeFileName', () => {
+    // The expectations below mirror BaseExporter.sanitizePageFilename(), which
+    // is what actually names the files. Anything this function does on its own
+    // is a broken link.
+    const asTheExporterWouldName = (title) =>
+      (title || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .substring(0, 50) || 'page';
+
     it('converts accented vowels to plain vowels', () => {
       expect($eXeInforme.normalizeFileName('árbol')).toBe('arbol');
       expect($eXeInforme.normalizeFileName('éxito')).toBe('exito');
@@ -110,30 +122,44 @@ describe('progress-report iDevice (export)', () => {
       expect($eXeInforme.normalizeFileName('hello@world')).toBe('helloworld');
       expect($eXeInforme.normalizeFileName('test#123')).toBe('test123');
       expect($eXeInforme.normalizeFileName('file:name')).toBe('filename');
+      expect($eXeInforme.normalizeFileName('A&B')).toBe('ab');
+      expect($eXeInforme.normalizeFileName('a_b_c')).toBe('abc');
+      expect($eXeInforme.normalizeFileName('versión 1.0')).toBe('version-10');
     });
 
-    it('replaces ampersand with hyphen', () => {
-      expect($eXeInforme.normalizeFileName('A&B')).toBe('a-b');
+    it('keeps every separator, as the file name does', () => {
+      // 'Adivina - Acceso' is written to adivina---acceso.html.
+      expect($eXeInforme.normalizeFileName('Adivina - Acceso')).toBe('adivina---acceso');
+      expect($eXeInforme.normalizeFileName('a--b---c')).toBe('a--b---c');
+      expect($eXeInforme.normalizeFileName('-hello-')).toBe('-hello-');
+      expect($eXeInforme.normalizeFileName('Imagen Oculta -Guardar')).toBe('imagen-oculta--guardar');
     });
 
-    it('handles German umlauts', () => {
-      expect($eXeInforme.normalizeFileName('über')).toBe('ueber');
-      expect($eXeInforme.normalizeFileName('öffnen')).toBe('oeffnen');
-      // Note: ß is not in the replacement map so it stays as is
-      expect($eXeInforme.normalizeFileName('größe')).toBe('groeße');
+    it('strips the diacritic instead of expanding the letter', () => {
+      expect($eXeInforme.normalizeFileName('über')).toBe('uber');
+      expect($eXeInforme.normalizeFileName('öffnen')).toBe('offnen');
+      expect($eXeInforme.normalizeFileName('čeština')).toBe('cestina');
+      // Letters that carry no combining mark, such as ß or ł, are dropped.
+      expect($eXeInforme.normalizeFileName('größe')).toBe('groe');
+      expect($eXeInforme.normalizeFileName('łódź')).toBe('odz');
     });
 
-    it('collapses multiple hyphens', () => {
-      expect($eXeInforme.normalizeFileName('a--b---c')).toBe('a-b-c');
+    it('drops what the exporter cannot put in a file name', () => {
+      expect($eXeInforme.normalizeFileName('Nos organizamos 📋')).toBe('nos-organizamos-');
+      // Removing the symbol leaves two spaces, and a run of whitespace is one hyphen.
+      expect($eXeInforme.normalizeFileName('Página · con signos')).toBe('pagina-con-signos');
     });
 
-    it('trims leading and trailing hyphens', () => {
-      expect($eXeInforme.normalizeFileName('-hello-')).toBe('hello');
-      expect($eXeInforme.normalizeFileName('---test---')).toBe('test');
+    it('falls back to page when nothing is left', () => {
+      expect($eXeInforme.normalizeFileName('')).toBe('page');
+      expect($eXeInforme.normalizeFileName('Страница')).toBe('page');
+      expect($eXeInforme.normalizeFileName('课程页面')).toBe('page');
     });
 
-    it('handles empty string', () => {
-      expect($eXeInforme.normalizeFileName('')).toBe('');
+    it('truncates at fifty characters', () => {
+      const title = 'Una pagina con un titulo francamente largo que pasa de los cincuenta caracteres';
+      expect($eXeInforme.normalizeFileName(title)).toHaveLength(50);
+      expect($eXeInforme.normalizeFileName(title)).toBe(asTheExporterWouldName(title));
     });
 
     it('handles non-string input', () => {
@@ -147,12 +173,24 @@ describe('progress-report iDevice (export)', () => {
       expect($eXeInforme.normalizeFileName('ế')).toBe('e');
     });
 
-    it('handles Polish characters', () => {
-      expect($eXeInforme.normalizeFileName('łódź')).toBe('lodz');
-    });
+    it('agrees with the exporter on every title tried here', () => {
+      const titles = [
+        'Adivina - Acceso',
+        'Imagen Oculta -Guardar',
+        'Nos organizamos 📋',
+        'Über uns',
+        'versión 1.0',
+        'a_b_c',
+        '  espacios   varios  ',
+        'Página · con? signos!',
+        'Страница',
+        '2024 - 2025',
+        '---',
+      ];
 
-    it('handles Czech characters', () => {
-      expect($eXeInforme.normalizeFileName('čeština')).toBe('cheshtina');
+      for (const title of titles) {
+        expect($eXeInforme.normalizeFileName(title)).toBe(asTheExporterWouldName(title));
+      }
     });
   });
 

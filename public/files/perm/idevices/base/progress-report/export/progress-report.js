@@ -1183,187 +1183,29 @@ var $eXeInforme = {
         return html;
     },
 
+    /**
+     * Turn a page title into the file name the exporter gave that page.
+     *
+     * This has to stay identical to BaseExporter.sanitizePageFilename(): the
+     * report links to files it does not name, and every divergence produced a
+     * 404 -- the previous version collapsed repeated separators, so a page
+     * titled 'Adivina - Acceso' was linked as 'adivina-acceso.html' while the
+     * exporter had written 'adivina---acceso.html'.
+     */
     normalizeFileName: function (fileName) {
-        const replacements = {
-            à: 'a',
-            á: 'a',
-            â: 'a',
-            ã: 'a',
-            ä: 'ae',
-            å: 'aa',
-            æ: 'ae',
-            ç: 'c',
-            è: 'e',
-            é: 'e',
-            ê: 'e',
-            ë: 'ee',
-            ì: 'i',
-            í: 'i',
-            î: 'i',
-            ï: 'i',
-            ð: 'dh',
-            ñ: 'n',
-            ò: 'o',
-            ó: 'o',
-            ô: 'o',
-            õ: 'o',
-            ö: 'oe',
-            ø: 'oe',
-            ù: 'u',
-            ú: 'u',
-            û: 'u',
-            ü: 'ue',
-            ý: 'y',
-            þ: 'th',
-            ÿ: 'y',
-            ā: 'aa',
-            ă: 'a',
-            ą: 'a',
-            ć: 'c',
-            ĉ: 'c',
-            ċ: 'c',
-            č: 'ch',
-            ď: 'd',
-            đ: 'd',
-            ē: 'ee',
-            ĕ: 'e',
-            ė: 'e',
-            ę: 'e',
-            ě: 'e',
-            ĝ: 'g',
-            ğ: 'g',
-            ġ: 'g',
-            ģ: 'g',
-            ĥ: 'h',
-            ħ: 'hh',
-            ĩ: 'i',
-            ī: 'ii',
-            ĭ: 'i',
-            į: 'i',
-            ı: 'i',
-            ĳ: 'ij',
-            ĵ: 'j',
-            ķ: 'k',
-            ĸ: 'k',
-            ĺ: 'l',
-            ļ: 'l',
-            ľ: 'l',
-            ŀ: 'l',
-            ł: 'l',
-            ń: 'n',
-            ņ: 'n',
-            ň: 'n',
-            ŉ: 'n',
-            ŋ: 'ng',
-            ō: 'oo',
-            ŏ: 'o',
-            ő: 'oe',
-            œ: 'oe',
-            ŕ: 'r',
-            ŗ: 'r',
-            ř: 'r',
-            ś: 's',
-            ŝ: 's',
-            ş: 's',
-            š: 'sh',
-            ţ: 't',
-            ť: 't',
-            ŧ: 'th',
-            ũ: 'u',
-            ū: 'uu',
-            ŭ: 'u',
-            ů: 'u',
-            ű: 'ue',
-            ų: 'u',
-            ŵ: 'w',
-            ŷ: 'y',
-            ź: 'z',
-            ż: 'z',
-            ž: 'zh',
-            ſ: 's',
-            ǝ: 'e',
-            ș: 's',
-            ț: 't',
-            ơ: 'o',
-            ư: 'u',
-            ầ: 'a',
-            ằ: 'a',
-            ề: 'e',
-            ồ: 'o',
-            ờ: 'o',
-            ừ: 'u',
-            ỳ: 'y',
-            ả: 'a',
-            ẩ: 'a',
-            ẳ: 'a',
-            ẻ: 'e',
-            ể: 'e',
-            ỉ: 'i',
-            ỏ: 'o',
-            ổ: 'o',
-            ở: 'o',
-            ủ: 'u',
-            ử: 'u',
-            ỷ: 'y',
-            ẫ: 'a',
-            ẵ: 'a',
-            ẽ: 'e',
-            ễ: 'e',
-            ỗ: 'o',
-            ỡ: 'o',
-            ữ: 'u',
-            ỹ: 'y',
-            ấ: 'a',
-            ắ: 'a',
-            ế: 'e',
-            ố: 'o',
-            ớ: 'o',
-            ứ: 'u',
-            ạ: 'a',
-            ậ: 'a',
-            ặ: 'a',
-            ẹ: 'e',
-            ệ: 'e',
-            ị: 'i',
-            ọ: 'o',
-            ộ: 'o',
-            ợ: 'o',
-            ụ: 'u',
-            ự: 'u',
-            ỵ: 'y',
-            ɑ: 'a',
-            ǖ: 'uu',
-            ǘ: 'uu',
-            ǎ: 'a',
-            ǐ: 'i',
-            ǒ: 'o',
-            ǔ: 'u',
-            ǚ: 'uu',
-            ǜ: 'uu',
-            '&': '-',
-        };
-
-        const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const replacerPattern = new RegExp(
-            Object.keys(replacements).map(escapeRegex).join('|'),
-            'g'
-        );
-        const specialPattern = /[¨`@^+¿?\[\]\/\\=<>:;,'"#$*()|~!{}%’«»”“]/g;
-        const controlPattern = /[\x00-\x1F\x7F]/g;
-        const underscorePattern = /_+/g;
-        const dashDotPattern = /[.\-]+/g;
-        const trimPattern = /^[.\-]+|[.\-]+$/g;
         if (typeof fileName !== 'string') return '';
 
-        return fileName
+        const sanitized = fileName
             .toLowerCase()
-            .replace(replacerPattern, (m) => replacements[m])
-            .replace(specialPattern, '')
-            .replace(/ /g, '-')
-            .replace(underscorePattern, '_')
-            .replace(controlPattern, '')
-            .replace(dashDotPattern, '-')
-            .replace(trimPattern, '');
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .substring(0, 50);
+
+        // A title written entirely in a non-Latin script strips down to
+        // nothing, and the exporter names that page 'page.html'.
+        return sanitized || 'page';
     },
 
     generateHtmlFromPages: function (pages, acc) {
