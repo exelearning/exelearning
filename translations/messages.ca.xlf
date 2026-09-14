@@ -15691,7 +15691,7 @@
       </trans-unit>
       <trans-unit id="l2puwct" resname="To save the score, the activity needs at least one question.">
         <source>To save the score, the activity needs at least one question.</source>
-        <target></target>
+        <target>~Per a desar la puntuació, l'activitat necessita almenys una pregunta.</target>
       </trans-unit>
     </body>
   </file>

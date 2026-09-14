@@ -15691,7 +15691,7 @@
       </trans-unit>
       <trans-unit id="yq3uylt" resname="To save the score, the activity needs at least one question.">
         <source>To save the score, the activity needs at least one question.</source>
-        <target></target>
+        <target>~Pour enregistrer le score, l'activité doit comporter au moins une question.</target>
       </trans-unit>
     </body>
   </file>
