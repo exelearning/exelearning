@@ -764,4 +764,61 @@ describe('form iDevice edition', () => {
       expect(c_).toHaveBeenCalledWith('Hide');
     });
   });
+
+  /**
+   * The pass-score control is a shared block in common_edition.js, exercised by
+   * its own tests. What is specific to this iDevice -- and what silently breaks
+   * if someone edits the form -- is the wiring: all four call sites have to be
+   * present, and the two saved fields have to reach the stored data. Reading
+   * the source is how that is checked without standing up the whole edition
+   * form.
+   */
+  describe('pass score wiring', () => {
+    let source;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'form.js'), 'utf-8');
+    });
+
+    it('renders the control immediately above the progress report', () => {
+      const passScoreAt = source.indexOf('gamification.passScore.getContents()');
+      const progressBarAt = source.indexOf('gamification.progressBar.getContents(');
+
+      expect(passScoreAt).toBeGreaterThan(-1);
+      expect(progressBarAt).toBeGreaterThan(-1);
+      expect(passScoreAt).toBeLessThan(progressBarAt);
+    });
+
+    it('restores the control when the iDevice is reopened', () => {
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain('passScoreMode: previousData.passScoreMode');
+      expect(source).toContain('passScoreCustom: previousData.passScoreCustom');
+    });
+
+    it('saves the mode and the customised mark, and nothing else', () => {
+      expect(source).toContain('gamification.passScore.getValues()');
+      expect(source).toContain('data.passScoreMode = this.passScoreMode');
+      expect(source).toContain('data.passScoreCustom = this.passScoreCustom');
+      // The project value is never copied into the iDevice: it is read live, so
+      // an iDevice on the global mode follows the project.
+      expect(source).not.toContain('passScoreGlobal');
+    });
+
+    it('wires the radio and input handlers', () => {
+      expect(source).toContain('gamification.passScore.addEvents()');
+    });
+
+    /**
+     * form used to carry a pass-mark dropdown of its own. It was dead: the
+     * runtime never read it and judged everyone at a hardcoded 50 %. Unifying
+     * on the shared control means every trace of it has to be gone, or the
+     * author is offered two marks and only one of them counts.
+     */
+    it('no longer offers a pass mark of its own', () => {
+      expect(source).not.toContain('createPassRateDropdown');
+      expect(source).not.toContain('dropdownPassRateId');
+      expect(source).not.toContain('passRateId');
+      expect(source).not.toContain('data.passRate');
+    });
+  });
 });

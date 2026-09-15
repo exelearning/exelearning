@@ -24,8 +24,6 @@ var $exeDevice = {
     btnAddFillBottom: 'buttonAddFillQuestionBottom',
     btnAddDropdownBottom: 'buttonAddDropdownQuestionBottom',
     btnAddSelectionBottom: 'buttonAddSelectionQuestionBottom',
-    passRateId: 'passRateMessage',
-    dropdownPassRateId: 'dropdownPassRate',
     checkCapitalizationId: 'checkCapitalization',
     checkStrictQualificationId: 'checkStrictQualification',
     checkAddBtnAnswersId: 'checkAddBtnAnswers',
@@ -301,14 +299,6 @@ var $exeDevice = {
                 ).style.display = 'none';
             }
         }
-        let dropdownPassRate = $exeDevice.ideviceBody.querySelector(
-            `[id^="${$exeDevice.dropdownPassRateId}"]`
-        );
-        if (previousData[$exeDevice.dropdownPassRateId] !== undefined) {
-            dropdownPassRate.value =
-                previousData[$exeDevice.dropdownPassRateId];
-        }
-
         let checkAddBtnAnswers = $exeDevice.ideviceBody.querySelector(
             `#${$exeDevice.checkAddBtnAnswersId}`
         );
@@ -322,6 +312,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: previousData.evaluation ?? false,
             evaluationID: previousData.evaluationID ?? '',
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: previousData.passScoreMode,
+            passScoreCustom: previousData.passScoreCustom,
         });
         this.ideviceBody.querySelector('#frmEQuestionsRandom').checked =
             previousData.questionsRandom || false;
@@ -372,6 +366,10 @@ var $exeDevice = {
         if (!progressBar) return false;
         this.evaluation = progressBar.evaluation;
         this.evaluationID = progressBar.evaluationID;
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        this.passScoreMode = passScore.passScoreMode;
+        this.passScoreCustom = passScore.passScoreCustom;
         this.eXeFormInstructions = this.getEditorTinyMCEValue(
             'eXeGameInstructions'
         );
@@ -379,17 +377,12 @@ var $exeDevice = {
             'eXeIdeviceTextAfter'
         );
         this.questionsData = $exeDevice.getQuestionsData();
-        this[$exeDevice.dropdownPassRateId] =
-            $exeDevice.ideviceBody.querySelector(
-                `[id^="${$exeDevice.dropdownPassRateId}"]`
-            ).value;
         this[$exeDevice.checkAddBtnAnswersId] =
             $exeDevice.ideviceBody.querySelector(
                 `#${$exeDevice.checkAddBtnAnswersId}`
             ).checked;
         this.showSlider =
             this.ideviceBody.querySelector('#frmEShowSlider').checked;
-        this.passRate = 50;
         this.addBtnAnswers =
             $exeDevice.ideviceBody.querySelector(`#checkAddBtnAnswers`).checked;
         this.questionsRandom = this.ideviceBody.querySelector(
@@ -401,7 +394,6 @@ var $exeDevice = {
         this.time = this.ideviceBody.querySelector('#frmETime').value;
         this.dataIds.push('eXeFormInstructions');
         this.dataIds.push('questionsData');
-        this.dataIds.push($exeDevice.dropdownPassRateId);
         this.dataIds.push($exeDevice.checkAddBtnAnswersId);
         this.dataIds.push('eXeIdeviceTextAfter');
         const fields = this.ci18n,
@@ -747,6 +739,8 @@ var $exeDevice = {
         data.ideviceId = this.ideviceBody.getAttribute('idevice-id');
         data.evaluation = this.evaluation;
         data.evaluationID = this.evaluationID;
+        data.passScoreMode = this.passScoreMode;
+        data.passScoreCustom = this.passScoreCustom;
         data.repeatActivity = this.repeatActivity;
         data.isScorm = this.isScorm;
         data.textButtonScorm = this.textButtonScorm;
@@ -758,7 +752,6 @@ var $exeDevice = {
         data.time = this.time;
         data.eXeFormInstructions = this.eXeFormInstructions;
         data.questionsData = this.questionsData;
-        data.passRate = 5;
         data.addBtnAnswers = this.addBtnAnswers;
         data.eXeIdeviceTextAfter = this.eXeIdeviceTextAfter;
         data.showSlider = this.showSlider;
@@ -835,7 +828,8 @@ var $exeDevice = {
         this.strings.msgETrue = _('True');
         this.strings.msgEFalse = _('False');
         this.strings.msgNoQuestions = _('No questions in the form');
-        this.strings.msgPassRate = _('Set the pass mark');
+        // msgPassRate ('Set the pass mark') went with the dropdown it labelled:
+        // the mark now comes from the shared pass-score control.
         this.strings.msgAddBtnAnswers = _(
             'Include a button to display the answers'
         );
@@ -953,11 +947,6 @@ var $exeDevice = {
                                 <input type="number" name="frmEPercentageQuestions" id="frmEPercentageQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
                                 <span id="frmENumeroPercentaje">1/1</span>
                             </div>
-                            <!-- Pass Rate Dropdown -->
-                            <div class="question-button inline mb-3" style="display:none;">
-                                <span id="${$exeDevice.passRateId}">${this.strings.msgPassRate}</span>
-                                ${this.createPassRateDropdown('formIdevice')}
-                            </div>            
                             <!-- Show Answers Checkbox -->
                             <div id="${$exeDevice.checkAddBtnAnswersId}_container" class="mb-3">
                                 <span class="toggle-item" role="switch" aria-checked="true">
@@ -968,6 +957,7 @@ var $exeDevice = {
                                     <label class="toggle-label" for="${$exeDevice.checkAddBtnAnswersId}">${this.strings.msgAddBtnAnswers}</label>
                                 </span>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <!-- Evaluation -->
                             ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                         </div>
@@ -2294,6 +2284,7 @@ var $exeDevice = {
     behaviourEvaluation() {
         const { ideviceBody } = $exeDevice;
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         const divTime = ideviceBody.querySelector('#frmETimeDiv');
         const percentageQuestions = ideviceBody.querySelector(
             '#frmEPercentageQuestions'
@@ -3173,18 +3164,6 @@ var $exeDevice = {
         });
         selectDropdown += `</select>`;
         selectDropdown += `<span id="dropdownAnswer_${id}" class="dropdownAnswer" style="display:none">${answer}</span>`;
-        return selectDropdown;
-    },
-
-    createPassRateDropdown(id) {
-        let options = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-        let selectDropdown = ``;
-        selectDropdown += `<select id="${$exeDevice.dropdownPassRateId}_${id}" class="dropdownPassRate form-control" aria-labelledby="${$exeDevice.passRateId}" data-id="${id}">`;
-        selectDropdown += `<option value="" selected></option>`;
-        options.forEach((option) => {
-            selectDropdown += `<option value="${option}">${option}%</option>`;
-        });
-        selectDropdown += `</select>`;
         return selectDropdown;
     },
 

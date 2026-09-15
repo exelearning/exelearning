@@ -361,9 +361,29 @@ describe('form iDevice export', () => {
     });
   });
 
-  describe('passRate', () => {
-    it('is initially empty', () => {
-      expect($form.passRate).toBe('');
+  describe('showScore verdict', () => {
+    // The threshold used to be a hardcoded 50 while $form.passRate, the
+    // author's own dropdown, was never read. Both are gone: the mark now comes
+    // from the shared pass score.
+    it('no longer carries a pass rate of its own', () => {
+      expect($form.passRate).toBeUndefined();
+    });
+
+    it('treats a mark of zero as a verdict, not as "no mark"', () => {
+      // Everyone passes at 0, which is a verdict; a truthiness check on the
+      // percentage would have hidden the result instead of showing it.
+      document.body.innerHTML =
+        '<div id="form-result-test-q"></div><div id="form-score-q"></div>';
+      const data = {
+        id: 'q',
+        rightQuestions: 0,
+        totalQuestions: 4,
+        msgs: { msgTestResultPass: 'Passed', msgTestResultNotPass: 'Not passed', msgYouScore: 'Score' },
+      };
+
+      $form.showScore(0, data);
+
+      expect(document.getElementById('form-result-test-q').textContent).toBe('Passed');
     });
   });
 

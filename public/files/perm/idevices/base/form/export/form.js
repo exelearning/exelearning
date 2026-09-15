@@ -13,9 +13,7 @@ var $form = {
      * very object the activity's controls are bound to. See resolveInstance().
      */
     instances: {},
-    dropdownPassRateId: 'dropdownPassRate',
     checkAddBtnAnswersId: 'checkAddBtnAnswers',
-    passRate: '',
     iconSingleSelection: 'rule',
     iconMultipleSelection: 'checklist_rtl',
     iconTrueFalse: 'rule',
@@ -120,7 +118,7 @@ var $form = {
                     </div>
                     <div class="form-buttons-container inline">
                         <input id="form-button-check-${ldata.id}" class="btn btn-primary" type="button" value="${ldata.msgs.msgCheck}"
-                            data-id="${ldata.id}" data-pass-rate="${this.passRate}" />
+                            data-id="${ldata.id}" />
                         <input id="form-button-reset-${ldata.id}" type="button" value="${ldata.msgs.msgReset}"
                             data-id="${ldata.id}" class="btn btn-primary"  style="display:none" />
                         ${
@@ -194,7 +192,6 @@ var $form = {
         data.rightQuestions = 0;
         data.wrongQuestions = 0;
         data.showSlider = data.showSlider ?? false;
-        data.passRate = data.passRate ?? 5;
         data.addBtnAnswers = data.addBtnAnswers ?? true;
         data.scorerp = 0;
         data.main = 'frmMainContainer-' + data.id;
@@ -789,7 +786,11 @@ var $form = {
         if (data.addBtnAnswers & showAnswers.length) showAnswers.show();
         data.gameOver = true;
         $form.checkAllQuestions(data);
-        $form.showScore(50, data);
+        // The mark used to be a hardcoded 50 here, while the author's own
+        // dropdown was never read: $form.passRate stayed '' for the life of the
+        // page. Both are gone -- the threshold is the project's, or this
+        // activity's own when its author customised it.
+        $form.showScore($exe.passScore.toPercent($exe.passScore.resolve(data)), data);
         if ($('body').hasClass('exe-scorm') && data.isScorm > 0) {
             $form.sendScore(data);
         }
@@ -1474,11 +1475,17 @@ var $form = {
             $resultsContainer.hide();
         }
     },
+    /**
+     * @param {number|null} passRate Pass mark as a percentage, or null to show
+     * the score without a verdict. A mark of 0 is a verdict -- everyone passes
+     * -- so it must not be mistaken for "no mark", which a truthiness check did.
+     * @param {Object} data The activity options.
+     */
     showScore: function (passRate, data) {
         const $resultTest = $('#form-result-test-' + data.id);
         const $scoreTest = $('#form-score-' + data.id);
         const $resultsContainer = $('#resultsContainer-' + data.id);
-        if (passRate) {
+        if (passRate !== null && passRate !== undefined && passRate !== '') {
             $resultTest.show();
             $scoreTest.show();
             $scoreTest
