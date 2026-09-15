@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v4.0.4 – 2026-09-15
+## v4.0.5 – 2026-09-16
 
 ### Added
 
@@ -115,6 +115,12 @@
 
 - Deprecated `@elysiajs/cookie` dependency and unnecessary type stub packages
 - Exported packages no longer emit xAPI statements. The emitter had no known consumer after Moodle tracking was consolidated on SCORM; SCORM tracking and grading are unchanged, and already-exported packages keep working because they bundle their own runtime
+
+---
+
+## v4.0.4
+
+404 Not Found. The requested release was not found in this project.
 
 ---
 
