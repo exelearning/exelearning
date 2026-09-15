@@ -437,6 +437,7 @@ var $exeDevice = {
                                 <input type="number" name="hiEPercentajeQuestions" id="hiEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:90px" />
                                 <span id="hiENumeroPercentaje">1/1</span>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="mb-3 d-flex flex-nowrap align-items-center gap-2 Games-Reportdiv">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -737,6 +738,10 @@ var $exeDevice = {
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#hiERevealTime').val(game.revealTime);
 
         $exeDevice.showSelectOrder(game.customMessages);
@@ -972,6 +977,8 @@ var $exeDevice = {
             ),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             questionsGame = $exeDevice.questionsGame,
             revealTime = $('#hiERevealTime').val(),
@@ -1040,6 +1047,8 @@ var $exeDevice = {
             percentajeQuestions: percentajeQuestions,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
         };
         return data;
@@ -1244,6 +1253,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
