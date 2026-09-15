@@ -3,7 +3,8 @@
  *
  * The mode is activated by the READER, never stored in the project: opening the
  * export with `?exe-presentation=1` enters the mode (menu collapsed, Left/PageUp
- * and Right/PageDown change page) and shows an "Exit presentation mode" control
+ * and Right/PageDown change page, M shows/hides the menu, T toggles Teacher Mode
+ * where available) and shows an "Exit presentation mode" control
  * next to the "made with eXe" badge. The parameter is the state: leaving
  * rewrites it to `=0` in the URL and the navigation links, so the choice
  * survives page changes and reloads without any storage. It only exists for a
@@ -97,10 +98,15 @@ test.describe('Presentation mode (web site export)', () => {
         await expect(heading).toHaveText(firstTitle ?? '');
         await expectPresenting(page, true);
 
-        // The menu can still be opened normally while presenting.
+        // The menu can still be opened normally while presenting, and M shows/hides it.
         await page.locator('#siteNavToggler').click();
         await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'true');
         await expect(page.locator('html')).toHaveClass(/mode-presentation/);
+        await heading.click();
+        await page.keyboard.press('m');
+        await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'false');
+        await page.keyboard.press('m');
+        await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'true');
 
         // Leave: the parameter becomes 0 in the URL and the links, keys are inert.
         await page.locator('#exe-presentation-toggler').click();

@@ -622,9 +622,11 @@ window.$exeExport = {
      *
      * Lets a reader present a web site export with the keyboard or a presenter remote:
      * the navigation menu collapses, Left/PageUp go to the previous page and
-     * Right/PageDown to the next one. Pages stay the navigation unit and long pages keep
-     * scrolling normally (Up/Down are never captured). Nothing is stored in the .elpx and
-     * there is no export option: the READER activates the mode, like Teacher Mode.
+     * Right/PageDown to the next one, M shows/hides the menu and T toggles Teacher Mode
+     * where its toggle exists (never shadows Ctrl/Cmd+T). Pages stay the navigation unit
+     * and long pages keep scrolling normally (Up/Down are never captured). Nothing is
+     * stored in the .elpx and there is no export option: the READER activates the mode,
+     * like Teacher Mode.
      *
      *   ?exe-presentation=1|true|yes   present: the mode is on and a visible
      *                                  "Exit presentation mode" control leaves it.
@@ -694,6 +696,8 @@ window.$exeExport = {
             control.type = 'button';
             control.id = 'exe-presentation-toggler';
             control.textContent = this._label();
+            control.title = $exe_i18n.presentation_mode_keys
+                || 'Keys: Left/Right change page, M menu, T teacher mode, F11 full screen';
             var self = this;
             control.addEventListener('click', function(){ self.toggle(); });
             document.body.appendChild(control);
@@ -809,15 +813,28 @@ window.$exeExport = {
             // reserves (e.g. Alt+Left/Right for history).
             if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
             if (this.isTypingTarget(event.target) || this.isOverlayActive()) return;
-            var link = null;
+            var target = null;
             if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
-                link = document.querySelector('a.nav-button-left');
+                target = document.querySelector('a.nav-button-left');
             } else if (event.key === 'ArrowRight' || event.key === 'PageDown') {
-                link = document.querySelector('a.nav-button-right');
+                target = document.querySelector('a.nav-button-right');
+            } else if (this._isKey(event, 'KeyM', 'm')) {
+                // The style's own toggler keeps its state classes and nav=false links.
+                target = document.getElementById('siteNavToggler');
+            } else if (this._isKey(event, 'KeyT', 't')) {
+                // Only exists when Teacher Mode is available on this page (?exe-teacher=1
+                // and teacher-only content); its change handler owns the reveal logic.
+                target = document.getElementById('teacher-mode-toggler');
             }
-            if (!link) return;
-            link.click();
+            if (!target) return;
+            target.click();
             if (event.cancelable) event.preventDefault();
+        },
+        // KeyboardEvent.code identifies the physical key on any layout (Option+M gives
+        // "µ" on macOS); fall back to .key where .code is unavailable.
+        _isKey : function(event, code, key){
+            if (event.code) return event.code === code;
+            return event.key === key || event.key === key.toUpperCase();
         }
     }
 }

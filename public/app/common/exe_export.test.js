@@ -2875,6 +2875,7 @@ describe('exe_export.js', () => {
       return Object.assign(
         {
           key: '',
+          code: '',
           ctrlKey: false,
           metaKey: false,
           altKey: false,
@@ -2919,6 +2920,7 @@ describe('exe_export.js', () => {
 
     beforeEach(() => {
       window.$exe_i18n.exit_presentation_mode = 'Exit presentation mode';
+      window.$exe_i18n.presentation_mode_keys = 'Keys: Left/Right change page, M menu, T teacher mode, F11 full screen';
       // Earlier describes replace window.location with bare objects and never restore
       // it; the URL rewrite needs a real href, so pin one for these tests.
       Object.defineProperty(window, 'location', {
@@ -3008,6 +3010,7 @@ describe('exe_export.js', () => {
         expect(control().tagName).toBe('BUTTON');
         expect(control().getAttribute('type')).toBe('button');
         expect(control().textContent).toBe('Exit presentation mode');
+        expect(control().title).toBe('Keys: Left/Right change page, M menu, T teacher mode, F11 full screen');
         expect(pm().isActive()).toBe(true);
         expect(menuExpanded()).toBe('false');
         expect(firstMenuHref()).toBe('page1.html?exe-presentation=1');
@@ -3035,10 +3038,12 @@ describe('exe_export.js', () => {
       it('falls back to English labels when the i18n bundle predates the keys', () => {
         delete window.$exe_i18n.presentation_mode;
         delete window.$exe_i18n.exit_presentation_mode;
+        delete window.$exe_i18n.presentation_mode_keys;
         buildWebSitePage();
         bootstrapWith('1');
         pm().init();
         expect(control().textContent).toBe('Exit presentation mode');
+        expect(control().title).toBe('Keys: Left/Right change page, M menu, T teacher mode, F11 full screen');
         pm().leave();
         expect(control().textContent).toBe('Presentation mode');
       });
@@ -3165,10 +3170,53 @@ describe('exe_export.js', () => {
         expect(event.preventDefault).toHaveBeenCalledTimes(1);
       });
 
-      it.each(['ArrowUp', 'ArrowDown', 'Escape', 'm', 't'])('%s is left to the browser', (key) => {
+      it.each(['ArrowUp', 'ArrowDown', 'Escape', ' ', 'Enter', 'f'])('%s is left to the browser', (key) => {
         const event = makeEvent({ key });
         pm().handleKeydown(event);
         expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('m shows and hides the menu through the style toggler', () => {
+        const event = makeEvent({ key: 'm', code: 'KeyM' });
+        pm().handleKeydown(event);
+        expect(menuExpanded()).toBe('true');
+        expect(event.preventDefault).toHaveBeenCalledTimes(1);
+        pm().handleKeydown(makeEvent({ key: 'm', code: 'KeyM' }));
+        expect(menuExpanded()).toBe('false');
+      });
+
+      it('m works by physical key on any layout and does nothing without a toggler', () => {
+        const byCode = makeEvent({ key: 'µ', code: 'KeyM' });
+        pm().handleKeydown(byCode);
+        expect(byCode.preventDefault).toHaveBeenCalledTimes(1);
+        document.getElementById('siteNavToggler').remove();
+        const event = makeEvent({ key: 'm', code: 'KeyM' });
+        pm().handleKeydown(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it('t toggles Teacher Mode through its own toggle when it is on the page', () => {
+        document.body.insertAdjacentHTML('beforeend', '<input type="checkbox" id="teacher-mode-toggler">');
+        const toggle = document.getElementById('teacher-mode-toggler');
+        const clickSpy = vi.spyOn(toggle, 'click');
+        const event = makeEvent({ key: 't', code: 'KeyT' });
+        pm().handleKeydown(event);
+        expect(clickSpy).toHaveBeenCalledTimes(1);
+        expect(event.preventDefault).toHaveBeenCalledTimes(1);
+      });
+
+      it('t does nothing when Teacher Mode is not available on the page', () => {
+        const event = makeEvent({ key: 't', code: 'KeyT' });
+        pm().handleKeydown(event);
+        expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      it.each([{ ctrlKey: true }, { metaKey: true }, { altKey: true }])('never shadows a modified m or t %o', (mods) => {
+        for (const [key, code] of [['m', 'KeyM'], ['t', 'KeyT']]) {
+          const event = makeEvent(Object.assign({ key, code }, mods));
+          pm().handleKeydown(event);
+          expect(event.preventDefault).not.toHaveBeenCalled();
+        }
       });
 
       it('does nothing when there is no page to go to', () => {

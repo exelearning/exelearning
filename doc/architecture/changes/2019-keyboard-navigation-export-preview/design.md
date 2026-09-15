@@ -47,7 +47,8 @@ Web site (HTML5) exports opened as the top-level document. Not SCORM/IMS
 
 - A reader can enter and leave presentation mode from a visible control.
 - While presenting: menu collapsed, `←`/`PageUp` previous page,
-  `→`/`PageDown` next page.
+  `→`/`PageDown` next page, `M` shows/hides the menu, `T` toggles Teacher Mode
+  where its toggle exists.
 - The choice survives navigation between pages.
 - Nothing is injected and no key is captured unless the reader asked for it.
 - Open overlays, fullscreen iDevices and form fields keep their keys.
@@ -71,8 +72,10 @@ Web site (HTML5) exports opened as the top-level document. Not SCORM/IMS
   presentation mode"), and is hidden in print.
 - `Esc` is not the exit key (it belongs to lightboxes, dialogs, videos and
   fullscreen).
-- Keys never fire with a modifier, while typing, while an overlay is open or
-  while `document.fullscreenElement` is set.
+- Keys never fire with a modifier (so `Ctrl`/`Cmd+T` and `Alt+←`/`→` stay
+  the browser's), while typing, while an overlay is open or while
+  `document.fullscreenElement` is set.
+- The control's tooltip lists the keys and points to `F11` for full screen.
 
 ## Scenarios
 
@@ -129,8 +132,10 @@ rendered outside `.exe-content` and the footer, styled in
   differs), one `keydown` listener bound on enter and removed on leave.
 - `handleKeydown()`: bails out on `defaultPrevented`, composition, any
   modifier, a typing target or an active overlay; otherwise clicks
-  `a.nav-button-left` / `a.nav-button-right` and prevents default only when a
-  link existed.
+  `a.nav-button-left` / `a.nav-button-right` (arrows, PageUp/PageDown),
+  `#siteNavToggler` (`M`, by `KeyboardEvent.code` so it works on any layout)
+  or `#teacher-mode-toggler` (`T`, present only when Teacher Mode is available)
+  and prevents default only when the target existed.
 - `overlaySignals` / `isOverlayActive()`: ADR-2019-03, plus
   `document.fullscreenElement`.
 - Shared helpers `$exeExport.withNavParam()` / `propagateNavParam()` replace
@@ -140,8 +145,8 @@ rendered outside `.exe-content` and the footer, styled in
 - CSS: `#exe-presentation-toggler` in `base.css` follows the `#made-with-eXe`
   recipe (fixed bottom-right, neutral, print-hidden), shifts left when the
   badge is present and stacks below it (`z-index` 1 vs 2) so the badge's hover
-  expansion covers it. Labels: `presentation_mode` and
-  `exit_presentation_mode` in `common_i18n.js`.
+  expansion covers it. Labels: `presentation_mode`, `exit_presentation_mode`
+  and the `presentation_mode_keys` tooltip in `common_i18n.js`.
 
 ## Data model
 
@@ -169,8 +174,8 @@ an overlay is open. `↑`/`↓` keep scrolling. `Esc` keeps its existing meaning
 
 ## Internationalization
 
-`presentation_mode` and `exit_presentation_mode` are added to
-`public/app/common/common_i18n.js` with `c_()`; per-language bundles are
+`presentation_mode`, `exit_presentation_mode` and `presentation_mode_keys` are
+added to `public/app/common/common_i18n.js` with `c_()`; per-language bundles are
 generated at build time from the translations, and the runtime falls back to
 English when a bundle predates the keys.
 

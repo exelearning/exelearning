@@ -91,6 +91,11 @@ where does the control that enters and leaves it go?
 `?exe-presentation=1|true|yes` enters the mode and shows a visible "Exit
 presentation mode" control; `?exe-presentation=0` shows the control with the
 mode off; without the parameter nothing is injected and no key is captured.
+While presenting, `←`/`PageUp` and `→`/`PageDown` change page, `M` shows or
+hides the menu through the style's own toggler and `T` toggles Teacher Mode
+through its own toggle where that mode is available (all plain keys only, so
+`Ctrl`/`Cmd+T` is never shadowed); the control's tooltip lists them and points
+to `F11` for full screen.
 The parameter is the state: entering or leaving rewrites it in the current URL
 (`history.replaceState`) and in the menu, previous/next and search-result
 links, so the choice survives page changes and reloads with no storage at
@@ -122,9 +127,10 @@ which is what presenters already do.
   covers the control instead of the other way round. The label changes with
   the state ("Presentation mode" / "Exit presentation mode"), so it is a plain
   button, not an `aria-pressed` toggle.
-- Labels: `presentation_mode` and `exit_presentation_mode` in
-  `public/app/common/common_i18n.js`, the template every export's
-  `libs/common_i18n.js` is generated from (English fallback in the runtime).
+- Labels: `presentation_mode`, `exit_presentation_mode` and
+  `presentation_mode_keys` (tooltip) in `public/app/common/common_i18n.js`,
+  the template every export's `libs/common_i18n.js` is generated from (English
+  fallback in the runtime).
 - Tests: `public/app/common/exe_export.test.js` (`describe('presentationMode')`)
   and `test/e2e/playwright/specs/presentation-mode.spec.ts`, which serves a real
   web site export from its own origin and opens it top-level.
@@ -136,7 +142,9 @@ Presentation mode is a reader-activated mode of web site exports.
 control available with the mode off; a visible `#exe-presentation-toggler`
 control placed next to `#made-with-eXe` enters and leaves it, rewriting the
 parameter in the URL and the navigation links. The parameter is the only
-state: no storage, no project property, no export option and no export type. Fullscreen is not part of the mode
+state: no storage, no project property, no export option and no export type.
+The keys are `←`/`PageUp`, `→`/`PageDown`, `M` (menu) and `T` (Teacher Mode
+where available); `↑`/`↓`, `Space`, `Enter` and `Esc` are never captured. Fullscreen is not part of the mode
 and `Esc` is not its exit key. It exists only for a web site export opened as
 the top-level document.
 
