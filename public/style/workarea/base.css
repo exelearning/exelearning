@@ -674,12 +674,13 @@ video {
     }
 }
 
-/* Made with eXeLearning */
+/* Made with eXeLearning (stacked above #exe-presentation-toggler so it can expand over it) */
 #made-with-eXe {
     margin: 0;
     position: fixed;
     bottom: 0;
-    right: 0
+    right: 0;
+    z-index: 2
 }
 
 #made-with-eXe a {
@@ -733,7 +734,7 @@ video {
     cursor: pointer;
     opacity: .8;
     transition: .5s;
-    z-index: 1000
+    z-index: 1
 }
 
 #exe-presentation-toggler:hover,
@@ -741,7 +742,7 @@ video {
     opacity: 1
 }
 
-#exe-presentation-toggler[aria-pressed="true"] {
+html.mode-presentation #exe-presentation-toggler {
     background: #222;
     color: #fff
 }

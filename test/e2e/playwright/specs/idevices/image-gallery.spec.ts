@@ -555,10 +555,9 @@ test.describe('Image Gallery iDevice', () => {
             await page.goto(`${origin}/index.html?exe-presentation=1`);
             await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined');
 
-            const control = page.locator('#exe-presentation-toggler');
-            await expect(control).toBeVisible();
-            await control.click();
-            await expect(control).toHaveAttribute('aria-pressed', 'true');
+            // =1 enters the mode at once; wait for the runtime to have bound its keys.
+            await page.waitForFunction(() => (window as any).$exeExport?.presentationMode?.isActive() === true);
+            await expect(page.locator('#exe-presentation-toggler')).toHaveText('Exit presentation mode');
 
             // Check the page's own <h1> rather than the whole body: #siteNav
             // always lists every page's title in the sidebar, so a body-text

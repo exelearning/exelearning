@@ -64,10 +64,11 @@ Web site (HTML5) exports opened as the top-level document. Not SCORM/IMS
 
 ## Requirements
 
-- `?exe-presentation=1|true|yes` makes the control available; the parameter
-  alone changes nothing.
+- `?exe-presentation=1|true|yes` enters the mode; `=0` offers the control with
+  the mode off; without the parameter nothing is injected.
 - The control is visible in every web site export regardless of style, is a
-  real `<button>` with `aria-pressed`, and is hidden in print.
+  real `<button>` whose label states the action ("Presentation mode" / "Exit
+  presentation mode"), and is hidden in print.
 - `Esc` is not the exit key (it belongs to lightboxes, dialogs, videos and
   fullscreen).
 - Keys never fire with a modifier, while typing, while an overlay is open or
@@ -88,20 +89,21 @@ Web site (HTML5) exports opened as the top-level document. Not SCORM/IMS
 
 - Without the parameter: no `#exe-presentation-toggler`, no parameter in the
   navigation links, `→` does nothing.
-- With the parameter: control present with `aria-pressed="false"`, mode off,
-  keys inert until the control is pressed.
-- After entering: `html.mode-presentation`, `#siteNavToggler` collapsed,
-  `→`/`PageDown` and `←`/`PageUp` change page, the next page restores the mode
-  by itself, the menu can still be opened.
-- After leaving: keys inert, state forgotten across reloads.
+- With `=1`: mode on at once, control reads "Exit presentation mode",
+  `html.mode-presentation`, `#siteNavToggler` collapsed, `→`/`PageDown` and
+  `←`/`PageUp` change page, every next page re-enters by itself, the menu can
+  still be opened.
+- After leaving: URL and links carry `=0`, keys inert, the choice survives a
+  reload and a page change, and the control reads "Presentation mode" to come
+  back in.
 - With a SimpleLightbox open: keys inert; after closing: keys work.
 
 ## Current state
 
 `public/app/common/exe_export.js` is the runtime every exported page loads. It
 already hosts Teacher Mode, a reader-side mode made available by
-`?exe-teacher=1`, remembered in `localStorage` and carried between pages by
-appending the parameter to the navigation links. Themes render
+`?exe-teacher=1` and carried between pages by appending the parameter to the
+navigation links. Themes render
 `#siteNavToggler` with `aria-expanded` and already propagate their own
 `?nav=false` when the menu is collapsed. `#made-with-eXe` is a fixed badge
 rendered outside `.exe-content` and the footer, styled in
@@ -112,16 +114,17 @@ rendered outside `.exe-content` and the footer, styled in
 `presentationMode` in `exe_export.js`, mirroring `teacherMode`:
 
 - `bootstrap()` (runs in `<head>`): reads `?exe-presentation`, sets
-  `_available` and `_navParams = 'exe-presentation=1'`, and restores
-  `html.mode-presentation` from `localStorage` flicker-free.
+  `_available` (parameter present) and `_requested` (truthy value), and marks
+  `html.mode-presentation` flicker-free when requested.
 - `init()` (runs with `teacherMode.init()`, after the style rendered its
-  togglers): propagates the parameter to `#siteNav a` and `.nav-buttons a`
-  through the shared `$exeExport.propagateNavParam()`, returns unless
-  `_available` and `isSupported()`, appends the control before `</body>` and
-  re-enters the mode if the stored state is ON.
+  togglers): returns unless `_available` and `isSupported()`, propagates the
+  current state to `#siteNav a` and `.nav-buttons a` through the shared
+  `$exeExport.propagateNavParam()`, appends the control before `</body>` and
+  enters the mode when requested.
 - `isSupported()`: `body.exe-web-site` and `window.self === window.top`.
-- `enter()`/`leave()`/`toggle()`: `html.mode-presentation`, storage key
-  `exePresentationMode`, `aria-pressed`, menu via the theme's own toggler
+- `enter()`/`leave()`/`toggle()`: `html.mode-presentation`, `_syncState()`
+  (rewrites `exe-presentation=1|0` in the URL with `history.replaceState`, in
+  the links, and relabels the control), menu via the theme's own toggler
   (`_setMenuExpanded()` clicks `#siteNavToggler` only when its `aria-expanded`
   differs), one `keydown` listener bound on enter and removed on leave.
 - `handleKeydown()`: bails out on `defaultPrevented`, composition, any
@@ -135,13 +138,15 @@ rendered outside `.exe-content` and the footer, styled in
   `propagateNavParams()` delegate to them, and search hits receive both
   parameters.
 - CSS: `#exe-presentation-toggler` in `base.css` follows the `#made-with-eXe`
-  recipe (fixed bottom-right, neutral, print-hidden) and shifts left when the
-  badge is present. Label: `presentation_mode` in `common_i18n.js`.
+  recipe (fixed bottom-right, neutral, print-hidden), shifts left when the
+  badge is present and stacks below it (`z-index` 1 vs 2) so the badge's hover
+  expansion covers it. Labels: `presentation_mode` and
+  `exit_presentation_mode` in `common_i18n.js`.
 
 ## Data model
 
-None. No project property, no metadata key, no XML key. Reader state lives in
-`localStorage` (`exePresentationMode`) and in the navigation parameter.
+None. No project property, no metadata key, no XML key, no storage. The
+navigation parameter is the only state.
 
 ## Migration and compatibility
 
@@ -153,18 +158,21 @@ are unaffected: without the parameter the runtime injects nothing.
 
 The parameter is only compared against three literal values; nothing from the
 URL is written to the DOM. The control's label comes from the bundled i18n
-file. `localStorage` access is wrapped in try/catch for opaque origins.
+file. `history.replaceState` is wrapped in try/catch; the links still carry
+the state if the browser refuses it.
 
 ## Accessibility
 
-The mode is visible (a button with `aria-pressed`), entered and left from the
-interface, and never captures keys with modifiers, inside form fields or while
+The mode is visible (a button whose label names the action), entered and left
+from the interface, and never captures keys with modifiers, inside form fields or while
 an overlay is open. `↑`/`↓` keep scrolling. `Esc` keeps its existing meanings.
 
 ## Internationalization
 
-`presentation_mode` is added to `public/app/common/common_i18n.js` with
-`c_()`; per-language bundles are generated by the translation process.
+`presentation_mode` and `exit_presentation_mode` are added to
+`public/app/common/common_i18n.js` with `c_()`; per-language bundles are
+generated at build time from the translations, and the runtime falls back to
+English when a bundle predates the keys.
 
 ## Performance
 
@@ -179,7 +187,8 @@ One `keydown` listener while the mode is active; overlay probes are
 - E2E (`test/e2e/playwright/specs/presentation-mode.spec.ts`): the project is
   exported in the browser, served from its own origin through `page.route()`
   (`serveWebSiteExport()` in `workarea-helpers.ts`) and opened top-level, with
-  and without the parameter.
+  and without the parameter; leaving, reloading, navigating with `=0` and
+  re-entering are asserted.
 - E2E (`idevices/image-gallery.spec.ts`): real SimpleLightbox in a served export
   with the mode active.
 
@@ -189,8 +198,9 @@ Ships with PR #2020. Follow-up: user-guide entry for `?exe-presentation=1`.
 
 ## Risks and mitigations
 
-- A host that strips query parameters loses the mode on the next page: the
-  control is always visible to re-enter it.
+- A host that strips query parameters loses the mode and the control on the
+  next page: it is the reader's own link, and every in-package link is
+  rewritten by the runtime.
 - A style that renames the nav selectors loses the keys: the runtime is a
   no-op when they are absent.
 

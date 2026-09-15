@@ -626,12 +626,14 @@ window.$exeExport = {
      * scrolling normally (Up/Down are never captured). Nothing is stored in the .elpx and
      * there is no export option: the READER activates the mode, like Teacher Mode.
      *
-     *   ?exe-presentation=1|true|yes   show the "Presentation mode" control; the reader
-     *                                  enters and leaves the mode with it. The choice is
-     *                                  remembered in localStorage and the parameter travels
-     *                                  in the navigation links, so the mode survives page
-     *                                  changes. The parameter alone changes nothing.
+     *   ?exe-presentation=1|true|yes   present: the mode is on and a visible
+     *                                  "Exit presentation mode" control leaves it.
+     *   ?exe-presentation=0            the control is available but the mode is off.
      *   (no parameter)                 nothing is injected and no key is captured.
+     *
+     * The parameter IS the state: entering or leaving rewrites it in the current URL
+     * (history.replaceState) and in the menu, prev/next and search-result links, so the
+     * choice survives page changes and reloads without any storage.
      *
      * Scope: web site exports opened as the top-level document. Never SCORM/IMS (the LMS
      * owns navigation), EPUB, or content embedded in an iframe. Fullscreen is deliberately
@@ -641,39 +643,39 @@ window.$exeExport = {
      * overlaySignals) and the keys stay inactive while it is.
      *
      * The control is appended to <body> as a sibling of #made-with-eXe (styled in
-     * base.css the same way): outside .exe-content and the footer, present in every web
-     * site export whatever the style does to the page layout.
+     * base.css the same way, and stacked below it so the badge can expand over it):
+     * outside .exe-content and the footer, present in every web site export whatever
+     * the style does to the page layout.
      */
     presentationMode : {
-        STORAGE_KEY : 'exePresentationMode',
+        PARAM : 'exe-presentation',
         _available : false,
-        _navParams : '',
+        _requested : false,
         _active : false,
         _boundHandleKeydown : null,
         _truthy : function(v){ return v === '1' || v === 'true' || v === 'yes'; },
         /**
-         * Runs in <head>: decide whether the control is available and restore the stored
-         * ON state flicker-free (html.mode-presentation). Never throws.
+         * Runs in <head>: read the parameter and mark the requested mode on <html>
+         * flicker-free. Never throws.
          */
         bootstrap : function(){
             try {
-                var params = new URLSearchParams(window.location.search);
-                this._available = this._truthy(params.get('exe-presentation'));
-                this._navParams = this._available ? 'exe-presentation=1' : '';
-                if (this._available) {
-                    try {
-                        if (localStorage.getItem(this.STORAGE_KEY) === '1') {
-                            document.documentElement.classList.add('mode-presentation');
-                        }
-                    } catch (e) {}
-                }
+                var value = new URLSearchParams(window.location.search).get(this.PARAM);
+                this._available = value !== null;
+                this._requested = this._truthy(value);
+                if (this._requested) document.documentElement.classList.add('mode-presentation');
             } catch (e) {
                 // No presentation mode is the safe default.
             }
         },
+        isActive : function(){ return this._active; },
+        /** The parameter to carry in navigation links: the current state, or nothing. */
+        navParams : function(){
+            return this._available ? this.PARAM + '=' + (this._active ? '1' : '0') : '';
+        },
         /** Keep the mode across in-package navigation (see $exeExport.withNavParam). */
         withParams : function(href){
-            return $exeExport.withNavParam(href, this._navParams);
+            return $exeExport.withNavParam(href, this.navParams());
         },
         /** Web site export (never SCORM/IMS/EPUB) opened as the top-level document. */
         isSupported : function(){
@@ -681,18 +683,21 @@ window.$exeExport = {
             try { return window.self === window.top; } catch (e) { return false; }
         },
         init : function(){
-            $exeExport.propagateNavParam(this._navParams);
-            if (!this._available || !this.isSupported()) return;
+            if (!this._available) return;
+            if (!this.isSupported()) {
+                document.documentElement.classList.remove('mode-presentation');
+                return;
+            }
+            $exeExport.propagateNavParam(this.navParams());
             if (document.getElementById('exe-presentation-toggler')) return;
             var control = document.createElement('button');
             control.type = 'button';
             control.id = 'exe-presentation-toggler';
-            control.setAttribute('aria-pressed', 'false');
-            control.textContent = $exe_i18n.presentation_mode || 'Presentation mode';
+            control.textContent = this._label();
             var self = this;
             control.addEventListener('click', function(){ self.toggle(); });
             document.body.appendChild(control);
-            if (document.documentElement.classList.contains('mode-presentation')) this.enter();
+            if (this._requested) this.enter();
         },
         toggle : function(){
             if (this._active) this.leave(); else this.enter();
@@ -701,8 +706,7 @@ window.$exeExport = {
             if (this._active) return;
             this._active = true;
             document.documentElement.classList.add('mode-presentation');
-            try { localStorage.setItem(this.STORAGE_KEY, '1'); } catch (e) {}
-            this._setPressed(true);
+            this._syncState();
             this._setMenuExpanded(false);
             this._boundHandleKeydown = this.handleKeydown.bind(this);
             document.addEventListener('keydown', this._boundHandleKeydown);
@@ -711,15 +715,27 @@ window.$exeExport = {
             if (!this._active) return;
             this._active = false;
             document.documentElement.classList.remove('mode-presentation');
-            try { localStorage.removeItem(this.STORAGE_KEY); } catch (e) {}
-            this._setPressed(false);
+            this._syncState();
             this._setMenuExpanded(true);
             document.removeEventListener('keydown', this._boundHandleKeydown);
             this._boundHandleKeydown = null;
         },
-        _setPressed : function(pressed){
+        _label : function(){
+            return this._active
+                ? ($exe_i18n.exit_presentation_mode || 'Exit presentation mode')
+                : ($exe_i18n.presentation_mode || 'Presentation mode');
+        },
+        // The parameter is the state: mirror it in the URL, the links and the control.
+        _syncState : function(){
+            $exeExport.propagateNavParam(this.navParams());
+            try {
+                var url = $exeExport.setUrlParam(window.location.href, this.PARAM, this._active ? '1' : '0');
+                window.history.replaceState(window.history.state, '', url);
+            } catch (e) {
+                // The links still carry the state; only a reload of this page forgets it.
+            }
             var control = document.getElementById('exe-presentation-toggler');
-            if (control) control.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+            if (control) control.textContent = this._label();
         },
         // Reuse the style's own menu toggler so its state classes, nav=false links and
         // low-resolution behaviour stay the single source of truth. The menu can still be

@@ -40,9 +40,10 @@ that decision down for three reasons:
 Teacher Mode (`public/app/common/exe_export.js`, `teacherMode`) already solves
 the same shape of problem: an in-page mode that is made available by a URL
 parameter (`?exe-teacher=1`), switched on and off by the reader with a visible
-control, remembered in `localStorage`, and carried between pages by appending
-the parameter to the navigation links. Nothing about it is stored in the
-project.
+control, and carried between pages by appending the parameter to the
+navigation links. Nothing about it is stored in the project. Presentation mode
+goes one step further: the parameter's only purpose is presenting, so its
+value is the state itself and no storage is needed.
 
 ## Problem
 
@@ -85,22 +86,28 @@ where does the control that enters and leaves it go?
   exit control and fallback; `Esc` would collide with the overlays the mode
   must respect. Rejected in review.
 
-### Option 4 (chosen): Reader-activated mode, like Teacher Mode
+### Option 4 (chosen): Reader-activated mode carried by the parameter itself
 
-`?exe-presentation=1|true|yes` makes a "Presentation mode" control available.
-The parameter alone changes nothing; without it nothing is injected and no key
-is captured. The reader enters and leaves the mode with the control. The
-choice is remembered in `localStorage` and the parameter is appended to the
-menu, previous/next and search-result links, so the mode survives navigation.
-Fullscreen is left to the browser (`F11`), which is what presenters already do.
+`?exe-presentation=1|true|yes` enters the mode and shows a visible "Exit
+presentation mode" control; `?exe-presentation=0` shows the control with the
+mode off; without the parameter nothing is injected and no key is captured.
+The parameter is the state: entering or leaving rewrites it in the current URL
+(`history.replaceState`) and in the menu, previous/next and search-result
+links, so the choice survives page changes and reloads with no storage at
+all. Unlike Teacher Mode, the parameter does activate the mode: revealing
+teacher content is a content change that must stay behind a click, whereas
+the only reason to add this parameter to a link is to present, and one more
+click would be pure friction. Fullscreen is left to the browser (`F11`),
+which is what presenters already do.
 
 ## Evidence
 
 - Runtime: `public/app/common/exe_export.js`, `presentationMode` —
-  `bootstrap()` runs in `<head>` (parameter and stored state, flicker-free),
-  `init()` appends the control and re-enters the mode on the next page,
-  `enter()`/`leave()`/`toggle()` manage `html.mode-presentation`, the
-  `exePresentationMode` storage key, `aria-pressed` and the menu.
+  `bootstrap()` runs in `<head>` (reads the parameter, marks
+  `html.mode-presentation` flicker-free), `init()` appends the control and
+  enters the mode when the parameter asked for it, `enter()`/`leave()`/
+  `toggle()` manage `html.mode-presentation`, the menu and, through
+  `_syncState()`, the URL, the links and the control's label.
 - Shared propagation helpers `$exeExport.withNavParam()` and
   `$exeExport.propagateNavParam()` serve both Teacher Mode and presentation mode
   (single source of truth, AGENTS.md §1); search hits get both parameters in
@@ -110,21 +117,26 @@ Fullscreen is left to the browser (`F11`), which is what presenters already do.
   and `window.self === window.top`.
 - Control placement and look: appended to `<body>` after `#made-with-eXe`,
   styled in `public/style/workarea/base.css` with the same recipe as the badge
-  (fixed bottom-right, neutral, hidden in print, offset when the badge exists).
-- Label: `presentation_mode` in `public/app/common/common_i18n.js`, the
-  template every export's `libs/common_i18n.js` is generated from.
+  (fixed bottom-right, neutral, hidden in print, offset when the badge exists)
+  and stacked below it (`z-index` 1 vs 2) so the badge's hover expansion
+  covers the control instead of the other way round. The label changes with
+  the state ("Presentation mode" / "Exit presentation mode"), so it is a plain
+  button, not an `aria-pressed` toggle.
+- Labels: `presentation_mode` and `exit_presentation_mode` in
+  `public/app/common/common_i18n.js`, the template every export's
+  `libs/common_i18n.js` is generated from (English fallback in the runtime).
 - Tests: `public/app/common/exe_export.test.js` (`describe('presentationMode')`)
   and `test/e2e/playwright/specs/presentation-mode.spec.ts`, which serves a real
   web site export from its own origin and opens it top-level.
 
 ## Decision
 
-Presentation mode is a reader-activated mode of web site exports. It is made
-available by `?exe-presentation=1` (aliases `true`/`yes`), entered and left
-with a visible `#exe-presentation-toggler` control placed next to
-`#made-with-eXe`, remembered in `localStorage` under `exePresentationMode`, and
-carried between pages by the navigation parameter. No project property, no
-export option and no export type stores it. Fullscreen is not part of the mode
+Presentation mode is a reader-activated mode of web site exports.
+`?exe-presentation=1` (aliases `true`/`yes`) enters it and `=0` leaves the
+control available with the mode off; a visible `#exe-presentation-toggler`
+control placed next to `#made-with-eXe` enters and leaves it, rewriting the
+parameter in the URL and the navigation links. The parameter is the only
+state: no storage, no project property, no export option and no export type. Fullscreen is not part of the mode
 and `Esc` is not its exit key. It exists only for a web site export opened as
 the top-level document.
 
@@ -134,8 +146,8 @@ the top-level document.
 
 - Sharing or importing an `.elpx` can never change navigation for anyone.
 - The reader decides to present exactly when presenting; nothing to configure.
-- One pattern (parameter + control + storage + link propagation) for both
-  reader-side modes.
+- One pattern (parameter + control + link propagation) for both reader-side
+  modes, with no storage at all for this one.
 - The control is visible in every web site export whatever the style does.
 
 ### Negative
@@ -153,19 +165,21 @@ the top-level document.
 ## Risks
 
 - **Parameter dropped by a host** (low): a link that strips query parameters
-  loses the mode. Mitigation: `localStorage` restores it on the next page that
-  carries the parameter; the control is always one click away.
+  loses the mode and the control. Mitigation: it is the reader's own link; the
+  runtime rewrites every in-package link, and a browser that refuses
+  `history.replaceState` still keeps the state in the links.
 - **Overlap with a style's own badge area** (low): styles may place widgets
   bottom-right. Mitigation: the control is an ordinary id-addressable element
   that any style can restyle or move.
 
 ## Validation
 
-- Unit: bootstrap, scope guard, control injection, enter/leave, key handling
-  and overlay deferral in `exe_export.test.js`.
-- E2E: `presentation-mode.spec.ts` (no parameter → nothing; parameter → control;
-  enter → collapsed menu, keys, propagation, persistence; leave → inert keys)
-  and the SimpleLightbox case in `idevices/image-gallery.spec.ts`.
+- Unit: bootstrap, scope guard, control injection, enter/leave, URL and link
+  rewriting, key handling and overlay deferral in `exe_export.test.js`.
+- E2E: `presentation-mode.spec.ts` (no parameter → nothing; `=1` → mode on,
+  collapsed menu, keys, propagation; leave → `=0` in URL and links, inert
+  keys, survives reload and navigation; re-enter) and the SimpleLightbox case
+  in `idevices/image-gallery.spec.ts`.
 
 ## Follow-up work
 

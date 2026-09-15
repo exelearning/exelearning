@@ -2904,50 +2904,58 @@ describe('exe_export.js', () => {
       });
     }
 
-    function available() {
-      const restore = mockSearchParams({ 'exe-presentation': '1' });
+    function bootstrapWith(value) {
+      const restore = mockSearchParams(value === undefined ? {} : { 'exe-presentation': value });
       pm().bootstrap();
       restore();
     }
 
+    const control = () => document.getElementById('exe-presentation-toggler');
+    const menuExpanded = () => document.getElementById('siteNavToggler').getAttribute('aria-expanded');
+    const firstMenuHref = () => document.querySelector('#siteNav a').getAttribute('href');
+    const presenting = () => document.documentElement.classList.contains('mode-presentation');
+
+    let replaceState;
+
+    beforeEach(() => {
+      window.$exe_i18n.exit_presentation_mode = 'Exit presentation mode';
+      // Earlier describes replace window.location with bare objects and never restore
+      // it; the URL rewrite needs a real href, so pin one for these tests.
+      Object.defineProperty(window, 'location', {
+        value: { href: 'http://localhost/index.html', search: '' },
+        writable: true,
+        configurable: true,
+      });
+      replaceState = vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
+    });
+
     afterEach(() => {
       pm().leave();
+      replaceState.mockRestore();
       document.documentElement.classList.remove('mode-presentation');
       document.body.className = '';
       window.top = window;
     });
 
-    describe('bootstrap (URL parameter makes the control available)', () => {
+    describe('bootstrap (the parameter carries the state)', () => {
       it('is unavailable and captures nothing without the parameter', () => {
-        const restore = mockSearchParams({});
-        pm().bootstrap();
-        restore();
+        bootstrapWith(undefined);
         expect(pm()._available).toBe(false);
-        expect(pm()._navParams).toBe('');
+        expect(pm().navParams()).toBe('');
+        expect(presenting()).toBe(false);
       });
 
-      it.each(['1', 'true', 'yes'])('?exe-presentation=%s makes the control available', (value) => {
-        const restore = mockSearchParams({ 'exe-presentation': value });
-        pm().bootstrap();
-        restore();
+      it.each(['1', 'true', 'yes'])('?exe-presentation=%s requests the mode flicker-free', (value) => {
+        bootstrapWith(value);
         expect(pm()._available).toBe(true);
-        expect(pm()._navParams).toBe('exe-presentation=1');
-        // The parameter alone never enters the mode.
-        expect(document.documentElement.classList.contains('mode-presentation')).toBe(false);
+        expect(presenting()).toBe(true);
       });
 
-      it('restores the stored ON state flicker-free when available', () => {
-        window.localStorage.setItem('exePresentationMode', '1');
-        available();
-        expect(document.documentElement.classList.contains('mode-presentation')).toBe(true);
-      });
-
-      it('ignores the stored ON state without the parameter', () => {
-        window.localStorage.setItem('exePresentationMode', '1');
-        const restore = mockSearchParams({});
-        pm().bootstrap();
-        restore();
-        expect(document.documentElement.classList.contains('mode-presentation')).toBe(false);
+      it.each(['0', 'false', 'no'])('?exe-presentation=%s makes the control available with the mode off', (value) => {
+        bootstrapWith(value);
+        expect(pm()._available).toBe(true);
+        expect(presenting()).toBe(false);
+        expect(pm().navParams()).toBe('exe-presentation=0');
       });
     });
 
@@ -2977,90 +2985,95 @@ describe('exe_export.js', () => {
     describe('init', () => {
       it('injects nothing without the parameter', () => {
         buildWebSitePage();
-        const restore = mockSearchParams({});
-        pm().bootstrap();
-        restore();
+        bootstrapWith(undefined);
         pm().init();
-        expect(document.getElementById('exe-presentation-toggler')).toBeNull();
-        expect(document.querySelector('#siteNav a').getAttribute('href')).toBe('page1.html');
+        expect(control()).toBeNull();
+        expect(firstMenuHref()).toBe('page1.html');
       });
 
-      it('injects nothing when the export is not supported', () => {
+      it('injects nothing and drops the requested mode when the export is not supported', () => {
         document.body.className = 'exe-export exe-scorm';
         document.body.innerHTML = '<nav id="siteNav"><a href="page1.html">1</a></nav>';
-        available();
+        bootstrapWith('1');
         pm().init();
-        expect(document.getElementById('exe-presentation-toggler')).toBeNull();
+        expect(control()).toBeNull();
+        expect(presenting()).toBe(false);
+        expect(pm().isActive()).toBe(false);
       });
 
-      it('appends a neutral control before </body>, after the made-with-eXe badge', () => {
+      it('with =1 enters the mode at once: exit control, collapsed menu, links carrying =1', () => {
         buildWebSitePage();
-        available();
+        bootstrapWith('1');
         pm().init();
-        const control = document.getElementById('exe-presentation-toggler');
-        expect(control).not.toBeNull();
-        expect(control.tagName).toBe('BUTTON');
-        expect(control.getAttribute('type')).toBe('button');
-        expect(control.getAttribute('aria-pressed')).toBe('false');
-        expect(control.textContent).toBe('Presentation mode');
-        expect(document.body.lastElementChild).toBe(control);
-        expect(control.previousElementSibling.id).toBe('made-with-eXe');
+        expect(control().tagName).toBe('BUTTON');
+        expect(control().getAttribute('type')).toBe('button');
+        expect(control().textContent).toBe('Exit presentation mode');
+        expect(pm().isActive()).toBe(true);
+        expect(menuExpanded()).toBe('false');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=1');
+        expect(document.querySelector('a.nav-button-right').getAttribute('href')).toBe('next.html?exe-presentation=1');
       });
 
-      it('falls back to an English label when the i18n bundle predates the key', () => {
+      it('with =0 offers the control with the mode off and links carrying =0', () => {
+        buildWebSitePage();
+        bootstrapWith('0');
+        pm().init();
+        expect(control().textContent).toBe('Presentation mode');
+        expect(pm().isActive()).toBe(false);
+        expect(menuExpanded()).toBe('true');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=0');
+      });
+
+      it('appends the control before </body>, after the made-with-eXe badge', () => {
+        buildWebSitePage();
+        bootstrapWith('1');
+        pm().init();
+        expect(document.body.lastElementChild).toBe(control());
+        expect(control().previousElementSibling.id).toBe('made-with-eXe');
+      });
+
+      it('falls back to English labels when the i18n bundle predates the keys', () => {
         delete window.$exe_i18n.presentation_mode;
+        delete window.$exe_i18n.exit_presentation_mode;
         buildWebSitePage();
-        available();
+        bootstrapWith('1');
         pm().init();
-        expect(document.getElementById('exe-presentation-toggler').textContent).toBe('Presentation mode');
+        expect(control().textContent).toBe('Exit presentation mode');
+        pm().leave();
+        expect(control().textContent).toBe('Presentation mode');
       });
 
       it('does not add a second control when called twice', () => {
         buildWebSitePage();
-        available();
+        bootstrapWith('1');
         pm().init();
         pm().init();
         expect(document.querySelectorAll('#exe-presentation-toggler').length).toBe(1);
       });
 
-      it('carries the parameter across menu and prev/next links', () => {
-        buildWebSitePage();
-        available();
-        pm().init();
-        expect(document.querySelector('#siteNav a').getAttribute('href')).toBe('page1.html?exe-presentation=1');
-        expect(document.querySelector('a.nav-button-right').getAttribute('href')).toBe('next.html?exe-presentation=1');
-      });
-
-      it('re-enters the mode on the next page when the stored state is ON', () => {
-        window.localStorage.setItem('exePresentationMode', '1');
-        buildWebSitePage();
-        available();
-        pm().init();
-        expect(document.getElementById('exe-presentation-toggler').getAttribute('aria-pressed')).toBe('true');
-        expect(document.getElementById('siteNavToggler').getAttribute('aria-expanded')).toBe('false');
-      });
-
       it('never throws when the theme has no nav toggler', () => {
         buildWebSitePage();
         document.getElementById('siteNavToggler').remove();
-        available();
+        bootstrapWith('1');
         expect(() => pm().init()).not.toThrow();
+        expect(pm().isActive()).toBe(true);
       });
     });
 
     describe('enter / leave / toggle', () => {
       beforeEach(() => {
         buildWebSitePage();
-        available();
+        bootstrapWith('0');
         pm().init();
       });
 
-      it('enter() marks the mode on <html>, remembers it, presses the control and collapses the menu', () => {
+      it('enter() marks <html>, relabels the control, collapses the menu and rewrites links and URL to =1', () => {
         pm().enter();
-        expect(document.documentElement.classList.contains('mode-presentation')).toBe(true);
-        expect(window.localStorage.getItem('exePresentationMode')).toBe('1');
-        expect(document.getElementById('exe-presentation-toggler').getAttribute('aria-pressed')).toBe('true');
-        expect(document.getElementById('siteNavToggler').getAttribute('aria-expanded')).toBe('false');
+        expect(presenting()).toBe(true);
+        expect(control().textContent).toBe('Exit presentation mode');
+        expect(menuExpanded()).toBe('false');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=1');
+        expect(replaceState.mock.lastCall[2]).toContain('exe-presentation=1');
       });
 
       it('enter() leaves an already collapsed menu alone', () => {
@@ -3071,28 +3084,43 @@ describe('exe_export.js', () => {
         expect(clickSpy).not.toHaveBeenCalled();
       });
 
-      it('leave() reverses everything and expands the menu again', () => {
+      it('leave() reverses everything and rewrites links and URL to =0', () => {
         pm().enter();
         pm().leave();
-        expect(document.documentElement.classList.contains('mode-presentation')).toBe(false);
-        expect(window.localStorage.getItem('exePresentationMode')).toBeNull();
-        expect(document.getElementById('exe-presentation-toggler').getAttribute('aria-pressed')).toBe('false');
-        expect(document.getElementById('siteNavToggler').getAttribute('aria-expanded')).toBe('true');
+        expect(presenting()).toBe(false);
+        expect(control().textContent).toBe('Presentation mode');
+        expect(menuExpanded()).toBe('true');
+        expect(firstMenuHref()).toBe('page1.html?exe-presentation=0');
+        expect(replaceState.mock.lastCall[2]).toContain('exe-presentation=0');
+      });
+
+      it('uses no storage: the URL is the only state', () => {
+        const setItem = vi.spyOn(window.localStorage, 'setItem');
+        pm().enter();
+        pm().leave();
+        expect(setItem).not.toHaveBeenCalled();
       });
 
       it('the menu can still be opened normally while presenting', () => {
         pm().enter();
         document.getElementById('siteNavToggler').click();
-        expect(document.getElementById('siteNavToggler').getAttribute('aria-expanded')).toBe('true');
-        expect(document.documentElement.classList.contains('mode-presentation')).toBe(true);
+        expect(menuExpanded()).toBe('true');
+        expect(presenting()).toBe(true);
       });
 
       it('clicking the control toggles the mode', () => {
-        const control = document.getElementById('exe-presentation-toggler');
-        control.click();
-        expect(document.documentElement.classList.contains('mode-presentation')).toBe(true);
-        control.click();
-        expect(document.documentElement.classList.contains('mode-presentation')).toBe(false);
+        control().click();
+        expect(pm().isActive()).toBe(true);
+        control().click();
+        expect(pm().isActive()).toBe(false);
+      });
+
+      it('survives a history API that refuses to rewrite the URL', () => {
+        replaceState.mockImplementation(() => {
+          throw new Error('SecurityError');
+        });
+        expect(() => pm().enter()).not.toThrow();
+        expect(pm().isActive()).toBe(true);
       });
 
       it('enter() twice binds a single keydown listener', () => {
@@ -3115,9 +3143,8 @@ describe('exe_export.js', () => {
     describe('keys while presenting', () => {
       beforeEach(() => {
         buildWebSitePage();
-        available();
+        bootstrapWith('1');
         pm().init();
-        pm().enter();
       });
 
       it.each(['ArrowRight', 'PageDown'])('%s goes to the next page', (key) => {
