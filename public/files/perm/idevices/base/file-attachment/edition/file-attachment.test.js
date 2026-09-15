@@ -12,6 +12,9 @@ function loadEditionIdevice(code) {
     const modifiedCode = code.replace(/var\s+\$exeDevice\s*=/, 'global.$exeDevice =');
     // eslint-disable-next-line no-eval
     (0, eval)(modifiedCode);
+    // Same lifecycle the workarea publishes before calling init(), so the suite
+    // can close the edition and assert on what is actually released.
+    global.attachEditionLifecycle(global.$exeDevice);
     return global.$exeDevice;
 }
 
@@ -462,6 +465,117 @@ describe('file-attachment iDevice edition', () => {
             assetsMap._fire();
 
             expect(assetsMap._observerCount()).toBe(0);
+        });
+
+        it('releases the shared asset observer when the edition closes', () => {
+            const { meta, assetsMap } = installAssetManager({
+                [UUID]: { filename: 'doc.pdf', mime: 'application/pdf', size: 100 },
+            });
+            init();
+            $exeDevice.addAttachment(asset({ url: `asset://${UUID}.pdf`, filename: 'doc.pdf' }));
+            expect(assetsMap._observerCount()).toBe(1);
+
+            // The form DOM is still on the page when teardown runs, so the lazy
+            // self-clean branch cannot be what releases the observer.
+            $exeDevice.$lifecycle.destroy();
+
+            expect(assetsMap._observerCount()).toBe(0);
+            expect($exeDevice._assetsObserver).toBeNull();
+
+            meta.set(UUID, { filename: 'renamed.pdf', mime: 'application/pdf', size: 100 });
+            assetsMap._fire();
+
+            const row = body.querySelector('.fileAttachment-edit-item');
+            expect(row.getAttribute('data-filename')).toBe('doc.pdf');
+        });
+    });
+
+    describe('edition lifecycle', () => {
+        it('ignores a Media Library selection confirmed after the edition closed', () => {
+            init();
+            let onSelect = null;
+            const fileManager = {
+                show: vi.fn(opts => {
+                    onSelect = opts.onSelect;
+                }),
+            };
+            global.eXeLearning.app = { modals: { filemanager: fileManager } };
+
+            $exeDevice.openFileManager();
+            $exeDevice.$lifecycle.destroy();
+            onSelect([{ assetUrl: 'asset://d1.pdf', asset: { filename: 'd1.pdf' } }]);
+
+            expect(body.querySelectorAll('.fileAttachment-edit-item').length).toBe(0);
+
+            delete global.eXeLearning.app;
+        });
+
+        it('releases the handler the Media Library singleton parked on itself', () => {
+            init();
+            // The modal lives as long as the application, so a handler left on
+            // it would keep this editor's DOM and its owning node reachable.
+            const fileManager = {
+                onSelectCallback: null,
+                show: vi.fn(opts => {
+                    fileManager.onSelectCallback = opts.onSelect;
+                }),
+            };
+            global.eXeLearning.app = { modals: { filemanager: fileManager } };
+
+            $exeDevice.openFileManager();
+            expect(fileManager.onSelectCallback).not.toBeNull();
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(fileManager.onSelectCallback).toBeNull();
+
+            delete global.eXeLearning.app;
+        });
+
+        it('leaves a handler the Media Library has since replaced alone', () => {
+            init();
+            const fileManager = {
+                onSelectCallback: null,
+                show: vi.fn(opts => {
+                    fileManager.onSelectCallback = opts.onSelect;
+                }),
+            };
+            global.eXeLearning.app = { modals: { filemanager: fileManager } };
+
+            $exeDevice.openFileManager();
+            const somebodyElse = () => {};
+            fileManager.onSelectCallback = somebodyElse;
+
+            $exeDevice.$lifecycle.destroy();
+
+            expect(fileManager.onSelectCallback).toBe(somebodyElse);
+
+            delete global.eXeLearning.app;
+        });
+
+        it('does not add a row for an upload that finishes after the edition closed', async () => {
+            init();
+            let release;
+            const assetManager = {
+                insertImage: vi.fn(
+                    () =>
+                        new Promise(resolve => {
+                            release = resolve;
+                        }),
+                ),
+                extractAssetId: url => url.replace('asset://', '').split('.')[0],
+                getAssetMetadata: () => ({ filename: 'notes.txt', mime: 'text/plain', size: 12 }),
+            };
+            global.eXeLearning.app = { project: { _yjsBridge: { assetManager } } };
+
+            const upload = $exeDevice.uploadFile(new File(['hi'], 'notes.txt', { type: 'text/plain' }));
+            $exeDevice.$lifecycle.destroy();
+            release('asset://cccccccc-cccc-cccc-cccc-cccccccccccc.txt');
+            await upload;
+
+            expect(body.querySelectorAll('.fileAttachment-edit-item').length).toBe(0);
+
+            delete global.eXeLearning.app;
         });
     });
 

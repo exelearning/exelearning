@@ -31,7 +31,23 @@ test.describe('Admin Impersonation', () => {
         await page.waitForLoadState('domcontentloaded');
 
         await page.locator('.admin-nav-link[data-section="users"]').click();
+        await expect(page.locator('#usersTableBody tr').first()).toBeVisible();
+
+        const filteredUsers = page.waitForResponse(res => {
+            try {
+                const url = new URL(res.url());
+                return (
+                    url.pathname.includes('/api/admin/users') &&
+                    url.searchParams.get('search') === targetEmail &&
+                    res.ok()
+                );
+            } catch {
+                return false;
+            }
+        });
         await page.fill('#userSearch', targetEmail);
+        await filteredUsers;
+
         const targetRow = page.locator('#usersTableBody tr').filter({ hasText: targetEmail }).first();
         // The search is debounced and re-renders the whole table when its response lands. The row can
         // already be visible from the unfiltered render, so wait for the narrowed result before opening
@@ -39,9 +55,10 @@ test.describe('Admin Impersonation', () => {
         await expect(page.locator('#usersTableBody tr')).toHaveCount(1);
         await expect(targetRow).toBeVisible();
 
-        // Row actions moved behind a three-dot menu (issue #2261).
-        await targetRow.locator('button[data-action="user-actions"]').click();
-        const impersonateItem = targetRow.locator('button[data-action="impersonate"]');
+        const actionsButton = targetRow.locator('button[data-action="user-actions"]');
+        await actionsButton.click();
+        await expect(actionsButton).toHaveAttribute('aria-expanded', 'true');
+        const impersonateItem = targetRow.locator('.dropdown-menu.show button[data-action="impersonate"]');
         await expect(impersonateItem).toBeVisible();
 
         page.once('dialog', dialog => dialog.accept());

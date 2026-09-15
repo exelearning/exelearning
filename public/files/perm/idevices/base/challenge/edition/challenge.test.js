@@ -580,3 +580,96 @@ describe('challenge iDevice', () => {
     });
   });
 });
+
+/**
+ * Edition lifecycle teardown (#2293).
+ *
+ * The game import file reader is the only resource this editor creates that can
+ * outlive its form, so the lifecycle must abort an in-flight read and reject a
+ * result that arrives after the editor closed.
+ */
+describe('challenge edition: lifecycle teardown (#2293)', () => {
+    let $exeDevice;
+    let originalExeDevicesEdition;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        document.body.innerHTML = `
+      <div id="desafioIdeviceForm">
+        <div id="eXeGameExportImport">
+          <input id="eXeGameImportGame" type="file" />
+          <a href="#" id="eXeGameExportQuestions"></a>
+        </div>
+      </div>`;
+        originalExeDevicesEdition = global.$exeDevicesEdition;
+        global.$exeDevicesEdition = {
+            iDevice: {
+                gamification: {
+                    progressBar: { addEvents: vi.fn() },
+                },
+            },
+        };
+        $exeDevice = global.loadIdevice(join(__dirname, 'challenge.js'));
+        $exeDevice.challengesGame = [];
+        $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+        if ($exeDevice && $exeDevice.$lifecycle) {
+            $exeDevice.$lifecycle.destroy();
+        }
+        global.$exeDevicesEdition = originalExeDevicesEdition;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('aborts an in-flight import read and ignores its late result', () => {
+        const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+        const input = document.getElementById('eXeGameImportGame');
+        const file = new File(['challenge'], 'game.txt', { type: 'text/plain' });
+        Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+        const readers = [];
+        const realFileReader = global.FileReader;
+        class FakeFileReader {
+            constructor() {
+                this.readyState = 0;
+                this.onload = null;
+                this.aborted = false;
+                readers.push(this);
+            }
+            readAsText() {
+                this.readyState = 1;
+            }
+            abort() {
+                this.aborted = true;
+                this.readyState = 2;
+            }
+            fireLoad(result) {
+                this.readyState = 2;
+                this.onload({ target: { result } });
+            }
+        }
+        global.FileReader = FakeFileReader;
+        window.FileReader = FakeFileReader;
+
+        try {
+            $(input).trigger('change');
+            readers[0].fireLoad('finished');
+            expect(importGame).toHaveBeenCalledTimes(1);
+            expect(importGame).toHaveBeenCalledWith('finished');
+
+            $(input).trigger('change');
+            const pending = readers[1];
+            $exeDevice.$lifecycle.destroy();
+
+            expect(readers[0].aborted).toBe(false);
+            expect(pending.aborted).toBe(true);
+            pending.onload({ target: { result: 'late' } });
+            expect(importGame).toHaveBeenCalledTimes(1);
+        } finally {
+            global.FileReader = realFileReader;
+            window.FileReader = realFileReader;
+        }
+    });
+});
