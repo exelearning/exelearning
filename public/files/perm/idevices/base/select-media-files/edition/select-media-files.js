@@ -218,6 +218,7 @@ var $exeDevice = {
                                 <label for="slcmEAuthor" class="mb-0">${_('Authorship')}:</label>
                                 <input id="slcmEAuthor" type="text" class="form-control" />
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-3 Games-Reportdiv">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -1178,6 +1179,8 @@ var $exeDevice = {
             phrasesGame = $exeDevice.phrasesGame,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             modeTable = $('#slcmEModeTable').is(':checked'),
             numberMaxCards = $('#slcmEANumberMaxCard').val(),
@@ -1218,6 +1221,8 @@ var $exeDevice = {
             version: $exeDevice.version,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             attempsNumber: attempsNumber,
             numberMaxCards: numberMaxCards,
             modeTable: modeTable,
@@ -1514,6 +1519,8 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+
         $('#slcmEShowMoreDefinition').on('click', function (e) {
             e.preventDefault();
             if ($('#slcmEDefinitionAltAuthor').hasClass('d-none')) {
@@ -1758,6 +1765,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#slcmEAttemptsNumber').val(game.attempsNumber);
         $('#slcmEModeTable').prop('checked', game.modeTable);
