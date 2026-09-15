@@ -110,7 +110,6 @@
 - @biomejs/biome: 2.4.5 → 2.5.11
 - mysql2: 3.18.2 → 3.23.4
 - y-websocket: 3.0.0 → 3.1.0
-- Other dependencies updated to their latest compatible versions
 
 ### Removed
 
