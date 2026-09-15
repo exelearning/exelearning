@@ -327,6 +327,7 @@ var $exeDevice = {
                                 <img class="CQE-EImageBack" src="${path}clsfHome.png" id="clasificaENoCard" alt="${_('No image')}" />
                             </div>
                         </div>
+                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="Games-Reportdiv d-flex align-items-center gap-2 mb-3 flex-wrap">
                             ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
@@ -906,6 +907,8 @@ var $exeDevice = {
             gameLevel = parseInt($('input[name=qtxgamelevel]:checked').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             imgCard = $('#clasificaEURLImgCard').val(),
             id = $exeDevice.getIdeviceID();
 
@@ -975,6 +978,8 @@ var $exeDevice = {
             gameLevel,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             imgCard: imgCard,
             id,
         };
@@ -1393,6 +1398,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         if (
             window.File &&
             window.FileReader &&
@@ -1696,6 +1702,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
 
         $exeDevice.wordsGame = game.wordsGame;
