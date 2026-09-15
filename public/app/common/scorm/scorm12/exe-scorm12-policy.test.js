@@ -457,6 +457,75 @@ describe('exe-scorm12-policy', () => {
             // A "not implemented" answer to an optional probe is not an error.
             expect(errorSpy).not.toHaveBeenCalled();
         });
+
+        describe('project pass score', () => {
+            const withPageThreshold = (percentage) =>
+                policy.configure({ getPageSuccessThreshold: () => percentage });
+
+            it('adopts the mark the page publishes', () => {
+                withPageThreshold(70);
+                startSession({ 'cmi.core.lesson_status': 'incomplete' });
+
+                policy.applyEntryPolicy();
+
+                expect(policy.getSuccessThreshold()).toBe(70);
+            });
+
+            it('lets the LMS mastery score win over it', () => {
+                // The teacher configured the activity in their own platform;
+                // that is more specific than what the author chose.
+                withPageThreshold(70);
+                startSession({ 'cmi.core.lesson_status': 'incomplete', 'cmi.student_data.mastery_score': '40' });
+
+                policy.applyEntryPolicy();
+
+                expect(policy.getSuccessThreshold()).toBe(40);
+            });
+
+            it('keeps the historical default for a package exported before the option existed', () => {
+                withPageThreshold(null);
+                startSession({ 'cmi.core.lesson_status': 'incomplete' });
+
+                policy.applyEntryPolicy();
+
+                expect(policy.getSuccessThreshold()).toBe(policy.DEFAULT_SUCCESS_THRESHOLD);
+            });
+
+            it('grades exactly as before for a project that never touched the option', () => {
+                // The default mark of 5 out of 10 is the historical 50 %.
+                withPageThreshold(50);
+                startSession({ 'cmi.core.lesson_status': 'incomplete' });
+
+                policy.applyEntryPolicy();
+
+                expect(policy.getSuccessThreshold()).toBe(policy.DEFAULT_SUCCESS_THRESHOLD);
+            });
+
+            it('ignores a page threshold outside 0-100', () => {
+                withPageThreshold(420);
+                startSession({ 'cmi.core.lesson_status': 'incomplete' });
+
+                policy.applyEntryPolicy();
+
+                expect(policy.getSuccessThreshold()).toBe(policy.DEFAULT_SUCCESS_THRESHOLD);
+            });
+
+            it('reads the mark out of 10 from the META by default', () => {
+                document.head.insertAdjacentHTML(
+                    'beforeend',
+                    '<meta name="exe-pass-score" content="7.5" data-test-meta>'
+                );
+                try {
+                    startSession({ 'cmi.core.lesson_status': 'incomplete' });
+
+                    policy.applyEntryPolicy();
+
+                    expect(policy.getSuccessThreshold()).toBe(75);
+                } finally {
+                    document.head.querySelectorAll('meta[data-test-meta]').forEach((meta) => meta.remove());
+                }
+            });
+        });
     });
 
     describe('status helpers', () => {

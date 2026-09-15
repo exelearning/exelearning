@@ -79,10 +79,14 @@
 
     /**
      * eXeLearning default success threshold, as a percentage of the aggregate
-     * score. Used when the LMS publishes no cmi.student_data.mastery_score.
-     * Matches the threshold eXeLearning game iDevices have always applied.
+     * score. Used when the page declares no pass score of its own and the LMS
+     * publishes no cmi.student_data.mastery_score. Matches the threshold
+     * eXeLearning game iDevices have always applied.
      */
     var DEFAULT_SUCCESS_THRESHOLD = 50;
+
+    /** META the exporter writes with the project pass score (a mark out of 10). */
+    var PASS_SCORE_META_NAME = 'exe-pass-score';
 
     var defaultDeps = {
         getClient: function () {
@@ -95,6 +99,34 @@
             if (global.console && global.console.warn) {
                 global.console.warn(message);
             }
+        },
+        /**
+         * The page's own success threshold, as a percentage.
+         *
+         * Read straight from the META rather than through $exe.passScore so
+         * that the runtime stays self-contained: libs/SCOFunctions.js is
+         * lazy-loaded by consumers that do not necessarily have common.js, and
+         * the runtime contract (doc/development/scorm12-runtime-contract.md)
+         * is what other projects build against.
+         *
+         * @returns {number|null} A percentage in 0-100, or null when the page
+         * declares nothing — an export from before this option existed.
+         */
+        getPageSuccessThreshold: function () {
+            if (!global.document || !global.document.querySelector) {
+                return null;
+            }
+            var meta = global.document.querySelector('meta[name="' + PASS_SCORE_META_NAME + '"]');
+            if (!meta) {
+                return null;
+            }
+            var mark = toFiniteNumber(meta.getAttribute('content'));
+            if (mark === null || mark < 0 || mark > 10) {
+                return null;
+            }
+            // The author writes a mark out of 10; the policy judges the
+            // aggregate out of 100.
+            return mark * 10;
         },
     };
 
@@ -531,15 +563,29 @@
         },
 
         /**
-         * Adopt cmi.student_data.mastery_score as the success threshold when
-         * the LMS publishes one. The element is optional in SCORM 1.2, so a
-         * minimal LMS answering "not implemented" simply leaves the
-         * eXeLearning default in place — that is not an error.
+         * Settle the success threshold for this session, least specific first:
+         *
+         *   1. DEFAULT_SUCCESS_THRESHOLD — 50, the historical eXeLearning mark.
+         *   2. The project pass score published by the page, if it has one.
+         *   3. cmi.student_data.mastery_score, if the LMS publishes one.
+         *
+         * The LMS wins on purpose: mastery_score is what the teacher set on the
+         * activity in their own platform, and that is more specific than what
+         * the author chose when building the content. The element is optional
+         * in SCORM 1.2, so a minimal LMS answering "not implemented" simply
+         * leaves the page value in place — that is not an error.
+         *
+         * A project that never touches the option publishes 5, which is 50 —
+         * so packages keep grading exactly as they did before this existed.
          *
          * @returns {number|null} The threshold now in force.
          */
         resolveSuccessThreshold: function () {
             state.thresholdResolved = true;
+            var page = deps.getPageSuccessThreshold();
+            if (page !== null && page >= 0 && page <= 100) {
+                state.successThreshold = page;
+            }
             var mastery = toFiniteNumber(deps.getClient().getOptionalValue(MASTERY_SCORE).value);
             if (mastery !== null && mastery >= 0 && mastery <= 100) {
                 state.successThreshold = mastery;

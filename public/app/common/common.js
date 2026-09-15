@@ -2237,8 +2237,16 @@ var $exeDevices = {
                     } else {
                         // Legacy runtime (SCORM 2004 packages and packages
                         // exported before the SCORM 1.2 runtime rewrite).
+                        //
+                        // The threshold was a hard-coded 50. It is now the
+                        // project pass score on the aggregate's own 0-100
+                        // scale; a project that never touches the option
+                        // publishes 5, which is 50, so nothing changes for
+                        // content that does not use the feature. There is no
+                        // policy layer here to consult mastery_score, so this
+                        // path applies the author's mark directly.
                         pipwerks.SCORM.set("cmi.core.score.raw", newFinalScore);
-                        if (newFinalScore >= 50) {
+                        if (newFinalScore >= $exe.passScore.toPercent()) {
                             pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
                         } else {
                             pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
@@ -2424,6 +2432,15 @@ var $exeDevices = {
                         // count of zero also produces.
                         const rawScore = parseFloat(game.scorerp);
                         const score = Number.isFinite(rawScore) ? rawScore : 0;
+                        // The pass mark used to be a hard-coded 5 here. It is
+                        // now the project's, or this iDevice's own when its
+                        // author customised it -- resolved per activity, on the
+                        // same 0-10 scale every iDevice computes scorerp on.
+                        // This single comparison decides both the report state
+                        // and the message the learner reads, because
+                        // showEvaluationIcon picks msgSuccessfulActivity or
+                        // msgUnsuccessfulActivity from it.
+                        const passMark = $exe.passScore.resolve(game);
                         const name = $exeDevices.iDevice.gamification.report.getNameIdevice($main),
                             formattedDate = $exeDevices.iDevice.gamification.report.getDateString(),
                             scorm = {
@@ -2432,7 +2449,7 @@ var $exeDevices = {
                                 'name': name,
                                 'score': score,
                                 'date': formattedDate,
-                                'state': (parseFloat(score) >= 5 ? 2 : 1),
+                                'state': (score >= passMark ? 2 : 1),
                                 'page': $exeDevices.iDevice.gamification.report.getNodeIdevice()
                             },
                             data = $exeDevices.iDevice.gamification.report.updateEvaluation($exeDevices.iDevice.gamification.report.getDataStorage(game.evaluationID), scorm, game.id);

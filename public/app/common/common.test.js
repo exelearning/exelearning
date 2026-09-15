@@ -2656,6 +2656,33 @@ describe('common.js $exeDevices', () => {
       expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
     });
 
+    /**
+     * SCORM 2004 packages and anything exported before the SCORM 1.2 runtime
+     * rewrite have no policy layer, so the project mark is applied directly to
+     * the page aggregate. There is no mastery_score to consult on this path.
+     */
+    it.each([
+      ['passes at the project mark', 70, 'passed'],
+      ['fails just below it', 69, 'failed'],
+    ])('showFinalScore on the legacy path %s', (_label, score, expected) => {
+      delete window.exeScorm12;
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'exe-pass-score');
+      meta.setAttribute('content', '7');
+      document.head.appendChild(meta);
+      const set = vi.fn(() => true);
+      global.pipwerks = { SCORM: { get: () => '', set } };
+      const game = { ideviceNumber: 1, msgs: { msgYouScore: 'Score' } };
+
+      try {
+        getScorm().showFinalScore({ 1: { title: 'Q', score, weighted: 1 } }, game);
+
+        expect(set).toHaveBeenCalledWith('cmi.core.lesson_status', expected);
+      } finally {
+        meta.remove();
+      }
+    });
+
     it('showFinalScore publishes no score for a page the learner never answered', () => {
       // score.raw cannot express "no answer", and Moodle promotes an incomplete
       // status to completed as soon as any score.raw exists, so a merely-visited
@@ -3830,6 +3857,107 @@ describe('common.js $exeDevices', () => {
 
       afterEach(() => {
         localStorage.removeItem('dataEvaluation-eval-1');
+        document.body.innerHTML = '';
+      });
+    });
+
+    /**
+     * The pass mark used to be a hard-coded 5. It is now the project's, or the
+     * iDevice's own when its author customised it, and the same comparison
+     * drives the message the learner reads.
+     */
+    describe('saveEvaluation against the pass score', () => {
+      const instance = 'rep-2';
+
+      function givenActivity(scorerp, passScoreFields = {}) {
+        document.body.innerHTML = `
+          <article>
+            <header><h1 class="box-title">Game</h1></header>
+            <div id="${instance}" class="idevice_node">
+              <div id="main-${instance}"></div>
+            </div>
+          </article>`;
+        localStorage.removeItem('dataEvaluation-eval-2');
+        return {
+          main: `main-${instance}`,
+          evaluation: true,
+          evaluationID: 'eval-2',
+          scorerp,
+          idevicePath: 'p/',
+          idevice: 'idevice_node',
+          msgs: {
+            msgTypeGame: 'Game',
+            msgUncompletedActivity: 'x',
+            msgSuccessfulActivity: 'Passed: %s',
+            msgUnsuccessfulActivity: 'Not passed: %s',
+          },
+          ...passScoreFields,
+        };
+      }
+
+      function setPageMark(mark) {
+        const meta = document.createElement('meta');
+        meta.setAttribute('name', 'exe-pass-score');
+        meta.setAttribute('content', mark);
+        meta.setAttribute('data-test-meta', '');
+        document.head.appendChild(meta);
+      }
+
+      function storedState() {
+        return JSON.parse(localStorage.getItem('dataEvaluation-eval-2')).activities[0].state;
+      }
+
+      const PASSED = 2;
+      const NOT_PASSED = 1;
+
+      it('keeps the historical 5 for a page that publishes nothing', () => {
+        getReport().saveEvaluation(givenActivity(5));
+        expect(storedState()).toBe(PASSED);
+
+        getReport().saveEvaluation(givenActivity(4.9));
+        expect(storedState()).toBe(NOT_PASSED);
+      });
+
+      it('follows the project mark for an iDevice on the global mode', () => {
+        setPageMark('7.5');
+
+        getReport().saveEvaluation(givenActivity(7.5, { passScoreMode: 'global' }));
+        expect(storedState()).toBe(PASSED);
+
+        getReport().saveEvaluation(givenActivity(7, { passScoreMode: 'global' }));
+        expect(storedState()).toBe(NOT_PASSED);
+      });
+
+      it('follows the iDevice mark when its author customised it', () => {
+        // The project demands 7.5, this activity only 3.
+        setPageMark('7.5');
+
+        getReport().saveEvaluation(
+          givenActivity(4, { passScoreMode: 'custom', passScoreCustom: 3 })
+        );
+
+        expect(storedState()).toBe(PASSED);
+      });
+
+      it('passes everyone when the mark is zero', () => {
+        setPageMark('0');
+
+        getReport().saveEvaluation(givenActivity(0, { passScoreMode: 'global' }));
+
+        expect(storedState()).toBe(PASSED);
+      });
+
+      it('tells the learner the same verdict it stored', () => {
+        setPageMark('7.5');
+
+        getReport().saveEvaluation(givenActivity(4, { passScoreMode: 'global' }));
+
+        expect(document.querySelector('.Games-ReportIconDiv').textContent).toContain('Not passed');
+      });
+
+      afterEach(() => {
+        localStorage.removeItem('dataEvaluation-eval-2');
+        document.head.querySelectorAll('meta[data-test-meta]').forEach((meta) => meta.remove());
         document.body.innerHTML = '';
       });
     });
