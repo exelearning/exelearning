@@ -87,6 +87,19 @@ const localBlockIconRuntime = {
         const pendingName = String(safeIconName).replace(/[^a-z0-9_-]/gi, '');
         return `<span class="exe-material-icon" data-exe-material-icon="${pendingName}" aria-hidden="true"></span>`;
     },
+
+    // Inline <svg> for the picker grid, from the sprite parsed by the shared runtime.
+    // The picker must never emit an external <use href="…material-icons.svg#id">:
+    // under Electron's app:// scheme Chromium fetches the whole sprite once per
+    // <use>, which froze the renderer with ~3 800 options (#2419).
+    renderMaterialInlineIcon(iconName, options = {}) {
+        const shared = window.eXeBlockIconRuntime;
+        if (shared && shared !== this && typeof shared.renderMaterialInlineIcon === 'function') {
+            return shared.renderMaterialInlineIcon(iconName, options);
+        }
+        // Degraded path (no shared runtime): the mask placeholder is hydrated later.
+        return this.renderMaterialMaskIcon(iconName, options);
+    },
 };
 
 const blockIconRuntime = window.eXeBlockIconRuntime || localBlockIconRuntime;
@@ -292,10 +305,6 @@ export default class IdeviceBlockNode {
 </svg>`;
     }
 
-    getMaterialSpritePath() {
-        return this.resolveAppAssetUrl('/libs/material-icons/material-icons.svg');
-    }
-
     getAssetManager() {
         return eXeLearning?.app?.project?._yjsBridge?.assetManager || null;
     }
@@ -392,13 +401,16 @@ export default class IdeviceBlockNode {
         });
     }
 
-    renderMaterialSpriteIcon(iconName) {
-        const safeIconName = MATERIAL_ICON_CATALOG.includes(iconName) ? iconName : 'help';
-        const spritePath = this.getMaterialSpritePath();
-        const spriteHref = `${spritePath}#${safeIconName}`;
-        return `<svg class="exe-material-icon-sprite" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-<use href="${spriteHref}" xlink:href="${spriteHref}"></use>
-</svg>`;
+    /**
+     * Picker option glyph: a self-contained inline <svg> built from the sprite
+     * already parsed in memory. Never an external <use> reference (#2419).
+     */
+    renderMaterialInlineIcon(iconName) {
+        return blockIconRuntime.renderMaterialInlineIcon(iconName, {
+            app: window.eXeLearning?.app,
+            config: window.eXeLearning?.config,
+            catalog: MATERIAL_ICON_CATALOG,
+        });
     }
 
     renderIconPreviewHtml(iconDescriptor) {
@@ -1646,7 +1658,7 @@ export default class IdeviceBlockNode {
         iconElement.setAttribute('title', title || iconConfig.value || _('Icon'));
         const modalPreviewHtml =
             iconConfig.source === 'material'
-                ? this.renderMaterialSpriteIcon(iconConfig.value)
+                ? this.renderMaterialInlineIcon(iconConfig.value)
                 : this.renderIconPreviewHtml(iconConfig);
         iconElement.innerHTML = options.innerHtml || modalPreviewHtml;
         if (options.iconId) {
