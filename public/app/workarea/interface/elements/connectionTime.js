@@ -1,3 +1,4 @@
+import createTooltip from '../../../common/app_tooltip.js';
 export default class ConnecionTime {
     constructor() {
         this.connTimeElementWrapper =
@@ -42,7 +43,7 @@ export default class ConnecionTime {
         this.connTimeElementWrapper.className = 'offline-mode';
         $('#head-top-save-button')
             .attr('data-bs-original-title', _('Offline mode'));
-        $('#exe-last-edition').tooltip();
+        createTooltip(this.connTimeElementWrapper);
     }
 
     /**
@@ -140,7 +141,7 @@ export default class ConnecionTime {
                     .addClass('unsaved');
             }
         }
-        $('#exe-last-edition').tooltip();
+        createTooltip(this.connTimeElementWrapper);
     }
 
     /**
