@@ -309,6 +309,7 @@ var $exeDevice = {
                                     <label for="adaptativeQuizAccentSensitive" class="toggle-label">${_('Require correct accents (word type)')}</label>
                                 </div>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -1365,6 +1366,10 @@ var $exeDevice = {
             evaluation: dataGame.evaluation,
             evaluationID: dataGame.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: dataGame.passScoreMode,
+            passScoreCustom: dataGame.passScoreCustom,
+        });
 
         const loaded = Array.isArray(dataGame.questionsGame)
             ? dataGame.questionsGame
@@ -1558,6 +1563,7 @@ var $exeDevice = {
         if (!progressBar) return false;
         const evaluation = progressBar.evaluation;
         const evaluationID = progressBar.evaluationID;
+        const passScore = $exeDevicesEdition.iDevice.gamification.passScore.getValues();
 
         const id = this.getIdeviceID();
         const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
@@ -1594,6 +1600,8 @@ var $exeDevice = {
             minQuestionsShown: this.DEFAULT_MIN_PLAY,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             itinerary: itinerary,
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,
@@ -2005,6 +2013,7 @@ var $exeDevice = {
 
     addEvents: function () {
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#adaptativeQuizECustomMessages').on('change', function () {
             const showSolution = $('#adaptativeQuizShowSolution').is(':checked');
