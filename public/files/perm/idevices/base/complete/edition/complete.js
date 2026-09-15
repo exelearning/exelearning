@@ -269,6 +269,7 @@ var $exeDevice = {
                                 <label for="cmptAuthorBack" class="mb-0">${_('Authorship')}: </label>
                                 <input type="text" class="CMPT-EURLImage form-control" id="cmptAuthorBack"/>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                             </div>
@@ -379,6 +380,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#cmptBack0').prop('checked', game.hasBack);
         $('#cmptEURLBack').val(game.urlBack);
@@ -566,6 +571,8 @@ var $exeDevice = {
             attempsNumber = parseInt($('#cmptAttemptsNumber').val(), 10),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             hasBack = $('#cmptBack0').is(':checked'),
             urlBack = $('#cmptEURLBack').val().trim(),
             authorBackImage = $('#cmptAuthorBack').val(),
@@ -618,6 +625,8 @@ var $exeDevice = {
             wordsLimit: wordsLimit,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             hasBack: hasBack,
             urlBack: urlBack,
             authorBackImage: authorBackImage,
@@ -715,6 +724,7 @@ var $exeDevice = {
             });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#cmptBack0').on('change', function () {
             if ($(this).is(':checked')) {
