@@ -229,6 +229,7 @@ var $exeDevice = {
                                     </div>
                                     <label class="toggle-label" for="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
                                 </div>
+                                ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                     </fieldset>
@@ -318,6 +319,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: dataGame.evaluation,
             evaluationID: dataGame.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: dataGame.passScoreMode,
+            passScoreCustom: dataGame.passScoreCustom,
         });
 
         for (let i = 0; i < dataGame.wordsGame.length; i++) {
@@ -961,6 +966,8 @@ var $exeDevice = {
             caseSensitive = $('#roscoCaseSensitive').is(':checked'),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1107,6 +1114,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
         };
     },
@@ -1635,6 +1644,7 @@ var $exeDevice = {
         }
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $(document).on('click', '.toggle-item', function (e) {
             if ($(e.target).is('input, label, a, button')) return;
