@@ -560,4 +560,38 @@ describe('map iDevice export — completion signal', () => {
             expect(calls).toHaveLength(0);
         });
     });
+
+    /**
+     * The map is the one iDevice with several game modes, and each of them ends
+     * through its own path. What makes the pass score work here without any
+     * runtime change is that every one of those paths reports through the same
+     * saveEvaluation(instance), which reads the threshold from the options it
+     * was given. So the guarantee worth pinning is the funnel itself: if a mode
+     * ever grew its own reporting call, it would silently escape the threshold.
+     */
+    describe('pass score reaches every game mode', () => {
+        it('routes every mode through the single saveEvaluation funnel', () => {
+            const source = readFileSync(join(__dirname, 'map.js'), 'utf-8');
+
+            // One definition, many callers -- one place that resolves the mark.
+            const definitions = source.match(/saveEvaluation: function/g) ?? [];
+            const callers = source.match(/\$eXeMapa\.saveEvaluation\(instance\)/g) ?? [];
+
+            expect(definitions).toHaveLength(1);
+            expect(callers.length).toBeGreaterThan(1);
+
+            // And exactly one call reaches the shared report helper: no mode
+            // reports behind the funnel's back, where the mark is resolved.
+            const reportCalls = source.match(/gamification\.report\.saveEvaluation\(/g) ?? [];
+            expect(reportCalls).toHaveLength(1);
+        });
+
+        it('hands the stored options to the report, so the mark travels with them', () => {
+            const source = readFileSync(join(__dirname, 'map.js'), 'utf-8');
+            const funnel = source.slice(source.indexOf('saveEvaluation: function'));
+
+            expect(funnel).toContain('gamification.report.saveEvaluation(');
+            expect(funnel).toContain('mOptions');
+        });
+    });
 });

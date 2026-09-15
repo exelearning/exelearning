@@ -378,6 +378,7 @@ var $exeDevice = {
                                 </span>
                                 <label class="toggle-label" for="mapaEAutoAudio">${_('Play the sound when scrolling the mouse over the points.')}.</label>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="d-flex flex-nowrap align-items-center gap-2">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -2481,6 +2482,8 @@ var $exeDevice = {
             optionsNumber = parseInt(clear($('#mapaNumOptions').val())),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             order = $('#mapaSolutionOrder').val();
 
@@ -2604,6 +2607,8 @@ var $exeDevice = {
             optionsNumber: optionsNumber,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
             order: order,
             hideScoreBar: hideScoreBar,
@@ -3766,6 +3771,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#mapaTitle').on('input', function () {
             $('#mapaTextLink').text($(this).val());
@@ -5291,6 +5298,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
 
         $exeDevice.showImageMap(
