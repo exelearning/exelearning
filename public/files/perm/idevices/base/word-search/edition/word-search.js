@@ -411,6 +411,7 @@ var $exeDevice = {
                             <input type="number" class="form-control" name="sopaEPercentajeQuestions" id="sopaEPercentajeQuestions" value="100" min="1" max="100" />
                             <span id="sopaENumeroPercentaje">1/1</span>
                         </div>
+                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                             ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
@@ -843,6 +844,8 @@ var $exeDevice = {
             reverses = $('#sopaEReverses').is(':checked'),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             wordsGame = $exeDevice.wordsGame,
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
@@ -898,6 +901,8 @@ var $exeDevice = {
             showResolve,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id,
         };
     },
@@ -1228,6 +1233,8 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
@@ -1392,6 +1399,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
