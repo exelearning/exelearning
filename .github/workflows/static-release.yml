@@ -2,7 +2,7 @@ name: Build Static Release
 
 on:
   release:
-    types: [prereleased, released]
+    types: [prereleased]
   workflow_dispatch:
     inputs:
       version:
@@ -92,7 +92,6 @@ jobs:
             ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=${{ steps.version.outputs.version }}-static
-            type=raw,value=latest-static
 
       - name: Remove .dockerignore
         run: rm -f .dockerignore
