@@ -274,8 +274,7 @@ describe('challenge iDevice', () => {
 
     it('renders top info as dismissible Bootstrap alert', () => {
       $exeDevice.createForm();
-      const progressBar =
-        global.$exeDevicesEdition.iDevice.gamification.progressBar;
+      const scorm = global.$exeDevicesEdition.iDevice.gamification.scorm;
       const topAlert = container.querySelector(
         '#desafioIdeviceForm > .alert.alert-info.alert-dismissible',
       );
@@ -284,8 +283,10 @@ describe('challenge iDevice', () => {
       );
       expect(topAlert).not.toBeNull();
       expect(closeButton).not.toBeNull();
-      expect(progressBar.getContents).toHaveBeenCalledWith('/test/');
-      expect(container.querySelector('.mock-progress-bar')).not.toBeNull();
+      // The progress report moved into the Evaluation tab, which needs this
+      // path for its help icon; passing it along is what this iDevice owns now.
+      expect(scorm.getTab).toHaveBeenCalledWith('/test/');
+      expect(container.querySelector('.mock-scorm-tab')).not.toBeNull();
     });
   });
 
@@ -602,13 +603,13 @@ describe('challenge iDevice', () => {
             source = readFileSync(join(__dirname, 'challenge.js'), 'utf-8');
         });
 
-        it('renders the control immediately above the progress report', () => {
-            const passScoreAt = source.indexOf('gamification.passScore.getContents()');
-            const progressBarAt = source.indexOf('gamification.progressBar.getContents(');
-
-            expect(passScoreAt).toBeGreaterThan(-1);
-            expect(progressBarAt).toBeGreaterThan(-1);
-            expect(passScoreAt).toBeLessThan(progressBarAt);
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Evaluation tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
         });
 
         it('restores the control when the iDevice is reopened', () => {

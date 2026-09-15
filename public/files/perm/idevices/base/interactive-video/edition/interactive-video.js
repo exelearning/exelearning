@@ -189,9 +189,7 @@ var $exeDevice = {
                     </span>
                     <label class="toggle-label mb-0" for="interactiveVideoScoreNIA">${_('Score non-interactive activities')}</label>
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                 <div class="mb-4">
-                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                 </div>
                 <p class="exe-block-success d-flex align-items-center justify-content-between gap-3">
                     <span class="me-auto">${_('Open the editor and start adding interaction...')}</span>
@@ -200,7 +198,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             </div>
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
         </div>
     `;
 

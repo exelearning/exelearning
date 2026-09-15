@@ -63,16 +63,17 @@ describe('interactive-video iDevice edition', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders the progress report help icon from the iDevice edition assets', () => {
+  it('hands its asset path to the Evaluation tab, which needs it for the help icon', () => {
+    // The progress report moved into the tab, so this iDevice no longer renders
+    // it. What it still owns is the path the report's help icon is built from,
+    // and the asset that path points at.
     const container = document.createElement('div');
     const path = '/files/perm/idevices/base/interactive-video/edition/';
     document.body.appendChild(container);
 
     $exeDevice.init(container, '', path);
 
-    const helpIcon = document.getElementById('progress-help-icon');
-    expect(helpIcon).not.toBeNull();
-    expect(helpIcon.getAttribute('src')).toBe(`${path}quextIEHelp.png`);
+    expect($exeDevicesEdition.iDevice.gamification.scorm.getTab).toHaveBeenCalledWith(path);
     expect(existsSync(join(__dirname, 'quextIEHelp.png'))).toBe(true);
   });
 
@@ -209,13 +210,13 @@ describe('interactive-video iDevice edition', () => {
       source = readFileSync(join(__dirname, 'interactive-video.js'), 'utf-8');
     });
 
-    it('renders the control immediately above the progress report', () => {
-      const passScoreAt = source.indexOf('gamification.passScore.getContents()');
-      const progressBarAt = source.indexOf('gamification.progressBar.getContents(');
-
-      expect(passScoreAt).toBeGreaterThan(-1);
-      expect(progressBarAt).toBeGreaterThan(-1);
-      expect(passScoreAt).toBeLessThan(progressBarAt);
+    it('delegates the evaluation controls to the shared tab', () => {
+        // The pass score and the progress report used to be rendered here,
+        // loose in the general options. They now live in the Evaluation tab,
+        // so rendering them again would show each control twice.
+        expect(source).not.toContain('passScore.getContents(');
+        expect(source).not.toContain('progressBar.getContents(');
+        expect(source).toContain('gamification.scorm.getTab(');
     });
 
     it('restores the control when the iDevice is reopened', () => {

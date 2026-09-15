@@ -190,9 +190,7 @@ var $exeDevice = {
                             <label for="rclEAuthory" class="mb-0">${_('Authorship')}:</label>
                             <input id="rclEAuthory" type="text" class="form-control" />
                         </div>
-                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </div>
                 </fieldset>
@@ -356,7 +354,7 @@ var $exeDevice = {
             </div>
 
             ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}

@@ -957,9 +957,7 @@ var $exeDevice = {
                                     <label class="toggle-label" for="${$exeDevice.checkAddBtnAnswersId}">${this.strings.msgAddBtnAnswers}</label>
                                 </span>
                             </div>
-                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <!-- Evaluation -->
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -995,7 +993,7 @@ var $exeDevice = {
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab($exeDevice.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 7, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(7)}

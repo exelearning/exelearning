@@ -217,7 +217,7 @@ var $exeDevice = {
                         </div>
                     </fieldset>
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(null, { passScore: false })}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;

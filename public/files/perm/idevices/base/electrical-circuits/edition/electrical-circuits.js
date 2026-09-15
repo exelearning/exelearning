@@ -1477,26 +1477,6 @@ var $exeDevice = {
                                 </select>
                                 <button id="elceGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
                             </div>
-                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                <div class="toggle-item" data-target="elceEvaluation">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="elceEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="elceEvaluation">${_('Progress report')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center flex-nowrap gap-2 ms-2 ELCE-EEvaluationFields">
-                                    <label for="elceEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" class="form-control" id="elceEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                                    <a href="#elceEvaluationHelp" id="elceEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </div>
-                            </div>
-                            <p id="elceEvaluationHelp" class="exe-block-info ELCE-TypeGameHelp">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1655,7 +1635,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(11)}
 
@@ -1778,15 +1758,16 @@ var $exeDevice = {
         $('#elceHasFeedBack').prop('checked', game.feedBack);
         $('#elcePercentajeFB').val(game.percentajeFB);
         $('#elcePercentajeQuestionsValue').val(game.percentajeQuestions);
-        $('#elceEvaluation').prop('checked', game.evaluation);
-        $('#elceEvaluationID').val(game.evaluationID);
+        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+        });
         $exeDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
         $('#elceGlobalTimes').val(game.globalTime);
 
-        $('#elceEvaluationID').prop('disabled', !game.evaluation);
 
         for (let i = 0; i < game.selectsGame.length; i++) {
             game.selectsGame[i].typeSelect =
@@ -2040,8 +2021,10 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 clear($('#elcePercentajeQuestionsValue').val())
             ),
-            evaluation = $('#elceEvaluation').is(':checked'),
-            evaluationID = $('#elceEvaluationID').val(),
+            progressBar =
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            evaluation = progressBar.evaluation,
+            evaluationID = progressBar.evaluationID,
             passScore =
                 $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
@@ -2218,8 +2201,8 @@ var $exeDevice = {
                 )
                     return;
                 if (
-                    $(e.target).is('#elceEvaluationID') ||
-                    $(e.target).closest('#elceEvaluationHelpLnk').length
+                    $(e.target).is('#eXeProgressReportID') ||
+                    $(e.target).closest('#eXeProgressReportHelpLnk').length
                 )
                     return;
                 const $input = $(this).find('input.toggle-input').first();
@@ -2232,14 +2215,14 @@ var $exeDevice = {
 
         $electricalCircuitsForm.on(
             'click',
-            '#elceEvaluationID',
+            '#eXeProgressReportID',
             function (e) {
                 e.stopPropagation();
             }
         );
         $electricalCircuitsForm.on(
             'click',
-            '#elceEvaluationHelpLnk, #elceEvaluationHelpLnk *',
+            '#eXeProgressReportHelpLnk, #eXeProgressReportHelpLnk *',
             function (e) {
                 e.stopPropagation();
             }
@@ -2461,16 +2444,7 @@ var $exeDevice = {
             }
         });
 
-        $('#elceEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#elceEvaluationID').prop('disabled', !marcado);
-        });
-
-        $('#elceEvaluationHelpLnk').on('click', function () {
-            $('#elceEvaluationHelp').toggle();
-            return false;
-        });
-
+        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(

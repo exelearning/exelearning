@@ -133,8 +133,6 @@ var $exeDevice = {
                                 <label for="bfafEAuthory">${_('Authorship')}: </label>
                                 <input id="bfafEAuthory" type="text" class="form-control" />
                             </div>
-                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -277,7 +275,7 @@ var $exeDevice = {
                     ${$exeDevice.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;

@@ -986,9 +986,7 @@ var $exeDevice = {
                                     </select>
                                     <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                                 </div>
-                                ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                                 <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
-                                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                                 </div>
                             </div>
                         </fieldset>
@@ -1171,7 +1169,7 @@ var $exeDevice = {
                          ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                     </div>
                     ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                     ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 </div>
             `;

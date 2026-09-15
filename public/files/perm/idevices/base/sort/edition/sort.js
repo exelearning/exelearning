@@ -304,9 +304,7 @@ var $exeDevice = {
                         </span>
                         <label class="toggle-label" for="ordenaEWordBorder">${_('Word border')}.</label>
                     </div>
-                    ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                        ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                     </div>
                 </div>
             </fieldset>
@@ -369,7 +367,7 @@ var $exeDevice = {
             ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
         </div>
         ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-        ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+        ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
         ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
     </div>`;
 

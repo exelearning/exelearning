@@ -327,9 +327,7 @@ var $exeDevice = {
                                 <img class="CQE-EImageBack" src="${path}clsfHome.png" id="clasificaENoCard" alt="${_('No image')}" />
                             </div>
                         </div>
-                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="Games-Reportdiv d-flex align-items-center gap-2 mb-3 flex-wrap">
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </div>
                 </fieldset>
@@ -374,7 +372,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
             ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 5)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(5)}

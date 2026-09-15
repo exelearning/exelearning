@@ -348,9 +348,7 @@ var $exeDevice = {
                                     <label for="sortableAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
                                     <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
                                 </div>
-                                ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                    ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(this.idevicePath)}
                                 </div>
                             </div>
                         </div>
@@ -359,7 +357,7 @@ var $exeDevice = {
 
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(this.idevicePath)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(8)}
             </div>`;

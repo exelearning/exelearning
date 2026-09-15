@@ -137,13 +137,13 @@ describe('puzzle iDevice', () => {
             source = readFileSync(join(__dirname, 'puzzle.js'), 'utf-8');
         });
 
-        it('renders the control immediately above the progress report', () => {
-            const passScoreAt = source.indexOf('gamification.passScore.getContents()');
-            const progressBarAt = source.indexOf('gamification.progressBar.getContents(');
-
-            expect(passScoreAt).toBeGreaterThan(-1);
-            expect(progressBarAt).toBeGreaterThan(-1);
-            expect(passScoreAt).toBeLessThan(progressBarAt);
+        it('delegates the evaluation controls to the shared tab', () => {
+            // The pass score and the progress report used to be rendered here,
+            // loose in the general options. They now live in the Evaluation tab,
+            // so rendering them again would show each control twice.
+            expect(source).not.toContain('passScore.getContents(');
+            expect(source).not.toContain('progressBar.getContents(');
+            expect(source).toContain('gamification.scorm.getTab(');
         });
 
         it('restores the control when the iDevice is reopened', () => {

@@ -257,9 +257,7 @@ var $exeDevice = {
                             <span>${_('Quick edit')}</span>
                             <button id="eXeQuickEditButton" class="btn btn-primary">${_('Show')}</button>
                         </div>
-                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                      </div>
                 </fieldset>
@@ -363,7 +361,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             </div>
             ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 9, true)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(9)}

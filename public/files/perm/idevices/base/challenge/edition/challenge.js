@@ -374,9 +374,7 @@ var $exeDevice = {
                                 <label class="toggle-label" for="desafioEShowMinimize">${_('Show minimized.')}</label>
                             </span>
                         </div>
-                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="Games-Reportdiv  d-flex align-items-center gap-2 flex-nowrap">
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </div>
                 </fieldset>
@@ -466,7 +464,7 @@ var $exeDevice = {
                 </fieldset>
             </div>
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
         </div>
     `;
         this.ideviceBody.innerHTML = html;

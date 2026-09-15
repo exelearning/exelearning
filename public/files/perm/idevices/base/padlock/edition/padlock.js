@@ -183,14 +183,12 @@ var $exeDevice = {
                                 <input type="text" disabled id="candadoEErrorMessage" class="form-control" />
                             </div>
                         </div>
-                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="Games-Reportdiv d-flex flex-wrap align-items-center gap-2 mb-3">
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </div>
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
             </div>
         `;
 

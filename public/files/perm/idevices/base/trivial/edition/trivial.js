@@ -1056,9 +1056,7 @@ var $exeDevice = {
                                 </select>
                                 <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
-                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="Games-Reportdiv d-flex align-items-center flex-nowrap gap-2 mb-3 flex-wrap">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -1341,7 +1339,7 @@ var $exeDevice = {
                         ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                     ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                     ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                     <p class="exe-block-warning exe-block-dismissible" style="position:relative">
                         ${_('This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.')}
