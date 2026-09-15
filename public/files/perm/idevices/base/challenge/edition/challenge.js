@@ -374,6 +374,7 @@ var $exeDevice = {
                                 <label class="toggle-label" for="desafioEShowMinimize">${_('Show minimized.')}</label>
                             </span>
                         </div>
+                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="Games-Reportdiv  d-flex align-items-center gap-2 flex-nowrap">
                             ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
@@ -590,6 +591,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         if (
             window.File &&
@@ -822,6 +825,10 @@ var $exeDevice = {
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
@@ -1002,6 +1009,8 @@ var $exeDevice = {
             showMinimize = $('#desafioEShowMinimize').is(':checked'),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!progressBar) return false;
@@ -1054,6 +1063,8 @@ var $exeDevice = {
             desafioID: $exeDevice.desafioID,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
         };
     },
