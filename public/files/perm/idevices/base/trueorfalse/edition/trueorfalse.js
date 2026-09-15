@@ -398,6 +398,7 @@ var $exeDevice = {
                                 <input type="number" class="form-control" name="tofEPercentageQuestions" id="tofEPercentageQuestions" value="100" min="1" max="100" />
                                 <span id="tofENumeroPercentaje">1/1</span>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="Games-Reportdiv d-none flex-wrap align-items-center gap-2 mb-3">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -567,6 +568,8 @@ var $exeDevice = {
             });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         if (
             window.File &&
             window.FileReader &&
@@ -866,6 +869,10 @@ var $exeDevice = {
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#tofETime').val(game.time);
         $('#tofEAttemptsNumber').val(game.attemptsNumber ?? 1);
         $('#tofEQuestionsRandom').prop('checked', game.questionsRandom);
@@ -1011,6 +1018,10 @@ var $exeDevice = {
             evaluation = progressBar.evaluation;
             evaluationID = progressBar.evaluationID;
         }
+        // Read outside the isTest branch: the pass mark applies to every mode,
+        // not only to the one that publishes a progress report.
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
         for (let i = 0; i < questionsGame.length; i++) {
             const mQuestion = questionsGame[i];
 
@@ -1065,6 +1076,8 @@ var $exeDevice = {
             weighted: scorm.weighted || 100,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             showSlider: showSlider,
             ideviceId: id,
         };
