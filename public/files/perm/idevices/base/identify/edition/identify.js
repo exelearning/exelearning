@@ -508,6 +508,7 @@ var $exeDevice = {
                                 <input type="number" name="idfEPercentajeQuestions" id="idfEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
                                 <span id="idfENumeroPercentaje">1/1</span>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -815,6 +816,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
 
         $exeDevice.updateGameMode(game.feedBack);
@@ -1223,6 +1228,8 @@ var $exeDevice = {
             ),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1282,6 +1289,8 @@ var $exeDevice = {
             avancedMode: avancedMode,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
         };
     },
@@ -1528,6 +1537,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
