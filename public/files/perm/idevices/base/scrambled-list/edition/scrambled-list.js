@@ -179,6 +179,10 @@ var $exeDevice = {
         if (!progressBar) return false;
         this.evaluationID = progressBar.evaluationID;
         this.evaluation = progressBar.evaluation;
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        this.passScoreMode = passScore.passScoreMode;
+        this.passScoreCustom = passScore.passScoreCustom;
         this.showSolutions = !!(
             this.ideviceBody.querySelector('#sortableShowSolutions') || {}
         ).checked;
@@ -234,6 +238,8 @@ var $exeDevice = {
             weighted: scorm.weighted || 100,
             evaluation: this.evaluation,
             evaluationID: this.evaluationID,
+            passScoreMode: this.passScoreMode,
+            passScoreCustom: this.passScoreCustom,
             main: 'sl' + this.id,
             msgs: this.msgs,
             scorerp: 0,
@@ -342,6 +348,7 @@ var $exeDevice = {
                                     <label for="sortableAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
                                     <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
                                 </div>
+                                ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                                     ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(this.idevicePath)}
                                 </div>
@@ -364,6 +371,7 @@ var $exeDevice = {
 
     addEvents: function () {
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#sortableAttemptsNumber')
             .on('keyup', function () {
@@ -567,6 +575,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: evalChecked,
             evaluationID: evalIDValue,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: data.passScoreMode,
+            passScoreCustom: data.passScoreCustom,
         });
 
         this.ideviceBody.querySelector('#eXeGameInstructions').value =
