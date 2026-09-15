@@ -9,6 +9,13 @@
  *    plain English, which the frontend translates at render time via _().
  */
 
+import {
+    PASS_SCORE_DEFAULT,
+    PASS_SCORE_MAX,
+    PASS_SCORE_MIN,
+    PASS_SCORE_STEP,
+} from '../shared/export/metadata-properties';
+
 export interface ConfigParamsDeps {
     TRANS_PREFIX: string;
     LICENSES: Record<string, string>;
@@ -382,6 +389,17 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                     nunito: 'Nunito',
                     'playwrite-es': 'Playwrite ES',
                 },
+                category: 'properties',
+                groups: { export: GROUPS_TITLE.export },
+            },
+            pp_passScore: {
+                title: `${TRANS_PREFIX}Minimum score to pass`,
+                help: `${TRANS_PREFIX}Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.`,
+                value: PASS_SCORE_DEFAULT,
+                type: 'number',
+                min: PASS_SCORE_MIN,
+                max: PASS_SCORE_MAX,
+                step: PASS_SCORE_STEP,
                 category: 'properties',
                 groups: { export: GROUPS_TITLE.export },
             },

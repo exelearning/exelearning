@@ -288,6 +288,16 @@
     transition: box-shadow .15s ease, border-color .15s ease, background-color .15s ease;
 }
 
+// Numeric properties (pass score, ...). A full-width box for a two-character
+// value reads as a text field and invites free text, so it is sized to its
+// content instead of stretching across the pane -- wide enough for a decimal
+// separator plus the spinner arrows the browser draws inside the field.
+.property-row .form-control.exe-number-field {
+    width: 6.5rem;
+    max-width: 6.5rem;
+    flex: 0 0 auto;
+}
+
 // Legacy license warning style - uses data attribute for simpler JS
 .form-select[data-legacy-value]:not(:focus) {
     color: var(--system-red, #dc3545) !important;

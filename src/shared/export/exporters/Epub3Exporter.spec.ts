@@ -353,6 +353,20 @@ describe('Epub3Exporter', () => {
         });
     });
 
+    describe('Pass score', () => {
+        it('publishes the project value in the page head', async () => {
+            document = new MockDocument({ passScore: 7.5 }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // EPUB output is XHTML, so the tag is self-closed on the way out.
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('name="exe-pass-score"');
+            expect(indexXhtml).toContain('content="7.5"');
+        });
+    });
+
     describe('Basic Properties', () => {
         it('should return correct file extension', () => {
             expect(exporter.getFileExtension()).toBe('.epub');

@@ -510,6 +510,29 @@ export default class FormProperties {
                 actionsContainer.classList.add('ms-2');
                 propertyRow.append(actionsContainer);
             }
+        } else if (property.type == 'number') {
+            // A number field holds two or three characters, so stacking the
+            // label above it wastes a whole row and leaves the control adrift.
+            // Label, help and input share one line instead.
+            const row = document.createElement('div');
+            row.classList.add(
+                'header-container',
+                'd-flex',
+                'align-items-center',
+                'gap-2',
+                'flex-wrap',
+                'content-field'
+            );
+            propertyTitle.classList.add('form-label', 'mb-0');
+            row.append(propertyTitle);
+            if (helpContainer) {
+                row.append(helpContainer);
+            }
+            row.append(propertyValue);
+            if (actionsContainer) {
+                row.append(actionsContainer);
+            }
+            propertyRow.append(row);
         } else {
             const header = document.createElement('div');
             header.classList.add(
@@ -585,6 +608,19 @@ export default class FormProperties {
                 valueElement = document.createElement('input');
                 valueElement.value = property.value;
                 break;
+            case 'number':
+                valueElement = document.createElement('input');
+                valueElement.value = property.value;
+                // The bounds come from the property definition
+                // (src/routes/config-params.ts) so the domain of a numeric
+                // property is declared in one place only.
+                if (property.min !== undefined)
+                    valueElement.setAttribute('min', property.min);
+                if (property.max !== undefined)
+                    valueElement.setAttribute('max', property.max);
+                if (property.step !== undefined)
+                    valueElement.setAttribute('step', property.step);
+                break;
             case 'textarea':
                 valueElement = document.createElement('textarea');
                 valueElement.innerHTML = property.value;
@@ -631,6 +667,9 @@ export default class FormProperties {
                 );
                 break;
             case 'checkbox':
+                break;
+            case 'number':
+                valueElement.classList.add('form-control', 'exe-number-field');
                 break;
             case 'date':
             case 'text':

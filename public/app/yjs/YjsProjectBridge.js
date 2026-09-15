@@ -2035,6 +2035,7 @@ class YjsProjectBridge {
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
       'pp_addMathJax': 'addMathJax',
       'pp_globalFont': 'globalFont',
+      'pp_passScore': 'passScore',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',

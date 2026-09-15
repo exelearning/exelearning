@@ -28,6 +28,7 @@ import {
     formatShortLicenseText,
 } from '../constants';
 import { trans } from '../../../services/translation';
+import { PASS_SCORE_META_NAME, normalizePassScore } from '../metadata-properties';
 import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 
 /**
@@ -122,6 +123,7 @@ export class PageRenderer {
             addSearchBox = false,
             addAccessibilityToolbar = false,
             addMathJax = false,
+            passScore,
             // Custom head content
             extraHeadContent = '',
             // SCORM-specific options
@@ -212,7 +214,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, passScore, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -253,6 +255,7 @@ ${madeWithExeHtml}
         faviconType?: string;
         version?: string;
         isEpub?: boolean;
+        passScore?: number;
     }): string {
         const {
             pageTitle,
@@ -273,12 +276,18 @@ ${madeWithExeHtml}
             faviconType = 'image/x-icon',
             version,
             isEpub = false,
+            passScore,
         } = options;
 
         // Meta tags
+        //
+        // The pass score travels as a META rather than an inline script because
+        // it has to survive EPUB, whose Content Security Policy forbids inline
+        // SCRIPT tags, and because the parser sees it before libs/common.js runs.
         let head = `<meta charset="utf-8">
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="${PASS_SCORE_META_NAME}" content="${normalizePassScore(passScore)}">
 ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
 
         // Favicon
@@ -1246,6 +1255,7 @@ ${userFooterHtml}</div></footer>`;
             detectedLibraries?: string[];
             addMathJax?: boolean;
             addAccessibilityToolbar?: boolean;
+            passScore?: number;
             version?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
@@ -1270,6 +1280,7 @@ ${userFooterHtml}</div></footer>`;
             detectedLibraries = [],
             addMathJax = false,
             addAccessibilityToolbar = false,
+            passScore,
             navLabels,
             materialIconDataUris,
         } = options;
@@ -1348,6 +1359,7 @@ ${sectionContent}
 <meta charset="utf-8">
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="${PASS_SCORE_META_NAME}" content="${normalizePassScore(passScore)}">
 <title>${this.escapeHtml(projectTitle)}</title>
 ${this.renderFavicon('', faviconPath, faviconType)}
 <script>document.querySelector("html").classList.add("js");</script>

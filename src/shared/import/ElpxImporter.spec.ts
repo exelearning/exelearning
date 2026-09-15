@@ -1465,9 +1465,10 @@ describe('ElpxImporter - Legacy Format', () => {
             await importer.importFromBuffer(new Uint8Array(elpBuffer));
 
             const metadata = ydoc.getMap('metadata');
-            // Legacy files should have default addMathJax and globalFont
+            // Legacy files should have default addMathJax, globalFont and passScore
             expect(metadata.get('addMathJax')).toBe(false);
             expect(metadata.get('globalFont')).toBe('default');
+            expect(metadata.get('passScore')).toBe(5);
             // Should have language
             expect(metadata.get('language')).toBeTruthy();
 
@@ -1836,6 +1837,7 @@ describe('ElpxImporter - Legacy Format', () => {
             // Legacy files use defaults for new fields
             expect(metadata.get('addMathJax')).toBe(false);
             expect(metadata.get('globalFont')).toBe('default');
+            expect(metadata.get('passScore')).toBe(5);
 
             ydoc.destroy();
         });
@@ -3928,5 +3930,61 @@ describe('ElpxImporter - remapInternalPageLinks prefix-collision safety', () => 
 
             ydoc.destroy();
         });
+    });
+});
+
+describe('ElpxImporter - pass score', () => {
+    const buildContentXml = (passScoreProperty: string): string => `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Pass Score Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+${passScoreProperty}
+</odeProperties>
+<odeNavStructures>
+  <odeNavStructure>
+    <odePageId>page-1</odePageId>
+    <odeParentPageId></odeParentPageId>
+    <pageName>Page</pageName>
+    <odeNavStructureOrder>0</odeNavStructureOrder>
+    <odePagStructures></odePagStructures>
+  </odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+    const importPassScore = async (passScoreProperty: string): Promise<unknown> => {
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+        await importer.importFromZipContents(
+            { 'content.xml': new TextEncoder().encode(buildContentXml(passScoreProperty)) },
+            { clearExisting: true },
+        );
+
+        const value = ydoc.getMap('metadata').get('passScore');
+        ydoc.destroy();
+        return value;
+    };
+
+    it('reads pp_passScore as a number', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>7.5</value></odeProperty>')).toBe(
+            7.5,
+        );
+    });
+
+    it('keeps a stored zero rather than treating it as unset', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>0</value></odeProperty>')).toBe(0);
+    });
+
+    it('clamps a value outside the 0-10 domain', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>42</value></odeProperty>')).toBe(10);
+    });
+
+    it('falls back to the default when the file predates the property', async () => {
+        expect(await importPassScore('')).toBe(5);
+    });
+
+    it('falls back to the default when the stored value is not a number', async () => {
+        expect(await importPassScore('  <odeProperty><key>pp_passScore</key><value>abc</value></odeProperty>')).toBe(5);
     });
 });

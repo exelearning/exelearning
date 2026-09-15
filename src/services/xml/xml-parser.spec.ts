@@ -951,4 +951,34 @@ describe('xml-parser', () => {
             expect(result.meta.addExeLink).toBe(true);
         });
     });
+
+    describe('number property parsing', () => {
+        const parsePassScore = (value: string): unknown => {
+            const xml = `
+                <ode>
+                    <odeProperties>
+                        <odeProperty>
+                            <key>pp_passScore</key>
+                            <value>${value}</value>
+                        </odeProperty>
+                    </odeProperties>
+                    <odeNavStructures></odeNavStructures>
+                </ode>`;
+
+            return (parseFromString(xml, undefined, { skipValidation: true }).meta as Record<string, unknown>)
+                .passScore;
+        };
+
+        it('should parse pp_passScore as a number', () => {
+            expect(parsePassScore('7.5')).toBe(7.5);
+        });
+
+        it('should keep a stored zero', () => {
+            expect(parsePassScore('0')).toBe(0);
+        });
+
+        it('should fall back to the default when the value is not a number', () => {
+            expect(parsePassScore('abc')).toBe(5);
+        });
+    });
 });

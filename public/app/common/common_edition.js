@@ -253,6 +253,121 @@ var $exeDevicesEdition = {
                         });
                 }
             },
+            /**
+             * Minimum score an activity needs to be passed.
+             *
+             * Every iDevice offers the same choice: follow the project-wide value
+             * or override it here. Only the choice and the override are saved --
+             * the project value is read live from $exe.passScore every time the
+             * iDevice is edited, so an iDevice left on "global" keeps following
+             * the project even after the author changes it.
+             *
+             * Shared block, like progressBar above: one implementation, added to
+             * each iDevice's form one at a time.
+             */
+            passScore: {
+
+                MODE_GLOBAL: 'global',
+                MODE_CUSTOM: 'custom',
+
+                /**
+                 * The project-wide value, or 5 when $exe is not around.
+                 * @returns {number} A mark in [0, 10].
+                 */
+                getGlobalValue: function () {
+                    if (typeof $exe != "undefined" && $exe.passScore) return $exe.passScore.get();
+                    return 5;
+                },
+
+                /**
+                 * Clamp a value to the same 0-10 one-decimal domain the project
+                 * property uses, so a custom mark and a global one compare.
+                 * @param {*} value
+                 * @returns {number}
+                 */
+                normalize: function (value) {
+                    if (typeof $exe != "undefined" && $exe.passScore) return $exe.passScore.normalize(value);
+                    var parsed = parseFloat(value);
+                    return isFinite(parsed) ? Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10 : 5;
+                },
+
+                getContents: function () {
+                    var global = $exeDevicesEdition.iDevice.gamification.passScore.getGlobalValue();
+                    return `<div class="exe-pass-score-wrapper" style="flex-basis:100%;width:100%">
+                                <p class="mb-1" id="eXePassScoreLabel">${_('Minimum score to pass the activity')}:</p>
+                                <div class="d-flex align-items-center flex-wrap gap-3" role="radiogroup" aria-labelledby="eXePassScoreLabel">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <input class="form-check-input" type="radio" name="eXePassScoreMode" id="eXePassScoreGlobal" value="global" checked />
+                                        <label class="form-check-label mb-0" for="eXePassScoreGlobal">${_('Global value')} (<span id="eXePassScoreGlobalValue">${global}</span>)</label>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <input class="form-check-input" type="radio" name="eXePassScoreMode" id="eXePassScoreCustom" value="custom" />
+                                        <label class="form-check-label mb-0" for="eXePassScoreCustom">${_('Customize')}</label>
+                                    </div>
+                                    <div id="eXePassScoreCustomOptions" class="d-flex align-items-center gap-2 d-none">
+                                        <label for="eXePassScoreValue" class="sr-av">${_('Minimum score to pass the activity')}</label>
+                                        <input type="number" id="eXePassScoreValue" name="eXePassScoreValue" class="form-control form-control-sm" min="0" max="10" step="0.1" value="${global}" style="width:9ch !important;max-width:9ch !important" />
+                                    </div>
+                                </div>
+                            </div>`;
+                },
+
+                /**
+                 * Repaint the number shown next to the "Global value" radio from
+                 * the project. Called on every edition so the author never reads
+                 * a figure the project has since moved on from.
+                 */
+                refreshGlobalValue: function () {
+                    $('#eXePassScoreGlobalValue').text(
+                        $exeDevicesEdition.iDevice.gamification.passScore.getGlobalValue()
+                    );
+                },
+
+                setValues: function (data) {
+                    var passScore = $exeDevicesEdition.iDevice.gamification.passScore;
+                    var custom = data && data.passScoreMode === passScore.MODE_CUSTOM;
+
+                    passScore.refreshGlobalValue();
+
+                    // An iDevice that has never been customised starts the input
+                    // at the project value, so switching to "Customize" offers a
+                    // sensible mark instead of an empty box.
+                    var value = data && typeof data.passScoreCustom !== 'undefined' && data.passScoreCustom !== ''
+                        ? passScore.normalize(data.passScoreCustom)
+                        : passScore.getGlobalValue();
+                    $('#eXePassScoreValue').val(value);
+
+                    $('#eXePassScoreCustom').prop('checked', custom);
+                    $('#eXePassScoreGlobal').prop('checked', !custom);
+                    $('#eXePassScoreCustomOptions').toggleClass('d-none', !custom);
+                },
+
+                getValues: function () {
+                    var passScore = $exeDevicesEdition.iDevice.gamification.passScore;
+                    var custom = $('#eXePassScoreCustom').is(':checked');
+                    return {
+                        passScoreMode: custom ? passScore.MODE_CUSTOM : passScore.MODE_GLOBAL,
+                        passScoreCustom: passScore.normalize($('#eXePassScoreValue').val())
+                    };
+                },
+
+                addEvents: function () {
+                    var passScore = $exeDevicesEdition.iDevice.gamification.passScore;
+
+                    $('input[type=radio][name="eXePassScoreMode"]').on('change', function () {
+                        $('#eXePassScoreCustomOptions').toggleClass(
+                            'd-none',
+                            $(this).val() !== passScore.MODE_CUSTOM
+                        );
+                    });
+
+                    // Repaint on blur so a field left empty or out of range shows
+                    // the mark that will actually be saved.
+                    $('#eXePassScoreValue').on('blur', function () {
+                        $(this).val(passScore.normalize($(this).val()));
+                    });
+                }
+            },
             itinerary: {
                 getContents: function () {
                     return `

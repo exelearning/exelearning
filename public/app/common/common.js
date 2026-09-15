@@ -197,6 +197,100 @@ var $exe = {
         }
     },
 
+    /**
+     * Project-wide pass score: the mark out of 10 a learner has to reach for an
+     * activity to count as passed. An iDevice that does not define its own value
+     * inherits this one, and inherits it live: the value is resolved when the
+     * page runs, never copied into the saved component, so changing the project
+     * option updates every activity that has not been customised.
+     *
+     * This file runs in two places, and the accessor has to work in both:
+     * - Exported and previewed pages, which carry the value in a META tag
+     *   written by src/shared/export/renderers/PageRenderer.ts.
+     * - The editor, where the live Y.Doc is the source of truth and any META
+     *   would be stale.
+     *
+     * Mirrors src/shared/export/metadata-properties.ts -- the constants, the
+     * META name and the normalisation rule live in both and must move together.
+     */
+    passScore: {
+
+        DEFAULT: 5,
+        MIN: 0,
+        MAX: 10,
+        META_NAME: 'exe-pass-score',
+
+        /**
+         * Clamp a value into the 0-10 one-decimal domain.
+         *
+         * Anything that is not a finite number resolves to the default rather
+         * than to 0, because 0 legitimately means "any mark passes" and has to
+         * stay distinguishable from "not set".
+         *
+         * @param {*} value Raw value from a META tag, the Y.Doc or a form.
+         * @returns {number} A number in [0, 10] with at most one decimal.
+         */
+        normalize: function (value) {
+            var parsed = typeof value == "number" ? value : parseFloat(value);
+            if (!isFinite(parsed)) return $exe.passScore.DEFAULT;
+            var clamped = Math.min($exe.passScore.MAX, Math.max($exe.passScore.MIN, parsed));
+            return Math.round(clamped * 10) / 10;
+        },
+
+        /**
+         * The pass score in force for the current page.
+         *
+         * @returns {number} A number in [0, 10] with at most one decimal.
+         */
+        get: function () {
+            var meta = document.querySelector('meta[name="' + $exe.passScore.META_NAME + '"]');
+            if (meta) return $exe.passScore.normalize(meta.getAttribute("content"));
+
+            // Editor: read the live document rather than any rendered copy.
+            var app = window.eXeLearning && window.eXeLearning.app;
+            var manager = app && app.project && app.project._yjsBridge
+                ? app.project._yjsBridge.getDocumentManager()
+                : null;
+            var metadata = manager && manager.getMetadata ? manager.getMetadata() : null;
+            if (metadata) return $exe.passScore.normalize(metadata.get("passScore"));
+
+            return $exe.passScore.DEFAULT;
+        },
+
+        /**
+         * The pass score in force for one iDevice.
+         *
+         * An iDevice stores only what its author chose: the mode, and the mark
+         * when they customised it. "Global" is not stored at all, so a project
+         * whose option changes moves every non-customised activity with it --
+         * this resolver is where that inheritance actually happens, and every
+         * iDevice runtime goes through it rather than repeating the condition.
+         *
+         * @param {Object} [data] The iDevice options object
+         * (`passScoreMode`, `passScoreCustom`).
+         * @returns {number} A mark in [0, 10] with at most one decimal.
+         */
+        resolve: function (data) {
+            if (data && data.passScoreMode == "custom") {
+                return $exe.passScore.normalize(data.passScoreCustom);
+            }
+            return $exe.passScore.get();
+        },
+
+        /**
+         * Convert a 0-10 pass score to the 0-100 scale the SCORM activity
+         * registry stores scores on ($exeDevices.iDevice.gamification.scorm).
+         * The conversion lives here so the two scales are never mixed by hand.
+         *
+         * @param {number} [value] Pass score; defaults to the current page's.
+         * @returns {number} The same mark on a 0-100 scale.
+         */
+        toPercent: function (value) {
+            var score = value === undefined ? $exe.passScore.get() : $exe.passScore.normalize(value);
+            return Math.round(score * 10 * 100) / 100;
+        }
+    },
+
     init: function () {
         var bod = $('body');
         this.hasMultimediaGalleries = false;

@@ -54,6 +54,50 @@ describe('PageRenderer', () => {
             expect(html).toContain('id="siteNav"'); // navigation present
         });
 
+        describe('pass score META', () => {
+            it('should publish the project value so iDevices can read it at runtime', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScore: 7.5 });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+            });
+
+            it('should publish the default when the project never set a value', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page] });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<meta name="exe-pass-score" content="5">');
+            });
+
+            it('should publish zero rather than treating it as unset', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScore: 0 });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<meta name="exe-pass-score" content="0">');
+            });
+
+            it('should clamp a value outside the 0-10 domain', () => {
+                const page = createTestPage();
+                const options = createDefaultOptions({ allPages: [page], passScore: 42 });
+
+                const html = renderer.render(page, options);
+
+                expect(html).toContain('<meta name="exe-pass-score" content="10">');
+            });
+
+            it('should publish it on single-page exports too', () => {
+                const html = renderer.renderSinglePage([createTestPage()], { passScore: 7.5 });
+
+                expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+            });
+        });
+
         it('should render index page <title> as project title only', () => {
             const page = createTestPage({ title: 'Home' });
             const options = createDefaultOptions({ allPages: [page], isIndex: true });

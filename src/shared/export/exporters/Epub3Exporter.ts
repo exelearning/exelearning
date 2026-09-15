@@ -699,6 +699,9 @@ export class Epub3Exporter extends BaseExporter {
             hideNavButtons: true,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination === true,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
             // Accessibility toolbar (exe_atools) when enabled in project properties (#1978)
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             totalPages: allPages.length,

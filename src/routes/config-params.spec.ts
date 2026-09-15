@@ -60,6 +60,37 @@ describe('buildConfigParams', () => {
         });
     });
 
+    describe('pp_passScore project property', () => {
+        const passScore = () =>
+            buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES })
+                .ODE_PROJECT_SYNC_PROPERTIES_CONFIG.properties.pp_passScore;
+
+        it('is a numeric field with a 0-10 one-decimal domain', () => {
+            expect(passScore()).toBeDefined();
+            expect(passScore().type).toBe('number');
+            expect(passScore().min).toBe(0);
+            expect(passScore().max).toBe(10);
+            expect(passScore().step).toBe(0.1);
+        });
+
+        it('defaults to 5, as a number the form can feed straight to the input', () => {
+            expect(passScore().value).toBe(5);
+        });
+
+        it('lives in the export options group', () => {
+            expect(Object.keys(passScore().groups)).toEqual(['export']);
+        });
+
+        it('carries the translation prefix on its user-facing strings', () => {
+            const T = 'TRANSLATABLE_TEXT:';
+            const prefixed = buildConfigParams({ TRANS_PREFIX: T, LICENSES, PACKAGE_LOCALES, LOCALES })
+                .ODE_PROJECT_SYNC_PROPERTIES_CONFIG.properties.pp_passScore;
+
+            expect(prefixed.title).toBe(`${T}Minimum score to pass`);
+            expect(prefixed.help.startsWith(T)).toBe(true);
+        });
+    });
+
     describe('defaultTheme preference', () => {
         it('exposes defaultTheme as a select between defaultLicense and defaultAI', () => {
             const result = buildConfigParams({ TRANS_PREFIX: '', LICENSES, PACKAGE_LOCALES, LOCALES });

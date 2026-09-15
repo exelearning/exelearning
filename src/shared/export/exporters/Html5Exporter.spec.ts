@@ -498,6 +498,14 @@ describe('Html5Exporter', () => {
             // Other pages should have ../ prefix
             expect(html).toContain('href="../theme/');
         });
+
+        it('should publish the project pass score for the runtime to read', () => {
+            document = new MockDocument({ passScore: 7.5 }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            const html = exporter.generatePageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+        });
     });
 
     describe('Page Link Generation', () => {

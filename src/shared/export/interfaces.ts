@@ -68,6 +68,7 @@ export interface ExportMetadata {
     addMathJax?: boolean; // Always include MathJax library for math formulas
     exportSource?: boolean; // Include content.xml for re-editing
     globalFont?: string; // Global font for accessibility
+    passScore?: number; // Project-wide mark out of 10 an activity needs to be passed
 
     // Custom content
     extraHeadContent?: string; // Custom content in <head>
@@ -651,6 +652,8 @@ export interface PageRenderOptions {
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
+    /** Project-wide pass score (0-10). Published to the page so iDevices can read it at runtime. */
+    passScore?: number;
 
     // Custom head content
     extraHeadContent?: string;

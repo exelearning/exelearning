@@ -511,6 +511,9 @@ export class Html5Exporter extends BaseExporter {
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             addMathJax: meta.addMathJax === true,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes

@@ -46,6 +46,7 @@ import {
     LEGACY_TYPE_ALIASES,
     defaultLogger,
 } from './interfaces';
+import { PASS_SCORE_DEFAULT, normalizePassScore } from '../export/metadata-properties';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 import { isLegacyGenericTextTemplate } from './legacyGenericTextTemplate';
 import { addUnresolvedAssetRefs, type UnresolvedAssetRef } from './unresolvedAssetRefs';
@@ -1051,9 +1052,10 @@ export class ElpxImporter {
         metadata.set('addAccessibilityToolbar', legacyMeta.pp_addAccessibilityToolbar);
         metadata.set('exportSource', legacyMeta.exportSource);
 
-        // Legacy files don't have addMathJax or globalFont - use defaults
+        // Legacy files don't have addMathJax, globalFont or passScore - use defaults
         metadata.set('addMathJax', false);
         metadata.set('globalFont', 'default');
+        metadata.set('passScore', PASS_SCORE_DEFAULT);
 
         metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
         metadata.set('footer', legacyMeta.footer);
@@ -1277,6 +1279,9 @@ export class ElpxImporter {
             footer: this.getMetadataProperty(odeProperties, 'footer'),
             addMathJax: this.getBooleanMetadataProperty(odeProperties, 'pp_addMathJax', false),
             globalFont: this.getMetadataProperty(odeProperties, 'pp_globalFont', 'default'),
+            // normalizePassScore turns a missing or unparseable value into the
+            // default, so no separate fallback is needed here.
+            passScore: normalizePassScore(this.getMetadataProperty(odeProperties, 'pp_passScore')),
         };
     }
 
@@ -1300,6 +1305,7 @@ export class ElpxImporter {
         metadata.set('exportSource', values.exportSource);
         metadata.set('addMathJax', values.addMathJax);
         metadata.set('globalFont', values.globalFont);
+        metadata.set('passScore', values.passScore);
         metadata.set('extraHeadContent', values.extraHeadContent);
         metadata.set('footer', values.footer);
         // Screenshot (optional, extracted from archive root)

@@ -419,6 +419,177 @@ describe('common_edition.js', () => {
         expect(input.disabled).toBe(true);
       });
     });
+
+    describe('passScore', () => {
+      const passScore = () => globalThis.$exeDevicesEdition.iDevice.gamification.passScore;
+
+      const mountHtml = () => {
+        document.body.innerHTML = passScore().getContents();
+      };
+
+      // common.js is not loaded here, so $exe stands in for it. The real one
+      // reads the META in an exported page and the Y.Doc in the editor.
+      const setGlobalValue = (value) => {
+        globalThis.$exe = {
+          passScore: {
+            get: () => value,
+            normalize: (raw) => {
+              const parsed = parseFloat(raw);
+              if (!isFinite(parsed)) return 5;
+              return Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10;
+            },
+          },
+        };
+      };
+
+      beforeEach(() => setGlobalValue(5));
+      afterEach(() => {
+        delete globalThis.$exe;
+      });
+
+      it('getContents renders the label, both radios and the hidden custom input', () => {
+        const html = passScore().getContents();
+        expect(html).toContain('Minimum score to pass the activity');
+        expect(html).toContain('id="eXePassScoreGlobal"');
+        expect(html).toContain('id="eXePassScoreCustom"');
+        expect(html).toContain('id="eXePassScoreGlobalValue"');
+        expect(html).toContain('id="eXePassScoreCustomOptions"');
+        expect(html).toContain('Global value');
+        expect(html).toContain('Customize');
+        // The custom input is only revealed once the author asks for it.
+        expect(html).toMatch(/id="eXePassScoreCustomOptions"[^>]*d-none/);
+      });
+
+      it('getContents declares the same 0-10 one-decimal domain as the project property', () => {
+        const html = passScore().getContents();
+        expect(html).toMatch(/id="eXePassScoreValue"[\s\S]*?min="0"/);
+        expect(html).toMatch(/id="eXePassScoreValue"[\s\S]*?max="10"/);
+        expect(html).toMatch(/id="eXePassScoreValue"[\s\S]*?step="0.1"/);
+      });
+
+      it('getContents shows the project value next to the global radio', () => {
+        setGlobalValue(7.5);
+        expect(passScore().getContents()).toContain('>7.5</span>');
+      });
+
+      it('getContents falls back to 5 when $exe is not available', () => {
+        delete globalThis.$exe;
+        expect(passScore().getContents()).toContain('>5</span>');
+      });
+
+      it('defaults to the global mode for an iDevice that has never been saved', () => {
+        mountHtml();
+        passScore().setValues();
+
+        expect(document.getElementById('eXePassScoreGlobal').checked).toBe(true);
+        expect(document.getElementById('eXePassScoreCustom').checked).toBe(false);
+        expect(document.getElementById('eXePassScoreCustomOptions').classList.contains('d-none')).toBe(true);
+      });
+
+      it('setValues restores a customised iDevice and reveals its value', () => {
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+
+        expect(document.getElementById('eXePassScoreCustom').checked).toBe(true);
+        expect(document.getElementById('eXePassScoreValue').value).toBe('7.5');
+        expect(document.getElementById('eXePassScoreCustomOptions').classList.contains('d-none')).toBe(false);
+      });
+
+      it('setValues repaints the global number from the project, not from the saved iDevice', () => {
+        mountHtml();
+        // The project moved to 8 after this iDevice was last saved.
+        setGlobalValue(8);
+        passScore().setValues({ passScoreMode: 'global', passScoreCustom: 3 });
+
+        expect(document.getElementById('eXePassScoreGlobalValue').textContent).toBe('8');
+      });
+
+      it('setValues seeds the custom input with the project value when there is none stored', () => {
+        setGlobalValue(7.5);
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'global' });
+
+        expect(document.getElementById('eXePassScoreValue').value).toBe('7.5');
+      });
+
+      it('getValues reports the global mode without inventing a stored value', () => {
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'global' });
+
+        expect(passScore().getValues()).toEqual({ passScoreMode: 'global', passScoreCustom: 5 });
+      });
+
+      it('getValues reports the customised mark', () => {
+        mountHtml();
+        passScore().setValues({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+
+        expect(passScore().getValues()).toEqual({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+      });
+
+      it('getValues clamps a mark typed outside the domain', () => {
+        mountHtml();
+        document.getElementById('eXePassScoreCustom').checked = true;
+        document.getElementById('eXePassScoreValue').value = '42';
+
+        expect(passScore().getValues().passScoreCustom).toBe(10);
+      });
+
+      it('addEvents reveals and hides the custom input with the radios', () => {
+        mountHtml();
+        passScore().addEvents();
+        const options = document.getElementById('eXePassScoreCustomOptions');
+        const custom = document.getElementById('eXePassScoreCustom');
+        const global = document.getElementById('eXePassScoreGlobal');
+
+        custom.checked = true;
+        globalThis.$(custom).trigger('change');
+        expect(options.classList.contains('d-none')).toBe(false);
+
+        global.checked = true;
+        globalThis.$(global).trigger('change');
+        expect(options.classList.contains('d-none')).toBe(true);
+      });
+
+      it('addEvents keeps the typed mark when switching back and forth', () => {
+        mountHtml();
+        passScore().addEvents();
+        const input = document.getElementById('eXePassScoreValue');
+        const custom = document.getElementById('eXePassScoreCustom');
+        const global = document.getElementById('eXePassScoreGlobal');
+
+        custom.checked = true;
+        globalThis.$(custom).trigger('change');
+        input.value = '7.5';
+        global.checked = true;
+        globalThis.$(global).trigger('change');
+        custom.checked = true;
+        globalThis.$(custom).trigger('change');
+
+        expect(input.value).toBe('7.5');
+      });
+
+      it('addEvents repaints a field left empty on blur with the mark that will be saved', () => {
+        mountHtml();
+        passScore().addEvents();
+        const input = document.getElementById('eXePassScoreValue');
+
+        input.value = '';
+        globalThis.$(input).trigger('blur');
+
+        expect(input.value).toBe('5');
+      });
+
+      it('addEvents repaints an out-of-range field on blur', () => {
+        mountHtml();
+        passScore().addEvents();
+        const input = document.getElementById('eXePassScoreValue');
+
+        input.value = '42';
+        globalThis.$(input).trigger('blur');
+
+        expect(input.value).toBe('10');
+      });
+    });
   });
 
   describe('tabs', () => {

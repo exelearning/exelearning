@@ -275,6 +275,131 @@ describe('common.js $exe helpers', () => {
     });
   });
 
+  describe('$exe.passScore', () => {
+    const setMeta = (content) => {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'exe-pass-score');
+      meta.setAttribute('content', content);
+      document.head.appendChild(meta);
+    };
+
+    const setYjsPassScore = (value) => {
+      global.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              getDocumentManager: () => ({
+                getMetadata: () => new Map([['passScore', value]]),
+              }),
+            },
+          },
+        },
+      };
+    };
+
+    afterEach(() => {
+      document.head.querySelectorAll('meta[name="exe-pass-score"]').forEach((meta) => meta.remove());
+      delete global.eXeLearning;
+    });
+
+    describe('normalize', () => {
+      it('keeps a value already inside the domain', () => {
+        expect(global.$exe.passScore.normalize(7.5)).toBe(7.5);
+        expect(global.$exe.passScore.normalize('7.5')).toBe(7.5);
+      });
+
+      it('keeps zero, which means "any mark passes"', () => {
+        expect(global.$exe.passScore.normalize(0)).toBe(0);
+        expect(global.$exe.passScore.normalize('0')).toBe(0);
+      });
+
+      it('clamps values outside 0-10', () => {
+        expect(global.$exe.passScore.normalize(12)).toBe(10);
+        expect(global.$exe.passScore.normalize(-3)).toBe(0);
+      });
+
+      it('rounds to a single decimal', () => {
+        expect(global.$exe.passScore.normalize(7.55)).toBe(7.6);
+        expect(global.$exe.passScore.normalize(7.44)).toBe(7.4);
+      });
+
+      it('falls back to the default rather than to zero', () => {
+        expect(global.$exe.passScore.normalize(undefined)).toBe(5);
+        expect(global.$exe.passScore.normalize(null)).toBe(5);
+        expect(global.$exe.passScore.normalize('')).toBe(5);
+        expect(global.$exe.passScore.normalize('abc')).toBe(5);
+      });
+    });
+
+    describe('get', () => {
+      it('reads the META tag exported pages carry', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.get()).toBe(7.5);
+      });
+
+      it('normalizes what the META says', () => {
+        setMeta('42');
+        expect(global.$exe.passScore.get()).toBe(10);
+      });
+
+      it('reads the live Y.Doc in the editor, where there is no META', () => {
+        setYjsPassScore(7.5);
+        expect(global.$exe.passScore.get()).toBe(7.5);
+      });
+
+      it('prefers the META over the Y.Doc, so an exported page never consults the editor', () => {
+        setMeta('3');
+        setYjsPassScore(9);
+        expect(global.$exe.passScore.get()).toBe(3);
+      });
+
+      it('falls back to the default with neither META nor editor', () => {
+        expect(global.$exe.passScore.get()).toBe(5);
+      });
+    });
+
+    describe('resolve', () => {
+      it('uses the mark the iDevice stored when its author customised it', () => {
+        setMeta('5');
+        expect(global.$exe.passScore.resolve({ passScoreMode: 'custom', passScoreCustom: 7.5 })).toBe(7.5);
+      });
+
+      it('follows the page value when the iDevice is on the global mode', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.resolve({ passScoreMode: 'global', passScoreCustom: 3 })).toBe(7.5);
+      });
+
+      it('follows the page value for an iDevice saved before this option existed', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.resolve({})).toBe(7.5);
+        expect(global.$exe.passScore.resolve()).toBe(7.5);
+      });
+
+      it('normalizes a stored mark that is out of range', () => {
+        setMeta('5');
+        expect(global.$exe.passScore.resolve({ passScoreMode: 'custom', passScoreCustom: 42 })).toBe(10);
+      });
+
+      it('keeps a customised zero rather than falling back to the page value', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.resolve({ passScoreMode: 'custom', passScoreCustom: 0 })).toBe(0);
+      });
+    });
+
+    describe('toPercent', () => {
+      it('converts a 0-10 mark to the 0-100 scale the SCORM registry uses', () => {
+        expect(global.$exe.passScore.toPercent(7.5)).toBe(75);
+        expect(global.$exe.passScore.toPercent(0)).toBe(0);
+        expect(global.$exe.passScore.toPercent(10)).toBe(100);
+      });
+
+      it('converts the current page value when called with no argument', () => {
+        setMeta('7.5');
+        expect(global.$exe.passScore.toPercent()).toBe(75);
+      });
+    });
+  });
+
   describe('$exe.init', () => {
     beforeEach(() => {
       global.$exe.hasMultimediaGalleries = false;

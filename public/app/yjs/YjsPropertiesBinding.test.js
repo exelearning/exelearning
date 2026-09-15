@@ -239,6 +239,111 @@ describe('YjsPropertiesBinding', () => {
     });
   });
 
+  describe('number properties (pp_passScore)', () => {
+    const createPassScoreInput = (value) => {
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.classList.add('property-value');
+      input.setAttribute('property', 'pp_passScore');
+      input.setAttribute('data-type', 'number');
+      input.setAttribute('min', '0');
+      input.setAttribute('max', '10');
+      input.setAttribute('step', '0.1');
+      input.value = value;
+      return input;
+    };
+
+    it('maps pp_passScore to the passScore metadata key', () => {
+      expect(binding.mapPropertyToMetadataKey('pp_passScore')).toBe('passScore');
+      expect(binding.mapMetadataKeyToProperty('passScore')).toBe('pp_passScore');
+    });
+
+    it('stores a number, not the string the DOM hands back', () => {
+      binding.updateYjsFromInput(createPassScoreInput('7.5'), 'passScore', 'number');
+
+      expect(binding.metadata.get('passScore')).toBe(7.5);
+    });
+
+    it('stores zero rather than treating it as empty', () => {
+      binding.updateYjsFromInput(createPassScoreInput('0'), 'passScore', 'number');
+
+      expect(binding.metadata.get('passScore')).toBe(0);
+    });
+
+    it('clamps a value typed outside the declared bounds', () => {
+      binding.updateYjsFromInput(createPassScoreInput('42'), 'passScore', 'number');
+
+      expect(binding.metadata.get('passScore')).toBe(10);
+    });
+
+    it('rounds to the precision the step declares', () => {
+      binding.updateYjsFromInput(createPassScoreInput('7.55'), 'passScore', 'number');
+
+      expect(binding.metadata.get('passScore')).toBe(7.6);
+    });
+
+    it('leaves the stored value alone while the field is empty', () => {
+      binding.metadata.set('passScore', 7.5);
+
+      binding.updateYjsFromInput(createPassScoreInput(''), 'passScore', 'number');
+
+      expect(binding.metadata.get('passScore')).toBe(7.5);
+    });
+
+    it('repaints the field from Yjs when it is left empty on blur', () => {
+      binding.metadata.set('passScore', 7.5);
+      const input = createPassScoreInput('');
+      mockFormElement.appendChild(input);
+      binding.bindForm(mockFormElement);
+
+      input.value = '';
+      input.dispatchEvent(new window.Event('blur'));
+
+      expect(input.value).toBe('7.5');
+    });
+
+    it('seeds Yjs with a number when the document has no value yet', () => {
+      const input = createPassScoreInput('5');
+      mockFormElement.appendChild(input);
+
+      binding.bindForm(mockFormElement);
+
+      expect(binding.metadata.get('passScore')).toBe(5);
+    });
+
+    it('shows the stored value when the document already has one', () => {
+      binding.metadata.set('passScore', 7.5);
+      const input = createPassScoreInput('5');
+      mockFormElement.appendChild(input);
+
+      binding.bindForm(mockFormElement);
+
+      expect(input.value).toBe('7.5');
+    });
+
+    describe('readNumberInput', () => {
+      it('returns null for an empty or unparseable field', () => {
+        expect(binding.readNumberInput(createPassScoreInput(''))).toBeNull();
+        expect(binding.readNumberInput(createPassScoreInput('abc'))).toBeNull();
+      });
+
+      it('rounds to an integer when no step is declared, as input[type=number] does', () => {
+        const input = createPassScoreInput('7.55');
+        input.removeAttribute('step');
+
+        expect(binding.readNumberInput(input)).toBe(8);
+      });
+
+      it('does not clamp when no bounds are declared', () => {
+        const input = createPassScoreInput('42');
+        input.removeAttribute('min');
+        input.removeAttribute('max');
+
+        expect(binding.readNumberInput(input)).toBe(42);
+      });
+    });
+  });
+
   describe('updateInputFromYjs', () => {
     it('updates text input from metadata', () => {
       binding.metadata.set('title', 'From Yjs');

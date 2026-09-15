@@ -14,7 +14,7 @@
 /**
  * Property type for metadata values
  */
-export type MetadataPropertyType = 'string' | 'boolean';
+export type MetadataPropertyType = 'string' | 'boolean' | 'number';
 
 /**
  * Configuration for a single metadata property
@@ -27,11 +27,55 @@ export interface MetadataPropertyConfig {
     /** Property type */
     type: MetadataPropertyType;
     /** Default value (used when property is missing) */
-    defaultValue: string | boolean;
+    defaultValue: string | boolean | number;
     /** Whether this property is excluded from XML export (internal only) */
     excludeFromXml?: boolean;
     /** Category for grouping in UI */
     category: 'core' | 'export' | 'content' | 'internal' | 'scorm';
+}
+
+// =============================================================================
+// Pass score domain
+// =============================================================================
+
+/**
+ * The pass score is the mark a learner has to reach for an activity to count as
+ * passed. It is authored on the 0-10 scale teachers use, with a single decimal,
+ * and the project-wide value is the default every iDevice inherits unless it
+ * defines its own.
+ *
+ * The SCORM activity registry in public/app/common/common.js works on 0-100
+ * instead, so anything crossing into it must go through a conversion rather
+ * than being compared raw.
+ */
+export const PASS_SCORE_MIN = 0;
+export const PASS_SCORE_MAX = 10;
+export const PASS_SCORE_DEFAULT = 5;
+export const PASS_SCORE_STEP = 0.1;
+
+/**
+ * Name of the META tag every exported page carries so that iDevice runtime code
+ * can read the project value without a round trip to the editor. Mirrored by
+ * `$exe.passScore` in public/app/common/common.js -- change both together.
+ */
+export const PASS_SCORE_META_NAME = 'exe-pass-score';
+
+/**
+ * Clamp an authored pass score into the 0-10 one-decimal domain.
+ *
+ * Anything that is not a finite number -- a missing property, an empty input,
+ * text typed into the field -- resolves to the default rather than to 0, because
+ * 0 is a legitimate value meaning "any mark passes" and must stay
+ * distinguishable from "not set".
+ *
+ * @param value - Raw value from Yjs, XML or a form input.
+ * @returns A number in [0, 10] rounded to one decimal.
+ */
+export function normalizePassScore(value: unknown): number {
+    const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
+    if (!Number.isFinite(parsed)) return PASS_SCORE_DEFAULT;
+    const clamped = Math.min(PASS_SCORE_MAX, Math.max(PASS_SCORE_MIN, parsed));
+    return Math.round(clamped * 10) / 10;
 }
 
 /**
@@ -186,6 +230,13 @@ export const METADATA_PROPERTIES: MetadataPropertyConfig[] = [
         defaultValue: 'default',
         category: 'export',
     },
+    {
+        key: 'passScore',
+        xmlKey: 'pp_passScore',
+        type: 'number',
+        defaultValue: PASS_SCORE_DEFAULT,
+        category: 'export',
+    },
 
     // =========================================================================
     // Custom Content
@@ -300,7 +351,7 @@ export function getInternalKeyForXmlKey(xmlKey: string): string | undefined {
 /**
  * Get default value for a property
  */
-export function getDefaultValue(key: string): string | boolean {
+export function getDefaultValue(key: string): string | boolean | number {
     const config = getPropertyConfig(key);
     return config?.defaultValue ?? '';
 }
@@ -338,7 +389,7 @@ export function isBooleanProperty(key: string): boolean {
 /**
  * Parse a value according to property type
  */
-export function parsePropertyValue(key: string, value: unknown): string | boolean {
+export function parsePropertyValue(key: string, value: unknown): string | boolean | number {
     const config = getPropertyConfig(key);
     if (!config) {
         return typeof value === 'string' ? value : String(value ?? '');
@@ -349,6 +400,12 @@ export function parsePropertyValue(key: string, value: unknown): string | boolea
         if (typeof value === 'boolean') return value;
         if (typeof value === 'string') return value.toLowerCase() === 'true';
         return config.defaultValue as boolean;
+    }
+
+    if (config.type === 'number') {
+        if (value === undefined || value === null || value === '') return config.defaultValue as number;
+        const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value));
+        return Number.isFinite(parsed) ? parsed : (config.defaultValue as number);
     }
 
     // String type
@@ -363,6 +420,9 @@ export function valueToXmlString(key: string, value: unknown): string {
     const config = getPropertyConfig(key);
     if (config?.type === 'boolean') {
         return value === true || value === 'true' ? 'true' : 'false';
+    }
+    if (config?.type === 'number') {
+        return String(parsePropertyValue(key, value));
     }
     return String(value ?? '');
 }

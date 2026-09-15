@@ -64,6 +64,7 @@ class YjsPropertiesBinding {
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
       'pp_addMathJax': 'addMathJax',
       'pp_globalFont': 'globalFont',
+      'pp_passScore': 'passScore',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',
@@ -201,6 +202,12 @@ class YjsPropertiesBinding {
         this.updateYjsFromInput(input, metadataKey, inputType);
       }
 
+      // A number field left empty or out of range never reached Yjs, so show
+      // the value that is actually stored rather than leaving the field blank.
+      if (inputType === 'number') {
+        this.updateInputFromYjs(input, metadataKey, inputType);
+      }
+
       // Stop capturing to create a new undo group for the next field
       if (this.documentManager?.stopCapturing) {
         this.documentManager.stopCapturing();
@@ -248,6 +255,11 @@ class YjsPropertiesBinding {
         case 'checkbox':
           inputValue = input.checked ? 'true' : 'false';
           break;
+        case 'number':
+          // Seed Yjs with a number, not the '5' string the DOM hands back, so
+          // that consumers never have to guess which of the two they got.
+          inputValue = this.readNumberInput(input);
+          break;
         case 'select':
         case 'text':
         case 'textarea':
@@ -258,7 +270,7 @@ class YjsPropertiesBinding {
       }
 
       // Only import non-empty values
-      if (inputValue !== '' && inputValue !== undefined) {
+      if (inputValue !== '' && inputValue !== undefined && inputValue !== null) {
         this.ydoc.transact(() => {
           this.metadata.set(metadataKey, inputValue);
         }, 'initial'); // 'initial' origin - not tracked by UndoManager
@@ -266,6 +278,35 @@ class YjsPropertiesBinding {
         Logger.log(`[YjsPropertiesBinding] Imported initial value to Yjs: ${metadataKey} = ${inputValue}`);
       }
     }
+  }
+
+  /**
+   * Read a numeric input as a number inside its declared domain.
+   *
+   * The bounds are taken from the element's own min/max/step, which the form
+   * builder copies from the property definition, so this stays generic: it
+   * knows about number fields, not about any particular property. The number of
+   * decimals comes from the step, so a step of 0.1 keeps one decimal and an
+   * integer step keeps none.
+   *
+   * @param {HTMLElement} input - An input[type=number] element
+   * @returns {number|null} The clamped value, or null when the field is empty
+   * or holds something that is not a number.
+   */
+  readNumberInput(input) {
+    const parsed = Number.parseFloat(input.value);
+    if (!Number.isFinite(parsed)) return null;
+
+    const min = Number.parseFloat(input.getAttribute('min'));
+    const max = Number.parseFloat(input.getAttribute('max'));
+    let value = parsed;
+    if (Number.isFinite(min)) value = Math.max(min, value);
+    if (Number.isFinite(max)) value = Math.min(max, value);
+
+    const step = input.getAttribute('step') || '';
+    const decimals = step.includes('.') ? step.split('.')[1].length : 0;
+    const factor = 10 ** decimals;
+    return Math.round(value * factor) / factor;
   }
 
   /**
@@ -280,6 +321,13 @@ class YjsPropertiesBinding {
     switch (inputType) {
       case 'checkbox':
         value = input.checked ? 'true' : 'false';
+        break;
+      case 'number':
+        value = this.readNumberInput(input);
+        // An empty or half-typed field is not a value. Writing NaN -- or 0, as
+        // a naive parse would -- would silently change the project while the
+        // user is still editing; the blur listener repaints the field instead.
+        if (value === null) return;
         break;
       case 'select':
         value = input.value;
