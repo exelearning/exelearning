@@ -1155,6 +1155,11 @@ const mockGamificationScorm = {
   init: vi.fn(),
   save: vi.fn(() => ({})),
   load: vi.fn(),
+  // The Evaluation tab. The real one composes the pass score, the SCORM
+  // options and the progress report; the marker is enough for an iDevice's
+  // createForm to run, and the composition has its own tests.
+  getTab: vi.fn(() => '<div class="exe-form-tab mock-evaluation-tab"></div>'),
+  addEvents: vi.fn(),
   // Used by some iDevices like trueorfalse.js
   getValues: vi.fn(() => ({
     textButtonScorm: 'Save',
@@ -1359,6 +1364,11 @@ global.$exeDevices = {
 
 global.$exeDevicesEdition = {
   iDevice: {
+    // Wires the form's tab strip. Every iDevice with more than one tab calls
+    // it from createForm, so a stub has to exist for those forms to render.
+    tabs: {
+      init: vi.fn(),
+    },
     gamification: {
       instructions: mockGamificationInstructions,
       scorm: mockGamificationScorm,
