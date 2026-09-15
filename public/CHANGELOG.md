@@ -65,6 +65,7 @@
 - True/False iDevice: fixed errors when answering and corrected score reporting
 - True/False iDevice: activities imported from eXeLearning 2.x now use the project's language instead of English
 - Form iDevice: the Check button now works as soon as the activity is displayed
+- Progress Report iDevice: fixed course maps in exported packages, scores on duplicated pages, activity order and page links
 - Sort iDevice: fixed its height and the count of correctly positioned items
 - iDevice editing: fixed digit limits in time and percentage fields in eight iDevices
 - Export and preview: after upgrading eXeLearning, the browser no longer reuses cached files from the previous version
