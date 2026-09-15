@@ -8,6 +8,14 @@
  * License: http://creativecommons.org/licenses/by-sa/4.0/
  */
 
+/**
+ * This iDevice has no JSON options block: it persists everything as CSS classes
+ * on its own markup and parses them back on edition. The pass score follows the
+ * same rule -- one class, written only when the author customised the mark, so
+ * that "global" costs nothing and older content reads as global for free.
+ */
+const PASS_SCORE_CLASS = 'auto-geogebra-pass-score-';
+
 var $exeDevice = {
     // We use eXe's _ function
     i18n: {
@@ -130,6 +138,7 @@ var $exeDevice = {
                             <label for="geogebraActivityWeight" class="mb-0">${_('Weight')} (%):</label>
                             <input type="number" name="geogebraActivityWeight" id="geogebraActivityWeight" value="100" min="1" max="100" step="1" class="form-control" />
                         </div>
+                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                     </div>
                 </fieldset>
@@ -191,6 +200,7 @@ var $exeDevice = {
         });
         this.loadPreviousValues();
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
     },
 
     loadData: function (id, lurl) {
@@ -434,6 +444,15 @@ var $exeDevice = {
                             { evaluation: true, evaluationID: evid }
                         );
                     }
+                } else if (part.indexOf(PASS_SCORE_CLASS) > -1) {
+                    // Only written when the author customised the mark, so
+                    // finding the class IS the custom mode. Content saved
+                    // before this option existed has no class and stays global,
+                    // which is what setValues() defaults to.
+                    $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+                        passScoreMode: 'custom',
+                        passScoreCustom: part.replace(PASS_SCORE_CLASS, ''),
+                    });
                 } else if (part.indexOf('auto-geogebra-ideviceid-') > -1) {
                     $exeDevice.ideviceID = part.replace(
                         'auto-geogebra-ideviceid-',
@@ -522,6 +541,8 @@ var $exeDevice = {
         if (!progressBar) return false;
         const evaluation = progressBar.evaluation;
         const evaluationID = evaluation ? progressBar.evaluationID : '0';
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
 
         let divContent = '';
         // Instructions
@@ -589,6 +610,11 @@ var $exeDevice = {
         css += ' auto-geogebra-evaluation-id-' + evaluationID;
         css += ' auto-geogebra-ideviceid-' + ideviceID;
         css += ' auto-geogebra-weight-' + weight;
+        // Absence means "follow the project", so nothing is written for the
+        // global mode -- that is what keeps an activity inheriting live.
+        if (passScore.passScoreMode === 'custom') {
+            css += ' ' + PASS_SCORE_CLASS + passScore.passScoreCustom;
+        }
 
         let author = $('#geogebraActivityAuthorURL').text() || '';
         let titleNode = $('#geogebraActivityTitle').find('a').first();

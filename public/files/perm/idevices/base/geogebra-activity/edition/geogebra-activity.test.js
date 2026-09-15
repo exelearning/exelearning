@@ -4,6 +4,7 @@
 
 /* eslint-disable no-undef */
 
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -270,6 +271,49 @@ describe('geogebra-activity iDevice (edition)', () => {
       } finally {
         global.tinymce.editors = previousEditors;
       }
+    });
+  });
+
+  /**
+   * This iDevice stores nothing as JSON: its options live as CSS classes on its
+   * own markup. The pass score follows that convention, and the asymmetry is
+   * deliberate -- the class is written only for a customised mark, so "global"
+   * leaves no trace and content saved before the option existed reads as global
+   * without a migration.
+   */
+  describe('pass score wiring', () => {
+    let source;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'geogebra-activity.js'), 'utf-8');
+    });
+
+    it('renders the control immediately above the progress report', () => {
+      const passScoreAt = source.indexOf('gamification.passScore.getContents()');
+      const progressBarAt = source.indexOf('gamification.progressBar.getContents(');
+
+      expect(passScoreAt).toBeGreaterThan(-1);
+      expect(progressBarAt).toBeGreaterThan(-1);
+      expect(passScoreAt).toBeLessThan(progressBarAt);
+    });
+
+    it('writes a class only for a customised mark', () => {
+      expect(source).toContain("if (passScore.passScoreMode === 'custom')");
+      expect(source).toContain("css += ' ' + PASS_SCORE_CLASS + passScore.passScoreCustom");
+    });
+
+    it('reads the class back as the custom mode', () => {
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain("passScoreMode: 'custom'");
+      expect(source).toContain('part.replace(PASS_SCORE_CLASS');
+    });
+
+    it('takes the mark from the shared control when saving', () => {
+      expect(source).toContain('gamification.passScore.getValues()');
+    });
+
+    it('wires the radio and input handlers', () => {
+      expect(source).toContain('gamification.passScore.addEvents()');
     });
   });
 });

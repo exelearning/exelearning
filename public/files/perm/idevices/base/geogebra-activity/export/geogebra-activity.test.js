@@ -448,6 +448,32 @@ describe('geogebra-activity iDevice (export)', () => {
       expect(options.msgs.msgUnsuccessfulActivity).toContain('Not passed');
     });
 
+    /**
+     * The pass score reaches this iDevice as a CSS class rather than as JSON.
+     * saveEvaluation() resolves the verdict from these two fields, so what
+     * matters is that they arrive -- and that their absence reads as "follow
+     * the project", which is how every activity saved before the option
+     * existed has to behave.
+     */
+    describe('pass score', () => {
+      it('carries a customised mark through to the options', () => {
+        const options = $geogebraactivity.getOptions('a0', 100, [], '', {
+          passScoreMode: 'custom',
+          passScoreCustom: 7.5,
+        });
+
+        expect(options.passScoreMode).toBe('custom');
+        expect(options.passScoreCustom).toBe(7.5);
+      });
+
+      it('follows the project when the markup carries no class', () => {
+        const options = $geogebraactivity.getOptions('a0', 100, [], '');
+
+        expect(options.passScoreMode).toBe('global');
+        expect(options.passScoreCustom).toBeNull();
+      });
+    });
+
     // msgYouLastScore compared the value against the string 'undefined' where
     // its six siblings use typeof, so an absent message resolved to undefined
     // instead of the empty string every other message falls back to.

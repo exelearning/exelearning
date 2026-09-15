@@ -287,6 +287,11 @@ var $geogebraactivity = {
         let evaluationID = '';
         let ideviceID = '';
         let weighted = 100;
+        // Written only when the author customised the mark (see the edition
+        // code), so no class means "follow the project" -- which is also how
+        // content saved before this option existed reads.
+        let passScoreMode = 'global';
+        let passScoreCustom = null;
         for (let i = 0; i < c.length; i++) {
             let currentClass = c[i];
             if (currentClass.indexOf('language-') == 0) {
@@ -317,6 +322,13 @@ var $geogebraactivity = {
             } else if (currentClass.indexOf('auto-geogebra-weight-') == 0) {
                 weighted = currentClass.replace('auto-geogebra-weight-', '');
                 weighted = parseInt(weighted);
+            } else if (
+                currentClass.indexOf('auto-geogebra-pass-score-') == 0
+            ) {
+                passScoreMode = 'custom';
+                passScoreCustom = parseFloat(
+                    currentClass.replace('auto-geogebra-pass-score-', '')
+                );
             }
         }
 
@@ -380,7 +392,8 @@ var $geogebraactivity = {
             sfx,
             weighted,
             $geogebraactivity.messagesScorm,
-            evaluationID
+            evaluationID,
+            { passScoreMode, passScoreCustom }
         );
         if (
             (c.length > 2 && c[2] == 'auto-geogebra-scorm') ||
@@ -466,7 +479,12 @@ var $geogebraactivity = {
         return ideviceid;
     },
 
-    getOptions: function (sfx, weighted, messagesScorm, evaluationID) {
+    /**
+     * @param {Object} [passScore] `{ passScoreMode, passScoreCustom }` parsed
+     * from the markup. Omitted by callers that have no markup to read, which
+     * leaves the activity following the project.
+     */
+    getOptions: function (sfx, weighted, messagesScorm, evaluationID, passScore) {
         evaluationID = evaluationID && evaluationID !== '0' ? evaluationID : '';
         let messages = $geogebraactivity.messages;
         let messagesEval = [];
@@ -483,6 +501,8 @@ var $geogebraactivity = {
             weighted: weighted ?? 100,
             evaluation: evaluationID.length !== 0,
             evaluationID: evaluationID,
+            passScoreMode: passScore?.passScoreMode ?? 'global',
+            passScoreCustom: passScore?.passScoreCustom ?? null,
             isInExe: this.isInExe,
             idevice: 'geogebra-activityIdevice',
             idevicePath: this.idevicePath,
