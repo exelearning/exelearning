@@ -221,7 +221,7 @@ var $exeDevice = {
                                     <span id="rclETitleImage">${_('Image')}</span>
                                     <div class="d-flex align-items-center gap-2 mb-3" id="rclEInputImage">
                                         <label class="sr-av" for="rclEURLImage">URL</label>
-                                        <input type="text" id="rclEURLImage" class="exe-file-picker form-control me-0 w-100"/>
+                                        <input type="text" id="rclEURLImage" data-author-target="#rclEAuthor" class="exe-file-picker form-control me-0 w-100"/>
                                         <a href="#" id="rclEPlayImage" class="RLC-ENavigationButton" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="RLC-ENavigationButton " />
                                         </a>
@@ -275,7 +275,7 @@ var $exeDevice = {
                                     <span id="rclETitleImageBack">${_('Image')}</span>
                                     <div class="d-flex align-items-center gap-2 mb-3" id="rclEInputImageBack">
                                         <label class="sr-av" for="rclEURLImageBack">URL</label>
-                                        <input type="text" id="rclEURLImageBack" class="exe-file-picker form-control me-0 w-100"/>
+                                        <input type="text" id="rclEURLImageBack" data-author-target="#rclEAuthorBack" class="exe-file-picker form-control me-0 w-100"/>
                                         <a href="#" id="rclEPlayImageBack" class="RLC-ENavigationButton" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="RLC-ENavigationButton " />
                                         </a>

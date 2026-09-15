@@ -263,7 +263,7 @@ var $exeDevice = {
                                     <span>${_('Image')}</span>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEInputImage">
                                         <label for="flipcardsEURLImage" class="sr-av">URL</label>
-                                        <input type="text" id="flipcardsEURLImage" class="exe-file-picker FLCRDS-EURLImage form-control me-0"/>
+                                        <input type="text" id="flipcardsEURLImage" data-author-target="#flipcardsEAuthor" class="exe-file-picker FLCRDS-EURLImage form-control me-0"/>
                                         <a href="#" id="flipcardsEPlayImage" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
                                         </a>
@@ -319,7 +319,7 @@ var $exeDevice = {
                                     <span> ${_('Image')}</span>
                                     <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="flipcardsEInputImageBack">
                                         <label for="flipcardsEURLImageBack" class="sr-av">URL</label>
-                                        <input type="text" id="flipcardsEURLImageBack" class="exe-file-picker form-control me-0"/>
+                                        <input type="text" id="flipcardsEURLImageBack" data-author-target="#flipcardsEAuthorBack" class="exe-file-picker form-control me-0"/>
                                         <a href="#" id="flipcardsEPlayImageBack" class="FLCRDS-EPlayVideo" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
                                         </a>

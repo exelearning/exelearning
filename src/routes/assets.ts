@@ -16,10 +16,12 @@ import {
     createAssets,
     findAssetById,
     findAllAssetsForProject,
+    searchAssetsForProject,
     findAssetByClientId,
     findAssetsByClientIds,
     deleteAsset as dbDeleteAsset,
     updateAsset,
+    updateAssetMetadataByClientId,
     bulkUpdateAssets,
     findProjectByUuid,
     findProjectById,
@@ -63,10 +65,12 @@ export interface AssetsQueries {
     createAssets: typeof createAssets;
     findAssetById: typeof findAssetById;
     findAllAssetsForProject: typeof findAllAssetsForProject;
+    searchAssetsForProject: typeof searchAssetsForProject;
     findAssetByClientId: typeof findAssetByClientId;
     findAssetsByClientIds: typeof findAssetsByClientIds;
     deleteAsset: typeof dbDeleteAsset;
     updateAsset: typeof updateAsset;
+    updateAssetMetadataByClientId: typeof updateAssetMetadataByClientId;
     bulkUpdateAssets: typeof bulkUpdateAssets;
     findProjectByUuid: typeof findProjectByUuid;
     findProjectById: typeof findProjectById;
@@ -158,10 +162,12 @@ const defaultDependencies: AssetsDependencies = {
         createAssets,
         findAssetById,
         findAllAssetsForProject,
+        searchAssetsForProject,
         findAssetByClientId,
         findAssetsByClientIds,
         deleteAsset: dbDeleteAsset,
         updateAsset,
+        updateAssetMetadataByClientId,
         bulkUpdateAssets,
         findProjectByUuid,
         findProjectById,
@@ -784,9 +790,11 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             // List & Get Assets
             // =====================================================
 
-            // GET / - List project assets
-            .get('/', async ({ params }) => {
+            // GET / - List project assets (optionally filtered by ?search= over
+            // filename, description and alt text — case-insensitive)
+            .get('/', async ({ params, query }) => {
                 const { projectId } = params;
+                const search = typeof query?.search === 'string' ? query.search : '';
 
                 // Resolve the project row (handles both UUID and numeric strings)
                 const project = await resolveProject(projectId);
@@ -797,7 +805,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     };
                 }
 
-                const assets = await queries.findAllAssetsForProject(database, project.id);
+                const assets = search.trim()
+                    ? await queries.searchAssetsForProject(database, project.id, search)
+                    : await queries.findAllAssetsForProject(database, project.id);
                 return {
                     success: true,
                     data: assets.map(serializeAsset),
@@ -915,6 +925,51 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
                     success: true,
                     data: serializeAsset(asset),
                 };
+            })
+
+            // PATCH /by-client-id/:clientId/metadata - Update centralized asset metadata
+            // Used by the File Manager (and external API) to persist reusable
+            // description / alt text / title / license / author on the asset itself.
+            // Only the provided string fields are updated; empty strings clear a field.
+            .patch('/by-client-id/:clientId/metadata', async ({ params, body, set }) => {
+                const { projectId, clientId } = params;
+                const raw = (body || {}) as Record<string, unknown>;
+
+                const project = await resolveProject(projectId);
+                if (!project) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
+                }
+                const projectIdNum = project.id;
+
+                // Whitelist + coerce known metadata fields. Unknown keys are ignored.
+                const patch: {
+                    description?: string;
+                    title?: string;
+                    license?: string;
+                    author?: string;
+                    authorUrl?: string;
+                    sourceUrl?: string;
+                } = {};
+                const FIELDS = ['description', 'title', 'license', 'author', 'authorUrl', 'sourceUrl'] as const;
+                for (const key of FIELDS) {
+                    const value = raw[key];
+                    if (value === undefined) continue;
+                    if (typeof value !== 'string') {
+                        set.status = 400;
+                        return { success: false, error: `Field "${key}" must be a string` };
+                    }
+                    patch[key] = value;
+                }
+
+                const updated = await queries.updateAssetMetadataByClientId(database, clientId, projectIdNum, patch);
+                if (!updated) {
+                    set.status = 404;
+                    return { success: false, error: 'Asset not found' };
+                }
+
+                const asset = await queries.findAssetByClientId(database, clientId, projectIdNum);
+                return { success: true, data: asset ? serializeAsset(asset) : undefined };
             })
 
             // DELETE /by-client-id/:clientId - Delete asset by client ID (UUID)
@@ -1418,6 +1473,13 @@ interface SerializedAsset {
     componentId: string | null;
     clientId: string | null;
     folderPath: string;
+    // Centralized, reusable asset-level metadata (empty string when unset)
+    description: string;
+    title: string;
+    license: string;
+    author: string;
+    authorUrl: string;
+    sourceUrl: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -1434,6 +1496,12 @@ function serializeAsset(asset: Asset): SerializedAsset {
         componentId: asset.component_id,
         clientId: asset.client_id,
         folderPath: asset.folder_path || '',
+        description: asset.description || '',
+        title: asset.title || '',
+        license: asset.license || '',
+        author: asset.author || '',
+        authorUrl: asset.author_url || '',
+        sourceUrl: asset.source_url || '',
         createdAt: asset.created_at,
         updatedAt: asset.updated_at,
     };
