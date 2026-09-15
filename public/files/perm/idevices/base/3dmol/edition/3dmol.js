@@ -1344,6 +1344,7 @@ var $exeDevice = {
                                 </select>
                                 <button id="dmoleGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item" data-target="dmoleEvaluation">
                                     <span class="toggle-control">
@@ -1747,6 +1748,10 @@ var $exeDevice = {
         $('#dmoleEvaluation').prop('checked', game.evaluation);
         $('#dmoleEvaluationID').val(game.evaluationID);
         $('#dmoleGlobalTimes').val(game.globalTime);
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
 
         $('#dmoleEvaluationID').prop('disabled', !game.evaluation);
 
@@ -2010,6 +2015,8 @@ var $exeDevice = {
             ),
             evaluation = $('#dmoleEvaluation').is(':checked'),
             evaluationID = $('#dmoleEvaluationID').val(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#dmoleGlobalTimes').val(), 10);
 
@@ -2104,6 +2111,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
             globalTime: globalTime,
             modelStyle: $exeDevice.normalizeModelStyle($exeDevice.modelStyle),
@@ -2568,6 +2577,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(2);
 
         //eXe 3.0 Dismissible messages
