@@ -1210,6 +1210,45 @@ const mockGamificationProgressBar = {
   addEvents: vi.fn(),
 };
 
+// Minimum score to pass an activity. Mirrors the shared block in
+// common_edition.js closely enough that an iDevice's loadPreviousValues /
+// save round trip can be exercised: the mode and the customised mark travel,
+// and the project value is never among them.
+const mockGamificationPassScore = {
+  MODE_GLOBAL: 'global',
+  MODE_CUSTOM: 'custom',
+  getGlobalValue: vi.fn(() => 5),
+  normalize: vi.fn((value) => {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return 5;
+    return Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10;
+  }),
+  getContents: vi.fn(() => ''),
+  refreshGlobalValue: vi.fn(),
+  setValues: vi.fn((data) => {
+    const custom = !!(data && data.passScoreMode === 'custom');
+    if (typeof window !== 'undefined' && window.$) {
+      window.$('#eXePassScoreCustom').prop('checked', custom);
+      window.$('#eXePassScoreGlobal').prop('checked', !custom);
+      if (data && typeof data.passScoreCustom !== 'undefined' && data.passScoreCustom !== '') {
+        window.$('#eXePassScoreValue').val(data.passScoreCustom);
+      }
+    }
+  }),
+  getValues: vi.fn(() => {
+    if (typeof window === 'undefined' || !window.$) {
+      return { passScoreMode: 'global', passScoreCustom: 5 };
+    }
+    const custom = window.$('#eXePassScoreCustom').is(':checked');
+    const raw = Number.parseFloat(window.$('#eXePassScoreValue').val());
+    return {
+      passScoreMode: custom ? 'custom' : 'global',
+      passScoreCustom: Number.isFinite(raw) ? raw : 5,
+    };
+  }),
+  addEvents: vi.fn(),
+};
+
 const mockGamificationHelpers = {
   getFieldset: vi.fn((config) => {
     const title = config?.title || 'Gamification';
@@ -1325,6 +1364,7 @@ global.$exeDevicesEdition = {
       scorm: mockGamificationScorm,
       common: mockGamificationCommon,
       progressBar: mockGamificationProgressBar,
+      passScore: mockGamificationPassScore,
       share: mockGamificationShare,
       helpers: mockGamificationHelpers,
       math: mockGamificationMath,
