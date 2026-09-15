@@ -350,6 +350,7 @@ var $exeDevice = {
                             <div id="eRMQFeedbackP" class="MTOE-EFeedbackP mb-3">
                                 <textarea id="eRMQFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                             </div>
@@ -399,6 +400,8 @@ var $exeDevice = {
             mode = $('#eRMQFractions').is(':checked') ? 1 : 0,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!progressBar) return false;
@@ -497,6 +500,8 @@ var $exeDevice = {
             solution: solution,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
         };
     },
@@ -749,6 +754,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
     },
 
     setErrorType: function (type) {
@@ -816,6 +823,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
 
         $exeDevice.setErrorType(game.errorType);
