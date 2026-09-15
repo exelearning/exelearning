@@ -133,6 +133,7 @@ var $exeDevice = {
                                 <label for="bfafEAuthory">${_('Authorship')}: </label>
                                 <input id="bfafEAuthory" type="text" class="form-control" />
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </fieldset>
@@ -718,7 +719,9 @@ var $exeDevice = {
                 $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues();
 
         if (!progressBar) return false;
         if (!itinerary) return;
@@ -736,6 +739,8 @@ var $exeDevice = {
             version: $exeDevice.version,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id,
         };
     },
@@ -837,6 +842,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#beforeAfterQIdeviceForm').on(
             'change',
@@ -946,6 +952,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#bfafEPosition').val(game.position);
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
