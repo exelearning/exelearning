@@ -1477,6 +1477,7 @@ var $exeDevice = {
                                 </select>
                                 <button id="elceGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item" data-target="elceEvaluation">
                                     <span class="toggle-control">
@@ -1779,6 +1780,10 @@ var $exeDevice = {
         $('#elcePercentajeQuestionsValue').val(game.percentajeQuestions);
         $('#elceEvaluation').prop('checked', game.evaluation);
         $('#elceEvaluationID').val(game.evaluationID);
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#elceGlobalTimes').val(game.globalTime);
 
         $('#elceEvaluationID').prop('disabled', !game.evaluation);
@@ -2037,6 +2042,8 @@ var $exeDevice = {
             ),
             evaluation = $('#elceEvaluation').is(':checked'),
             evaluationID = $('#elceEvaluationID').val(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#elceGlobalTimes').val(), 10);
 
@@ -2133,6 +2140,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
             globalTime: globalTime,
         };
@@ -2463,6 +2472,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             11,
             $exeDevice.insertAIQuestions
