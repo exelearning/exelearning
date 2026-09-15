@@ -183,6 +183,7 @@ var $exeDevice = {
                                 <input type="text" disabled id="candadoEErrorMessage" class="form-control" />
                             </div>
                         </div>
+                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="Games-Reportdiv d-flex flex-wrap align-items-center gap-2 mb-3">
                             ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
@@ -270,6 +271,10 @@ var $exeDevice = {
                 evaluation: dataGame.evaluation,
                 evaluationID: dataGame.evaluationID,
             });
+            $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+                passScoreMode: dataGame.passScoreMode,
+                passScoreCustom: dataGame.passScoreCustom,
+            });
 
             if (candadoInstructions.length > 0) {
                 $('#candadoEDescription').val(candadoInstructions);
@@ -355,6 +360,10 @@ var $exeDevice = {
         if (!progressBar) return false;
         $exeDevice.evaluation = progressBar.evaluation;
         $exeDevice.evaluationID = progressBar.evaluationID;
+        const passScore =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        $exeDevice.passScoreMode = passScore.passScoreMode;
+        $exeDevice.passScoreCustom = passScore.passScoreCustom;
         $exeDevice.id = $exeDevice.id
             ? $exeDevice.id
             : $exeDevice.getIdeviceID();
@@ -407,6 +416,8 @@ var $exeDevice = {
             weighted: scorm.weighted,
             evaluation: $exeDevice.evaluation,
             evaluationID: $exeDevice.evaluationID,
+            passScoreMode: $exeDevice.passScoreMode,
+            passScoreCustom: $exeDevice.passScoreCustom,
             id: $exeDevice.getIdeviceID(),
         };
     },
@@ -442,5 +453,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
     },
 };
