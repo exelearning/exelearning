@@ -108,7 +108,9 @@
 - electron: 43.2.0 → 44.2.0
 - electron-context-menu: 4.1.2 → 5.0.0
 - @biomejs/biome: 2.4.5 → 2.5.11
-- Several other dependencies updated to their latest compatible versions, clearing all known security advisories
+- mysql2: 3.18.2 → 3.23.4
+- y-websocket: 3.0.0 → 3.1.0
+- Other dependencies updated to their latest compatible versions
 
 ### Removed
 
