@@ -231,6 +231,7 @@ var $exeDevice = {
                                     <img class="FLCRDS-EImageBack" src="${path}flcsHome.png" id="flipcardENoCard" alt="${_('No image')}" />
                                 </p>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -1016,6 +1017,8 @@ var $exeDevice = {
             time = parseInt($('#flipcardsETime').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             imgCard = $('#flipcardsEURLImgCard').val();
 
@@ -1043,6 +1046,8 @@ var $exeDevice = {
             time: time,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             imgCard: imgCard,
             id: id,
         };
@@ -1432,6 +1437,8 @@ var $exeDevice = {
         );
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
@@ -1587,6 +1594,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#flipcardsEURLImgCard').val(game.imgCard);
         $exeDevice.showImageCard(game.imgCard);
