@@ -2969,6 +2969,11 @@ var $interactivevideo = {
             weighted: IV.scorm.weighted != null ? IV.scorm.weighted : 100,
             evaluation: !!IV.evaluation,
             evaluationID: IV.evaluationID || '',
+            // Listed explicitly because this builds its options object field by
+            // field rather than passing the saved JSON along -- an omission
+            // here would silently leave the activity on the project value.
+            passScoreMode: IV.passScoreMode,
+            passScoreCustom: IV.passScoreCustom,
             isInExe: this.isInExe,
             main: '.exe-interactive-video',
             idevice: ideviceTarget,

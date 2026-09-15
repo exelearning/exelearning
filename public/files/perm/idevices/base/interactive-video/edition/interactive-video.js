@@ -189,6 +189,7 @@ var $exeDevice = {
                     </span>
                     <label class="toggle-label mb-0" for="interactiveVideoScoreNIA">${_('Score non-interactive activities')}</label>
                 </div>
+                ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                 <div class="mb-4">
                     ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents($exeDevice.idevicePath)}
                 </div>
@@ -213,6 +214,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#interactiveVideoFile')
             .change(function () {
@@ -499,6 +501,10 @@ var $exeDevice = {
                     evaluation: InteractiveVideo.evaluation,
                     evaluationID: InteractiveVideo.evaluationID,
                 });
+                $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+                    passScoreMode: InteractiveVideo.passScoreMode,
+                    passScoreCustom: InteractiveVideo.passScoreCustom,
+                });
             }
             // Save the list of images and remove the wrapper
             top.interactiveVideoEditor.imageList = $(
@@ -733,6 +739,9 @@ var $exeDevice = {
         var seval = progressBarValues.evaluation,
             sevalid = progressBarValues.evaluationID;
 
+        var passScoreValues =
+            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+
         var ideviceID = $exeDevice.getIdeviceID();
 
         var contents = '{}';
@@ -832,6 +841,10 @@ var $exeDevice = {
             top.interactiveVideoEditor.activityToSave.scoreNIA = scoreNIA;
             top.interactiveVideoEditor.activityToSave.evaluation = seval;
             top.interactiveVideoEditor.activityToSave.evaluationID = sevalid;
+            top.interactiveVideoEditor.activityToSave.passScoreMode =
+                passScoreValues.passScoreMode;
+            top.interactiveVideoEditor.activityToSave.passScoreCustom =
+                passScoreValues.passScoreCustom;
             top.interactiveVideoEditor.activityToSave.ideviceID = ideviceID;
 
             contents = JSON.stringify(

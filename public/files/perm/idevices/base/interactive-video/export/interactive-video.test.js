@@ -285,6 +285,47 @@ describe('interactive-video iDevice export', () => {
       expect(options.evaluationID).toBe('progress-1');
     });
 
+    /**
+     * getOptions builds its object field by field instead of passing the saved
+     * JSON along, so anything it forgets to list never reaches the runtime --
+     * the same shape of bug the weighted comment above records. The pass score
+     * has to survive that funnel for a customised mark to mean anything.
+     */
+    describe('pass score', () => {
+      const optionsFor = (extra) => {
+        document.body.innerHTML = `
+          <article>
+            <header><h1 class="box-title">Interactive video</h1></header>
+            <div id="interactive-video-1" class="idevice_node interactive-video">
+              <div class="exe-interactive-video"></div>
+            </div>
+          </article>
+        `;
+        return $interactivevideo.getOptions({
+          ideviceID: 'interactive-video-1',
+          evaluation: true,
+          evaluationID: 'progress-1',
+          scorm: { isScorm: 0, textButtonScorm: 'Save score' },
+          i18n: $interactivevideo.i18n,
+          ...extra,
+        });
+      };
+
+      it('carries a customised mark through to the options', () => {
+        const options = optionsFor({ passScoreMode: 'custom', passScoreCustom: 7.5 });
+
+        expect(options.passScoreMode).toBe('custom');
+        expect(options.passScoreCustom).toBe(7.5);
+      });
+
+      it('leaves an activity saved before the option existed on the project value', () => {
+        const options = optionsFor({});
+
+        // resolve() reads anything other than 'custom' as "follow the project".
+        expect(options.passScoreMode).toBeUndefined();
+      });
+    });
+
     it('falls back to the exported iDevice node when no iDevice body wrapper exists', () => {
       document.body.innerHTML = `
         <article>
