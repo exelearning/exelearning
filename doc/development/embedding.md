@@ -236,7 +236,8 @@ iframe.contentWindow.postMessage({
     requestId: 'export-1',
     data: {
         format: 'html5',              // 'elpx', 'html5', 'scorm12', 'scorm2004', 'epub3', 'ims'
-        filename: 'my-course.zip'      // Optional
+        filename: 'my-course.zip',     // Optional
+        options: {}                    // Optional, forwarded to the exporter
     }
 }, '*');
 
@@ -250,6 +251,32 @@ iframe.contentWindow.postMessage({
     size: 54321
 }
 ```
+
+##### `options.forceEditableSource`
+
+Every format except `elpx` honours the project's **Editable export**
+(`exportSource`) property: with it off, the package ships without the
+re-editable `content.xml` ([#2415](https://github.com/exelearning/exelearning/issues/2415)).
+`elpx` always carries it, because the format requires it.
+
+A host that stores the exported package **as the project** and re-opens it for
+editing later must therefore set `options.forceEditableSource: true`. Otherwise
+an author who turns the property off saves a package the host can never read
+back. This applies to Moodle `mod_exescorm`, whose embedded editor round-trips
+the SCORM 1.2 package it wrote; hosts that export `elpx` (`mod_exeweb`,
+`mod_exelearning`) do not need it.
+
+```javascript
+data: {
+    format: 'scorm12',
+    filename: 'package.zip',
+    options: {forceEditableSource: true}
+}
+```
+
+The flag governs the packaged file only. It never changes what the author's own
+exports from inside the editor contain, and it does not add the
+"download source" link to the rendered pages.
 
 #### `GET_PROJECT_INFO` (parent -> editor)
 

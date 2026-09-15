@@ -488,6 +488,22 @@ export interface ExportOptions {
      * Browser-only: renders HTML in a hidden iframe and captures with html2canvas.
      */
     generateScreenshot?: (firstPageHtml: string) => Promise<string>;
+
+    /**
+     * Ship the re-editable ODE source (`content.xml`) even when the project's
+     * `exportSource` property ("Editable export") is off.
+     *
+     * For an author, `exportSource` is the last word (#2415). This overrides it
+     * for the one case where the exported package IS the project's storage
+     * rather than a publication artefact: a host that saves the package and
+     * later re-opens it for editing, such as the Moodle `mod_exescorm`
+     * embedded editor, which round-trips the SCORM 1.2 package it wrote. Such a
+     * host must never be handed a package it cannot read back.
+     *
+     * Hosts request it through the embedding bridge's `REQUEST_EXPORT` options.
+     * A plain author-driven export never sets it.
+     */
+    forceEditableSource?: boolean;
 }
 
 /**

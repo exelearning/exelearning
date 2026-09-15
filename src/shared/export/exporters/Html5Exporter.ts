@@ -292,7 +292,7 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 3. Add content.xml (ODE format for re-import) - only when editable source is enabled
-            this.addEditableContentXml(pages, meta, addFile);
+            this.addEditableContentXml(pages, meta, addFile, options);
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
@@ -605,8 +605,8 @@ export class Html5Exporter extends BaseExporter {
     }
 
     /**
-     * Add the re-editable ODE `content.xml` to the package, unless the author
-     * opted out of shipping the source (`exportSource === false`).
+     * Add the re-editable ODE `content.xml` to the package, unless
+     * `shipsEditableSource` says this export omits it.
      *
      * Single source of truth shared by the HTML5 ZIP export and the Service
      * Worker preview so both decide identically whether the output stays
@@ -618,8 +618,9 @@ export class Html5Exporter extends BaseExporter {
         pages: ExportPage[],
         meta: ExportMetadata,
         addFile: (path: string, content: string) => void,
+        options?: ExportOptions,
     ): void {
-        if (meta.exportSource === false) {
+        if (!this.shipsEditableSource(meta, options)) {
             return;
         }
 
@@ -739,7 +740,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 3. Add content.xml (ODE format for re-import) when editable source is enabled.
             // Registered via addFile, so it is automatically listed in the ELPX manifest below.
-            this.addEditableContentXml(pages, meta, addFile);
+            this.addEditableContentXml(pages, meta, addFile, options);
 
             // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
