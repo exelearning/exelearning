@@ -190,6 +190,7 @@ var $exeDevice = {
                             <label for="rclEAuthory" class="mb-0">${_('Authorship')}:</label>
                             <input id="rclEAuthory" type="text" class="form-control" />
                         </div>
+                        ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                         <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
                             ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
@@ -1011,6 +1012,8 @@ var $exeDevice = {
             time = parseInt($('#rclETime').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1049,6 +1052,8 @@ var $exeDevice = {
             time,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id,
         };
     },
@@ -1330,6 +1335,8 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
@@ -1475,6 +1482,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         if (game.type == 2) {
             $('#rclETimeDiv').removeClass('d-none').addClass('d-flex');
