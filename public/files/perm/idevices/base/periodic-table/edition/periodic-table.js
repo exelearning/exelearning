@@ -437,6 +437,7 @@ var $exeDevice = {
                             <div id="ptEFeedbackP" class="PTE-EFeedbackP mb-3">
                                 <textarea id="ptEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">                                
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -658,6 +659,8 @@ var $exeDevice = {
             percentajeFB = parseInt($('#ptEPercentajeFB').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             number = $('#ptEQuestionNumber').val(),
             attempts = $('#ptEAttemptsNumber').val(),
             id = $exeDevice.getIdeviceID(),
@@ -715,6 +718,8 @@ var $exeDevice = {
             version: $exeDevice.version,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             time,
             mode,
             gameType,
@@ -757,6 +762,8 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#ptETime')
             .on('keyup', function () {
@@ -832,6 +839,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#ptEAttemptsNumber').val(game.attempts);
 
