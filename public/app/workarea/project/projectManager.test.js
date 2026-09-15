@@ -368,8 +368,26 @@ describe('ProjectManager', () => {
         expect(mockApp.modals.alert.show).toHaveBeenCalledTimes(1);
         const call = mockApp.modals.alert.show.mock.calls[0][0];
         expect(call.contentId).toBe('missing-assets');
-        expect(call.body).toContain('classify');
+        expect(call.body).toContain('iDevice');
         expect(call.body).toContain('rabbit.svg');
+    });
+
+    it('resolves missing-file notice locations and localized titles from the active project', () => {
+        projectManager._yjsBridge = { documentManager: { getNavigation: () => ({
+            toArray: () => [new Map([
+                ['pageName', 'Classify content'],
+                ['blocks', { toArray: () => [new Map([
+                    ['components', { toArray: () => [new Map([['id', 'c1']])] }],
+                ])] }],
+            ])],
+        }) } };
+        mockApp.idevices = { getIdeviceInstalled: vi.fn(() => ({ title: 'Clasifica' })) };
+        projectManager.showImportNotices({
+            missingAssets: [{ componentId: 'c1', ideviceType: 'classify', paths: ['rabbit.svg'] }],
+        });
+        expect(mockApp.idevices.getIdeviceInstalled).toHaveBeenCalledWith('classify');
+        expect(mockApp.modals.alert.show.mock.calls[0][0].body)
+            .toContain('iDevice 1 (Clasifica) on page &quot;Classify content&quot;');
     });
 
     // #2190
