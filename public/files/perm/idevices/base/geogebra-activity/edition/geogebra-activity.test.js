@@ -288,24 +288,80 @@ describe('geogebra-activity iDevice (edition)', () => {
       source = readFileSync(join(__dirname, 'geogebra-activity.js'), 'utf-8');
     });
 
-    it('renders the control immediately above the progress report', () => {
-      const passScoreAt = source.indexOf('gamification.passScore.getContents()');
-      const progressBarAt = source.indexOf('gamification.progressBar.getContents(');
+    it('delegates the evaluation controls to the shared tab', () => {
+      // It renders neither control itself any more: the Evaluation tab does.
+      expect(source).not.toContain('passScore.getContents(');
+      expect(source).not.toContain('progressBar.getContents(');
+      expect(source).toContain('gamification.scorm.getTab(');
+    });
 
-      expect(passScoreAt).toBeGreaterThan(-1);
-      expect(progressBarAt).toBeGreaterThan(-1);
-      expect(passScoreAt).toBeLessThan(progressBarAt);
+    it('hides the automatic mode, which this activity cannot do', () => {
+      // A GeoGebra construction has no end of its own -- the learner may keep
+      // dragging it forever -- so there is no moment at which to report on its
+      // own. Only "do not save" and "show a button" are reachable.
+      expect(source).toContain('hideautosave: true');
+    });
+
+    /**
+     * Storage is the interesting part of this iDevice: it has no JSON options
+     * block, so the SCORM settings ride on the same CSS classes as everything
+     * else. Nothing new had to be invented for the Evaluation tab, because the
+     * set of reachable states did not grow -- it is still "button" or nothing,
+     * which auto-geogebra-scorm already encoded. That is what keeps existing
+     * content readable without a migration.
+     */
+    /**
+     * The editor re-injects an iDevice's edition file with a <script> tag every
+     * time the author opens it, so a second edition re-runs the whole file in
+     * the same realm. `var $exeDevice` is redeclarable and survives that; a
+     * top-level `const` throws "Identifier has already been declared" and the
+     * form never renders again until the page is reloaded.
+     *
+     * This bit the pass-score class, which shipped as a module-level const and
+     * broke the second edition of any GeoGebra activity.
+     */
+    it('declares nothing at the top level that a re-run would clash with', () => {
+      const topLevelBindings = source.match(/^(const|let|class)\s/gm) ?? [];
+
+      expect(topLevelBindings).toHaveLength(0);
+      expect(source).toContain('var $exeDevice');
+    });
+
+    it('keeps storing the mode in the class it always used', () => {
+      expect(source).toContain("css += ' auto-geogebra-scorm'");
+      expect(source).toContain("div.hasClass('auto-geogebra-scorm')");
+      // No second class for the mode: presence means button, absence means off.
+      expect(source).not.toContain('auto-geogebra-scorm-mode');
+    });
+
+    it('takes the mode, the button text and the weight from the shared block', () => {
+      expect(source).toContain('gamification.scorm.getValues()');
+      expect(source).toContain('scorm.isScorm > 0');
+      expect(source).toContain('buttonText = scorm.textButtonScorm');
+      expect(source).toContain('weight = scorm.weighted');
+    });
+
+    it('feeds them back into the shared block when reopened', () => {
+      expect(source).toContain('gamification.scorm.setValues(');
+      expect(source).toContain('scormMode = 2');
+      expect(source).toContain("scormWeight = part.replace('auto-geogebra-weight-'");
+    });
+
+    it('no longer keeps a save-score toggle of its own', () => {
+      // Two controls for one setting is how they end up contradicting.
+      expect(source).not.toContain('geogebraActivitySCORM');
+      expect(source).not.toContain('geogebraActivityWeight');
     });
 
     it('writes a class only for a customised mark', () => {
       expect(source).toContain("if (passScore.passScoreMode === 'custom')");
-      expect(source).toContain("css += ' ' + PASS_SCORE_CLASS + passScore.passScoreCustom");
+      expect(source).toContain("css += ' ' + $exeDevice.passScoreClass + passScore.passScoreCustom");
     });
 
     it('reads the class back as the custom mode', () => {
       expect(source).toContain('gamification.passScore.setValues(');
       expect(source).toContain("passScoreMode: 'custom'");
-      expect(source).toContain('part.replace(PASS_SCORE_CLASS');
+      expect(source).toContain('part.replace($exeDevice.passScoreClass');
     });
 
     it('takes the mark from the shared control when saving', () => {
