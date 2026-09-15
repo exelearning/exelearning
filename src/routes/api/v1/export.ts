@@ -149,6 +149,11 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
             },
         },
     )
+    // NOTE: There is intentionally no unauthenticated public ZIP endpoint here.
+    // The public read-only viewer serves the rendered export files (not a bulk
+    // ZIP) from an opaque-origin sandbox at `/view/:publicViewId/_/*`
+    // (src/routes/pages.ts). A public bulk download, if ever needed, must be a
+    // deliberate feature with explicit opt-in, auth and limits.
     // Register under /projects prefix for project-specific exports
     .group('/projects', app =>
         app.get(

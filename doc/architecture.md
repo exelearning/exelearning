@@ -499,6 +499,95 @@ The workarea preview uses a **Service Worker** to serve exported HTML files dire
 { type: 'CLAIM_CLIENTS' }                                // Activate SW for page
 ```
 
+### 8.6 Public View (Read-Only) & Untrusted Content Isolation
+
+The **public view** (`GET /view/:publicViewId`) exposes a published project at an
+opaque, shareable URL with no authentication. It serves **author-provided HTML/JS**,
+which must be treated as **untrusted**: a teacher can paste AI-generated or copied
+code, and the link may be opened by anyone — including a logged-in admin.
+
+#### Why it cannot reuse the Service Worker preview
+
+The workarea preview (§8.1–8.5) serves content from the **same origin** as the app.
+That is acceptable for the editor (the author previews their own content), but it is
+**unsafe for a public link**: same-origin content can read the `auth` cookie surface,
+call the authenticated API with the viewer's session, reach `window.parent`, and open
+the app's IndexedDB / Cache API. The danger scales with the role of whoever opens the
+link. This is exactly the same-origin failure mode documented in the "untrusted
+content in educational resources" security study (§4.5, §6.2).
+
+A naive fix ("just add `sandbox`") does not work here: a `sandbox` without
+`allow-same-origin` gives the document an **opaque origin**, and a Service Worker
+**cannot control opaque-origin clients** — the content would never load. True
+isolation therefore requires serving the public content **from the server** instead
+of via the SW.
+
+#### Design (opaque origin, no subdomain)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  /view/:publicViewId   (trusted loader page, app origin)      │
+│  views/viewer/viewer.njk                                      │
+│      └── <iframe sandbox="allow-scripts …"  (NO same-origin)  │
+│              src="/view/:publicViewId/_/index.html">          │
+└──────────────────────────────────────────────────────────────┘
+                               │  (opaque origin)
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│  GET /view/:publicViewId/_/*        (untrusted content)       │
+│  src/routes/pages.ts → getPublicViewFile()                    │
+│      ├── buildHtml5PreviewExport() (cached by updated_at)     │
+│      ├── path-traversal-safe file lookup                      │
+│      └── Response headers:                                    │
+│            Content-Security-Policy: sandbox … (R3)            │
+│            Permissions-Policy / X-Content-Type-Options        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+The published files are served directly by the server from the project's HTML5
+export (built once, then cached in memory keyed by `publicViewId:updated_at`). Both
+the iframe `sandbox` attribute and a **response-level `Content-Security-Policy:
+sandbox …` directive** are applied, so the document stays in an opaque origin **even
+if the content URL is opened directly** (new tab, popup, fullscreen, raw URL) — not
+only when embedded in the loader iframe.
+
+This implements requirements R1–R4 of the study:
+
+| Req | Implementation |
+|-----|----------------|
+| R1 — opaque origin by default | `sandbox` **without** `allow-same-origin` |
+| R2 — single source of truth for tokens | `src/shared/security/publicViewSandbox.ts` (used by both the iframe attribute and the CSP header) |
+| R3 — `sandbox` in the response CSP | `Content-Security-Policy: sandbox …` on every `/_/ *` response |
+| R4 — restrictive CSP + Permissions-Policy | `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'self'`, camera/mic/geo/payment disabled |
+
+With the opaque origin, untrusted content **cannot**: reach `window.parent`/`top`
+(SecurityError), read or send the `auth` cookie (cross-site → `SameSite=lax` not
+sent), call `/api/...` as the viewer, or open the app's IndexedDB / Cache API.
+
+**CSP profile.** Selectable via the `PUBLIC_VIEW_CSP_PROFILE` env var. The default
+`compatible` profile relies on the opaque origin to protect the session and still
+allows external `https:` assets (CDN, MathJax, external images, YouTube/Vimeo embeds)
+to avoid breaking legitimate content. Setting it to `strict` additionally cuts data
+exfiltration (`connect-src 'none'`, no open `https:`, `'unsafe-eval'` dropped) for
+sensitive deployments, at the cost of breaking content that depends on external
+resources (study §6.3).
+
+**Cost protection.** The export for a public view is built once and the unzipped
+result cached in memory (LRU-capped). Concurrent first-time requests for the same
+project are **coalesced onto a single in-flight build** (no thundering herd), and an
+export exceeding the size/file-count bounds is rejected. Per-IP rate limiting is left
+to the reverse proxy / a dedicated middleware.
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Isolation policy** | `src/shared/security/publicViewSandbox.ts` | Single source of truth for sandbox tokens + CSP/Permissions-Policy headers |
+| **Content service** | `src/services/public-view-content.ts` | Builds/caches the export, path-safe file lookup |
+| **Routes** | `src/routes/pages.ts` | `/view/:publicViewId` (loader) and `/view/:publicViewId/_/*` (content) |
+| **Loader template** | `views/viewer/viewer.njk` | Sandboxed iframe |
+
+> Note: the workarea preview (§8.1–8.5) keeps the same-origin Service Worker, since
+> the author is previewing their own content. Only the **public** view is isolated.
+
 ## 9. Database Architecture
 
 ### 9.1 Multi-Database Support

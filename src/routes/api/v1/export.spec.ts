@@ -9,6 +9,8 @@ import * as bcrypt from 'bcryptjs';
 import * as Y from 'yjs';
 import { db, resetClientCacheForTesting } from '../../../db/client';
 import { up } from '../../../db/migrations/001_initial';
+import { up as up008 } from '../../../db/migrations/008_project_public_view_id';
+import { up as up009 } from '../../../db/migrations/009_project_public_view_enabled';
 import { now } from '../../../db/types';
 import { exportRoutes } from './export';
 import { createAuthRoutes } from '../../auth';
@@ -105,6 +107,10 @@ describe('Export API v1', () => {
 
         await resetClientCacheForTesting();
         await up(db);
+        await up008(db);
+        await up009(db);
+        await db.deleteFrom('projects').execute();
+        await db.deleteFrom('users').execute();
 
         app = createTestApp();
 
@@ -221,6 +227,57 @@ describe('Export API v1', () => {
             expect(response.status).toBe(403);
         });
 
+        it('should still require auth for a publicly-visible project (no public bypass)', async () => {
+            // A project marked public for editing AND with the public read-only
+            // link enabled must NOT be exportable without auth via this endpoint.
+            // The export API is for authenticated external integrations only.
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'public-export-project',
+                    title: 'Public Project',
+                    owner_id: adminId,
+                    visibility: 'public',
+                    public_view_enabled: 1,
+                    created_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/public-export-project/export/html5'),
+            );
+            expect(response.status).toBe(401);
+            const data = (await response.json()) as { success: boolean; error: { code: string } };
+            expect(data.success).toBe(false);
+            expect(data.error.code).toBe('UNAUTHORIZED');
+        });
+
+        it('should return 403 for an authenticated non-owner even on a public project', async () => {
+            // Public edit visibility does not grant export access to other users;
+            // only the owner (or an admin) may export.
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'public-export-project-2',
+                    title: 'Public Project 2',
+                    owner_id: adminId,
+                    visibility: 'public',
+                    public_view_enabled: 1,
+                    created_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/public-export-project-2/export/html5', {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+            expect(response.status).toBe(403);
+            const data = (await response.json()) as { success: boolean; error: { code: string } };
+            expect(data.success).toBe(false);
+            expect(data.error.code).toBe('FORBIDDEN');
+        });
+
         it('should return 422 for invalid export format (schema validation)', async () => {
             // Create a project owned by the user
             await db
@@ -292,6 +349,33 @@ describe('Export API v1', () => {
                 );
                 // Should pass auth check (not 401/403) - may fail at export step
                 expect([200, 500]).toContain(response.status);
+            }
+        });
+
+        it('should handle export error with catch block', async () => {
+            // Create a project where reconstructDocument will throw (no yjs_documents row but valid project)
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'error-catch-project',
+                    title: 'Error Catch Test',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .execute();
+
+            // The export should hit the catch block and return EXPORT_ERROR
+            const response = await app.handle(
+                new Request('http://localhost/export/projects/error-catch-project/export/html5', {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+
+            expect([200, 500]).toContain(response.status);
+            if (response.status === 500) {
+                const data = (await response.json()) as { success: boolean; error: { code: string } };
+                expect(data.success).toBe(false);
+                expect(['EXPORT_ERROR', 'EXPORT_FAILED']).toContain(data.error.code);
             }
         });
 

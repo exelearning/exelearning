@@ -262,6 +262,10 @@ Significant technical work is documented before or alongside the code. Full poli
 - Document AI assistance in the frontmatter (`ai_assistance.tool` / `ai_assistance.model`; `none` if not used).
 - Mention any ADRs or change documents a PR creates or updates in the PR description.
 
+### 7.12 Public View Isolation (untrusted content)
+
+The public read-only view (`/view/:publicViewId`) serves **author HTML/JS as untrusted content** and MUST run in an **opaque origin**: a sandboxed iframe **without** `allow-same-origin`, with content served from the server at `/view/:publicViewId/_/*` and a response-level `Content-Security-Policy: sandbox …` header (so isolation holds even fullscreen / new tab / raw URL). Never serve public content same-origin (e.g. via the workarea Service Worker) — same-origin content can reach the viewer's session, cookies, API and IndexedDB. Sandbox tokens + CSP live in one place: `src/shared/security/publicViewSandbox.ts`. The workarea preview (§7.6) stays same-origin (author previews own content). See `doc/architecture.md` §8.6.
+
 ## 8. Environment Configuration
 
 Configure via `.env` file (use `.env.dist` as template).
@@ -275,6 +279,7 @@ Configure via `.env` file (use `.env.dist` as template).
 | `APP_SECRET` | JWT secret | (required) |
 | `BASE_PATH` | URL prefix for subdirectory install | (empty) |
 | `APP_AUTH_METHODS` | Auth methods | `password` |
+| `PUBLIC_VIEW_CSP_PROFILE` | Public view CSP: `compatible` (allows external `https:` assets) or `strict` (`connect-src 'none'`, no external resources) | `compatible` |
 
 ## 9. Profiling
 
