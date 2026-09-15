@@ -986,6 +986,7 @@ var $exeDevice = {
                                     </select>
                                     <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                                 </div>
+                                ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                                 <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
                                     ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                                 </div>
@@ -1378,6 +1379,10 @@ var $exeDevice = {
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+        });
         $('#vquextEGlobalTimes').val(game.globalTime);
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
@@ -1726,6 +1731,8 @@ var $exeDevice = {
             modeBoard = $('#vquextEModeBoard').is(':checked'),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#vquextEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
@@ -1831,6 +1838,8 @@ var $exeDevice = {
             modeBoard,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             globalTime,
             id,
         };
@@ -2137,6 +2146,7 @@ var $exeDevice = {
             }
         });
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#vquextGlobalTimeButton').on('click', function (e) {
             if (!$exeDevice) return;
