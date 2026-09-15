@@ -42,11 +42,6 @@ window.$exeExport = {
             console.error('Error: Failed to initialize box toggle events');
         }
         try {
-            this.keyboardNav.init();
-        } catch (err) {
-            console.error('Error: Failed to initialize keyboard navigation');
-        }
-        try {
             this.setExe();
             this.initExe();
             this.initJsonIdevices();
@@ -64,6 +59,11 @@ window.$exeExport = {
                 $exeExport.teacherMode.init();
             } catch (err) {
                 console.error('Error: Failed to initialize Teacher Mode');
+            }
+            try {
+                $exeExport.presentationMode.init();
+            } catch (err) {
+                console.error('Error: Failed to initialize Presentation mode');
             }
         }, 100);
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
@@ -99,6 +99,30 @@ window.$exeExport = {
     },
 
     // Set one query param on an href (null removes it), keeping the rest and the fragment.
+    /**
+     * Append a `name=value` navigation parameter to an in-package href so a reader-chosen
+     * mode (Teacher Mode, Presentation mode) survives navigation between pages — works in
+     * same-origin AND opaque-origin iframes (where storage is unavailable). Leaves external
+     * links, non-relative schemes and pure fragments untouched.
+     */
+    withNavParam : function(href, navParams){
+        if (!href || !navParams) return href;
+        if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
+        var eq = navParams.indexOf('=');
+        var name = eq === -1 ? navParams : navParams.slice(0, eq);
+        var value = eq === -1 ? '' : navParams.slice(eq + 1);
+        return this.setUrlParam(href, name, value);
+    },
+
+    /** Rewrite the menu and prev/next links so navigation keeps the chosen mode. */
+    propagateNavParam : function(navParams){
+        if (!navParams) return;
+        var self = this;
+        document.querySelectorAll('#siteNav a[href], .nav-buttons a[href]').forEach(function(a){
+            a.setAttribute('href', self.withNavParam(a.getAttribute('href'), navParams));
+        });
+    },
+
     setUrlParam : function (href, name, value) {
         if (!href || !name) return href;
         // A query would turn a fragment-only jump into a page load.
@@ -173,28 +197,13 @@ window.$exeExport = {
                 // Keep student mode (no toggle) as the safe default.
             }
         },
-        /**
-         * Append the active teacher params to an in-package navigation href so the chosen
-         * view survives navigation between pages — works in same-origin AND opaque-origin
-         * iframes (where storage is unavailable). Leaves external links, non-relative
-         * schemes and pure fragments untouched.
-         */
+        /** Keep the teacher view across in-package navigation (see $exeExport.withNavParam). */
         withTeacherParams : function(href){
-            if (!href || !this._navParams) return href;
-            if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(href)) return href;
-            var eq = this._navParams.indexOf('=');
-            var name = eq === -1 ? this._navParams : this._navParams.slice(0, eq);
-            var value = eq === -1 ? '' : this._navParams.slice(eq + 1);
-            return $exeExport.setUrlParam(href, name, value);
+            return $exeExport.withNavParam(href, this._navParams);
         },
         /** Rewrite the menu and prev/next links so navigation keeps the teacher view. */
         propagateNavParams : function(){
-            if (!this._navParams) return;
-            var self = this;
-            var links = document.querySelectorAll('#siteNav a[href], .nav-buttons a[href]');
-            links.forEach(function(a){
-                a.setAttribute('href', self.withTeacherParams(a.getAttribute('href')));
-            });
+            $exeExport.propagateNavParam(this._navParams);
         },
         init : function(){
             // Reveal is already applied by bootstrap() (flicker-free); here we only carry
@@ -609,267 +618,190 @@ window.$exeExport = {
     },
 
     /**
-     * Keyboard navigation for exported/previewed content, inspired by the
-     * legacy eXeLearning 2.9 "Presentation" style. Works with any theme that
-     * exposes the standard nav elements (#siteNav, .nav-buttons,
-     * #siteNavToggler, #searchBarToggler, #teacher-mode-toggler) and is a
-     * no-op when they are absent.
+     * Presentation mode
      *
-     * "t" toggles the Teacher Mode content layer, but only where it is
-     * already active (i.e. only when #teacher-mode-toggler exists — see
-     * teacherMode above); it never shadows Ctrl/Cmd+T (new browser tab).
+     * Lets a reader present a web site export with the keyboard or a presenter remote:
+     * the navigation menu collapses, Left/PageUp go to the previous page and
+     * Right/PageDown to the next one. Pages stay the navigation unit and long pages keep
+     * scrolling normally (Up/Down are never captured). Nothing is stored in the .elpx and
+     * there is no export option: the READER activates the mode, like Teacher Mode.
      *
-     * Off by default: it changes standard page navigation and may conflict
-     * with other keyboard-driven content (e.g. lightbox galleries), so
-     * authors must opt in via the "Keyboard navigation" export option
-     * (window.exeKeyboardNavEnabled, set by PageRenderer.renderHead()).
+     *   ?exe-presentation=1|true|yes   show the "Presentation mode" control; the reader
+     *                                  enters and leaves the mode with it. The choice is
+     *                                  remembered in localStorage and the parameter travels
+     *                                  in the navigation links, so the mode survives page
+     *                                  changes. The parameter alone changes nothing.
+     *   (no parameter)                 nothing is injected and no key is captured.
      *
-     * Opt-out (once enabled by the author): `?keyboard-navigation=false`
-     * query param, or a `exeKeyboardNavigationDisabled` value in localStorage.
+     * Scope: web site exports opened as the top-level document. Never SCORM/IMS (the LMS
+     * owns navigation), EPUB, or content embedded in an iframe. Fullscreen is deliberately
+     * left to the browser (F11): the Fullscreen API needs a user gesture, is lost on
+     * navigation in Firefox/Safari and on file://, and is unavailable on iPhone. An
+     * iDevice that goes fullscreen on its own counts as an open overlay (see
+     * overlaySignals) and the keys stay inactive while it is.
+     *
+     * The control is appended to <body> as a sibling of #made-with-eXe (styled in
+     * base.css the same way): outside .exe-content and the footer, present in every web
+     * site export whatever the style does to the page layout.
      */
-    keyboardNav: {
-        _initialized: false,
-        _boundHandleKeydown: null,
-
-        init: function () {
-            if (this._initialized || !this.isEnabled() || this.isShortcutDisabled()) return;
-            this._boundHandleKeydown = this.handleKeydown.bind(this);
-            document.addEventListener('keydown', this._boundHandleKeydown);
-            this._initialized = true;
-        },
-
-        destroy: function () {
-            if (this._boundHandleKeydown) {
-                document.removeEventListener('keydown', this._boundHandleKeydown);
-                this._boundHandleKeydown = null;
-            }
-            this._initialized = false;
-        },
-
-        // Author opt-in via the "Keyboard navigation" export option.
-        isEnabled: function () {
-            return window.exeKeyboardNavEnabled === true;
-        },
-
-        isShortcutDisabled: function () {
+    presentationMode : {
+        STORAGE_KEY : 'exePresentationMode',
+        _available : false,
+        _navParams : '',
+        _active : false,
+        _boundHandleKeydown : null,
+        _truthy : function(v){ return v === '1' || v === 'true' || v === 'yes'; },
+        /**
+         * Runs in <head>: decide whether the control is available and restore the stored
+         * ON state flicker-free (html.mode-presentation). Never throws.
+         */
+        bootstrap : function(){
             try {
                 var params = new URLSearchParams(window.location.search);
-                if (params.get('keyboard-navigation') === 'false') return true;
-            } catch (err) {
-                // Malformed URL: fall through to the localStorage check
-            }
-            try {
-                if (window.localStorage && window.localStorage.getItem('exeKeyboardNavigationDisabled') === 'true') {
-                    return true;
+                this._available = this._truthy(params.get('exe-presentation'));
+                this._navParams = this._available ? 'exe-presentation=1' : '';
+                if (this._available) {
+                    try {
+                        if (localStorage.getItem(this.STORAGE_KEY) === '1') {
+                            document.documentElement.classList.add('mode-presentation');
+                        }
+                    } catch (e) {}
                 }
-            } catch (err) {
-                // localStorage unavailable (privacy mode, sandboxed iframe)
+            } catch (e) {
+                // No presentation mode is the safe default.
             }
-            return false;
         },
-
-        // Never hijack shortcuts while the user is typing or composing text.
-        isTypingTarget: function (target) {
+        /** Keep the mode across in-package navigation (see $exeExport.withNavParam). */
+        withParams : function(href){
+            return $exeExport.withNavParam(href, this._navParams);
+        },
+        /** Web site export (never SCORM/IMS/EPUB) opened as the top-level document. */
+        isSupported : function(){
+            if (!document.body || !document.body.classList.contains('exe-web-site')) return false;
+            try { return window.self === window.top; } catch (e) { return false; }
+        },
+        init : function(){
+            $exeExport.propagateNavParam(this._navParams);
+            if (!this._available || !this.isSupported()) return;
+            if (document.getElementById('exe-presentation-toggler')) return;
+            var control = document.createElement('button');
+            control.type = 'button';
+            control.id = 'exe-presentation-toggler';
+            control.setAttribute('aria-pressed', 'false');
+            control.textContent = $exe_i18n.presentation_mode || 'Presentation mode';
+            var self = this;
+            control.addEventListener('click', function(){ self.toggle(); });
+            document.body.appendChild(control);
+            if (document.documentElement.classList.contains('mode-presentation')) this.enter();
+        },
+        toggle : function(){
+            if (this._active) this.leave(); else this.enter();
+        },
+        enter : function(){
+            if (this._active) return;
+            this._active = true;
+            document.documentElement.classList.add('mode-presentation');
+            try { localStorage.setItem(this.STORAGE_KEY, '1'); } catch (e) {}
+            this._setPressed(true);
+            this._setMenuExpanded(false);
+            this._boundHandleKeydown = this.handleKeydown.bind(this);
+            document.addEventListener('keydown', this._boundHandleKeydown);
+        },
+        leave : function(){
+            if (!this._active) return;
+            this._active = false;
+            document.documentElement.classList.remove('mode-presentation');
+            try { localStorage.removeItem(this.STORAGE_KEY); } catch (e) {}
+            this._setPressed(false);
+            this._setMenuExpanded(true);
+            document.removeEventListener('keydown', this._boundHandleKeydown);
+            this._boundHandleKeydown = null;
+        },
+        _setPressed : function(pressed){
+            var control = document.getElementById('exe-presentation-toggler');
+            if (control) control.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+        },
+        // Reuse the style's own menu toggler so its state classes, nav=false links and
+        // low-resolution behaviour stay the single source of truth. The menu can still be
+        // opened normally while presenting.
+        _setMenuExpanded : function(expanded){
+            var toggler = document.getElementById('siteNavToggler');
+            if (!toggler) return;
+            if ((toggler.getAttribute('aria-expanded') === 'true') !== expanded) toggler.click();
+        },
+        // Never hijack keys while the reader is typing or composing text.
+        isTypingTarget : function(target){
             if (!target || typeof target.closest !== 'function') return false;
             return !!target.closest(
                 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]'
             );
         },
-
-        getPreviousLink: function () {
-            return document.querySelector('a.nav-button-left');
-        },
-
-        getNextLink: function () {
-            return document.querySelector('a.nav-button-right');
-        },
-
-        getFirstNavLink: function () {
-            return document.querySelector('#siteNav a[href]');
-        },
-
-        getLastNavLink: function () {
-            var links = document.querySelectorAll('#siteNav a[href]');
-            return links.length ? links[links.length - 1] : null;
-        },
-
-        toggleMenu: function () {
-            var toggler = document.getElementById('siteNavToggler');
-            if (!toggler) return false;
-            toggler.click();
-            return true;
-        },
-
-        isHidden: function (el) {
+        isHidden : function(el){
             if (!el) return true;
             if (el.hidden) return true;
             var style = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(el) : el.style;
             return style.display === 'none';
         },
-
-        // Single source of truth for "some overlay/lightbox widget currently
-        // owns the keyboard, so we must not" (an open image-gallery lightbox
-        // must fully prevail over our shortcuts — see PR #2020 review from
-        // @ignaciogros). Add one entry here to cover a future overlay/widget;
+        // Single source of truth for "some overlay currently owns the keyboard, so we must
+        // not" (an open image-gallery lightbox must fully prevail over our keys — PR #2020
+        // review from @ignaciogros). Add one entry here to cover a future overlay/widget;
         // nothing else in this module needs to change.
-        overlaySignals: [
+        overlaySignals : [
             {
                 name: 'exe_lightbox (prettyPhoto, rel="lightbox[...]")',
-                // public/app/common/exe_lightbox/exe_lightbox.js — the
-                // .pp_pic_holder node is created once on first open and never
-                // removed; open/closed is toggled via jQuery show/hide, so
-                // existence alone is NOT enough — must also check visibility.
-                isActive: function (kbNav) {
+                // .pp_pic_holder is created once on first open and never removed; open/closed
+                // is toggled via jQuery show/hide, so existence alone is NOT enough.
+                isActive: function (pm) {
                     var el = document.querySelector('.pp_pic_holder');
-                    return !!el && !kbNav.isHidden(el);
+                    return !!el && !pm.isHidden(el);
                 }
             },
             {
                 name: 'SimpleLightbox (Image Gallery iDevice)',
-                // public/libs/simplelightbox — .sl-wrapper is inserted into
-                // the DOM only while open and removed again on close, so
-                // existence alone is a reliable, sufficient signal. Note:
-                // SimpleLightbox's own nav uses `keyup`, not `keydown` — if
-                // we don't suppress here, our keydown navigates the page
-                // before its keyup handler ever runs.
-                isActive: function () {
-                    return !!document.querySelector('.sl-wrapper');
-                }
+                // .sl-wrapper exists only while open. Its own arrow-key nav runs on `keyup`:
+                // without this our keydown would change page before it ever ran.
+                isActive: function () { return !!document.querySelector('.sl-wrapper'); }
             },
             {
                 name: 'Fullscreen image overlay (Magnifier + other Games-* iDevices)',
-                // public/app/common/common.js, showFullscreenImage() —
-                // .Games-OverlayImage is appended only while shown and
-                // removed on click-to-close. No keyboard handler of its own,
-                // but a full-screen visual overlay, so still suppress.
-                isActive: function () {
-                    return !!document.querySelector('.Games-OverlayImage');
-                }
+                // common.js showFullscreenImage(): appended while shown, removed on close.
+                isActive: function () { return !!document.querySelector('.Games-OverlayImage'); }
             },
             {
                 name: 'MediaElement.js fullscreen video (Interactive Video iDevice)',
-                // public/app/common/exe_media/exe_media.js — .mejs-container-
-                // fullscreen is added to the player container only while in
-                // fullscreen and removed on exit.
-                isActive: function () {
-                    return !!document.querySelector('.mejs-container-fullscreen');
-                }
+                isActive: function () { return !!document.querySelector('.mejs-container-fullscreen'); }
+            },
+            {
+                name: 'Fullscreen API (an iDevice that went fullscreen on its own)',
+                isActive: function () { return !!document.fullscreenElement; }
             }
         ],
-
-        isOverlayActive: function () {
-            var kbNav = this;
+        isOverlayActive : function(){
+            var pm = this;
             return this.overlaySignals.some(function (signal) {
                 try {
-                    return signal.isActive(kbNav);
+                    return signal.isActive(pm);
                 } catch (err) {
                     // A single broken probe must never mask the others.
                     return false;
                 }
             });
         },
-
-        focusSearch: function () {
-            // Legacy eXe 2.x themes spell the id without the trailing "l".
-            var toggler =
-                document.getElementById('searchBarToggler') || document.getElementById('searchBarTogger');
-            if (!toggler) return false;
-            var bar = document.getElementById('exe-client-search');
-            if (this.isHidden(bar)) {
-                // Reuse the theme's own toggler handler so it shows the bar
-                // consistently with a real click (state classes, layout, etc.)
-                toggler.click();
+        handleKeydown : function(event){
+            if (event.defaultPrevented || event.isComposing) return;
+            // Plain keys only: never shadow Alt/Ctrl/Cmd/Shift combinations the browser
+            // reserves (e.g. Alt+Left/Right for history).
+            if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+            if (this.isTypingTarget(event.target) || this.isOverlayActive()) return;
+            var link = null;
+            if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+                link = document.querySelector('a.nav-button-left');
+            } else if (event.key === 'ArrowRight' || event.key === 'PageDown') {
+                link = document.querySelector('a.nav-button-right');
             }
-            var input = document.getElementById('exe-client-search-text');
-            if (input) input.focus();
-            return true;
-        },
-
-        // `m` and Alt+M both toggle the menu: KeyboardEvent.code identifies the
-        // physical M key regardless of layout or whether Alt changes `.key`
-        // (e.g. Option+M produces "µ" on macOS).
-        isMenuToggleShortcut: function (event) {
-            if (event.ctrlKey || event.metaKey) return false;
-            if (event.code) return event.code === 'KeyM';
-            return event.key === 'm' || event.key === 'M';
-        },
-
-        // Alt+/ opens/focuses search without ever shadowing Ctrl/Cmd+F.
-        isSearchShortcut: function (event) {
-            if (!event.altKey || event.ctrlKey || event.metaKey) return false;
-            if (event.code) return event.code === 'Slash';
-            return event.key === '/';
-        },
-
-        // Toggle the Teacher Mode content layer by clicking the real
-        // #teacher-mode-toggler checkbox (see teacherMode.init() above), so the
-        // existing change handler stays the single source of truth for the
-        // reveal/hide + localStorage persistence logic. The toggler only exists
-        // in the DOM when Teacher Mode is active on this page (opted in via the
-        // ?exe-teacher URL parameter and the page has teacher-only content), so
-        // this is naturally a no-op — and never calls preventDefault() —
-        // everywhere else.
-        toggleTeacherMode: function () {
-            var toggler = document.getElementById('teacher-mode-toggler');
-            if (!toggler) return false;
-            toggler.click();
-            return true;
-        },
-
-        // Plain "t" only: never matches Ctrl/Cmd+T (new browser tab) or Alt+T.
-        isTeacherModeShortcut: function (event) {
-            if (event.ctrlKey || event.metaKey || event.altKey) return false;
-            if (event.code) return event.code === 'KeyT';
-            return event.key === 't' || event.key === 'T';
-        },
-
-        activateLink: function (link, event) {
             if (!link) return;
             link.click();
             if (event.cancelable) event.preventDefault();
-        },
-
-        handleKeydown: function (event) {
-            if (event.defaultPrevented || event.isComposing) return;
-            if (this.isOverlayActive()) return;
-            if (this.isTypingTarget(event.target)) return;
-
-            if (this.isMenuToggleShortcut(event)) {
-                if (this.toggleMenu() && event.cancelable) event.preventDefault();
-                return;
-            }
-
-            if (this.isSearchShortcut(event)) {
-                if (this.focusSearch() && event.cancelable) event.preventDefault();
-                return;
-            }
-
-            if (this.isTeacherModeShortcut(event)) {
-                if (this.toggleTeacherMode() && event.cancelable) event.preventDefault();
-                return;
-            }
-
-            // Remaining shortcuts are plain, unmodified arrow keys only, so we
-            // never shadow Alt/Ctrl/Cmd combinations reserved by the browser
-            // (e.g. Alt+Left/Right for browser back/forward history).
-            if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
-
-            switch (event.key) {
-                case 'ArrowLeft':
-                    this.activateLink(this.getPreviousLink(), event);
-                    break;
-                case 'ArrowRight':
-                    this.activateLink(this.getNextLink(), event);
-                    break;
-                case 'ArrowUp':
-                    this.activateLink(this.getFirstNavLink(), event);
-                    break;
-                case 'ArrowDown':
-                    this.activateLink(this.getLastNavLink(), event);
-                    break;
-                default:
-                    break;
-            }
         }
     }
 }
@@ -881,6 +813,7 @@ var $exeExport = window.$exeExport;
 // Apply the Teacher Mode reveal as early as possible. This script runs in <head>, so
 // doing it now (before DOMContentLoaded and the first paint) avoids any content flicker.
 try { $exeExport.teacherMode.bootstrap(); } catch (e) { /* student mode is the safe default */ }
+try { $exeExport.presentationMode.bootstrap(); } catch (e) { /* no presentation mode is the safe default */ }
 
 $(function () {
     $exeExport.init();
@@ -1060,6 +993,7 @@ $exeExport.searchBar = {
         $("#exe-client-search-results-list a").on("click", function(){
             // Hits come from the search index, so they inherit no params.
             var href = $exeExport.teacherMode.withTeacherParams(this.getAttribute('href'));
+            href = $exeExport.presentationMode.withParams(href);
             if (!$("#siteNav").is(":visible")) {
                 // Deep links: the param goes before the fragment.
                 href = $exeExport.setUrlParam(href, 'nav', 'false');

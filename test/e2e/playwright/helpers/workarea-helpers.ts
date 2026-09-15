@@ -1318,55 +1318,6 @@ export async function enableSearchOption(page: Page): Promise<void> {
 }
 
 /**
- * Enable the "Keyboard navigation" option in project export settings.
- * Off by default (see PR review from @ignaciogros on #2020): arrow-key page
- * navigation changes standard browsing behavior and may conflict with other
- * keyboard-driven content, so authors must opt in explicitly.
- * Uses the Project Properties button in the top bar to show properties inline.
- */
-export async function enableKeyboardNavigationOption(page: Page): Promise<void> {
-    const propertiesButton = page.locator('#head-top-settings-button');
-    await propertiesButton.waitFor({ state: 'visible', timeout: 10000 });
-    await propertiesButton.click();
-
-    await page.waitForTimeout(500);
-
-    const exportTab = page.getByRole('tab', { name: /Export options|Opciones de exportación/i }).first();
-    await exportTab.scrollIntoViewIfNeeded({ timeout: 10000 });
-
-    const isSelected = (await exportTab.getAttribute('aria-selected')) === 'true';
-    if (!isSelected) {
-        await exportTab.click();
-        await page.waitForTimeout(500);
-    }
-
-    const keyboardNavToggle = page.locator('input[property="pp_addKeyboardNavigation"]');
-    await keyboardNavToggle.scrollIntoViewIfNeeded({ timeout: 10000 });
-
-    const isChecked = await keyboardNavToggle.isChecked();
-    if (!isChecked) {
-        const toggleItem = page.locator('.toggle-item').filter({ has: keyboardNavToggle }).first();
-        if ((await toggleItem.count()) > 0) {
-            await toggleItem.click();
-        } else {
-            await keyboardNavToggle.click({ force: true });
-        }
-        await page.waitForTimeout(500);
-    }
-
-    await page.waitForFunction(
-        () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            const metadata = bridge?.documentManager?.getMetadata();
-            const value = metadata?.get('addKeyboardNavigation');
-            return value === true || value === 'true';
-        },
-        undefined,
-        { timeout: 5000 },
-    );
-}
-
-/**
  * Clone the currently selected page in the navigation tree
  * Handles the rename modal that appears after cloning by pressing Escape
  */
@@ -2552,4 +2503,84 @@ export async function listZipContents(buffer: Buffer): Promise<string[]> {
 export async function zipContainsFile(buffer: Buffer, filename: string): Promise<boolean> {
     const files = await listZipContents(buffer);
     return files.some(path => path.endsWith(filename) || path.includes(`/${filename}`));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SERVED WEB SITE EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const EXPORT_CONTENT_TYPES: Record<string, string> = {
+    html: 'text/html; charset=utf-8',
+    js: 'text/javascript; charset=utf-8',
+    mjs: 'text/javascript; charset=utf-8',
+    css: 'text/css; charset=utf-8',
+    json: 'application/json',
+    svg: 'image/svg+xml',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    ico: 'image/x-icon',
+    woff: 'font/woff',
+    woff2: 'font/woff2',
+    ttf: 'font/ttf',
+    xml: 'application/xml',
+};
+
+/**
+ * Export the open project as a web site in the browser and serve the resulting files
+ * from `origin` through `page.route()`, so a test can open the export as a real
+ * TOP-LEVEL document (not the preview iframe) with `page.goto(`${origin}/index.html`)`.
+ * Reader-activated features such as Presentation mode only exist in that context.
+ *
+ * @returns the file names contained in the export
+ */
+export async function serveWebSiteExport(page: Page, origin: string): Promise<string[]> {
+    const files: Record<string, string> = await page.evaluate(async () => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        const exporters = (window as any).SharedExporters;
+        const fflate = (window as any).fflate;
+        if (!bridge?.documentManager || !exporters?.quickExport || !fflate?.unzipSync) {
+            throw new Error('Browser export dependencies are not available');
+        }
+        const exported = await exporters.quickExport(
+            'html5',
+            bridge.documentManager,
+            bridge.assetCache || null,
+            bridge.resourceFetcher || null,
+            {},
+            bridge.assetManager || null,
+        );
+        if (!exported.success || !exported.data) {
+            throw new Error(exported.error || 'html5 export failed');
+        }
+        const unzipped = fflate.unzipSync(new Uint8Array(exported.data)) as Record<string, Uint8Array>;
+        const encoded: Record<string, string> = {};
+        for (const [name, bytes] of Object.entries(unzipped)) {
+            let binary = '';
+            for (let i = 0; i < bytes.length; i += 0x8000) {
+                binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)));
+            }
+            encoded[name] = btoa(binary);
+        }
+        return encoded;
+    });
+
+    await page.route(`${origin}/**`, async route => {
+        const pathname = decodeURIComponent(new URL(route.request().url()).pathname).replace(/^\//, '');
+        const body = files[pathname];
+        if (body === undefined) {
+            await route.fulfill({ status: 404, contentType: 'text/plain', body: `not in export: ${pathname}` });
+            return;
+        }
+        const extension = pathname.split('.').pop()?.toLowerCase() ?? '';
+        await route.fulfill({
+            status: 200,
+            contentType: EXPORT_CONTENT_TYPES[extension] ?? 'application/octet-stream',
+            body: Buffer.from(body, 'base64'),
+        });
+    });
+
+    return Object.keys(files);
 }

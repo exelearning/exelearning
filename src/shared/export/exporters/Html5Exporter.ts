@@ -511,7 +511,6 @@ export class Html5Exporter extends BaseExporter {
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             addMathJax: meta.addMathJax === true,
-            addKeyboardNavigation: meta.addKeyboardNavigation === true,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes

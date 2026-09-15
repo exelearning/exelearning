@@ -2034,7 +2034,6 @@ class YjsProjectBridge {
       'pp_addSearchBox': 'addSearchBox',
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
       'pp_addMathJax': 'addMathJax',
-      'pp_addKeyboardNavigation': 'addKeyboardNavigation',
       'pp_globalFont': 'globalFont',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',

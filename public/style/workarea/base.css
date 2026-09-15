@@ -92,7 +92,8 @@
         text-align: center
     }
 
-    #made-with-eXe {
+    #made-with-eXe,
+    #exe-presentation-toggler {
         display: none
     }
 }
@@ -710,6 +711,43 @@ video {
     clip: rect(0 0 0 0);
     clip: rect(0, 0, 0, 0);
     height: 0
+}
+
+/* Presentation mode control (?exe-presentation=1, see exe_export.js). Same recipe as
+   #made-with-eXe: fixed badge, neutral look, independent of the style's page layout. */
+#exe-presentation-toggler {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    margin: 0;
+    padding: 0 10px;
+    border: 0;
+    border-top-left-radius: 4px;
+    box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+    background: #fff;
+    color: #222;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    line-height: 35px;
+    height: 35px;
+    cursor: pointer;
+    opacity: .8;
+    transition: .5s;
+    z-index: 1000
+}
+
+#exe-presentation-toggler:hover,
+#exe-presentation-toggler:focus {
+    opacity: 1
+}
+
+#exe-presentation-toggler[aria-pressed="true"] {
+    background: #222;
+    color: #fff
+}
+
+#made-with-eXe ~ #exe-presentation-toggler {
+    right: 40px
 }
 
 #made-with-eXe a:hover {

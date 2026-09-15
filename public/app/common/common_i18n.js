@@ -39,6 +39,7 @@ $exe_i18n = {
     "reset": c_("Reset"),
     "mode_toggler": c_("Light/Dark mode"),
     "teacher_mode": c_("Teacher mode"),
+    "presentation_mode": c_("Presentation mode"),
     "elpxGenerating": c_("Generating..."),
     "elpxProcessing": c_("Processing..."),
     "elpxFolderPickerTimeout": c_("The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead."),

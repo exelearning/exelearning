@@ -1051,9 +1051,8 @@ export class ElpxImporter {
         metadata.set('addAccessibilityToolbar', legacyMeta.pp_addAccessibilityToolbar);
         metadata.set('exportSource', legacyMeta.exportSource);
 
-        // Legacy files don't have addMathJax, addKeyboardNavigation or globalFont - use defaults
+        // Legacy files don't have addMathJax or globalFont - use defaults
         metadata.set('addMathJax', false);
-        metadata.set('addKeyboardNavigation', false);
         metadata.set('globalFont', 'default');
 
         metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
@@ -1277,7 +1276,6 @@ export class ElpxImporter {
             extraHeadContent: this.getMetadataProperty(odeProperties, 'pp_extraHeadContent'),
             footer: this.getMetadataProperty(odeProperties, 'footer'),
             addMathJax: this.getBooleanMetadataProperty(odeProperties, 'pp_addMathJax', false),
-            addKeyboardNavigation: this.getBooleanMetadataProperty(odeProperties, 'pp_addKeyboardNavigation', false),
             globalFont: this.getMetadataProperty(odeProperties, 'pp_globalFont', 'default'),
         };
     }
@@ -1301,7 +1299,6 @@ export class ElpxImporter {
         metadata.set('addAccessibilityToolbar', values.addAccessibilityToolbar);
         metadata.set('exportSource', values.exportSource);
         metadata.set('addMathJax', values.addMathJax);
-        metadata.set('addKeyboardNavigation', values.addKeyboardNavigation);
         metadata.set('globalFont', values.globalFont);
         metadata.set('extraHeadContent', values.extraHeadContent);
         metadata.set('footer', values.footer);

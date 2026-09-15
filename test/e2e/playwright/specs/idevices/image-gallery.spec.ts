@@ -7,7 +7,7 @@ import {
     waitForAppReady,
     reloadPage,
     gotoWorkarea,
-    enableKeyboardNavigationOption,
+    serveWebSiteExport,
     addPage,
     selectPageByIndex,
 } from '../../helpers/workarea-helpers';
@@ -514,19 +514,15 @@ test.describe('Image Gallery iDevice', () => {
             await expect(closeBtn).toBeVisible({ timeout: 5000 });
         });
 
-        test('should suppress keyboard page navigation while the lightbox is open, and restore it once closed', async ({
+        test('presentation mode keys stay inactive while the lightbox is open, and work again once closed', async ({
             authenticatedPage,
             createProject,
         }) => {
             const page = authenticatedPage;
-            const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Keyboard Suppression Test');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
-
-            // Off by default (PR #2020) — must be explicitly enabled.
-            await enableKeyboardNavigationOption(page);
 
             // Page 1: image gallery iDevice with one photo.
             await addImageGalleryFromPanel(page);
@@ -552,67 +548,49 @@ test.describe('Image Gallery iDevice', () => {
             await addPage(page, 'Keyboard Suppression Page Two');
             await selectPageByIndex(page, 0);
 
-            await workarea.save();
-            await page.waitForTimeout(500);
+            // Presentation mode only exists in a web site export opened as the
+            // top-level document, so serve the export and open it directly.
+            const origin = 'http://image-gallery-presentation.test';
+            await serveWebSiteExport(page, origin);
+            await page.goto(`${origin}/index.html?exe-presentation=1`);
+            await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined');
 
-            await page.click('#head-bottom-preview');
-            const previewPanel = page.locator('#previewsidenav');
-            await expect(previewPanel).toBeVisible({ timeout: 15000 });
-
-            const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
-
-            await page.waitForFunction(
-                () => {
-                    const previewIframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-                    if (!previewIframe?.contentWindow) return false;
-                    return typeof (previewIframe.contentWindow as any).SimpleLightbox !== 'undefined';
-                },
-                undefined,
-                { timeout: 15000 },
-            );
-            await page.waitForTimeout(500);
-
-            const previewGalleryLink = iframe.locator('.imageGallery-IDevice a.imageLink').first();
-            await expect(previewGalleryLink).toBeVisible({ timeout: 5000 });
-            await previewGalleryLink.click();
-
-            const lightboxWrapper = iframe.locator('.sl-wrapper');
-            await expect(lightboxWrapper).toBeVisible({ timeout: 5000 });
-            const lightboxImage = iframe.locator('.sl-image img');
-            await lightboxImage.waitFor({ state: 'attached', timeout: 5000 });
+            const control = page.locator('#exe-presentation-toggler');
+            await expect(control).toBeVisible();
+            await control.click();
+            await expect(control).toHaveAttribute('aria-pressed', 'true');
 
             // Check the page's own <h1> rather than the whole body: #siteNav
             // always lists every page's title in the sidebar, so a body-text
             // check can't distinguish "which page is actually showing".
-            const pageHeading = iframe.locator('main h1.page-title');
+            const pageHeading = page.locator('main h1.page-title');
             await expect(pageHeading).toHaveText('New page');
 
-            // "m" (menu toggle) while the lightbox is open must do nothing —
-            // the gallery fully prevails over our shortcuts, not just arrows.
-            // Deliberately not ArrowRight/ArrowLeft here: SimpleLightbox binds
-            // its OWN arrow-key photo navigation on `keyup` (we never call
-            // stopPropagation, so its handler still runs — it's just that we
-            // don't ALSO act on it), and triggering that image transition can
-            // leave SimpleLightbox's own close() blocked by its internal
-            // animation-state guard — a vendor-library quirk unrelated to this
-            // fix. "m" isn't handled by SimpleLightbox at all, so it exercises
-            // suppression without any of that.
-            const navOffBefore = await iframe.locator('body').evaluate(el => el.classList.contains('siteNav-off'));
-            await page.keyboard.press('m');
+            const galleryLink = page.locator('.imageGallery-IDevice a.imageLink').first();
+            await expect(galleryLink).toBeVisible({ timeout: 5000 });
+            await galleryLink.click();
+
+            const lightboxWrapper = page.locator('.sl-wrapper');
+            await expect(lightboxWrapper).toBeVisible({ timeout: 5000 });
+            await page.locator('.sl-image img').waitFor({ state: 'attached', timeout: 5000 });
+
+            // PageDown while the lightbox is open must do nothing: the gallery
+            // fully prevails. Deliberately not ArrowRight here: SimpleLightbox
+            // binds its OWN arrow-key photo navigation on `keyup` and that
+            // transition can leave its close() blocked by an internal
+            // animation-state guard — a vendor quirk unrelated to this check.
+            await page.keyboard.press('PageDown');
             await page.waitForTimeout(300);
             await expect(lightboxWrapper).toBeVisible();
-            const navOffAfter = await iframe.locator('body').evaluate(el => el.classList.contains('siteNav-off'));
-            expect(navOffAfter).toBe(navOffBefore);
+            await expect(pageHeading).toHaveText('New page');
 
-            // Closing the lightbox restores normal keyboard navigation.
-            const closeBtn = iframe.locator('.sl-close');
-            await closeBtn.click();
+            // Closing the lightbox restores the presentation keys.
+            await page.locator('.sl-close').click();
             await expect(lightboxWrapper).toBeHidden({ timeout: 5000 });
 
             await pageHeading.click();
-            await page.keyboard.press('ArrowRight');
-            await expect(iframe.locator('main h1.page-title')).toHaveText('Keyboard Suppression Page Two', {
+            await page.keyboard.press('PageDown');
+            await expect(page.locator('main h1.page-title')).toHaveText('Keyboard Suppression Page Two', {
                 timeout: 10000,
             });
         });

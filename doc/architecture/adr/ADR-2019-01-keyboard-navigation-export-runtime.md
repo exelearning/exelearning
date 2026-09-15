@@ -1,6 +1,6 @@
 ---
 id: ADR-2019-01
-title: "Keyboard-navigation runtime lives in the shared export/preview runtime and drives existing theme elements"
+title: "Presentation-mode runtime lives in the shared export runtime and drives existing theme elements"
 status: Proposed
 date: 2026-07-09
 tracking_issue: 2019
@@ -9,190 +9,152 @@ deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
+  - "@ignaciogros"
 related:
   prs: [2020]
   changes: ["2019-keyboard-navigation-export-preview"]
-  adrs: [ADR-2019-02, ADR-2019-03]
+  adrs: [ADR-2019-02, ADR-2019-03, ADR-2019-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
   tool: "Claude Code"
-  model: "claude-opus-4-8"
+  model: "claude-opus-4-8, claude-fable-5-1"
 ---
 
-# ADR-2019-01: Keyboard-navigation runtime lives in the shared export/preview runtime and drives existing theme elements
+# ADR-2019-01: Presentation-mode runtime lives in the shared export runtime and drives existing theme elements
 
 ## Context
 
-Issue #2019 asks eXeLearning to restore the keyboard navigation that the legacy
-eXeLearning 2.9 "Presentation" style offered: readers of exported or previewed
-content should be able to move between pages, toggle the navigation menu, open
-the search box, and toggle Teacher Mode from the keyboard.
+Issue #2019 asks eXeLearning to let readers move through an exported web site
+with the keyboard or a presenter remote, as the legacy eXeLearning 2.9
+"Presentation" style allowed. After review, the feature became a
+reader-activated **presentation mode** (ADR-2019-04): collapse the menu and
+make Left/PageUp and Right/PageDown change page.
 
-Exported HTML5, SCORM, EPUB3 and IMS packages already share a single client
-runtime, `public/app/common/exe_export.js` (`window.$exeExport`), which every
-page loads from `libs/exe_export.js`. The same runtime is what the in-app
-preview executes: `Html5Exporter.generateForPreview()` produces the exact same
-page HTML as a real export by calling `PageRenderer` (the preview iframe is
-served the identical `libs/exe_export.js`). Themes render a stable set of
-navigation elements — `#siteNav`, `.nav-button-left` / `.nav-button-right`,
-`#siteNavToggler`, `#searchBarTogger` / `#exe-client-search-text`, and
-`#teacher-mode-toggler` — that already respond to mouse clicks.
+Every exported page already loads one shared client runtime,
+`public/app/common/exe_export.js` (`window.$exeExport`), from
+`libs/exe_export.js`. Themes render a stable set of navigation elements that
+already respond to clicks: `#siteNav`, `a.nav-button-left` /
+`a.nav-button-right` and `#siteNavToggler` (with `aria-expanded`). Teacher Mode
+lives in that same runtime and is the established pattern for a reader-side
+mode.
 
 The project's guiding principles require a single source of truth and forbid
-per-code-path duplication (AGENTS.md §1). A prior effort to add an always-on
-export JS library (see the export-lib registration work) established that a new
-standalone export bundle must be wired into roughly six duplicated registration
-sites and must be a classic script, which is easy to get wrong and drifts over
-time. Any new reader-facing behavior therefore has to choose deliberately
-*where* it lives.
+per-code-path duplication (AGENTS.md §1). Adding an always-on export library
+needs roughly six duplicated registration edits and must be a classic script,
+which drifts over time.
 
 ## Problem
 
-Where should the keyboard-navigation behavior live, and how should it act on the
-page — as a new standalone export library, as per-theme JavaScript duplicated
-across themes, or as a module inside the shared export/preview runtime that
-drives the navigation elements themes already emit?
+Where should the presentation-mode behaviour live, and how should it act on the
+page: as a new standalone export library, as per-theme JavaScript, or as a
+module inside the shared export runtime that drives the elements themes already
+emit?
 
 ## Decision drivers
 
-- **Single source of truth** — one runtime path for exports and preview, no
-  duplication across themes or export formats (AGENTS.md §1, §7.9).
-- **Preview/export parity** — the preview iframe must exercise the very same
-  code that ships in a package, so a test in preview also validates exports.
-- **Theme neutrality** — must work with any theme that emits the standard nav
+- **Single source of truth**: one runtime path, no duplication across themes.
+- **Theme neutrality**: must work with any theme that emits the standard nav
   elements and be a harmless no-op when they are absent.
-- **Low registration burden** — avoid adding another always-on export library
-  that needs multiple duplicated registration edits.
-- **Robustness across formats** — must tolerate EPUB readers reloading scripts
-  when navigating between pages.
+- **Low registration burden**: no new always-on export library.
+- **Reuse the theme's own menu logic**: collapsing the menu must go through the
+  theme's toggler so its state classes, `?nav=false` links and low-resolution
+  behaviour stay authoritative.
 
 ## Options considered
 
-### Option 1: Add the behavior to each theme's JavaScript
-
-Ship the keydown handling inside every theme bundle.
+### Option 1: Add the behaviour to each theme's JavaScript
 
 - Pros: themes could tailor selectors to their own markup.
-- Cons: duplicates the same logic across every theme; guarantees drift; a new
-  theme silently ships without the feature; violates the single-source-of-truth
-  principle. Rejected.
+- Cons: duplicates the logic across every theme; guarantees drift; a new theme
+  silently ships without it. Rejected.
 
 ### Option 2: New standalone always-on export library
 
-Create a dedicated `libs/exe_keyboard_nav.js` and register it everywhere export
-libraries are declared.
-
 - Pros: isolates the feature in its own file.
-- Cons: reintroduces the ~six duplicated registration sites documented for
-  always-on export libraries; must be a classic script; more surface to keep in
-  sync across HTML5/SCORM/EPUB/IMS; no functional benefit over living in the
-  runtime that already loads on every page. Rejected.
+- Cons: reintroduces the duplicated registration sites; no functional benefit
+  over the runtime that already loads on every page. Rejected.
 
-### Option 3 (chosen): A module inside the shared export/preview runtime that drives existing theme elements
+### Option 3 (chosen): A `presentationMode` module in the shared export runtime
 
-Add a `keyboardNav` module to `window.$exeExport` in
-`public/app/common/exe_export.js`, initialized from `$exeExport.init()`. It
-locates the theme's existing nav elements by their stable selectors and
-activates them by clicking the real anchors/togglers, so the theme's own
-handlers remain the single source of truth for navigation, menu, search and
-Teacher Mode behavior.
+Add `presentationMode` to `window.$exeExport`, next to `teacherMode`. It
+locates the theme's existing elements by their stable selectors and activates
+them by clicking the real anchors and toggler, so the theme's handlers remain
+the single source of truth for what navigation and the menu do; the module only
+decides *when* to trigger them.
 
-- Pros: one code path for all export formats and preview; no new library and no
-  registration edits; theme-neutral and a natural no-op when elements are
-  absent; reuses the theme's own click handlers instead of re-implementing them.
-- Cons: couples the runtime to a set of well-known selectors (mitigated by the
-  no-op-when-absent design and by an E2E test that asserts real behavior).
+- Pros: one code path; no new library; theme-neutral; no-op when elements are
+  absent; the menu collapse reuses the theme's own toggler.
+- Cons: couples the runtime to well-known selectors (mitigated by the
+  no-op-when-absent design and an E2E test on a real export).
 
 ## Evidence
 
-- Runtime module and its initialization:
-  `public/app/common/exe_export.js` — `keyboardNav` object (lines 558-800),
-  invoked from `$exeExport.init()` (line 45, wrapped in try/catch so a failure
-  never blocks the rest of page init). The whole `window.$exeExport` block is
-  guarded by `if (typeof window.$exeExport === 'undefined')` (lines 27, 802) to
-  survive EPUB readers reloading scripts on navigation.
-- Drives existing theme elements rather than re-implementing them:
-  `getPreviousLink()`/`getNextLink()` target `a.nav-button-left` /
-  `a.nav-button-right`; `getFirstNavLink()`/`getLastNavLink()` target
-  `#siteNav a[href]`; `toggleMenu()` clicks `#siteNavToggler`; `focusSearch()`
-  reuses `#searchBarTogger` then focuses `#exe-client-search-text`;
-  `toggleTeacherMode()` clicks `#teacher-mode-toggler`
-  (`public/app/common/exe_export.js` lines 607-628, 700-712, 738-743). The
-  module docblock (lines 539-557) states it "works with any theme that exposes
-  the standard nav elements … and is a no-op when they are absent."
-- Preview and export share this runtime: `Html5Exporter.generateForPreview()`
-  (`src/shared/export/exporters/Html5Exporter.ts` line 560) builds pages through
-  the same `generatePageHtml` → `PageRenderer` path as a full export, and the
-  page HTML always loads `libs/exe_export.js`
-  (`src/shared/export/renderers/PageRenderer.ts` lines 315, 1338).
-- Preview/export parity is asserted by E2E:
-  `test/e2e/playwright/specs/preview-keyboard-navigation.spec.ts` header comment
-  (lines 16-24) — "The preview iframe renders the exact same HTML/JS as a real
-  exported package, so exercising the shortcuts here also covers exports."
-- Frontend unit coverage of the module:
-  `public/app/common/exe_export.test.js` — `describe('keyboardNav')` (line 2387)
-  and `describe('overlaySignals / isOverlayActive')` (line 2565).
+- `public/app/common/exe_export.js`: `presentationMode.bootstrap()` runs in
+  `<head>` next to `teacherMode.bootstrap()`; `presentationMode.init()` runs from
+  `$exeExport.init()` in the same deferred step as `teacherMode.init()`, after
+  the style has rendered its togglers, wrapped in try/catch.
+- `handleKeydown()` clicks `a.nav-button-left` / `a.nav-button-right`;
+  `_setMenuExpanded()` clicks `#siteNavToggler` only when its `aria-expanded`
+  differs from the wanted state, so the theme's `?nav=false` propagation and
+  low-resolution rules keep working and the menu can still be opened normally.
+- The `window.$exeExport` block is guarded by
+  `if (typeof window.$exeExport === 'undefined')` so scripts reloaded by a
+  reader survive; `enter()` binds a single listener and `leave()` removes it.
+- Tests: `public/app/common/exe_export.test.js` (`describe('presentationMode')`)
+  and `test/e2e/playwright/specs/presentation-mode.spec.ts`, which drives a real
+  served web site export across all six built-in themes' shared selectors.
 
 ## Decision
 
-We will implement keyboard navigation as a `keyboardNav` module inside the
-shared export/preview runtime `public/app/common/exe_export.js`, initialized
-once from `$exeExport.init()`, that operates by locating and clicking the
-navigation elements themes already emit (`#siteNav`, `.nav-button-*`,
-`#siteNavToggler`, `#searchBarTogger`, `#teacher-mode-toggler`). It will not be
-a new export library and will not be duplicated per theme.
+We will implement presentation mode as a `presentationMode` module inside the
+shared export runtime `public/app/common/exe_export.js`, bootstrapped in
+`<head>` and initialised once from `$exeExport.init()`, that operates by
+locating and clicking the elements themes already emit (`a.nav-button-*`,
+`#siteNavToggler`, `#siteNav a`). It will not be a new export library and will
+not be duplicated per theme.
 
 ## Consequences
 
 ### Positive
 
-- A single implementation covers every export format and the in-app preview.
+- A single implementation covers every web site export and every theme.
 - No new export library and no duplicated registration edits.
-- Works with any current or future theme that emits the standard nav elements;
-  harmless no-op otherwise.
-- The theme's own click handlers remain the single source of truth for what each
-  navigation action does; the module only decides *when* to trigger them.
+- The theme's own click handlers remain the single source of truth.
 
 ### Negative
 
-- The module depends on a set of well-known selectors; a theme that renames them
-  silently loses the shortcuts (graceful degradation, not a crash).
+- A theme that renames the selectors silently loses the mode (graceful
+  degradation, not a crash).
 
 ### Neutral
 
-- The behavior is only active when the author opts in (see ADR-2019-02); this ADR
-  fixes *where the runtime lives*, not *whether it is on*.
+- Whether the mode is on is decided by the reader (ADR-2019-04); this ADR fixes
+  *where the runtime lives*, not *whether it is on*.
 
 ## Risks
 
-- **Selector drift** (low likelihood, low severity): a redesigned theme could
-  change nav selectors. Mitigation: no-op-when-absent design plus an E2E spec
-  that drives the real preview and asserts page changes, catching regressions.
-- **Double initialization** (low): EPUB readers reload scripts. Mitigation: the
-  `window.$exeExport` existence guard and `keyboardNav._initialized` flag
-  (`public/app/common/exe_export.js` lines 27, 562-567).
+- **Selector drift** (low): mitigated by the no-op-when-absent design and the
+  E2E spec on a real export.
+- **Double initialisation** (low): mitigated by the `window.$exeExport` guard,
+  the `#exe-presentation-toggler` existence check in `init()` and the
+  `_active` flag in `enter()`/`leave()`.
 
 ## Validation
 
-- Unit tests in `public/app/common/exe_export.test.js` cover link lookup, menu
-  toggle, search focus and Teacher Mode toggle against synthetic DOM.
-- E2E `test/e2e/playwright/specs/preview-keyboard-navigation.spec.ts` drives the
-  real preview iframe (arrow-key page navigation, `m`/`Alt+M` menu toggle,
-  `Alt+/` search) and, by parity, validates the exported runtime.
+- Unit tests cover bootstrap, scope, control injection, menu collapse, key
+  handling and listener lifecycle against synthetic DOM.
+- E2E `presentation-mode.spec.ts` asserts page changes, menu state and
+  persistence on a real served export.
 
 ## Follow-up work
 
 - Keep the selector list documented alongside the module so theme authors know
-  which elements enable the feature. See the change design for the operational reference
-  links.
+  which elements the mode relies on.
 
 ## References
 
-- Issue #2019 — keyboard navigation request.
-- PR #2020 — implementation.
-- the change design — Keyboard navigation for exported and previewed content.
-- ADR-2019-02 — opt-in, off-by-default export option.
-- ADR-2019-03 — overlay-aware keyboard suppression registry.
-- `public/app/common/exe_export.js`, `src/shared/export/renderers/PageRenderer.ts`,
-  `src/shared/export/exporters/Html5Exporter.ts`.
+- Issue #2019; PR #2020.
+- ADR-2019-02 (rejected export option), ADR-2019-03 (overlay deferral),
+  ADR-2019-04 (reader activation).
+- `public/app/common/exe_export.js`, `public/style/workarea/base.css`.

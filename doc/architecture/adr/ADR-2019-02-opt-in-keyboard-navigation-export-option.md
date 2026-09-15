@@ -1,7 +1,7 @@
 ---
 id: ADR-2019-02
 title: "Keyboard navigation is an opt-in, off-by-default export-metadata option threaded through the unified export pipeline"
-status: Proposed
+status: Rejected
 date: 2026-07-09
 tracking_issue: 2019
 legacy_id: ADR-0040
@@ -9,20 +9,30 @@ deciders:
   - "@erseco"
 reviewers:
   - "@cristinavaldera"
+  - "@ignaciogros"
 related:
   prs: [2020]
   changes: ["2019-keyboard-navigation-export-preview"]
-  adrs: [ADR-2019-01, ADR-2019-03]
+  adrs: [ADR-2019-01, ADR-2019-03, ADR-2019-04]
 supersedes: []
 superseded_by: []
 ai_assistance:
   tool: "Claude Code"
-  model: "claude-opus-4-8"
+  model: "claude-opus-4-8, claude-fable-5-1"
 ---
 
 # ADR-2019-02: Keyboard navigation is an opt-in, off-by-default export-metadata option threaded through the unified export pipeline
 
 ## Context
+
+> **Rejected in review of PR #2020 (2026-09-14/15).** This was the first
+> iteration of the feature. Storing the behaviour in the project leaves a trace
+> in the `.elpx` that changes navigation for whoever imports it, decides for the
+> reader what only the reader knows, and adds one more option to an already
+> large export configuration. The shipped decision is ADR-2019-04: a
+> reader-activated presentation mode with no export option. The option,
+> metadata key, XML key and runtime flag below no longer exist in the code; the
+> text is kept as the record of what was considered.
 
 The keyboard-navigation runtime introduced by issue #2019 (see ADR-2019-01) changes
 standard page navigation: plain arrow keys move between pages, `m` toggles the
