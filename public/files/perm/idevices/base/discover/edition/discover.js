@@ -287,6 +287,7 @@ var $exeDevice = {
                                     <img class="Descubre-EImageBack" src="${path}dcbHome.png" id="descubreENoCard" alt="${_('No image')}" />
                                 </p>
                             </div>   
+                           ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -1038,6 +1039,8 @@ var $exeDevice = {
             wordsGame = $exeDevice.wordsGame,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return;
@@ -1115,6 +1118,8 @@ var $exeDevice = {
             version: $exeDevice.version,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
         };
     },
@@ -1589,6 +1594,7 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#descubreEURLImgCard').on('change', () =>
             $exeDevice.loadImageCard()
@@ -2048,6 +2054,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
