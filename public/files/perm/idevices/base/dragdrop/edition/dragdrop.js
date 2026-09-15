@@ -201,6 +201,7 @@ var $exeDevice = {
                                 <label for="dadEAuthory" class="mb-0">${_('Authorship')}:</label>
                                 <input id="dadEAuthory" type="text" class="form-control" />
                             </div>
+                            ${$exeDevicesEdition.iDevice.gamification.passScore.getContents()}
                             <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
                                 ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
@@ -818,6 +819,8 @@ var $exeDevice = {
             time = parseInt($('#dadETime').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -858,6 +861,8 @@ var $exeDevice = {
             time,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id,
         };
     },
@@ -1118,6 +1123,7 @@ var $exeDevice = {
                 .toggleClass('d-flex', $(this).val() === '2');
         });
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#dadEURLImage').on('change', function () {
             const url = $(this).val().trim();
@@ -1243,6 +1249,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         if (game.type == 2) {
             $('#dadETimeDiv').removeClass('d-none').addClass('d-flex');
