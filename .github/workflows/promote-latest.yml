@@ -1,0 +1,49 @@
+name: Promote release to latest
+
+# `latest` and `latest-static` are never written when a tag is pushed (ci.yml,
+# static-release.yml build only the versioned tags). They move here, on the
+# `released` event — a release published, or a pre-release turned into a
+# release — by re-tagging the manifest that was already built and tested for
+# that version. No rebuild: the digest behind `latest` is byte-identical to the
+# one behind `vX.Y.Z`. The manual trigger promotes (or rolls back) any version.
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag to promote, e.g. v4.0.3 (also used to roll back)'
+        required: true
+
+jobs:
+  promote:
+    if: github.repository == 'exelearning/exelearning'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      VERSION: ${{ github.event.release.tag_name || inputs.version }}
+    steps:
+      - name: Login to DockerHub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Same repository as the source, so only a new manifest is pushed:
+      # multi-arch is preserved and no layer is re-uploaded.
+      - name: Point latest / latest-static at the release
+        run: |
+          set -euo pipefail
+          for repo in "${{ github.repository }}" "ghcr.io/${{ github.repository }}"; do
+            docker buildx imagetools create -t "${repo}:latest"        "${repo}:${VERSION}"
+            docker buildx imagetools create -t "${repo}:latest-static" "${repo}:${VERSION}-static"
+          done
