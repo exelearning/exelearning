@@ -9,7 +9,7 @@ deciders:
 reviewers:
   - "@ignaciogros"
 related:
-  prs: []
+  prs: [2430]
   changes: []
   adrs: []
 supersedes: []
