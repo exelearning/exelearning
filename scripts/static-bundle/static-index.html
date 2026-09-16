@@ -152,35 +152,10 @@
             projectId: generateUUID()  // Set synchronously so app.bundle.js can start
         };
 
-        // MathJax configuration with relative paths for static mode
-        // Must be defined BEFORE common.js loads to override version-based path detection
-        var externalExtensions = [
-            'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
-            'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose',
-            'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
-            'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb',
-            'setoptions'
-        ];
-        window.MathJax = {
-            tex: {
-                inlineMath: [["\\(", "\\)"]],
-                displayMath: [["$$", "$$"], ["\\[", "\\]"]],
-                processEscapes: true,
-                tags: 'ams',
-                packages: { '[+]': externalExtensions }
-            },
-            loader: {
-                paths: { mathjax: './app/common/exe_math' },
-                load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
-            },
-            options: {
-                // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
-                // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
-                ignoreHtmlClass: 'tex2jax_ignore|dropdown-menu|dropdown-item|modal',
-                // Skip processing inside these HTML tags
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-            }
-        };
+        // Static mode serves MathJax from one fixed directory. Set the base path
+        // before common.js runs and let it build the configuration, so the extension
+        // list, accessibility options and speech locales stay defined in one place.
+        window.MATHJAX_BASE_PATH = './app/common/exe_math';
     </script>
 
     <!-- Load Screen (visible by default in static mode) -->

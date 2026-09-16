@@ -3437,6 +3437,112 @@ describe('YjsProjectBridge', () => {
       expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
     });
 
+    it('maps a renamed theme icon name arriving in a structured descriptor', async () => {
+      // A collaborator on a project saved before neo renamed objetives.png sends the old
+      // name. Left as-is it misses getThemeIcons() and the block renders without an icon.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'objetives', icon: { source: 'theme', value: 'objetives' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'objectives', name: 'objectives' });
+    });
+
+    it('leaves a theme icon name that was never renamed untouched', async () => {
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'activity', icon: { source: 'theme', value: 'activity' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'activity' });
+    });
+
+    it('does not re-render a block whose stored icon name was renamed', async () => {
+      // The node already holds the mapped name; the update carries the raw one. Comparing
+      // those two strings reported a change on every remote update of that block, so
+      // makeIconNameElement() ran again each time until someone re-saved the project.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: 'objectives',
+        icon: { source: 'theme', value: 'objectives', name: 'objectives' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'objetives', icon: { source: 'theme', value: 'objetives' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.makeIconNameElement).not.toHaveBeenCalled();
+      expect(mockBlockNode.iconName).toBe('objectives');
+    });
+
+    it('leaves a theme descriptor without a value alone', async () => {
+      // `icon.value` absent normalises to '', and comparing the mapped '' against an absent
+      // one would rewrite the descriptor and re-render for nothing.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'theme' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock({ id: 'block-1', icon: { source: 'theme' } }, 'page-1');
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme' });
+      expect(mockBlockNode.makeIconNameElement).not.toHaveBeenCalled();
+    });
+
     it('updates block icon from structured icon data for remote collaborators', async () => {
       const mockBlockNode = {
         blockName: 'Block',

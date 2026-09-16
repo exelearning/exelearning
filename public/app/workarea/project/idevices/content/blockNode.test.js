@@ -83,7 +83,7 @@ global.eXeLearning = {
 };
 
 // Import after setting up mocks
-import IdeviceBlockNode from './blockNode.js';
+import IdeviceBlockNode, { sortThemeIcons } from './blockNode.js';
 
 describe('IdeviceBlockNode', () => {
     let block;
@@ -916,6 +916,27 @@ describe('IdeviceBlockNode', () => {
             expect(firstThemeIndex).toBeLessThan(firstMaterialIndex);
         });
 
+        it('lists theme icons alphabetically regardless of source order (#2411)', () => {
+            // Static bundles built on Linux ship icons in raw readdir order
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                udl_rep_informarse: { id: 'udl_rep_informarse', value: '/i/udl_rep_informarse.svg' },
+                udl_exp_grupohomogeneo: { id: 'udl_exp_grupohomogeneo', value: '/i/udl_exp_grupohomogeneo.svg' },
+                udl_eng_reto: { id: 'udl_eng_reto', value: '/i/udl_eng_reto.svg' },
+                udl_eng_curiosidad: { id: 'udl_eng_curiosidad', value: '/i/udl_eng_curiosidad.svg' },
+            }));
+            const body = block.makeModalChangeIconBody();
+            const values = [...body.querySelectorAll('.option-block-icon[data-icon-source="theme"]')].map((el) =>
+                el.getAttribute('data-icon-value')
+            );
+
+            expect(values).toEqual([
+                'udl_eng_curiosidad',
+                'udl_eng_reto',
+                'udl_exp_grupohomogeneo',
+                'udl_rep_informarse',
+            ]);
+        });
+
         it('adds section titles separating theme and general icons', () => {
             const body = block.makeModalChangeIconBody();
             const titles = [...body.querySelectorAll('.icon-options-section-title')].map((el) => el.textContent);
@@ -931,13 +952,38 @@ describe('IdeviceBlockNode', () => {
             expect(body.querySelectorAll('.option-block-icon[data-icon-source="theme"]')).toHaveLength(0);
         });
 
-        it('renders material modal options from the sprite', () => {
+        it('renders material modal options as inline SVG from the shared sprite runtime', () => {
+            // Under Electron's app:// scheme Chromium fetches the whole sprite once per
+            // external <use>, so 3 798 options froze the renderer (#2419). The picker
+            // must inline each glyph from the sprite already parsed in memory instead.
+            const renderMaterialInlineIcon = vi.fn(
+                () =>
+                    '<svg class="exe-material-icon-sprite" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M1-1Z"/></svg>'
+            );
+            window.eXeBlockIconRuntime = { renderMaterialInlineIcon };
+            try {
+                const body = block.makeModalChangeIconBody();
+                const firstMaterialIcon = body.querySelector('.option-block-icon[data-icon-source="material"]');
+
+                expect(firstMaterialIcon.querySelector('.exe-material-icon-sprite path')).not.toBeNull();
+                expect(body.querySelector('.exe-material-icon-sprite use')).toBeNull();
+                expect(body.innerHTML).not.toContain('material-icons.svg');
+                expect(renderMaterialInlineIcon).toHaveBeenCalledWith(
+                    firstMaterialIcon.getAttribute('data-icon-value'),
+                    expect.objectContaining({ catalog: expect.any(Array) })
+                );
+            } finally {
+                delete window.eXeBlockIconRuntime;
+            }
+        });
+
+        it('renders material modal options as hydration placeholders when the sprite is not loaded yet', () => {
             const body = block.makeModalChangeIconBody();
             const firstMaterialIcon = body.querySelector('.option-block-icon[data-icon-source="material"]');
-            const spriteUse = firstMaterialIcon.querySelector('.exe-material-icon-sprite use');
 
-            expect(spriteUse).not.toBeNull();
-            expect(spriteUse.getAttribute('href')).toContain('/libs/material-icons/material-icons.svg#');
+            expect(firstMaterialIcon.querySelector('.exe-material-icon[data-exe-material-icon]')).not.toBeNull();
+            expect(body.querySelector('use')).toBeNull();
+            expect(body.innerHTML).not.toContain('material-icons.svg');
         });
     });
 
@@ -1584,6 +1630,21 @@ describe('IdeviceBlockNode', () => {
     });
 
     describe('icon helpers', () => {
+        // The tint tests attach elements to document.body, because getComputedStyle only
+        // resolves custom properties on an attached node. Take them back out again: the
+        // outer afterEach only nulls `block`, so without this a later test looking for a
+        // <header> or #change-block-icon-modal-content would find a stale one.
+        const attached = [];
+        const attach = (element) => {
+            document.body.appendChild(element);
+            attached.push(element);
+            return element;
+        };
+
+        afterEach(() => {
+            attached.splice(0).forEach((element) => element.remove());
+        });
+
         it('normalizes legacy icon names into structured descriptors', () => {
             expect(block.normalizeIconDescriptor(null, '')).toEqual({ source: 'none', value: '' });
             expect(block.normalizeIconDescriptor(null, 'mi-alarm')).toEqual({
@@ -1630,6 +1691,54 @@ describe('IdeviceBlockNode', () => {
             });
         });
 
+        it('normalizes a stored icon name the style has since renamed', () => {
+            // 'objetives' is what neo shipped from v4.0.0 to v4.0.3, so projects saved then
+            // still store it. The descriptor has to come out under the current name, or the
+            // picker cannot match the block's icon against the entry it lists.
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                objectives: { id: 'objectives', value: '/icons/objectives.png', title: 'Objectives' },
+            }));
+
+            expect(block.normalizeIconDescriptor(null, 'objetives')).toEqual({
+                source: 'theme',
+                value: 'objectives',
+                name: 'objectives',
+            });
+
+            // Same for a descriptor that was already structured when it was saved.
+            expect(block.normalizeIconDescriptor({ source: 'theme', value: 'objetives' })).toEqual({
+                source: 'theme',
+                value: 'objectives',
+                name: 'objectives',
+            });
+        });
+
+        it('falls back to the legacy Material mapping under the renamed name', () => {
+            // A neo project saved in v4.0.3 stores 'objetives'. Opened under a style that
+            // ships no 'objectives.*' -- universal -- it has to reach the legacy mapping, which
+            // is keyed by the current name; looked up under the stored one it found nothing
+            // and the block was left with no icon at all.
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({}));
+
+            expect(block.normalizeIconDescriptor(null, 'objetives')).toEqual({
+                source: 'material',
+                value: 'target',
+                name: 'target',
+            });
+        });
+
+        it('finds the style icon behind a renamed stored name', () => {
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                think_alt: { id: 'think_alt', value: '/icons/think_alt.svg', title: 'Think' },
+            }));
+
+            expect(block.resolveThemeIconData('think-alt')).toEqual({
+                id: 'think_alt',
+                value: '/icons/think_alt.svg',
+                title: 'Think',
+            });
+        });
+
         it('resolves app asset URLs using composeUrl and basePath fallbacks', () => {
             eXeLearning.app.composeUrl = vi.fn((path) => `/composed${path}`);
             expect(block.resolveAppAssetUrl('/libs/material-icons/icons/alarm.svg')).toBe(
@@ -1657,10 +1766,25 @@ describe('IdeviceBlockNode', () => {
             expect(block.getRenderableAssetUrl('https://example.com/icon.svg')).toBe('https://example.com/icon.svg');
         });
 
-        it('renders material sprite icon with fallback symbol for invalid names', () => {
-            const html = block.renderMaterialSpriteIcon('not-in-catalog');
-            expect(html).toContain('exe-material-icon-sprite');
-            expect(html).toContain('/libs/material-icons/material-icons.svg#help');
+        it('renders material picker icon as a hydration placeholder with the help fallback when no shared runtime exists', () => {
+            const html = block.renderMaterialInlineIcon('not-in-catalog');
+            expect(html).toContain('class="exe-material-icon"');
+            expect(html).toContain('data-exe-material-icon="help"');
+            expect(html).not.toContain('<use');
+        });
+
+        it('delegates material picker icon rendering to the shared runtime with the catalog', () => {
+            const renderMaterialInlineIcon = vi.fn(() => '<svg class="exe-material-icon-sprite"><path d="M1-1Z"/></svg>');
+            window.eXeBlockIconRuntime = { renderMaterialInlineIcon };
+            try {
+                expect(block.renderMaterialInlineIcon('alarm')).toContain('<path d="M1-1Z"/>');
+                expect(renderMaterialInlineIcon).toHaveBeenCalledWith(
+                    'alarm',
+                    expect.objectContaining({ catalog: expect.any(Array) })
+                );
+            } finally {
+                delete window.eXeBlockIconRuntime;
+            }
         });
 
         it('filters material and theme icon tiles from the search query', () => {
@@ -1710,8 +1834,7 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('prefers the picker accent over the box head icon color', () => {
-            block.headElement = document.createElement('div');
-            document.body.appendChild(block.headElement);
+            block.headElement = attach(document.createElement('div'));
             block.headElement.style.setProperty('--exe-icon-color', '#fff');
             block.headElement.style.setProperty('--exe-icon-picker-color', '#0d77d1');
             // The head needs white on its blue background; the white picker chip does not.
@@ -1721,44 +1844,76 @@ describe('IdeviceBlockNode', () => {
             expect(block.getCurrentThemeIconColor()).toBe('#fff');
         });
 
-        it('prefers theme css variables and known theme colors when resolving modal icon color', () => {
-            block.headElement = document.createElement('div');
-            document.body.appendChild(block.headElement);
-            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+        it('falls back to the title, then the icon, when the block has no header yet', () => {
+            // The header is the normal source: a style declares both variables once on
+            // .exe-content and, since they are custom properties, the header inherits them.
+            // That inheritance is what the picker E2E spec covers, because happy-dom does not
+            // resolve inherited custom properties. What is pinned here is only which source
+            // the resolver picks when headElement is null -- a defensive path, since a real
+            // browser returns nothing for the detached title and icon a headerless block has.
+            block.headElement = null;
+            block.blockNameElementText = attach(document.createElement('h1'));
+            block.blockNameElementText.style.setProperty('--exe-icon-color', '#123456');
             expect(block.getCurrentThemeIconColor()).toBe('#123456');
 
-            block.headElement.style.removeProperty('--exe-icon-color');
-            block.blockNameElementText = document.createElement('h1');
-            document.body.appendChild(block.blockNameElementText);
-            block.blockNameElementText.style.color = 'rgb(1, 2, 3)';
-            expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
-
-            block.headElement = null;
             block.blockNameElementText = null;
-            eXeLearning.app.themes.selected = { id: 'flux' };
-            expect(block.getCurrentThemeIconColor()).toBe('#eda900');
+            block.iconElement = attach(document.createElement('div'));
+            block.iconElement.style.setProperty('--exe-icon-color', '#654321');
+            expect(block.getCurrentThemeIconColor()).toBe('#654321');
         });
 
-        it('falls back to each theme style-icon color so General icons match Style icons', () => {
+        it('resolves no color when the theme declares neither variable', () => {
+            block.headElement = attach(document.createElement('div'));
+            // The block header text color is not the picker tint: an undeclared theme
+            // leaves --modal-icon-color unset so the picker CSS reaches --modal-icon-default.
+            block.headElement.style.color = 'rgb(1, 2, 3)';
+            block.blockNameElementText = null;
+            block.iconElement = null;
+
+            expect(block.getCurrentThemeIconColor()).toBe('');
+        });
+
+        it('resolves currentColor against the block header, not the modal it is copied onto', () => {
+            // A style may say "follow the header text" with --exe-icon-color: currentColor.
+            // Copied verbatim onto the modal body it would mean the modal's own text, so the
+            // keyword has to be resolved here, while the block header is still the context.
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.color = 'rgb(1, 2, 3)';
+            block.headElement.style.setProperty('--exe-icon-color', 'currentColor');
+
+            expect(block.getCurrentThemeIconColor()).toBe('rgb(1, 2, 3)');
+        });
+
+        it('leaves the picker untinted rather than throwing when getComputedStyle is missing', () => {
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+            const original = window.getComputedStyle;
+            window.getComputedStyle = undefined;
+
+            try {
+                expect(block.getCurrentThemeIconColor()).toBe('');
+            } finally {
+                window.getComputedStyle = original;
+            }
+        });
+
+        it('sets --modal-icon-color on the picker from the theme variable', () => {
+            block.headElement = attach(document.createElement('div'));
+            block.headElement.style.setProperty('--exe-icon-color', '#123456');
+
+            const body = block.makeModalChangeIconBody();
+
+            expect(body.style.getPropertyValue('--modal-icon-color')).toBe('#123456');
+        });
+
+        it('leaves --modal-icon-color unset when the theme declares no tint', () => {
             block.headElement = null;
             block.blockNameElementText = null;
             block.iconElement = null;
 
-            const expectedByTheme = {
-                base: '#d86e41',
-                flux: '#eda900',
-                nova: '#f5c200',
-                zen: '#d40055',
-                // Multicolor themes keep the theme accent (cannot match a single hue).
-                neo: '#e3ac3b',
-                universal: '#0d2953',
-                // Picker accent: the box head icon itself is white.
-                educablue: '#0d77d1',
-            };
-            for (const [id, color] of Object.entries(expectedByTheme)) {
-                eXeLearning.app.themes.selected = { id };
-                expect(block.getCurrentThemeIconColor()).toBe(color);
-            }
+            const body = block.makeModalChangeIconBody();
+
+            expect(body.style.getPropertyValue('--modal-icon-color')).toBe('');
         });
     });
 
@@ -4292,4 +4447,32 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+});
+
+describe('sortThemeIcons', () => {
+    it('returns icons sorted by id with numeric awareness', () => {
+        const sorted = sortThemeIcons({
+            icon10: { id: 'icon10', value: '/i/icon10.svg' },
+            icon2: { id: 'icon2', value: '/i/icon2.svg' },
+            icon1: { id: 'icon1', value: '/i/icon1.svg' },
+        });
+
+        expect(sorted.map((icon) => icon.id)).toEqual(['icon1', 'icon2', 'icon10']);
+    });
+
+    it('drops entries without a value and falls back to value when id is missing', () => {
+        const sorted = sortThemeIcons({
+            b: { id: 'b', value: '/i/b.svg' },
+            broken: { id: 'broken' },
+            empty: null,
+            a: { value: '/i/a.svg' },
+        });
+
+        expect(sorted.map((icon) => icon.id || icon.value)).toEqual(['/i/a.svg', 'b']);
+    });
+
+    it('returns an empty list for null or undefined input', () => {
+        expect(sortThemeIcons(null)).toEqual([]);
+        expect(sortThemeIcons(undefined)).toEqual([]);
+    });
 });

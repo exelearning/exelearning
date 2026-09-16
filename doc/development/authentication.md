@@ -63,6 +63,7 @@ API_JWT_SECRET=
 - OIDC:
   - The app resolves the provider endpoints (authorization, token, userinfo, end_session) from `OIDC_ISSUER` via OIDC Discovery, falling back to the explicit `OIDC_*_ENDPOINT` variables. See [OIDC endpoint resolution](#oidc-endpoint-resolution-discovery) below.
   - The app builds the Authorization URL from the resolved authorization endpoint and redirects the user to the provider.
+  - The authorization request uses Authorization Code + PKCE (`code_challenge_method=S256`) with `state` and `nonce`. It does **not** send the optional `prompt` parameter, so the provider applies its own authentication and consent policy (existing tenant-wide admin consent is honoured; see the Microsoft Entra ID section below).
   - The callback `/login/openid/callback` exchanges the `code` for tokens using the resolved token endpoint.
   - The app forwards the browser to the target page appending `?access_token=...`.
   - The JWT middleware validates the token and resolves the user via the resolved UserInfo endpoint.
@@ -135,6 +136,30 @@ Common prerequisites
   - Development: `http://localhost:8080/login/openid/callback`
   - Production: `https://<your-domain>/login/openid/callback`
 - Scopes: `OIDC_SCOPE="openid email"` is recommended. Add `profile` if you want name/picture.
+- Consent: eXeLearning does not send the `prompt` parameter, so consent is handled entirely by the provider. Versions up to 4.0.3 forced `prompt=consent`, which made every login re-run the consent flow.
+
+### Microsoft Entra ID (Azure AD)
+
+1) Register a single-tenant application (Entra admin center → App registrations), add the Redirect URI `https://<your-domain>/login/openid/callback` (type *Web*) and create a client secret.
+
+2) Optionally require assignment (Enterprise applications → Properties → *Assignment required* = Yes) and assign the allowed users or groups.
+
+3) Grant tenant-wide admin consent for the delegated permissions the app requests (`openid`, `email`, `profile`) so non-administrative users are not asked to consent. Entra adds `User.Read` to every registration by default; eXeLearning does not request it, but it is harmless to leave it in the grant.
+
+4) Configure environment variables:
+
+```
+# Replace <tenant-id> with the directory (tenant) ID; endpoints are discovered from the issuer
+OIDC_ISSUER=https://login.microsoftonline.com/<tenant-id>/v2.0
+OIDC_SCOPE="openid email profile"
+OIDC_CLIENT_ID=your-application-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+```
+
+5) Logout:
+- Discovery provides `end_session_endpoint`; the backend redirects there with `post_logout_redirect_uri` and `id_token_hint`.
+
+If non-administrative users see *"Approval required"* (sign-in error 90095) even though admin consent is granted, check that you are running 4.0.5 or later: earlier versions forced `prompt=consent`, which Entra rejects in tenants where users cannot self-consent.
 
 ### Google (Identity Platform)
 

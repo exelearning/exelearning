@@ -76,6 +76,27 @@ describe('blockIconRuntime', () => {
     expect(runtime.deriveBlockIcon(null)).toEqual({ source: 'none', value: '' });
   });
 
+  it('deriveBlockIcon maps theme icon names a shipped style has since renamed', () => {
+    const runtime = require('./blockIconRuntime.js');
+
+    // `objetives` shipped in every release from v4.0.0 to v4.0.3; `think-alt` only ever
+    // reached v4.0.4 pre-release projects, since educablue arrived after v4.0.3. Both are
+    // in saved projects, which is the whole reason the table exists.
+    expect(runtime.deriveBlockIcon('objetives')).toEqual({ source: 'theme', value: 'objectives' });
+    expect(runtime.deriveBlockIcon('think-alt')).toEqual({ source: 'theme', value: 'think_alt' });
+  });
+
+  it('resolveRenamedThemeIcon leaves untouched names and prototype members alone', () => {
+    const runtime = require('./blockIconRuntime.js');
+
+    for (const [stored, current] of Object.entries(runtime.RENAMED_THEME_ICONS)) {
+      expect(runtime.resolveRenamedThemeIcon(stored)).toBe(current);
+    }
+    expect(runtime.resolveRenamedThemeIcon('objectives')).toBe('objectives');
+    expect(runtime.resolveRenamedThemeIcon('constructor')).toBe('constructor');
+    expect(runtime.resolveRenamedThemeIcon('')).toBe('');
+  });
+
   it('renderMaterialMaskIcon emits a placeholder before the sprite is loaded', () => {
     const runtime = require('./blockIconRuntime.js');
     const html = runtime.renderMaterialMaskIcon('alarm');
@@ -95,6 +116,36 @@ describe('blockIconRuntime', () => {
     expect(html).not.toContain('data-exe-material-icon');
     const encoded = html.match(/url\('([^']+)'\)/)[1].replace('data:image/svg+xml;utf8,', '');
     expect(decodeURIComponent(encoded)).toContain('<path d="M40-200Z"/>');
+  });
+
+  it('renderMaterialInlineIcon emits a hydration placeholder before the sprite is loaded', () => {
+    const runtime = require('./blockIconRuntime.js');
+    const html = runtime.renderMaterialInlineIcon('alarm');
+
+    expect(html).toContain('class="exe-material-icon"');
+    expect(html).toContain('data-exe-material-icon="alarm"');
+    expect(html).not.toContain('<use');
+  });
+
+  it('renderMaterialInlineIcon inlines the symbol once the sprite is loaded (no external <use>)', () => {
+    const runtime = require('./blockIconRuntime.js');
+    runtime.loadMaterialSprite(SPRITE);
+    const html = runtime.renderMaterialInlineIcon('alarm');
+
+    expect(html).toBe(
+      '<svg class="exe-material-icon-sprite" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M40-200Z"/></svg>',
+    );
+    expect(html).not.toContain('<use');
+    expect(html).not.toContain('material-icons.svg');
+  });
+
+  it('renderMaterialInlineIcon falls back to the help glyph for unknown or off-catalog names', () => {
+    const runtime = require('./blockIconRuntime.js');
+    runtime.loadMaterialSprite(SPRITE);
+
+    expect(runtime.renderMaterialInlineIcon('missing-symbol')).toContain('<path d="M1-1Z"/>');
+    expect(runtime.renderMaterialInlineIcon('lightbulb', { catalog: ['alarm'] })).toContain('<path d="M1-1Z"/>');
+    expect(runtime.renderMaterialInlineIcon('lightbulb', { catalog: ['lightbulb'] })).toContain('<path d="M10-10Z"/>');
   });
 
   it('loadMaterialSprite parses the sprite and reports it loaded', () => {

@@ -419,6 +419,31 @@ describe('ResourceCache', () => {
       await cache.init();
     });
 
+    it.each(['v4.0.4', 'v4.0.4-rc.1'])('preserves plain and composite entries for %s', async (version) => {
+      const files = new Map([['test.js', new Blob(['cached resource'])]]);
+      await cache.set('theme', 'base', version, files);
+      await cache.set('libs', 'base', `${version}-abcdef12`, files);
+      await cache.set('theme', 'site-1', `${version}-1712345678`, files);
+      await cache.set('theme', 'base', 'v4.0.3', files);
+      await cache.set('libs', 'base', 'v4.0.3-abcdef12', files);
+      await cache.set('theme', 'site-1', 'v4.0.3-1712345678', files);
+      await cache.set('libs', 'base', `${version}0-abcdef12`, files);
+
+      expect(await cache.clearOldVersions(version)).toBe(4);
+      expect(storedResources.size).toBe(3);
+      expect(await cache.get('theme', 'base', version)).toEqual(files);
+      expect(await cache.get('libs', 'base', `${version}-abcdef12`)).toEqual(files);
+      expect(await cache.get('theme', 'site-1', `${version}-1712345678`)).toEqual(files);
+      expect(await cache.clearOldVersions(version)).toBe(0);
+    });
+
+    it.each([undefined, null, 404])('removes invalid version %s without interrupting cleanup', async (version) => {
+      await cache.set('libs', 'base', version, new Map());
+
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(1);
+      expect(storedResources.size).toBe(0);
+    });
+
     it('keeps only current version entries', async () => {
       storedResources.set('theme:base:v3.0.0', { key: 'theme:base:v3.0.0', version: 'v3.0.0' });
       storedResources.set('theme:base:v3.1.0', { key: 'theme:base:v3.1.0', version: 'v3.1.0' });
@@ -430,6 +455,137 @@ describe('ResourceCache', () => {
       expect(storedResources.has('theme:base:v3.0.0')).toBe(false);
       expect(storedResources.has('theme:base:v3.1.0')).toBe(true);
       expect(storedResources.has('theme:flux:v3.1.0')).toBe(true);
+    });
+
+    /**
+     * Store an entry directly so cleanup order and timestamps stay deterministic,
+     * unlike set() which stamps cachedAt with Date.now().
+     */
+    const storeEntry = (type, name, version, cachedAt) => {
+      const key = `${type}:${name}:${version}`;
+      storedResources.set(key, { key, type, name, version, cachedAt, files: [] });
+      return key;
+    };
+
+    it('removes superseded composite entries for the same resource', async () => {
+      const oldest = storeEntry('theme', 'site-1', 'v4.0.4-1712000000', 1000);
+      const middle = storeEntry('theme', 'site-1', 'v4.0.4-1712500000', 2000);
+      const newest = storeEntry('theme', 'site-1', 'v4.0.4-1712999999', 3000);
+
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(2);
+      expect(storedResources.has(oldest)).toBe(false);
+      expect(storedResources.has(middle)).toBe(false);
+      expect(storedResources.has(newest)).toBe(true);
+    });
+
+    it('keeps the newest entry regardless of cleanup order', async () => {
+      const newest = storeEntry('libs', 'base', 'v4.0.4-ffffffff', 3000);
+      const older = storeEntry('libs', 'base', 'v4.0.4-aaaaaaaa', 1000);
+
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(1);
+      expect(storedResources.has(newest)).toBe(true);
+      expect(storedResources.has(older)).toBe(false);
+    });
+
+    it('prunes each resource independently', async () => {
+      const staleTheme = storeEntry('theme', 'site-1', 'v4.0.4-1712000000', 1000);
+      const freshTheme = storeEntry('theme', 'site-1', 'v4.0.4-1712999999', 2000);
+      const otherTheme = storeEntry('theme', 'site-2', 'v4.0.4-1712000000', 1000);
+      const staleLibs = storeEntry('libs', 'base', 'v4.0.4-aaaaaaaa', 1000);
+      const freshLibs = storeEntry('libs', 'base', 'v4.0.4-bbbbbbbb', 2000);
+
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(2);
+      expect(storedResources.has(staleTheme)).toBe(false);
+      expect(storedResources.has(freshTheme)).toBe(true);
+      expect(storedResources.has(otherTheme)).toBe(true);
+      expect(storedResources.has(staleLibs)).toBe(false);
+      expect(storedResources.has(freshLibs)).toBe(true);
+    });
+
+    it('treats entries without a usable timestamp as oldest', async () => {
+      const undated = storeEntry('libs', 'base', 'v4.0.4-aaaaaaaa', undefined);
+      const dated = storeEntry('libs', 'base', 'v4.0.4-bbbbbbbb', 1000);
+
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(1);
+      expect(storedResources.has(undated)).toBe(false);
+      expect(storedResources.has(dated)).toBe(true);
+    });
+
+    it('keeps the first entry seen when timestamps tie', async () => {
+      const first = storeEntry('libs', 'base', 'v4.0.4-aaaaaaaa', 1000);
+      const second = storeEntry('libs', 'base', 'v4.0.4-bbbbbbbb', 1000);
+
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(1);
+      expect(storedResources.has(first)).toBe(true);
+      expect(storedResources.has(second)).toBe(false);
+    });
+
+    it('keeps entries that carry no groupable metadata', async () => {
+      storedResources.set('legacy:one:v4.0.4', { key: 'legacy:one:v4.0.4', version: 'v4.0.4' });
+      storedResources.set('legacy:two:v4.0.4', { key: 'legacy:two:v4.0.4', version: 'v4.0.4' });
+
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(0);
+      expect(storedResources.size).toBe(2);
+    });
+
+    it('leaves a single entry per resource untouched on the next run', async () => {
+      storeEntry('theme', 'site-1', 'v4.0.4-1712000000', 1000);
+      storeEntry('theme', 'site-1', 'v4.0.4-1712999999', 2000);
+
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(1);
+      expect(await cache.clearOldVersions('v4.0.4')).toBe(0);
+      expect(storedResources.size).toBe(1);
+    });
+  });
+
+  describe('buildResourceGroupKey', () => {
+    it('groups entries by type and name', () => {
+      const entry = { type: 'theme', name: 'site-1', version: 'v4.0.4-1712000000' };
+
+      expect(ResourceCache.buildResourceGroupKey(entry)).toBe('theme:site-1');
+    });
+
+    it.each([
+      ['missing entry', undefined],
+      ['missing type', { name: 'site-1' }],
+      ['missing name', { type: 'theme' }],
+      ['non-string type', { type: 1, name: 'site-1' }],
+      ['non-string name', { type: 'theme', name: 1 }],
+    ])('returns null for %s', (_label, entry) => {
+      expect(ResourceCache.buildResourceGroupKey(entry)).toBeNull();
+    });
+  });
+
+  describe('getCachedAt', () => {
+    it('returns the stored timestamp', () => {
+      expect(ResourceCache.getCachedAt({ cachedAt: 1712000000 })).toBe(1712000000);
+    });
+
+    it.each([
+      ['missing entry', undefined],
+      ['missing timestamp', {}],
+      ['string timestamp', { cachedAt: '1712000000' }],
+      ['NaN timestamp', { cachedAt: Number.NaN }],
+      ['infinite timestamp', { cachedAt: Number.POSITIVE_INFINITY }],
+    ])('returns 0 for %s', (_label, entry) => {
+      expect(ResourceCache.getCachedAt(entry)).toBe(0);
+    });
+  });
+
+  describe('isNewerEntry', () => {
+    it('accepts any candidate when no entry is held yet', () => {
+      expect(ResourceCache.isNewerEntry({ cachedAt: 0 }, undefined)).toBe(true);
+    });
+
+    it('accepts a strictly newer candidate', () => {
+      expect(ResourceCache.isNewerEntry({ cachedAt: 2000 }, { cachedAt: 1000 })).toBe(true);
+    });
+
+    it.each([
+      ['older', 500],
+      ['equal', 1000],
+    ])('rejects a %s candidate', (_label, cachedAt) => {
+      expect(ResourceCache.isNewerEntry({ cachedAt }, { cachedAt: 1000 })).toBe(false);
     });
   });
 

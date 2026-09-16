@@ -618,51 +618,6 @@ export interface AssetResolverOptions {
 // =============================================================================
 
 /**
- * xAPI runtime configuration serialized into `window.exeXapi` and consumed by
- * the always-on emitter (`public/app/common/xapi/exe_xapi.js`).
- *
- * This type is the single source of truth for the config shape: every key here
- * is read by the emitter, and the emitter reads nothing that is not declared
- * here. Keep it aligned with `exe_xapi.js#_resolveConfig`.
- *
- * Identity keys (always populated by the server-side exporters):
- * - `odeId`        – the ODE identifier; used to derive a stable base IRI.
- * - `baseIri`      – explicit base IRI; defaults to `https://exelearning.net/xapi/<odeId>`.
- * - `activityId`   – the root activity IRI; defaults to `baseIri`.
- * - `packageTitle` – human-readable activity name.
- * - `language`     – BCP-47 language tag for language-map values (default `en`).
- *
- * Delivery keys (OPT-IN, currently NOT populated by the exporters):
- * - `parentOrigin` – when set, statements are postMessage'd only to this exact
- *   parent window origin instead of broadcasting to `'*'`. Restricting the
- *   origin lets the emitter forward the real (possibly identifying) actor
- *   safely; without it the emitter broadcasts an anonymous actor to any host.
- * - `actor`        – a pre-resolved xAPI actor (e.g. injected by an embedding
- *   LMS host). When absent, the emitter falls back to the launch URL actor or
- *   an anonymous account.
- * - `registration` – an xAPI registration UUID grouping statements into one
- *   attempt; falls back to the launch URL `registration` param.
- *
- * The delivery keys are intentionally optional and unset by the default export
- * pipeline. Wiring them through requires runtime context (the embedding origin /
- * LMS-provided actor) that the static exporter does not have, so origin-restricted
- * postMessage delivery is opt-in and supplied by the embedding bridge at runtime.
- */
-export interface XapiConfig {
-    odeId?: string;
-    baseIri?: string;
-    activityId?: string;
-    packageTitle?: string;
-    language?: string;
-    /** Opt-in: restrict postMessage delivery to this exact parent origin. */
-    parentOrigin?: string;
-    /** Opt-in: pre-resolved xAPI actor (object); shape per the xAPI spec. */
-    actor?: Record<string, unknown>;
-    /** Opt-in: xAPI registration UUID grouping statements into one attempt. */
-    registration?: string;
-}
-
-/**
  * Page rendering options
  */
 export interface PageRenderOptions {
@@ -682,12 +637,6 @@ export interface PageRenderOptions {
 
     /** Application version string (e.g., "v3.0.0") for generator meta tag */
     version?: string;
-
-    /**
-     * xAPI runtime config injected into <head> as `window.exeXapi` so the
-     * always-on emitter (exe_xapi.js) can build stable per-iDevice IRIs.
-     */
-    xapi?: XapiConfig;
 
     // Page counter options
     totalPages?: number;

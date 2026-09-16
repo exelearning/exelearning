@@ -75,6 +75,28 @@
     return dataUri;
   }
 
+  // Resolve the parsed sprite symbol for an icon name (catalog-sanitized, with the
+  // `help` fallback), or null while the sprite is not loaded yet.
+  function getMaterialIconSymbol(iconName, options = {}) {
+    if (!isMaterialSpriteLoaded()) return null;
+    const safeName = sanitizeMaterialIconName(iconName, options.catalog);
+    return materialIconSymbols.get(safeName) || materialIconSymbols.get(MATERIAL_ICON_FALLBACK) || null;
+  }
+
+  // Self-contained inline <svg> for the icon picker grid. It must never reference
+  // the sprite file externally (<use href="…/material-icons.svg#id">): under
+  // Electron's custom app:// scheme Chromium does not share the external SVG
+  // document between <use> elements, so every option fetched and parsed the whole
+  // 1.6 MB sprite and the ~3 800-option picker froze the renderer (#2419).
+  function renderMaterialInlineIcon(iconName, options = {}) {
+    const symbol = getMaterialIconSymbol(iconName, options);
+    if (symbol) {
+      return `<svg class="exe-material-icon-sprite" viewBox="${symbol.viewBox}" fill="currentColor" aria-hidden="true">${symbol.body}</svg>`;
+    }
+    // Sprite not loaded yet: reuse the mask placeholder, hydrated by loadMaterialSprite().
+    return renderMaterialMaskIcon(iconName, options);
+  }
+
   function hydrateMaterialIcons(docRoot, options = {}) {
     if (!docRoot || typeof docRoot.querySelectorAll !== 'function') return 0;
     let count = 0;
@@ -119,6 +141,21 @@
     return MATERIAL_ICON_FALLBACK;
   }
 
+  // Theme icons whose file was renamed after a release shipped it, old name -> current name.
+  // A project stores the name its author picked, so a rename in the theme would otherwise
+  // leave those blocks resolving to a file that no longer exists. Entries are added, never
+  // removed: see the note on RENAMED_THEME_ICONS in src/shared/block-icon.ts, of which this
+  // is the JS twin — keep both in sync.
+  const RENAMED_THEME_ICONS = {
+    objetives: 'objectives', // neo, misspelt in every release from v4.0.0 to v4.0.3
+    'think-alt': 'think_alt', // educablue, hyphenated; only in v4.0.4 pre-release projects
+  };
+
+  // Map a stored theme-icon name onto the file the themes ship today.
+  function resolveRenamedThemeIcon(value) {
+    return Object.hasOwn(RENAMED_THEME_ICONS, value) ? RENAMED_THEME_ICONS[value] : value;
+  }
+
   // Derive a structured block-icon descriptor from a legacy iconName string.
   // JS twin of src/shared/block-icon.ts (deriveBlockIcon) — keep both in sync.
   function deriveBlockIcon(iconName) {
@@ -126,7 +163,7 @@
     if (!name) return { source: 'none', value: '' };
     if (name.startsWith('mi-')) return { source: 'material', value: name.slice(3) };
     if (name.startsWith('asset://') || name.startsWith('/')) return { source: 'asset', value: name };
-    return { source: 'theme', value: name };
+    return { source: 'theme', value: resolveRenamedThemeIcon(name) };
   }
 
   function renderMaterialMaskIcon(iconName, options = {}) {
@@ -143,9 +180,13 @@
   return {
     MATERIAL_ICON_FALLBACK,
     MATERIAL_ICON_MASK_STYLE,
+    RENAMED_THEME_ICONS,
     resolveAppAssetUrl,
+    resolveRenamedThemeIcon,
     deriveBlockIcon,
     renderMaterialMaskIcon,
+    renderMaterialInlineIcon,
+    getMaterialIconSymbol,
     parseMaterialIconSprite,
     loadMaterialSprite,
     isMaterialSpriteLoaded,

@@ -6,7 +6,7 @@
  *    edicuatex/exe_tooltips/exe_media, and never app/common/scorm, whose two
  *    vendored pipwerks files carry a byte-identity contract);
  *  - only editor-side files that are NOT copied into exported packages
- *    (common.js, common_i18n.js, exe_export.js, xapi and the exe_* library
+ *    (common.js, common_i18n.js, exe_export.js and the exe_* library
  *    dirs feed exports, so they are excluded to keep exported packages
  *    byte-identical between server and static modes);
  *  - already-minified artifacts (*.min.js, *.bundle.js) are skipped.

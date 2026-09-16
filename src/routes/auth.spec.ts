@@ -967,7 +967,7 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(404);
         });
 
-        it('should redirect to OpenID when properly configured', async () => {
+        it('should redirect to OpenID without forcing consent when properly configured', async () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             const prevEndpoint = process.env.OIDC_AUTHORIZATION_ENDPOINT;
             const prevClientId = process.env.OIDC_CLIENT_ID;
@@ -985,6 +985,14 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const location = response.headers.get('location');
             expect(location).toContain('oidc.example.com');
+            const params = new URL(location!).searchParams;
+            expect(params.has('prompt')).toBe(false);
+            expect(params.get('client_id')).toBe('test-client-id');
+            expect(params.get('response_type')).toBe('code');
+            expect(params.get('code_challenge_method')).toBe('S256');
+            expect(params.get('code_challenge')).toBeTruthy();
+            expect(params.get('state')).toBeTruthy();
+            expect(params.get('nonce')).toBeTruthy();
         });
 
         it('should handle proxy headers gracefully (proxy trust verified in proxy-url.util.spec.ts)', async () => {
@@ -1071,6 +1079,7 @@ describe('Auth Routes', () => {
 
             expect(response.status).toBe(302);
             expect(response.headers.get('location')).toContain(`${issuer}/authorize`);
+            expect(new URL(response.headers.get('location')!).searchParams.has('prompt')).toBe(false);
         });
 
         it('prefers an explicit authorization endpoint over the discovered one', async () => {

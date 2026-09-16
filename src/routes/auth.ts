@@ -810,7 +810,6 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     nonce,
                     code_challenge: codeChallenge,
                     code_challenge_method: 'S256',
-                    prompt: 'consent',
                 });
 
                 // Build cookies to set (OIDC state + optional returnUrl)
