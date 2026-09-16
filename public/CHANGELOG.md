@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v4.0.4 – 2026-09-15
+## v4.0.5 – 2026-09-16
 
 ### Added
 
@@ -80,6 +80,7 @@
 - File → Open: fixed the colours of the Delete button
 - Admin panel: fixed the contrast of the Source column in Styles Management
 - Preview: PDFs embedded in a Text iDevice are now displayed correctly in Docker and static deployments
+- Preview: fixed timeouts caused by outdated preview workers after upgrading eXeLearning
 - Math: fixed inconsistencies caused by mixing incompatible MathJax versions and reduced the size of exports containing formulas
 - Math editor: formula previews are now announced correctly by screen readers instead of as unlabelled images
 - Math editor: the menu editor no longer downloads part of its interface from external services, so it also works in offline and desktop installations
@@ -115,6 +116,12 @@
 
 - Deprecated `@elysiajs/cookie` dependency and unnecessary type stub packages
 - Exported packages no longer emit xAPI statements. The emitter had no known consumer after Moodle tracking was consolidated on SCORM; SCORM tracking and grading are unchanged, and already-exported packages keep working because they bundle their own runtime
+
+---
+
+## v4.0.4
+
+404 Not Found. The requested release was not found in this project.
 
 ---
 

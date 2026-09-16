@@ -38,7 +38,7 @@ describe('Preview Service Worker', () => {
 
     describe('Constants', () => {
         it('should have SW_VERSION defined', () => {
-            expect(SW_VERSION).toBe('1.0.0');
+            expect(SW_VERSION).toBe('1.1.0');
         });
 
         it('should have MIME_TYPES with common file types', () => {
