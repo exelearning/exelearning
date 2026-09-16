@@ -334,6 +334,12 @@ var $exeDevice = {
             data.weighted
         );
 
+        // Before setMaxScore runs, so a rubric saved with a mark keeps it and
+        // only one saved without ever having had the field gets the seed.
+        if (typeof data.passScore !== 'undefined' && data.passScore !== '') {
+            $('#ri_PassScore').val(data.passScore);
+        }
+
         this.originalData = data;
     },
 
@@ -1181,6 +1187,43 @@ var $exeDevice = {
         }
         res = Math.round(res * 10) / 10;
         $('#ri_MaxScore').val(res);
+        $exeDevice.seedPassScore(res);
+    },
+
+    /**
+     * Seed the pass mark the first time the author sees the rubric.
+     *
+     * Half the maximum is a defensible starting point and, unlike the shared
+     * 0-10 control, this one is on the rubric's own scale -- an author reading
+     * "16" above needs to answer in those units, not out of ten.
+     *
+     * Only ever seeded when the field is empty: once the author has typed a
+     * mark, recomputing the maximum (adding a row, editing a score) must not
+     * overwrite their decision.
+     *
+     * @param {number} maxScore The rubric's maximum, as just computed.
+     */
+    seedPassScore: function (maxScore) {
+        var $field = $('#ri_PassScore');
+        if ($field.length === 0 || $.trim($field.val()) !== '') return;
+        var max = parseFloat(maxScore);
+        // No usable maximum yet -- an empty table, or scores not filled in --
+        // so there is nothing to halve.
+        var seed = isFinite(max) && max > 0 ? Math.round((max / 2) * 10) / 10 : 0;
+        $field.val(seed);
+    },
+
+    /**
+     * The pass mark on the rubric's own scale, clamped to it.
+     *
+     * @returns {number} A mark between 0 and the maximum.
+     */
+    getPassScore: function () {
+        var raw = parseFloat($('#ri_PassScore').val());
+        var max = parseFloat($('#ri_MaxScore').val());
+        if (!isFinite(raw) || raw < 0) raw = 0;
+        if (isFinite(max) && max > 0 && raw > max) raw = max;
+        return Math.round(raw * 10) / 10;
     },
 
     // Transform a JSON object into an HTML table
@@ -1402,6 +1445,13 @@ var $exeDevice = {
                         '</label> <input type="text" id="ri_MaxScore" readonly="readonly" aria-readonly="true" value="" /> <span id="ri_MaxScoreInstructions">' +
                         _('The result of adding the scores of the first level.') +
                         '</span>\
+                    <div id="ri_PassScoreRow">\
+                        <label for="ri_PassScore">' +
+                        _('Minimum score to pass the activity') +
+                        ':</label> <input type="text" id="ri_PassScore" value="" /> <span id="ri_PassScoreInstructions">' +
+                        _('On the same scale as the maximum score above.') +
+                        '</span>\
+                    </div>\
                 </div>\
                 <div class="ri-table-controls-right">\
                     <input type="button" id="ri_AppendCol" class="btn btn-primary" value="' +
@@ -1741,6 +1791,10 @@ var $exeDevice = {
         data.textButtonScorm = scorm.textButtonScorm;
         data.repeatActivity = scorm.repeatActivity;
         data.weighted = $exeDevice.normalizeWeight(scorm.weighted);
+        // Stored on the rubric's own scale, not converted to 0-10 here: an
+        // author who later adds a row still means "they need 8 points", and a
+        // stored 5-out-of-10 would silently become a different number of points.
+        data.passScore = $exeDevice.getPassScore();
 
         var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
         var textAfter = textAfterEditor

@@ -990,4 +990,95 @@ describe('rubric iDevice CSV tools (edition)', () => {
       expect($exeDevice.normalizeWeight('abc')).toBe(100);
     });
   });
+
+  /**
+   * The rubric grades on its own scale -- 0 to whatever the first level adds up
+   * to -- so its pass mark is set in those units rather than out of ten, right
+   * below the maximum the author is already reading.
+   */
+  describe('pass score', () => {
+    beforeEach(() => {
+      document.body.innerHTML =
+        '<input id="ri_MaxScore" value="" /><input id="ri_PassScore" value="" />';
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    describe('seedPassScore', () => {
+      it('starts at half the maximum', () => {
+        $exeDevice.seedPassScore(16);
+
+        expect($('#ri_PassScore').val()).toBe('8');
+      });
+
+      it('rounds the half to one decimal', () => {
+        $exeDevice.seedPassScore(7);
+
+        expect($('#ri_PassScore').val()).toBe('3.5');
+      });
+
+      it.each([
+        ['no maximum yet', 0],
+        ['an unusable maximum', Number.NaN],
+        ['a missing maximum', undefined],
+      ])('starts at zero with %s', (_label, max) => {
+        $exeDevice.seedPassScore(max);
+
+        expect($('#ri_PassScore').val()).toBe('0');
+      });
+
+      it('never overwrites a mark the author already typed', () => {
+        // setMaxScore runs on every edit to the table; re-seeding there would
+        // undo the author's decision each time they touched a score.
+        $('#ri_PassScore').val('3');
+
+        $exeDevice.seedPassScore(16);
+
+        expect($('#ri_PassScore').val()).toBe('3');
+      });
+    });
+
+    describe('getPassScore', () => {
+      it('reads the mark as typed', () => {
+        $('#ri_MaxScore').val('16');
+        $('#ri_PassScore').val('8.5');
+
+        expect($exeDevice.getPassScore()).toBe(8.5);
+      });
+
+      it('clamps a mark above the maximum', () => {
+        $('#ri_MaxScore').val('16');
+        $('#ri_PassScore').val('99');
+
+        expect($exeDevice.getPassScore()).toBe(16);
+      });
+
+      it.each([
+        ['an empty field', ''],
+        ['text', 'abc'],
+        ['a negative mark', '-4'],
+      ])('answers zero for %s', (_label, value) => {
+        $('#ri_MaxScore').val('16');
+        $('#ri_PassScore').val(value);
+
+        expect($exeDevice.getPassScore()).toBe(0);
+      });
+    });
+
+    it('is seeded from setMaxScore, so the field is never blank', () => {
+      document.body.innerHTML = `
+        <input id="ri_MaxScore" value="" /><input id="ri_PassScore" value="" />
+        <table id="ri_TableEditor"><tbody>
+          <tr><td><input value="x" /><input value="6" /></td></tr>
+          <tr><td><input value="x" /><input value="4" /></td></tr>
+        </tbody></table>`;
+
+      $exeDevice.setMaxScore();
+
+      expect($('#ri_MaxScore').val()).toBe('10');
+      expect($('#ri_PassScore').val()).toBe('5');
+    });
+  });
 });

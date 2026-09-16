@@ -140,6 +140,10 @@ var $rubric = {
             textButtonScorm: stored.textButtonScorm || '',
             repeatActivity: true,
             weighted: $rubric.normalizeWeight(stored.weighted),
+            // In the rubric's own units, as the author typed it. Listed here
+            // because this object is built field by field rather than spread
+            // from `stored`, so anything unlisted never reaches the runtime.
+            passScore: stored.passScore,
         };
     },
 
@@ -1514,6 +1518,29 @@ var $rubric = {
         return clamp(normalized, 0, 10);
     },
 
+    /**
+     * The author's pass mark, on the 0-10 scale the rest of the system judges
+     * activities with.
+     *
+     * The author sets it in the rubric's own units -- 8 out of a maximum of 16
+     * -- because that is what they are reading on screen. The conversion uses
+     * the maximum the table has *now*, so a rubric that grew a row still asks
+     * for the same number of points rather than the same fraction.
+     *
+     * @param {Object} data The stored options (passScore in rubric units).
+     * @param {jQuery} table The rendered rubric.
+     * @returns {number|null} A mark in [0, 10], or null when the rubric has no
+     * usable maximum and nothing can be judged.
+     */
+    calculatePassScore: function (data, table) {
+        var raw = parseFloat(data && data.passScore);
+        if (!isFinite(raw)) return null;
+        var maxScore = this.calculateTableMaxScore(table);
+        if (isNaN(maxScore) || maxScore <= 0) return null;
+        var tenScale = (raw / maxScore) * 10;
+        return Math.max(0, Math.min(Math.round(tenScale * 100) / 100, 10));
+    },
+
     restoreVisibleScoreFromLms: function (data) {
         if (!data || !data.scormGame) return;
 
@@ -1651,6 +1678,17 @@ var $rubric = {
         // attempt, which the completion policy allows because the verdict it is
         // taking back is one it wrote itself.
         game.gameOver = complete;
+
+        // The author's own pass mark, converted to the 0-10 scale everything
+        // else judges on. Declared as a customised mark so that wherever the
+        // shared code asks whether this activity was passed -- $exe.passScore
+        // .resolve() -- it answers with the rubric's threshold and not with the
+        // project default, which is in units this activity does not use.
+        var passScore = this.calculatePassScore(data, $table);
+        if (passScore !== null) {
+            game.passScoreMode = 'custom';
+            game.passScoreCustom = passScore;
+        }
 
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, game);
