@@ -194,7 +194,18 @@ export default class App {
     }
 
     /**
-     * Register the preview Service Worker
+     * Register the preview Service Worker.
+     *
+     * The flow is defensive on purpose (GitHub issue #2429). A browser profile can keep a
+     * preview-sw.js registration whose worker reports "activated" but never answers messages
+     * (seen in Firefox after preview-sw.js changed between builds), and pre-4.0.0 builds
+     * registered the worker at the root scope, which shadows the /viewer/ registration.
+     * Therefore:
+     *   1. preview registrations whose scope contains the preview scope are removed,
+     *   2. the /viewer/ registration is registered (or adopted) and awaited,
+     *   3. the worker is pinged and re-registered once when it does not answer.
+     * When even that fails the promise resolves null and getPreviewServiceWorker() returns
+     * null, so the preview panel falls back to blob URLs instead of showing an error.
      * @returns {Promise<ServiceWorkerRegistration|null>} Registration promise
      */
     registerPreviewServiceWorker() {
@@ -222,59 +233,190 @@ export default class App {
         // (not necessarily the static asset path for Service Worker registration).
         const basePath = this._resolvePreviewServiceWorkerBasePath();
         const swPath = basePath + 'preview-sw.js';
+        // Use a dedicated scope suffix to avoid conflicts with the PWA SW
+        const previewScope = basePath + 'viewer/';
+        this._previewSwUnavailable = false;
 
         this._previewSwRegistrationPromise = (async () => {
             try {
-                // Check for existing preview SW registration
-                // Note: In static mode, PWA SW (service-worker.js) may share the same scope
-                // We need to verify the registration is specifically for preview-sw.js
-                let registration = await navigator.serviceWorker.getRegistration(basePath);
+                await this._unregisterStalePreviewWorkers(previewScope);
 
-                // Check if existing registration is for preview-sw.js (not PWA SW)
-                const isPreviewSw =
-                    registration?.active?.scriptURL?.endsWith('preview-sw.js') ||
-                    registration?.installing?.scriptURL?.endsWith('preview-sw.js') ||
-                    registration?.waiting?.scriptURL?.endsWith('preview-sw.js');
+                let registration = await this._installPreviewServiceWorker(swPath, previewScope);
 
-                if (registration?.active && isPreviewSw) {
-                    await registration.update();
-                    this._previewSwRegistration = registration;
-                    await this._tryClaimClients(registration);
-                    return registration;
+                const status = await this.pingPreviewServiceWorker(registration.active);
+                if (!status) {
+                    console.warn('[Preview SW] Registered worker does not answer, re-registering it');
+                    registration = await this._recoverPreviewServiceWorker(swPath, previewScope);
                 }
-
-                // Register preview SW (will create a new registration or update existing)
-                // Use a unique scope suffix to avoid conflicts with PWA SW
-                const previewScope = basePath + 'viewer/';
-                registration = await navigator.serviceWorker.register(swPath, {
-                    scope: previewScope,
-                });
-                this._previewSwRegistration = registration;
-
-                // Wait for activation
-                await this._waitForActivation(registration);
-                await this._tryClaimClients(registration);
-
-                // Handle future updates
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    if (newWorker) {
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                            }
-                        });
-                    }
-                });
 
                 return registration;
             } catch (error) {
                 console.error('[Preview SW] Registration failed:', error);
+                this._previewSwRegistration = null;
+                this._previewSwUnavailable = true;
                 return null;
             }
         })();
 
         return this._previewSwRegistrationPromise;
+    }
+
+    /**
+     * Whether a Service Worker script URL is the preview worker.
+     * @param {string|undefined} scriptURL
+     * @returns {boolean}
+     * @private
+     */
+    _isPreviewServiceWorkerScript(scriptURL) {
+        return this._toPathname(scriptURL).endsWith('/preview-sw.js');
+    }
+
+    /**
+     * Pathname of an absolute URL or absolute path; empty string when it cannot be parsed.
+     * @param {string|undefined} value
+     * @returns {string}
+     * @private
+     */
+    _toPathname(value) {
+        if (!value) return '';
+        try {
+            return new URL(String(value), 'http://localhost').pathname;
+        } catch {
+            return '';
+        }
+    }
+
+    /**
+     * Unregister preview-sw.js registrations whose scope contains the preview scope.
+     *
+     * Such registrations (e.g. scope "/" left behind by pre-4.0.0 builds) are returned by
+     * getRegistration() lookups and control the editor page, so the app used to adopt them
+     * instead of the /viewer/ worker. Registrations of other deployments on the same origin
+     * (sibling scopes) and non-preview workers (PWA service-worker.js) are left untouched.
+     * @param {string} previewScope - Expected preview scope (absolute path or URL)
+     * @returns {Promise<string[]>} Scopes that were unregistered
+     * @private
+     */
+    async _unregisterStalePreviewWorkers(previewScope) {
+        let registrations;
+        try {
+            registrations = await navigator.serviceWorker.getRegistrations();
+        } catch (error) {
+            console.warn('[Preview SW] Could not list registrations:', error);
+            return [];
+        }
+
+        // Registrations are same-origin by definition, so scopes are compared by path.
+        const expectedPath = this._toPathname(previewScope);
+        const stale = registrations.filter((registration) => {
+            const worker = registration.active || registration.waiting || registration.installing;
+            if (!this._isPreviewServiceWorkerScript(worker?.scriptURL)) return false;
+            const scopePath = this._toPathname(registration.scope);
+            return Boolean(scopePath) && scopePath !== expectedPath && expectedPath.startsWith(scopePath);
+        });
+
+        await Promise.all(
+            stale.map(async (registration) => {
+                console.warn('[Preview SW] Removing stale registration with scope', registration.scope);
+                try {
+                    await registration.unregister();
+                } catch (error) {
+                    console.warn('[Preview SW] Could not unregister', registration.scope, error);
+                }
+            })
+        );
+
+        return stale.map((registration) => registration.scope);
+    }
+
+    /**
+     * Register the preview worker for the preview scope and wait until it is usable.
+     * register() returns the existing registration when scope and script URL match.
+     * @param {string} swPath - Worker script path
+     * @param {string} previewScope - Registration scope
+     * @returns {Promise<ServiceWorkerRegistration>}
+     * @private
+     */
+    async _installPreviewServiceWorker(swPath, previewScope) {
+        const registration = await navigator.serviceWorker.register(swPath, { scope: previewScope });
+        this._previewSwRegistration = registration;
+
+        await this._waitForActivation(registration);
+        await this._tryClaimClients(registration);
+
+        // Handle future updates
+        registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                });
+            }
+        });
+
+        return registration;
+    }
+
+    /**
+     * Ask the worker for its status over a MessageChannel.
+     * A registration can report an "activated" worker that no longer runs its message
+     * handler; this is the only way to tell such a worker from a healthy one.
+     * @param {ServiceWorker|null} sw
+     * @param {number} timeoutMs - Time to wait for the STATUS reply
+     * @returns {Promise<Object|null>} STATUS payload, or null when the worker did not answer
+     */
+    pingPreviewServiceWorker(sw, timeoutMs = 3000) {
+        if (!sw || sw.state === 'redundant' || typeof sw.postMessage !== 'function') {
+            return Promise.resolve(null);
+        }
+
+        return new Promise((resolve) => {
+            const channel = new MessageChannel();
+            let timer = null;
+            const finish = (value) => {
+                clearTimeout(timer);
+                channel.port1.close();
+                resolve(value);
+            };
+            timer = setTimeout(() => finish(null), timeoutMs);
+            channel.port1.onmessage = (event) => {
+                finish(event.data?.type === 'STATUS' ? event.data : null);
+            };
+            try {
+                sw.postMessage({ type: 'GET_STATUS' }, [channel.port2]);
+            } catch {
+                finish(null);
+            }
+        });
+    }
+
+    /**
+     * Replace the preview worker registration with a fresh one and verify it answers.
+     * @param {string} swPath - Worker script path
+     * @param {string} previewScope - Registration scope
+     * @returns {Promise<ServiceWorkerRegistration>}
+     * @private
+     */
+    async _recoverPreviewServiceWorker(swPath, previewScope) {
+        const current = this._previewSwRegistration;
+        if (current) {
+            try {
+                await current.unregister();
+            } catch (error) {
+                console.warn('[Preview SW] Could not unregister the stale worker:', error);
+            }
+        }
+        this._previewSwRegistration = null;
+
+        const registration = await this._installPreviewServiceWorker(swPath, previewScope);
+        const status = await this.pingPreviewServiceWorker(registration.active);
+        if (!status) {
+            this._previewSwRegistration = null;
+            throw new Error('Preview Service Worker does not answer after re-registration');
+        }
+        return registration;
     }
 
     /**
@@ -393,9 +535,15 @@ export default class App {
             return this._previewSwRegistration.active;
         }
 
+        // Registration gave up (worker never answered, even after re-registering): a stale
+        // root-scope worker may still control this page, but it must not be used.
+        if (this._previewSwUnavailable) {
+            return null;
+        }
+
         // Fallback: check if controller is the preview SW (not PWA SW)
         const controller = navigator.serviceWorker?.controller;
-        if (controller?.scriptURL?.endsWith('preview-sw.js')) {
+        if (this._isPreviewServiceWorkerScript(controller?.scriptURL)) {
             return controller;
         }
 

@@ -1,0 +1,599 @@
+{
+  "traceVersion": 1,
+  "scenario": "s2-single-page-weighted-25-75",
+  "recordedFrom": {
+    "repo": "exelearning",
+    "ref": "642738cd0ae837d4463ecec0d0eb44dd07c9074c",
+    "exportFormat": "html5"
+  },
+  "fixtureRepairs": {
+    "isTest": true,
+    "balanceHtml": true
+  },
+  "package": {
+    "odeId": "TRACE-S2",
+    "pageCount": 1
+  },
+  "pages": [
+    {
+      "index": 0,
+      "url": "index.html",
+      "ideviceNodes": [
+        "ide-a",
+        "ide-b"
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "page": 0,
+      "idevice": "ide-a",
+      "answers": [
+        {
+          "q": 0,
+          "value": 1
+        },
+        {
+          "q": 1,
+          "value": 0
+        },
+        {
+          "q": 2,
+          "value": 1
+        },
+        {
+          "q": 3,
+          "value": 0
+        }
+      ],
+      "hits": 4,
+      "of": 4,
+      "note": "all correct, then Comprobar"
+    },
+    {
+      "page": 0,
+      "idevice": "ide-b",
+      "answers": [
+        {
+          "q": 0,
+          "value": 0
+        },
+        {
+          "q": 1,
+          "value": 1
+        },
+        {
+          "q": 2,
+          "value": 0
+        },
+        {
+          "q": 3,
+          "value": 1
+        }
+      ],
+      "hits": 0,
+      "of": 4,
+      "note": "all wrong, then Comprobar"
+    }
+  ],
+  "scorm": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSInitialize",
+      "args": [
+        ""
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 1,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.lesson_status"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 2,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 3,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 4,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 5,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity A\"; Puntuación: 0%; Peso: 25%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 6,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 7,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 8,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "0"
+    },
+    {
+      "seq": 9,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 0%; Peso: 25%"
+    },
+    {
+      "seq": 10,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 0%; Peso: 25%"
+    },
+    {
+      "seq": 11,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity A\"; Puntuación: 0%; Peso: 25%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 75%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 12,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 13,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 14,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 0%; Peso: 25%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 75%"
+    },
+    {
+      "seq": 15,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity A\"; Puntuación: 100%; Peso: 25%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 75%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 16,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "25"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 17,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 18,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 100%; Peso: 25%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 75%"
+    },
+    {
+      "seq": 19,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity A\"; Puntuación: 100%; Peso: 25%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 75%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 20,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "25"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 21,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    }
+  ],
+  "xapi": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "statement": {
+        "id": "7104d9d1-482d-4ee6-85b6-69ba4f86ee09",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S2",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/initialized",
+          "display": {
+            "en-US": "initialized"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S2",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "S2 single page weighted"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:27.766Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S2",
+            "https://exelearning.net/xapi/extensions/page-id": "page-1",
+            "https://exelearning.net/xapi/extensions/page-title": "Page One",
+            "https://exelearning.net/xapi/extensions/page-count": 1
+          }
+        }
+      }
+    },
+    {
+      "seq": 1,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "statement": {
+        "id": "82719476-ed99-4885-bc47-a0303bfacfba",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S2",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S2/idevice/ide-a",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "Activity A"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:28.065Z",
+        "result": {
+          "score": {
+            "scaled": 1,
+            "raw": 10,
+            "min": 0,
+            "max": 10
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/TRACE-S2"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S2",
+            "https://exelearning.net/xapi/extensions/page-id": "page-1",
+            "https://exelearning.net/xapi/extensions/page-title": "Page One",
+            "https://exelearning.net/xapi/extensions/page-count": 1,
+            "https://exelearning.net/xapi/extensions/idevice-id": "ide-a",
+            "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+          }
+        }
+      }
+    },
+    {
+      "seq": 2,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "statement": {
+        "id": "b81a76e0-6d48-4807-882c-9dff59874f24",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S2",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/completed",
+          "display": {
+            "en-US": "completed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S2",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "S2 single page weighted"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:28.065Z",
+        "result": {
+          "score": {
+            "scaled": 0.25,
+            "raw": 25,
+            "min": 0,
+            "max": 100
+          },
+          "success": false,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S2",
+            "https://exelearning.net/xapi/extensions/page-id": "page-1",
+            "https://exelearning.net/xapi/extensions/page-title": "Page One",
+            "https://exelearning.net/xapi/extensions/page-count": 1
+          }
+        }
+      }
+    },
+    {
+      "seq": 3,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "statement": {
+        "id": "f29bd573-e35f-49fa-b892-72a591d92070",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S2",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/failed",
+          "display": {
+            "en-US": "failed"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S2",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "S2 single page weighted"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:28.065Z",
+        "result": {
+          "score": {
+            "scaled": 0.25,
+            "raw": 25,
+            "min": 0,
+            "max": 100
+          },
+          "success": false,
+          "completion": true
+        },
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S2",
+            "https://exelearning.net/xapi/extensions/page-id": "page-1",
+            "https://exelearning.net/xapi/extensions/page-title": "Page One",
+            "https://exelearning.net/xapi/extensions/page-count": 1
+          }
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "page": 0,
+      "href": "http://exe-trace-s2.local/index.html",
+      "statement": {
+        "id": "1307381a-f62b-4251-9436-a8f531418882",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S2",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S2/idevice/ide-b",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "Activity A"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:28.548Z",
+        "result": {
+          "score": {
+            "scaled": 0,
+            "raw": 0,
+            "min": 0,
+            "max": 10
+          },
+          "success": false,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/TRACE-S2"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S2",
+            "https://exelearning.net/xapi/extensions/page-id": "page-1",
+            "https://exelearning.net/xapi/extensions/page-title": "Page One",
+            "https://exelearning.net/xapi/extensions/page-count": 1,
+            "https://exelearning.net/xapi/extensions/idevice-id": "ide-b",
+            "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+          }
+        }
+      }
+    }
+  ],
+  "finalCmi": {
+    "cmi.suspend_data": "1. \"Activity A\"; Puntuación: 100%; Peso: 25%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 75%",
+    "cmi.core.score.raw": "25",
+    "cmi.core.lesson_status": "failed"
+  },
+  "consoleErrors": [
+    "pageerror: $exe_i18n is not defined"
+  ],
+  "expected": {
+    "perItem": {
+      "ide-a": 100,
+      "ide-b": 0
+    },
+    "overall": 25,
+    "weights": {
+      "ide-a": 25,
+      "ide-b": 75
+    },
+    "note": "By hand: ide-a 4/4 hits = 100%, ide-b 0/4 hits = 0%. Weights 25+75 already sum to 100, so the normalised weights stay 25 and 75: (100*25 + 0*75)/100 = 25."
+  }
+}

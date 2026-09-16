@@ -15,9 +15,9 @@
 var eXeUniversalStyle = {
     breadcrumbs : true,
     dropdownNavigation : true,
+    darkModeWebSiteOnly : true,
     init: function () {
         // Common functions
-        if (this.inIframe()) $('body').addClass('in-iframe');
         var togglers = '';
         if (this.isLocalStorageAvailable()) {
             togglers =
@@ -32,6 +32,11 @@ var eXeUniversalStyle = {
             ';
         }
         if (!$('body').hasClass('exe-web-site')) {
+            // The stored choice is restored at parse time, before the format is known
+            if (this.darkModeWebSiteOnly) {
+                $('html').removeClass('exe-dark-mode');
+                return;
+            }
             $('.package-header').prepend(togglers);
             // Dark mode
             eXeUniversalStyle.darkMode.init();
@@ -40,30 +45,33 @@ var eXeUniversalStyle = {
         // Add menu and search bar togglers
         togglers +=
             '\
-            <button type="button" id="siteNavToggler" class="toggler" title="' +
+            <button type="button" id="siteNavToggler" class="toggler" aria-expanded="true" aria-controls="siteNav" title="' +
             $exe_i18n.menu +
             '">\
                 <span>' +
             $exe_i18n.menu +
-            '</span>\
-            </button>\
-            <button type="button" id="searchBarTogger" class="toggler" title="' +
-            $exe_i18n.search +
-            '">\
-                <span>' +
-            $exe_i18n.search +
             '</span>\
             </button>\
         ';
+        // The search box is optional: only add its toggler when it exists
+        if ($('#exe-client-search').length) {
+            togglers +=
+                '\
+                <button type="button" id="searchBarToggler" class="toggler" aria-expanded="false" aria-controls="exe-client-search" title="' +
+                $exe_i18n.search +
+                '">\
+                    <span>' +
+                $exe_i18n.search +
+                '</span>\
+                </button>\
+            ';
+        }
         $('#siteNav').before(togglers);
         // Check the current NAV status
-        var url = window.location.href;
-        url = url.split('?');
-        if (url.length > 1) {
-            if (url[1].indexOf('nav=false') != -1) {
-                $('body').addClass('siteNav-off');
-                eXeUniversalStyle.params('add');
-            }
+        if (new URLSearchParams(window.location.search).get('nav') == 'false') {
+            $('body').addClass('siteNav-off');
+            eXeUniversalStyle.navExpanded(false);
+            eXeUniversalStyle.params('add');
         }
         // Dark mode
         this.darkMode.init();
@@ -71,6 +79,7 @@ var eXeUniversalStyle = {
         $('#siteNavToggler').on('click', function () {
             if (eXeUniversalStyle.isLowRes()) {
                 $('#exe-client-search').hide();
+                $('#searchBarToggler').attr('aria-expanded', 'false');
                 if ($('body').hasClass('siteNav-off')) {
                     $('body').removeClass('siteNav-off');
                 } else {
@@ -86,27 +95,30 @@ var eXeUniversalStyle = {
                     $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
+            eXeUniversalStyle.navExpanded(!$('body').hasClass('siteNav-off'));
         });
         // Search bar toggler
-        $('#searchBarTogger').on('click', function () {
+        $('#searchBarToggler').on('click', function () {
             var bar = $('#exe-client-search');
             if (bar.is(':visible')) {
                 bar.hide();
             } else {
                 if (eXeUniversalStyle.isLowRes()) {
                     $('body').addClass('siteNav-off');
+                    eXeUniversalStyle.navExpanded(false);
                 }
                 bar.show();
                 $('#exe-client-search-text').focus();
                 window.scroll(0, 0);
             }
+            $(this).attr('aria-expanded', bar.is(':visible'));
         });
         // Allways close the menu in low resolution
-        $("#siteNav a").on('click', function(event){
+        $('#siteNav a').on('click', function(event){
             if (event.target.nodeName == 'A') {
                 if (eXeUniversalStyle.isLowRes()) {
                     event.preventDefault();
-                    window.location = this.href + '?nav=false';
+                    window.location = $exeExport.setUrlParam(this.href, 'nav', 'false');
                 }
             }
         });
@@ -129,15 +141,33 @@ var eXeUniversalStyle = {
     },
     darkMode : {
         init : function(){
-            $("#darkModeToggler").on("click",function(){
+            $('#darkModeToggler').attr('aria-pressed', $('html').hasClass('exe-dark-mode') ? 'true' : 'false');
+            $('#darkModeToggler').on('click', function(){
                 var active = 'off';
-                if (!$("html").hasClass("exe-dark-mode")) active = 'on';
+                if (!$('html').hasClass('exe-dark-mode')) active = 'on';
                 eXeUniversalStyle.darkMode.setMode(active);
+                $(this).attr('aria-pressed', active == 'on' ? 'true' : 'false');
             });
+        },
+        stored : function(){
+            try {
+                return localStorage.getItem('exeDarkMode');
+            } catch(e) {
+                return null;
+            }
+        },
+        store : function(value){
+            try {
+                if (value) {
+                    localStorage.setItem('exeDarkMode', value);
+                } else {
+                    localStorage.removeItem('exeDarkMode');
+                }
+            } catch(e) {}
         },
         setMode : function(active){
             var dark = false;
-            var darkMode = localStorage.getItem('exeDarkMode');
+            var darkMode = this.stored();
             if (darkMode && darkMode == 'on') {
                 dark = true;
             }
@@ -149,26 +179,19 @@ var eXeUniversalStyle = {
                 }
             }
             if (dark) {
-                localStorage.setItem('exeDarkMode', 'on');
-                $("html").addClass("exe-dark-mode");
+                this.store('on');
+                $('html').addClass('exe-dark-mode');
             } else {
-                localStorage.removeItem('exeDarkMode');
-                $("html").removeClass("exe-dark-mode");
+                this.store('');
+                $('html').removeClass('exe-dark-mode');
             }
-        }
-    },
-    inIframe: function () {
-        try {
-            return window.self !== window.top;
-        } catch (e) {
-            return true;
         }
     },
     searchForm: function () {
         $('#exe-client-search-text').attr('class', 'form-control');
     },
     isLowRes: function () {
-        return $(window).width() <= 576;
+        return $('#siteNav').css('position') == 'static';
     },
     truncate : function(str) {
         var max = 25;
@@ -223,62 +246,57 @@ var eXeUniversalStyle = {
         $(".package-header").prepend(breadcrumb).addClass("width-breadcrumbs");
     },
     dropdownMenus: function(){
-        if (!this.dropdownNavigation) return;
+        if (!this.dropdownNavigation) {
+            $('#siteNav .other-section').show();
+            return;
+        }
         this.dropdownMenusWorking = false;
-        $("#siteNav ul ul").each(function(i){
+        $('#siteNav ul ul').each(function(i){
             var elem = $(this);
-            this.id = "child-section-"+i;
-            var lnk = elem.prev("a");
-            var css = 'closed-ul';
-            if (elem.is(":visible")) css = 'open-ul';
-            lnk.append('<button id="child-section-'+i+'-toggler" title="'+$exe_i18n.more+'" class="'+css+'"><span>'+$exe_i18n.more+'</span></button>');
-            $("#child-section-"+i+"-toggler").on("click", function(event){
+            this.id = 'child-section-'+i;
+            var lnk = elem.prev('a');
+            var open = elem.is(':visible');
+            var css = open ? 'open-ul' : 'closed-ul';
+            lnk.append('<button id="child-section-'+i+'-toggler" title="'+$exe_i18n.more+'" class="'+css+'" aria-expanded="'+open+'" aria-controls="child-section-'+i+'"><span>'+$exe_i18n.more+'</span></button>');
+            $('#child-section-'+i+'-toggler').on('click', function(event){
                 event.preventDefault();
                 if (eXeUniversalStyle.dropdownMenusWorking == true) return;
                 eXeUniversalStyle.dropdownMenusWorking = true;
                 var id = this.id;
-                    id = id.replace("-toggler", "");
-                var ul = $("#"+id);
-                if (ul.is(":visible")) {
-                    ul.slideUp("fast", function(){
-                        var lnk = $("#"+this.id+"-toggler");
-                            lnk.removeClass("open-ul");
-                            lnk.addClass("closed-ul");
-                        // $(this).removeClass("other-section-visible");
+                    id = id.replace('-toggler', '');
+                var ul = $('#'+id);
+                if (ul.is(':visible')) {
+                    ul.slideUp('fast', function(){
+                        var lnk = $('#'+this.id+'-toggler');
+                            lnk.removeClass('open-ul');
+                            lnk.addClass('closed-ul');
+                            lnk.attr('aria-expanded', 'false');
                         eXeUniversalStyle.dropdownMenusWorking = false;
                     });
                 } else {
-                    ul.slideDown("fast", function(){
-                        var lnk = $("#"+this.id+"-toggler");
-                            lnk.removeClass("closed-ul");
-                            lnk.addClass("open-ul");
-                        // $(this).addClass("other-section-visible");
+                    ul.slideDown('fast', function(){
+                        var lnk = $('#'+this.id+'-toggler');
+                            lnk.removeClass('closed-ul');
+                            lnk.addClass('open-ul');
+                            lnk.attr('aria-expanded', 'true');
                         eXeUniversalStyle.dropdownMenusWorking = false;
                     });
                 }
             });
         })
     },
-    param: function (e, act) {
-        if (act == 'add') {
-            var ref = e.href;
-            var con = '?';
-            if (ref.indexOf('.html?') != -1) con = '&';
-            var param = 'nav=false';
-            if (ref.indexOf(param) == -1) {
-                ref += con + param;
-                e.href = ref;
-            }
-        } else {
-            // This will remove all params
-            var ref = e.href;
-            ref = ref.split('?');
-            e.href = ref[0];
-        }
+    navExpanded: function (visible) {
+        $('#siteNavToggler').attr('aria-expanded', visible ? 'true' : 'false');
+        $('#siteNav').prop('inert', !visible);
     },
+    // Toggle nav=false keeping the rest of the URL using a common function.
     params: function (act) {
+        var value = act == 'add' ? 'false' : null;
         $('.nav-buttons a').each(function () {
-            eXeUniversalStyle.param(this, act);
+            this.setAttribute(
+                'href',
+                $exeExport.setUrlParam(this.getAttribute('href'), 'nav', value)
+            );
         });
     },
 };

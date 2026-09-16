@@ -1,0 +1,724 @@
+{
+  "traceVersion": 1,
+  "scenario": "s6-multipage-stale-slot",
+  "recordedFrom": {
+    "repo": "exelearning",
+    "ref": "642738cd0ae837d4463ecec0d0eb44dd07c9074c",
+    "exportFormat": "html5"
+  },
+  "fixtureRepairs": {
+    "isTest": true,
+    "balanceHtml": true
+  },
+  "package": {
+    "odeId": "TRACE-S6",
+    "pageCount": 2
+  },
+  "pages": [
+    {
+      "index": 0,
+      "url": "index.html",
+      "ideviceNodes": [
+        "ide-a1",
+        "ide-a2"
+      ]
+    },
+    {
+      "index": 1,
+      "url": "html/page-two.html",
+      "ideviceNodes": [
+        "ide-b1",
+        "ide-b2"
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "page": 0,
+      "idevice": "ide-a1",
+      "answers": [
+        {
+          "q": 0,
+          "value": 1
+        },
+        {
+          "q": 1,
+          "value": 0
+        },
+        {
+          "q": 2,
+          "value": 1
+        },
+        {
+          "q": 3,
+          "value": 1
+        }
+      ],
+      "hits": 3,
+      "of": 4,
+      "note": "3/4 correct = 75%, then Comprobar"
+    },
+    {
+      "page": 0,
+      "idevice": "ide-a2",
+      "answers": [],
+      "hits": 0,
+      "of": 4,
+      "note": "never answered"
+    },
+    {
+      "page": 1,
+      "idevice": "ide-b1",
+      "answers": [
+        {
+          "q": 0,
+          "value": 1
+        },
+        {
+          "q": 1,
+          "value": 1
+        },
+        {
+          "q": 2,
+          "value": 1
+        },
+        {
+          "q": 3,
+          "value": 1
+        }
+      ],
+      "hits": 2,
+      "of": 4,
+      "note": "2/4 correct = 50%, then Comprobar"
+    },
+    {
+      "page": 1,
+      "idevice": "ide-b2",
+      "answers": [],
+      "hits": 0,
+      "of": 4,
+      "note": "never answered"
+    }
+  ],
+  "scorm": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSInitialize",
+      "args": [
+        ""
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 1,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.lesson_status"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 2,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 3,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 4,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": ""
+    },
+    {
+      "seq": 5,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 6,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 7,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 8,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "0"
+    },
+    {
+      "seq": 9,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+    },
+    {
+      "seq": 10,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+    },
+    {
+      "seq": 11,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity A\"; Puntuación: 0%; Peso: 100%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 12,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "0"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 13,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 14,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 0%; Peso: 100%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+    },
+    {
+      "seq": 15,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity A\"; Puntuación: 75%; Peso: 100%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 16,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "37.5"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 17,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 18,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSInitialize",
+      "args": [
+        ""
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 19,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.lesson_status"
+      ],
+      "ret": "failed"
+    },
+    {
+      "seq": 20,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSCommit",
+      "args": [
+        ""
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 21,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "37.5"
+    },
+    {
+      "seq": 22,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 75%; Peso: 100%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+    },
+    {
+      "seq": 23,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "37.5"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 24,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 25,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.core.score.raw"
+      ],
+      "ret": "37.5"
+    },
+    {
+      "seq": 26,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 75%; Peso: 100%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+    },
+    {
+      "seq": 27,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "37.5"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 28,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 29,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSGetValue",
+      "args": [
+        "cmi.suspend_data"
+      ],
+      "ret": "1. \"Activity A\"; Puntuación: 75%; Peso: 100%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+    },
+    {
+      "seq": 30,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.suspend_data",
+        "1. \"Activity B\"; Puntuación: 50%; Peso: 100%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 100%"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 31,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.score.raw",
+        "25"
+      ],
+      "ret": "true"
+    },
+    {
+      "seq": 32,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "method": "LMSSetValue",
+      "args": [
+        "cmi.core.lesson_status",
+        "failed"
+      ],
+      "ret": "true"
+    }
+  ],
+  "xapi": [
+    {
+      "seq": 0,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "statement": {
+        "id": "8942a806-8a69-4c81-94d0-d80f7cedd704",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S6",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/initialized",
+          "display": {
+            "en-US": "initialized"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S6",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "S6 multipage stale slot"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:29.533Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S6",
+            "https://exelearning.net/xapi/extensions/page-id": "page-1",
+            "https://exelearning.net/xapi/extensions/page-title": "Page One",
+            "https://exelearning.net/xapi/extensions/page-count": 2
+          }
+        }
+      }
+    },
+    {
+      "seq": 1,
+      "page": 0,
+      "href": "http://exe-trace-s6.local/index.html",
+      "statement": {
+        "id": "440fc288-17da-44bf-aceb-8b3780824b6f",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S6",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S6/idevice/ide-a1",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "Activity A"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:29.780Z",
+        "result": {
+          "score": {
+            "scaled": 0.75,
+            "raw": 7.5,
+            "min": 0,
+            "max": 10
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/TRACE-S6"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S6",
+            "https://exelearning.net/xapi/extensions/page-id": "page-1",
+            "https://exelearning.net/xapi/extensions/page-title": "Page One",
+            "https://exelearning.net/xapi/extensions/page-count": 2,
+            "https://exelearning.net/xapi/extensions/idevice-id": "ide-a1",
+            "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+          }
+        }
+      }
+    },
+    {
+      "seq": 2,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "statement": {
+        "id": "9b31a62f-968d-4668-b902-942064491b85",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S6",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/terminated",
+          "display": {
+            "en-US": "terminated"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S6",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "S6 multipage stale slot"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:30.106Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S6",
+            "https://exelearning.net/xapi/extensions/page-id": "page-1",
+            "https://exelearning.net/xapi/extensions/page-title": "Page One",
+            "https://exelearning.net/xapi/extensions/page-count": 2
+          }
+        }
+      }
+    },
+    {
+      "seq": 3,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "statement": {
+        "id": "e7c7465d-7e9f-49af-9026-53b209f5c3c9",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S6",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/initialized",
+          "display": {
+            "en-US": "initialized"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S6",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/assessment",
+            "name": {
+              "en": "S6 multipage stale slot"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:30.130Z",
+        "context": {
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S6",
+            "https://exelearning.net/xapi/extensions/page-id": "page-2",
+            "https://exelearning.net/xapi/extensions/page-title": "Page Two",
+            "https://exelearning.net/xapi/extensions/page-count": 2
+          }
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "page": 1,
+      "href": "http://exe-trace-s6.local/html/page-two.html",
+      "statement": {
+        "id": "04b55e1f-4f45-4e50-a5d4-0788f63d1d03",
+        "actor": {
+          "objectType": "Agent",
+          "account": {
+            "homePage": "https://exelearning.net/xapi/TRACE-S6",
+            "name": "anonymous"
+          }
+        },
+        "verb": {
+          "id": "http://adlnet.gov/expapi/verbs/answered",
+          "display": {
+            "en-US": "answered"
+          }
+        },
+        "object": {
+          "id": "https://exelearning.net/xapi/TRACE-S6/idevice/ide-b1",
+          "objectType": "Activity",
+          "definition": {
+            "type": "http://adlnet.gov/expapi/activities/cmi.interaction",
+            "name": {
+              "en": "Activity B"
+            },
+            "extensions": {
+              "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+            }
+          }
+        },
+        "timestamp": "2026-08-20T17:53:30.364Z",
+        "result": {
+          "score": {
+            "scaled": 0.5,
+            "raw": 5,
+            "min": 0,
+            "max": 10
+          },
+          "success": true,
+          "completion": true
+        },
+        "context": {
+          "contextActivities": {
+            "parent": [
+              {
+                "id": "https://exelearning.net/xapi/TRACE-S6"
+              }
+            ]
+          },
+          "extensions": {
+            "https://exelearning.net/xapi/extensions/package-id": "TRACE-S6",
+            "https://exelearning.net/xapi/extensions/page-id": "page-2",
+            "https://exelearning.net/xapi/extensions/page-title": "Page Two",
+            "https://exelearning.net/xapi/extensions/page-count": 2,
+            "https://exelearning.net/xapi/extensions/idevice-id": "ide-b1",
+            "https://exelearning.net/xapi/extensions/idevice-type": "trueorfalseIdevice"
+          }
+        }
+      }
+    }
+  ],
+  "suspendDataAfterPage1": "1. \"Activity A\"; Puntuación: 75%; Peso: 100%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 100%",
+  "scormCallsOnPage1": 18,
+  "finalCmi": {
+    "cmi.suspend_data": "1. \"Activity B\"; Puntuación: 50%; Peso: 100%.\t2. \"Activity A\"; Puntuación: 0%; Peso: 100%",
+    "cmi.core.score.raw": "25",
+    "cmi.core.lesson_status": "failed"
+  },
+  "consoleErrors": [
+    "pageerror: $exe_i18n is not defined",
+    "pageerror: $exe_i18n is not defined"
+  ],
+  "expected": {
+    "perItem": {
+      "ide-a1": 75,
+      "ide-a2": 0,
+      "ide-b1": 50,
+      "ide-b2": 0
+    },
+    "overall": 31.25,
+    "weights": {
+      "ide-a1": 100,
+      "ide-a2": 100,
+      "ide-b1": 100,
+      "ide-b2": 100
+    },
+    "note": "By hand: ide-a1 3/4 hits = 75%, ide-b1 2/4 hits = 50%, ide-a2 and ide-b2 never answered = 0%. Four equal weights of 100 normalise to 25 each (100/400*100), so (75*25 + 0*25 + 50*25 + 0*25)/100 = 31.25."
+  }
+}

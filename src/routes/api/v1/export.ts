@@ -29,6 +29,7 @@ import {
     ServerLatexPreRenderer,
 } from '../../../shared/export';
 import { reconstructDocument } from '../../../websocket/yjs-persistence';
+import { getAppVersion } from '../../../utils/version';
 import {
     authenticateRequest,
     errorResponse,
@@ -263,6 +264,8 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                     // This keeps behavior consistent with the main export routes.
                     const latexRenderer = new ServerLatexPreRenderer();
                     const result = await exporter.export({
+                        // Stamp the SCORM 1.2 runtime with the release doing the exporting.
+                        runtimeVersion: getAppVersion(),
                         preRenderLatex: async (html: string) => latexRenderer.preRender(html),
                         preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
                     });
