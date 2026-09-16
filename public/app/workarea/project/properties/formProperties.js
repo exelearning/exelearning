@@ -510,29 +510,6 @@ export default class FormProperties {
                 actionsContainer.classList.add('ms-2');
                 propertyRow.append(actionsContainer);
             }
-        } else if (property.type == 'number') {
-            // A number field holds two or three characters, so stacking the
-            // label above it wastes a whole row and leaves the control adrift.
-            // Label, help and input share one line instead.
-            const row = document.createElement('div');
-            row.classList.add(
-                'header-container',
-                'd-flex',
-                'align-items-center',
-                'gap-2',
-                'flex-wrap',
-                'content-field'
-            );
-            propertyTitle.classList.add('form-label', 'mb-0');
-            row.append(propertyTitle);
-            if (helpContainer) {
-                row.append(helpContainer);
-            }
-            row.append(propertyValue);
-            if (actionsContainer) {
-                row.append(actionsContainer);
-            }
-            propertyRow.append(row);
         } else {
             const header = document.createElement('div');
             header.classList.add(

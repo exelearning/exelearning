@@ -271,8 +271,16 @@
                 max-width: 45%;
                 float: left;
             }
+            // The two fields that spell out a label above their control read as a
+            // pair, so each one opens its own line in the left column instead of
+            // being pulled up beside the checkbox that happens to precede it.
+            #props-pane-export .form-properties .property-row[property="pp_globalFont"],
+            #props-pane-export .form-properties .property-row[property="pp_passScore"] {
+                clear: left;
+            }
         }
-        .property-row[property="pp_globalFont"] {
+        .property-row[property="pp_globalFont"],
+        .property-row[property="pp_passScore"] {
             margin-top:1em;
         }
     }

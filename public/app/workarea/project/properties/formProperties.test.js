@@ -449,7 +449,11 @@ describe('FormProperties', () => {
             expect(row.getAttribute('duplicate')).toBe('3');
         });
 
-        it('should lay a number property out inline, input to the right of its label', () => {
+        it('should lay a number property out stacked, like every other field', () => {
+            // An inline layout was tried and dropped: the label reads "Minimum
+            // score to pass the activity" once translated, which is longer than
+            // anything beside it, and it left the two-character box stranded
+            // halfway across its column.
             const formProperties = new FormProperties(mockProperties);
             const property = {
                 type: 'number',
@@ -457,24 +461,23 @@ describe('FormProperties', () => {
                 min: 0,
                 max: 10,
                 step: 0.1,
-                title: 'Minimum score to pass',
+                title: 'Minimum score to pass the activity',
                 help: 'Mark out of 10.',
                 category: { properties: 'Properties' },
             };
 
             const row = formProperties.makeRowElement('passScore', property);
 
-            // A single flex line holds the three parts, in reading order.
-            const line = row.querySelector('.header-container');
-            expect(line).not.toBe(null);
-            expect(line.classList.contains('align-items-center')).toBe(true);
-            expect(row.querySelectorAll('.header-container').length).toBe(1);
+            // Label and help on one line, the control on the next, which is how
+            // the select beside it behaves.
+            const header = row.querySelector('.header-container');
+            expect(header.querySelector('label')).not.toBe(null);
+            expect(header.querySelector('.exe-form-help')).not.toBe(null);
+            expect(header.querySelector('.property-value')).toBe(null);
 
-            const parts = Array.from(line.children);
-            expect(parts[0].tagName).toBe('LABEL');
-            expect(parts[1].classList.contains('exe-form-help')).toBe(true);
-            expect(parts[2].classList.contains('property-value')).toBe(true);
-            expect(parts[2].getAttribute('type')).toBe('number');
+            const control = row.querySelector('.content-field > .property-value');
+            expect(control).not.toBe(null);
+            expect(control.getAttribute('type')).toBe('number');
         });
 
         it('should keep a text property stacked, label above the control', () => {
