@@ -1844,6 +1844,29 @@ describe('PreviewPanelManager', () => {
       const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
       expect(lastCall[4]).toEqual({ theme: 'theme-name' });
     });
+
+    it('should rethrow send errors while the Service Worker is still available', async () => {
+      const error = new Error('Timeout waiting for SW content ready');
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(error);
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toBe(error);
+      expect(blobSpy).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to blob URL when the app gave up on the Service Worker', async () => {
+      const error = new Error('Preview Service Worker not available');
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(error);
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+      const loadSpy = vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+
+      await manager.refreshWithServiceWorker();
+
+      expect(blobSpy).toHaveBeenCalled();
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('showLoadingState and hideLoadingState', () => {

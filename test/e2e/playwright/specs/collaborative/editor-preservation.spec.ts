@@ -1,5 +1,6 @@
 import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fixture';
 import { waitForYjsSync } from '../../helpers/sync-helpers';
+import { waitForTextIdeviceEditor } from '../../helpers/idevice-collab-helpers';
 import { waitForAppReady, addTextIdevice, navigateToPageByTitle } from '../../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
@@ -14,43 +15,6 @@ import type { Page } from '@playwright/test';
 
 async function waitForYjsBridge(page: Page): Promise<void> {
     await waitForAppReady(page);
-}
-
-/**
- * Type content into TinyMCE editor without saving.
- */
-async function typeInTinyMCE(page: Page, content: string, ideviceId?: string): Promise<void> {
-    const textIdeviceNode = ideviceId
-        ? page.locator(`#${ideviceId}`)
-        : page.locator('#node-content article .idevice_node.text').first();
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-        const tinyMceFrame = textIdeviceNode.locator('iframe.tox-edit-area__iframe').first();
-        await tinyMceFrame.waitFor({ timeout: 15000 });
-
-        const frameEl = await tinyMceFrame.elementHandle();
-        const frame = await frameEl?.contentFrame();
-        if (!frame) {
-            if (attempt === 2) {
-                throw new Error('TinyMCE frame is not available');
-            }
-            await page.waitForTimeout(250);
-            continue;
-        }
-
-        try {
-            await frame.focus('body');
-            await frame.type('body', content, { delay: 5 });
-            await page.waitForTimeout(500);
-            return;
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            if (!message.includes('Frame was detached') || attempt === 2) {
-                throw error;
-            }
-            await page.waitForTimeout(250);
-        }
-    }
 }
 
 /**
@@ -98,16 +62,6 @@ async function openTextIdeviceEditor(page: Page, ideviceId?: string): Promise<vo
         ideviceId,
         { timeout: 15000 },
     );
-}
-
-/**
- * Read the current text content from TinyMCE's active editor.
- */
-async function getTinyMCEContent(page: Page): Promise<string> {
-    return page.evaluate(() => {
-        const editor = (window as any).tinymce?.activeEditor;
-        return editor ? editor.getContent({ format: 'text' }).trim() : '';
-    });
 }
 
 async function waitForRemoteIdeviceInsertion(page: Page): Promise<void> {
@@ -163,7 +117,9 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
         const originalIdeviceId = await getFirstTextIdeviceId(pageA);
 
         const seedText = `Seed content ${Date.now()}`;
-        await typeInTinyMCE(pageA, seedText, originalIdeviceId);
+        const editorBody = await waitForTextIdeviceEditor(pageA);
+        await editorBody.fill(seedText);
+        await expect(editorBody).toHaveText(seedText);
         await saveTextIdevice(pageA, originalIdeviceId);
 
         await expect.poll(() => getIdeviceMode(pageA, originalIdeviceId), { timeout: 10000 }).toBe('export');
@@ -187,17 +143,19 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
 
         // ── Step 5: Client A opens the iDevice editor ──
         await openTextIdeviceEditor(pageA, originalIdeviceId);
+        await waitForTextIdeviceEditor(pageA);
 
         // ── Step 6: Client A types UNSAVED content ──
         const unsavedContent = `UNSAVED_EDIT_${Date.now()}`;
-        await typeInTinyMCE(pageA, unsavedContent, originalIdeviceId);
+        // Wait for the saved content to load before entering an unsaved edit.
+        await expect(editorBody).toHaveText(seedText);
+        await editorBody.fill(unsavedContent);
 
         // Verify editor is open and contains the content
         const modeBefore = await getIdeviceMode(pageA, originalIdeviceId);
         expect(modeBefore).toBe('edition');
 
-        const contentBefore = await getTinyMCEContent(pageA);
-        expect(contentBefore).toContain(unsavedContent);
+        await expect(editorBody).toHaveText(unsavedContent);
 
         // ── Step 7: Client B creates a NEW iDevice on the same page ──
         // This should NOT close Client A's editor.
@@ -216,7 +174,6 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
         await expect(pageA.locator(`#${originalIdeviceId} .btn-save-idevice`)).toBeVisible({ timeout: 5000 });
 
         // A3: The unsaved content must still be present
-        const contentAfter = await getTinyMCEContent(pageA);
-        expect(contentAfter).toContain(unsavedContent);
+        await expect(editorBody).toHaveText(unsavedContent);
     });
 });
