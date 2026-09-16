@@ -21,15 +21,21 @@ export class ShareModalPage {
     readonly peopleSection: Locator;
     readonly peopleList: Locator;
 
-    // General access section
-    readonly generalAccessSection: Locator;
+    // Edit access section
+    readonly editAccessSection: Locator;
     readonly visibilitySelect: Locator;
     readonly visibilityHelp: Locator;
 
-    // Link section
-    readonly linkSection: Locator;
+    // Link controls (inside the edit access section)
     readonly linkInput: Locator;
     readonly copyButton: Locator;
+
+    // Public read-only link section
+    readonly publicViewSelect: Locator;
+    readonly publicLinkSection: Locator;
+    readonly publicLinkInput: Locator;
+    readonly publicCopyButton: Locator;
+    readonly publicRegenerateButton: Locator;
 
     // Footer
     readonly doneButton: Locator;
@@ -51,15 +57,21 @@ export class ShareModalPage {
         this.peopleSection = page.locator('#share-people-section');
         this.peopleList = page.locator('#share-people-list');
 
-        // General access
-        this.generalAccessSection = page.locator('#share-general-access-section');
+        // Edit access
+        this.editAccessSection = page.locator('#share-edit-access-section');
         this.visibilitySelect = page.locator('#share-visibility-select');
         this.visibilityHelp = page.locator('#share-visibility-help');
 
-        // Link section
-        this.linkSection = page.locator('#share-link-section');
+        // Link controls (inside the edit access section)
         this.linkInput = page.locator('#share-link-input');
         this.copyButton = page.locator('#share-copy-button');
+
+        // Public read-only link
+        this.publicViewSelect = page.locator('#share-public-view-select');
+        this.publicLinkSection = page.locator('#public-link-section');
+        this.publicLinkInput = page.locator('#public-link-input');
+        this.publicCopyButton = page.locator('#public-copy-button');
+        this.publicRegenerateButton = page.locator('#public-regenerate-button');
 
         // Footer
         this.doneButton = this.modal.locator('.modal-footer .btn-primary');
@@ -114,6 +126,20 @@ export class ShareModalPage {
      */
     async isCopyButtonInCopiedState(): Promise<boolean> {
         return (await this.copyButton.locator('.auto-icon').textContent()) === 'check';
+    }
+
+    /**
+     * Get the public viewer link URL (empty if not available)
+     */
+    async getPublicViewerLink(): Promise<string> {
+        return await this.publicLinkInput.inputValue();
+    }
+
+    /**
+     * Enable or disable the public read-only link via its select.
+     */
+    async setPublicView(state: 'enabled' | 'disabled'): Promise<void> {
+        await this.publicViewSelect.selectOption(state);
     }
 
     /**

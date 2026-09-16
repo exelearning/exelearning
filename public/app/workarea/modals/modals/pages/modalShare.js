@@ -27,13 +27,23 @@ export default class ModalShare extends Modal {
         this.peopleSection = this.modalElement.querySelector('#share-people-section');
         this.peopleList = this.modalElement.querySelector('#share-people-list');
 
-        this.generalAccessSection = this.modalElement.querySelector('#share-general-access-section');
+        this.editAccessSection = this.modalElement.querySelector('#share-edit-access-section');
         this.visibilitySelect = this.modalElement.querySelector('#share-visibility-select');
         this.visibilityIcon = this.modalElement.querySelector('#share-visibility-icon');
         this.visibilityHelp = this.modalElement.querySelector('#share-visibility-help');
 
         this.linkInput = this.modalElement.querySelector('#share-link-input');
         this.copyButton = this.modalElement.querySelector('#share-copy-button');
+
+        this.publicViewSelect = this.modalElement.querySelector('#share-public-view-select');
+        this.publicViewHelp = this.modalElement.querySelector('#share-public-view-help');
+        this.publicLinkSection = this.modalElement.querySelector('#public-link-section');
+        this.publicLinkInput = this.modalElement.querySelector('#public-link-input');
+        this.publicCopyButton = this.modalElement.querySelector('#public-copy-button');
+        this.publicRegenerateButton = this.modalElement.querySelector('#public-regenerate-button');
+        this.publicRegenerateConfirm = this.modalElement.querySelector('#public-regenerate-confirm');
+        this.publicRegenerateConfirmYes = this.modalElement.querySelector('#public-regenerate-confirm-yes');
+        this.publicRegenerateConfirmNo = this.modalElement.querySelector('#public-regenerate-confirm-no');
 
         this.ariaLive = this.modalElement.querySelector('#share-aria-live');
     }
@@ -55,13 +65,38 @@ export default class ModalShare extends Modal {
             }
         });
 
-        // Visibility dropdown
+        // Edit access dropdown
         this.visibilitySelect?.addEventListener('change', (e) =>
             this.handleVisibilityChange(e.target.value)
         );
 
-        // Copy link button
-        this.copyButton?.addEventListener('click', () => this.handleCopyLink());
+        // Public read-only link dropdown
+        this.publicViewSelect?.addEventListener('change', (e) =>
+            this.handlePublicViewChange(e.target.value)
+        );
+
+        // Regenerate public link button (reveals inline confirmation)
+        this.publicRegenerateButton?.addEventListener('click', () =>
+            this.handleRegeneratePublicLink()
+        );
+        this.publicRegenerateConfirmYes?.addEventListener('click', () =>
+            this.confirmRegeneratePublicLink()
+        );
+        this.publicRegenerateConfirmNo?.addEventListener('click', () =>
+            this.hideRegenerateConfirm()
+        );
+
+        // Copy link buttons
+        this.copyButton?.addEventListener('click', () => this.handleCopyLink(this.linkInput, this.copyButton));
+        this.publicCopyButton?.addEventListener('click', () => this.handleCopyLink(this.publicLinkInput, this.publicCopyButton));
+
+        // Select link text on click for easier manual copying
+        this.linkInput?.addEventListener('click', () => {
+            this.linkInput.select();
+        });
+        this.publicLinkInput?.addEventListener('click', () => {
+            this.publicLinkInput.select();
+        });
 
         // ESC key to close
         this.modalElement.addEventListener('keydown', (e) => {
@@ -128,6 +163,7 @@ export default class ModalShare extends Modal {
                 this.renderInviteSection();
                 this.renderPeopleList();
                 this.renderVisibilitySection();
+                this.renderPublicViewSection();
                 this.renderLinkSection();
 
                 // Focus invite email input only if owner
@@ -354,16 +390,53 @@ export default class ModalShare extends Modal {
     }
 
     /**
-     * Update visibility help text
+     * Update the edit-access help text based on the selected edit visibility.
+     * This describes who can EDIT the resource. It no longer controls the
+     * public read-only link, which has its own independent section.
      */
     updateVisibilityHelp(visibility) {
         if (!this.visibilityHelp) return;
 
-        if (visibility === 'public') {
-            this.visibilityHelp.classList.remove('d-none');
-        } else {
-            this.visibilityHelp.classList.add('d-none');
+        this.visibilityHelp.textContent =
+            visibility === 'public'
+                ? _('Anyone with this link can open and edit in real time.')
+                : _('Only the people added above can open and edit this resource.');
+    }
+
+    /**
+     * Render the public read-only link section from the current project data.
+     */
+    renderPublicViewSection() {
+        if (!this.publicViewSelect) return;
+
+        const enabled = Boolean(this.projectData?.publicViewEnabled);
+
+        this.publicViewSelect.value = enabled ? 'enabled' : 'disabled';
+        this.publicViewSelect.disabled = !this.currentUserIsOwner;
+
+        this.updatePublicViewHelp(enabled);
+
+        // Fill the public URL and toggle the link/regenerate controls.
+        if (this.publicLinkInput) {
+            this.publicLinkInput.value = this.buildPublicViewerUrl();
         }
+
+        const showLink = enabled && Boolean(this.buildPublicViewerUrl());
+        this.publicLinkSection?.classList.toggle('d-none', !showLink);
+
+        // Reset any open inline regenerate confirmation.
+        this.hideRegenerateConfirm();
+    }
+
+    /**
+     * Update the public read-only link help text.
+     */
+    updatePublicViewHelp(enabled) {
+        if (!this.publicViewHelp) return;
+
+        this.publicViewHelp.textContent = enabled
+            ? _('Anyone with this link can view this resource, but not edit it.')
+            : _('This resource has no public read-only link.');
     }
 
     /**
@@ -378,6 +451,11 @@ export default class ModalShare extends Modal {
             : this.buildShareUrl();
 
         this.linkInput.value = url;
+
+        // Render the public viewer link
+        if (this.publicLinkInput) {
+            this.publicLinkInput.value = this.buildPublicViewerUrl();
+        }
     }
 
     /**
@@ -399,6 +477,24 @@ export default class ModalShare extends Modal {
         }
 
         return url.toString();
+    }
+
+    /**
+     * Build public viewer URL.
+     *
+     * Uses the opaque public view id provided by the backend, never the
+     * internal project UUID. Returns an empty string when no public view id is
+     * available (e.g. the project is not public yet).
+     */
+    buildPublicViewerUrl() {
+        const publicViewId = this.projectData?.publicViewId || eXeLearning.app.project?.publicViewId;
+
+        if (!publicViewId) {
+            return '';
+        }
+
+        const basePath = eXeLearning.app.runtimeConfig?.basePath || '';
+        return `${window.location.origin}${basePath}/view/${publicViewId}`;
     }
 
     /**
@@ -625,21 +721,140 @@ export default class ModalShare extends Modal {
     }
 
     /**
+     * Handle the public read-only link toggle.
+     * Independent of edit access; controlled solely by this select.
+     * @param {string} value - 'enabled' or 'disabled'
+     */
+    async handlePublicViewChange(value) {
+        const projectId = eXeLearning.app.project?.odeId;
+        if (!projectId) {
+            this.showError(_('Project data not loaded. Please try again.'));
+            return;
+        }
+
+        const previous = this.projectData?.publicViewEnabled ? 'enabled' : 'disabled';
+
+        if (!this.currentUserIsOwner) {
+            console.warn('Only project owner can change the public read-only link');
+            if (this.publicViewSelect) this.publicViewSelect.value = previous;
+            return;
+        }
+
+        if (value === previous) {
+            return;
+        }
+
+        const enabled = value === 'enabled';
+
+        try {
+            // Ensure the document is persisted before publishing a public link.
+            if (enabled) {
+                await this.saveProjectBeforeSharing('public-view-enable');
+            }
+
+            const response = await eXeLearning.app.api.updatePublicViewAccess(projectId, enabled);
+            Logger.log('[Share] updatePublicViewAccess response:', response);
+
+            if (response.responseMessage === 'OK') {
+                this.projectData.publicViewEnabled = Boolean(response.publicViewEnabled);
+                if (Object.prototype.hasOwnProperty.call(response, 'publicViewId')) {
+                    this.projectData.publicViewId = response.publicViewId;
+                    if (eXeLearning.app.project) {
+                        eXeLearning.app.project.publicViewId = response.publicViewId;
+                    }
+                }
+                this.renderPublicViewSection();
+                this.announce(
+                    enabled
+                        ? _('Public read-only link enabled')
+                        : _('Public read-only link disabled')
+                );
+            } else {
+                this.showError(response.detail || _('Failed to update the public read-only link'));
+                if (this.publicViewSelect) this.publicViewSelect.value = previous;
+            }
+        } catch (error) {
+            console.error('Failed to update public read-only link:', error);
+            this.showError(_('Failed to update the public read-only link'));
+            if (this.publicViewSelect) this.publicViewSelect.value = previous;
+        }
+    }
+
+    /**
+     * Reveal the inline regenerate confirmation.
+     * The confirmation lives inside this modal (instead of a separate confirm
+     * dialog) so it never closes the share modal.
+     */
+    handleRegeneratePublicLink() {
+        if (!this.currentUserIsOwner) {
+            return;
+        }
+        this.publicRegenerateConfirm?.classList.remove('d-none');
+        this.publicRegenerateButton?.classList.add('d-none');
+        this.publicRegenerateConfirmYes?.focus();
+    }
+
+    /**
+     * Hide the inline regenerate confirmation.
+     */
+    hideRegenerateConfirm() {
+        this.publicRegenerateConfirm?.classList.add('d-none');
+        this.publicRegenerateButton?.classList.remove('d-none');
+    }
+
+    /**
+     * Perform the public link regeneration after inline confirmation.
+     * Invalidates the previous link. Does not affect users, roles, edit access
+     * or the edit link.
+     */
+    async confirmRegeneratePublicLink() {
+        const projectId = eXeLearning.app.project?.odeId;
+        if (!projectId || !this.currentUserIsOwner) {
+            this.hideRegenerateConfirm();
+            return;
+        }
+
+        try {
+            const response = await eXeLearning.app.api.regeneratePublicViewId(projectId);
+            Logger.log('[Share] regeneratePublicViewId response:', response);
+
+            if (response.responseMessage === 'OK') {
+                this.projectData.publicViewId = response.publicViewId;
+                if (eXeLearning.app.project) {
+                    eXeLearning.app.project.publicViewId = response.publicViewId;
+                }
+                if (this.publicLinkInput) {
+                    this.publicLinkInput.value = this.buildPublicViewerUrl();
+                }
+                this.announce(_('The public link has been regenerated. The previous link will stop working.'));
+            } else {
+                this.showError(response.detail || _('Failed to regenerate the public link'));
+            }
+        } catch (error) {
+            console.error('Failed to regenerate public link:', error);
+            this.showError(_('Failed to regenerate the public link'));
+        } finally {
+            this.hideRegenerateConfirm();
+        }
+    }
+
+    /**
      * Handle copy link action
      */
-    async handleCopyLink() {
-        const url = this.linkInput?.value;
+    async handleCopyLink(inputElement, buttonElement) {
+        if (!inputElement || !buttonElement) return;
+        const url = inputElement.value;
 
         if (!url) return;
 
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 await navigator.clipboard.writeText(url);
-                this.showCopySuccess();
+                this.showCopySuccess(buttonElement);
             } else {
-                this.linkInput.select();
+                inputElement.select();
                 document.execCommand('copy');
-                this.showCopySuccess();
+                this.showCopySuccess(buttonElement);
             }
 
             this.announce(_('Link copied to clipboard'));
@@ -652,20 +867,20 @@ export default class ModalShare extends Modal {
     /**
      * Show copy success feedback
      */
-    showCopySuccess() {
-        if (!this.copyButton) return;
+    showCopySuccess(buttonElement) {
+        if (!buttonElement) return;
 
-        const originalHTML = this.copyButton.innerHTML;
+        const originalHTML = buttonElement.innerHTML;
 
-        this.copyButton.classList.add('copied');
-        this.copyButton.innerHTML = `
+        buttonElement.classList.add('copied');
+        buttonElement.innerHTML = `
             <div class="auto-icon">check</div>
             <span>${_('Copied!')}</span>
         `;
 
         setTimeout(() => {
-            this.copyButton.classList.remove('copied');
-            this.copyButton.innerHTML = originalHTML;
+            buttonElement.classList.remove('copied');
+            buttonElement.innerHTML = originalHTML;
         }, 2000);
     }
 
