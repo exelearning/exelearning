@@ -4,7 +4,8 @@
  * Adapted from eXeViewer approach (https://github.com/exelearning/exeviewer)
  */
 
-const SW_VERSION = '1.0.0';
+/** Revision of this script. Bump it whenever preview-sw.js changes. */
+const SW_VERSION = '1.1.0';
 
 /**
  * MIME types for common file extensions
