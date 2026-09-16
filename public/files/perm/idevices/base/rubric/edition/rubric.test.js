@@ -4,6 +4,7 @@
 
 /* eslint-disable no-undef */
 
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -996,89 +997,81 @@ describe('rubric iDevice CSV tools (edition)', () => {
    * to -- so its pass mark is set in those units rather than out of ten, right
    * below the maximum the author is already reading.
    */
+  /**
+   * The rubric used to be the one scoring iDevice that never registered in the
+   * progress report, so a course mixing rubrics with other activities produced
+   * a report the rubrics were simply missing from.
+   */
+  /**
+   * The rubric grades on its own 0..maximum scale internally, but the mark the
+   * author sets is the shared 0-10 one, like every other activity. That is what
+   * lets a page mixing a rubric with other scoring iDevices judge them all
+   * alike -- and it matches what the learner is shown, since the rubric already
+   * reports its score out of ten.
+   */
   describe('pass score', () => {
+    let source;
+
     beforeEach(() => {
-      document.body.innerHTML =
-        '<input id="ri_MaxScore" value="" /><input id="ri_PassScore" value="" />';
+      source = readFileSync(join(__dirname, 'rubric.js'), 'utf-8');
     });
 
-    afterEach(() => {
-      document.body.innerHTML = '';
+    it('uses the shared control, with no scale of its own', () => {
+      expect(source).toContain('gamification.passScore.getValues()');
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain('gamification.passScore.addEvents()');
+      expect(source).not.toContain('ri_PassScore');
+      expect(source).not.toContain('getPassScoreField');
     });
 
-    describe('seedPassScore', () => {
-      it('starts at half the maximum', () => {
-        $exeDevice.seedPassScore(16);
-
-        expect($('#ri_PassScore').val()).toBe('8');
-      });
-
-      it('rounds the half to one decimal', () => {
-        $exeDevice.seedPassScore(7);
-
-        expect($('#ri_PassScore').val()).toBe('3.5');
-      });
-
-      it.each([
-        ['no maximum yet', 0],
-        ['an unusable maximum', Number.NaN],
-        ['a missing maximum', undefined],
-      ])('starts at zero with %s', (_label, max) => {
-        $exeDevice.seedPassScore(max);
-
-        expect($('#ri_PassScore').val()).toBe('0');
-      });
-
-      it('never overwrites a mark the author already typed', () => {
-        // setMaxScore runs on every edit to the table; re-seeding there would
-        // undo the author's decision each time they touched a score.
-        $('#ri_PassScore').val('3');
-
-        $exeDevice.seedPassScore(16);
-
-        expect($('#ri_PassScore').val()).toBe('3');
-      });
+    it('stores the same two fields as every other iDevice', () => {
+      expect(source).toContain('data.passScoreMode = passScore.passScoreMode');
+      expect(source).toContain('data.passScoreCustom = passScore.passScoreCustom');
+      expect(source).not.toContain('data.passScore =');
     });
 
-    describe('getPassScore', () => {
-      it('reads the mark as typed', () => {
-        $('#ri_MaxScore').val('16');
-        $('#ri_PassScore').val('8.5');
+    it('takes the tab with no opt-out', () => {
+      expect(source).toContain('gamification.scorm.getTab($exeDevice.idevicePath)');
+      expect(source).not.toContain('passScore: false');
+    });
+  });
 
-        expect($exeDevice.getPassScore()).toBe(8.5);
-      });
+  describe('progress report', () => {
+    let source;
+    let runtime;
 
-      it('clamps a mark above the maximum', () => {
-        $('#ri_MaxScore').val('16');
-        $('#ri_PassScore').val('99');
-
-        expect($exeDevice.getPassScore()).toBe(16);
-      });
-
-      it.each([
-        ['an empty field', ''],
-        ['text', 'abc'],
-        ['a negative mark', '-4'],
-      ])('answers zero for %s', (_label, value) => {
-        $('#ri_MaxScore').val('16');
-        $('#ri_PassScore').val(value);
-
-        expect($exeDevice.getPassScore()).toBe(0);
-      });
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'rubric.js'), 'utf-8');
+      runtime = readFileSync(join(__dirname, '..', 'export', 'rubric.js'), 'utf-8');
     });
 
-    it('is seeded from setMaxScore, so the field is never blank', () => {
-      document.body.innerHTML = `
-        <input id="ri_MaxScore" value="" /><input id="ri_PassScore" value="" />
-        <table id="ri_TableEditor"><tbody>
-          <tr><td><input value="x" /><input value="6" /></td></tr>
-          <tr><td><input value="x" /><input value="4" /></td></tr>
-        </tbody></table>`;
+    it('offers the shared control and wires its events', () => {
+      expect(source).toContain('gamification.progressBar.setValues(');
+      expect(source).toContain('gamification.progressBar.getValues()');
+      expect(source).toContain('gamification.progressBar.addEvents()');
+    });
 
-      $exeDevice.setMaxScore();
+    it('stores what the author chose', () => {
+      expect(source).toContain('data.evaluation = progressBar.evaluation');
+      expect(source).toContain('data.evaluationID = progressBar.evaluationID');
+    });
 
-      expect($('#ri_MaxScore').val()).toBe('10');
-      expect($('#ri_PassScore').val()).toBe('5');
+    it('translates the strings the report shows', () => {
+      // showEvaluationIcon reads these; without them the learner would see the
+      // English fallbacks whatever the project language.
+      expect(source).toContain('msgTypeGame: c_(');
+      expect(source).toContain('msgSuccessfulActivity: c_(');
+      expect(source).toContain('msgUnsuccessfulActivity: c_(');
+      expect(source).toContain('msgUncompletedActivity: c_(');
+    });
+
+    it('does not tie the report to SCORM', () => {
+      // initScorm returns early when the author chose not to save the score.
+      // Showing the verdict from there would make "do not save" silently switch
+      // the report off as well.
+      expect(runtime).toContain('initProgressReport: function');
+      expect(runtime).toContain('self.initProgressReport(data)');
+      expect(runtime).toContain('updateProgressReport: function');
     });
   });
 });

@@ -178,24 +178,6 @@
   font-style: italic;
 }
 
-/* The pass mark sits under the maximum it is measured against. The controls
-   row is a wrapping flex line, so a full basis is what puts it on its own. */
-#ri_PassScoreRow {
-  flex-basis: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.35em;
-  flex-wrap: wrap;
-  margin-top: 0.35em;
-}
-#ri_PassScore {
-  width: 3em;
-}
-#ri_PassScoreInstructions {
-  opacity: 0.8;
-  font-style: italic;
-}
-
 #ri_RubricsEditor.loading {
   background: url(exe-rubrics-loading.gif) no-repeat 50% 50%;
 }

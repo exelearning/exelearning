@@ -1343,13 +1343,11 @@ describe('common_edition.js', () => {
         });
       });
 
-      it('leaves the pass score out when asked', () => {
-        // rubric scores but has no progress report to show a verdict in, so it
-        // is deliberately not offered a mark that nothing would read.
-        const result = getTab(null, { passScore: false });
-
-        expect(result).not.toContain('eXePassScoreGlobal');
-        expect(result).toContain('eXeGameSCORMNoSave');
+      it('offers the pass score to every iDevice, with no opt-out', () => {
+        // Every scoring activity is judged on the same 0-10 scale, so that a
+        // page mixing several of them grades them alike.
+        expect(getTab()).toContain('eXePassScoreGlobal');
+        expect(getTab('/idevice/path/')).toContain('eXePassScoreGlobal');
       });
     });
 

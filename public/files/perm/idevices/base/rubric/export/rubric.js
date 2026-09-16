@@ -72,6 +72,7 @@ var $rubric = {
             self.initializeInteractiveState(data.table);
             self.addEvents(data.table, data.strings);
             self.initScorm(data);
+            self.initProgressReport(data);
         });
     },
 
@@ -140,10 +141,13 @@ var $rubric = {
             textButtonScorm: stored.textButtonScorm || '',
             repeatActivity: true,
             weighted: $rubric.normalizeWeight(stored.weighted),
-            // In the rubric's own units, as the author typed it. Listed here
-            // because this object is built field by field rather than spread
-            // from `stored`, so anything unlisted never reaches the runtime.
-            passScore: stored.passScore,
+            // Listed here because this object is built field by field rather
+            // than spread from `stored`, so anything unlisted never reaches the
+            // runtime.
+            passScoreMode: stored.passScoreMode,
+            passScoreCustom: stored.passScoreCustom,
+            evaluation: !!stored.evaluation,
+            evaluationID: stored.evaluationID || '',
         };
     },
 
@@ -611,6 +615,11 @@ var $rubric = {
             var data = $rubric.getDataForTable($table);
             if (data && data.isScorm === 1) {
                 $rubric.sendRubricScore(true, data);
+            } else {
+                // The progress report does not depend on SCORM: it has to keep
+                // working when the author chose not to send the score anywhere,
+                // and when the learner saves by hand rather than automatically.
+                $rubric.updateProgressReport(data, $table);
             }
         });
     },
@@ -1481,6 +1490,17 @@ var $rubric = {
             textButtonScorm: data.textButtonScorm || '',
             repeatActivity: true,
             weighted: $rubric.normalizeWeight(data.weighted),
+            evaluation: !!data.evaluation,
+            evaluationID: data.evaluationID || '',
+            // The author's choice, on the same 0-10 scale as every other
+            // activity, so a page mixing rubrics with other iDevices judges
+            // them all alike.
+            passScoreMode: data.passScoreMode,
+            passScoreCustom: data.passScoreCustom,
+            // The report needs to know which iDevice type it is listing, and
+            // where to put the verdict icon.
+            idevice: 'rubric-IDevice',
+            idevicePath: $rubric.idevicePath,
             scorerp: 0,
             gameStarted: false,
             gameOver: false,
@@ -1499,10 +1519,56 @@ var $rubric = {
                 msgSaveAuto: strings.msgSaveAuto || 'Your score will be automatically saved after each change.',
                 msgSeveralScore: strings.msgSeveralScore || 'You can save the score as many times as you want',
                 msgYouLastScore: strings.msgYouLastScore || 'The last score saved is',
+                // Progress report: the type it is listed under, and the three
+                // verdicts showEvaluationIcon can display.
+                msgTypeGame: strings.msgTypeGame || 'Rubric',
+                msgUncompletedActivity: strings.msgUncompletedActivity || 'Incomplete activity',
+                msgSuccessfulActivity: strings.msgSuccessfulActivity || 'Activity: Passed. Score: %s',
+                msgUnsuccessfulActivity: strings.msgUnsuccessfulActivity || 'Activity: Not passed. Score: %s',
                 msgActityComply: strings.msgActityComply || 'You have already done this activity.',
                 msgPlaySeveralTimes: strings.msgPlaySeveralTimes || 'You can do this activity as many times as you want',
             },
         };
+    },
+
+    /**
+     * Record the rubric in the learner's progress report.
+     *
+     * The rubric used to be the one scoring iDevice that never registered, so a
+     * course mixing rubrics with other activities produced a report the rubrics
+     * were simply missing from -- and its pass mark had nowhere to show a
+     * verdict. The report decides Passed / Not passed from the mark and the
+     * threshold the options carry, which is why this runs after the threshold
+     * has been put on `game`.
+     *
+     * @param {Object} game The SCORM options, already carrying scorerp and the
+     * pass mark.
+     */
+    saveEvaluation: function (game) {
+        if (!game || !game.evaluation || !game.evaluationID) return;
+        $exeDevices.iDevice.gamification.report.saveEvaluation(game);
+    },
+
+    /**
+     * Record the current marks in the progress report, outside the SCORM path.
+     *
+     * Used when the activity does not report automatically, so the learner's
+     * report still reflects what they have done.
+     *
+     * @param {Object} data The activity options.
+     * @param {jQuery} $table The rendered rubric.
+     */
+    updateProgressReport: function (data, $table) {
+        if (!data || !data.evaluation || !data.evaluationID) return;
+        if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
+            return;
+        }
+
+        var game = data.scormGame || this.buildScormGame(data);
+        data.scormGame = game;
+        game.scorerp = this.calculateScormScore($table);
+
+        this.saveEvaluation(game);
     },
 
     calculateScormScore: function (table) {
@@ -1516,29 +1582,6 @@ var $rubric = {
         var tenScale = (score / maxScore) * 10;
         var normalized = Math.round(tenScale * 100) / 100;
         return clamp(normalized, 0, 10);
-    },
-
-    /**
-     * The author's pass mark, on the 0-10 scale the rest of the system judges
-     * activities with.
-     *
-     * The author sets it in the rubric's own units -- 8 out of a maximum of 16
-     * -- because that is what they are reading on screen. The conversion uses
-     * the maximum the table has *now*, so a rubric that grew a row still asks
-     * for the same number of points rather than the same fraction.
-     *
-     * @param {Object} data The stored options (passScore in rubric units).
-     * @param {jQuery} table The rendered rubric.
-     * @returns {number|null} A mark in [0, 10], or null when the rubric has no
-     * usable maximum and nothing can be judged.
-     */
-    calculatePassScore: function (data, table) {
-        var raw = parseFloat(data && data.passScore);
-        if (!isFinite(raw)) return null;
-        var maxScore = this.calculateTableMaxScore(table);
-        if (isNaN(maxScore) || maxScore <= 0) return null;
-        var tenScale = (raw / maxScore) * 10;
-        return Math.max(0, Math.min(Math.round(tenScale * 100) / 100, 10));
     },
 
     restoreVisibleScoreFromLms: function (data) {
@@ -1572,6 +1615,34 @@ var $rubric = {
         $exeDevices.iDevice.gamification.scorm.registerActivity(scormGame);
 
         this.restoreVisibleScoreFromLms(data);
+    },
+
+    /**
+     * Show the verdict this learner already earned, if any.
+     *
+     * Deliberately not part of initScorm: that one returns early when the
+     * author chose not to save the score, and the progress report does not
+     * depend on SCORM at all -- it is kept in the learner's own browser. Tying
+     * the two together is what would make "do not save the score" silently
+     * switch the report off as well.
+     *
+     * Deferred like every other iDevice does it: the icon is placed relative to
+     * markup the rest of the initialisation is still assembling.
+     *
+     * @param {Object} data The activity options.
+     */
+    initProgressReport: function (data) {
+        if (!data || !data.evaluation || !data.evaluationID) return;
+        if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
+            return;
+        }
+
+        var game = data.scormGame || this.buildScormGame(data);
+        data.scormGame = game;
+
+        setTimeout(function () {
+            $exeDevices.iDevice.gamification.report.updateEvaluationIcon(game);
+        }, 500);
     },
 
     /**
@@ -1679,19 +1750,9 @@ var $rubric = {
         // taking back is one it wrote itself.
         game.gameOver = complete;
 
-        // The author's own pass mark, converted to the 0-10 scale everything
-        // else judges on. Declared as a customised mark so that wherever the
-        // shared code asks whether this activity was passed -- $exe.passScore
-        // .resolve() -- it answers with the rubric's threshold and not with the
-        // project default, which is in units this activity does not use.
-        var passScore = this.calculatePassScore(data, $table);
-        if (passScore !== null) {
-            game.passScoreMode = 'custom';
-            game.passScoreCustom = passScore;
-        }
-
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, game);
+            this.saveEvaluation(game);
             return;
         }
     },

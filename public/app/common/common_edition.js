@@ -578,9 +578,6 @@ var $exeDevicesEdition = {
                  * report is left out -- which is what an iDevice that scores
                  * without publishing a report wants.
                  * @param {Object} [options]
-                 * @param {boolean} [options.passScore=true] Render the pass
-                 * score. False for an iDevice that does not wire it up, so the
-                 * author is never offered a control nothing would read.
                  * @param {boolean} [options.hidebutton=false]
                  * @param {boolean} [options.onlybutton=false]
                  * @param {boolean} [options.hideautosave=false] Hide the
@@ -590,20 +587,14 @@ var $exeDevicesEdition = {
                  * on its own, so offering the mode would offer nothing.
                  */
                 getTab: function (path, options = {}) {
-                    const {
-                        hidebutton = false,
-                        onlybutton = false,
-                        passScore = true,
-                        hideautosave = false,
-                    } = options;
+                    const { hidebutton = false, onlybutton = false, hideautosave = false } = options;
                     const autoSaveClass = hideautosave ? 'd-none' : 'd-flex';
                     const help = $exeDevicesEdition.iDevice.gamification.help;
                     const buttonClass = hidebutton ? 'd-none' : 'd-flex';
                     const buttonLiClass = hidebutton ? 'd-none' : '';
                     const message = onlybutton ? _("Save the score") : _("Automatically save the score");
-                    const passScoreContents = passScore
-                        ? $exeDevicesEdition.iDevice.gamification.passScore.getContents(path)
-                        : '';
+                    const passScoreContents =
+                        $exeDevicesEdition.iDevice.gamification.passScore.getContents(path);
                     const progressReport = path
                         ? $exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)
                         : '';

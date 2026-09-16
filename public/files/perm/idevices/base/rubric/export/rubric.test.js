@@ -951,69 +951,6 @@ describe('rubric iDevice SCORM integration', () => {
       expect($rubric.calculateScormScore(table)).toBe(0);
     });
 
-    /**
-     * The author sets the pass mark in the rubric's own units -- 8 out of a
-     * maximum of 16 -- because that is what they read on screen. Everything
-     * else judges activities on 0-10, so the conversion happens here, against
-     * the maximum the table has now.
-     */
-    describe('calculatePassScore', () => {
-      it('converts the author mark to the 0-10 scale', () => {
-        // buildScoredTable's maximum is 7; half of it is 3.5, i.e. 5 out of 10.
-        const table = buildScoredTable();
-
-        expect($rubric.calculatePassScore({ passScore: 3.5 }, table)).toBe(5);
-      });
-
-      it('keeps a mark of zero, which passes everyone', () => {
-        const table = buildScoredTable();
-
-        expect($rubric.calculatePassScore({ passScore: 0 }, table)).toBe(0);
-      });
-
-      it('clamps a mark above the maximum', () => {
-        const table = buildScoredTable();
-
-        expect($rubric.calculatePassScore({ passScore: 99 }, table)).toBe(10);
-      });
-
-      it('answers null for a rubric saved before the field existed', () => {
-        // Nothing to judge with: the shared resolver then falls back to the
-        // project value rather than inventing a threshold.
-        const table = buildScoredTable();
-
-        expect($rubric.calculatePassScore({}, table)).toBeNull();
-        expect($rubric.calculatePassScore(null, table)).toBeNull();
-      });
-
-      it('answers null when the rubric has no usable maximum', () => {
-        const table = $('<table class="exe-table"><tbody></tbody></table>');
-
-        expect($rubric.calculatePassScore({ passScore: 4 }, table)).toBeNull();
-      });
-
-      it('asks for the same points, not the same fraction, when the rubric grows', () => {
-        // An author who wrote "3.5" means three and a half points. Adding a
-        // criterion raises the maximum, and the mark stays three and a half
-        // points -- which is a smaller share of the total, not the same one.
-        const small = buildScoredTable();
-        const grown = buildScoredTable();
-        grown.find('tbody').append(
-          '<tr><th>Row 3</th>' +
-            '<td><input type="checkbox" name="r2" data-col-index="0" value="3" /></td>' +
-            '<td><input type="checkbox" name="r2" data-col-index="1" value="7" /></td>' +
-            '</tr>',
-        );
-
-        expect($rubric.calculateTableMaxScore(grown)).toBeGreaterThan(
-          $rubric.calculateTableMaxScore(small),
-        );
-        expect($rubric.calculatePassScore({ passScore: 3.5 }, grown)).toBeLessThan(
-          $rubric.calculatePassScore({ passScore: 3.5 }, small),
-        );
-      });
-    });
-
     it('calculateScormScore clamps to 10 when all maximums selected', () => {
       const table = buildScoredTable();
       table.find('input[value="3"]').prop('checked', true);
