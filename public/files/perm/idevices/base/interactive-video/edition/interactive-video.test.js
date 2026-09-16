@@ -63,7 +63,7 @@ describe('interactive-video iDevice edition', () => {
     document.body.innerHTML = '';
   });
 
-  it('hands its asset path to the Evaluation tab, which needs it for the help icon', () => {
+  it('hands its asset path to the Grading tab, which needs it for the help icon', () => {
     // The progress report moved into the tab, so this iDevice no longer renders
     // it. What it still owns is the path the report's help icon is built from,
     // and the asset that path points at.
@@ -212,7 +212,7 @@ describe('interactive-video iDevice edition', () => {
 
     it('delegates the evaluation controls to the shared tab', () => {
         // The pass score and the progress report used to be rendered here,
-        // loose in the general options. They now live in the Evaluation tab,
+        // loose in the general options. They now live in the Grading tab,
         // so rendering them again would show each control twice.
         expect(source).not.toContain('passScore.getContents(');
         expect(source).not.toContain('progressBar.getContents(');

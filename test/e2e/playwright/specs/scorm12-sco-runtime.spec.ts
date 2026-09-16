@@ -683,9 +683,9 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Options', exact: true }).click();
         await expect(page.locator('#modalAlert')).toBeHidden();
         await page.locator('#rclETypeNavigation').check();
-        // The tab is "Evaluation" now: it gathers the pass score, the SCORM
+        // The tab is "Grading" now: it gathers the pass score, the SCORM
         // options and the progress report, which used to be scattered.
-        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Evaluation', exact: true }).click();
+        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Grading', exact: true }).click();
         await page.locator('#eXeGameSCORMAutoSave').check();
         const ideviceId = await page.locator('#node-content .idevice_node.relate').getAttribute('id');
         expect(ideviceId).toBeTruthy();

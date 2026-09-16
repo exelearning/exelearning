@@ -356,7 +356,7 @@ describe('flipcards iDevice', () => {
       global.$exeDevicesEdition = originalExeDevicesEdition;
     });
 
-    it('hands its asset path to the Evaluation tab, which renders the report', () => {
+    it('hands its asset path to the Grading tab, which renders the report', () => {
       // The iDevice used to render the progress report itself. The tab does it
       // now, and it needs this path for the report's help icon -- so what this
       // iDevice still owns is passing it along.
@@ -455,7 +455,7 @@ describe('flipcards iDevice', () => {
 
         it('delegates the evaluation controls to the shared tab', () => {
             // The pass score and the progress report used to be rendered here,
-            // loose in the general options. They now live in the Evaluation tab,
+            // loose in the general options. They now live in the Grading tab,
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');

@@ -289,7 +289,7 @@ describe('geogebra-activity iDevice (edition)', () => {
     });
 
     it('delegates the evaluation controls to the shared tab', () => {
-      // It renders neither control itself any more: the Evaluation tab does.
+      // It renders neither control itself any more: the Grading tab does.
       expect(source).not.toContain('passScore.getContents(');
       expect(source).not.toContain('progressBar.getContents(');
       expect(source).toContain('gamification.scorm.getTab(');
@@ -305,7 +305,7 @@ describe('geogebra-activity iDevice (edition)', () => {
     /**
      * Storage is the interesting part of this iDevice: it has no JSON options
      * block, so the SCORM settings ride on the same CSS classes as everything
-     * else. Nothing new had to be invented for the Evaluation tab, because the
+     * else. Nothing new had to be invented for the Grading tab, because the
      * set of reachable states did not grow -- it is still "button" or nothing,
      * which auto-geogebra-scorm already encoded. That is what keeps existing
      * content readable without a migration.

@@ -179,7 +179,7 @@ var $exeDevicesEdition = {
                 },
                 // getGamificationTab() lived here and called getItineraryTab,
                 // getScormTab and getShareTab -- none of which exist, and none
-                // of which any iDevice called. Removed with the Evaluation tab
+                // of which any iDevice called. Removed with the Grading tab
                 // refactor rather than left as a trap.
             },
             instructions: {
@@ -255,7 +255,7 @@ var $exeDevicesEdition = {
              * Collapsible help notes, the pattern the progress report has always
              * used: a small icon that toggles a note below the control.
              *
-             * The Evaluation tab needs six of them, and the alternative was six
+             * The Grading tab needs six of them, and the alternative was six
              * copies of the same anchor, the same inline sizing and the same
              * delegated handler.
              */
@@ -563,7 +563,7 @@ var $exeDevicesEdition = {
                 },
 
                 /**
-                 * The Evaluation tab: everything that decides whether a learner
+                 * The Grading tab: everything that decides whether a learner
                  * passed, in one place.
                  *
                  * It used to be the SCORM tab, and the other two evaluative
@@ -608,7 +608,7 @@ var $exeDevicesEdition = {
                         ? $exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)
                         : '';
                     return `
-                        <div class="exe-form-tab" title="${_('Evaluation')}">
+                        <div class="exe-form-tab" title="${_('Grading')}">
                             <h3 class="exe-evaluation-section-title">${_('SCORM')}</h3>
                             <div class="d-flex align-items-center gap-1 mb-3 ml-1">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" checked />

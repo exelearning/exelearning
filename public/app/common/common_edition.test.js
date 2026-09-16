@@ -421,7 +421,7 @@ describe('common_edition.js', () => {
     });
 
     /**
-     * Extracted when the Evaluation tab needed its sixth collapsible note: the
+     * Extracted when the Grading tab needed its sixth collapsible note: the
      * alternative was six copies of the same anchor, the same inline sizing and
      * the same delegated handler.
      */
@@ -1158,15 +1158,18 @@ describe('common_edition.js', () => {
     /**
      * The tab used to be the SCORM tab, with the pass score and the progress
      * report sitting loose in each iDevice's general options. It is now the
-     * Evaluation tab and composes all three, so the layout is decided once
+     * Grading tab and composes all three, so the layout is decided once
      * rather than thirty-four times.
      */
-    describe('Evaluation tab', () => {
+    describe('Grading tab', () => {
       const getTab = (...args) =>
         globalThis.$exeDevicesEdition.iDevice.gamification.scorm.getTab(...args);
 
-      it('is titled Evaluation, not SCORM', () => {
-        expect(getTab()).toContain('title="Evaluation"');
+      it('is titled Grading, not SCORM', () => {
+        // Not "Evaluation": the iDevice menu already has an "Assessment and
+        // tracking" category, and this tab is narrower than either -- it is
+        // about the mark and what becomes of it.
+        expect(getTab()).toContain('title="Grading"');
       });
 
       it('keeps SCORM as a section inside it', () => {

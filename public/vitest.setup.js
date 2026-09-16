@@ -1155,7 +1155,7 @@ const mockGamificationScorm = {
   init: vi.fn(),
   save: vi.fn(() => ({})),
   load: vi.fn(),
-  // The Evaluation tab. The real one composes the pass score, the SCORM
+  // The Grading tab. The real one composes the pass score, the SCORM
   // options and the progress report; the marker is enough for an iDevice's
   // createForm to run, and the composition has its own tests.
   getTab: vi.fn(() => '<div class="exe-form-tab mock-evaluation-tab"></div>'),

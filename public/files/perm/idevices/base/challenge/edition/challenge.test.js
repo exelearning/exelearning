@@ -283,7 +283,7 @@ describe('challenge iDevice', () => {
       );
       expect(topAlert).not.toBeNull();
       expect(closeButton).not.toBeNull();
-      // The progress report moved into the Evaluation tab, which needs this
+      // The progress report moved into the Grading tab, which needs this
       // path for its help icon; passing it along is what this iDevice owns now.
       expect(scorm.getTab).toHaveBeenCalledWith('/test/');
       expect(container.querySelector('.mock-scorm-tab')).not.toBeNull();
@@ -605,7 +605,7 @@ describe('challenge iDevice', () => {
 
         it('delegates the evaluation controls to the shared tab', () => {
             // The pass score and the progress report used to be rendered here,
-            // loose in the general options. They now live in the Evaluation tab,
+            // loose in the general options. They now live in the Grading tab,
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');

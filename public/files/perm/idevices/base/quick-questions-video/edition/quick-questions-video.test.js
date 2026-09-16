@@ -307,7 +307,7 @@ describe('quick-questions-video edition: the SCORM weight survives a round trip'
 
         it('delegates the evaluation controls to the shared tab', () => {
             // The pass score and the progress report used to be rendered here,
-            // loose in the general options. They now live in the Evaluation tab,
+            // loose in the general options. They now live in the Grading tab,
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
