@@ -552,7 +552,7 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
         padding-bottom: 43px;
     }
 }
-html.js #siteNav .other-section {
+#siteNav .other-section {
     display: none; /* Optional (hide subpages) */
 }
 #siteNav ul {

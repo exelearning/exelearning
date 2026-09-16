@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v4.0.4 – 2026-09-15
+## v4.0.5 – 2026-09-16
 
 ### Added
 
@@ -65,6 +65,7 @@
 - True/False iDevice: fixed errors when answering and corrected score reporting
 - True/False iDevice: activities imported from eXeLearning 2.x now use the project's language instead of English
 - Form iDevice: the Check button now works as soon as the activity is displayed
+- Progress Report iDevice: fixed course maps in exported packages, scores on duplicated pages, activity order and page links
 - Sort iDevice: fixed its height and the count of correctly positioned items
 - iDevice editing: fixed digit limits in time and percentage fields in eight iDevices
 - Export and preview: after upgrading eXeLearning, the browser no longer reuses cached files from the previous version
@@ -74,15 +75,18 @@
 - Effects: fixed the timeline opening and closing again on a single click
 - Neo and Flux styles: fixed responsive layout detection
 - Styles: fixed a misnamed icon in Neo; all styles except Universal now provide the same 50 icons under the same names
+- Styles: theme icons are always sorted alphabetically in the block icon picker
 - Styles: reviewed the licences of third-party materials used in styles, updated their credits and include the required licences with every style
 - File → Open: fixed the colours of the Delete button
 - Admin panel: fixed the contrast of the Source column in Styles Management
 - Preview: PDFs embedded in a Text iDevice are now displayed correctly in Docker and static deployments
+- Preview: fixed timeouts caused by outdated preview workers after upgrading eXeLearning
 - Math: fixed inconsistencies caused by mixing incompatible MathJax versions and reduced the size of exports containing formulas
 - Math editor: formula previews are now announced correctly by screen readers instead of as unlabelled images
 - Math editor: the menu editor no longer downloads part of its interface from external services, so it also works in offline and desktop installations
 - Mermaid: the library is now loaded while the diagram is being edited, preventing delays when the activity is closed or saved
 - Import: activities with damaged data now retain their original content instead of being emptied, and the user is notified
+- Import: the "Missing files" notice no longer lists files that only existed in an outdated copy of html-type activities (Map, Flipcards, Select media files…)
 - Uploads: large files are now staged in the configured data directory instead of the application folder
 - Sign-in no longer slows down the rest of the server when many users log in simultaneously
 - OpenID Connect: consent is now handled entirely by the identity provider, avoiding repeated consent prompts and allowing non-administrative users to sign in
@@ -105,12 +109,19 @@
 - electron: 43.2.0 → 44.2.0
 - electron-context-menu: 4.1.2 → 5.0.0
 - @biomejs/biome: 2.4.5 → 2.5.11
-- Several other dependencies updated to their latest compatible versions, clearing all known security advisories
+- mysql2: 3.18.2 → 3.23.4
+- y-websocket: 3.0.0 → 3.1.0
 
 ### Removed
 
 - Deprecated `@elysiajs/cookie` dependency and unnecessary type stub packages
 - Exported packages no longer emit xAPI statements. The emitter had no known consumer after Moodle tracking was consolidated on SCORM; SCORM tracking and grading are unchanged, and already-exported packages keep working because they bundle their own runtime
+
+---
+
+## v4.0.4
+
+404 Not Found. The requested release was not found in this project.
 
 ---
 

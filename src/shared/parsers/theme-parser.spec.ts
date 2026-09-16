@@ -5,6 +5,8 @@ import { describe, it, expect } from 'bun:test';
 import {
     parseThemeConfig,
     parseThemeConfigBasic,
+    compareThemeIconNames,
+    sortThemeIcons,
     type ThemeFileSystemReader,
     type ThemePathUtils,
 } from './theme-parser';
@@ -231,6 +233,40 @@ describe('theme-parser', () => {
             expect(config!.icons.star.value).toBe('/files/perm/themes/base/icons/icons/star.png');
         });
 
+        it('should return icons sorted by id regardless of readdir order (#2411)', () => {
+            const xmlContent = `<?xml version="1.0"?>
+<theme>
+    <name>Unsorted Icons</name>
+</theme>`;
+
+            // createMockFs yields entries in object-key order, i.e. unsorted here
+            const mockFs = createMockFs(
+                {
+                    '/themes/u/icons/udl_rep_informarse.svg': '<svg></svg>',
+                    '/themes/u/icons/udl_exp_grupohomogeneo.svg': '<svg></svg>',
+                    '/themes/u/icons/udl_eng_reto.svg': '<svg></svg>',
+                    '/themes/u/icons/udl_eng_curiosidad.svg': '<svg></svg>',
+                },
+                ['/themes/u', '/themes/u/icons'],
+            );
+
+            const config = parseThemeConfig(xmlContent, {
+                themeId: 'u',
+                themePath: '/themes/u',
+                type: 'base',
+                themeUrl: '/files/perm/themes/base/u',
+                fs: mockFs,
+                path: mockPath,
+            });
+
+            expect(Object.keys(config!.icons)).toEqual([
+                'udl_eng_curiosidad',
+                'udl_eng_reto',
+                'udl_exp_grupohomogeneo',
+                'udl_rep_informarse',
+            ]);
+        });
+
         it('should use provided preview URL', () => {
             const xmlContent = `<?xml version="1.0"?>
 <theme>
@@ -329,6 +365,39 @@ describe('theme-parser', () => {
             expect(config!.author).toBe('');
             expect(config!.description).toBe('');
             expect(config!.downloadable).toBe('1');
+        });
+    });
+
+    describe('sortThemeIcons', () => {
+        const icon = (id: string) => ({ id, title: id, type: 'img' as const, value: `/icons/${id}.svg` });
+
+        it('returns a copy keyed in alphabetical order', () => {
+            const input = { zeta: icon('zeta'), alpha: icon('alpha'), mid: icon('mid') };
+
+            const sorted = sortThemeIcons(input);
+
+            expect(Object.keys(sorted)).toEqual(['alpha', 'mid', 'zeta']);
+            expect(sorted.alpha).toBe(input.alpha);
+            expect(Object.keys(input)).toEqual(['zeta', 'alpha', 'mid']);
+        });
+
+        it('orders numeric suffixes naturally', () => {
+            const sorted = sortThemeIcons({ icon10: icon('icon10'), icon2: icon('icon2'), icon1: icon('icon1') });
+
+            expect(Object.keys(sorted)).toEqual(['icon1', 'icon2', 'icon10']);
+        });
+
+        it('returns an empty record for empty input', () => {
+            expect(sortThemeIcons({})).toEqual({});
+        });
+    });
+
+    describe('compareThemeIconNames', () => {
+        it('compares names alphabetically with numeric awareness', () => {
+            expect(compareThemeIconNames('a', 'b')).toBeLessThan(0);
+            expect(compareThemeIconNames('b', 'a')).toBeGreaterThan(0);
+            expect(compareThemeIconNames('same', 'same')).toBe(0);
+            expect(compareThemeIconNames('icon2', 'icon10')).toBeLessThan(0);
         });
     });
 
