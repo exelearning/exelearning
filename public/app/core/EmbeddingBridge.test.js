@@ -713,6 +713,29 @@ describe('EmbeddingBridge', () => {
             );
         });
 
+        it('should forward host export options such as forceEditableSource', async () => {
+            // A host that stores the package AS the project (Moodle
+            // mod_exescorm) asks for the editable source regardless of the
+            // author's "Editable export" property (#2415).
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'REQUEST_EXPORT',
+                    data: { format: 'scorm12', options: { forceEditableSource: true } },
+                    requestId: 'req-export',
+                },
+            });
+
+            expect(window.SharedExporters.quickExport).toHaveBeenCalledWith(
+                'scorm12',
+                expect.anything(),
+                null,
+                expect.anything(),
+                { forceEditableSource: true },
+                expect.anything(),
+            );
+        });
+
         it('should export with specified format', async () => {
             await messageHandler({
                 origin: 'https://parent.com',
