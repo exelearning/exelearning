@@ -15,6 +15,7 @@ import type { Theme } from '../db/types';
 import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import { prefixPath } from '../utils/basepath.util';
 import { isSafePathSegment, safeJoin, isWithinBase } from '../utils/safe-path';
+import { sortThemeIcons, type ThemeIcon } from '../shared/parsers/theme-parser';
 
 // Base path for themes (bundled with the app)
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
@@ -81,18 +82,6 @@ const getAppVersion = (): string => {
  */
 const ICON_EXTENSIONS = ['svg', 'png', 'gif', 'jpg', 'jpeg', 'webp'];
 const ICON_EXTENSION_REGEX = /\.(svg|png|gif|jpe?g|webp)$/i;
-
-/**
- * Theme icon structure expected by the frontend
- * The `id` field is the baseName WITHOUT extension (e.g., "share")
- * The `value` field contains the full URL with extension (e.g., "/v3.1/.../share.svg")
- */
-interface ThemeIcon {
-    id: string;
-    title: string;
-    type: string;
-    value: string;
-}
 
 /**
  * Theme configuration interface
@@ -189,7 +178,8 @@ function scanThemeIcons(themePath: string, themeUrl: string): Record<string, The
         };
     }
 
-    return icons;
+    // readdirSync order is filesystem-dependent; the picker relies on this order (#2411)
+    return sortThemeIcons(icons);
 }
 
 /**
