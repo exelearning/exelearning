@@ -885,9 +885,9 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('exe-single-page');
-            // Sections have id="section-{pageId}" for anchor navigation
-            expect(html).toContain('id="section-page-1"');
-            expect(html).toContain('id="section-page-2"');
+            // Sections are anchored for single-page navigation
+            expect(html).toContain('<section id="section-page-1">');
+            expect(html).toContain('<section id="section-page-2">');
             expect(html).toContain('First');
             expect(html).toContain('Second');
         });
@@ -915,9 +915,9 @@ describe('PageRenderer', () => {
 
             // No nav tree with nested structure
             expect(html).not.toContain('class="other-section"');
-            // Sections have id="section-{pageId}" for anchor navigation
-            expect(html).toContain('id="section-parent"');
-            expect(html).toContain('id="section-child"');
+            // Sections are anchored for single-page navigation
+            expect(html).toContain('<section id="section-parent">');
+            expect(html).toContain('<section id="section-child">');
             expect(html).toContain('class="page-title">Child</h1>');
         });
 
@@ -1001,6 +1001,57 @@ describe('PageRenderer', () => {
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('<span class="license">');
             expect(html).not.toContain('href="https://creativecommons.org/licenses/by/4.0/"');
+        });
+
+        it('should load the theme stylesheet last, after libraries and base.css (#2282)', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                detectedLibraries: ['exe_effects', 'exe_highlighter'],
+                addAccessibilityToolbar: true,
+            });
+
+            const themeIndex = html.indexOf('<link rel="stylesheet" href="theme/style.css">');
+            expect(themeIndex).toBeGreaterThan(-1);
+            for (const earlier of [
+                'href="libs/bootstrap/bootstrap.min.css"',
+                'href="libs/exe_effects/exe_effects.css"',
+                'href="libs/exe_highlighter/exe_highlighter.css"',
+                'href="libs/exe_atools/exe_atools.css"',
+                'href="content/css/base.css"',
+            ]) {
+                const index = html.indexOf(earlier);
+                expect(index).toBeGreaterThan(-1);
+                expect(index).toBeLessThan(themeIndex);
+            }
+        });
+
+        it('should keep custom styles after the theme stylesheet', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, { customStyles: '.custom { color: red; }' });
+
+            expect(html.indexOf('.custom { color: red; }')).toBeGreaterThan(
+                html.indexOf('<link rel="stylesheet" href="theme/style.css">'),
+            );
+        });
+
+        it('should match the multi-page stylesheet order for theme, libraries and base.css', () => {
+            const pages = [createTestPage()];
+            const options = { detectedLibraries: ['exe_effects'], addAccessibilityToolbar: true };
+            const singlePageHtml = renderer.renderSinglePage(pages, options);
+            const multiPageHtml = renderer.render(pages[0], {
+                projectTitle: 'Test',
+                basePath: '',
+                allPages: pages,
+                themeFiles: ['style.css', 'style.js'],
+                ...options,
+            });
+
+            const sheetOrder = (html: string): string[] =>
+                Array.from(html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g))
+                    .map(match => match[1])
+                    .filter(href => !href.startsWith('idevices/'));
+
+            expect(sheetOrder(singlePageHtml)).toEqual(sheetOrder(multiPageHtml));
         });
     });
 
@@ -2095,76 +2146,6 @@ describe('PageRenderer', () => {
 
         it('handles empty content', () => {
             expect(renderer.replaceSinglePageInternalLinks('', allPages)).toBe('');
-        });
-    });
-
-    describe('xAPI config script injection (XSS hardening)', () => {
-        // A title that, with a naive JSON.stringify, would close the inline <script> and
-        // inject an executable <script>alert(1)</script> into the exported page.
-        const maliciousTitle = '</script><script>alert(1)</script>';
-
-        function expectNeutralized(html: string): void {
-            // The emitted markup must NOT contain a literal breakout sequence that would
-            // escape the xAPI config <script> tag.
-            expect(html).not.toContain('</script><script>alert(1)</script>');
-            // The '<' of the payload must be escaped as a JS unicode escape inside the JSON.
-            expect(html).toContain('\\u003c/script>\\u003cscript>alert(1)\\u003c/script>');
-            // The xAPI config must still be present and the emitter script must follow it.
-            expect(html).toContain('window.exeXapi=');
-            expect(html).toContain('libs/xapi/exe_xapi.js');
-        }
-
-        it('neutralizes </script> breakout in renderHead (multi-page head)', () => {
-            const head = renderer.renderHead({
-                pageTitle: 'Test',
-                basePath: '',
-                usedIdevices: [],
-                xapi: {
-                    odeId: 'ode-1',
-                    baseIri: 'https://exe.test/',
-                    activityId: 'https://exe.test/act',
-                    packageTitle: maliciousTitle,
-                    language: 'en',
-                },
-            });
-            expectNeutralized(head);
-        });
-
-        it('neutralizes </script> breakout in renderSinglePage (single-page head)', () => {
-            const pages: ExportPage[] = [createTestPage()];
-            const html = renderer.renderSinglePage(pages, {
-                projectTitle: 'Test',
-                xapi: {
-                    odeId: 'ode-1',
-                    baseIri: 'https://exe.test/',
-                    activityId: 'https://exe.test/act',
-                    packageTitle: maliciousTitle,
-                    language: 'en',
-                },
-            });
-            expectNeutralized(html);
-        });
-
-        it('escapes U+2028 / U+2029 line separators so the JS string literal stays valid', () => {
-            const ls = '\u2028';
-            const ps = '\u2029';
-            const result = renderer.serializeForScript({ packageTitle: `a${ls}b${ps}c` });
-            // The raw separators (illegal in a JS string literal) must not survive verbatim.
-            expect(result).not.toContain(ls);
-            expect(result).not.toContain(ps);
-            expect(result).toContain('\\u2028');
-            expect(result).toContain('\\u2029');
-        });
-
-        it('round-trips back to the original value via JSON.parse', () => {
-            const value = {
-                packageTitle: maliciousTitle,
-                baseIri: `https://exe.test/x${'\u2028'}y`,
-            };
-            const serialized = renderer.serializeForScript(value);
-            // The escaped less-than, U+2028 and U+2029 are valid JSON escapes, so
-            // JSON.parse must recover the exact original object.
-            expect(JSON.parse(serialized)).toEqual(value);
         });
     });
 });

@@ -1776,6 +1776,25 @@ var $eXeMapa = {
         );
     },
 
+    /**
+     * Publish the opening state to the LMS when the learner presses start.
+     *
+     * startGame() only reveals the interface — the counters were cleared at
+     * load (loadDataGame, and startFinds for the identify/find modes) — but
+     * nothing told the LMS, so its menu kept the previous attempt's grade and
+     * status until the learner answered.
+     *
+     * Safe in every mode: hits are 0 at this point, so the report is a zero.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeMapa.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeMapa.sendScore(true, instance);
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeMapa.options[instance],
             numq =
@@ -1791,6 +1810,14 @@ var $eXeMapa = {
         }
 
         mOptions.scorerp = score;
+        // Exposition mode (evaluationG 0) is the only mode that never reaches
+        // gameOver(): it is finished once every point counted by getScoreVisited has
+        // been visited, which is the full score of 10 that messageAllVisited already
+        // uses as its "all visited" condition. Every other mode ends through
+        // gameOver(), which sets the flag before it reports, so none is touched here.
+        if (mOptions.evaluationG == 0 && numq > 0 && score >= 10) {
+            mOptions.gameOver = true;
+        }
         mOptions.previousScore = $eXeMapa.previousScore;
         mOptions.userName = $eXeMapa.userName;
 
@@ -1800,9 +1827,10 @@ var $eXeMapa = {
     },
 
     createInterfaceMapa: function (instance) {
+        const mOptions = $eXeMapa.options[instance];
+        if (!mOptions) return '';
         const path = $eXeMapa.idevicePath,
-            msgs = $eXeMapa.options[instance].msgs,
-            mOptions = $eXeMapa.options[instance],
+            msgs = mOptions.msgs,
             html = `
             <div class="MQP-MainContainer" id="mapaMainContainer-${instance}">
                 <div class="MQP-GameMinimize" id="mapaGameMinimize-${instance}">
@@ -2536,14 +2564,6 @@ var $eXeMapa = {
             return true;
         });
 
-        $(window).on('unload.eXeMapa beforeunload.eXeMapa', function () {
-            if ($eXeMapa.mScorm && typeof $eXeMapa.mScorm != 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeMapa.mScorm
-                );
-            }
-        });
-
         $('#mapaMultimedia-' + instance).on(
             'mouseenter',
             '.MQP-Point',
@@ -2750,6 +2770,10 @@ var $eXeMapa = {
                 mOptions.gameOver = false;
                 mOptions.orderResponse = [];
                 mOptions.gameStarted = true;
+                // After gameStarted and gameOver above, never before:
+                // sendScoreNew ignores a game that reports as neither started
+                // nor over, and it derives completion from gameOver.
+                $eXeMapa.saveScormScore(instance);
                 $('#mapaGameContainer-' + instance).css('height', 'auto');
                 $('#mapaCheckOrder-' + instance).show();
                 return;
@@ -2772,6 +2796,13 @@ var $eXeMapa = {
                 $eXeMapa.rebootGame(instance);
             }
             mOptions.gameStarted = true;
+            // Play again is the learner's own start, like the start link: every
+            // branch above has cleared the score and lowered gameOver, so the
+            // LMS has to be told. Restarting silently left it holding the
+            // finished attempt's mark and status while a fresh round sat at
+            // zero on screen, and a learner who walked away there left the
+            // previous grade standing. After the flags, never before.
+            $eXeMapa.saveScormScore(instance);
             $('#mapaTest-' + instance).fadeOut(100);
             $('#mapaGameContainer-' + instance).css('height', 'auto');
         });
@@ -3125,8 +3156,6 @@ var $eXeMapa = {
 
         $('#mapaCodeAccessButton-' + instance).off('click');
         $('#mapaCodeAccessE-' + instance).off('click');
-
-        $(window).off('unload.eXeMapa beforeunload.eXeMapa');
 
         $multimedia.off('click');
 
@@ -3709,6 +3738,9 @@ var $eXeMapa = {
         }
 
         mOptions.gameStarted = true;
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeMapa.saveScormScore(instance);
     },
 
     showMapDetail: function (instance, num) {
@@ -4126,9 +4158,13 @@ var $eXeMapa = {
     },
 
     answerTPQuestion: function (instance) {
-        const mOptions = $eXeMapa.options[instance],
-            p = mOptions.activeMap.pts[mOptions.activeMap.active],
-            q = p.tests[p.activeTest];
+        const mOptions = $eXeMapa.options[instance];
+        if (!mOptions || !mOptions.activeMap || !mOptions.activeMap.pts)
+            return;
+        const p = mOptions.activeMap.pts[mOptions.activeMap.active];
+        if (!p || !p.tests) return;
+        const q = p.tests[p.activeTest];
+        if (!q) return;
 
         $exeDevices.iDevice.gamification.media.stopSound();
 
@@ -5123,6 +5159,19 @@ var $eXeMapa = {
         ) {
             $eXeMapa.hideCover(instance);
             mOptions.showData = false;
+            if (mOptions.evaluationG == 1 || mOptions.evaluationG == 2 || mOptions.evaluationG == 3 || mOptions.evaluationG == 5) {
+                // These are the modes that carry the "click here to start"
+                // link, and a valid code stands in for pressing it: startGame
+                // sets each mode's board up and publishes the opening zero.
+                $eXeMapa.startGame(instance);
+            } else {
+                // Visited points and quiz have no such link — loadDataGame
+                // raises gameStarted for them, so the map is live from the
+                // moment the page loads and there is nothing to start. What
+                // was missing is the report: accepting the code is the
+                // learner opening the activity.
+                $eXeMapa.saveScormScore(instance);
+            }
         } else {
             $('#mapaMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
