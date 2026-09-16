@@ -21,8 +21,12 @@ const __dirname = dirname(__filename);
  */
 function loadExportIdevice(code) {
   let modifiedCode = code.replace(/var\s+\$azquizgame\s*=/, 'global.$azquizgame =');
-  // Remove auto-init call: $(function () { $azquizgame.init(); });
-  modifiedCode = modifiedCode.replace(/\$\(function\s*\(\)\s*\{\s*\$azquizgame\.init\(\);\s*\}\);?/g, '');
+  // Remove the auto-init call, whichever form the export uses:
+  // $(function () { $azquizgame.init(); }); or $(() => { $azquizgame.init(); });
+  modifiedCode = modifiedCode.replace(
+    /\$\(\s*(?:function\s*\(\)|\(\)\s*=>)\s*\{\s*\$azquizgame\.init\(\);\s*\}\s*\);?/g,
+    ''
+  );
   // eslint-disable-next-line no-eval
   (0, eval)(modifiedCode);
   return global.$azquizgame;
@@ -185,6 +189,221 @@ describe('az-quiz-game iDevice export', () => {
       expect(result.evaluationID).toBe('');
       expect(result.playerAudio).toBe('');
       expect(result.gameOver).toBe(false);
+    });
+  });
+
+  describe('page lifecycle', () => {
+    // The SCORM runtime owns the end of the session (pagehide / visibilitychange).
+    // An activity must never finish itself when the page is hidden: a learner who
+    // navigates away, switches tab or lets the browser freeze the page mid-rosco
+    // would otherwise be reported as finished with the score of the moment — a
+    // fail below the threshold — and the completion flag survives in
+    // cmi.suspend_data, so the attempt is closed for good.
+    beforeEach(() => {
+      // An earlier suite in this file removes the shared mock; rebuild the surface
+      // addEvents touches. The scorm helpers are what the hide handler used to call.
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            scorm: { endScorm: vi.fn(), registerActivity: vi.fn() },
+            media: { stopSound: vi.fn(), playSound: vi.fn() },
+            helpers: { toggleFullscreen: vi.fn(), getTimeToString: vi.fn(() => '00:00') },
+          },
+        },
+      };
+    });
+
+    afterEach(() => {
+      delete global.$exeDevices;
+    });
+
+    it('does not finish a running game when the page is hidden', () => {
+      document.body.innerHTML = `
+        <div id="roscoMainContainer-0">
+          <div id="roscoTypeGame-0"></div>
+          <canvas id="roscoCanvas-0"></canvas>
+        </div>
+      `;
+      // happy-dom has no 2D context; addEvents only needs one it can draw on.
+      const getContext = vi
+        .spyOn(HTMLCanvasElement.prototype, 'getContext')
+        .mockReturnValue(new Proxy({}, { get: () => vi.fn() }));
+      $azquizgame.options[0] = {
+        isScorm: 0,
+        gameStarted: true,
+        gameOver: false,
+        itinerary: { showCodeAccess: false },
+        wordsGame: [],
+        msgs: {},
+        instructions: '',
+        title: '',
+        author: '',
+        durationGame: 0,
+        numberTurns: 1,
+      };
+      // Board drawing is not what this test is about.
+      $azquizgame.drawRosco = vi.fn();
+      $azquizgame.drawRows = vi.fn();
+      $azquizgame.drawText = vi.fn();
+      $azquizgame.gameOver = vi.fn();
+      $azquizgame.sendScore = vi.fn();
+
+      $azquizgame.addEvents(0);
+      try {
+        $(window).trigger('pagehide');
+      } finally {
+        $azquizgame.removeEvents(0);
+        getContext.mockRestore();
+        document.body.innerHTML = '';
+      }
+
+      expect($azquizgame.gameOver).not.toHaveBeenCalled();
+      expect($azquizgame.sendScore).not.toHaveBeenCalled();
+    });
+  });
+
+  // The automatic report used to happen from showWord(), i.e. only once the
+  // setTimeout that reveals the next word had elapsed. That put the mark in the
+  // LMS one to four seconds late, and a learner who left during that window
+  // lost the answer: the timer never fired.
+  describe('reporting in the same turn the learner answered', () => {
+    function setupAnswer(overrides) {
+      document.body.innerHTML = `
+        <div id="roscoMainContainer-0">
+          <div id="roscoPShowClue-0"></div>
+          <div id="roscotPHits-0"></div>
+          <div id="roscotPErrors-0"></div>
+          <div id="roscoEdReply-0"></div>
+        </div>`;
+      $azquizgame.options[0] = Object.assign(
+        {
+          id: 0,
+          isScorm: 1,
+          gameStarted: true,
+          gameActived: true,
+          gameOver: false,
+          hits: 1,
+          errors: 0,
+          validWords: 4,
+          answeredWords: 0,
+          activeWord: 0,
+          letters: ['A', 'B', 'C', 'D'],
+          wordsGame: [
+            { word: 'uno', answer: 'uno', state: 0 },
+            { word: 'dos', answer: 'dos', state: 0 },
+            { word: 'tres', answer: 'tres', state: 0 },
+            { word: 'cuatro', answer: 'cuatro', state: 0 },
+          ],
+          showSolution: false,
+          timeShowSolution: 1,
+          itinerary: { showClue: false, percentageClue: 0 },
+          obtainedClue: false,
+          msgs: { msgInformation: 'info', msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($azquizgame, 'drawRosco').mockImplementation(() => {});
+      vi.spyOn($azquizgame, 'drawMessage').mockImplementation(() => {});
+      vi.spyOn($azquizgame, 'newWord').mockImplementation(() => {});
+      vi.spyOn($azquizgame, 'sendScore').mockImplementation(() => {});
+    }
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    it('reports before the reveal timer runs, not after it', () => {
+      vi.useFakeTimers();
+      setupAnswer();
+
+      $azquizgame.answerQuetionBoard(0, 0);
+
+      // No timer has been advanced: the report has to have gone out already.
+      expect($azquizgame.sendScore).toHaveBeenCalledWith(true, 0);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    it('does not report when the activity is not in automatic SCORM mode', () => {
+      vi.useFakeTimers();
+      setupAnswer({ isScorm: 0 });
+
+      $azquizgame.answerQuetionBoard(0, 0);
+
+      expect($azquizgame.sendScore).not.toHaveBeenCalled();
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // An intermediate answer must not close the attempt: the page would go to
+    // passed/failed while the learner is still playing. The active letter says
+    // nothing here — the rosco comes back to the words that were skipped — so
+    // what decides is answeredWords against validWords.
+    it('leaves the activity unfinished while words remain', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeWord: 3, answeredWords: 0 });
+
+      $azquizgame.answerQuetionBoard(0, 0);
+
+      expect($azquizgame.options[0].gameOver).toBe(false);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // The last answer has to carry the completion, so a learner who leaves
+    // during the reveal delay still has a finished activity recorded.
+    it('marks the activity finished on the last word, before reporting', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeWord: 0, answeredWords: 3 });
+      let flagWhenReported;
+      $azquizgame.sendScore.mockImplementation(() => {
+        flagWhenReported = $azquizgame.options[0].gameOver;
+      });
+
+      $azquizgame.answerQuetionBoard(0, 0);
+
+      expect(flagWhenReported).toBe(true);
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // newWord() returns at once while gameOver is up, so the ending has to be
+    // called directly. Routing it through newWord() would leave the rosco with
+    // no closing message and no start button.
+    it('runs the ending after the reveal, not through newWord', () => {
+      vi.useFakeTimers();
+      setupAnswer({ activeWord: 0, answeredWords: 3 });
+      const endSpy = vi
+        .spyOn($azquizgame, 'gameOver')
+        .mockImplementation(() => {});
+
+      $azquizgame.answerQuetionBoard(0, 0);
+      vi.runAllTimers();
+
+      expect(endSpy).toHaveBeenCalledWith(0, 0);
+      expect($azquizgame.newWord).not.toHaveBeenCalled();
+
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    // saveScormScore is the single entry point the three call sites share
+    // (startGame, answerQuetion, answerQuetionBoard), so its mode guard is
+    // pinned once here rather than through each of them.
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupAnswer({ isScorm: 1 });
+      $azquizgame.saveScormScore(0);
+      expect($azquizgame.sendScore).toHaveBeenCalledWith(true, 0);
+
+      $azquizgame.sendScore.mockClear();
+      $azquizgame.options[0].isScorm = 2;
+      $azquizgame.saveScormScore(0);
+      expect($azquizgame.sendScore).not.toHaveBeenCalled();
     });
   });
 });

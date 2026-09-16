@@ -61,6 +61,7 @@ jobs:
             public/app/yjs/exporters.bundle.js
             public/app/yjs/importers.bundle.js
             public/app/common/i18n/**
+            public/app/common/edicuatex/**
             public/bundles/**
             public/style/workarea/main.css
             public/files/perm/idevices/base/slide/edition/slide-editor.bundle.js

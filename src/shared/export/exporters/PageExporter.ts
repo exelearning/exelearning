@@ -52,6 +52,8 @@ export class PageExporter extends Html5Exporter {
 
             // Get all iDevice types used in the project
             const usedIdevices = this.getUsedIdevices(pages);
+            const { files: materialIconFiles, dataUris: materialIconDataUris } =
+                await this.resolveMaterialIconDataUris(pages);
             const includeMathJax = meta.addMathJax === true;
             let latexWasRendered = false;
 
@@ -113,6 +115,7 @@ export class PageExporter extends Html5Exporter {
                 [],
                 includeMathJax,
                 navLabels,
+                materialIconDataUris,
             );
             this.zip.addFile('index.html', html);
 
@@ -153,6 +156,10 @@ export class PageExporter extends Html5Exporter {
                 // No base libraries available
             }
 
+            this.addPrefixedFiles(materialIconFiles, 'libs/', (path, content) => {
+                this.zip.addFile(path, content);
+            });
+
             // 5.b Detect and fetch additional required libraries based on content
             // This is crucial for things like MathJax, Tooltips, etc.
             const { files: allRequiredFiles, patterns } = this.getRequiredLibraryFilesForPages(pages, {
@@ -191,6 +198,7 @@ export class PageExporter extends Html5Exporter {
                 patterns.map(p => p.name),
                 includeMathJax,
                 navLabels,
+                materialIconDataUris,
             );
 
             // Pre-render LaTeX to SVG+MathML when MathJax is not bundled, so
@@ -257,6 +265,7 @@ export class PageExporter extends Html5Exporter {
         detectedLibraries: string[] = [],
         addMathJax = false,
         navLabels?: { previous: string; next: string; page: string; license?: string },
+        materialIconDataUris?: Map<string, string>,
     ): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',
@@ -271,14 +280,13 @@ export class PageExporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
-            // xAPI runtime config for the always-on emitter (stable IRIs from odeId)
-            xapi: { odeId: meta.odeIdentifier || '', packageTitle: meta.title || '', language: meta.language || 'en' },
             detectedLibraries,
             linkToElp: meta.exportSource !== false,
             addMathJax,
             addExeLink: meta.addExeLink ?? true,
             // Pre-translated nav labels (resolved from XLF at export time)
             navLabels,
+            materialIconDataUris,
         });
     }
 
