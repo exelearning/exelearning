@@ -91,6 +91,9 @@ function scanDirectory(dirPath, basePath = '') {
     // which drops these files (excludePatterns=['.test.js','.spec.js']). Listing
     // them would 404 on every fetch during static bundle assembly.
     if (entry.isFile() && /\.(test|spec)\.js$/.test(entry.name)) continue;
+    // Source maps are a development aid next to generated bundles (e.g. the
+    // Interactive Video iDevice); they must not ship inside resource ZIPs.
+    if (entry.isFile() && entry.name.endsWith('.map')) continue;
 
     const fullPath = path.join(dirPath, entry.name);
     const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
