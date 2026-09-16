@@ -4,8 +4,29 @@
  * Adapted from eXeViewer approach (https://github.com/exelearning/exeviewer)
  */
 
+/**
+ * Resolve the worker version from the registration URL query (?v=<app version>).
+ * app.js registers the worker with the app version so that every release installs a fresh
+ * worker and GET_STATUS can reveal an app/worker mismatch.
+ * @param {string|undefined} search - location.search of the worker script
+ * @returns {string} The version, or "unversioned" when the query is missing
+ */
+function resolveServiceWorkerVersion(search) {
+    try {
+        const version = new URLSearchParams(search || '').get('v');
+        return version && version.trim() ? version.trim() : 'unversioned';
+    } catch (e) {
+        return 'unversioned';
+    }
+}
+
 /** Revision of this script. Bump it whenever preview-sw.js changes. */
 const SW_VERSION = '1.1.0';
+
+/** App version the worker was registered with (?v=), reported by GET_STATUS. */
+const SW_APP_VERSION = resolveServiceWorkerVersion(
+    typeof self !== 'undefined' && self.location ? self.location.search : ''
+);
 
 /**
  * MIME types for common file extensions
@@ -755,6 +776,8 @@ function createPdfViewerResponse(filePath, pathname, basePath) {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         SW_VERSION,
+        SW_APP_VERSION,
+        resolveServiceWorkerVersion,
         MIME_TYPES,
         EXTERNAL_LINK_HANDLER_SCRIPT,
         PREVIEW_REFRESH_SCRIPT,
@@ -811,7 +834,7 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
      */
     self.addEventListener('install', event => {
         // eslint-disable-next-line no-console
-        console.log(`[Preview SW] Service Worker v${SW_VERSION} installing...`);
+        console.log(`[Preview SW] Service Worker v${SW_VERSION} (app ${SW_APP_VERSION}) installing...`);
         // Skip waiting to activate immediately
         event.waitUntil(self.skipWaiting());
     });
@@ -821,7 +844,7 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
      */
     self.addEventListener('activate', event => {
         // eslint-disable-next-line no-console
-        console.log(`[Preview SW] Service Worker v${SW_VERSION} activated`);
+        console.log(`[Preview SW] Service Worker v${SW_VERSION} (app ${SW_APP_VERSION}) activated`);
         // Claim all clients immediately
         event.waitUntil(self.clients.claim());
     });
@@ -939,6 +962,7 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
                     ready: contentReady,
                     fileCount: contentFiles.size,
                     version: SW_VERSION,
+                    appVersion: SW_APP_VERSION,
                     files: Array.from(contentFiles.keys()),
                 };
 
