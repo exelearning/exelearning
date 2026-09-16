@@ -533,4 +533,529 @@ describe('complete iDevice export', () => {
       expect(() => handler({ changedTouches: [{ clientX: 10, clientY: 10 }] })).not.toThrow();
     });
   });
+
+  /**
+   * Completion signal.
+   *
+   * `checkPhrase` reports the score automatically (auto = true) on every press of the
+   * check button. The runtime funnel in public/app/common/common.js decides whether the
+   * page may be completed from `game.gameOver === true || auto !== true`, so an auto
+   * report sent while `gameOver` is still false leaves the page `incomplete` in the LMS
+   * no matter how good the score is.
+   *
+   * This activity's own end condition is the one already written in `checkPhrase`:
+   * `mOptions.attempsNumber <= 0 || mOptions.hits === mOptions.number` — attempts spent
+   * or every gap right. These tests pin the flag to that condition and to nothing else:
+   * a check with attempts still left must NOT complete the activity.
+   */
+  describe('starting a timed activity', () => {
+    const instance = 7;
+
+    function setupStart(overrides = {}) {
+      const container = document.createElement('div');
+      container.id = `cmptMainContainer-${instance}`;
+      container.innerHTML = `
+        <div id="cmptGameContainer-${instance}">
+          <div class="CMPT-ButtonsDiv"></div>
+        </div>
+        <div id="cmptButonsDiv-${instance}"></div>
+        <div id="cmptMultimedia-${instance}"></div>
+        <div id="cmptDivImgHome-${instance}"></div>
+        <span id="cmptPHits-${instance}"></span>
+        <span id="cmptPScore-${instance}"></span>
+        <div id="cmptStartGame-${instance}"></div>`;
+      document.body.appendChild(container);
+      $eXeCompleta.options[instance] = Object.assign(
+        {
+          main: `cmptMainContainer-${instance}`,
+          isScorm: 1,
+          type: 0,
+          time: 1,
+          gameStarted: false,
+          gameOver: true,
+          hits: 4,
+          errors: 2,
+          score: 10,
+          number: 4,
+          msgs: { msgYouScore: 'Score' },
+        },
+        overrides
+      );
+      vi.spyOn($eXeCompleta, 'updateTime').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'sendScore').mockImplementation(() => {});
+      vi.useFakeTimers();
+    }
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+      document.body.innerHTML = '';
+      vi.restoreAllMocks();
+    });
+
+    // Trying again empties the gaps and zeroes the counters, so the mark the
+    // LMS holds from the last check stops describing anything on screen. It
+    // used to stay there, and a learner who walked away left the previous
+    // score standing over a blank board.
+    it('publishes the zero when the learner tries the phrase again', () => {
+      setupStart({ gameStarted: true, gameOver: false, hits: 3, errors: 1 });
+      document.getElementById(`cmptMainContainer-${instance}`).innerHTML +=
+        `<div id="cmptReloadPhrase-${instance}"></div>
+         <div id="cmptCheckPhrase-${instance}"></div>`;
+      let stateWhenReported;
+      $eXeCompleta.sendScore.mockImplementation(() => {
+        const { hits, errors, gameOver, gameStarted } = $eXeCompleta.options[instance];
+        stateWhenReported = { hits, errors, gameOver, gameStarted };
+      });
+      vi.spyOn($eXeCompleta, 'showMessage').mockImplementation(() => {});
+      vi.spyOn($eXeCompleta, 'updateGameBoard').mockImplementation(() => {});
+
+      $eXeCompleta.reloadGame(instance);
+
+      expect($eXeCompleta.sendScore).toHaveBeenCalledWith(true, instance);
+      // The report describes the blank board, and says the attempt goes on:
+      // this button only appears while attempts remain.
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('saveScormScore reports only in automatic SCORM mode', () => {
+      setupStart({ isScorm: 1 });
+      $eXeCompleta.saveScormScore(instance);
+      expect($eXeCompleta.sendScore).toHaveBeenCalledWith(true, instance);
+
+      $eXeCompleta.sendScore.mockClear();
+      $eXeCompleta.options[instance].isScorm = 2;
+      $eXeCompleta.saveScormScore(instance);
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+    });
+
+    // The defect: pressing start left the LMS holding the previous attempt's
+    // grade and status until the learner checked the phrase again.
+    it('publishes the cleared state when a finished game is restarted', () => {
+      setupStart();
+      let stateWhenReported;
+      $eXeCompleta.sendScore.mockImplementation(() => {
+        const { hits, errors, score, gameOver, gameStarted } =
+          $eXeCompleta.options[instance];
+        stateWhenReported = { hits, errors, score, gameOver, gameStarted };
+      });
+
+      $eXeCompleta.startGame(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        errors: 0,
+        score: 0,
+        gameOver: false,
+        // sendScoreNew ignores a game that reports as neither started nor over.
+        gameStarted: true,
+      });
+    });
+
+    // The counters used to be cleared on `$eXeCompleta` — the module object,
+    // which nothing reads — instead of on the instance, so a replayed activity
+    // carried the previous attempt's hits until the next check recomputed
+    // them, and opened showing them.
+    it('clears the counters on the instance, not on the module', () => {
+      setupStart({ hits: 4, errors: 2, score: 10 });
+
+      $eXeCompleta.startGame(instance);
+
+      expect($eXeCompleta.options[instance]).toMatchObject({
+        hits: 0,
+        errors: 0,
+        score: 0,
+      });
+      expect($eXeCompleta.hits).toBeUndefined();
+      expect($eXeCompleta.score).toBeUndefined();
+    });
+
+    it('does not report a game that was already running', () => {
+      setupStart({ gameStarted: true });
+
+      $eXeCompleta.startGame(instance);
+
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+    });
+
+    /** The code field and the cover the entry drives. */
+    function addCodeAccessDom(typed) {
+      $(`#cmptMainContainer-${instance}`).append(`
+        <div id="cmptCodeAccessDiv-${instance}"></div>
+        <div id="cmptCubierta-${instance}"></div>
+        <div id="cmptMesajeAccesCodeE-${instance}"></div>
+        <a id="cmptLinkMaximize-${instance}" href="#"></a>
+        <input id="cmptCodeAccessE-${instance}" value="${typed}" />`);
+      vi.spyOn($eXeCompleta, 'showCubiertaOptions').mockImplementation(
+        () => {}
+      );
+    }
+
+    // Untimed and behind a code, the board is already laid out under the cover:
+    // there is no startGame to run, so the entry used to raise the flag and
+    // say nothing, and the LMS kept the previous attempt's grade until the
+    // learner checked the phrase.
+    it('publishes a zero and an unfinished attempt when an untimed code opens it', () => {
+      setupStart({
+        time: 0,
+        gameStarted: false,
+        gameOver: false,
+        hits: 0,
+        itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('AbrE');
+      let stateWhenReported;
+      $eXeCompleta.sendScore.mockImplementation(() => {
+        const { hits, gameOver, gameStarted } = $eXeCompleta.options[instance];
+        stateWhenReported = { hits, gameOver, gameStarted };
+      });
+
+      $eXeCompleta.enterCodeAccess(instance);
+
+      expect(stateWhenReported).toEqual({
+        hits: 0,
+        gameOver: false,
+        gameStarted: true,
+      });
+    });
+
+    it('starts a timed activity when the code opens it', () => {
+      setupStart({
+        time: 1,
+        gameStarted: false,
+        itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('abre');
+
+      $eXeCompleta.enterCodeAccess(instance);
+
+      expect($eXeCompleta.sendScore).toHaveBeenCalledWith(true, instance);
+      expect($eXeCompleta.options[instance].gameStarted).toBe(true);
+    });
+
+    it('neither starts nor reports when the code is wrong', () => {
+      setupStart({
+        time: 0,
+        gameStarted: false,
+        itinerary: { showCodeAccess: true, codeAccess: 'abre' },
+      });
+      addCodeAccessDom('nope');
+
+      $eXeCompleta.enterCodeAccess(instance);
+
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+      expect($eXeCompleta.options[instance].gameStarted).toBe(false);
+      expect($(`#cmptCodeAccessE-${instance}`).val()).toBe('');
+    });
+
+    // No timer and no code: the board is live from the moment the page loads,
+    // and the learner has given no signal yet. Maximizing must not become one.
+    it('stays silent when an untimed, uncoded board is maximized', () => {
+      setupStart({ time: 0, gameStarted: true });
+
+      $eXeCompleta.startGame(instance);
+
+      expect($eXeCompleta.sendScore).not.toHaveBeenCalled();
+    });
+
+    // The guard read mOptions.cmptStarted, a key nothing in the iDevice ever
+    // writes, so it always passed and startGame was called on every maximize —
+    // harmless only because startGame returns early on its own.
+    /**
+     * Wire the real handlers and click the maximize link.
+     *
+     * @param {number} time minutes on the clock; 0 leaves addEvents raising
+     * gameStarted, above 0 leaves it waiting for the play button.
+     */
+    function maximizeAfterAddEvents(time) {
+      setupStart({
+        time,
+        gameStarted: false,
+        // setupStart's default is a finished game; these two cases are about a
+        // board the learner has not played yet, which is what the guard now
+        // tells apart.
+        gameOver: false,
+        author: '',
+        text: 'uno @@dos@@ tres',
+        itinerary: { showCodeAccess: false, showClue: false },
+      });
+      $(`#cmptMainContainer-${instance}`).append(`
+        <a id="cmptLinkMaximize-${instance}" href="#"></a>
+        <div id="cmptGameMinimize-${instance}"></div>
+        <input id="cmptSolution-${instance}" />`);
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      vi.spyOn($eXeCompleta, 'startGame').mockImplementation(() => {});
+
+      $eXeCompleta.addEvents(instance);
+      $(`#cmptLinkMaximize-${instance}`).trigger('click');
+    }
+
+    it('does not start an untimed board again when it is maximized', () => {
+      maximizeAfterAddEvents(0);
+
+      expect($eXeCompleta.startGame).not.toHaveBeenCalled();
+    });
+
+    it('starts a timed board when it is maximized before the play button', () => {
+      maximizeAfterAddEvents(1);
+
+      expect($eXeCompleta.startGame).toHaveBeenCalledWith(instance);
+    });
+
+    // The defect: finishing leaves gameStarted false, so testing that flag
+    // alone let restoring a minimized activity call startGame — which clears
+    // hits, errors and the score and then publishes that zero to the LMS. The
+    // learner ended with a grade, minimized, restored, and lost it.
+    it('does not restart a finished board when it is maximized', () => {
+      setupStart({
+        time: 1,
+        gameStarted: false,
+        author: '',
+        text: 'uno @@dos@@ tres',
+        itinerary: { showCodeAccess: false, showClue: false },
+      });
+      $(`#cmptMainContainer-${instance}`).append(`
+        <a id="cmptLinkMaximize-${instance}" href="#"></a>
+        <div id="cmptGameMinimize-${instance}"></div>
+        <input id="cmptSolution-${instance}" />`);
+      $exeDevices.iDevice.gamification.scorm.registerActivity = vi.fn();
+      vi.spyOn($eXeCompleta, 'startGame').mockImplementation(() => {});
+      $eXeCompleta.addEvents(instance);
+
+      // What gameOver() leaves behind, on the same object the handler closed
+      // over. Then the learner restores the panel.
+      Object.assign($eXeCompleta.options[instance], {
+        gameStarted: false,
+        gameOver: true,
+      });
+      $(`#cmptLinkMaximize-${instance}`).trigger('click');
+
+      expect($eXeCompleta.startGame).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('completion signal on the automatic report', () => {
+    let reports;
+    let originalScorm;
+    let originalReport;
+    let originalGetTimeToString;
+
+    /**
+     * Build the DOM `checkPhrase` walks and the instance state it reads.
+     *
+     * @param {object} config test knobs
+     * @param {string[]} config.words the expected answers, one per gap
+     * @param {string[]} config.answers what the learner typed, index-aligned with words
+     * @param {number} config.attempsNumber attempts left before this check
+     * @returns {number} the instance index to pass to checkPhrase
+     */
+    function givenPlayedActivity({ words, answers, attempsNumber }) {
+      const instance = 42;
+
+      $eXeCompleta.options[instance] = {
+        attempsNumber,
+        caseSensitive: false,
+        errors: 0,
+        estrictCheck: false,
+        evaluation: false,
+        evaluationID: '',
+        feedBack: false,
+        gameOver: false,
+        gameStarted: true,
+        hits: 0,
+        isScorm: 1,
+        itinerary: { showClue: false, percentageClue: 0 },
+        main: 'cmptMainContainer-' + instance,
+        msgs: { msgEndScore: '%s / %d', msgGameEnd: 'End', msgTry: 'Try', msgYouScore: 'Score' },
+        number: words.length,
+        percentajeError: 0,
+        showSolution: false,
+        type: 0,
+        words: [...words],
+      };
+
+      const inputs = answers
+        .map((answer, i) => `<input type="text" class="CMPT-Input" data-number="${i}" value="${answer}">`)
+        .join('');
+      const container = document.createElement('div');
+      container.id = `cmptMainContainer-${instance}`;
+      container.innerHTML = `
+        <div id="cmptGameContainer-${instance}">
+          <div id="cmptMultimedia-${instance}">${inputs}</div>
+          <div id="cmptMensaje-${instance}"></div>
+          <span id="cmptPHits-${instance}"></span>
+          <span id="cmptPErrors-${instance}"></span>
+          <span id="cmptPNumber-${instance}"></span>
+          <span id="cmptPScore-${instance}"></span>
+          <span id="cmptRepeatActivity-${instance}"></span>
+          <button id="cmptCheckPhrase-${instance}"></button>
+          <button id="cmptReloadPhrase-${instance}"></button>
+          <div id="cmptButonsDiv-${instance}"></div>
+          <div id="cmptSolutionDiv-${instance}"><div id="cmptSolution-${instance}"></div></div>
+          <div id="cmptPShowClue-${instance}"></div>
+        </div>`;
+      document.body.appendChild(container);
+      // jQuery reads `value` from the attribute only before the first user edit, so push
+      // the authored answers into the live property the same way a learner would.
+      answers.forEach((answer, i) => {
+        container.querySelector(`[data-number="${i}"]`).value = answer;
+      });
+
+      return instance;
+    }
+
+    beforeEach(() => {
+      reports = [];
+      originalScorm = global.$exeDevices.iDevice.gamification.scorm;
+      originalReport = global.$exeDevices.iDevice.gamification.report;
+      // Capture what the shared funnel would receive: the `auto` flag and the live
+      // instance object, whose `gameOver` is read synchronously at that moment.
+      global.$exeDevices.iDevice.gamification.scorm = {
+        ...originalScorm,
+        sendScoreNew: (auto, game) => reports.push({ auto, gameOver: game.gameOver, scorerp: game.scorerp }),
+        registerActivity: vi.fn(),
+      };
+      global.$exeDevices.iDevice.gamification.report = { saveEvaluation: vi.fn() };
+      originalGetTimeToString = global.$exeDevices.iDevice.gamification.helpers.getTimeToString;
+      global.$exeDevices.iDevice.gamification.helpers.getTimeToString = (t) => String(t);
+    });
+
+    afterEach(() => {
+      global.$exeDevices.iDevice.gamification.scorm = originalScorm;
+      global.$exeDevices.iDevice.gamification.report = originalReport;
+      global.$exeDevices.iDevice.gamification.helpers.getTimeToString = originalGetTimeToString;
+      const leftover = document.getElementById('cmptMainContainer-42');
+      if (leftover) leftover.remove();
+    });
+
+    it('reports automatically on every check', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      expect(reports).toHaveLength(1);
+      expect(reports[0].auto).toBe(true);
+    });
+
+    it('does not complete the activity while attempts remain', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      expect(reports[0].gameOver).toBe(false);
+      expect($eXeCompleta.options[instance].gameOver).toBe(false);
+    });
+
+    it('completes the activity on the report that carries a perfect answer', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'dog'],
+        attempsNumber: 3,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      // Every gap right: the activity is over, and the LMS has to see that on the same
+      // report that carries the 10/10 score.
+      expect(reports[0].gameOver).toBe(true);
+      expect(reports[0].scorerp).toBe(10);
+    });
+
+    it('completes the activity on the report from the last attempt', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 1,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      // Attempts spent with a partial score: still finished, just not passed.
+      expect(reports[0].gameOver).toBe(true);
+      expect(reports[0].scorerp).toBe(5);
+    });
+
+    it('completes the activity when the clock runs out mid-attempt', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+      const mOptions = $eXeCompleta.options[instance];
+      mOptions.time = 1;
+      mOptions.gameStarted = false;
+
+      vi.useFakeTimers();
+      try {
+        // startGame owns the countdown; at zero it forces a check and ends the game, so
+        // that forced check is the end of the activity even with attempts left.
+        $eXeCompleta.startGame(instance);
+        vi.advanceTimersByTime(60000);
+      } finally {
+        clearInterval(mOptions.counterClock);
+        vi.useRealTimers();
+      }
+
+      // Two reports: startGame publishes the cleared state on the way in, and
+      // the forced check publishes the result. The last one is the verdict.
+      expect(reports).toHaveLength(2);
+      expect(reports[0].gameOver).toBe(false);
+      expect(reports[1].gameOver).toBe(true);
+    });
+
+    // While the clock runs and attempts remain, offering another try is the
+    // whole point of a check.
+    it('keeps the retry on an intermediate check', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+
+      $eXeCompleta.checkPhrase(instance);
+
+      expect($(`#cmptReloadPhrase-${instance}`).css('display')).not.toBe(
+        'none'
+      );
+    });
+
+    // Time up ends the attempt, so the retry has to go with it. The forced
+    // check gets there first and offers one, because attempts were left, and
+    // reloadGame would re-enable the gaps and bring back a Check that no
+    // longer does anything — checkPhrase returns on a game that is not started.
+    it('takes the retry away when the clock runs out', () => {
+      const instance = givenPlayedActivity({
+        words: ['cat', 'dog'],
+        answers: ['cat', 'fish'],
+        attempsNumber: 3,
+      });
+      const mOptions = $eXeCompleta.options[instance];
+      mOptions.time = 1;
+      mOptions.gameStarted = false;
+
+      vi.useFakeTimers();
+      try {
+        $eXeCompleta.startGame(instance);
+        vi.advanceTimersByTime(60000);
+      } finally {
+        clearInterval(mOptions.counterClock);
+        vi.useRealTimers();
+      }
+
+      expect($(`#cmptReloadPhrase-${instance}`).css('display')).toBe('none');
+    });
+  });
 });

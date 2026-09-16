@@ -3407,6 +3407,7 @@ describe('YjsProjectBridge', () => {
       const mockBlockNode = {
         blockName: 'Old Name',
         iconName: 'edit',
+        icon: { source: 'theme', value: 'edit' },
         blockNameElementText: { innerHTML: '' },
         renderBlockTitle: mock(() => {}),
         makeIconNameElement: mock(() => {}),
@@ -3432,7 +3433,145 @@ describe('YjsProjectBridge', () => {
 
       expect(mockBlockNode.blockName).toBe('New Name');
       expect(mockBlockNode.iconName).toBe('star');
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'star' });
       expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
+    });
+
+    it('maps a renamed theme icon name arriving in a structured descriptor', async () => {
+      // A collaborator on a project saved before neo renamed objetives.png sends the old
+      // name. Left as-is it misses getThemeIcons() and the block renders without an icon.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'objetives', icon: { source: 'theme', value: 'objetives' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'objectives', name: 'objectives' });
+    });
+
+    it('leaves a theme icon name that was never renamed untouched', async () => {
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'activity', icon: { source: 'theme', value: 'activity' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme', value: 'activity' });
+    });
+
+    it('does not re-render a block whose stored icon name was renamed', async () => {
+      // The node already holds the mapped name; the update carries the raw one. Comparing
+      // those two strings reported a change on every remote update of that block, so
+      // makeIconNameElement() ran again each time until someone re-saved the project.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: 'objectives',
+        icon: { source: 'theme', value: 'objectives', name: 'objectives' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'objetives', icon: { source: 'theme', value: 'objetives' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.makeIconNameElement).not.toHaveBeenCalled();
+      expect(mockBlockNode.iconName).toBe('objectives');
+    });
+
+    it('leaves a theme descriptor without a value alone', async () => {
+      // `icon.value` absent normalises to '', and comparing the mapped '' against an absent
+      // one would rewrite the descriptor and re-render for nothing.
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'theme' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: { getBlockById: mock(() => mockBlockNode) },
+          structure: { nodeSelected: { getAttribute: () => 'page-1' } },
+        },
+      };
+
+      await bridge.updateRemoteBlock({ id: 'block-1', icon: { source: 'theme' } }, 'page-1');
+
+      expect(mockBlockNode.icon).toEqual({ source: 'theme' });
+      expect(mockBlockNode.makeIconNameElement).not.toHaveBeenCalled();
+    });
+
+    it('updates block icon from structured icon data for remote collaborators', async () => {
+      const mockBlockNode = {
+        blockName: 'Block',
+        iconName: '',
+        icon: { source: 'none', value: '' },
+        makeIconNameElement: mock(() => {}),
+        properties: {},
+        generateBlockContentNode: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+          structure: {
+            nodeSelected: { getAttribute: () => 'page-1' },
+          },
+        },
+      };
+
+      await bridge.updateRemoteBlock(
+        { id: 'block-1', iconName: 'mi-alarm', icon: { source: 'material', value: 'alarm' } },
+        'page-1'
+      );
+
+      expect(mockBlockNode.icon).toEqual({ source: 'material', value: 'alarm' });
+      expect(mockBlockNode.iconName).toBe('mi-alarm');
+      expect(mockBlockNode.makeIconNameElement).toHaveBeenCalled();
     });
 
     it('updates block with properties object', async () => {
@@ -6624,6 +6763,72 @@ describe('YjsProjectBridge', () => {
 
       // Should not change since src already matches and no exe-no-icon class
       expect(mockIconEl.innerHTML).toBe(originalHtml);
+    });
+
+    it('renders material icons with the shared mask runtime', () => {
+      // The shared runtime rebuilds the icon from the in-memory sprite as a
+      // self-contained data: URI (loose per-icon files were removed).
+      const iconRuntime = require('../common/blockIconRuntime.js');
+      iconRuntime.loadMaterialSprite(
+        [
+          '<svg xmlns="http://www.w3.org/2000/svg" style="display:none">',
+          '<symbol id="alarm" viewBox="0 -960 960 960"><path d="M40-200Z"/></symbol>',
+          '</svg>',
+        ].join('\n'),
+      );
+
+      const mockIconEl = {
+        innerHTML: '',
+        style: {
+          removeProperty: mock(() => {}),
+        },
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      bridge._syncBlockIcon(mockIconEl, { source: 'material', value: 'alarm' }, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('class="exe-material-icon"');
+      expect(mockIconEl.innerHTML).toContain('data:image/svg+xml;utf8,');
+      expect(mockIconEl.innerHTML).not.toContain('alarm.svg');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+      expect(mockIconEl.style.removeProperty).toHaveBeenCalledWith('color');
+    });
+
+    it('renders asset icons using resolved asset URLs', () => {
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                resolveAssetURLSync: () => 'blob:asset-icon',
+              },
+            },
+          },
+          themes: {
+            getThemeIcons: () => ({}),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      bridge._syncBlockIcon(mockIconEl, { source: 'asset', value: 'asset://uuid-123/icon.jpg' }, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('blob:asset-icon');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
     });
 
     it('does not clear icon when already showing empty SVG', () => {

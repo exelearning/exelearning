@@ -477,6 +477,33 @@ describe('YjsDocumentAdapter', () => {
             expect(comp.properties.textFeedbackTextarea).toBe('<p>Feedback content here</p>');
         });
 
+        it('should convert nested Yjs icon maps on blocks', () => {
+            const block = new MockYMap({
+                id: 'b1',
+                name: 'Block 1',
+                blockName: 'Block 1',
+                order: 0,
+                iconName: 'mi-info',
+                icon: new MockYMap({
+                    source: 'material',
+                    value: 'info',
+                }),
+                components: new MockYArray([]),
+            });
+            const page = createMockPage('p1', 'Page 1', [block]);
+
+            manager = new MockYjsDocumentManager({}, [page]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages[0].blocks[0].iconName).toBe('mi-info');
+            expect(pages[0].blocks[0].icon).toEqual({
+                source: 'material',
+                value: 'info',
+            });
+        });
+
         it('should keep the raw payload when stored jsonProperties cannot be parsed (#2190)', () => {
             // The #2177 corruption shape: unescaped quotes inside a JSON string.
             const malformed = '{"questionsData":[{"baseText":"<audio src="broken.webm"></audio>"}]}';
