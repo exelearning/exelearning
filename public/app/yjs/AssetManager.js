@@ -63,6 +63,19 @@ class AssetManager {
   static BLOB_IDB_VERSION = 1;
   static BLOB_IDB_STORE = 'blobs';
 
+  // Centralized, reusable asset-level metadata fields (single source of truth).
+  // These are the values that must not be re-entered on each insertion and are
+  // propagated to every place the asset is used. Per-instance, context-specific
+  // values (alt text, accessibility title, caption heading/notes) are NOT here.
+  static CENTRALIZED_METADATA_FIELDS = ['description', 'title', 'license', 'author', 'authorUrl', 'sourceUrl'];
+
+  // iDevice types whose components are IGNORED by the asset-reference scanners.
+  // A Resource Report snapshots an asset:// URL for EVERY project asset
+  // (resources[].assetUrl), so counting it as a reference would mark every
+  // asset as used: reference sorting, the File Manager usage labels and the
+  // report's own "used in this project" filter would all become self-referential.
+  static REFERENCE_SCAN_EXCLUDED_IDEVICE_TYPES = new Set(['resource-report']);
+
   /**
    * @param {string} projectId - Project UUID
    */
@@ -573,7 +586,13 @@ class AssetManager {
   /**
    * Set asset metadata in Yjs
    * @param {string} assetId
-   * @param {Object} metadata - {filename, folderPath, mime, size, hash, uploaded, createdAt}
+   * @param {Object} metadata - {filename, folderPath, mime, size, hash, uploaded, createdAt,
+   *   description, title, license, author, authorUrl, sourceUrl}
+   *
+   * Note: this writes an explicit whitelist of fields. The centralized metadata
+   * fields (description/title/license/author/authorUrl/sourceUrl) MUST be included
+   * here so they are preserved across rename/move/import, all of which call this method
+   * with a spread of the existing metadata. Dropping them here would silently lose them.
    */
   setAssetMetadata(assetId, metadata) {
     const assetsMap = this.getAssetsYMap();
@@ -581,7 +600,7 @@ class AssetManager {
       return;
     }
     // Store as plain object (Yjs will serialize it)
-    assetsMap.set(assetId, {
+    const entry = {
       filename: metadata.filename,
       folderPath: metadata.folderPath || '',
       mime: metadata.mime,
@@ -589,11 +608,109 @@ class AssetManager {
       hash: metadata.hash,
       uploaded: metadata.uploaded || false,
       createdAt: metadata.createdAt || new Date().toISOString()
-    });
+    };
+    // Centralized, reusable metadata: only persist fields that have a value so
+    // assets without metadata keep a minimal entry (backward compatible).
+    for (const field of AssetManager.CENTRALIZED_METADATA_FIELDS) {
+      if (metadata[field] !== undefined && metadata[field] !== null && metadata[field] !== '') {
+        entry[field] = metadata[field];
+      }
+    }
+    assetsMap.set(assetId, entry);
     if (metadata.uploaded !== true) {
       this.locallySavedAssetIds.delete(assetId);
     }
     Logger.log(`[AssetManager] Set metadata for ${assetId.substring(0, 8)}... in Yjs`);
+  }
+
+  /**
+   * Update centralized, reusable metadata for an asset (description, title, license,
+   * author, authorUrl, sourceUrl). Merges the patch into the existing Yjs metadata
+   * (source of truth) and best-effort persists it to the server via the PATCH endpoint
+   * when online.
+   *
+   * Only the keys present in `patch` are changed; pass an empty string to clear a field.
+   * @param {string} assetId
+   * @param {{description?: string, title?: string, license?: string, author?: string, authorUrl?: string, sourceUrl?: string}} patch
+   * @returns {Promise<boolean>} True if the asset existed and was updated locally
+   */
+  async updateAssetMetadata(assetId, patch) {
+    const assetsMap = this.getAssetsYMap();
+    if (!assetsMap || !assetsMap.get(assetId)) {
+      Logger.warn(`[AssetManager] updateAssetMetadata: asset ${assetId} not found`);
+      return false;
+    }
+
+    const ALLOWED = AssetManager.CENTRALIZED_METADATA_FIELDS;
+
+    // Atomic read-modify-write inside a Yjs transaction: re-read the *current* entry
+    // and merge only the patched fields, so a debounced flush never clobbers fields a
+    // remote collaborator changed in the meantime (field-level update semantics).
+    const applyMerge = () => {
+      const current = assetsMap.get(assetId);
+      if (!current) return;
+      const merged = { ...current };
+      for (const key of ALLOWED) {
+        if (patch[key] !== undefined) {
+          merged[key] = typeof patch[key] === 'string' ? patch[key].trim() : patch[key];
+        }
+      }
+      this.setAssetMetadata(assetId, merged);
+    };
+    if (assetsMap.doc?.transact) {
+      assetsMap.doc.transact(applyMerge);
+    } else {
+      applyMerge();
+    }
+    Logger.log(`[AssetManager] Updated metadata for ${assetId.substring(0, 8)}... in Yjs`);
+
+    // Best-effort server persistence so the DB/API/CLI/search stay in sync.
+    // Failure here is non-fatal: Yjs remains the source of truth and the snapshot
+    // will carry the metadata on the next save.
+    try {
+      await this.syncAssetMetadataToServer(assetId, patch);
+    } catch (e) {
+      Logger.warn(`[AssetManager] Failed to sync metadata to server for ${assetId}: ${e?.message || e}`);
+    }
+
+    return true;
+  }
+
+  /**
+   * Persist centralized metadata to the server via PATCH so the DB / external API /
+   * CLI export / backend search stay in sync with the Yjs source of truth.
+   *
+   * Mirrors _deleteFromServer: uses the collaborative-session API config and is a
+   * no-op in static/offline mode (no token). Fire-and-forget — failures are logged
+   * but never block the local Yjs update.
+   * @param {string} assetId
+   * @param {Object} patch
+   * @returns {Promise<void>}
+   */
+  async syncAssetMetadataToServer(assetId, patch) {
+    const config = window.eXeLearning?.config || {};
+    const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
+    const token = config.token || '';
+    const projectUuid = this.projectId;
+
+    if (!projectUuid || !token) {
+      // Not in a collaborative/server session: Yjs snapshot carries the metadata.
+      return;
+    }
+
+    const url = `${apiBaseUrl}/projects/${projectUuid}/assets/by-client-id/${encodeURIComponent(assetId)}/metadata`;
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(patch)
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
   }
 
   /**
@@ -620,6 +737,270 @@ class AssetManager {
       assets.push({ ...meta, id });
     });
     return assets;
+  }
+
+  /**
+   * Resolve the project Y.Doc (via the attached bridge or the global app bridge).
+   * @returns {Object|null} Yjs document or null
+   * @private
+   */
+  _getProjectYDoc() {
+    return (
+      this.yjsBridge?.documentManager?.ydoc ||
+      window.eXeLearning?.app?.project?._yjsBridge?.documentManager?.ydoc ||
+      null
+    );
+  }
+
+  /**
+   * Serialize a component's searchable content (htmlContent/htmlView + saved properties)
+   * into a single string for asset-reference matching.
+   * @param {Object} compMap - Yjs component map
+   * @returns {string}
+   * @private
+   */
+  _componentSearchableText(compMap) {
+    if (!compMap) return '';
+    let text = '';
+    // htmlContent is refreshed on every save; htmlView is a legacy fallback only
+    // populated during initial ELP import (issue #1674).
+    const htmlContent = compMap.get('htmlContent') || compMap.get('htmlView');
+    if (htmlContent) {
+      text += htmlContent.toString ? htmlContent.toString() : String(htmlContent);
+    }
+    for (const key of ['jsonProperties', 'ideviceProperties', 'properties']) {
+      const props = compMap.get(key);
+      if (props) {
+        text += JSON.stringify(props.toJSON ? props.toJSON() : props);
+      }
+    }
+    return text;
+  }
+
+  /**
+   * Iterate every reference-scannable component (iDevice) in the project, invoking the
+   * callback with the component Y.Map plus its page/block context. Single shared
+   * traversal used by all asset-reference helpers (count, referenced ids, per-id
+   * counts, usage locations). Components whose type is in
+   * {@link AssetManager.REFERENCE_SCAN_EXCLUDED_IDEVICE_TYPES} are skipped: they
+   * snapshot asset:// URLs for assets they merely list (not use), so including them
+   * would make every asset count as referenced.
+   * @param {(ctx: {compMap: Object, pageMap: Object, blockMap: Object, pageIndex: number, blockIndex: number}) => void} callback
+   * @private
+   */
+  _forEachComponent(callback) {
+    const ydoc = this._getProjectYDoc();
+    if (!ydoc) return;
+    const navigation = ydoc.getArray('navigation');
+    if (!navigation) return;
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const blocks = pageMap?.get('blocks');
+      if (!blocks) continue;
+      for (let j = 0; j < blocks.length; j++) {
+        const blockMap = blocks.get(j);
+        const components = blockMap?.get('components');
+        if (!components) continue;
+        for (let k = 0; k < components.length; k++) {
+          const compMap = components.get(k);
+          if (!compMap) continue;
+          const ideviceType = compMap.get('ideviceType') || compMap.get('type') || '';
+          if (AssetManager.REFERENCE_SCAN_EXCLUDED_IDEVICE_TYPES.has(ideviceType)) continue;
+          callback({ compMap, pageMap, blockMap, pageIndex: i, blockIndex: j });
+        }
+      }
+    }
+  }
+
+  /**
+   * Iterate every component, invoking the callback with its searchable text.
+   * Thin wrapper over {@link _forEachComponent}.
+   * @param {(text: string) => void} callback
+   * @private
+   */
+  _forEachComponentText(callback) {
+    // Resource Report exclusion happens once in _forEachComponent (see
+    // REFERENCE_SCAN_EXCLUDED_IDEVICE_TYPES) so every scanner shares it.
+    this._forEachComponent(({ compMap }) => callback(this._componentSearchableText(compMap)));
+  }
+
+  /**
+   * Count how many components (iDevices) reference an asset by its id.
+   * Single source of truth for File Manager usage badges and the Resource Report
+   * "used in project" filter.
+   * @param {string} assetId
+   * @returns {number}
+   */
+  countAssetReferences(assetId) {
+    if (!assetId) return 0;
+    try {
+      const assetRegex = new RegExp(`asset://${assetId}`, 'i');
+      let count = 0;
+      this._forEachComponentText(text => {
+        if (text && assetRegex.test(text)) count++;
+      });
+      return count;
+    } catch (e) {
+      console.warn('[AssetManager] Error counting asset references:', e?.message || e);
+      return 0;
+    }
+  }
+
+  /**
+   * Get the set of asset ids referenced anywhere in the project (single pass).
+   * Ids are normalized (extension stripped) to match getAllAssetsMetadata ids.
+   * @returns {Set<string>}
+   */
+  getReferencedAssetIds() {
+    const ids = new Set();
+    try {
+      const tokenRegex = /asset:\/\/([a-z0-9-]+?)(?:\.[a-z0-9]+)?(?=["'\s)\\]|$)/gi;
+      this._forEachComponentText(text => {
+        if (!text) return;
+        let match;
+        while ((match = tokenRegex.exec(text)) !== null) {
+          if (match[1]) ids.add(match[1]);
+        }
+      });
+    } catch (e) {
+      console.warn('[AssetManager] Error collecting referenced asset ids:', e?.message || e);
+    }
+    return ids;
+  }
+
+  /**
+   * Compute reference counts for ALL assets in a SINGLE traversal of the project.
+   * Each component is counted at most once per asset id (matching countAssetReferences
+   * semantics: "number of iDevices referencing the asset"). Lets the File Manager sort
+   * by usage without rescanning the whole project once per asset.
+   * @returns {Map<string, number>} assetId -> usage count
+   */
+  getAllAssetReferenceCounts() {
+    const counts = new Map();
+    try {
+      const tokenRegex = /asset:\/\/([a-z0-9-]+?)(?:\.[a-z0-9]+)?(?=["'\s)\\]|$)/gi;
+      this._forEachComponentText(text => {
+        if (!text) return;
+        const seenInComponent = new Set();
+        let match;
+        while ((match = tokenRegex.exec(text)) !== null) {
+          const id = match[1];
+          if (id && !seenInComponent.has(id)) {
+            seenInComponent.add(id);
+            counts.set(id, (counts.get(id) || 0) + 1);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('[AssetManager] Error computing asset reference counts:', e?.message || e);
+    }
+    return counts;
+  }
+
+  /**
+   * Resolve a human-readable iDevice display title from its type, using the installed
+   * iDevices registry; falls back to the type id.
+   * @param {string} ideviceType
+   * @returns {string}
+   * @private
+   */
+  _resolveIdeviceTitle(ideviceType) {
+    if (!ideviceType) return '';
+    const installed =
+      (typeof window !== 'undefined' && window.eXeLearning?.app?.idevices?.list?.installed) || {};
+    return installed[ideviceType]?.title || ideviceType;
+  }
+
+  /**
+   * List the locations where an asset is used, with human-readable context
+   * (page / block / iDevice). Reuses the same traversal as the reference counters so
+   * the count and the "Used in" list always agree.
+   * @param {string} assetId
+   * @returns {Array<{pageId: string, pageTitle: string, blockId: string, blockTitle: string, ideviceId: string, ideviceTitle: string, ideviceType: string}>}
+   */
+  getAssetUsageLocations(assetId) {
+    const locations = [];
+    if (!assetId) return locations;
+    try {
+      const assetRegex = new RegExp(`asset://${assetId}`, 'i');
+      this._forEachComponent(({ compMap, pageMap, blockMap }) => {
+        const text = this._componentSearchableText(compMap);
+        if (!text || !assetRegex.test(text)) return;
+        const ideviceType = compMap.get('ideviceType') || compMap.get('type') || '';
+        const customTitle = compMap.get('title');
+        locations.push({
+          pageId: pageMap?.get('id') || pageMap?.get('pageId') || '',
+          pageTitle: pageMap?.get('pageName') || '',
+          blockId: blockMap?.get('id') || blockMap?.get('blockId') || '',
+          blockTitle: blockMap?.get('blockName') || '',
+          ideviceId: compMap.get('ideviceId') || compMap.get('id') || '',
+          ideviceTitle: customTitle || this._resolveIdeviceTitle(ideviceType),
+          ideviceType,
+        });
+      });
+    } catch (e) {
+      console.warn('[AssetManager] Error collecting asset usage locations:', e?.message || e);
+    }
+    return locations;
+  }
+
+  /**
+   * Replace the binary content of an existing asset while preserving its identity
+   * (same id/clientId), so existing references (asset://id) and centralized metadata
+   * (description/title/license/author/authorUrl/sourceUrl) stay intact. The new file's mime/size/
+   * hash/filename are applied; createdAt is preserved. Server persistence happens on the
+   * next save (idempotent overwrite by clientId), like a normal upload.
+   * @param {string} assetId
+   * @param {File|Blob} file
+   * @param {{keepFilename?: boolean}} [options]
+   * @returns {Promise<{success: boolean, assetUrl?: string, filename?: string, mime?: string, size?: number, error?: string}>}
+   */
+  async replaceAssetContent(assetId, file, options = {}) {
+    const metadata = this.getAssetMetadata(assetId);
+    if (!metadata) {
+      Logger.warn(`[AssetManager] replaceAssetContent: asset ${assetId} not found`);
+      return { success: false, error: 'not-found' };
+    }
+
+    const arrayBuffer = await file.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: file.type });
+    const hash = await this.calculateHash(blob);
+    const mime = file.type || this.getMimeType(file.name || metadata.filename || '');
+    const filename = options.keepFilename ? metadata.filename : file.name || metadata.filename;
+
+    // Drop the stale cached blob/URL so the DOM + preview pick up the new content.
+    await this.invalidateLocalBlob(assetId, { reason: 'replace-asset-content' });
+
+    // Store the new content under the SAME id, preserving centralized metadata + createdAt.
+    await this.putAsset({
+      id: assetId,
+      projectId: this.projectId,
+      blob,
+      mime,
+      hash,
+      size: blob.size,
+      uploaded: false,
+      createdAt: metadata.createdAt,
+      filename,
+      folderPath: metadata.folderPath || '',
+      description: metadata.description,
+      title: metadata.title,
+      license: metadata.license,
+      author: metadata.author,
+      authorUrl: metadata.authorUrl,
+      sourceUrl: metadata.sourceUrl,
+    });
+
+    // Refresh any DOM media using this asset and let peers fetch the new blob.
+    try {
+      await this.updateDomImagesForAsset(assetId);
+    } catch (e) {
+      Logger.warn(`[AssetManager] replaceAssetContent: DOM refresh failed for ${assetId}: ${e?.message || e}`);
+    }
+    this._scheduleAssetAvailabilityAnnouncement('replaceAssetContent');
+
+    Logger.log(`[AssetManager] Replaced content for ${assetId.substring(0, 8)}... (${filename}, ${blob.size} bytes)`);
+    return { success: true, assetUrl: this.getAssetUrl(assetId, filename), filename, mime, size: blob.size };
   }
 
   /**
@@ -1033,7 +1414,9 @@ class AssetManager {
       await this._recoverAssetType(asset);
     }
 
-    // 1. Store metadata in Yjs (instant sync to other clients)
+    // 1. Store metadata in Yjs (instant sync to other clients).
+    // Forward centralized metadata (description/title/license/author/authorUrl/sourceUrl)
+    // when present so it survives import (e.g. the ELPX asset-metadata.json sidecar).
     this.setAssetMetadata(asset.id, {
       filename: asset.filename,
       folderPath: asset.folderPath || '',
@@ -1041,7 +1424,13 @@ class AssetManager {
       size: asset.size,
       hash: asset.hash,
       uploaded: asset.uploaded || false,
-      createdAt: asset.createdAt || new Date().toISOString()
+      createdAt: asset.createdAt || new Date().toISOString(),
+      description: asset.description,
+      title: asset.title,
+      license: asset.license,
+      author: asset.author,
+      authorUrl: asset.authorUrl,
+      sourceUrl: asset.sourceUrl
     });
 
     // 2. Store blob in memory temporarily (for immediate use by callers)
@@ -3442,10 +3831,75 @@ class AssetManager {
    * @param {Function} [onAssetProgress] - Optional callback for progress reporting (current, total, filename)
    * @returns {Promise<Map<string, string>>} Map of originalPath -> assetId
    */
+  /**
+   * Parse the optional ELPX asset-metadata sidecar from an extracted ZIP object.
+   * Returns a plain object keyed by resource export path, or an empty object when
+   * the sidecar is absent or malformed (tolerant by design for backward compatibility).
+   * @param {Object} zip - Extracted ZIP files {path: Uint8Array}
+   * @returns {Object<string, {description?: string, title?: string, license?: string, author?: string, authorUrl?: string, sourceUrl?: string}>}
+   */
+  _parseAssetMetadataSidecar(zip) {
+    const SIDECAR_PATHS = ['content/asset-metadata.json', 'asset-metadata.json'];
+    for (const sidecarPath of SIDECAR_PATHS) {
+      const fileData = zip[sidecarPath];
+      if (!fileData) continue;
+      try {
+        const text = new TextDecoder().decode(fileData);
+        const parsed = JSON.parse(text);
+        const assets = parsed && typeof parsed === 'object' ? parsed.assets : null;
+        if (assets && typeof assets === 'object') {
+          Logger.log(`[AssetManager] Loaded asset metadata sidecar (${Object.keys(assets).length} entries)`);
+          return assets;
+        }
+      } catch (e) {
+        Logger.warn(`[AssetManager] Failed to parse ${sidecarPath}: ${e?.message || e}`);
+      }
+    }
+    return {};
+  }
+
+  /**
+   * Resolve centralized metadata for an extracted asset path from the sidecar.
+   * Tries the path with the content/resources/ (or resources/) prefix stripped,
+   * then the raw path. Returns an object with only the known string fields; a legacy
+   * `altText` key from older exports is ignored (alt text is now per-instance).
+   * @param {Object} sidecar - Parsed sidecar (keyed by resource export path)
+   * @param {string} path - The ZIP-relative path of the extracted asset
+   * @returns {{description?: string, title?: string, license?: string, author?: string, authorUrl?: string, sourceUrl?: string}}
+   */
+  _lookupAssetMetadataForPath(sidecar, path) {
+    if (!sidecar) return {};
+    const candidates = [
+      path.replace(/^content\/resources\//, '').replace(/^resources\//, ''),
+      path,
+    ];
+    let entry = null;
+    for (const key of candidates) {
+      if (sidecar[key]) {
+        entry = sidecar[key];
+        break;
+      }
+    }
+    if (!entry || typeof entry !== 'object') return {};
+
+    const result = {};
+    for (const field of AssetManager.CENTRALIZED_METADATA_FIELDS) {
+      if (typeof entry[field] === 'string' && entry[field] !== '') {
+        result[field] = entry[field];
+      }
+    }
+    return result;
+  }
+
   async extractAssetsFromZip(zip, onAssetProgress = null) {
     const assetMap = new Map();
     const assetFiles = [];
     let storedAssetsCount = 0;
+
+    // Parse the optional centralized asset-metadata sidecar (written by ElpxExporter).
+    // Keyed by the resource export path (the path under content/resources/). Absent or
+    // malformed sidecars are tolerated so older packages import unchanged.
+    const assetMetadataSidecar = this._parseAssetMetadataSidecar(zip);
 
     // Detect format: legacy .elp has contentv3.xml, new .elpx has content.xml
     const isLegacyFormat = Object.keys(zip).some(path => path === 'contentv3.xml' || path.endsWith('/contentv3.xml'));
@@ -3592,6 +4046,9 @@ class AssetManager {
         const filename = path.split('/').pop();
         const folderPath = this._extractFolderPathFromImport(path, assetId);
 
+        // Look up centralized metadata for this resource (if a sidecar was present)
+        const importedMetadata = this._lookupAssetMetadataForPath(assetMetadataSidecar, path);
+
         // Check if already exists (same content = same ID). Skipped for intra-import
         // duplicates so they are always stored as a new asset (#1951).
         const existing = isIntraImportDuplicate ? null : await this.getAsset(assetId);
@@ -3615,7 +4072,8 @@ class AssetManager {
             createdAt: new Date().toISOString(),
             filename,
             originalPath: path,
-            folderPath
+            folderPath,
+            ...importedMetadata
           };
           await this.putAsset(reusedAsset);
           storedAssetsCount++;
@@ -3635,7 +4093,8 @@ class AssetManager {
           createdAt: new Date().toISOString(),
           filename,
           originalPath: path,  // Store original path for {{context_path}} mapping
-          folderPath
+          folderPath,
+          ...importedMetadata
         };
 
         await this.putAsset(asset);

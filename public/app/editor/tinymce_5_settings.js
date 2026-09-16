@@ -3,6 +3,27 @@ const ASSET_URL_MEDIA_SELECTOR =
 const PLACEHOLDER_IMAGE_DATA_URL =
     'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
+/**
+ * Build the TinyMCE image dialog meta object from a File Manager asset.
+ *
+ * The image caption (author / name / license / links) is auto-derived from the
+ * centralized File Manager metadata at submit time — resolved by the exeimage plugin
+ * from the asset:// id — so it is NOT pre-filled here. Alt text is per-instance and is
+ * intentionally left for the author to write. This therefore only carries the filename
+ * (used as the image-list label) and the asset id.
+ *
+ * Pure function (no DOM/TinyMCE access) so it can be unit-tested directly.
+ * @param {{id?: string, filename?: string}} asset
+ * @returns {{text: string, 'data-asset-id': string|undefined}}
+ */
+function buildImagePickerMeta(asset) {
+    const a = asset || {};
+    return {
+        text: a.filename || '',
+        'data-asset-id': a.id,
+    };
+}
+
 var $exeTinyMCE = {
     // imagetools is disabled because it generates base64 images
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
@@ -409,12 +430,9 @@ var $exeTinyMCE = {
                             }
 
                             // Keep asset:// in the editor model; rendering resolves it later.
-                            cb(result.assetUrl || result.blobUrl || '', {
-                                title: result.asset.filename || '',
-                                text: result.asset.filename || '',
-                                alt: '',
-                                'data-asset-id': result.asset.id
-                            });
+                            // The caption is auto-derived from the centralized metadata at
+                            // submit time, so the picker only passes the filename + asset id.
+                            cb(result.assetUrl || result.blobUrl || '', buildImagePickerMeta(result.asset));
                         }
                     });
                 } else {
@@ -1177,5 +1195,5 @@ var $exeTinyMCEToggler = {
 
 // Export for Node.js/CommonJS (tests)
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { $exeTinyMCE, $exeTinyMCEToggler };
+    module.exports = { $exeTinyMCE, $exeTinyMCEToggler, buildImagePickerMeta };
 }

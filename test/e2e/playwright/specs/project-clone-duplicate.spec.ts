@@ -128,7 +128,7 @@ async function insertImageIntoTextIdevice(page: Page, fixturePath: string): Prom
     await insertBtn.click();
     await page.waitForTimeout(500);
 
-    const altTextInput = page.getByLabel(/Alternative description|Descripción alternativa/i);
+    const altTextInput = page.getByLabel(/alternativ/i);
     if ((await altTextInput.count()) > 0) {
         const currentAlt = await altTextInput.inputValue().catch(() => '');
         if (!currentAlt) {
