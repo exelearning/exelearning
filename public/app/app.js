@@ -36,6 +36,9 @@ import FileDropHandler from './common/fileDropHandler.js';
 // Mermaid max-size utilities — exposed on window.eXeLearning for TinyMCE plugins
 import * as mermaidMaxSize from './common/mermaidMaxSize.js';
 
+/** Error code set on the rejection when the preview worker never confirms SET_CONTENT. */
+const PREVIEW_SW_TIMEOUT_CODE = 'PREVIEW_SW_TIMEOUT';
+
 export default class App {
     constructor(eXeLearning) {
         eXeLearning.mermaidMaxSize = mermaidMaxSize;
@@ -193,15 +196,16 @@ export default class App {
      * Register the preview Service Worker.
      *
      * The flow is defensive on purpose (GitHub issue #2429). A browser profile can keep a
-     * preview-sw.js registration whose worker reports "activated" but never answers messages
-     * (seen in Firefox after preview-sw.js changed between builds), and pre-4.0.0 builds
-     * registered the worker at the root scope, which shadows the /viewer/ registration.
-     * Therefore:
+     * preview-sw.js registration that reports an "activated" worker which never answers
+     * messages (typically after the script changed between builds), and pre-4.0.0 builds
+     * registered the worker at the root scope, which shadows the /viewer/ registration and
+     * captures the content while another worker serves the iframe. Therefore:
      *   1. preview registrations whose scope contains the preview scope are removed,
-     *   2. the /viewer/ registration is registered (or adopted) and awaited,
+     *   2. the /viewer/ registration is registered (or adopted), the browser is asked to
+     *      compare preview-sw.js with its stored copy, and a new worker is awaited,
      *   3. the worker is pinged and re-registered once when it does not answer.
-     * When even that fails the promise resolves null and getPreviewServiceWorker() returns
-     * null, so the preview panel falls back to blob URLs instead of showing an error.
+     * When even that fails the promise resolves null so the preview panel can fall back to
+     * blob URLs instead of showing an error.
      * @returns {Promise<ServiceWorkerRegistration|null>} Registration promise
      */
     registerPreviewServiceWorker() {
@@ -224,25 +228,21 @@ export default class App {
             return this._previewSwRegistrationPromise;
         }
 
-        // Derive paths from explicit embedding config first; otherwise use current pathname.
-        // Avoid using generic app config basePath here because it can represent API base paths
-        // (not necessarily the static asset path for Service Worker registration).
-        const basePath = this._resolvePreviewServiceWorkerBasePath();
-        const swPath = basePath + 'preview-sw.js';
-        // Use a dedicated scope suffix to avoid conflicts with the PWA SW
-        const previewScope = basePath + 'viewer/';
+        const { scope } = this._getPreviewServiceWorkerPaths();
         this._previewSwUnavailable = false;
 
         this._previewSwRegistrationPromise = (async () => {
             try {
-                await this._unregisterStalePreviewWorkers(previewScope);
+                await this._unregisterStalePreviewWorkers(scope);
 
-                let registration = await this._installPreviewServiceWorker(swPath, previewScope);
+                let registration = await this._installPreviewServiceWorker();
 
                 const status = await this.pingPreviewServiceWorker(registration.active);
-                if (!status) {
+                if (status) {
+                    this._checkPreviewServiceWorkerVersion(status);
+                } else {
                     console.warn('[Preview SW] Registered worker does not answer, re-registering it');
-                    registration = await this._recoverPreviewServiceWorker(swPath, previewScope);
+                    registration = await this._recoverPreviewServiceWorker();
                 }
 
                 return registration;
@@ -258,27 +258,39 @@ export default class App {
     }
 
     /**
-     * Whether a Service Worker script URL is the preview worker.
+     * Resolve (once) the scope and script URL used for the preview Service Worker.
+     * The script URL carries the app version so that every release installs a fresh worker:
+     * a changed URL is the only thing that makes register() replace a stored script.
+     * @returns {{ basePath: string, scope: string, scriptUrl: string }}
+     * @private
+     */
+    _getPreviewServiceWorkerPaths() {
+        if (!this._previewSwPaths) {
+            const basePath = this._resolvePreviewServiceWorkerBasePath();
+            const version = this.eXeLearning?.version;
+            const query = version ? `?v=${encodeURIComponent(String(version))}` : '';
+            this._previewSwPaths = {
+                basePath,
+                // Use a dedicated scope suffix to avoid conflicts with the PWA SW
+                scope: `${basePath}viewer/`,
+                scriptUrl: `${basePath}preview-sw.js${query}`,
+            };
+        }
+        return this._previewSwPaths;
+    }
+
+    /**
+     * Whether a Service Worker script URL is the preview worker (ignores the version query).
      * @param {string|undefined} scriptURL
      * @returns {boolean}
      * @private
      */
     _isPreviewServiceWorkerScript(scriptURL) {
-        return this._toPathname(scriptURL).endsWith('/preview-sw.js');
-    }
-
-    /**
-     * Pathname of an absolute URL or absolute path; empty string when it cannot be parsed.
-     * @param {string|undefined} value
-     * @returns {string}
-     * @private
-     */
-    _toPathname(value) {
-        if (!value) return '';
+        if (!scriptURL) return false;
         try {
-            return new URL(String(value), 'http://localhost').pathname;
+            return new URL(scriptURL, window.location.origin).pathname.endsWith('/preview-sw.js');
         } catch {
-            return '';
+            return false;
         }
     }
 
@@ -286,9 +298,10 @@ export default class App {
      * Unregister preview-sw.js registrations whose scope contains the preview scope.
      *
      * Such registrations (e.g. scope "/" left behind by pre-4.0.0 builds) are returned by
-     * getRegistration() lookups and control the editor page, so the app used to adopt them
-     * instead of the /viewer/ worker. Registrations of other deployments on the same origin
-     * (sibling scopes) and non-preview workers (PWA service-worker.js) are left untouched.
+     * getRegistration() lookups, control the editor page and receive the preview content
+     * while the /viewer/ worker serves the iframe, so the preview stays blank or times out.
+     * Registrations of other deployments on the same origin (sibling scopes) and non-preview
+     * workers (PWA service-worker.js) are left untouched.
      * @param {string} previewScope - Expected preview scope (absolute path or URL)
      * @returns {Promise<string[]>} Scopes that were unregistered
      * @private
@@ -302,13 +315,12 @@ export default class App {
             return [];
         }
 
-        // Registrations are same-origin by definition, so scopes are compared by path.
-        const expectedPath = this._toPathname(previewScope);
+        const expectedScope = new URL(previewScope, window.location.origin).href;
         const stale = registrations.filter((registration) => {
             const worker = registration.active || registration.waiting || registration.installing;
             if (!this._isPreviewServiceWorkerScript(worker?.scriptURL)) return false;
-            const scopePath = this._toPathname(registration.scope);
-            return Boolean(scopePath) && scopePath !== expectedPath && expectedPath.startsWith(scopePath);
+            const scope = String(registration.scope || '');
+            return scope !== expectedScope && expectedScope.startsWith(scope);
         });
 
         await Promise.all(
@@ -327,20 +339,40 @@ export default class App {
 
     /**
      * Register the preview worker for the preview scope and wait until it is usable.
-     * register() returns the existing registration when scope and script URL match.
-     * @param {string} swPath - Worker script path
-     * @param {string} previewScope - Registration scope
+     * register() returns the existing registration when scope and script URL match, so an
+     * explicit update() is needed to make the browser compare preview-sw.js with the stored
+     * copy; a worker installed by that check is awaited before returning.
      * @returns {Promise<ServiceWorkerRegistration>}
      * @private
      */
-    async _installPreviewServiceWorker(swPath, previewScope) {
-        const registration = await navigator.serviceWorker.register(swPath, { scope: previewScope });
+    async _installPreviewServiceWorker() {
+        const { scope, scriptUrl } = this._getPreviewServiceWorkerPaths();
+        const registration = await navigator.serviceWorker.register(scriptUrl, { scope });
         this._previewSwRegistration = registration;
+
+        // A changed script URL (new app version) makes register() start an install by itself;
+        // otherwise ask the browser to compare preview-sw.js with the stored copy.
+        if (!registration.installing && typeof registration.update === 'function') {
+            try {
+                await registration.update();
+            } catch (error) {
+                console.warn('[Preview SW] Update check failed, keeping the current worker:', error);
+            }
+        }
 
         await this._waitForActivation(registration);
         await this._tryClaimClients(registration);
+        this._watchPreviewServiceWorkerUpdates(registration);
 
-        // Handle future updates
+        return registration;
+    }
+
+    /**
+     * Nudge a worker installed later (browser-initiated update) to take over immediately.
+     * @param {ServiceWorkerRegistration} registration
+     * @private
+     */
+    _watchPreviewServiceWorkerUpdates(registration) {
         registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
             if (newWorker) {
@@ -351,8 +383,6 @@ export default class App {
                 });
             }
         });
-
-        return registration;
     }
 
     /**
@@ -389,30 +419,70 @@ export default class App {
     }
 
     /**
+     * Warn when the worker reports a version other than the app's (stale script still running).
+     * @param {Object} status - STATUS payload from the worker
+     * @private
+     */
+    _checkPreviewServiceWorkerVersion(status) {
+        const appVersion = this.eXeLearning?.version;
+        const workerAppVersion = status?.appVersion;
+        if (!appVersion || !workerAppVersion || workerAppVersion === String(appVersion)) return;
+        console.warn('[Preview SW] Worker was registered with a different app version', {
+            worker: workerAppVersion,
+            app: String(appVersion),
+            script: status.version,
+        });
+    }
+
+    /**
      * Replace the preview worker registration with a fresh one and verify it answers.
-     * @param {string} swPath - Worker script path
-     * @param {string} previewScope - Registration scope
+     * Concurrent callers share the in-flight recovery. On failure the cached registration is
+     * cleared so callers fall back to the blob URL preview.
      * @returns {Promise<ServiceWorkerRegistration>}
      * @private
      */
-    async _recoverPreviewServiceWorker(swPath, previewScope) {
-        const current = this._previewSwRegistration;
-        if (current) {
-            try {
-                await current.unregister();
-            } catch (error) {
-                console.warn('[Preview SW] Could not unregister the stale worker:', error);
-            }
+    async _recoverPreviewServiceWorker() {
+        if (this._previewSwRecoveryPromise) {
+            return this._previewSwRecoveryPromise;
         }
-        this._previewSwRegistration = null;
 
-        const registration = await this._installPreviewServiceWorker(swPath, previewScope);
-        const status = await this.pingPreviewServiceWorker(registration.active);
-        if (!status) {
+        const { scope } = this._getPreviewServiceWorkerPaths();
+
+        this._previewSwRecoveryPromise = (async () => {
+            let current = this._previewSwRegistration;
+            if (!current) {
+                try {
+                    current = await navigator.serviceWorker.getRegistration(scope);
+                } catch {
+                    current = null;
+                }
+            }
+
+            const currentWorker = current?.active || current?.waiting || current?.installing;
+            if (current && this._isPreviewServiceWorkerScript(currentWorker?.scriptURL)) {
+                try {
+                    await current.unregister();
+                } catch (error) {
+                    console.warn('[Preview SW] Could not unregister the stale worker:', error);
+                }
+            }
             this._previewSwRegistration = null;
-            throw new Error('Preview Service Worker does not answer after re-registration');
+
+            const registration = await this._installPreviewServiceWorker();
+            const status = await this.pingPreviewServiceWorker(registration.active);
+            if (!status) {
+                this._previewSwRegistration = null;
+                throw new Error('Preview Service Worker does not answer after re-registration');
+            }
+            this._checkPreviewServiceWorkerVersion(status);
+            return registration;
+        })();
+
+        try {
+            return await this._previewSwRecoveryPromise;
+        } finally {
+            this._previewSwRecoveryPromise = null;
         }
-        return registration;
     }
 
     /**
@@ -475,12 +545,31 @@ export default class App {
     }
 
     /**
-     * Try to claim clients (non-fatal if fails)
+     * Whether the current page is inside a Service Worker registration scope.
+     * @param {string} scope - Registration scope (absolute URL or path)
+     * @returns {boolean}
+     * @private
+     */
+    _isPageWithinScope(scope) {
+        try {
+            const scopeHref = new URL(scope, window.location.origin).href;
+            return window.location.href.startsWith(scopeHref);
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Try to claim clients (non-fatal if fails).
+     * clients.claim() only affects pages inside the registration scope. The editor page lives
+     * outside the /viewer/ scope, so waiting for a controllerchange there can never succeed and
+     * would only delay the first preview by the full timeout.
      * @param {ServiceWorkerRegistration} registration
      * @private
      */
     async _tryClaimClients(registration) {
         if (navigator.serviceWorker.controller || !registration.active) return;
+        if (!this._isPageWithinScope(registration.scope)) return;
 
         registration.active.postMessage({ type: 'CLAIM_CLIENTS' });
         try {
@@ -558,13 +647,9 @@ export default class App {
             throw new Error('Service Workers not supported');
         }
 
-        // If already have the preview SW as controller (check it's not PWA SW)
-        const controller = navigator.serviceWorker.controller;
-        if (controller?.scriptURL?.endsWith('preview-sw.js')) {
-            return controller;
-        }
-
-        // Wait for our registration to complete (it handles activation)
+        // Wait for our registration to complete (it handles activation and health checks).
+        // It takes precedence over the controller: a stale root-scope worker can still control
+        // the editor page during the session in which it was unregistered.
         if (this._previewSwRegistrationPromise) {
             const registration = await Promise.race([
                 this._previewSwRegistrationPromise,
@@ -589,9 +674,10 @@ export default class App {
             }
         }
 
-        // Fallback: check for controller one more time
-        if (navigator.serviceWorker.controller) {
-            return navigator.serviceWorker.controller;
+        // Fallback: the controller, when it is the preview SW (not PWA SW)
+        const controller = navigator.serviceWorker.controller;
+        if (this._isPreviewServiceWorkerScript(controller?.scriptURL)) {
+            return controller;
         }
 
         // Check if we have a stored registration with active SW
@@ -603,12 +689,18 @@ export default class App {
     }
 
     /**
-     * Send content to the preview Service Worker
+     * Send content to the preview Service Worker.
+     *
+     * ArrayBuffers in `files` are transferred to the worker, so they cannot be sent twice.
+     * When the worker never confirms the content, it is re-registered once and, if
+     * `regenerateFiles` is given, the content is regenerated and sent to the new worker.
      * @param {Object} files - Map of file paths to ArrayBuffer content
      * @param {Object} options - Options for content serving
+     * @param {Object} [retry]
+     * @param {(() => Promise<Object>)|null} [retry.regenerateFiles] - Produces fresh files for a resend
      * @returns {Promise<{fileCount: number}>} Promise that resolves when content is ready
      */
-    async sendContentToPreviewSW(files, options = {}) {
+    async sendContentToPreviewSW(files, options = {}, { regenerateFiles = null } = {}) {
         // Wait for SW registration to complete if needed
         if (this._previewSwRegistrationPromise) {
             await this._previewSwRegistrationPromise;
@@ -619,6 +711,40 @@ export default class App {
             throw new Error('Preview Service Worker not available');
         }
 
+        try {
+            return await this._postContentToPreviewSW(sw, files, options);
+        } catch (error) {
+            if (error?.code !== PREVIEW_SW_TIMEOUT_CODE) {
+                throw error;
+            }
+
+            console.warn('[Preview SW] Timed out waiting for content ready, re-registering the worker');
+            let registration;
+            try {
+                registration = await this._recoverPreviewServiceWorker();
+            } catch (recoveryError) {
+                console.error('[Preview SW] Recovery failed:', recoveryError);
+                throw error;
+            }
+
+            if (typeof regenerateFiles !== 'function') {
+                throw error;
+            }
+
+            const freshFiles = await regenerateFiles();
+            return await this._postContentToPreviewSW(registration.active, freshFiles, options);
+        }
+    }
+
+    /**
+     * Post SET_CONTENT to a worker and wait until it confirms the content can be served.
+     * @param {ServiceWorker} sw
+     * @param {Object} files - Map of file paths to ArrayBuffer content (buffers are transferred)
+     * @param {Object} options - Options for content serving
+     * @returns {Promise<{fileCount: number}>}
+     * @private
+     */
+    _postContentToPreviewSW(sw, files, options) {
         return new Promise((resolve, reject) => {
             // Use MessageChannel for bi-directional communication
             // This works even when SW is not the controller of the current page
@@ -682,7 +808,9 @@ export default class App {
             // Timeout after 10 seconds
             timeoutId = setTimeout(() => {
                 messageChannel.port1.close();
-                reject(new Error('Timeout waiting for SW content ready'));
+                const error = new Error('Timeout waiting for SW content ready');
+                error.code = PREVIEW_SW_TIMEOUT_CODE;
+                reject(error);
             }, 10000);
         });
     }

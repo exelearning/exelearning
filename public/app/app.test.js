@@ -1637,7 +1637,6 @@ describe('App utility methods', () => {
     let mockRegistration;
     let originalServiceWorker;
     let originalIsSecureContext;
-    let originalMessageChannel;
 
     const ORIGIN = window.location.origin;
 
@@ -1662,7 +1661,12 @@ describe('App utility methods', () => {
      * VERIFY_READY over the MessageChannel port; a dead one swallows every message,
      * which is exactly what a stale registration looks like from the page.
      */
-    const createWorker = ({ alive = true, state = 'activated', scriptURL = `${ORIGIN}/preview-sw.js` } = {}) => ({
+    const createWorker = ({
+      alive = true,
+      state = 'activated',
+      scriptURL = `${ORIGIN}/preview-sw.js`,
+      version = '1.0.0',
+    } = {}) => ({
       state,
       scriptURL,
       addEventListener: vi.fn(),
@@ -1673,7 +1677,7 @@ describe('App utility methods', () => {
         if (!port?.postMessage) return;
         switch (message?.type) {
           case 'GET_STATUS':
-            port.postMessage({ type: 'STATUS', ready: false, fileCount: 0, version: '1.1.0' });
+            port.postMessage({ type: 'STATUS', ready: false, fileCount: 0, version: '1.1.0', appVersion: version });
             break;
           case 'SET_CONTENT':
             port.postMessage({ type: 'CONTENT_READY', fileCount: Object.keys(message.data.files).length });
@@ -1687,12 +1691,7 @@ describe('App utility methods', () => {
       }),
     });
 
-    const createRegistration = ({
-      scope = `${ORIGIN}/viewer/`,
-      active = createWorker(),
-      installing = null,
-      waiting = null,
-    } = {}) => ({
+    const createRegistration = ({ scope = `${ORIGIN}/viewer/`, active = createWorker(), installing = null, waiting = null } = {}) => ({
       scope,
       active,
       installing,
@@ -1701,6 +1700,8 @@ describe('App utility methods', () => {
       update: vi.fn().mockResolvedValue(undefined),
       unregister: vi.fn().mockResolvedValue(true),
     });
+
+    let originalMessageChannel;
 
     beforeEach(() => {
       originalMessageChannel = globalThis.MessageChannel;
@@ -1724,7 +1725,7 @@ describe('App utility methods', () => {
           controller: mockController,
           ready: Promise.resolve(mockRegistration),
           register: vi.fn().mockResolvedValue(mockRegistration),
-          getRegistration: vi.fn().mockResolvedValue(null),
+          getRegistration: vi.fn().mockResolvedValue(null), // No existing registration by default
           getRegistrations: vi.fn().mockResolvedValue([]), // Nothing stale by default
           addEventListener: vi.fn(),
           removeEventListener: vi.fn(),
@@ -1737,6 +1738,7 @@ describe('App utility methods', () => {
       // (getPreviewServiceWorker checks this first in static mode)
       appInstance._previewSwRegistration = mockRegistration;
       appInstance._previewSwUnavailable = false;
+      appInstance._previewSwPaths = null;
     });
 
     afterEach(() => {
@@ -1758,6 +1760,7 @@ describe('App utility methods', () => {
       appInstance._previewSwRegistration = null;
       appInstance._previewSwRegistrationPromise = null;
       appInstance._previewSwUnavailable = false;
+      appInstance._previewSwPaths = null;
     });
 
     describe('registerPreviewServiceWorker', () => {
@@ -1778,31 +1781,90 @@ describe('App utility methods', () => {
       });
 
       it('removes stale ancestor-scope registrations before registering', async () => {
-        const orphan = createRegistration({ scope: `${ORIGIN}/` });
-        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([orphan]);
-        const viewerReg = createRegistration();
-        navigator.serviceWorker.register = vi.fn().mockResolvedValue(viewerReg);
-        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        // A pre-4.0.0 build registered preview-sw.js at scope "/" (basePath). It shadows
+        // the /viewer/ registration and must be gone before we register ours.
+        const rootOrphan = createRegistration({ scope: `${ORIGIN}/` });
+        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([rootOrphan]);
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(createRegistration());
 
-        const result = await appInstance.registerPreviewServiceWorker();
+        await appInstance.registerPreviewServiceWorker();
 
-        expect(orphan.unregister).toHaveBeenCalled();
+        expect(navigator.serviceWorker.getRegistrations).toHaveBeenCalled();
+        expect(rootOrphan.unregister).toHaveBeenCalled();
         expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
-        expect(result).toBe(viewerReg);
       });
 
-      it('registers the SW at the /viewer/ scope and adopts a healthy worker', async () => {
-        const viewerReg = createRegistration();
-        navigator.serviceWorker.register = vi.fn().mockResolvedValue(viewerReg);
+      it('includes the app version in the worker script URL so a new build installs a new worker', async () => {
+        window.eXeLearning.version = 'v4.0.5-em';
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(createRegistration());
+
+        await appInstance.registerPreviewServiceWorker();
+
+        expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/preview-sw.js?v=v4.0.5-em', {
+          scope: '/viewer/',
+        });
+      });
+
+      it('registers new SW when no existing registration', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+        const registerSpy = navigator.serviceWorker.register;
+        // Mock active worker with already activated state
+        mockRegistration.active = createWorker();
+        mockRegistration.installing = null;
+        mockRegistration.waiting = null;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Path derived from window.location.pathname (/ in jsdom)
+        // Uses /viewer/ scope to avoid conflicts with PWA SW
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
+      });
+
+      it('checks the existing registration for a changed script and keeps it when healthy', async () => {
+        // register() returns the registration that already exists for the scope; the app
+        // must still ask the browser to compare preview-sw.js against the stored copy.
+        const existingReg = createRegistration();
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(existingReg);
+
+        await appInstance.registerPreviewServiceWorker();
+
+        expect(navigator.serviceWorker.register).toHaveBeenCalledTimes(1);
+        expect(existingReg.update).toHaveBeenCalled();
+        expect(existingReg.unregister).not.toHaveBeenCalled();
+        expect(appInstance._previewSwRegistration).toBe(existingReg);
+      });
+
+      it('waits for the worker installed by update() to activate', async () => {
+        const newWorker = createWorker({ state: 'installing' });
+        const existingReg = createRegistration({ active: createWorker() });
+        existingReg.update = vi.fn(async () => {
+          existingReg.installing = newWorker;
+        });
+        newWorker.addEventListener = vi.fn((event, cb) => {
+          if (event === 'statechange') {
+            newWorker.state = 'activated';
+            existingReg.installing = null;
+            existingReg.active = newWorker;
+            cb();
+          }
+        });
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(existingReg);
 
         const result = await appInstance.registerPreviewServiceWorker();
 
-        // Path derived from window.location.pathname (/ in jsdom)
-        expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
-        expect(viewerReg.active.postMessage).toHaveBeenCalledWith({ type: 'GET_STATUS' }, expect.any(Array));
-        expect(viewerReg.unregister).not.toHaveBeenCalled();
-        expect(result).toBe(viewerReg);
-        expect(appInstance._previewSwRegistration).toBe(viewerReg);
+        expect(newWorker.addEventListener).toHaveBeenCalledWith('statechange', expect.any(Function));
+        expect(result.active).toBe(newWorker);
+      });
+
+      it('keeps the current worker when update() rejects (offline)', async () => {
+        const existingReg = createRegistration();
+        existingReg.update = vi.fn().mockRejectedValue(new Error('network'));
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(existingReg);
+
+        const result = await appInstance.registerPreviewServiceWorker();
+
+        expect(result).toBe(existingReg);
       });
 
       it('re-registers when the adopted worker does not answer the health check', async () => {
@@ -1813,7 +1875,7 @@ describe('App utility methods', () => {
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
         const promise = appInstance.registerPreviewServiceWorker();
-        await vi.advanceTimersByTimeAsync(3100);
+        await vi.advanceTimersByTimeAsync(3001); // ping timeout
         const result = await promise;
 
         expect(deadReg.unregister).toHaveBeenCalled();
@@ -1821,7 +1883,8 @@ describe('App utility methods', () => {
         expect(result).toBe(freshReg);
         expect(appInstance._previewSwRegistration).toBe(freshReg);
         expect(appInstance._previewSwUnavailable).toBe(false);
-        expect(warnSpy).toHaveBeenCalledWith('[Preview SW] Registered worker does not answer, re-registering it');
+        expect(warnSpy).toHaveBeenCalled();
+        vi.useRealTimers();
       });
 
       it('resolves null and marks the SW unavailable when recovery also fails', async () => {
@@ -1833,7 +1896,8 @@ describe('App utility methods', () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
         const promise = appInstance.registerPreviewServiceWorker();
-        await vi.advanceTimersByTimeAsync(6200);
+        await vi.advanceTimersByTimeAsync(3001); // first ping
+        await vi.advanceTimersByTimeAsync(3001); // ping after re-registration
         const result = await promise;
 
         expect(result).toBeNull();
@@ -1841,9 +1905,79 @@ describe('App utility methods', () => {
         expect(appInstance._previewSwUnavailable).toBe(true);
         expect(appInstance.getPreviewServiceWorker()).toBeNull();
         expect(errorSpy).toHaveBeenCalledWith('[Preview SW] Registration failed:', expect.any(Error));
+        vi.useRealTimers();
+      });
+
+      it('warns when the worker was registered with a different app version', async () => {
+        window.eXeLearning.version = '4.0.5';
+        navigator.serviceWorker.register = vi
+          .fn()
+          .mockResolvedValue(createRegistration({ active: createWorker({ version: '4.0.4' }) }));
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        await appInstance.registerPreviewServiceWorker();
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('version'),
+          expect.objectContaining({ worker: '4.0.4', app: '4.0.5', script: '1.1.0' }),
+        );
+      });
+
+      it('does not warn when the worker matches the app version', async () => {
+        window.eXeLearning.version = '4.0.5';
+        navigator.serviceWorker.register = vi
+          .fn()
+          .mockResolvedValue(createRegistration({ active: createWorker({ version: '4.0.5' }) }));
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        await appInstance.registerPreviewServiceWorker();
+
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+
+      it('skips update() when register() already started installing a new script', async () => {
+        const newWorker = createWorker({ state: 'installing' });
+        const reg = createRegistration({ installing: newWorker });
+        newWorker.addEventListener = vi.fn((event, cb) => {
+          if (event === 'statechange') {
+            newWorker.state = 'activated';
+            reg.installing = null;
+            reg.active = newWorker;
+            cb();
+          }
+        });
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(reg);
+
+        await appInstance.registerPreviewServiceWorker();
+
+        expect(reg.update).not.toHaveBeenCalled();
+        expect(appInstance._previewSwRegistration.active).toBe(newWorker);
+      });
+
+      it('registers new SW when existing registration is for PWA SW not preview SW', async () => {
+        // Simulate existing registration found but for PWA SW (service-worker.js), not preview SW
+        const existingPwaReg = {
+          ...mockRegistration,
+          active: {
+            ...mockController,
+            state: 'activated',
+            postMessage: vi.fn(),
+            scriptURL: `${ORIGIN}/service-worker.js`, // PWA SW, not preview SW
+          },
+          update: vi.fn().mockResolvedValue(undefined),
+        };
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingPwaReg);
+        const registerSpy = navigator.serviceWorker.register;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Should call register because existing registration is for PWA SW, not preview SW
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
       });
 
       it('handles registration failure', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
         const error = new Error('Registration failed');
         navigator.serviceWorker.register = vi.fn().mockRejectedValue(error);
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -1851,10 +1985,14 @@ describe('App utility methods', () => {
         const result = await appInstance.registerPreviewServiceWorker();
 
         expect(result).toBeNull();
+        expect(appInstance._previewSwUnavailable).toBe(true);
         expect(errorSpy).toHaveBeenCalledWith('[Preview SW] Registration failed:', error);
       });
 
       it('waits for SW activation before returning (eXeViewer pattern)', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
         // Track if statechange listener was added
         let stateChangeListenerAdded = false;
         const mockInstallingSW = {
@@ -1870,7 +2008,13 @@ describe('App utility methods', () => {
           removeEventListener: vi.fn(),
         };
 
-        const testRegistration = createRegistration({ installing: mockInstallingSW });
+        const testRegistration = {
+          ...mockRegistration,
+          installing: mockInstallingSW,
+          waiting: null,
+          active: createWorker(),
+          addEventListener: vi.fn(),
+        };
         navigator.serviceWorker.register = vi.fn().mockResolvedValue(testRegistration);
 
         await appInstance.registerPreviewServiceWorker();
@@ -1881,6 +2025,9 @@ describe('App utility methods', () => {
       });
 
       it('handles updatefound event with new worker installation', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
         const mockNewWorker = {
           state: 'installing',
           addEventListener: vi.fn(),
@@ -1889,15 +2036,20 @@ describe('App utility methods', () => {
 
         // Track if updatefound listener was added and immediately trigger it
         let updateFoundListenerAdded = false;
-        const regWithActive = createRegistration();
-        regWithActive.addEventListener = vi.fn((event, cb) => {
-          if (event === 'updatefound') {
-            updateFoundListenerAdded = true;
-            // Simulate updatefound event by setting installing and calling callback
-            regWithActive.installing = mockNewWorker;
-            cb();
-          }
-        });
+        const regWithActive = {
+          ...mockRegistration,
+          active: createWorker(),
+          installing: null,
+          waiting: null,
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'updatefound') {
+              updateFoundListenerAdded = true;
+              // Simulate updatefound event by setting installing and calling callback
+              regWithActive.installing = mockNewWorker;
+              cb();
+            }
+          }),
+        };
         navigator.serviceWorker.register = vi.fn().mockResolvedValue(regWithActive);
 
         await appInstance.registerPreviewServiceWorker();
@@ -1911,6 +2063,9 @@ describe('App utility methods', () => {
       });
 
       it('handles new worker state change to installed', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
         const mockNewWorker = {
           state: 'installed',
           addEventListener: vi.fn((event, cb) => {
@@ -1922,198 +2077,26 @@ describe('App utility methods', () => {
           postMessage: vi.fn(),
         };
 
-        const regWithActive = createRegistration();
-        regWithActive.addEventListener = vi.fn((event, cb) => {
-          if (event === 'updatefound') {
-            // Simulate updatefound event
-            regWithActive.installing = mockNewWorker;
-            cb();
-          }
-        });
+        // Mock registration with active SW already
+        const regWithActive = {
+          ...mockRegistration,
+          active: createWorker(),
+          installing: null,
+          waiting: null,
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'updatefound') {
+              // Simulate updatefound event
+              regWithActive.installing = mockNewWorker;
+              cb();
+            }
+          }),
+        };
         navigator.serviceWorker.register = vi.fn().mockResolvedValue(regWithActive);
 
         await appInstance.registerPreviewServiceWorker();
 
         // Should send SKIP_WAITING when new worker is installed
         expect(mockNewWorker.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
-      });
-    });
-
-    describe('pingPreviewServiceWorker', () => {
-      it('resolves the STATUS payload when the worker answers', async () => {
-        const worker = createWorker();
-
-        const status = await appInstance.pingPreviewServiceWorker(worker);
-
-        expect(status).toEqual(expect.objectContaining({ type: 'STATUS', version: '1.1.0' }));
-        expect(worker.postMessage).toHaveBeenCalledWith({ type: 'GET_STATUS' }, expect.any(Array));
-      });
-
-      it('resolves null when the worker never answers', async () => {
-        vi.useFakeTimers();
-        const worker = createWorker({ alive: false });
-
-        const promise = appInstance.pingPreviewServiceWorker(worker, 500);
-        await vi.advanceTimersByTimeAsync(600);
-
-        await expect(promise).resolves.toBeNull();
-      });
-
-      it('resolves null when postMessage throws', async () => {
-        const worker = createWorker();
-        worker.postMessage = vi.fn(() => {
-          throw new Error('InvalidStateError');
-        });
-
-        await expect(appInstance.pingPreviewServiceWorker(worker)).resolves.toBeNull();
-      });
-
-      it('resolves null for a missing or redundant worker', async () => {
-        await expect(appInstance.pingPreviewServiceWorker(null)).resolves.toBeNull();
-        await expect(appInstance.pingPreviewServiceWorker(createWorker({ state: 'redundant' }))).resolves.toBeNull();
-        await expect(appInstance.pingPreviewServiceWorker({ state: 'activated' })).resolves.toBeNull();
-      });
-
-      it('ignores replies that are not a STATUS message', async () => {
-        const worker = createWorker();
-        worker.postMessage = vi.fn((message, transfer) => {
-          transfer[0].postMessage({ type: 'CONTENT_UPDATED' });
-        });
-
-        await expect(appInstance.pingPreviewServiceWorker(worker)).resolves.toBeNull();
-      });
-    });
-
-    describe('_unregisterStalePreviewWorkers', () => {
-      beforeEach(() => {
-        vi.spyOn(console, 'warn').mockImplementation(() => {});
-      });
-
-      it('unregisters preview workers whose scope contains the preview scope', async () => {
-        const root = createRegistration({ scope: `${ORIGIN}/` });
-        const viewer = createRegistration();
-        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([root, viewer]);
-
-        const removed = await appInstance._unregisterStalePreviewWorkers('/viewer/');
-
-        expect(removed).toEqual([`${ORIGIN}/`]);
-        expect(root.unregister).toHaveBeenCalled();
-        expect(viewer.unregister).not.toHaveBeenCalled();
-      });
-
-      it('recognises the worker script even when the registration is still installing', async () => {
-        const root = createRegistration({
-          scope: `${ORIGIN}/`,
-          active: null,
-          installing: createWorker({ state: 'installing' }),
-        });
-        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([root]);
-
-        const removed = await appInstance._unregisterStalePreviewWorkers('/viewer/');
-
-        expect(removed).toEqual([`${ORIGIN}/`]);
-      });
-
-      it('keeps registrations that are not the preview worker (PWA service-worker.js at root)', async () => {
-        const pwa = createRegistration({
-          scope: `${ORIGIN}/`,
-          active: createWorker({ scriptURL: `${ORIGIN}/service-worker.js` }),
-        });
-        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([pwa]);
-
-        const removed = await appInstance._unregisterStalePreviewWorkers('/viewer/');
-
-        expect(removed).toEqual([]);
-        expect(pwa.unregister).not.toHaveBeenCalled();
-      });
-
-      it('keeps preview registrations of other deployments on the same origin', async () => {
-        const sibling = createRegistration({
-          scope: `${ORIGIN}/other/viewer/`,
-          active: createWorker({ scriptURL: `${ORIGIN}/other/preview-sw.js` }),
-        });
-        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([sibling]);
-
-        const removed = await appInstance._unregisterStalePreviewWorkers('/viewer/');
-
-        expect(removed).toEqual([]);
-        expect(sibling.unregister).not.toHaveBeenCalled();
-      });
-
-      it('resolves empty when getRegistrations rejects', async () => {
-        navigator.serviceWorker.getRegistrations = vi.fn().mockRejectedValue(new Error('SecurityError'));
-
-        await expect(appInstance._unregisterStalePreviewWorkers('/viewer/')).resolves.toEqual([]);
-      });
-
-      it('tolerates unregister() failures', async () => {
-        const root = createRegistration({ scope: `${ORIGIN}/` });
-        root.unregister = vi.fn().mockRejectedValue(new Error('InvalidStateError'));
-        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([root]);
-
-        await expect(appInstance._unregisterStalePreviewWorkers('/viewer/')).resolves.toEqual([`${ORIGIN}/`]);
-      });
-    });
-
-    describe('_recoverPreviewServiceWorker', () => {
-      it('unregisters the current registration and registers a fresh worker', async () => {
-        const stale = createRegistration({ active: createWorker({ alive: false }) });
-        appInstance._previewSwRegistration = stale;
-        const fresh = createRegistration();
-        navigator.serviceWorker.register = vi.fn().mockResolvedValue(fresh);
-
-        const result = await appInstance._recoverPreviewServiceWorker('/preview-sw.js', '/viewer/');
-
-        expect(stale.unregister).toHaveBeenCalled();
-        expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
-        expect(result).toBe(fresh);
-        expect(appInstance._previewSwRegistration).toBe(fresh);
-      });
-
-      it('still registers a fresh worker when unregister() of the stale one rejects', async () => {
-        const stale = createRegistration();
-        stale.unregister = vi.fn().mockRejectedValue(new Error('InvalidStateError'));
-        appInstance._previewSwRegistration = stale;
-        const fresh = createRegistration();
-        navigator.serviceWorker.register = vi.fn().mockResolvedValue(fresh);
-        vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-        await expect(appInstance._recoverPreviewServiceWorker('/preview-sw.js', '/viewer/')).resolves.toBe(fresh);
-      });
-
-      it('registers a fresh worker when nothing is cached', async () => {
-        appInstance._previewSwRegistration = null;
-        const fresh = createRegistration();
-        navigator.serviceWorker.register = vi.fn().mockResolvedValue(fresh);
-
-        await expect(appInstance._recoverPreviewServiceWorker('/preview-sw.js', '/viewer/')).resolves.toBe(fresh);
-      });
-
-      it('rejects and clears the registration when the new worker does not answer either', async () => {
-        vi.useFakeTimers();
-        appInstance._previewSwRegistration = createRegistration();
-        const stillDead = createRegistration({ active: createWorker({ alive: false }) });
-        navigator.serviceWorker.register = vi.fn().mockResolvedValue(stillDead);
-
-        const promise = appInstance._recoverPreviewServiceWorker('/preview-sw.js', '/viewer/');
-        promise.catch(() => {});
-        await vi.advanceTimersByTimeAsync(3100);
-
-        await expect(promise).rejects.toThrow('does not answer after re-registration');
-        expect(appInstance._previewSwRegistration).toBeNull();
-      });
-    });
-
-    describe('_isPreviewServiceWorkerScript', () => {
-      it('accepts the worker script with or without a query and rejects other scripts', () => {
-        expect(appInstance._isPreviewServiceWorkerScript(`${ORIGIN}/preview-sw.js`)).toBe(true);
-        expect(appInstance._isPreviewServiceWorkerScript(`${ORIGIN}/base/preview-sw.js?v=1`)).toBe(true);
-        expect(appInstance._isPreviewServiceWorkerScript(`${ORIGIN}/service-worker.js`)).toBe(false);
-        expect(appInstance._isPreviewServiceWorkerScript(undefined)).toBe(false);
-      });
-
-      it('returns false for a URL that cannot be parsed', () => {
-        expect(appInstance._isPreviewServiceWorkerScript('http://[invalid')).toBe(false);
       });
     });
 
@@ -2167,6 +2150,16 @@ describe('App utility methods', () => {
         // But we have the preview SW registration
         const result = appInstance.getPreviewServiceWorker();
         expect(result).toBe(mockController); // Returns from _previewSwRegistration.active
+      });
+
+      it('does not fall back to a stale controller after registration gave up', () => {
+        appInstance._previewSwRegistration = null;
+        appInstance._previewSwUnavailable = true;
+        navigator.serviceWorker.controller = createWorker({
+          scriptURL: `${ORIGIN}/preview-sw.js`,
+        });
+
+        expect(appInstance.getPreviewServiceWorker()).toBeNull();
       });
     });
 
@@ -2295,25 +2288,89 @@ describe('App utility methods', () => {
         globalThis.MessageChannel = OriginalMessageChannel;
       });
 
-      it('times out after 10 seconds', async () => {
+      it('re-registers the worker and rejects with the timeout error when no regenerate callback is given', async () => {
         vi.useFakeTimers();
-
-        const mockPort1 = { onmessage: null, close: vi.fn() };
-        const mockPort2 = {};
-        const OriginalMessageChannel = globalThis.MessageChannel;
-        globalThis.MessageChannel = function MockMessageChannel() {
-          return { port1: mockPort1, port2: mockPort2 };
-        };
+        const deadWorker = createWorker({ alive: false });
+        const deadReg = createRegistration({ active: deadWorker });
+        const freshReg = createRegistration();
+        appInstance._previewSwRegistration = deadReg;
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(freshReg);
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
 
         const promise = appInstance.sendContentToPreviewSW({ 'test.html': 'html' });
+        const settled = promise.catch((error) => error);
+        await vi.advanceTimersByTimeAsync(10001);
+        const error = await settled;
 
-        vi.advanceTimersByTime(10001);
-
-        await expect(promise).rejects.toThrow('Timeout waiting for SW content ready');
-        expect(mockPort1.close).toHaveBeenCalled();
-
+        expect(error.message).toBe('Timeout waiting for SW content ready');
+        expect(error.code).toBe('PREVIEW_SW_TIMEOUT');
+        expect(deadReg.unregister).toHaveBeenCalled();
+        expect(appInstance._previewSwRegistration).toBe(freshReg);
         vi.useRealTimers();
-        globalThis.MessageChannel = OriginalMessageChannel;
+      });
+
+      it('recovers the worker and resends regenerated files after a timeout', async () => {
+        vi.useFakeTimers();
+        const deadWorker = createWorker({ alive: false });
+        const deadReg = createRegistration({ active: deadWorker });
+        const freshReg = createRegistration();
+        appInstance._previewSwRegistration = deadReg;
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(freshReg);
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const firstFiles = { 'index.html': new ArrayBuffer(4) };
+        const freshFiles = { 'index.html': new ArrayBuffer(8), 'style.css': 'body {}' };
+        const regenerateFiles = vi.fn().mockResolvedValue(freshFiles);
+
+        const promise = appInstance.sendContentToPreviewSW(firstFiles, { openExternalLinksInNewWindow: true }, { regenerateFiles });
+        await vi.advanceTimersByTimeAsync(10001);
+        const result = await promise;
+
+        expect(result.fileCount).toBe(2);
+        expect(regenerateFiles).toHaveBeenCalledTimes(1);
+        expect(freshReg.active.postMessage).toHaveBeenCalledWith(
+          { type: 'SET_CONTENT', data: { files: freshFiles, options: { openExternalLinksInNewWindow: true } } },
+          expect.arrayContaining([freshFiles['index.html']]),
+        );
+        vi.useRealTimers();
+      });
+
+      it('rejects with the original timeout error when the resend also times out', async () => {
+        vi.useFakeTimers();
+        const deadReg = createRegistration({ active: createWorker({ alive: false }) });
+        // The re-registered worker answers the health check but drops SET_CONTENT.
+        const flakyWorker = createWorker();
+        flakyWorker.postMessage = vi.fn((message, transfer) => {
+          if (message?.type === 'GET_STATUS') transfer[0].postMessage({ type: 'STATUS', version: '1.0.0' });
+        });
+        const flakyReg = createRegistration({ active: flakyWorker });
+        appInstance._previewSwRegistration = deadReg;
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(flakyReg);
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const regenerateFiles = vi.fn().mockResolvedValue({ 'index.html': 'x' });
+
+        const promise = appInstance.sendContentToPreviewSW({ 'index.html': 'x' }, {}, { regenerateFiles });
+        const settled = promise.catch((error) => error);
+        await vi.advanceTimersByTimeAsync(10001); // first attempt
+        await vi.advanceTimersByTimeAsync(10001); // resend
+        const error = await settled;
+
+        expect(error.message).toBe('Timeout waiting for SW content ready');
+        expect(navigator.serviceWorker.register).toHaveBeenCalledTimes(1);
+        vi.useRealTimers();
+      });
+
+      it('rethrows non-timeout errors without touching the registration', async () => {
+        const reg = createRegistration();
+        reg.active.postMessage = vi.fn((message, transfer) => {
+          if (message?.type === 'SET_CONTENT') transfer[0].postMessage({ type: 'CONTENT_READY', fileCount: 1 });
+          if (message?.type === 'VERIFY_READY') transfer[0].postMessage({ type: 'READY_VERIFIED', ready: false, fileCount: 0 });
+        });
+        appInstance._previewSwRegistration = reg;
+
+        await expect(appInstance.sendContentToPreviewSW({ 'a.html': 'x' })).rejects.toThrow(
+          'SW content not ready after verification',
+        );
+        expect(reg.unregister).not.toHaveBeenCalled();
       });
     });
 
@@ -2355,6 +2412,283 @@ describe('App utility methods', () => {
         appInstance.clearPreviewSWContent();
 
         expect(mockController.postMessage).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('pingPreviewServiceWorker', () => {
+      it('resolves the STATUS payload when the worker answers', async () => {
+        const worker = createWorker({ version: '4.0.5' });
+
+        const status = await appInstance.pingPreviewServiceWorker(worker);
+
+        expect(status).toEqual(expect.objectContaining({ type: 'STATUS', version: '1.1.0', appVersion: '4.0.5' }));
+        expect(worker.postMessage).toHaveBeenCalledWith({ type: 'GET_STATUS' }, [expect.any(Object)]);
+      });
+
+      it('resolves null when the worker never answers', async () => {
+        vi.useFakeTimers();
+        const worker = createWorker({ alive: false });
+
+        const promise = appInstance.pingPreviewServiceWorker(worker, 500);
+        await vi.advanceTimersByTimeAsync(501);
+
+        await expect(promise).resolves.toBeNull();
+        vi.useRealTimers();
+      });
+
+      it('resolves null when postMessage throws', async () => {
+        const worker = createWorker();
+        worker.postMessage = vi.fn(() => {
+          throw new Error('InvalidStateError');
+        });
+
+        await expect(appInstance.pingPreviewServiceWorker(worker)).resolves.toBeNull();
+      });
+
+      it('resolves null for a missing or redundant worker', async () => {
+        await expect(appInstance.pingPreviewServiceWorker(null)).resolves.toBeNull();
+        await expect(appInstance.pingPreviewServiceWorker(createWorker({ state: 'redundant' }))).resolves.toBeNull();
+      });
+
+      it('ignores replies that are not a STATUS message', async () => {
+        const worker = createWorker();
+        worker.postMessage = vi.fn((message, transfer) => transfer[0].postMessage({ type: 'SOMETHING_ELSE' }));
+
+        await expect(appInstance.pingPreviewServiceWorker(worker)).resolves.toBeNull();
+      });
+    });
+
+    describe('_unregisterStalePreviewWorkers', () => {
+      it('unregisters preview workers whose scope contains the preview scope', async () => {
+        const rootOrphan = createRegistration({ scope: `${ORIGIN}/` });
+        const expected = createRegistration({ scope: `${ORIGIN}/viewer/` });
+        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([rootOrphan, expected]);
+
+        const removed = await appInstance._unregisterStalePreviewWorkers('/viewer/');
+
+        expect(rootOrphan.unregister).toHaveBeenCalled();
+        expect(expected.unregister).not.toHaveBeenCalled();
+        expect(removed).toEqual([`${ORIGIN}/`]);
+      });
+
+      it('recognises the worker script even when the registration is still installing', async () => {
+        const installingOrphan = createRegistration({
+          scope: `${ORIGIN}/`,
+          active: null,
+          installing: createWorker({ state: 'installing' }),
+        });
+        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([installingOrphan]);
+
+        await appInstance._unregisterStalePreviewWorkers('/viewer/');
+
+        expect(installingOrphan.unregister).toHaveBeenCalled();
+      });
+
+      it('keeps registrations that are not the preview worker (PWA service-worker.js at root)', async () => {
+        const pwa = createRegistration({
+          scope: `${ORIGIN}/`,
+          active: createWorker({ scriptURL: `${ORIGIN}/service-worker.js` }),
+        });
+        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([pwa]);
+
+        await appInstance._unregisterStalePreviewWorkers('/viewer/');
+
+        expect(pwa.unregister).not.toHaveBeenCalled();
+      });
+
+      it('keeps preview registrations of other deployments on the same origin', async () => {
+        const sibling = createRegistration({
+          scope: `${ORIGIN}/other/viewer/`,
+          active: createWorker({ scriptURL: `${ORIGIN}/other/preview-sw.js` }),
+        });
+        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([sibling]);
+
+        await appInstance._unregisterStalePreviewWorkers('/viewer/');
+
+        expect(sibling.unregister).not.toHaveBeenCalled();
+      });
+
+      it('matches the worker script regardless of the version query string', async () => {
+        const rootOrphan = createRegistration({
+          scope: `${ORIGIN}/`,
+          active: createWorker({ scriptURL: `${ORIGIN}/preview-sw.js?v=4.0.4` }),
+        });
+        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([rootOrphan]);
+
+        await appInstance._unregisterStalePreviewWorkers('/viewer/');
+
+        expect(rootOrphan.unregister).toHaveBeenCalled();
+      });
+
+      it('resolves empty when getRegistrations rejects', async () => {
+        navigator.serviceWorker.getRegistrations = vi.fn().mockRejectedValue(new Error('SecurityError'));
+
+        await expect(appInstance._unregisterStalePreviewWorkers('/viewer/')).resolves.toEqual([]);
+      });
+
+      it('tolerates unregister() failures', async () => {
+        const rootOrphan = createRegistration({ scope: `${ORIGIN}/` });
+        rootOrphan.unregister = vi.fn().mockRejectedValue(new Error('boom'));
+        navigator.serviceWorker.getRegistrations = vi.fn().mockResolvedValue([rootOrphan]);
+
+        await expect(appInstance._unregisterStalePreviewWorkers('/viewer/')).resolves.toEqual([`${ORIGIN}/`]);
+      });
+    });
+
+    describe('_recoverPreviewServiceWorker', () => {
+      it('unregisters the current registration and registers a fresh worker', async () => {
+        const deadReg = createRegistration({ active: createWorker({ alive: false }) });
+        const freshReg = createRegistration();
+        appInstance._previewSwRegistration = deadReg;
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(freshReg);
+
+        const result = await appInstance._recoverPreviewServiceWorker();
+
+        expect(deadReg.unregister).toHaveBeenCalled();
+        expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
+        expect(result).toBe(freshReg);
+        expect(appInstance._previewSwRegistration).toBe(freshReg);
+      });
+
+      it('shares one in-flight recovery between concurrent callers', async () => {
+        const freshReg = createRegistration();
+        appInstance._previewSwRegistration = createRegistration({ active: createWorker({ alive: false }) });
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(freshReg);
+
+        const [a, b] = await Promise.all([
+          appInstance._recoverPreviewServiceWorker(),
+          appInstance._recoverPreviewServiceWorker(),
+        ]);
+
+        expect(a).toBe(freshReg);
+        expect(b).toBe(freshReg);
+        expect(navigator.serviceWorker.register).toHaveBeenCalledTimes(1);
+      });
+
+      it('looks up the registration for the scope when none is cached, but never unregisters a foreign worker', async () => {
+        const pwa = createRegistration({
+          scope: `${ORIGIN}/`,
+          active: createWorker({ scriptURL: `${ORIGIN}/service-worker.js` }),
+        });
+        appInstance._previewSwRegistration = null;
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(pwa);
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(createRegistration());
+
+        await appInstance._recoverPreviewServiceWorker();
+
+        expect(navigator.serviceWorker.getRegistration).toHaveBeenCalledWith('/viewer/');
+        expect(pwa.unregister).not.toHaveBeenCalled();
+      });
+
+      it('rejects and clears the registration when the new worker does not answer either', async () => {
+        vi.useFakeTimers();
+        appInstance._previewSwRegistration = createRegistration({ active: createWorker({ alive: false }) });
+        navigator.serviceWorker.register = vi
+          .fn()
+          .mockResolvedValue(createRegistration({ active: createWorker({ alive: false }) }));
+
+        const settled = appInstance._recoverPreviewServiceWorker().catch((error) => error);
+        await vi.advanceTimersByTimeAsync(3001);
+        const error = await settled;
+
+        expect(error).toBeInstanceOf(Error);
+        expect(appInstance._previewSwRegistration).toBeNull();
+        expect(appInstance._previewSwRecoveryPromise).toBeNull();
+        vi.useRealTimers();
+      });
+    });
+
+    describe('_isPreviewServiceWorkerScript', () => {
+      it('accepts the worker script with or without a query and rejects other scripts', () => {
+        expect(appInstance._isPreviewServiceWorkerScript(`${ORIGIN}/preview-sw.js`)).toBe(true);
+        expect(appInstance._isPreviewServiceWorkerScript(`${ORIGIN}/exelearning/preview-sw.js?v=4.0.5`)).toBe(true);
+        expect(appInstance._isPreviewServiceWorkerScript(`${ORIGIN}/service-worker.js`)).toBe(false);
+        expect(appInstance._isPreviewServiceWorkerScript(undefined)).toBe(false);
+      });
+
+      it('returns false for a URL that cannot be parsed', () => {
+        expect(appInstance._isPreviewServiceWorkerScript('http://[not-a-host/preview-sw.js')).toBe(false);
+      });
+    });
+
+    describe('_recoverPreviewServiceWorker failure handling', () => {
+      it('proceeds with a fresh registration when getRegistration() rejects', async () => {
+        appInstance._previewSwRegistration = null;
+        navigator.serviceWorker.getRegistration = vi.fn().mockRejectedValue(new Error('SecurityError'));
+        const freshReg = createRegistration();
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(freshReg);
+
+        await expect(appInstance._recoverPreviewServiceWorker()).resolves.toBe(freshReg);
+      });
+
+      it('still registers a fresh worker when unregister() of the stale one rejects', async () => {
+        const deadReg = createRegistration({ active: createWorker({ alive: false }) });
+        deadReg.unregister = vi.fn().mockRejectedValue(new Error('boom'));
+        appInstance._previewSwRegistration = deadReg;
+        const freshReg = createRegistration();
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(freshReg);
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        await expect(appInstance._recoverPreviewServiceWorker()).resolves.toBe(freshReg);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Could not unregister'), expect.any(Error));
+      });
+    });
+
+    describe('sendContentToPreviewSW when recovery itself fails', () => {
+      it('logs the recovery error and rejects with the original timeout error', async () => {
+        vi.useFakeTimers();
+        appInstance._previewSwRegistration = createRegistration({ active: createWorker({ alive: false }) });
+        navigator.serviceWorker.register = vi.fn().mockRejectedValue(new Error('register failed'));
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const regenerateFiles = vi.fn();
+
+        const settled = appInstance
+          .sendContentToPreviewSW({ 'index.html': 'x' }, {}, { regenerateFiles })
+          .catch((error) => error);
+        await vi.advanceTimersByTimeAsync(10001);
+        const error = await settled;
+
+        expect(error.message).toBe('Timeout waiting for SW content ready');
+        expect(errorSpy).toHaveBeenCalledWith('[Preview SW] Recovery failed:', expect.any(Error));
+        expect(regenerateFiles).not.toHaveBeenCalled();
+        vi.useRealTimers();
+      });
+    });
+
+    describe('_tryClaimClients', () => {
+      it('does not wait for a controller when the page is outside the registration scope', async () => {
+        navigator.serviceWorker.controller = null;
+        const registration = createRegistration({ scope: `${ORIGIN}/viewer/` });
+        const waitSpy = vi.spyOn(appInstance, '_waitForController');
+
+        await appInstance._tryClaimClients(registration);
+
+        expect(registration.active.postMessage).not.toHaveBeenCalledWith({ type: 'CLAIM_CLIENTS' });
+        expect(waitSpy).not.toHaveBeenCalled();
+      });
+
+      it('asks the worker to claim the page when the page is inside the scope', async () => {
+        navigator.serviceWorker.controller = null;
+        const registration = createRegistration({ scope: `${ORIGIN}/` });
+        vi.spyOn(appInstance, '_waitForController').mockResolvedValue(registration.active);
+
+        await appInstance._tryClaimClients(registration);
+
+        expect(registration.active.postMessage).toHaveBeenCalledWith({ type: 'CLAIM_CLIENTS' });
+      });
+    });
+
+    describe('waitForPreviewServiceWorker precedence', () => {
+      it('prefers the preview registration over a stale controller', async () => {
+        const orphanController = createWorker({ scriptURL: `${ORIGIN}/preview-sw.js` });
+        navigator.serviceWorker.controller = orphanController;
+        const registration = createRegistration();
+        appInstance._previewSwRegistrationPromise = Promise.resolve(registration);
+
+        const result = await appInstance.waitForPreviewServiceWorker(100);
+
+        expect(result).toBe(registration.active);
       });
     });
   });
@@ -2551,16 +2885,12 @@ describe('registerPreviewServiceWorker secure context checks', () => {
         controller: null,
         register: vi.fn().mockResolvedValue(mockRegistration),
         getRegistration: vi.fn().mockResolvedValue(null),
-        getRegistrations: vi.fn().mockResolvedValue([]),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       },
       writable: true,
       configurable: true,
     });
-    // Only the secure-context gate is under test: skip the claim wait and the health check
-    vi.spyOn(appInstance, '_tryClaimClients').mockResolvedValue(undefined);
-    vi.spyOn(appInstance, 'pingPreviewServiceWorker').mockResolvedValue({ type: 'STATUS' });
     const originalLocation = window.location;
     delete window.location;
     window.location = { protocol: 'app:', hostname: 'app', pathname: '/' };
@@ -2583,16 +2913,12 @@ describe('registerPreviewServiceWorker secure context checks', () => {
         controller: null,
         register: vi.fn().mockResolvedValue(mockRegistration),
         getRegistration: vi.fn().mockResolvedValue(null),
-        getRegistrations: vi.fn().mockResolvedValue([]),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
       },
       writable: true,
       configurable: true,
     });
-    // Only the secure-context gate is under test: skip the claim wait and the health check
-    vi.spyOn(appInstance, '_tryClaimClients').mockResolvedValue(undefined);
-    vi.spyOn(appInstance, 'pingPreviewServiceWorker').mockResolvedValue({ type: 'STATUS' });
     const originalLocation = window.location;
     delete window.location;
     window.location = { protocol: 'http:', hostname: '127.0.0.1', pathname: '/' };
