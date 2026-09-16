@@ -2,7 +2,6 @@
  * WebSocket Types for Yjs Collaboration
  * Elysia migration - functional style
  */
-import { WebSocket as WsWebSocket } from 'ws';
 
 /**
  * Client metadata stored per connection
@@ -12,16 +11,6 @@ export interface ClientMeta {
     projectUuid: string;
     clientId: string;
     connectedAt: Date;
-}
-
-/**
- * Room - tracks connected clients for a document
- * No Y.Doc in memory - just connection tracking
- */
-export interface Room {
-    name: string;
-    conns: Set<WsWebSocket>;
-    projectUuid: string;
 }
 
 /**

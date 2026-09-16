@@ -1234,9 +1234,17 @@ var $threesixtyviewer = {
     },
 };
 
+// `pagehide` replaces the former `beforeunload` binding: an unload-family
+// listener makes the page ineligible for the back/forward cache, and this
+// runtime ships inside SCORM packages whose SCORM runtime relies on bfcache
+// staying available. `event.persisted === true` means the page is being frozen
+// and may be restored intact, so its WebGL contexts must survive.
 if (typeof window !== 'undefined' && !window.__threesixtyCleanupBound) {
     window.__threesixtyCleanupBound = true;
-    window.addEventListener('beforeunload', () => {
+    window.addEventListener('pagehide', function (event) {
+        if (event && event.persisted) {
+            return;
+        }
         $threesixtyviewer.destroyAll();
     });
 }

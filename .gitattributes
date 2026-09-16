@@ -142,3 +142,9 @@ Makefile         text eol=lf -executable
 # Public assets: ensure static files are not executable
 # ---------------------------------------------------------------------
 public/** -executable
+
+# ---------------------------------------------------------------------
+# Vendored third-party files: keep byte-identical to upstream
+# (no line-ending normalization; see THIRD-PARTY-NOTICES.md)
+# ---------------------------------------------------------------------
+public/app/common/scorm/scorm12/vendor/** -text

@@ -259,7 +259,7 @@ var $exeDevice = {
                              </div>
                             <div id="cmptbackground" class="CMPT-Back mb-3">
                                 <img class="CMPT-EMedia1" src="" id="cmptEImageBack" alt="${_('Image')}" />
-                                <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath}cmptbackground.png" id="cmptEImageNoBack" alt="${_('No image')}" />
+                                <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath.replace(/\/edition\/?$/, '/export/')}cmptbackground.webp" id="cmptEImageNoBack" alt="${_('No image')}" />
                             </div>
                             <div id="cmptFontColorDiv" class="CMPT-FontColor d-none align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="cmptEFontColor" class="mb-0">${_('Font color')}: </label>
@@ -286,7 +286,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
@@ -680,7 +680,7 @@ var $exeDevice = {
 
         $('#cmptETime')
             .on('keyup', function () {
-                let v = this.value.replace(/\D/g, '').substring(0, 1);
+                let v = this.value.replace(/\D/g, '').substring(0, 2);
                 this.value = v;
             })
             .on('focusout', function () {
@@ -704,7 +704,7 @@ var $exeDevice = {
 
         $('#cmptEPercentajeError')
             .on('keyup', function () {
-                let v = this.value.replace(/\D/g, '').substring(0, 1);
+                let v = this.value.replace(/\D/g, '').substring(0, 3);
                 this.value = v;
             })
             .on('focusout', function () {

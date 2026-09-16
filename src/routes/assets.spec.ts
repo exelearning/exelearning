@@ -52,6 +52,7 @@ let mockSessions: Map<string, any>;
 // Create mock file-helper functions
 function createMockFileHelper(): AssetsFileHelperDeps {
     return {
+        getFilesDir: () => testDir,
         getOdeSessionTempDir: (sessionId: string) => path.join(testDir, 'tmp', sessionId),
         resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(testDir, storagePath),
         tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(testDir, storagePath),
@@ -2065,5 +2066,174 @@ describe('Chunked upload size caps (BUG H9)', () => {
         const json = await res.json();
         expect(json.success).toBe(true);
         expect(__getChunkUploadsForTest().has('1:normal-upload')).toBe(true);
+    });
+});
+
+// =====================================================
+// Issue #2283: chunk uploads must live under FILES_DIR
+// =====================================================
+describe('Chunked upload FILES_DIR resolution (#2283)', () => {
+    let app: Elysia;
+    let mockAssets: Map<number, any>;
+    let mockProjects: Map<string, any>;
+    let assetIdCounter: number;
+    let ownerToken: string;
+    // A dedicated files dir, distinct from process.cwd()/data, so the tests
+    // prove the chunk root follows the injected configuration.
+    let customFilesDir: string;
+    const legacyChunksRoot = path.join(process.cwd(), 'data', 'chunks');
+
+    function buildDeps(): AssetsDependencies {
+        return {
+            db: {} as any,
+            queries: {
+                createAsset: async (_db: any, data: any) => {
+                    const id = assetIdCounter++;
+                    const asset = { id, ...data, created_at: '', updated_at: '' };
+                    mockAssets.set(id, asset);
+                    return asset;
+                },
+                createAssets: async (_db: any, arr: any[]) => arr.map(d => ({ id: assetIdCounter++, ...d })),
+                findAssetById: async (_db: any, id: number) => mockAssets.get(id),
+                findAllAssetsForProject: async () => [],
+                findAssetByClientId: async () => undefined,
+                findAssetsByClientIds: async () => [],
+                deleteAsset: async () => {},
+                updateAsset: async () => undefined,
+                bulkUpdateAssets: async () => {},
+                findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
+                findProjectById: async (_db: any, id: number) => {
+                    for (const p of mockProjects.values()) if (p.id === id) return p;
+                    return undefined;
+                },
+                checkProjectAccess: async (_db: any, project: any, userId?: number) => {
+                    if (!project) return { hasAccess: false, reason: 'PROJECT_NOT_FOUND' };
+                    if (project.owner_id === userId) return { hasAccess: true };
+                    return { hasAccess: false, reason: 'ACCESS_DENIED' };
+                },
+            },
+            fileHelper: {
+                ...createMockFileHelper(),
+                getFilesDir: () => customFilesDir,
+            },
+            sessionManager: createMockSessionManager(),
+            priorityQueue: createMockPriorityQueue(),
+        };
+    }
+
+    beforeAll(async () => {
+        ownerToken = await signTestToken(OWNER_USER_ID);
+    });
+
+    beforeEach(async () => {
+        mockAssets = new Map();
+        mockProjects = new Map();
+        mockSessions = new Map();
+        assetIdCounter = 1;
+        mockProjects.set(testProjectId, {
+            id: 1,
+            uuid: testProjectId,
+            owner_id: OWNER_USER_ID,
+            visibility: 'private',
+            status: 'active',
+        });
+        await fs.ensureDir(path.join(process.cwd(), 'test', 'temp'));
+        customFilesDir = await fs.mkdtemp(path.join(process.cwd(), 'test', 'temp', 'custom-files-dir-'));
+        app = new Elysia().use(createAssetsRoutes(buildDeps()));
+        __getChunkUploadsForTest().clear();
+    });
+
+    afterEach(async () => {
+        __getChunkUploadsForTest().clear();
+        await fs.remove(customFilesDir).catch(() => {});
+        await fs.remove(testDir).catch(() => {});
+        // Defensive: remove anything a regression would leak into the legacy location.
+        await fs.remove(path.join(legacyChunksRoot, '1')).catch(() => {});
+    });
+
+    async function uploadChunk(identifier: string, chunkNumber: number, totalChunks: number, content: string) {
+        const formData = new FormData();
+        formData.append('file', new Blob([content], { type: 'application/octet-stream' }));
+        formData.append('resumableIdentifier', identifier);
+        formData.append('resumableChunkNumber', String(chunkNumber));
+        formData.append('resumableTotalChunks', String(totalChunks));
+        formData.append('resumableFilename', 'big-file.bin');
+        return app.handle(
+            new Request('http://localhost/api/projects/1/assets/upload-chunk', {
+                method: 'POST',
+                body: formData,
+                headers: { Authorization: `Bearer ${ownerToken}` },
+            }),
+        );
+    }
+
+    it('stores chunks under <filesDir>/chunks/<projectId>/<identifier>, not process.cwd()/data/chunks', async () => {
+        const identifier = 'files-dir-upload';
+
+        const res = await uploadChunk(identifier, 1, 2, 'chunk one');
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(true);
+
+        const expectedChunkDir = path.join(customFilesDir, 'chunks', '1', identifier);
+        const entry = __getChunkUploadsForTest().get(`1:${identifier}`);
+        expect(entry?.chunkDir).toBe(expectedChunkDir);
+        expect(await fs.pathExists(path.join(expectedChunkDir, 'chunk_1'))).toBe(true);
+        expect(await fs.pathExists(path.join(legacyChunksRoot, '1', identifier))).toBe(false);
+    });
+
+    it('cancellation removes the chunk directory from the configured files dir', async () => {
+        const identifier = 'files-dir-cancel';
+        await uploadChunk(identifier, 1, 3, 'partial chunk');
+
+        const chunkDir = path.join(customFilesDir, 'chunks', '1', identifier);
+        expect(await fs.pathExists(chunkDir)).toBe(true);
+
+        const res = await app.handle(
+            new Request(`http://localhost/api/projects/1/assets/upload-chunk/${identifier}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${ownerToken}` },
+            }),
+        );
+        expect(res.status).toBe(200);
+        expect((await res.json()).success).toBe(true);
+
+        expect(await fs.pathExists(chunkDir)).toBe(false);
+        expect(__getChunkUploadsForTest().has(`1:${identifier}`)).toBe(false);
+    });
+
+    it('finalize assembles the file and cleans the chunk directory from the configured files dir', async () => {
+        const identifier = 'files-dir-finalize';
+        await uploadChunk(identifier, 1, 2, 'first-');
+        const res2 = await uploadChunk(identifier, 2, 2, 'second');
+        expect((await res2.json()).allUploaded).toBe(true);
+        // Chunks are staged in the configured location before finalize...
+        expect(await fs.pathExists(path.join(customFilesDir, 'chunks', '1', identifier, 'chunk_2'))).toBe(true);
+
+        const formData = new FormData();
+        formData.append('resumableIdentifier', identifier);
+        formData.append('clientId', 'files-dir-client');
+        const res = await app.handle(
+            new Request('http://localhost/api/projects/1/assets/upload-chunk/finalize', {
+                method: 'POST',
+                body: formData,
+                headers: { Authorization: `Bearer ${ownerToken}` },
+            }),
+        );
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.success).toBe(true);
+        expect(json.complete).toBe(true);
+
+        // Assembled asset follows the same sharded storage path used by normal asset uploads.
+        const finalPath = resolveAssetStoragePathPure(
+            testDir,
+            buildAssetStoragePath(testProjectId, 'files-dir-client.bin'),
+        );
+        expect((await fs.readFile(finalPath)).toString()).toBe('first-second');
+
+        // Chunk workspace is gone from the configured location.
+        expect(await fs.pathExists(path.join(customFilesDir, 'chunks', '1', identifier))).toBe(false);
+        expect(__getChunkUploadsForTest().has(`1:${identifier}`)).toBe(false);
     });
 });

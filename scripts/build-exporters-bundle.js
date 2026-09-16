@@ -57,6 +57,9 @@ const mirrorOutputs = [
 esbuild.build({
     entryPoints: [path.join(projectRoot, 'src/shared/export/browser/index.ts')],
     bundle: true,
+    // Production bundle: app.bundle.js is already minified; keeping this one
+    // readable cost ~410 KB raw / ~100 KB compressed in every distribution.
+    minify: true,
     outfile: outputPath,
     format: 'iife',
     platform: 'browser',
