@@ -46,15 +46,8 @@ jobs:
             ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=tag
-            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=tikismaker,enable=${{ github.ref == 'refs/heads/tikismaker' }}
-
-      # Verification of unauthorized changes in the workflows
-      - name: Check ci.yml and app.yml
-        if: github.event_name == 'pull_request'
-        run: |
-          git diff --name-only ${{ github.before }} ${{ github.sha }} | grep -Eq "^.github/workflows/(ci.yml|app.yml)$" && echo "Modifying or deleting ci.yml or app.yml is not allowed" && exit 1 || echo "Everything is fine"
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2

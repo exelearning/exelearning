@@ -772,9 +772,19 @@ export default class PreviewPanelManager {
 
         // Send files to Service Worker
         const app = eXeLearning.app;
-        await app.sendContentToPreviewSW(result.files, {
-            openExternalLinksInNewWindow: true,
-        });
+        try {
+            await app.sendContentToPreviewSW(result.files, {
+                openExternalLinksInNewWindow: true,
+            });
+        } catch (error) {
+            if (this.isServiceWorkerPreviewAvailable()) {
+                throw error;
+            }
+            // The app gave up on the Service Worker while we were generating: degrade instead of erroring.
+            Logger.warn('[PreviewPanel] Preview Service Worker unavailable, using blob URL fallback:', error);
+            await this.refreshWithBlobUrl();
+            return;
+        }
 
         // Load preview from Service Worker
         this.loadPreviewFromServiceWorker();
