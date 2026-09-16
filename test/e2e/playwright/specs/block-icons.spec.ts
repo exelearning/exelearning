@@ -111,13 +111,17 @@ test.describe('Block Icon Selection Modal', () => {
                     continue;
                 }
 
-                const materialSprite = icon.locator('.exe-material-icon-sprite use');
-                await expect(materialSprite).toHaveCount(1);
-                const href = await materialSprite.getAttribute('href');
-                expect(href).toBeTruthy();
-                expect(href).toContain('/libs/material-icons/material-icons.svg#');
+                // Material picker options are inlined from the sprite parsed at startup.
+                // An external <use href="…material-icons.svg#…"> per option made Chromium
+                // fetch the 1.6 MB sprite once per icon under Electron's app:// scheme (#2419).
+                const inlineGlyph = icon.locator('.exe-material-icon-sprite path');
+                await expect(inlineGlyph).toHaveCount(1);
+                await expect(icon.locator('use')).toHaveCount(0);
             }
         }
+
+        // No picker option may reference the sprite file externally (#2419)
+        await expect(page.locator('#change-block-icon-modal-content use')).toHaveCount(0);
 
         // Style icons must be listed alphabetically, not in filesystem order (#2411)
         const themeIconIds = await page
