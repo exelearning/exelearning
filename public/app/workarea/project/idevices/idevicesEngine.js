@@ -1473,6 +1473,7 @@ export default class IdevicesEngine {
 
         // Initialize the iDevice
         await ideviceNode.loadInitScriptIdevice('export');
+        this.reloadExportRuntime();
 
         // Hide empty node message since we now have content
         if (eXeLearning?.app?.menus?.menuStructure?.menuStructureBehaviour) {
@@ -1565,6 +1566,7 @@ export default class IdevicesEngine {
                 ideviceNode.ideviceBody.innerHTML = sanitizeCollaborativeHtml(incomingHtml);
             }
             await ideviceNode.loadInitScriptIdevice('export');
+            this.reloadExportRuntime();
         }
 
         // Update the lock indicator in the header
@@ -1664,19 +1666,34 @@ export default class IdevicesEngine {
                 await idevice.generateContentExportView();
             }
         }
-        // Remove old scripts and reload them
-        // (forces re-initialization of HTML-type iDevices after all HTML is in DOM)
-        this.clearNeedlessScripts();
-        this.loadIdevicesExportScripts();
-        // Load legacy functions
-        this.loadLegacyExeFunctionalitiesExport();
+        this.reloadExportRuntime();
         // Resets the "loading" attribute for the display effect
         setTimeout(() => {
             this.components.idevices.forEach((idevice) => {
                 idevice.ideviceContent.setAttribute('loading', false);
             });
         }, 500);
-        // Enable internal links
+    }
+
+    /**
+     * Page-level steps that must run once export HTML has landed in the DOM.
+     *
+     * Export scripts are removed and inserted again so their document-ready
+     * bootstraps run over the new HTML: HTML-type iDevices (A-Z quiz, Guess,
+     * GeoGebra...) only initialise from `$(function () { $x.init() })`, so a
+     * script that is already in <head> never picks up content added later.
+     * The legacy functionalities then render ABC music notation, effects,
+     * games and the highlighter, and internal links are wired.
+     *
+     * A local save runs this through resetCurrentIdevicesExportView(); the
+     * incremental remote paths (renderRemoteIdevice / updateRemoteIdeviceContent)
+     * must run it too, otherwise collaborators see the raw source or an inert
+     * game until they reload the page (#2428).
+     */
+    reloadExportRuntime() {
+        this.clearNeedlessScripts();
+        this.loadIdevicesExportScripts();
+        this.loadLegacyExeFunctionalitiesExport();
         this.enableInternalLinks();
     }
 

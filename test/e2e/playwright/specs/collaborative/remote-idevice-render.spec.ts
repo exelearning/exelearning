@@ -1,0 +1,140 @@
+import type { Page } from '@playwright/test';
+import { expect, skipInStaticMode, test } from '../../fixtures/collaboration.fixture';
+import { getTextIdeviceId, ideviceLocator, waitForTextIdeviceEditor } from '../../helpers/idevice-collab-helpers';
+import { waitForYjsSync } from '../../helpers/sync-helpers';
+import {
+    addIdevice,
+    addTextIdevice,
+    saveIdevice,
+    selectFirstPage,
+    waitForAppReady,
+} from '../../helpers/workarea-helpers';
+
+/**
+ * Regression tests for issue #2428:
+ * "Collaborative mode: newly added iDevices are not fully rendered for other
+ * users until page refresh".
+ *
+ * When User A saves an iDevice, User B receives it through Yjs and renders it
+ * incrementally (no page reload). That incremental path must run the same
+ * post-render hooks as a page load or a local save: ABC music notation
+ * (TinyMCE plugin), legacy effects, games, highlighter and internal links.
+ * Otherwise User B sees the raw source (music) or an inert game until they
+ * navigate away and back.
+ */
+
+const ABC_NOTATION_HTML = [
+    '<p>Score:</p>',
+    '<pre class="abc-music">X:1',
+    'T:Remote score',
+    'M:4/4',
+    'L:1/4',
+    'K:C',
+    'C D E F|G A B c|</pre>',
+].join('\n');
+
+async function openSharedProject(
+    pageA: Page,
+    pageB: Page,
+    createProject: (page: Page, title?: string) => Promise<string>,
+    getShareUrl: (page: Page) => Promise<string>,
+    joinSharedProject: (page: Page, shareUrl: string) => Promise<void>,
+    projectTitle: string,
+): Promise<void> {
+    const projectUuid = await createProject(pageA, projectTitle);
+    await pageA.goto(`/workarea?project=${projectUuid}`);
+    await waitForAppReady(pageA);
+
+    const shareUrl = await getShareUrl(pageA);
+    await joinSharedProject(pageB, shareUrl);
+    await waitForYjsSync(pageA);
+    await waitForYjsSync(pageB);
+
+    await selectFirstPage(pageA);
+    await selectFirstPage(pageB);
+}
+
+async function setTextIdeviceContent(page: Page, html: string): Promise<void> {
+    await waitForTextIdeviceEditor(page);
+    await page.evaluate(content => {
+        const editor = (window as any).tinymce.get('textTextarea');
+        editor.setContent(content);
+        editor.fire('change');
+        editor.setDirty(true);
+    }, html);
+}
+
+test.describe('Remote iDevice rendering after a collaborator saves (#2428)', () => {
+    test.setTimeout(120000);
+
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
+    });
+
+    test('music notation saved by User A is rendered as a score for User B without navigating', async ({
+        authenticatedPage,
+        secondAuthenticatedPage,
+        createProject,
+        getShareUrl,
+        joinSharedProject,
+    }) => {
+        const pageA = authenticatedPage;
+        const pageB = secondAuthenticatedPage;
+
+        await openSharedProject(pageA, pageB, createProject, getShareUrl, joinSharedProject, 'Remote ABC music render');
+
+        await addTextIdevice(pageA);
+        const ideviceId = await getTextIdeviceId(pageA);
+        await setTextIdeviceContent(pageA, ABC_NOTATION_HTML);
+        await saveIdevice(pageA, ideviceId);
+
+        // Local save renders the score (sanity check of the fixture itself).
+        await expect(ideviceLocator(pageA, ideviceId).locator('.abcjs-paper svg')).toBeVisible({ timeout: 20000 });
+
+        // Remote client: the iDevice arrives through Yjs and must be rendered the
+        // same way, without any navigation or reload.
+        const remoteIdevice = ideviceLocator(pageB, ideviceId);
+        await expect(remoteIdevice).toBeVisible({ timeout: 20000 });
+        await expect(remoteIdevice.locator('pre.abc-music')).toHaveCount(1, { timeout: 20000 });
+        await expect(remoteIdevice.locator('.abcjs-paper svg')).toBeVisible({ timeout: 20000 });
+    });
+
+    test('A-Z quiz game saved by User A is playable for User B without navigating', async ({
+        authenticatedPage,
+        secondAuthenticatedPage,
+        createProject,
+        getShareUrl,
+        joinSharedProject,
+    }) => {
+        const pageA = authenticatedPage;
+        const pageB = secondAuthenticatedPage;
+
+        await openSharedProject(pageA, pageB, createProject, getShareUrl, joinSharedProject, 'Remote A-Z quiz render');
+
+        await addIdevice(pageA, 'az-quiz-game');
+        const localIdevice = pageA.locator('#node-content article .idevice_node.az-quiz-game').first();
+        const ideviceId = await localIdevice.getAttribute('id');
+        expect(ideviceId).toBeTruthy();
+
+        // The edition form validates through its TinyMCE instances: wait for them.
+        await pageA.waitForFunction(
+            () => {
+                const editors = (window as any).tinymce?.editors || [];
+                return editors.length >= 2 && editors.every((e: any) => e.initialized);
+            },
+            undefined,
+            { timeout: 20000 },
+        );
+        await pageA.locator('.roscoWordEdition').first().fill('Alpha');
+        await pageA.locator('.roscoDefinitionEdition').first().fill('First letter of the alphabet');
+        await saveIdevice(pageA, ideviceId as string);
+
+        // Local save renders the game board.
+        await expect(localIdevice.locator('.rosco-MainContainer')).toBeVisible({ timeout: 20000 });
+
+        // Remote client must get the same game board, not an empty or inert body.
+        const remoteIdevice = ideviceLocator(pageB, ideviceId as string);
+        await expect(remoteIdevice).toBeVisible({ timeout: 20000 });
+        await expect(remoteIdevice.locator('.rosco-MainContainer')).toBeVisible({ timeout: 20000 });
+    });
+});
