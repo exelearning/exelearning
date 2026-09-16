@@ -343,4 +343,61 @@ describe('trueorfalse iDevice', () => {
             expect(source).toContain('gamification.passScore.addEvents()');
         });
     });
+
+    /**
+     * The progress report is offered only in quiz mode, because that is the
+     * only mode that produces a score to report. It used to live in a container
+     * this iDevice showed and hid with the mode; the Grading tab left it always
+     * visible, so an author could switch it on and watch validateData discard
+     * it in silence.
+     */
+    describe('progress report availability', () => {
+        beforeEach(() => {
+            document.body.innerHTML =
+                '<div class="exe-progress-report-wrapper"></div>';
+        });
+
+        it('hides the report when quiz mode is off', () => {
+            $exeDevice.toggleProgressReport(false);
+            expect(
+                document
+                    .querySelector('.exe-progress-report-wrapper')
+                    .classList.contains('d-none')
+            ).toBe(true);
+        });
+
+        it('shows the report when quiz mode is on', () => {
+            $exeDevice.toggleProgressReport(false);
+            $exeDevice.toggleProgressReport(true);
+            expect(
+                document
+                    .querySelector('.exe-progress-report-wrapper')
+                    .classList.contains('d-none')
+            ).toBe(false);
+        });
+
+        it('no longer carries the container the report used to sit in', () => {
+            const source = readFileSync(
+                join(__dirname, 'trueorfalse.js'),
+                'utf-8'
+            );
+            // Emptied when the report moved to the Grading tab. Leaving it
+            // behind meant the mode kept toggling a div with nothing in it.
+            expect(source).not.toContain('Games-Reportdiv');
+        });
+
+        it('still reads the report only in quiz mode', () => {
+            const source = readFileSync(
+                join(__dirname, 'trueorfalse.js'),
+                'utf-8'
+            );
+            // A box ticked before the mode was turned off is stale: the control
+            // is hidden, and saving it would promise a report nothing writes.
+            const gate = source.indexOf('if (isTest) {');
+            const read = source.indexOf('gamification.progressBar.getValues()');
+            expect(gate).toBeGreaterThan(-1);
+            expect(read).toBeGreaterThan(gate);
+            expect(source.slice(gate, read)).not.toContain('}');
+        });
+    });
 });

@@ -398,8 +398,6 @@ var $exeDevice = {
                                 <input type="number" class="form-control" name="tofEPercentageQuestions" id="tofEPercentageQuestions" value="100" min="1" max="100" />
                                 <span id="tofENumeroPercentaje">1/1</span>
                             </div>
-                            <div class="Games-Reportdiv d-none flex-wrap align-items-center gap-2 mb-3">
-                            </div>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -465,6 +463,26 @@ var $exeDevice = {
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.showQuestion(0);
+    },
+
+    /**
+     * Offer the progress report only in quiz mode.
+     *
+     * Outside it the activity is a self-check: every answer is marked as it is
+     * given, there is no final score, `gameStarted` never rises and the shared
+     * gamification layer refuses every report. The control used to sit in a
+     * container this iDevice showed and hid with the mode; moving it to the
+     * Grading tab left it permanently on screen, so the author could switch it
+     * on, save, and have validateData drop it without a word.
+     *
+     * Hidden rather than merely ignored, and validateData still reads it only
+     * in quiz mode: a box ticked before the mode was turned off is stale, and
+     * saving it would promise a report that can never be written.
+     *
+     * @param {boolean} show Whether quiz mode is on.
+     */
+    toggleProgressReport(show) {
+        $('.exe-progress-report-wrapper').toggleClass('d-none', !show);
     },
 
     showEditor($activeEditor, $link) {
@@ -595,14 +613,13 @@ var $exeDevice = {
 
         $('#tofEIsTest').on('click', function () {
             const $timeDiv = $('#tofETimeDiv');
-            const $reportDiv = $('.Games-Reportdiv');
             const $attemptsDiv = $('#tofEAttemptsNumberDiv');
 
             const show = $timeDiv.hasClass('d-none');
 
             $timeDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
-            $reportDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
             $attemptsDiv.toggleClass('d-none', !show).toggleClass('d-flex', show);
+            $exeDevice.toggleProgressReport(show);
         });
 
         $('#tofEPercentageQuestions')
@@ -879,14 +896,15 @@ var $exeDevice = {
         $('#tofEIsTest').prop('checked', game.isTest || false);
 
         if (game.isTest) {
-            $('#tofETimeDiv, #tofEAttemptsNumberDiv, .Games-Reportdiv')
+            $('#tofETimeDiv, #tofEAttemptsNumberDiv')
                 .removeClass('d-none')
                 .addClass('d-flex');
         } else {
-            $('#tofETimeDiv, #tofEAttemptsNumberDiv, .Games-Reportdiv')
+            $('#tofETimeDiv, #tofEAttemptsNumberDiv')
                 .removeClass('d-flex')
                 .addClass('d-none');
         }
+        $exeDevice.toggleProgressReport(!!game.isTest);
 
         $exeDevice.updateQuestionsNumber();
         game.weighted =
