@@ -203,3 +203,89 @@ describe('quick-questions-video edition: $exeDevice guards (#2271)', () => {
         });
     });
 });
+
+// The defect: updateFieldGame called scorm.setValues with three arguments, so
+// the helper's own default (100) reached the weight field instead of the stored
+// value. getValues then read that 100 back out of the form, and saving the
+// iDevice overwrote the author's weight.
+describe('quick-questions-video edition: the SCORM weight survives a round trip', () => {
+    let $exeDevice;
+    let scormMock;
+
+    /** The stored game, as loadDataGame leaves it before the form is filled. */
+    function storedGame(overrides = {}) {
+        return Object.assign(
+            {
+                isScorm: 1,
+                textButtonScorm: 'Save score',
+                repeatActivity: true,
+                weighted: 40,
+                itinerary: {},
+                questionsGame: [],
+                msgs: {},
+            },
+            overrides
+        );
+    }
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        buildForm();
+        global.$exeDevices.iDevice.gamification.media = {
+            getIDYoutube: vi.fn(() => false),
+            getURLVideoMediaTeca: vi.fn(() => false),
+            extractURLGD: vi.fn((url) => url),
+        };
+        global.$exeDevices.iDevice.gamification.helpers.secondsToHour = vi.fn(
+            () => '00:00:00'
+        );
+        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
+            getTab: vi.fn(() => ''),
+            addEvents: vi.fn(),
+            getValues: vi.fn(() => ({})),
+            setValues: vi.fn(),
+        };
+        scormMock = global.$exeDevicesEdition.iDevice.gamification.scorm;
+        scormMock.setValues.mockClear();
+        $exeDevice = global.loadIdevice(
+            join(__dirname, 'quick-questions-video.js')
+        );
+        // Painting a question needs the whole editor panel; the weight does not.
+        vi.spyOn($exeDevice, 'showQuestion').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+    });
+
+    it('hands the stored weight to the SCORM tab', () => {
+        $exeDevice.updateFieldGame(storedGame({ weighted: 40 }));
+
+        expect(scormMock.setValues).toHaveBeenCalledWith(
+            1,
+            'Save score',
+            true,
+            40
+        );
+    });
+
+    it('passes a weight of 0 through instead of falling back to 100', () => {
+        $exeDevice.updateFieldGame(storedGame({ weighted: 0 }));
+
+        expect(scormMock.setValues.mock.calls[0][3]).toBe(0);
+    });
+
+    // loadDataGame defaults a game saved before the field existed to 100, and
+    // that default must be the one that travels.
+    it('carries the default when the stored game has no weight', () => {
+        const game = storedGame();
+        delete game.weighted;
+        game.weighted = typeof game.weighted !== 'undefined' ? game.weighted : 100;
+
+        $exeDevice.updateFieldGame(game);
+
+        expect(scormMock.setValues.mock.calls[0][3]).toBe(100);
+    });
+});

@@ -206,21 +206,28 @@ var $exeDevice = {
                 !window.location ||
                 window.location.protocol !== 'file:');
 
-        // Try <url>.gz first via DecompressionStream (production / static build),
-        // fall back to raw <url> for dev and browsers without the API.
-        const canDecompress =
-            shouldUseFetch && typeof DecompressionStream !== 'undefined';
-        const gzPromise = canDecompress
-            ? fetch(url + '.gz', { cache: 'no-cache' }).then((response) => {
-                  if (!response.ok) {
-                      throw new Error(`gz HTTP ${response.status}`);
-                  }
-                  const stream = response.body.pipeThrough(
-                      new DecompressionStream('gzip')
-                  );
-                  return new Response(stream).json();
-              })
-            : Promise.reject(new Error('DecompressionStream unavailable'));
+        // Try <url>.zst first via fzstd (production / static build, see
+        // public/libs/fzstd/fzstd.umd.js), fall back to raw <url> for dev
+        // and sessions where fzstd isn't loaded.
+        const canDecompressZstd =
+            shouldUseFetch &&
+            typeof window !== 'undefined' &&
+            typeof window.fzstd !== 'undefined';
+        const zstPromise = canDecompressZstd
+            ? fetch(url + '.zst', { cache: 'no-cache' })
+                  .then((response) => {
+                      if (!response.ok) {
+                          throw new Error(`zst HTTP ${response.status}`);
+                      }
+                      return response.arrayBuffer();
+                  })
+                  .then((buffer) => {
+                      const decompressed = window.fzstd.decompress(
+                          new Uint8Array(buffer)
+                      );
+                      return JSON.parse(new TextDecoder().decode(decompressed));
+                  })
+            : Promise.reject(new Error('fzstd unavailable'));
 
         const rawJsonPromise = () =>
             shouldUseFetch
@@ -243,7 +250,7 @@ var $exeDevice = {
                       })
                 : loadViaXHR(url);
 
-        const fetchPromise = gzPromise.catch(() => rawJsonPromise());
+        const fetchPromise = zstPromise.catch(() => rawJsonPromise());
 
         this.dataLoadPromises[lang] = fetchPromise
             .then((data) => {

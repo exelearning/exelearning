@@ -426,12 +426,6 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance];
         $eXeHiddenImage.removeEvents(instance);
 
-        $(window).on('unload.eXehiP beforeunload.eXehiP', () => {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeHiddenImage.mScorm
-            );
-        });
-
         $('#hiPLinkMaximize-' + instance).on('click touchstart', (e) => {
             e.preventDefault();
             $('#hiPGameContainer-' + instance).show();
@@ -601,8 +595,6 @@ var $eXeHiddenImage = {
     },
 
     removeEvents: function (instance) {
-        $(window).off('unload.eXehiP beforeunload.eXehiP');
-
         $('#hiPLinkMaximize-' + instance).off('click touchstart');
         $('#hiPLinkMinimize-' + instance).off('click touchstart');
         $('#hiPMainContainer-' + instance)
@@ -682,6 +674,9 @@ var $eXeHiddenImage = {
         mOptions.gameActived = false;
         mOptions.activeQuestion = -1;
         mOptions.validQuestions = mOptions.numberQuestions;
+        // gameOver() leaves this true; a replay starts as unfinished before
+        // newQuestion() can publish the automatic SCORM score.
+        mOptions.gameOver = false;
 
         $('#hiPNumber-' + instance).text(mOptions.numberQuestions);
 
@@ -830,13 +825,15 @@ var $eXeHiddenImage = {
     },
 
     showImageNeo: function (url, instance) {
-        const mOptions = $eXeHiddenImage.options[instance],
-            mQuestion = mOptions.questionsGame[mOptions.activeQuestion],
+        const mOptions = $eXeHiddenImage.options[instance];
+        if (!mOptions) return;
+        const mQuestion = mOptions.questionsGame[mOptions.activeQuestion],
             $image = $('#hiPImage-' + instance);
 
         $image.attr('alt', 'No image').hide();
 
         const imgEl = $image[0];
+        if (!imgEl) return;
 
         function onImageLoad() {
             if (
@@ -918,6 +915,7 @@ var $eXeHiddenImage = {
 
     createSquares: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
+        if (!mOptions) return;
         const mQuestion = mOptions.questionsGame[mOptions.activeQuestion];
         const $overlay = $('#hipOverlay-' + instance);
         $eXeHiddenImage.updateOverlaySize(instance);
@@ -1138,7 +1136,21 @@ var $eXeHiddenImage = {
         if (mOptions.showSolution) {
             $eXeHiddenImage.drawSolution(instance);
         }
+        // Answering the last question ends the attempt. Raise the flag before
+        // the report so it carries the completion, instead of waiting for the
+        // reveal delay and the newQuestion -> gameOver that follows it; the
+        // delayed gameOver still runs for the end-of-game interface.
+        if (mOptions.activeQuestion >= mOptions.numberQuestions - 1) {
+            mOptions.gameOver = true;
+        }
         $eXeHiddenImage.saveEvaluation(instance);
+        // Report in the same turn the learner answered. The automatic report
+        // used to happen only from showQuestion(), i.e. once the reveal delay
+        // below had elapsed, so the mark reached the LMS seconds late and a
+        // learner who left during that window lost the answer.
+        if (mOptions.isScorm > 0) {
+            $eXeHiddenImage.sendScore(true, instance);
+        }
 
         $eXeHiddenImage.hideSquares(instance, $eXeHiddenImage.startNewQuestion);
     },

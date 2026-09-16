@@ -69,7 +69,7 @@ var $eXeCompleta = {
             }
             mOption.urlBack =
                 mOption.urlBack.length < 4
-                    ? `${mOption.idevicePath}cmptbackground.png`
+                    ? `${mOption.idevicePath}cmptbackground.webp`
                     : mOption.urlBack;
 
             $eXeCompleta.options.push(mOption);
@@ -259,7 +259,6 @@ var $eXeCompleta = {
 
         $(document).off('mousemove.eXeCompleta');
         $(document).off('mouseup.eXeCompleta');
-        $(window).off('unload.eXeCompleta beforeunload.eXeCompleta');
 
         const gameContainer = document.querySelector(
             `#cmptGameContainer-${instance}`
@@ -297,7 +296,13 @@ var $eXeCompleta = {
             e.preventDefault();
             $(`#cmptGameContainer-${instance}`).show();
             $(`#cmptGameMinimize-${instance}`).hide();
-            if (!mOptions.cmptStarted) {
+            // Both flags, as dragdrop does: a finished game leaves gameStarted
+            // false, so testing it alone let restoring a minimized activity
+            // call startGame — which clears hits, errors and the score, and
+            // then publishes that zero to the LMS. The learner ended with a
+            // grade, minimized, restored, and lost it without asking to play
+            // again. Restoring must only show what is there.
+            if (!mOptions.gameStarted && !mOptions.gameOver) {
                 $eXeCompleta.startGame(instance);
             }
             $(`#cmptSolution-${instance}`).focus();
@@ -428,17 +433,6 @@ var $eXeCompleta = {
         $(`#cmptLinkMaximize-${instance}`).focus();
         $(`#cmptPShowClue-${instance}`).hide();
 
-        $(window).on(
-            'unload.eXeCompleta beforeunload.eXeCompleta',
-            function () {
-                if (typeof $eXeCompleta.mScorm !== 'undefined') {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeCompleta.mScorm
-                    );
-                }
-            }
-        );
-
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
@@ -500,7 +494,7 @@ var $eXeCompleta = {
         if (mOptions.hasBack) {
             const backgroundUrl =
                 mOptions.urlBack.length < 4
-                    ? `${mOptions.idevicePath}cmptbackground.png`
+                    ? `${mOptions.idevicePath}cmptbackground.webp`
                     : mOptions.urlBack;
 
             const $container = $(`#cmptGameContainer-${instance}`);
@@ -537,7 +531,13 @@ var $eXeCompleta = {
             if (mOptions.time > 0) {
                 $eXeCompleta.startGame(instance);
             } else {
+                // Without a timer there is no startGame to run: the board was
+                // laid out while the page loaded, behind the cover. Raising
+                // the flag is all that is left — and then the opening zero,
+                // after it and never before, because sendScoreNew drops a game
+                // that reports as neither started nor over.
                 mOptions.gameStarted = true;
+                $eXeCompleta.saveScormScore(instance);
             }
             $(`#cmptLinkMaximize-${instance}`).trigger('click');
         } else {
@@ -586,12 +586,20 @@ var $eXeCompleta = {
 
         $(`#cmptMultimedia-${instance}`).fadeIn();
         $(`#cmptDivImgHome-${instance}`).hide();
-        $(`#cmptPHits-${instance}`).text(mOptions.hits);
-        $(`#cmptPScore-${instance}`).text(mOptions.score);
         $(`#cmptStartGame-${instance}`).hide();
 
-        $eXeCompleta.hits = 0;
-        $eXeCompleta.score = 0;
+        // Cleared on the instance, and before they are painted. This used to
+        // assign `$eXeCompleta.hits` and `$eXeCompleta.score` — the module
+        // object, which nothing reads — two lines after painting
+        // `mOptions.hits`, so a replayed activity started by showing the
+        // previous attempt's counters and kept its hit count until the next
+        // check recomputed it.
+        mOptions.hits = 0;
+        mOptions.errors = 0;
+        mOptions.score = 0;
+
+        $(`#cmptPHits-${instance}`).text(mOptions.hits);
+        $(`#cmptPScore-${instance}`).text(mOptions.score);
 
         mOptions.counter = mOptions.time * 60;
         mOptions.gameOver = false;
@@ -615,11 +623,18 @@ var $eXeCompleta = {
                 mOptions.counter--;
                 $eXeCompleta.updateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
+                    // Time is up, so this forced check is the end of the activity:
+                    // flag it before checkPhrase reports the score.
+                    mOptions.gameOver = true;
                     $eXeCompleta.checkPhrase(instance);
                     $eXeCompleta.gameOver(2, instance);
                 }
             }
         }, 1000);
+
+        // After gameStarted, never before: sendScoreNew ignores a game that
+        // reports as neither started nor over.
+        $eXeCompleta.saveScormScore(instance);
     },
 
     gameOver: function (type, instance) {
@@ -627,6 +642,12 @@ var $eXeCompleta = {
         let typem = mOptions.hits >= mOptions.errors ? 2 : 1;
         message = '';
         $(`#cmptButonsDiv-${instance}`).hide();
+        // The attempt is over, so the retry goes with it. Time running out
+        // reaches here through checkPhrase, which had already offered another
+        // try because attempts were left — and reloadGame re-enables the gaps
+        // and brings back Check, a button that then does nothing, since
+        // checkPhrase returns on a game that is no longer started.
+        $(`#cmptReloadPhrase-${instance}`).hide();
 
         clearInterval(mOptions.counterClock);
 
@@ -723,6 +744,15 @@ var $eXeCompleta = {
             $eXeCompleta.getWordArrayJson(instance);
         }
         $('#cmptCheckPhrase-' + instance).show();
+        // Trying again empties every gap and zeroes the counters, so the mark
+        // the LMS holds from the last check no longer describes anything on
+        // screen. Report the zero, or a learner who walked away here would
+        // leave the previous check's score standing over a blank board.
+        //
+        // Safe to report as unfinished: this button is only shown when
+        // checkPhrase found attempts left, which is the branch that does not
+        // raise gameOver — the game-over path hides it (see gameOver()).
+        $eXeCompleta.saveScormScore(instance);
     },
 
     checkPhrase: function (instance) {
@@ -799,7 +829,18 @@ var $eXeCompleta = {
         $('#cmptCheckPhrase-' + instance).hide();
 
         mOptions.attempsNumber--;
-        const score = ((mOptions.hits * 10) / mOptions.number).toFixed(2);
+        const score = ((mOptions.hits * 10) / mOptions.number).toFixed(2),
+            isGameOver =
+                mOptions.attempsNumber <= 0 ||
+                mOptions.hits === mOptions.number;
+
+        // The activity is over once the attempts run out or every gap is right. Raise
+        // the flag here, before the automatic report below, so the report carrying the
+        // final score is the one that tells the LMS the activity is finished. Never on
+        // an intermediate check: attempts left means the learner is still playing.
+        if (isGameOver) {
+            mOptions.gameOver = true;
+        }
 
         if (mOptions.isScorm === 1) {
             $eXeCompleta.sendScore(true, instance);
@@ -827,7 +868,7 @@ var $eXeCompleta = {
 
         $eXeCompleta.saveEvaluation(instance);
 
-        if (mOptions.attempsNumber <= 0 || mOptions.hits === mOptions.number) {
+        if (isGameOver) {
             $eXeCompleta.gameOver(1, instance);
             return;
         }
@@ -1433,6 +1474,22 @@ var $eXeCompleta = {
             color: color,
             'font-weight': '450',
         });
+    },
+
+    /**
+     * Publish the freshly reset state to the LMS when a game starts.
+     *
+     * startGame() clears the counters and gameOver, but nothing told the LMS,
+     * so the menu kept the previous attempt's grade and status until the
+     * learner checked the phrase again.
+     *
+     * Automatic mode only: in manual mode the learner owns the send button,
+     * and reporting here would submit an attempt they never asked to submit.
+     */
+    saveScormScore: function (instance) {
+        const mOptions = $eXeCompleta.options[instance];
+        if (!mOptions || mOptions.isScorm !== 1) return;
+        $eXeCompleta.sendScore(true, instance);
     },
 
     sendScore: function (auto, instance) {

@@ -299,8 +299,45 @@ docker compose -f docker-compose.redis.yml exec exelearning-2 ls /mnt/data/asset
 
 ---
 
+## Capacity and the C10k benchmark
+
+[Issue #2255](https://github.com/exelearning/exelearning/issues/2255) measured how many concurrent users and
+long-lived WebSocket connections this architecture actually sustains, using the
+[C10k problem](https://en.wikipedia.org/wiki/C10k_problem) as a reference point rather than a pass/fail target.
+Full methodology, measured numbers, identified bottlenecks (two of which were real server bugs, now fixed), and
+capacity recommendations: **[`doc/development/c10k-benchmark.md`](development/c10k-benchmark.md)** (English) /
+**[`doc/development/c10k-benchmark.es.md`](development/c10k-benchmark.es.md)** (Spanish).
+
+Headline results:
+
+- A single instance sustained **10,000 concurrent idle WebSocket connections** for a full 10-minute hold at 99.92%
+  success, 1.15% CPU, 257 MiB RAM.
+- The 2-instance HA topology in this document was validated end to end: Redis correctly relays Yjs updates between
+  clients connected to *different* instances, and **500 simultaneous collaborators on one project** worked with
+  99% of connections held for the full session at only 13-14% CPU per instance.
+- **`ip_hash` is confirmed unsuitable for the WebSocket upstream** when load comes from a small number of source
+  IPs (a load-generator machine, or any client-side gateway/proxy): it routed effectively 100% of connections to
+  one instance in testing. `nginx-ha.conf` in this directory now uses `least_conn` instead — Redis already makes
+  same-backend affinity unnecessary for correctness.
+- The example `worker_connections`/`worker_rlimit_nofile` values in `nginx-ha.conf` have been raised from the
+  previous defaults, which measurably failed under load (58.4% login success at 1000 concurrent WebSocket
+  connections) — the new values handled the same load at 100% success and under 15% instance CPU.
+
+**Decisions recorded**: the two durable decisions above are architecture decision records —
+[ADR-2255-01](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2255-01-balance-websocket-upstream-with-least-conn.md)
+(`least_conn` for the WebSocket upstream) and
+[ADR-2255-02](https://github.com/exelearning/exelearning/blob/main/doc/architecture/adr/ADR-2255-02-verify-passwords-with-bun-native-bcrypt.md)
+(native password verification).
+
+**Reproducing or extending these benchmarks**: the load-testing tooling (k6 scenarios, orchestration scripts, and
+the HA deployment variant used for these tests) lives under
+[`test/load/`](https://github.com/exelearning/exelearning/blob/main/test/load/README.md) — see that directory for exact commands.
+
+---
+
 ## See Also
 
 - [Deployment Guide](deployment.md) - Basic deployment options
 - [Architecture](architecture.md) - Technical architecture details
 - [Real-time Collaboration](development/real-time.md) - Yjs and WebSocket details
+- [C10k Benchmark Report](development/c10k-benchmark.md) - Capacity measurements and methodology

@@ -190,6 +190,7 @@ export const blocksRoutes = new Elysia({ prefix: '/projects' })
                     blockId: params.blockId,
                     name: body.name,
                     iconName: body.iconName,
+                    icon: body.icon,
                     properties: body.properties,
                 }),
             );

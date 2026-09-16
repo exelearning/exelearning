@@ -132,6 +132,7 @@ var $eXeBeforeAfter = {
         return mOptions;
     },
 
+
     startGame: function (instance) {
         let mOptions = $eXeBeforeAfter.options[instance];
         if (mOptions.gameStarted) return;
@@ -142,6 +143,11 @@ var $eXeBeforeAfter = {
         mOptions.obtainedClue = false;
         $('#bfafCubierta-' + instance).hide();
         $('#bfafStartGame-' + instance).hide();
+        // Tracked or not, never which mode: this offers the opening progress
+        // and sendScoreNew decides whether to take it, dropping any automatic
+        // report from an activity in manual mode before it writes anything. So
+        // opening a manual-mode activity — a valid access code, say — cannot
+        // overwrite the grade the learner saved earlier with a zero.
         if (mOptions.isScorm > 0) {
             $eXeBeforeAfter.sendScore(true, instance);
         }
@@ -319,6 +325,8 @@ var $eXeBeforeAfter = {
                 `${mOptions.msgs.msgImage}: ${number + 1}/${mOptions.cardsGame.length}`
             );
 
+            // Offered, not published: see startGame. In manual mode the button
+            // is the only thing that writes a grade.
             if (mOptions.gameStarted && mOptions.isScorm > 0) {
                 $eXeBeforeAfter.sendScore(true, instance);
             }
@@ -369,12 +377,16 @@ var $eXeBeforeAfter = {
 
     initComparison: function (number, instance) {
         const mOptions = $eXeBeforeAfter.options[instance],
-            container = document.querySelector('#bfafpContainerBA-' + instance),
-            overlay = container.querySelector('.BFAFP-Overlay'),
+            container = document.querySelector('#bfafpContainerBA-' + instance);
+
+        // Called from a delayed setTimeout: the activity may already be gone
+        if (!mOptions || !container) return;
+
+        const overlay = container.querySelector('.BFAFP-Overlay'),
             slider = container.querySelector('.BFAFP-Slider'),
             card = mOptions.cardsGame[number];
 
-        if (!overlay || !slider) return;
+        if (!overlay || !slider || !card) return;
 
         const isVertical = card.vertical;
 
@@ -517,7 +529,11 @@ var $eXeBeforeAfter = {
         $(`#bfafLinkMinimize-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessButton-${instance}`).off('click touchstart');
         $(`#bfafCodeAccessE-${instance}`).off('keydown');
-        $(window).off('unload.eXeBeforeAfter beforeunload.eXeBeforeAfter');
+        // Same element and same selector addEvents delegates on, so a second
+        // pass does not leave the previous handler behind and report twice.
+        $(`#bfafMainContainer-${instance}`)
+            .closest('.beforeafter-IDevice')
+            .off('click', '.Games-SendScore');
     },
 
     addEvents: function (instance) {
@@ -579,17 +595,6 @@ var $eXeBeforeAfter = {
                 this.value = value;
             });
 
-        $(window).on(
-            'unload.eXeBeforeAfter beforeunload.eXeBeforeAfter',
-            function () {
-                if ($eXeBeforeAfter.mScorm) {
-                    $exeDevices.iDevice.gamification.scorm.endScorm(
-                        $eXeBeforeAfter.mScorm
-                    );
-                }
-            }
-        );
-
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $('#bfafAuthorGame-' + instance).html(
                 mOptions.msgs.msgAuthor + ': ' + mOptions.author
@@ -597,9 +602,22 @@ var $eXeBeforeAfter = {
             $('#bfafAuthorGame-' + instance).show();
         }
 
+        // Both modes: the activity has to be declared to the registry even when
+        // it reports nothing yet, or the page would not know it is pending.
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
+
+        // The save button only exists in manual mode — addButtonScoreNew emits
+        // it for isScorm 2 alone — but it is a sibling of the cover, so it can
+        // be clicked before the activity has been opened. The shared runtime
+        // answers that with msgEndGameScore instead of reporting.
+        $('#bfafMainContainer-' + instance)
+            .closest('.beforeafter-IDevice')
+            .on('click', '.Games-SendScore', function (e) {
+                e.preventDefault();
+                $eXeBeforeAfter.sendScore(false, instance);
+            });
 
         $('#bfafLinkFullScreen-' + instance).on(
             'click touchstart',
@@ -706,6 +724,11 @@ var $eXeBeforeAfter = {
             $('#bfafMultimedia-' + instance).show();
             $eXeBeforeAfter.showImage(0, instance);
             $eXeBeforeAfter.activeButton(0, instance);
+            // A valid code is the learner opening the activity, the same gesture
+            // as the click on the board that starts it when there is no code.
+            // Last, never before showImage: that one reports too once the game
+            // is running, and starting first would send the same score twice.
+            $eXeBeforeAfter.startGame(instance);
         } else {
             $(`#bfafMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
@@ -748,6 +771,26 @@ var $eXeBeforeAfter = {
 
         mOptions.scorerp =
             ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
+        // This activity is finished when every card has been seen — that is the
+        // same condition its own score expresses, so the two can never disagree.
+        // Without the flag the page stays `incomplete` in the LMS even at 100%,
+        // because completion is decided from what the activity reports, not from
+        // the score.
+        //
+        // An activity that has not started cannot be finished, and asking for
+        // gameStarted is what says so. `visiteds` counts the furthest card
+        // reached and begins at 0, so on a single-card activity the condition
+        // below holds before the learner has seen anything: pressing the save
+        // button with the cover still up reported ten out of ten and closed the
+        // attempt. Without this it also slips past sendScoreNew's own
+        // `gameStarted || gameOver` gate, which exists to tell the learner to
+        // start first.
+        if (
+            mOptions.gameStarted &&
+            mOptions.visiteds + 1 >= mOptions.cardsGame.length
+        ) {
+            mOptions.gameOver = true;
+        }
         mOptions.previousScore = $eXeBeforeAfter.previousScore;
         mOptions.userName = $eXeBeforeAfter.userName;
 

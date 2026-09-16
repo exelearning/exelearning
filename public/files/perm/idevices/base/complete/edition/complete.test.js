@@ -102,4 +102,83 @@ describe('complete iDevice', () => {
       expect($exeDevice.classIdevice).toBe('complete');
     });
   });
+
+  // The editor truncates its numeric fields on keyup. Capping them at one digit
+  // made ordinary values impossible to enter: the second keystroke was dropped,
+  // so an author aiming for 10 minutes silently ended up with 1.
+  describe('numeric field limits', () => {
+    let previousItinerary;
+
+    beforeEach(() => {
+      previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+      // addEvents wires the whole editor. The itinerary component lives outside
+      // this iDevice's source, so it is stubbed rather than exercised here.
+      $exeDevicesEdition.iDevice.gamification.itinerary = {
+        addEvents: () => {},
+        getTab: () => '',
+        init: () => {},
+        setValues: () => {},
+      };
+      document.body.innerHTML = `
+        <script></script>
+        <form id="gameQEIdeviceForm">
+          <input id="cmptETime" />
+          <input id="cmptEPercentajeError" />
+        </form>`;
+      $exeDevice.addEvents();
+    });
+
+    afterEach(() => {
+      $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      document.body.innerHTML = '';
+    });
+
+    it('keeps a two-digit time', () => {
+      $('#cmptETime').val('45').trigger('keyup');
+
+      expect($('#cmptETime').val()).toBe('45');
+    });
+
+    it('truncates the time beyond two digits and drops non-digits', () => {
+      $('#cmptETime').val('1a234').trigger('keyup');
+
+      expect($('#cmptETime').val()).toBe('12');
+    });
+
+    it('keeps a three-digit error percentage', () => {
+      $('#cmptEPercentajeError').val('100').trigger('keyup');
+
+      expect($('#cmptEPercentajeError').val()).toBe('100');
+    });
+
+    it('truncates the error percentage beyond three digits', () => {
+      $('#cmptEPercentajeError').val('12345').trigger('keyup');
+
+      expect($('#cmptEPercentajeError').val()).toBe('123');
+    });
+  });
+});
+
+describe('default image edition/export dedup', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const editionDir = __dirname;
+  const exportDir = path.join(editionDir, '..', 'export');
+
+  it('ships the default image only in export/ (edition previews the export copy)', () => {
+    expect(fs.existsSync(path.join(exportDir, 'cmptbackground.webp'))).toBe(true);
+    expect(fs.existsSync(path.join(editionDir, 'cmptbackground.webp'))).toBe(false);
+  });
+
+  it('routes every edition reference to the export copy', () => {
+    const source = fs.readFileSync(path.join(editionDir, 'complete.js'), 'utf-8');
+    const refs = source.split('cmptbackground.webp').length - 1;
+    const routed = source.split("replace(/\\/edition\\/?$/, '/export/')").length - 1;
+    expect(refs).toBeGreaterThan(0);
+    expect(routed).toBeGreaterThan(0);
+    // No unrouted direct reference may sneak back in.
+    expect(source).not.toContain("path + 'cmptbackground.webp'");
+    expect(source).not.toContain('${path}cmptbackground.webp');
+    expect(source).not.toContain('${$exeDevice.idevicePath}cmptbackground.webp');
+  });
 });
