@@ -1,4 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Setup globals needed BEFORE the script is loaded
 globalThis._ = vi.fn((key) => key);
@@ -2913,6 +2915,52 @@ describe('common_edition.js', () => {
       globalThis.$exeDevicesEdition.iDevice.init();
 
       expect(globalThis._('Next')).toBe('Siguiente');
+    });
+  });
+
+  /**
+   * progressBar.getValues() has two return shapes: the values, or `false` after
+   * it has warned about a report identifier shorter than five characters. Every
+   * caller has to honour the second one.
+   *
+   * Reading `.evaluation` off `false` yields undefined instead of throwing, so a
+   * caller that forgets carries on and saves the activity with the report
+   * silently switched off -- the author sees the warning, presses save, and the
+   * form accepts it. That is exactly what happened to two iDevices when their
+   * forms moved to this shared block, and nothing failed to tell us.
+   *
+   * Scanning the callers is the only check that covers all of them at once, and
+   * the only one that catches the next iDevice to adopt the block.
+   */
+  describe('progress report guard across every iDevice', () => {
+    const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
+
+    const callers = readdirSync(IDEVICES_DIR)
+      .map((name) => ({ name, dir: join(IDEVICES_DIR, name, 'edition') }))
+      .filter(({ dir }) => existsSync(dir))
+      .flatMap(({ name, dir }) =>
+        readdirSync(dir)
+          .filter((file) => file.endsWith('.js') && !file.endsWith('.test.js'))
+          .map((file) => ({ name, source: readFileSync(join(dir, file), 'utf-8') }))
+      )
+      .filter(({ source }) => source.includes('gamification.progressBar.getValues()'));
+
+    it('finds the iDevices that read the shared progress report', () => {
+      // A guard rail for the scan itself: a rename that made the filter match
+      // nothing would leave every assertion below vacuously green.
+      expect(callers.length).toBeGreaterThan(30);
+    });
+
+    it.each(callers.map(({ name }) => name))('%s rejects an invalid report identifier', (name) => {
+      const { source } = callers.find((caller) => caller.name === name);
+      // The iDevices do not agree on a name for the result -- most call it
+      // `progressBar`, interactive-video calls it `progressBarValues` -- so the
+      // guard is looked up by whatever each one assigned it to.
+      const assignment = source.match(
+        /(\w+)\s*=\s*\$exeDevicesEdition\.iDevice\.gamification\.progressBar\.getValues\(\)/
+      );
+      expect(assignment).not.toBeNull();
+      expect(source).toMatch(new RegExp(`if\\s*\\(!${assignment[1]}\\)\\s*return false;`));
     });
   });
 });

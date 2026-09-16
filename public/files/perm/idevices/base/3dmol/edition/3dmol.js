@@ -2004,6 +2004,13 @@ var $exeDevice = {
             globalTime = parseInt($('#dmoleGlobalTimes').val(), 10);
 
         if (!itinerary) return false;
+        // getValues() warns and returns false on a report identifier that is
+        // too short. Without this the form carried on and saved the activity
+        // with the report silently switched off, because reading `.evaluation`
+        // off `false` yields undefined rather than throwing. The check this
+        // replaces only ran in test mode, so a bad identifier went through
+        // unchallenged in every other one.
+        if (!progressBar) return false;
 
         if (activityMode === 'test') {
             if (feedBack && textFeedBack.trim().length == 0) {
@@ -2012,10 +2019,6 @@ var $exeDevice = {
             }
             if (showSolution && timeShowSolution.length == 0) {
                 $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
-                return false;
-            }
-            if (evaluation && evaluationID.length < 5) {
-                eXe.app.alert($exeDevice.msgs.msgIDLenght);
                 return false;
             }
         }
