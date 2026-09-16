@@ -47,6 +47,7 @@ function loadIdevice(code) {
       gamification: {
         helpers: {
           supportedBrowser: () => true,
+          sanitizeJSONString: (str) => str,
           isJsonString: (str) => {
             if (!str) return false;
             try {
@@ -84,6 +85,18 @@ describe('progress-report iDevice (export)', () => {
   });
 
   describe('normalizeFileName', () => {
+    // The expectations below mirror BaseExporter.sanitizePageFilename(), which
+    // is what actually names the files. Anything this function does on its own
+    // is a broken link.
+    const asTheExporterWouldName = (title) =>
+      (title || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .substring(0, 50) || 'page';
+
     it('converts accented vowels to plain vowels', () => {
       expect($eXeInforme.normalizeFileName('árbol')).toBe('arbol');
       expect($eXeInforme.normalizeFileName('éxito')).toBe('exito');
@@ -109,30 +122,44 @@ describe('progress-report iDevice (export)', () => {
       expect($eXeInforme.normalizeFileName('hello@world')).toBe('helloworld');
       expect($eXeInforme.normalizeFileName('test#123')).toBe('test123');
       expect($eXeInforme.normalizeFileName('file:name')).toBe('filename');
+      expect($eXeInforme.normalizeFileName('A&B')).toBe('ab');
+      expect($eXeInforme.normalizeFileName('a_b_c')).toBe('abc');
+      expect($eXeInforme.normalizeFileName('versión 1.0')).toBe('version-10');
     });
 
-    it('replaces ampersand with hyphen', () => {
-      expect($eXeInforme.normalizeFileName('A&B')).toBe('a-b');
+    it('keeps every separator, as the file name does', () => {
+      // 'Adivina - Acceso' is written to adivina---acceso.html.
+      expect($eXeInforme.normalizeFileName('Adivina - Acceso')).toBe('adivina---acceso');
+      expect($eXeInforme.normalizeFileName('a--b---c')).toBe('a--b---c');
+      expect($eXeInforme.normalizeFileName('-hello-')).toBe('-hello-');
+      expect($eXeInforme.normalizeFileName('Imagen Oculta -Guardar')).toBe('imagen-oculta--guardar');
     });
 
-    it('handles German umlauts', () => {
-      expect($eXeInforme.normalizeFileName('über')).toBe('ueber');
-      expect($eXeInforme.normalizeFileName('öffnen')).toBe('oeffnen');
-      // Note: ß is not in the replacement map so it stays as is
-      expect($eXeInforme.normalizeFileName('größe')).toBe('groeße');
+    it('strips the diacritic instead of expanding the letter', () => {
+      expect($eXeInforme.normalizeFileName('über')).toBe('uber');
+      expect($eXeInforme.normalizeFileName('öffnen')).toBe('offnen');
+      expect($eXeInforme.normalizeFileName('čeština')).toBe('cestina');
+      // Letters that carry no combining mark, such as ß or ł, are dropped.
+      expect($eXeInforme.normalizeFileName('größe')).toBe('groe');
+      expect($eXeInforme.normalizeFileName('łódź')).toBe('odz');
     });
 
-    it('collapses multiple hyphens', () => {
-      expect($eXeInforme.normalizeFileName('a--b---c')).toBe('a-b-c');
+    it('drops what the exporter cannot put in a file name', () => {
+      expect($eXeInforme.normalizeFileName('Nos organizamos 📋')).toBe('nos-organizamos-');
+      // Removing the symbol leaves two spaces, and a run of whitespace is one hyphen.
+      expect($eXeInforme.normalizeFileName('Página · con signos')).toBe('pagina-con-signos');
     });
 
-    it('trims leading and trailing hyphens', () => {
-      expect($eXeInforme.normalizeFileName('-hello-')).toBe('hello');
-      expect($eXeInforme.normalizeFileName('---test---')).toBe('test');
+    it('falls back to page when nothing is left', () => {
+      expect($eXeInforme.normalizeFileName('')).toBe('page');
+      expect($eXeInforme.normalizeFileName('Страница')).toBe('page');
+      expect($eXeInforme.normalizeFileName('课程页面')).toBe('page');
     });
 
-    it('handles empty string', () => {
-      expect($eXeInforme.normalizeFileName('')).toBe('');
+    it('truncates at fifty characters', () => {
+      const title = 'Una pagina con un titulo francamente largo que pasa de los cincuenta caracteres';
+      expect($eXeInforme.normalizeFileName(title)).toHaveLength(50);
+      expect($eXeInforme.normalizeFileName(title)).toBe(asTheExporterWouldName(title));
     });
 
     it('handles non-string input', () => {
@@ -146,12 +173,24 @@ describe('progress-report iDevice (export)', () => {
       expect($eXeInforme.normalizeFileName('ế')).toBe('e');
     });
 
-    it('handles Polish characters', () => {
-      expect($eXeInforme.normalizeFileName('łódź')).toBe('lodz');
-    });
+    it('agrees with the exporter on every title tried here', () => {
+      const titles = [
+        'Adivina - Acceso',
+        'Imagen Oculta -Guardar',
+        'Nos organizamos 📋',
+        'Über uns',
+        'versión 1.0',
+        'a_b_c',
+        '  espacios   varios  ',
+        'Página · con? signos!',
+        'Страница',
+        '2024 - 2025',
+        '---',
+      ];
 
-    it('handles Czech characters', () => {
-      expect($eXeInforme.normalizeFileName('čeština')).toBe('cheshtina');
+      for (const title of titles) {
+        expect($eXeInforme.normalizeFileName(title)).toBe(asTheExporterWouldName(title));
+      }
     });
   });
 
@@ -427,9 +466,319 @@ describe('progress-report iDevice (export)', () => {
     });
   });
 
+  describe('loadCourseMap', () => {
+    const spyOnLoaders = () => {
+      const calls = [];
+      $eXeInforme.loadFromDom = (...args) => calls.push(['loadFromDom', ...args]);
+      $eXeInforme.loadFromContentXml = (...args) => calls.push(['loadFromContentXml', ...args]);
+      $eXeInforme.getIdevicesBySessionId = (...args) => calls.push(['getIdevicesBySessionId', ...args]);
+      return calls;
+    };
+
+    it('reads the surrounding workarea in preview mode', () => {
+      const calls = spyOnLoaders();
+      $eXeInforme.isPreviewMode = () => true;
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      $eXeInforme.loadCourseMap({}, 0, true);
+
+      expect(calls[0][0]).toBe('loadFromDom');
+    });
+
+    it('reads the Y.Doc inside the workarea, passing the init flag', () => {
+      const calls = spyOnLoaders();
+      $eXeInforme.isPreviewMode = () => false;
+      $eXeInforme._hasPagesMetadata = () => false;
+      global.eXe.app.isInExe = () => true;
+
+      $eXeInforme.loadCourseMap({}, 2, false);
+
+      expect(calls[0]).toEqual(['getIdevicesBySessionId', false, {}, 2]);
+      global.eXe.app.isInExe = () => false;
+    });
+
+    it('reads content.xml in an exported package that ships a search index', () => {
+      // The search index carries no parent page, so preferring it flattened
+      // the report in web exports with the search box enabled.
+      const calls = spyOnLoaders();
+      $eXeInforme.isPreviewMode = () => false;
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      $eXeInforme.loadCourseMap({}, 0, true);
+
+      expect(calls[0][0]).toBe('loadFromContentXml');
+    });
+
+    it('reads content.xml in an exported package without a search index', () => {
+      const calls = spyOnLoaders();
+      $eXeInforme.isPreviewMode = () => false;
+      $eXeInforme._hasPagesMetadata = () => false;
+
+      $eXeInforme.loadCourseMap({}, 0, true);
+
+      expect(calls[0][0]).toBe('loadFromContentXml');
+    });
+  });
+
+  describe('getPackageRoot', () => {
+    // The cover lives at the package root and every other page under html/,
+    // so the report must walk up a different number of levels depending on
+    // where it sits. Getting this wrong 404'd content.xml on the cover.
+    it('walks up from a page inside the html folder', () => {
+      expect($eXeInforme.getPackageRoot('/pkg/html/pagina.html')).toBe('/pkg');
+    });
+
+    it('walks up from the cover, which is the root index.html', () => {
+      expect($eXeInforme.getPackageRoot('/pkg/index.html')).toBe('/pkg');
+    });
+
+    it('resolves a package served at the site root', () => {
+      expect($eXeInforme.getPackageRoot('/index.html')).toBe('');
+      expect($eXeInforme.getPackageRoot('/html/pagina.html')).toBe('');
+    });
+
+    it('handles a path with no file name', () => {
+      expect($eXeInforme.getPackageRoot('/pkg/')).toBe('/pkg');
+    });
+
+    it('handles empty input', () => {
+      expect($eXeInforme.getPackageRoot('')).toBe('');
+      expect($eXeInforme.getPackageRoot(null)).toBe('');
+    });
+  });
+
+  describe('loadFromContentXml fallback', () => {
+    // A package exported with the editable source disabled ships no
+    // content.xml (Html5Exporter.addEditableContentXml). Over HTTP that is a
+    // 404 with an HTML body, and fetch() resolves it instead of rejecting, so
+    // only an explicit check keeps the error page out of the parser and lets
+    // the search-index metadata take over.
+    const pageXml = `<ode>
+      <odeNavStructures>
+        <odeNavStructure>
+          <odePageId>page-1</odePageId>
+          <odeParentPageId></odeParentPageId>
+          <pageName>Page 1</pageName>
+          <odeNavStructureOrder>1</odeNavStructureOrder>
+          <odePagStructures></odePagStructures>
+        </odeNavStructure>
+      </odeNavStructures>
+    </ode>`;
+    const notFoundBody = '<!DOCTYPE html><html><body><h1>404 Not Found</h1></body></html>';
+
+    let calls;
+
+    const respondWith = (ok, status, body) => {
+      global.fetch = () => Promise.resolve({ ok, status, text: () => Promise.resolve(body) });
+    };
+
+    beforeEach(() => {
+      calls = [];
+      $eXeInforme.loadFromDom = (...args) => calls.push(['loadFromDom', ...args]);
+      $eXeInforme.createTableIdevices = (...args) => calls.push(['createTableIdevices', ...args]);
+      $eXeInforme.updatePages = () => {};
+      $eXeInforme.applyTypeShow = () => {};
+      $eXeInforme.generateHtmlFromJsonPages = (pages) => pages;
+      $eXeInforme.createPagesHtml = (pages) => pages;
+    });
+
+    afterEach(() => {
+      delete global.fetch;
+    });
+
+    it.each([
+      ['/pkg/html/pagina.html', '/pkg/content.xml'],
+      ['/pkg/index.html', '/pkg/content.xml'],
+      ['/index.html', '/content.xml'],
+    ])('fetches content.xml at the package root from %s', async (pathname, expected) => {
+      const requested = [];
+      global.fetch = (url) => {
+        requested.push(url);
+        return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(pageXml) });
+      };
+      const original = Object.getOwnPropertyDescriptor(window, 'location');
+      Object.defineProperty(window, 'location', { value: { pathname }, configurable: true });
+      try {
+        await $eXeInforme.loadFromContentXml({}, 0);
+      } finally {
+        Object.defineProperty(window, 'location', original);
+      }
+
+      expect(requested).toEqual([expected]);
+    });
+
+    it('falls back to the page metadata when the package ships no content.xml', async () => {
+      respondWith(false, 404, notFoundBody);
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      await $eXeInforme.loadFromContentXml({}, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['loadFromDom']);
+    });
+
+    it('falls back when the server answers 200 with something that is not content.xml', async () => {
+      respondWith(true, 200, notFoundBody);
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      await $eXeInforme.loadFromContentXml({}, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['loadFromDom']);
+    });
+
+    it('tells the author when neither content.xml nor the metadata is available', async () => {
+      respondWith(false, 404, notFoundBody);
+      $eXeInforme._hasPagesMetadata = () => false;
+      const shown = [];
+      global.$ = (selector) => ({ length: 1, show: () => shown.push(selector) });
+
+      await $eXeInforme.loadFromContentXml({}, 3);
+
+      expect(calls).toEqual([]);
+      expect(shown).toEqual(['#informeNotLocal-3']);
+    });
+
+    it('builds the report from content.xml when it parses to pages', async () => {
+      respondWith(true, 200, pageXml);
+      $eXeInforme._hasPagesMetadata = () => true;
+
+      await $eXeInforme.loadFromContentXml({}, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['createTableIdevices']);
+      expect(calls[0][1][0].name).toBe('Page 1');
+    });
+  });
+
+  /**
+   * The editor captures the page tree into `sessionIdevices` on every save, and
+   * it travels inside the activity's own payload. It is the only course map a
+   * SCORM or IMS package carries, since those ship neither content.xml (without
+   * the editable source) nor the search index (never).
+   */
+  describe('loadFromStoredStructure', () => {
+    const storedMap = [
+      { id: 'page-1', title: 'Cover', url: 'index', components: [], children: [] },
+    ];
+
+    let calls;
+
+    beforeEach(() => {
+      calls = [];
+      $eXeInforme.loadFromDom = (...args) => calls.push(['loadFromDom', ...args]);
+      $eXeInforme.createTableIdevices = (...args) => calls.push(['createTableIdevices', ...args]);
+      $eXeInforme.updatePages = () => {};
+      $eXeInforme.applyTypeShow = () => {};
+      $eXeInforme.createPagesHtml = (pages) => pages;
+      global.fetch = () =>
+        Promise.resolve({ ok: false, status: 404, text: () => Promise.resolve('<html>404</html>') });
+    });
+
+    afterEach(() => {
+      delete global.fetch;
+    });
+
+    it('builds the report from the map stored with the iDevice', () => {
+      expect($eXeInforme.loadFromStoredStructure({ sessionIdevices: storedMap }, 2)).toBe(true);
+      expect(calls).toEqual([['createTableIdevices', storedMap, 2]]);
+    });
+
+    it('rescues a package that ships neither content.xml nor a search index', async () => {
+      $eXeInforme._hasPagesMetadata = () => false;
+
+      await $eXeInforme.loadFromContentXml({ sessionIdevices: storedMap }, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['createTableIdevices']);
+    });
+
+    it('keeps the page hierarchy the search index would have flattened', async () => {
+      // The stored map is preferred over the metadata precisely because it
+      // carries children; the search index has no parent at all.
+      $eXeInforme._hasPagesMetadata = () => true;
+      const nested = [{ ...storedMap[0], children: [{ id: 'page-2', title: 'Child', children: [] }] }];
+
+      await $eXeInforme.loadFromContentXml({ sessionIdevices: nested }, 0);
+
+      expect(calls.map(([name]) => name)).toEqual(['createTableIdevices']);
+      expect(calls[0][1][0].children[0].title).toBe('Child');
+    });
+
+    it.each([undefined, null, [], 'not an array', {}])(
+      'declines a stored map of %p and lets the next source try',
+      async (sessionIdevices) => {
+        $eXeInforme._hasPagesMetadata = () => true;
+
+        expect($eXeInforme.loadFromStoredStructure({ sessionIdevices }, 0)).toBe(false);
+
+        await $eXeInforme.loadFromContentXml({ sessionIdevices }, 0);
+        expect(calls.map(([name]) => name)).toEqual(['loadFromDom']);
+      },
+    );
+
+    it('prefers content.xml, which is current, over the stored snapshot', async () => {
+      global.fetch = () =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () =>
+            Promise.resolve(`<ode><odeNavStructures><odeNavStructure>
+              <odePageId>fresh</odePageId><odeParentPageId></odeParentPageId>
+              <pageName>Fresh page</pageName><odeNavStructureOrder>1</odeNavStructureOrder>
+              <odePagStructures></odePagStructures>
+            </odeNavStructure></odeNavStructures></ode>`),
+        });
+      $eXeInforme.generateHtmlFromJsonPages = (pages) => pages;
+
+      await $eXeInforme.loadFromContentXml({ sessionIdevices: storedMap }, 0);
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0][1][0].name).toBe('Fresh page');
+    });
+  });
+
   describe('getURLPage', () => {
+    // Swapping the descriptor keeps the environment from navigating.
+    const from = (href, pageId) => {
+      const original = Object.getOwnPropertyDescriptor(window, 'location');
+      Object.defineProperty(window, 'location', { value: { href }, configurable: true });
+      try {
+        return $eXeInforme.getURLPage(pageId);
+      } finally {
+        Object.defineProperty(window, 'location', original);
+      }
+    };
+
     it('is defined as a function', () => {
       expect(typeof $eXeInforme.getURLPage).toBe('function');
+    });
+
+    it('returns an empty string without a page', () => {
+      expect(from('http://host/index.html', '')).toBe('');
+    });
+
+    it('links to a page from the cover', () => {
+      expect(from('http://host/index.html', 'leaf')).toBe('http://host/html/leaf.html');
+    });
+
+    it('links to a page from another page', () => {
+      expect(from('http://host/html/other.html', 'leaf')).toBe('http://host/html/leaf.html');
+    });
+
+    it('keeps the subdirectory the package is served from', () => {
+      expect(from('http://host/course/index.html', 'leaf')).toBe('http://host/course/html/leaf.html');
+      expect(from('http://host/course/html/other.html', 'leaf')).toBe('http://host/course/html/leaf.html');
+    });
+
+    it('handles a directory URL with no file name', () => {
+      expect(from('http://host/course/', 'leaf')).toBe('http://host/course/html/leaf.html');
+      expect(from('http://host/', 'leaf')).toBe('http://host/html/leaf.html');
+    });
+
+    it('links back to the cover', () => {
+      expect(from('http://host/html/other.html', 'index')).toBe('http://host/index.html');
+      expect(from('http://host/course/html/other.html', 'index')).toBe('http://host/course/index.html');
+    });
+
+    it('keeps a directory whose name contains a dot', () => {
+      expect(from('http://host/my.course/index.html', 'leaf')).toBe('http://host/my.course/html/leaf.html');
     });
   });
 
@@ -629,6 +978,165 @@ describe('progress-report iDevice (export)', () => {
   });
 
   describe('ordering regressions', () => {
+    it.each(['ode_block_id', 'ode_pag_structure_sync_id'])(
+      'keeps tied blocks together using %s, even when input rows are interleaved',
+      (blockIdField) => {
+        const row = (id, blockId, componentOrder) => ({
+          odePageId: 'page-1',
+          pageName: 'Page 1',
+          componentId: id,
+          ode_idevice_id: id,
+          [blockIdField]: blockId,
+          blockName: 'Same title',
+          blockOrder: 1,
+          ode_components_sync_order: componentOrder,
+        });
+        const rows = [
+          row('a1', '10', 1),
+          row('b0', '2', 0),
+          row('a0', '10', 0),
+          row('b1', '2', 1),
+        ];
+
+        const result = $eXeInforme.buildNestedPages(rows);
+
+        expect(result[0].components.map((component) => component.componentId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+        expect(rows.map((row) => row.componentId)).toEqual(['a1', 'b0', 'a0', 'b1']);
+      }
+    );
+
+    it('keeps legacy rows without block ids grouped by their block order', () => {
+      const row = (id, blockOrder, componentOrder) => ({
+        odePageId: 'page-1',
+        pageName: 'Page 1',
+        componentId: id,
+        ode_idevice_id: id,
+        blockOrder,
+        ode_components_sync_order: componentOrder,
+      });
+      const result = $eXeInforme.buildNestedPages([
+        row('b1', 2, 1), row('a1', 1, 1), row('b0', 2, 0), row('a0', 1, 0),
+      ]);
+
+      expect(result[0].components.map((component) => component.componentId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+    });
+
+    it('buildNestedPages identifies a row by the component id, not the embedded copy', () => {
+      // Duplicating a page leaves the original's id inside the htmlView and the
+      // payload; the learner's result is stored under the component's own id.
+      const result = $eXeInforme.buildNestedPages([
+        {
+          odePageId: 'page-1',
+          odeParentPageId: null,
+          pageName: 'Page 1',
+          ode_nav_structure_sync_id: 'page-1',
+          ode_nav_structure_sync_order: 1,
+          navIsActive: 1,
+          componentId: 'idevice-copy',
+          ode_idevice_id: 'idevice-copy',
+          htmlViewer:
+            '<div data-id="idevice-original" data-evaluationb="true" data-evaluationid="EV1"></div>',
+          jsonProperties: '{"id":"idevice-original","evaluationID":"EV1"}',
+          ode_components_sync_order: 0,
+        },
+      ]);
+
+      const component = result[0].components[0];
+
+      expect(component.ideviceID).toBe('idevice-copy');
+      // The evaluation data still comes from the htmlView.
+      expect(component.evaluationID).toBe('EV1');
+      expect(component.evaluation).toBe(true);
+    });
+
+    it('buildNestedPages falls back to the embedded id when the row has none', () => {
+      const result = $eXeInforme.buildNestedPages([
+        {
+          odePageId: 'page-1',
+          odeParentPageId: null,
+          pageName: 'Page 1',
+          ode_nav_structure_sync_id: 'page-1',
+          ode_nav_structure_sync_order: 1,
+          navIsActive: 1,
+          componentId: 'row-without-idevice-id',
+          htmlViewer: '<div data-id="idevice-embedded" data-evaluationid="EV1"></div>',
+          ode_components_sync_order: 0,
+        },
+      ]);
+
+      expect(result[0].components[0].ideviceID).toBe('idevice-embedded');
+    });
+
+    it('buildNestedPages orders the iDevices of a page block by block', () => {
+      // `ode_components_sync_order` counts inside its own block, so the first
+      // iDevice of every block shares order 0: without the block order the
+      // second block's iDevice lands between the first block's two.
+      const row = (componentId, blockId, blockOrder, componentOrder) => ({
+        odePageId: 'page-1',
+        odeParentPageId: null,
+        pageName: 'Page 1',
+        ode_nav_structure_sync_id: 'page-1',
+        ode_nav_structure_sync_order: 1,
+        navIsActive: 1,
+        componentId: componentId,
+        ode_idevice_id: componentId,
+        ode_block_id: blockId,
+        blockOrder: blockOrder,
+        ode_components_sync_order: componentOrder,
+      });
+
+      const result = $eXeInforme.buildNestedPages([
+        row('a0', 'block-a', 0, 0),
+        row('a1', 'block-a', 0, 1),
+        row('b0', 'block-b', 1, 0),
+      ]);
+
+      expect(result[0].components.map((c) => c.componentId)).toEqual(['a0', 'a1', 'b0']);
+    });
+
+    it('buildNestedPages keeps a block together when two blocks share an order', () => {
+      const row = (componentId, blockId, blockOrder, componentOrder) => ({
+        odePageId: 'page-1',
+        odeParentPageId: null,
+        pageName: 'Page 1',
+        ode_nav_structure_sync_id: 'page-1',
+        ode_nav_structure_sync_order: 1,
+        navIsActive: 1,
+        componentId: componentId,
+        ode_idevice_id: componentId,
+        ode_block_id: blockId,
+        blockOrder: blockOrder,
+        ode_components_sync_order: componentOrder,
+      });
+
+      const result = $eXeInforme.buildNestedPages([
+        row('a0', 'block-a', 1, 0),
+        row('a1', 'block-a', 1, 1),
+        row('b0', 'block-b', 1, 0),
+        row('b1', 'block-b', 1, 1),
+      ]);
+
+      expect(result[0].components.map((c) => c.componentId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+    });
+
+    it('buildNestedPages keeps rows without a block order in document order', () => {
+      const row = (componentId, componentOrder) => ({
+        odePageId: 'page-1',
+        odeParentPageId: null,
+        pageName: 'Page 1',
+        ode_nav_structure_sync_id: 'page-1',
+        ode_nav_structure_sync_order: 1,
+        navIsActive: 1,
+        componentId: componentId,
+        ode_idevice_id: componentId,
+        ode_components_sync_order: componentOrder,
+      });
+
+      const result = $eXeInforme.buildNestedPages([row('first', 0), row('second', 1)]);
+
+      expect(result[0].components.map((c) => c.componentId)).toEqual(['first', 'second']);
+    });
+
     it('extractIdevicesFromYjs uses page order instead of navigation index', () => {
       const makeYMap = (data) => ({
         get: (key) => data[key],
@@ -678,6 +1186,33 @@ describe('progress-report iDevice (export)', () => {
       expect(rowB.ode_nav_structure_sync_order).toBe(1);
     });
 
+    it('parseOdeXmlToJson sorts the children of a page that is an only child', () => {
+      // The recursion used to stop at any page with a single child, leaving
+      // everything below it in the order the file happened to list it.
+      const page = ({ id, parent = '', name, order }) => `
+        <odeNavStructure>
+          <odePageId>${id}</odePageId>
+          <odeParentPageId>${parent}</odeParentPageId>
+          <pageName>${name}</pageName>
+          <odeNavStructureOrder>${order}</odeNavStructureOrder>
+          <odePagStructures></odePagStructures>
+        </odeNavStructure>`;
+
+      const xml = `<ode>
+        <odeNavStructures>
+          ${page({ id: 'root', name: 'Root', order: 1 })}
+          ${page({ id: 'only-child', parent: 'root', name: 'Only child', order: 1 })}
+          ${page({ id: 'second', parent: 'only-child', name: 'Second', order: 2 })}
+          ${page({ id: 'first', parent: 'only-child', name: 'First', order: 1 })}
+        </odeNavStructures>
+      </ode>`;
+
+      const result = $eXeInforme.parseOdeXmlToJson(xml);
+      const grandChildren = result[0].children[0].children;
+
+      expect(grandChildren.map((p) => p.id)).toEqual(['first', 'second']);
+    });
+
     it('parseOdeXmlToJson sorts pages by odeNavStructureOrder', () => {
       const originalDOMParser = global.DOMParser;
 
@@ -718,6 +1253,300 @@ describe('progress-report iDevice (export)', () => {
       } finally {
         global.DOMParser = originalDOMParser;
       }
+    });
+  });
+
+  describe('parseComponentProperties', () => {
+    it('returns an empty object for a missing or blank payload', () => {
+      expect($eXeInforme.parseComponentProperties(undefined)).toEqual({});
+      expect($eXeInforme.parseComponentProperties('')).toEqual({});
+      expect($eXeInforme.parseComponentProperties('   ')).toEqual({});
+    });
+
+    it('returns an empty object for a malformed payload', () => {
+      expect($eXeInforme.parseComponentProperties('{not json')).toEqual({});
+    });
+
+    it('returns an empty object for a payload that is not an object', () => {
+      expect($eXeInforme.parseComponentProperties('42')).toEqual({});
+      expect($eXeInforme.parseComponentProperties('null')).toEqual({});
+    });
+
+    it('parses a valid payload', () => {
+      expect($eXeInforme.parseComponentProperties('{"typeGame":"Adivina"}')).toEqual({
+        typeGame: 'Adivina',
+      });
+    });
+  });
+
+  describe('parseOdeXmlToJson component listing', () => {
+    // The exporter wraps htmlView in CDATA, so the markup reaches the parser as
+    // text: escaping it here reproduces that. Quotes need no escaping inside XML
+    // text, so the JSON payload goes in verbatim.
+    const escapeXml = (value) =>
+      value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const buildComponent = ({ id, type = '', html = '', json = '', order }) => `
+      <odeComponent>
+        <odeIdeviceId>${id}</odeIdeviceId>
+        <odeIdeviceTypeName>${type}</odeIdeviceTypeName>
+        <htmlView>${escapeXml(html)}</htmlView>
+        <jsonProperties>${json}</jsonProperties>
+        ${order === undefined ? '' : `<odeComponentsOrder>${order}</odeComponentsOrder>`}
+      </odeComponent>`;
+
+    const buildBlock = ({ name = 'Block', order, components }) => `
+      <odePagStructure>
+        <blockName>${name}</blockName>
+        ${order === undefined ? '' : `<odePagStructureOrder>${order}</odePagStructureOrder>`}
+        <odeComponents>${components.map(buildComponent).join('')}</odeComponents>
+      </odePagStructure>`;
+
+    const buildXmlWithBlocks = (blocks) => `<ode>
+      <odeNavStructures>
+        <odeNavStructure>
+          <odePageId>page-1</odePageId>
+          <odeParentPageId></odeParentPageId>
+          <pageName>Page 1</pageName>
+          <odeNavStructureOrder>1</odeNavStructureOrder>
+          <odePagStructures>${blocks.map(buildBlock).join('')}</odePagStructures>
+        </odeNavStructure>
+      </odeNavStructures>
+    </ode>`;
+
+    const buildXml = (components, blockName = 'Block') =>
+      buildXmlWithBlocks([{ name: blockName, components }]);
+
+    const componentsOfFirstPage = (xml) => $eXeInforme.parseOdeXmlToJson(xml)[0].components;
+
+    it.each([1, 0, '', '   ', undefined, 'invalid'])('keeps XML blocks with order %s together', (order) => {
+      const components = componentsOfFirstPage(buildXmlWithBlocks([
+        { name: 'Same title', order, components: [{ id: 'a1', order: 1 }, { id: 'a0', order: 0 }] },
+        { name: 'Same title', order, components: [{ id: 'b1', order: 1 }, { id: 'b0', order: 0 }] },
+      ]));
+
+      expect(components.map((component) => component.odeIdeviceId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+    });
+
+    it('uses source positions for blank component orders without moving them before explicit orders', () => {
+      const components = componentsOfFirstPage(buildXml([
+        { id: 'first', order: 0 }, { id: 'second', order: 1 }, { id: 'third', order: ' ' },
+      ]));
+
+      expect(components.map((component) => component.odeIdeviceId)).toEqual(['first', 'second', 'third']);
+    });
+
+    it('does not let blank block orders precede blocks with an explicit order', () => {
+      const components = componentsOfFirstPage(buildXmlWithBlocks([
+        { order: 0, components: [{ id: 'first' }] },
+        { order: 1, components: [{ id: 'second' }] },
+        { order: ' ', components: [{ id: 'third' }] },
+      ]));
+
+      expect(components.map((component) => component.odeIdeviceId)).toEqual(['first', 'second', 'third']);
+    });
+
+    it('lists a component once when its payload carries a stale id', () => {
+      // Duplicating a page gives the copy a new id but keeps the old one
+      // inside jsonProperties, which used to list the activity twice.
+      const components = componentsOfFirstPage(
+        buildXml([
+          {
+            id: 'idevice-copy',
+            type: 'crossword',
+            json: '{"id":"20250605150704JMURGS"}',
+          },
+        ])
+      );
+
+      expect(components).toHaveLength(1);
+      expect(components[0].odeIdeviceId).toBe('idevice-copy');
+      expect(components[0].odeIdeviceTypeName).toBe('crossword');
+    });
+
+    it('lists a component once when its payload carries no id', () => {
+      const components = componentsOfFirstPage(
+        buildXml([{ id: 'idevice-1', type: 'interactive-video', json: '{"sources":[]}' }])
+      );
+
+      expect(components).toHaveLength(1);
+      expect(components[0].odeIdeviceTypeName).toBe('interactive-video');
+    });
+
+    it('keeps every component of a block, in document order', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          { id: 'idevice-1', type: 'text', json: '{"ideviceId":"idevice-1"}' },
+          { id: 'idevice-2', type: 'interactive-video', json: '{"sources":[]}' },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['idevice-1', 'idevice-2']);
+    });
+
+    it('preserves document order for integer-like legacy ids', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          { id: '10', type: 'text' },
+          { id: '2', type: 'text' },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['10', '2']);
+    });
+
+    it('keeps components that carry no id at all', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          { id: '', type: 'text' },
+          { id: '', type: 'crossword' },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceTypeName)).toEqual(['text', 'crossword']);
+    });
+
+    it('keeps the first entry when a damaged file repeats an id', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          { id: 'idevice-1', type: 'text' },
+          { id: 'idevice-1', type: 'crossword' },
+        ])
+      );
+
+      expect(components).toHaveLength(1);
+      expect(components[0].odeIdeviceTypeName).toBe('text');
+    });
+
+    it('falls back to the payload type when the component declares none', () => {
+      const components = componentsOfFirstPage(
+        buildXml([{ id: 'idevice-1', json: '{"typeGame":"Adivina"}' }])
+      );
+
+      expect(components[0].odeIdeviceTypeName).toBe('Adivina');
+    });
+
+    it('takes the evaluation data from the htmlView', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          {
+            id: 'idevice-1',
+            type: 'guess',
+            html: '<div data-evaluationid="FROM-HTML" data-evaluationb="true"></div>',
+            json: '{"data-evaluationid":"FROM-JSON","data-evaluationb":true}',
+          },
+        ])
+      );
+
+      expect(components[0].evaluationID).toBe('FROM-HTML');
+      expect(components[0].evaluation).toBe(true);
+    });
+
+    it('falls back to the payload evaluation data when the htmlView has none', () => {
+      const components = componentsOfFirstPage(
+        buildXml([
+          {
+            id: 'idevice-1',
+            type: 'guess',
+            json: '{"data-evaluationid":"FROM-JSON","data-evaluationb":true}',
+          },
+        ])
+      );
+
+      expect(components[0].evaluationID).toBe('FROM-JSON');
+      expect(components[0].evaluation).toBe(true);
+    });
+
+    it('orders the components of a page by block, then within the block', () => {
+      const components = componentsOfFirstPage(
+        buildXmlWithBlocks([
+          {
+            name: 'Second block',
+            order: 1,
+            components: [{ id: 'b0', type: 'text', order: 0 }],
+          },
+          {
+            name: 'First block',
+            order: 0,
+            components: [
+              { id: 'a1', type: 'text', order: 1 },
+              { id: 'a0', type: 'text', order: 0 },
+            ],
+          },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['a0', 'a1', 'b0']);
+    });
+
+    it('keeps a block together when two blocks share the same order', () => {
+      const components = componentsOfFirstPage(
+        buildXmlWithBlocks([
+          {
+            name: 'First block',
+            order: 1,
+            components: [
+              { id: 'a0', type: 'text', order: 0 },
+              { id: 'a1', type: 'text', order: 1 },
+            ],
+          },
+          {
+            name: 'Second block',
+            order: 1,
+            components: [
+              { id: 'b0', type: 'text', order: 0 },
+              { id: 'b1', type: 'text', order: 1 },
+            ],
+          },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+    });
+
+    it('keeps a block together when the block order fields are empty', () => {
+      const components = componentsOfFirstPage(
+        buildXmlWithBlocks([
+          {
+            name: 'First block',
+            order: '',
+            components: [
+              { id: 'a0', type: 'text', order: 0 },
+              { id: 'a1', type: 'text', order: 1 },
+            ],
+          },
+          {
+            name: 'Second block',
+            order: '',
+            components: [
+              { id: 'b0', type: 'text', order: 0 },
+              { id: 'b1', type: 'text', order: 1 },
+            ],
+          },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['a0', 'a1', 'b0', 'b1']);
+    });
+
+    it('falls back to the position in the file when the order fields are missing', () => {
+      const components = componentsOfFirstPage(
+        buildXmlWithBlocks([
+          { name: 'First block', components: [{ id: 'a0', type: 'text' }] },
+          { name: 'Second block', components: [{ id: 'b0', type: 'text' }] },
+        ])
+      );
+
+      expect(components.map((c) => c.odeIdeviceId)).toEqual(['a0', 'b0']);
+    });
+
+    it('lists a component whose payload is malformed', () => {
+      const components = componentsOfFirstPage(
+        buildXml([{ id: 'idevice-1', type: 'crossword', json: '{broken' }])
+      );
+
+      expect(components).toHaveLength(1);
+      expect(components[0].odeIdeviceTypeName).toBe('crossword');
     });
   });
 

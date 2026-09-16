@@ -681,6 +681,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         await page.locator('#rclEText').fill('France');
         await page.locator('#rclETextBack').fill('Paris');
         await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Options', exact: true }).click();
+        await expect(page.locator('#modalAlert')).toBeHidden();
         await page.locator('#rclETypeNavigation').check();
         await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'SCORM', exact: true }).click();
         await page.locator('#eXeGameSCORMAutoSave').check();

@@ -50,31 +50,103 @@ var $eXeInforme = {
     },
     loadFromContentXml: function (mOption, instanceIndex) {
         const idx = instanceIndex || 0;
-        const isExeIndex =
-            document.documentElement &&
-            document.documentElement.id === 'exe-index';
-        const rutaContent = isExeIndex ? './content.xml' : '../content.xml';
-        fetch(rutaContent)
-            .then((response) => response.text())
+        // content.xml sits at the package root. Resolving it as `../content.xml`
+        // only worked from a page inside `html/`: on the cover, which is the
+        // root's own index.html, it pointed one level above the package and
+        // always 404'd, even when the file was right there.
+        const rutaContent = `${$eXeInforme.getPackageRoot(
+            window.location.pathname
+        )}/content.xml`;
+        // Returned so callers -- and tests -- can wait for the report to settle.
+        return fetch(rutaContent)
+            .then((response) => {
+                // A package exported without the editable source ships no
+                // content.xml at all, and a web server answers that request
+                // with a 404 whose HTML body `fetch` resolves happily. Reject
+                // it, or the error page parses to zero pages and the report
+                // renders empty instead of falling back below.
+                if (!response.ok) {
+                    throw new Error(
+                        `content.xml unavailable (${response.status})`
+                    );
+                }
+                return response.text();
+            })
             .then((xmlString) => {
                 const pagesJson = this.parseOdeXmlToJson(xmlString);
+                // Same outcome, different cause: a server that rewrites an
+                // unknown path to a 200 page, or a truncated content.xml,
+                // parses without throwing and yields nothing.
+                if (!pagesJson.length) {
+                    throw new Error('content.xml carried no pages');
+                }
                 const pagesHtml = this.generateHtmlFromJsonPages(pagesJson);
                 $eXeInforme.createTableIdevices(pagesHtml, idx);
                 $eXeInforme.updatePages(mOption.dataIDevices, idx);
                 $eXeInforme.applyTypeShow(mOption.typeshow, idx);
             })
             .catch(() => {
-                if ($eXeInforme._hasPagesMetadata()) {
-                    $eXeInforme.loadFromDom(mOption, idx);
-                    return;
-                }
-                const $msg = $(`#informeNotLocal-${idx}`);
-                if ($msg.length) {
-                    $msg.show();
-                }
+                if ($eXeInforme.loadFromStoredStructure(mOption, idx)) return;
+                $eXeInforme.loadFromPagesMetadata(mOption, idx);
             });
     },
 
+    /**
+     * Build the report from the course map stored inside the iDevice itself.
+     *
+     * The editor captures the page tree every time the author saves the report
+     * (`sessionIdevices`), and it travels inside the activity's own payload, so
+     * it is the one source that survives an export with no content.xml --
+     * SCORM and IMS packages among them, which never carry the search index
+     * either. It keeps the page hierarchy, which that index cannot.
+     *
+     * It is a snapshot, so content.xml is always preferred: this only runs when
+     * that fetch failed. A project edited after the last save of this report
+     * shows here as it was then, which is what the 'Update' button in the
+     * editor is for.
+     *
+     * @returns true when the stored map was usable and the report was built
+     */
+    loadFromStoredStructure: function (mOption, instanceIndex) {
+        const idx = instanceIndex || 0;
+        const stored = mOption && mOption.sessionIdevices;
+        if (!Array.isArray(stored) || stored.length === 0) return false;
+
+        const pages = $eXeInforme.createPagesHtml(stored);
+        $eXeInforme.createTableIdevices(pages, idx);
+        $eXeInforme.updatePages(mOption.dataIDevices, idx);
+        $eXeInforme.applyTypeShow(mOption.typeshow, idx);
+        return true;
+    },
+
+    /**
+     * Fall back to the page metadata shipped with the search box.
+     *
+     * It lists the same pages but stores no parent, so the report comes out
+     * flat. That is still the best available answer when content.xml cannot be
+     * read — which is the normal state of a package exported with the editable
+     * source disabled, not an error the author can act on.
+     */
+    loadFromPagesMetadata: function (mOption, instanceIndex) {
+        const idx = instanceIndex || 0;
+        if ($eXeInforme._hasPagesMetadata()) {
+            $eXeInforme.loadFromDom(mOption, idx);
+            return;
+        }
+        const $msg = $(`#informeNotLocal-${idx}`);
+        if ($msg.length) {
+            $msg.show();
+        }
+    },
+
+    /**
+     * Build the page tree from an exported content.xml.
+     *
+     * `jsonProperties` is written inside every <odeComponent> and nowhere
+     * else, so it must be read from the component itself: reading it from the
+     * block descends into the first component and lists that component twice,
+     * which is what duplicated a page's activities in exported packages.
+     */
     parseOdeXmlToJson: function (xmlString) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
@@ -98,35 +170,19 @@ var $eXeInforme = {
             const pagStructures = pageNode.querySelectorAll(
                 'odePagStructures > odePagStructure'
             );
-            pagStructures.forEach((pagStruct) => {
+            pagStructures.forEach((pagStruct, blockIndex) => {
                 const blockName =
                     pagStruct.querySelector('blockName')?.textContent || '';
-                const jsonProp = pagStruct.querySelector('jsonProperties');
-                if (
-                    jsonProp &&
-                    jsonProp.textContent &&
-                    jsonProp.textContent.trim().length > 0
-                ) {
-                    try {
-                        const sanitized = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(jsonProp.textContent);
-                        const json = JSON.parse(sanitized);
-                        components.push({
-                            odeIdeviceId: json.id || json.ideviceId || '',
-                            odeIdeviceTypeName:
-                                json.typeGame || json.type || '',
-                            blockName: blockName,
-                            evaluationID: json['data-evaluationid'] || '',
-                            evaluation: json['data-evaluationb'] || null,
-                        });
-                    } catch (e) {
-                        //
-                    }
-                }
+                const blockOrder = $eXeInforme.readOrder(
+                    pagStruct,
+                    'odePagStructureOrder',
+                    blockIndex
+                );
 
                 const odeComponents = pagStruct.querySelectorAll(
                     'odeComponents > odeComponent'
                 );
-                odeComponents.forEach((comp) => {
+                odeComponents.forEach((comp, componentIndex) => {
                     const ideviceId =
                         comp.querySelector('odeIdeviceId')?.textContent || '';
                     const typeName =
@@ -149,33 +205,60 @@ var $eXeInforme = {
                             evaluation = true;
                     }
 
+                    // The payload only fills the gaps the htmlView left: it is
+                    // the older of the two sources and iDevices that store an
+                    // outdated copy of their own data must not override it.
+                    let typeFromJson = '';
+                    if (!typeName || !evaluationID) {
+                        const json = $eXeInforme.parseComponentProperties(
+                            comp.querySelector('jsonProperties')?.textContent
+                        );
+                        typeFromJson = json.typeGame || json.type || '';
+                        if (!evaluationID && json['data-evaluationid']) {
+                            evaluationID = json['data-evaluationid'];
+                            evaluation = Boolean(json['data-evaluationb']);
+                        }
+                    }
+
+                    const componentOrder = $eXeInforme.readOrder(
+                        comp,
+                        'odeComponentsOrder',
+                        componentIndex
+                    );
+
                     components.push({
                         odeIdeviceId: ideviceId,
-                        odeIdeviceTypeName: typeName,
+                        odeIdeviceTypeName: typeName || typeFromJson,
                         blockName,
                         evaluationID,
                         evaluation,
+                        blockOrder,
+                        // The position in the file identifies the block and
+                        // breaks ties between blocks that declare one order.
+                        blockIndex,
+                        componentOrder,
                     });
                 });
             });
 
-            const filtered = {};
-            components.forEach((comp) => {
-                const prev = filtered[comp.odeIdeviceId];
-                if (!prev) {
-                    filtered[comp.odeIdeviceId] = comp;
-                } else {
-                    if (!prev.evaluationID && comp.evaluationID) {
-                        filtered[comp.odeIdeviceId] = comp;
-                    } else if (
-                        !prev.odeIdeviceTypeName &&
-                        comp.odeIdeviceTypeName
-                    ) {
-                        filtered[comp.odeIdeviceId] = comp;
-                    }
-                }
+            // The order fields are authoritative; the position in the file is
+            // only the fallback for an export that omits them.
+            $eXeInforme.sortComponentsByBlock(components, {
+                blockId: ['blockIndex'],
+                blockOrder: 'blockOrder',
+                componentOrder: 'componentOrder',
             });
-            components = Object.values(filtered);
+
+            // An id repeats only in a damaged file; keep the first entry and
+            // preserve the order computed above, which an object keyed by id
+            // would lose (integer-like legacy ids get hoisted to the front).
+            const seenIds = new Set();
+            components = components.filter((comp) => {
+                if (!comp.odeIdeviceId) return true;
+                if (seenIds.has(comp.odeIdeviceId)) return false;
+                seenIds.add(comp.odeIdeviceId);
+                return true;
+            });
 
             flatPages.push({
                 odePageId,
@@ -206,10 +289,12 @@ var $eXeInforme = {
         });
 
         const sortByOrder = (a, b) => (a.order || 0) - (b.order || 0);
+        // Every level is visited, including below a page with a single child:
+        // sorting one node is a no-op, but its own subtree still needs sorting.
         const sortTree = (nodes) => {
             nodes.sort(sortByOrder);
             nodes.forEach((node) => {
-                if (Array.isArray(node.children) && node.children.length > 1) {
+                if (Array.isArray(node.children) && node.children.length > 0) {
                     sortTree(node.children);
                 }
             });
@@ -217,6 +302,80 @@ var $eXeInforme = {
         sortTree(roots);
 
         return roots;
+    },
+
+    /**
+     * Order the iDevices a page shows, block by block.
+     *
+     * The order of an iDevice counts only inside its own block, and two blocks
+     * of the same page routinely carry the same order (or none at all), so the
+     * block is the outer unit: its declared order first, its position in the
+     * source as the tie-break, and only then the order inside the block.
+     * Comparing the inner order across blocks interleaves them.
+     *
+     * `keys.blockId` lists the fields that may carry the block id, in order of
+     * preference, because the sources name it differently.
+     */
+    sortComponentsByBlock: function (components, keys) {
+        const blockOf = (component) => {
+            for (const key of keys.blockId) {
+                const value = component[key];
+                if (value !== undefined && value !== null && value !== '') {
+                    return String(value);
+                }
+            }
+            return '';
+        };
+        const blockSequence = new Map();
+        components.forEach((component) => {
+            const blockId = blockOf(component);
+            if (!blockSequence.has(blockId)) {
+                blockSequence.set(blockId, blockSequence.size);
+            }
+        });
+
+        components.sort(
+            (a, b) =>
+                a[keys.blockOrder] - b[keys.blockOrder] ||
+                blockSequence.get(blockOf(a)) - blockSequence.get(blockOf(b)) ||
+                a[keys.componentOrder] - b[keys.componentOrder]
+        );
+        return components;
+    },
+
+    /**
+     * Read an order field of the XML.
+     *
+     * A missing, blank or non-numeric value resolves to `fallback` -- the
+     * element's position in the file -- and not to 0, which would push it
+     * ahead of everything that does declare an order.
+     */
+    readOrder: function (node, selector, fallback) {
+        const raw = node?.querySelector(selector)?.textContent;
+        if (raw == null || String(raw).trim() === '') return fallback;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    },
+
+    /**
+     * Parse the <jsonProperties> payload of a single <odeComponent>.
+     *
+     * A missing or malformed payload resolves to an empty object: the
+     * component is still listed, only without what the payload would have
+     * contributed.
+     */
+    parseComponentProperties: function (rawJson) {
+        if (!rawJson || rawJson.trim().length === 0) return {};
+        try {
+            const sanitized =
+                $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                    rawJson
+                );
+            const parsed = JSON.parse(sanitized);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (e) {
+            return {};
+        }
     },
 
     enable: function () {
@@ -639,14 +798,29 @@ var $eXeInforme = {
                 $eXeInforme.addEvents();
             }
 
-            if ($eXeInforme._hasPagesMetadata() || $eXeInforme.isPreviewMode()) {
-                $eXeInforme.loadFromDom(mOption, i);
-            } else if (eXe.app.isInExe()) {
-                $eXeInforme.getIdevicesBySessionId(true, mOption, i);
-            } else {
-                $eXeInforme.loadFromContentXml(mOption, i);
-            }
+            $eXeInforme.loadCourseMap(mOption, i, true);
         });
+    },
+
+    /**
+     * Load the course map of one instance from the best source available.
+     *
+     * Inside the preview the surrounding workarea holds the live document, and
+     * in the workarea itself the Y.Doc does. An exported package reads
+     * content.xml, the only source that carries the page tree: the search index
+     * that ships with the search box lists the same pages but stores no parent,
+     * so it flattens the report. It stays as the fallback of
+     * `loadFromContentXml`, which a package exported with the editable source
+     * disabled always takes: it ships no content.xml at all.
+     */
+    loadCourseMap: function (mOption, instanceIndex, init) {
+        if ($eXeInforme.isPreviewMode()) {
+            $eXeInforme.loadFromDom(mOption, instanceIndex);
+        } else if (eXe.app.isInExe()) {
+            $eXeInforme.getIdevicesBySessionId(init, mOption, instanceIndex);
+        } else {
+            $eXeInforme.loadFromContentXml(mOption, instanceIndex);
+        }
     },
     async getIdevicesBySessionId(init, mOption, instanceIndex) {
         const idx = instanceIndex || 0;
@@ -887,7 +1061,12 @@ var $eXeInforme = {
                     row.htmlViewer,
                     row.jsonProperties
                 );
-                const ideviceID = dataIDs.ideviceID || row.ode_idevice_id || '';
+                // The learner's result is stored under the id of the iDevice's
+                // own node in the page, which is the component id, so the row
+                // has to carry that one: the copy embedded in the htmlView or
+                // in the payload still points at the original after a page is
+                // duplicated, and the score would never reach its row.
+                const ideviceID = row.ode_idevice_id || dataIDs.ideviceID || '';
                 // Use row.evaluationID as fallback if not found in htmlViewer/jsonProperties
                 const evaluationID = dataIDs.evaluationID || row.evaluationID || '';
                 // Use row.evaluation as fallback
@@ -907,6 +1086,7 @@ var $eXeInforme = {
                     odeIdeviceTypeName: row.odeIdeviceTypeName,
                     ode_components_sync_order:
                         Number(row.ode_components_sync_order) || 0,
+                    blockOrder: Number(row.blockOrder) || 0,
                     componentIsActive: row.componentIsActive,
                 });
             }
@@ -914,11 +1094,11 @@ var $eXeInforme = {
 
         Object.values(pageIndex).forEach((p) => {
             if (Array.isArray(p.components) && p.components.length > 1) {
-                p.components.sort(
-                    (a, b) =>
-                        a.ode_components_sync_order -
-                        b.ode_components_sync_order
-                );
+                $eXeInforme.sortComponentsByBlock(p.components, {
+                    blockId: ['ode_block_id', 'ode_pag_structure_sync_id'],
+                    blockOrder: 'blockOrder',
+                    componentOrder: 'ode_components_sync_order',
+                });
             }
         });
 
@@ -1028,13 +1208,27 @@ var $eXeInforme = {
         return mOptions;
     },
 
+    /**
+     * Path of the package root, given the path of the page showing the report.
+     *
+     * The exporter writes the cover to `index.html` at the root and every other
+     * page to `html/<name>.html`, so walking up means dropping the file name
+     * and then the `html` folder if the page was in one. Both the page links
+     * and the content.xml fetch resolve from here: they used to compute it
+     * separately, and each got it wrong in a different place.
+     */
+    getPackageRoot: function (pathname) {
+        return String(pathname || '')
+            .replace(/\/[^/]*\.[^/]*$/, '')
+            .replace(/\/+$/, '')
+            .replace(/\/html$/i, '');
+    },
+
     getURLPage: function (pageId) {
         if (!pageId) return '';
 
         const url = new URL(window.location.href);
-
-        let base = url.pathname.replace(/\/html(\/.*)?$/i, '');
-        base = base.replace(/\/$/, '');
+        const base = $eXeInforme.getPackageRoot(url.pathname);
 
         if (pageId === 'index') {
             url.pathname = `${base}/index.html`;
@@ -1063,187 +1257,29 @@ var $eXeInforme = {
         return html;
     },
 
+    /**
+     * Turn a page title into the file name the exporter gave that page.
+     *
+     * This has to stay identical to BaseExporter.sanitizePageFilename(): the
+     * report links to files it does not name, and every divergence produced a
+     * 404 -- the previous version collapsed repeated separators, so a page
+     * titled 'Adivina - Acceso' was linked as 'adivina-acceso.html' while the
+     * exporter had written 'adivina---acceso.html'.
+     */
     normalizeFileName: function (fileName) {
-        const replacements = {
-            à: 'a',
-            á: 'a',
-            â: 'a',
-            ã: 'a',
-            ä: 'ae',
-            å: 'aa',
-            æ: 'ae',
-            ç: 'c',
-            è: 'e',
-            é: 'e',
-            ê: 'e',
-            ë: 'ee',
-            ì: 'i',
-            í: 'i',
-            î: 'i',
-            ï: 'i',
-            ð: 'dh',
-            ñ: 'n',
-            ò: 'o',
-            ó: 'o',
-            ô: 'o',
-            õ: 'o',
-            ö: 'oe',
-            ø: 'oe',
-            ù: 'u',
-            ú: 'u',
-            û: 'u',
-            ü: 'ue',
-            ý: 'y',
-            þ: 'th',
-            ÿ: 'y',
-            ā: 'aa',
-            ă: 'a',
-            ą: 'a',
-            ć: 'c',
-            ĉ: 'c',
-            ċ: 'c',
-            č: 'ch',
-            ď: 'd',
-            đ: 'd',
-            ē: 'ee',
-            ĕ: 'e',
-            ė: 'e',
-            ę: 'e',
-            ě: 'e',
-            ĝ: 'g',
-            ğ: 'g',
-            ġ: 'g',
-            ģ: 'g',
-            ĥ: 'h',
-            ħ: 'hh',
-            ĩ: 'i',
-            ī: 'ii',
-            ĭ: 'i',
-            į: 'i',
-            ı: 'i',
-            ĳ: 'ij',
-            ĵ: 'j',
-            ķ: 'k',
-            ĸ: 'k',
-            ĺ: 'l',
-            ļ: 'l',
-            ľ: 'l',
-            ŀ: 'l',
-            ł: 'l',
-            ń: 'n',
-            ņ: 'n',
-            ň: 'n',
-            ŉ: 'n',
-            ŋ: 'ng',
-            ō: 'oo',
-            ŏ: 'o',
-            ő: 'oe',
-            œ: 'oe',
-            ŕ: 'r',
-            ŗ: 'r',
-            ř: 'r',
-            ś: 's',
-            ŝ: 's',
-            ş: 's',
-            š: 'sh',
-            ţ: 't',
-            ť: 't',
-            ŧ: 'th',
-            ũ: 'u',
-            ū: 'uu',
-            ŭ: 'u',
-            ů: 'u',
-            ű: 'ue',
-            ų: 'u',
-            ŵ: 'w',
-            ŷ: 'y',
-            ź: 'z',
-            ż: 'z',
-            ž: 'zh',
-            ſ: 's',
-            ǝ: 'e',
-            ș: 's',
-            ț: 't',
-            ơ: 'o',
-            ư: 'u',
-            ầ: 'a',
-            ằ: 'a',
-            ề: 'e',
-            ồ: 'o',
-            ờ: 'o',
-            ừ: 'u',
-            ỳ: 'y',
-            ả: 'a',
-            ẩ: 'a',
-            ẳ: 'a',
-            ẻ: 'e',
-            ể: 'e',
-            ỉ: 'i',
-            ỏ: 'o',
-            ổ: 'o',
-            ở: 'o',
-            ủ: 'u',
-            ử: 'u',
-            ỷ: 'y',
-            ẫ: 'a',
-            ẵ: 'a',
-            ẽ: 'e',
-            ễ: 'e',
-            ỗ: 'o',
-            ỡ: 'o',
-            ữ: 'u',
-            ỹ: 'y',
-            ấ: 'a',
-            ắ: 'a',
-            ế: 'e',
-            ố: 'o',
-            ớ: 'o',
-            ứ: 'u',
-            ạ: 'a',
-            ậ: 'a',
-            ặ: 'a',
-            ẹ: 'e',
-            ệ: 'e',
-            ị: 'i',
-            ọ: 'o',
-            ộ: 'o',
-            ợ: 'o',
-            ụ: 'u',
-            ự: 'u',
-            ỵ: 'y',
-            ɑ: 'a',
-            ǖ: 'uu',
-            ǘ: 'uu',
-            ǎ: 'a',
-            ǐ: 'i',
-            ǒ: 'o',
-            ǔ: 'u',
-            ǚ: 'uu',
-            ǜ: 'uu',
-            '&': '-',
-        };
-
-        const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const replacerPattern = new RegExp(
-            Object.keys(replacements).map(escapeRegex).join('|'),
-            'g'
-        );
-        const specialPattern = /[¨`@^+¿?\[\]\/\\=<>:;,'"#$*()|~!{}%’«»”“]/g;
-        const controlPattern = /[\x00-\x1F\x7F]/g;
-        const underscorePattern = /_+/g;
-        const dashDotPattern = /[.\-]+/g;
-        const trimPattern = /^[.\-]+|[.\-]+$/g;
         if (typeof fileName !== 'string') return '';
 
-        return fileName
+        const sanitized = fileName
             .toLowerCase()
-            .replace(replacerPattern, (m) => replacements[m])
-            .replace(specialPattern, '')
-            .replace(/ /g, '-')
-            .replace(underscorePattern, '_')
-            .replace(controlPattern, '')
-            .replace(dashDotPattern, '-')
-            .replace(trimPattern, '');
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .substring(0, 50);
+
+        // A title written entirely in a non-Latin script strips down to
+        // nothing, and the exporter names that page 'page.html'.
+        return sanitized || 'page';
     },
 
     generateHtmlFromPages: function (pages, acc) {
@@ -1731,13 +1767,7 @@ var $eXeInforme = {
                     'dataEvaluation-' + mOption.evaluationID
                 );
                 mOption.dataIDevices = [];
-                if ($eXeInforme._hasPagesMetadata() || $eXeInforme.isPreviewMode()) {
-                    $eXeInforme.loadFromDom(mOption, idx);
-                } else if (eXe.app.isInExe()) {
-                    $eXeInforme.getIdevicesBySessionId(false, mOption, idx);
-                } else {
-                    $eXeInforme.loadFromContentXml(mOption, idx);
-                }
+                $eXeInforme.loadCourseMap(mOption, idx, false);
             }
         });
 
