@@ -3853,7 +3853,8 @@ var $eXeMapa = {
         } else if (mOptions.evaluationG == 6) {
             if (mOptions.numLevel == 0) {
                 if (
-                    (p.type !== 9 || p.score >= 5) &&
+                    (p.type !== 9 ||
+                        p.score >= $exe.passScore.resolve(mOptions)) &&
                     mOptions.activeMap.active == mOptions.activeGame
                 ) {
                     mOptions.activeGame++;
@@ -4469,7 +4470,8 @@ var $eXeMapa = {
     gameTPOver: function (instance) {
         const mOptions = $eXeMapa.options[instance],
             p = mOptions.activeMap.pts[mOptions.activeMap.active],
-            color = p.score >= 5 ? 2 : 1,
+            passed = p.score >= $exe.passScore.resolve(mOptions),
+            color = passed ? 2 : 1,
             lm = mOptions.msgs.msgSuccessfulActivity.replace(
                 '%s',
                 p.score.toFixed(2)
@@ -4478,7 +4480,7 @@ var $eXeMapa = {
                 '%s',
                 p.score.toFixed(2)
             ),
-            message = p.score >= 5 ? lm : rm;
+            message = passed ? lm : rm;
         $('#mapaBottonContainer1-' + instance).css({
             'justify-content': 'space-between',
         });

@@ -1,4 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 require('./common.js');
 
@@ -396,6 +398,44 @@ describe('common.js $exe helpers', () => {
       it('converts the current page value when called with no argument', () => {
         setMeta('7.5');
         expect(global.$exe.passScore.toPercent()).toBe(75);
+      });
+    });
+
+    /**
+     * The threshold reached the progress report for free -- the iDevices hand
+     * their whole options object to report.saveEvaluation, which resolves it --
+     * but the message the learner reads is decided inside each export, and nine
+     * of them went on comparing the score against a literal 5. The report said
+     * "not passed" and the very same screen painted the score green.
+     *
+     * A literal cannot be the pass mark anywhere, so the check is a scan: any
+     * export that reintroduces one fails here rather than in a course.
+     */
+    describe('no export decides a verdict against a literal 5', () => {
+      const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
+      // Two shapes, because the nine offenders wrote it both ways: a
+      // score-named operand compared against a bare 5 (`p.score >= 5`,
+      // `mOptions.scorep < 5`), and any comparison against a bare 5 that feeds
+      // a ternary (`hits * 10 / total >= 5 ? 2 : 1`, `sp < 5 ? red : green`).
+      // The negative lookahead keeps 5.5 and 50 out: those are other
+      // quantities, not the mark.
+      const VERDICT = /\bscores?\w*\s*[<>]=?\s*5(?![\d.])|[<>]=?\s*5(?![\d.])\s*\?/;
+      // `numeroTemas` is how many topics a trivial board has, and four is the
+      // minimum it can draw. Nothing to do with a mark.
+      const NOT_A_MARK = /numeroTemas\s*<\s*5/g;
+
+      const exports = readdirSync(IDEVICES_DIR)
+        .map((name) => ({ name, file: join(IDEVICES_DIR, name, 'export', `${name}.js`) }))
+        .filter(({ file }) => existsSync(file))
+        .map(({ name, file }) => ({ name, source: readFileSync(file, 'utf-8') }));
+
+      it('finds the exports to scan', () => {
+        expect(exports.length).toBeGreaterThan(30);
+      });
+
+      it.each(exports.map(({ name }) => name))('%s resolves the mark instead', (name) => {
+        const { source } = exports.find((entry) => entry.name === name);
+        expect(source.replace(NOT_A_MARK, '')).not.toMatch(VERDICT);
       });
     });
   });

@@ -450,4 +450,51 @@ describe('dragdrop iDevice export', () => {
       expect($.fn.droppable).toHaveBeenCalled();
     });
   });
+
+  /**
+   * showScoreGame picks the colour of the message the learner reads. It used to
+   * compare against a literal 5, which contradicted the progress report sitting
+   * on the same page -- the report called a 6 out of 10 "not passed" against a
+   * mark of 8 while this message painted it green.
+   *
+   * Colour 2 is the pass colour, 1 the fail colour; showMessage is where they
+   * are turned into a style, so that is what is observed.
+   */
+  describe('the message colour follows the pass mark', () => {
+    const instance = 0;
+
+    const play = (passScoreMode, passScoreCustom) => {
+      const showMessage = vi.spyOn($eXeDragDrop, 'showMessage').mockImplementation(() => {});
+      $eXeDragDrop.options[instance] = {
+        hits: 6,
+        errors: 4,
+        numberCards: 10,
+        realNumberCards: 10,
+        cardsGame: new Array(10),
+        passScoreMode,
+        passScoreCustom,
+        itinerary: { showClue: false },
+        msgs: { msgEndGameM: '%s' },
+      };
+      document.body.innerHTML = `<div id="dadPRepeatActivity-${instance}"></div>`;
+      $eXeDragDrop.showScoreGame(instance);
+      return showMessage.mock.calls[0][0];
+    };
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('passes a 6 on the project mark of 5', () => {
+      expect(play('global')).toBe(2);
+    });
+
+    it('fails the same 6 when the author set the mark at 8', () => {
+      expect(play('custom', 8)).toBe(1);
+    });
+
+    it('passes the same 6 when the author set the mark at 4.5', () => {
+      expect(play('custom', 4.5)).toBe(2);
+    });
+  });
 });

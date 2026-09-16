@@ -1622,11 +1622,22 @@ var $eXeInforme = {
                         .find('.IFPP-ComponentScore')
                         .text($eXeInforme.formatNumber(sp));
 
-                    let bgc = sp < 5 ? '#B61E1E' : '#007F5F';
-                    let icon =
-                        sp < 5
-                            ? 'IFPP-IdiviceIconFail'
-                            : 'IFPP-IdiviceIconPass';
+                    // The verdict is not recomputed here. Each activity was
+                    // judged against its own pass mark when it reported, and
+                    // stored the outcome in `state` (2 = passed). Comparing
+                    // the score against a literal 5 instead contradicted that:
+                    // an activity whose author set the mark at 8 was listed as
+                    // "not passed" in its own row and painted green here.
+                    // A record written by the live event may carry no state, so
+                    // the project mark is the fallback -- never a literal 5.
+                    let passed =
+                        typeof idevice.state === 'undefined'
+                            ? sp >= $exe.passScore.get()
+                            : idevice.state === 2;
+                    let bgc = passed ? '#007F5F' : '#B61E1E';
+                    let icon = passed
+                        ? 'IFPP-IdiviceIconPass'
+                        : 'IFPP-IdiviceIconFail';
                     $idevice
                         .find('.IFPP-Icon')
                         .removeClass(
@@ -1644,7 +1655,9 @@ var $eXeInforme = {
         let scoretotal = score / $eXeInforme.options.number;
         scoretotal = $eXeInforme.formatNumber(scoretotal);
 
-        let bgc = scoretotal < 5 ? '#B61E1E' : '#007F5F';
+        // The average spans activities that may each carry a different mark,
+        // so the project's is the only threshold that means anything for it.
+        let bgc = scoretotal < $exe.passScore.get() ? '#B61E1E' : '#007F5F';
         $(`#informeTotalActivities-${idx}`).text(
             $eXeInforme.options.msgs.mssActivitiesNumber.replace(
                 '%s',

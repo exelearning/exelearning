@@ -1457,6 +1457,33 @@ global.$exe = {
   hasTooltips: vi.fn(() => {}),
   setMultimediaGalleries: vi.fn(() => {}),
   setModalWindowContentSize: vi.fn(() => {}),
+  /**
+   * The pass score resolver every scoring iDevice consults to decide whether
+   * the learner passed. Faithful to common.js rather than a stub returning a
+   * constant: a test that customises `passScoreMode` must see the customised
+   * mark, or it proves nothing about the code under test.
+   */
+  passScore: {
+    DEFAULT: 5,
+    MIN: 0,
+    MAX: 10,
+    normalize: (value) => {
+      const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
+      if (!Number.isFinite(parsed)) return 5;
+      return Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10;
+    },
+    get: () => global.$exe.passScore.normalize(global.$exe.passScore.DEFAULT),
+    resolve: (data) =>
+      data && data.passScoreMode === 'custom'
+        ? global.$exe.passScore.normalize(data.passScoreCustom)
+        : global.$exe.passScore.get(),
+    toPercent: (value) =>
+      Math.round(
+        (value === undefined
+          ? global.$exe.passScore.get()
+          : global.$exe.passScore.normalize(value)) * 1000
+      ) / 100,
+  },
 };
 
 if (typeof window !== 'undefined') {

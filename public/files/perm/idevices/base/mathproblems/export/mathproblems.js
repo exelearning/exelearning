@@ -1102,7 +1102,7 @@ var $eXeMathProblems = {
             '%s',
             mOptions.score.toFixed(2)
         );
-        type = mOptions.score >= 5 ? 2 : 1;
+        type = mOptions.score >= $exe.passScore.resolve(mOptions) ? 2 : 1;
 
         $eXeMathProblems.showMessage(type, message, instance);
         const aa = $exeDevices.iDevice.gamification.helpers.shuffleAds(

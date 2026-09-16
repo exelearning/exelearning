@@ -931,7 +931,7 @@ var $trueorfalse = {
 
         const message =
             mOptions.msgs.msgYouScore + ': ' + mOptions.scorep.toFixed(2);
-        const type = mOptions.scorep < 5 ? 1 : 2;
+        const type = mOptions.scorep < $exe.passScore.resolve(mOptions) ? 1 : 2;
 
         $trueorfalse.showMessage(type, message, instance);
         $trueorfalse.saveEvaluation(mOptions);

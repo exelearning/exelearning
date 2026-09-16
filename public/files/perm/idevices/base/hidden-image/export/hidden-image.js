@@ -737,7 +737,10 @@ var $eXeHiddenImage = {
         $('#hiPContainer-' + instance).hide();
         $exeDevices.iDevice.gamification.media.stopSound();
 
-        const typem = parseInt(score) >= 5 ? 2 : 1;
+        // parseFloat, not parseInt: the pass mark carries a decimal, and
+        // truncating 7.9 to 7 failed a learner who had passed a 7.5 activity.
+        const typem =
+            parseFloat(score) >= $exe.passScore.resolve(mOptions) ? 2 : 1;
         const message = msgs.msgGameOver.replace('%s', score);
         $eXeHiddenImage.showMessage(typem, message, instance);
         $eXeHiddenImage.clearQuestions(instance);
