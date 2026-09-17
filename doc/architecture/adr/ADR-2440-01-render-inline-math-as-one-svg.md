@@ -11,7 +11,7 @@ reviewers:
   - "@mnarvaezm"
   - "@ignaciogros"
 related:
-  prs: []
+  prs: [2441]
   changes: []
   adrs:
     - ADR-2259-01
