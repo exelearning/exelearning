@@ -7,7 +7,7 @@
  * runtime and must never be treated as requirements, or the entrypoint rejects
  * hardware Bun runs on perfectly well (Sandy Bridge, Ivy Bridge).
  *
- * See doc/architecture/adr/ADR-2436-01-require-only-sse4_2-for-bun-x64.md.
+ * See doc/architecture/adr/ADR-2442-01-require-only-sse4-2-on-x64.md.
  *
  * The tests run the real `check_bun_cpu_requirements` body extracted from the
  * shipped entrypoint, with only the `/proc/cpuinfo` path and `uname` redirected
