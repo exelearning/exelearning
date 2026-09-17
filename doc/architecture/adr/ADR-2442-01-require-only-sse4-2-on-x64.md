@@ -141,10 +141,17 @@ actually ship?
 
 ## Decision
 
-We will require **only `sse4_2`** in the x86_64 branch of
-`check_bun_cpu_requirements`, and pin the Docker image to **Bun 1.4** (`ARG
-BUN_VERSION=1.4`, following the repository's existing minor-track convention,
-previously `1.3`).
+We will pin the Docker image to **Bun 1.4** (`ARG BUN_VERSION=1.4`, following
+the repository's existing minor-track convention, previously `1.3`) and, on the
+strength of that upgrade, require **only `sse4_2`** in the x86_64 branch of
+`check_bun_cpu_requirements`.
+
+The two halves are one decision. Bun 1.4 is what makes the relaxed gate correct
+and durable: with the `-march=haswell` x64 build gone and SIMD dispatched at
+runtime, SSE4.2 is the single documented x64 floor for every x64 artifact Bun
+publishes, so the check can no longer drift out of sync with whichever build the
+base image pulls. Relaxing the gate without the upgrade would have been correct
+only for the baseline artifact we happen to install today.
 
 AVX and AVX2 are removed from the mandatory flag list and from the error
 message. The architecture guard is kept: CPU feature validation still applies
