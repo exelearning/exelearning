@@ -182,6 +182,7 @@ describe('Config Routes Integration', () => {
                 'pp_addPagination',
                 'pp_addSearchBox',
                 'pp_addAccessibilityToolbar',
+                'pp_passScore',
                 'pp_extraHeadContent',
                 'footer',
             ];
@@ -191,7 +192,7 @@ describe('Config Routes Integration', () => {
             });
         });
 
-        it('should have exactly 14 project properties', async () => {
+        it('should have exactly 16 project properties including the minimum pass score', async () => {
             const response = await configRoutes.handle(
                 new Request('http://localhost/api/parameter-management/parameters/data/list'),
             );
@@ -200,7 +201,14 @@ describe('Config Routes Integration', () => {
             const nestedConfig = data.odeProjectSyncPropertiesConfig as Record<string, Record<string, unknown>>;
             const config = flattenProperties(nestedConfig);
 
-            expect(Object.keys(config).length).toBe(15);
+            expect(Object.keys(config).length).toBe(16);
+            expect(config.pp_passScore).toMatchObject({
+                value: 5,
+                type: 'number',
+                min: 0,
+                max: 10,
+                step: 0.1,
+            });
         });
 
         it('should have groups attribute on all properties for collapsible sections', async () => {
