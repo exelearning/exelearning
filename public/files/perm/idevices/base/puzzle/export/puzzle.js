@@ -1980,7 +1980,8 @@ var $eXePuzzle = {
 
         if (end) {
             $pzlMessage.hide();
-            let endColor = mOptions.score >= 6 ? 2 : 1;
+            let endColor =
+                mOptions.score >= $exe.passScore.resolve(mOptions) ? 2 : 1;
             $('#pzlMesasgeEnd-' + instance)
                 .html(message)
                 .css({ color: colors[endColor] });

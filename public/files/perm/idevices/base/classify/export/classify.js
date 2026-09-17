@@ -1334,7 +1334,10 @@ var $eXeClasifica = {
         const percentageHits = mOptions.hits / mOptions.cardsGame.length;
 
         let msg = '',
-            type = percentageHits < 0.5 ? 1 : 2;
+            // The verdict goes by the mark, on the same 0-10 scale the report
+            // uses. The bands below are a different thing -- three tiers of
+            // encouragement -- and keep their own boundaries.
+            type = mOptions.score < $exe.passScore.resolve(mOptions) ? 1 : 2;
         if (percentageHits < 0.5) {
             msg = mOptions.msgs.msgQ5.replace(
                 '%s',

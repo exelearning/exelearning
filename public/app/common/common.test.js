@@ -404,25 +404,68 @@ describe('common.js $exe helpers', () => {
     /**
      * The threshold reached the progress report for free -- the iDevices hand
      * their whole options object to report.saveEvaluation, which resolves it --
-     * but the message the learner reads is decided inside each export, and nine
-     * of them went on comparing the score against a literal 5. The report said
-     * "not passed" and the very same screen painted the score green.
+     * but the message the learner reads is decided inside each export, and
+     * thirteen of them went on comparing the score against a literal. The
+     * report said "not passed" and the very same screen painted the score
+     * green.
      *
-     * A literal cannot be the pass mark anywhere, so the check is a scan: any
-     * export that reintroduces one fails here rather than in a course.
+     * They did not even agree on the literal: 5 in most, 6 in puzzle and
+     * select-media-files, 0.5 in classify on a ratio scale. So the rule is not
+     * "no 5" but the one that actually holds -- a mark strictly between 0 and
+     * 10 is a threshold and must be resolved. The edges are exempt because they
+     * mean something else entirely: 0 is "scored at all" and 10 is "everything
+     * right", neither of which moves when the author changes the pass mark.
      */
-    describe('no export decides a verdict against a literal 5', () => {
+    describe('no export decides a verdict against a literal mark', () => {
       const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
-      // Two shapes, because the nine offenders wrote it both ways: a
-      // score-named operand compared against a bare 5 (`p.score >= 5`,
-      // `mOptions.scorep < 5`), and any comparison against a bare 5 that feeds
-      // a ternary (`hits * 10 / total >= 5 ? 2 : 1`, `sp < 5 ? red : green`).
-      // The negative lookahead keeps 5.5 and 50 out: those are other
-      // quantities, not the mark.
-      const VERDICT = /\bscores?\w*\s*[<>]=?\s*5(?![\d.])|[<>]=?\s*5(?![\d.])\s*\?/;
-      // `numeroTemas` is how many topics a trivial board has, and four is the
-      // minimum it can draw. Nothing to do with a mark.
-      const NOT_A_MARK = /numeroTemas\s*<\s*5/g;
+      const MARK = String.raw`(\d+(?:\.\d+)?)`;
+      // Two shapes, because a verdict is recognisable either by what it weighs
+      // or by what it produces.
+      //
+      // By what it produces: throughout these files the pass/fail answer is the
+      // pair 1 and 2, the indices showMessage turns into red and green. The
+      // left operand is deliberately not captured -- `parseInt(score) >= 5` and
+      // `(hits * 10) / total >= 5` are both verdicts and neither is a plain
+      // identifier.
+      const VERDICT_PAIR = new RegExp(String.raw`[<>]=?\s*${MARK}\s*\?\s*([12])\s*:\s*([12])\b`, 'g');
+      // By what it weighs: a score-named operand against a literal, whatever it
+      // then decides -- `sp < 5 ? red : green` paints rather than returning 1/2.
+      const SCORE_NAMED = new RegExp(
+        String.raw`(?:^|[^\w.])(?:score|scorep|scorerp|scoretotal|puntuacion|nota|sp)\s*[<>]=?\s*${MARK}`,
+        'g'
+      );
+
+      /**
+       * Bands of encouragement, not verdicts: each is one boundary of three or
+       * four that pick how warmly the activity congratulates the learner. They
+       * keep their own numbers because moving only the lowest would put the
+       * tiers out of order -- a pass mark of 8 would leave the middle band
+       * unreachable.
+       */
+      const ENCOURAGEMENT_BANDS = [
+        'puntuacion < 5', // map: msgScore4 / msgScore6 / msgScore8 / msgScore10
+        'puntuacion < 7',
+        'percentageHits < 0.5', // classify: msgQ5 / msgQ7 / msgQ9
+        'percentageHits < 0.7',
+      ];
+
+      const verdicts = (source) => {
+        const cleaned = ENCOURAGEMENT_BANDS.reduce(
+          (text, band) => text.split(band).join(''),
+          source
+        );
+        const found = [];
+        for (const pattern of [VERDICT_PAIR, SCORE_NAMED]) {
+          for (const match of cleaned.matchAll(pattern)) {
+            const mark = Number.parseFloat(match[1]);
+            // 0 is "scored at all" and 10 is "everything right"; neither moves
+            // when the author changes the pass mark. Anything between them is a
+            // threshold and has to be resolved.
+            if (mark > 0 && mark < 10) found.push(match[0].trim());
+          }
+        }
+        return found;
+      };
 
       const exports = readdirSync(IDEVICES_DIR)
         .map((name) => ({ name, file: join(IDEVICES_DIR, name, 'export', `${name}.js`) }))
@@ -433,9 +476,31 @@ describe('common.js $exe helpers', () => {
         expect(exports.length).toBeGreaterThan(30);
       });
 
+      it('recognises the shapes the offenders were written in', () => {
+        // A guard rail for the matcher: were it to stop matching, every
+        // assertion below would pass on any source at all.
+        expect(verdicts('type = scoreX < 5 ? 1 : 2;')).not.toEqual([]);
+        expect(verdicts('let c = mOptions.score >= 6 ? 2 : 1;')).not.toEqual([]);
+        expect(verdicts('type = percentageX < 0.5 ? 1 : 2;')).not.toEqual([]);
+        expect(verdicts('const t = parseInt(score) >= 5 ? 2 : 1;')).not.toEqual([]);
+        expect(verdicts('const t = (h * 10) / n >= 5 ? 2 : 1;')).not.toEqual([]);
+        expect(verdicts("let bgc = sp < 5 ? '#B61E1E' : '#007F5F';")).not.toEqual([]);
+      });
+
+      it('leaves alone what is not a pass mark', () => {
+        expect(verdicts('if (mOptions.score > 0) {')).toEqual([]);
+        expect(verdicts('if (mOptions.scorerp >= 10) {')).toEqual([]);
+        expect(verdicts('score = score > 10 ? 10 : score;')).toEqual([]);
+        // A count of topics, and the fewest a board can draw.
+        expect(verdicts('numasi = mOptions.numeroTemas < 5 ? 4 : n;')).toEqual([]);
+        // Lengths, indices and attempt counters are not marks either.
+        expect(verdicts('if (url.length >= 4) {')).toEqual([]);
+        expect(verdicts('const x = pool.length > 1 ? a : b;')).toEqual([]);
+      });
+
       it.each(exports.map(({ name }) => name))('%s resolves the mark instead', (name) => {
         const { source } = exports.find((entry) => entry.name === name);
-        expect(source.replace(NOT_A_MARK, '')).not.toMatch(VERDICT);
+        expect(verdicts(source)).toEqual([]);
       });
     });
   });

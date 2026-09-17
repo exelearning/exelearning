@@ -1524,10 +1524,13 @@ var $eXeSeleccionaMedias = {
         $slcmpMessage.show();
         if (end) {
             $slcmpMessage.hide();
-            color = 1;
-            if (mOptions.score >= 6) {
-                color = 2;
-            }
+            // Through `colors`, like every other message. This used to assign
+            // the index itself and hand `color: 1` to CSS, which is not a
+            // colour, so the verdict never reached the screen at all.
+            color =
+                colors[
+                    mOptions.score >= $exe.passScore.resolve(mOptions) ? 2 : 1
+                ];
             $('#slcmpMesasgeEnd-' + instance).html(message);
             $('#slcmpMesasgeEnd-' + instance).css({
                 color: color,

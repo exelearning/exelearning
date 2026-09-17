@@ -639,7 +639,7 @@ var $eXeCompleta = {
 
     gameOver: function (type, instance) {
         const mOptions = $eXeCompleta.options[instance];
-        let typem = mOptions.hits >= mOptions.errors ? 2 : 1;
+        let typem = $eXeCompleta.getVerdictColor(mOptions);
         message = '';
         $(`#cmptButonsDiv-${instance}`).hide();
         // The attempt is over, so the retry goes with it. Time running out
@@ -814,7 +814,7 @@ var $eXeCompleta = {
                 });
         }
 
-        const type = mOptions.hits >= mOptions.errors ? 2 : 1,
+        const type = $eXeCompleta.getVerdictColor(mOptions),
             message = mOptions.msgs.msgEndScore
                 .replace('%s', mOptions.hits)
                 .replace('%d', mOptions.errors);
@@ -1492,10 +1492,34 @@ var $eXeCompleta = {
         $eXeCompleta.sendScore(true, instance);
     },
 
+    /**
+     * The mark out of 10, the one number the report and the LMS both receive.
+     *
+     * Extracted because the on-screen verdict used to follow a rule of its own
+     * -- more hits than errors -- which is not what anything else on the page
+     * called passing. Ten gaps with six right and four wrong read as passed
+     * whatever the author set the mark to.
+     *
+     * @param {Object} mOptions The activity options.
+     * @returns {number} The mark in [0, 10].
+     */
+    getScore: function (mOptions) {
+        return (mOptions.hits * 10) / mOptions.number;
+    },
+
+    /**
+     * @param {Object} mOptions The activity options.
+     * @returns {number} 2 when the learner passed, 1 when they did not -- the
+     * indices showMessage turns into the green and red it paints with.
+     */
+    getVerdictColor: function (mOptions) {
+        return $eXeCompleta.getScore(mOptions) >= $exe.passScore.resolve(mOptions) ? 2 : 1;
+    },
+
     sendScore: function (auto, instance) {
         const mOptions = $eXeCompleta.options[instance];
 
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.number;
+        mOptions.scorerp = $eXeCompleta.getScore(mOptions);
         mOptions.previousScore = $eXeCompleta.previousScore;
         mOptions.userName = $eXeCompleta.userName;
 
@@ -1506,7 +1530,7 @@ var $eXeCompleta = {
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeCompleta.options[instance];
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.number;
+        mOptions.scorerp = $eXeCompleta.getScore(mOptions);
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
             $eXeCompleta.isInExe
