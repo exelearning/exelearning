@@ -46,6 +46,9 @@ var $rubric = {
 
     init: function () {
         if (this.initialized) return;
+        this.idevicePath = eXe.app.isInExe()
+            ? eXe.app.getIdeviceInstalledExportPath('rubric')
+            : $('.idevice_node.rubric').first().attr('data-idevice-path');
         this.initialized = true;
         this.loadGame();
     },
@@ -1499,7 +1502,7 @@ var $rubric = {
             passScoreCustom: data.passScoreCustom,
             // The report needs to know which iDevice type it is listing, and
             // where to put the verdict icon.
-            idevice: 'rubric-IDevice',
+            idevice: 'rubric',
             idevicePath: $rubric.idevicePath,
             scorerp: 0,
             gameStarted: false,

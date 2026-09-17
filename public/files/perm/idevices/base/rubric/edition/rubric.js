@@ -1364,9 +1364,14 @@ var $exeDevice = {
             : '';
 
         var dataPayload = this.encodeEscapedHTML(JSON.stringify(data));
+        // The course map reads these attributes without decoding the rubric payload.
+        var evaluationAttributes =
+            ' data-id="' + this.escapeAttribute(data.id || '') +
+            '" data-evaluationid="' + this.escapeAttribute(data.evaluationID || '') +
+            '" data-evaluationb="' + (!!data.evaluation) + '"';
         var dataBlock =
             '<div class="rubric">' +
-                '<div class="exe-rubrics-DataGame js-hidden">' + dataPayload + '</div>' +
+                '<div class="exe-rubrics-DataGame js-hidden"' + evaluationAttributes + '>' + dataPayload + '</div>' +
                 this.buildRubricAuthorshipHTML(data) +
                 this.buildRubricStringsHTML(data.i18n) +
             '</div>';
