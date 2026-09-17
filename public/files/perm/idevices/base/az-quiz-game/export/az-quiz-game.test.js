@@ -199,7 +199,15 @@ describe('az-quiz-game iDevice export', () => {
     // would otherwise be reported as finished with the score of the moment — a
     // fail below the threshold — and the completion flag survives in
     // cmi.suspend_data, so the attempt is closed for good.
+    // addEvents() ends by scheduling a 500 ms timer that refreshes the verdict
+    // icon through $exeDevices. Under real timers it outlives the test: the
+    // teardown below deletes the global, the callback fires afterwards and
+    // throws ReferenceError from outside any test, which Vitest reports as an
+    // unhandled error and which fails the whole run even though every test
+    // passed. Fake timers keep that callback inside the test, where the mock
+    // still exists and the assertion can see it.
     beforeEach(() => {
+      vi.useFakeTimers();
       // An earlier suite in this file removes the shared mock; rebuild the surface
       // addEvents touches. The scorm helpers are what the hide handler used to call.
       global.$exeDevices = {
@@ -208,12 +216,18 @@ describe('az-quiz-game iDevice export', () => {
             scorm: { endScorm: vi.fn(), registerActivity: vi.fn() },
             media: { stopSound: vi.fn(), playSound: vi.fn() },
             helpers: { toggleFullscreen: vi.fn(), getTimeToString: vi.fn(() => '00:00') },
+            report: { updateEvaluationIcon: vi.fn() },
           },
         },
       };
     });
 
     afterEach(() => {
+      // Order matters: drop anything still pending BEFORE the global it reads
+      // goes away, and hand the clock back so the next suite in this file runs
+      // on real timers, exactly as it did before.
+      vi.clearAllTimers();
+      vi.useRealTimers();
       delete global.$exeDevices;
     });
 
@@ -248,8 +262,14 @@ describe('az-quiz-game iDevice export', () => {
       $azquizgame.gameOver = vi.fn();
       $azquizgame.sendScore = vi.fn();
 
+      const { report } = $exeDevices.iDevice.gamification;
+
       $azquizgame.addEvents(0);
       try {
+        // Run the icon refresh here rather than letting it escape the test.
+        // removeEvents() unbinds handlers but holds no timer id, so this is the
+        // only place that can account for it.
+        vi.advanceTimersByTime(500);
         $(window).trigger('pagehide');
       } finally {
         $azquizgame.removeEvents(0);
@@ -257,6 +277,9 @@ describe('az-quiz-game iDevice export', () => {
         document.body.innerHTML = '';
       }
 
+      // The refresh reads the activity this instance is playing.
+      expect(report.updateEvaluationIcon).toHaveBeenCalledTimes(1);
+      expect(report.updateEvaluationIcon.mock.calls[0][0]).toBe($azquizgame.options[0]);
       expect($azquizgame.gameOver).not.toHaveBeenCalled();
       expect($azquizgame.sendScore).not.toHaveBeenCalled();
     });
