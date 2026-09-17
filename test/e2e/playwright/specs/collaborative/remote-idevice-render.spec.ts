@@ -138,3 +138,122 @@ test.describe('Remote iDevice rendering after a collaborator saves (#2428)', () 
         await expect(remoteIdevice.locator('.rosco-MainContainer')).toBeVisible({ timeout: 20000 });
     });
 });
+
+/**
+ * Regression test for the defect found while reviewing the fix above (#2434):
+ * rendering a remote iDevice must not tear down the scripts of the whole page.
+ *
+ * clearNeedlessScripts() removes every `head > script:not(.exe)`, edition
+ * scripts included, and only the export ones were put back. A single remote
+ * save produces several updates, so the page-wide teardown left the shared
+ * `$exeDevice` global out of sync with the tags in <head>, and a later local
+ * save exhausted the export-load retry loop and raised "Failed to load the
+ * iDevice view" instead of saving.
+ */
+test.describe('A remote render must not disturb the local page runtime (#2434)', () => {
+    test.setTimeout(120000);
+
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
+    });
+
+    /** Tag the scripts already in <head> so we can tell survivors from replacements. */
+    function markLoadedScripts(page: Page): Promise<number> {
+        return page.evaluate(() => {
+            const scripts = Array.from(document.querySelectorAll('head > script[src]'));
+            scripts.forEach(script => script.setAttribute('data-e2e-marked', '1'));
+            return scripts.length;
+        });
+    }
+
+    function countMarkedScripts(page: Page): Promise<number> {
+        return page.evaluate(() => document.querySelectorAll('head > script[data-e2e-marked="1"]').length);
+    }
+
+    /**
+     * Write into the editor that belongs to a given iDevice. `tinymce.get()`
+     * can still hand back a removed instance right after an editor is reopened,
+     * and writing there silently loses the content.
+     */
+    async function setTextIdeviceContentIn(page: Page, ideviceId: string, html: string): Promise<void> {
+        await page.waitForFunction(
+            id => {
+                const editor = (window as any).tinymce?.get('textTextarea');
+                if (!editor || !editor.initialized || editor.removed) return false;
+                const node = document.getElementById(id as string);
+                const container = editor.getContainer?.() || editor.getElement?.();
+                return !!node && !!container && node.contains(container);
+            },
+            ideviceId,
+            { timeout: 20000 },
+        );
+        await setTextIdeviceContent(page, html);
+    }
+
+    test('User B keeps its loaded scripts and can still edit and save', async ({
+        authenticatedPage,
+        secondAuthenticatedPage,
+        createProject,
+        getShareUrl,
+        joinSharedProject,
+    }) => {
+        const pageA = authenticatedPage;
+        const pageB = secondAuthenticatedPage;
+
+        await openSharedProject(
+            pageA,
+            pageB,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+            'Remote render keeps runtime',
+        );
+
+        // B owns a text iDevice, so its scripts are loaded on B's page.
+        await addTextIdevice(pageB);
+        const ideviceB = await getTextIdeviceId(pageB);
+        await setTextIdeviceContent(pageB, '<p>First draft from user B</p>');
+        await saveIdevice(pageB, ideviceB);
+
+        const markedScripts = await markLoadedScripts(pageB);
+        expect(markedScripts).toBeGreaterThan(0);
+
+        // A saves an HTML-type iDevice: the case that does need its own export
+        // script executed again on B.
+        await addIdevice(pageA, 'az-quiz-game');
+        const ideviceA = await pageA
+            .locator('#node-content article .idevice_node.az-quiz-game')
+            .first()
+            .getAttribute('id');
+        expect(ideviceA).toBeTruthy();
+        await pageA.waitForFunction(
+            () => {
+                const editors = (window as any).tinymce?.editors || [];
+                return editors.length >= 2 && editors.every((e: any) => e.initialized);
+            },
+            undefined,
+            { timeout: 20000 },
+        );
+        await pageA.locator('.roscoWordEdition').first().fill('Alpha');
+        await pageA.locator('.roscoDefinitionEdition').first().fill('First letter of the alphabet');
+        await saveIdevice(pageA, ideviceA as string);
+
+        const remoteIdevice = ideviceLocator(pageB, ideviceA as string);
+        await expect(remoteIdevice).toBeVisible({ timeout: 20000 });
+        await expect(remoteIdevice.locator('.rosco-MainContainer')).toBeVisible({ timeout: 20000 });
+
+        // The remote render must have left every script B had loaded in place.
+        expect(await countMarkedScripts(pageB)).toBe(markedScripts);
+
+        // And B must still be able to edit and save, instead of exhausting the
+        // export-load retry loop and raising "Failed to load the iDevice view".
+        const ownIdevice = ideviceLocator(pageB, ideviceB);
+        await ownIdevice.hover();
+        await ownIdevice.locator('.btn-edit-idevice').first().click({ force: true });
+        await setTextIdeviceContentIn(pageB, ideviceB, '<p>Second draft from user B</p>');
+        await saveIdevice(pageB, ideviceB);
+
+        await expect(ownIdevice).toContainText('Second draft from user B', { timeout: 20000 });
+        await expect(pageB.locator('.modal.show')).toHaveCount(0);
+    });
+});

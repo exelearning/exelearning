@@ -2033,6 +2033,87 @@ describe('IdevicesEngine', () => {
         });
     });
 
+    describe('reloadExportRuntimeForIdevice', () => {
+        function makeIdeviceNode(componentType) {
+            return {
+                idevice: {
+                    componentType,
+                    exportJs: ['text.js'],
+                    pathExport: '/files/perm/idevices/base/text/export/',
+                    getResourceServicePath: (path) => path,
+                    loadScriptsExport: vi.fn(),
+                },
+            };
+        }
+
+        beforeEach(() => {
+            vi.spyOn(engine, 'clearNeedlessScripts').mockImplementation(() => {});
+            vi.spyOn(engine, 'loadIdevicesExportScripts').mockImplementation(() => {});
+            vi.spyOn(engine, 'loadLegacyExeFunctionalitiesExport').mockImplementation(() => {});
+            vi.spyOn(engine, 'enableInternalLinks').mockImplementation(() => {});
+        });
+
+        it('never tears down the scripts of the whole page (#2434)', () => {
+            engine.reloadExportRuntimeForIdevice(makeIdeviceNode('html'));
+
+            expect(engine.clearNeedlessScripts).not.toHaveBeenCalled();
+            expect(engine.loadIdevicesExportScripts).not.toHaveBeenCalled();
+        });
+
+        it('re-executes only the export scripts of an HTML-type iDevice', () => {
+            const ideviceNode = makeIdeviceNode('html');
+            const stale = document.createElement('script');
+            stale.setAttribute('src', '/files/perm/idevices/base/text/export/text.js');
+            const foreign = document.createElement('script');
+            foreign.setAttribute('src', '/files/perm/idevices/base/quiz/export/quiz.js');
+            document.head.append(stale, foreign);
+
+            engine.reloadExportRuntimeForIdevice(ideviceNode);
+
+            expect(stale.parentNode).toBeNull();
+            expect(foreign.parentNode).toBe(document.head);
+            expect(ideviceNode.idevice.loadScriptsExport).toHaveBeenCalledTimes(1);
+
+            foreign.remove();
+        });
+
+        it('does not touch scripts for JSON-type iDevices, which init through their export object', () => {
+            const ideviceNode = makeIdeviceNode('json');
+            const script = document.createElement('script');
+            script.setAttribute('src', '/files/perm/idevices/base/text/export/text.js');
+            document.head.appendChild(script);
+
+            engine.reloadExportRuntimeForIdevice(ideviceNode);
+
+            expect(script.parentNode).toBe(document.head);
+            expect(ideviceNode.idevice.loadScriptsExport).not.toHaveBeenCalled();
+
+            script.remove();
+        });
+
+        it('does nothing for an HTML-type iDevice that declares no export script', () => {
+            const ideviceNode = makeIdeviceNode('html');
+            ideviceNode.idevice.exportJs = [];
+
+            engine.reloadExportRuntimeForIdevice(ideviceNode);
+
+            expect(ideviceNode.idevice.loadScriptsExport).not.toHaveBeenCalled();
+            expect(engine.loadLegacyExeFunctionalitiesExport).toHaveBeenCalledTimes(1);
+        });
+
+        it('still runs the legacy functionalities and wires internal links', () => {
+            engine.reloadExportRuntimeForIdevice(makeIdeviceNode('json'));
+
+            expect(engine.loadLegacyExeFunctionalitiesExport).toHaveBeenCalledTimes(1);
+            expect(engine.enableInternalLinks).toHaveBeenCalledTimes(1);
+        });
+
+        it('survives an iDevice node without an idevice definition', () => {
+            expect(() => engine.reloadExportRuntimeForIdevice(undefined)).not.toThrow();
+            expect(engine.loadLegacyExeFunctionalitiesExport).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('addEventDragOverToContainer', () => {
         it('adds dragover event listener to container', () => {
             const container = document.createElement('div');
@@ -2392,7 +2473,7 @@ describe('IdevicesEngine', () => {
         });
 
         it('does not wipe saved htmlView on lock-only remote updates', async () => {
-            const reloadSpy = vi.spyOn(engine, 'reloadExportRuntime').mockImplementation(() => {});
+            const reloadSpy = vi.spyOn(engine, 'reloadExportRuntimeForIdevice').mockImplementation(() => {});
             const mockIdevice = {
                 odeIdeviceId: 'comp-1',
                 htmlView: '<p>Original content</p>',
@@ -3374,7 +3455,7 @@ describe('IdevicesEngine', () => {
                 blockId: 'new-block',
             });
             vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});
-            vi.spyOn(engine, 'reloadExportRuntime').mockImplementation(() => {});
+            vi.spyOn(engine, 'reloadExportRuntimeForIdevice').mockImplementation(() => {});
         });
 
         it('creates new block when block container not found', async () => {
@@ -3389,7 +3470,7 @@ describe('IdevicesEngine', () => {
 
         it('reloads the export runtime once the remote iDevice is in the DOM (#2428)', async () => {
             const callOrder = [];
-            engine.reloadExportRuntime.mockImplementation(() => callOrder.push('runtime'));
+            engine.reloadExportRuntimeForIdevice.mockImplementation(() => callOrder.push('runtime'));
             vi.spyOn(IdeviceNode.prototype, 'loadInitScriptIdevice').mockImplementation(async () => {
                 callOrder.push('init');
             });
@@ -3406,12 +3487,12 @@ describe('IdevicesEngine', () => {
 
     describe('updateRemoteIdeviceContent with ideviceBody', () => {
         beforeEach(() => {
-            vi.spyOn(engine, 'reloadExportRuntime').mockImplementation(() => {});
+            vi.spyOn(engine, 'reloadExportRuntimeForIdevice').mockImplementation(() => {});
         });
 
         it('reloads the export runtime after applying remote content (#2428)', async () => {
             const callOrder = [];
-            engine.reloadExportRuntime.mockImplementation(() => callOrder.push('runtime'));
+            engine.reloadExportRuntimeForIdevice.mockImplementation(() => callOrder.push('runtime'));
             const mockIdevice = {
                 odeIdeviceId: 'comp-1',
                 htmlView: 'old',
@@ -3448,7 +3529,7 @@ describe('IdevicesEngine', () => {
             await engine.updateRemoteIdeviceContent({ id: 'comp-1', htmlContent: '<p>New</p>' });
 
             expect(mockIdevice.loadInitScriptIdevice).not.toHaveBeenCalled();
-            expect(engine.reloadExportRuntime).not.toHaveBeenCalled();
+            expect(engine.reloadExportRuntimeForIdevice).not.toHaveBeenCalled();
         });
 
         it('updates idevice body innerHTML', async () => {
