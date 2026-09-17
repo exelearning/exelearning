@@ -10,6 +10,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'node:vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -398,6 +399,57 @@ describe('trueorfalse iDevice', () => {
             expect(gate).toBeGreaterThan(-1);
             expect(read).toBeGreaterThan(gate);
             expect(source.slice(gate, read)).not.toContain('}');
+        });
+    });
+
+    describe('progress report in the initialized editor', () => {
+        let previousEdition;
+        let previousLearning;
+
+        beforeEach(() => {
+            previousEdition = globalThis.$exeDevicesEdition;
+            previousLearning = globalThis.eXeLearning;
+            globalThis.eXeLearning = { app: { project: { odeId: 'report-test' } } };
+            globalThis.$exeDevicesEdition = require('../../../../../../app/common/common_edition.js');
+            vi.spyOn($exeDevicesEdition.iDevice.tabs, 'init').mockImplementation(() => {});
+            vi.spyOn($exeDevicesEdition.iDevice.gamification.scorm, 'init').mockImplementation(() => {});
+            vi.spyOn($exeDevicesEdition.iDevice.gamification.share, 'getTabIA').mockReturnValue('');
+            // Load the real script with its filename so coverage includes the initialization path.
+            const filename = join(__dirname, 'trueorfalse.js');
+            runInThisContext(readFileSync(filename, 'utf8'), { filename });
+            $exeDevice = globalThis.$exeDevice;
+            document.body.innerHTML = '<div id="editor" idevice-id="tof-new"></div>';
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+            globalThis.$exeDevicesEdition = previousEdition;
+            globalThis.eXeLearning = previousLearning;
+        });
+
+        it.each([{}, null])('hides the report for a new self-check activity with previous data %s', previous => {
+            $exeDevice.init(document.getElementById('editor'), previous, 'assets/');
+            expect($('#tofEIsTest').is(':checked')).toBe(false);
+            expect($('.exe-progress-report-wrapper')).toHaveLength(1);
+            expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(true);
+        });
+
+        it('shows the report in test mode and preserves it through save and reopen', () => {
+            $exeDevice.init(document.getElementById('editor'), {}, 'assets/');
+            $('#tofEIsTest').trigger('click');
+            expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(false);
+            $('#eXeProgressReport').prop('checked', true);
+            $('#eXeProgressReportID').val('report-test');
+            $exeDevice.questionsGame = [{ question: 'Question', solution: true, feedback: '', suggestion: '' }];
+            const saved = $exeDevice.validateData();
+            expect(saved).toMatchObject({ isTest: true, evaluation: true, evaluationID: 'report-test' });
+            $exeDevice.init(document.getElementById('editor'), saved, 'assets/');
+            expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(false);
+            expect($('#eXeProgressReport').is(':checked')).toBe(true);
+            expect($('#eXeProgressReportID').val()).toBe('report-test');
+            $('#tofEIsTest').trigger('click');
+            expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(true);
+            expect($exeDevice.validateData()).toMatchObject({ isTest: false, evaluation: false, evaluationID: '' });
         });
     });
 });

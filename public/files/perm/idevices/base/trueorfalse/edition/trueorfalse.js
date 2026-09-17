@@ -461,6 +461,7 @@ var $exeDevice = {
 
     enable() {
         $exeDevice.loadPreviousValues();
+        $exeDevice.toggleProgressReport($('#tofEIsTest').is(':checked'));
         $exeDevice.addEvents();
         $exeDevice.showQuestion(0);
     },
