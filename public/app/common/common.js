@@ -138,6 +138,19 @@ window.MathJax = window.MathJax || (function() {
                 // Assistive MathML has no such dependency, so it is our accessibility floor.
                 .concat(['a11y/assistive-mml'])
         },
+        svg: {
+            // MathJax 4 turns in-line line breaking on by default. With SVG output
+            // that is not one <svg> per formula but one per break opportunity (every
+            // top-level `=`, `+`, `\mid`, `\,`), joined by <mjx-break> so the browser
+            // can wrap between them. LatexPreRenderer serialises a single <svg>, so
+            // `\( x = 3 = 4 = 5 \)` reached the preview and every export as a lone
+            // `x` (issue #2440). Pre-rendered SVG is static and cannot reflow anyway,
+            // and this is the 3.2.2 behaviour every existing export was built with.
+            // ServerLatexPreRenderer sets the same option for CLI and API exports.
+            linebreaks: {
+                inline: false
+            }
+        },
         options: {
             // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
             // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
