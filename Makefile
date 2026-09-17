@@ -175,6 +175,13 @@ deps: check-bun
 css: check-bun
 	@bun run css:node
 
+# Copy gitignored frontend libs from node_modules into public/libs.
+# Needed by host-side Playwright specs that read those files from disk
+# (the DB-matrix E2E targets never run `build:all`).
+.PHONY: vendor-libs
+vendor-libs: check-bun
+	@bun run bundle:vendor
+
 # Build TypeScript + bundle JS
 .PHONY: bundle
 bundle: deps
@@ -658,7 +665,7 @@ down-e2e:
 
 
 .PHONY: test-e2e-mariadb
-test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB backend
+test-e2e-mariadb: check-docker check-env vendor-libs down-e2e ## Run E2E tests with MariaDB backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with MariaDB"
@@ -690,7 +697,7 @@ test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB 
 	exit $$test_exit
 
 .PHONY: test-e2e-postgres
-test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with PostgreSQL backend
+test-e2e-postgres: check-docker check-env vendor-libs down-e2e ## Run E2E tests with PostgreSQL backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with PostgreSQL"
@@ -722,7 +729,7 @@ test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with Postgre
 	exit $$test_exit
 
 .PHONY: test-e2e-sqlite
-test-e2e-sqlite: check-docker check-env down-e2e ## Run E2E tests with SQLite backend
+test-e2e-sqlite: check-docker check-env vendor-libs down-e2e ## Run E2E tests with SQLite backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with SQLite"
