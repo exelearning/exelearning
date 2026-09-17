@@ -40,6 +40,14 @@ describe('MathJax configuration', () => {
     }
   });
 
+  it('renders in-line formulas as one SVG: no browser line breaking (issue #2440)', () => {
+    // MathJax 4 turns in-line line breaking on by default and, with SVG output,
+    // emits one <svg> per break opportunity. LatexPreRenderer keeps the first <svg>
+    // only, so `\( x = 3 = 4 = 5 \)` reached the preview and every export as a
+    // lone `x`. Pre-rendered SVG is static and cannot reflow anyway.
+    expect(global.window.MathJax.svg.linebreaks.inline).toBe(false);
+  });
+
   it('requests every configured extension from the loader', () => {
     const packages = global.window.MathJax.tex.packages['[+]'];
     for (const extension of packages) {
