@@ -62,19 +62,33 @@ async function addGeogebraIdevice(page: Page): Promise<string> {
 }
 
 /**
- * Every iDevice form fieldset (Instructions, General Settings, Advanced
- * Options, Content after) starts collapsed until its legend is clicked —
- * this is generic accordion behavior shared by all iDevices, not something
- * specific to GeoGebra. The URL/Title/Authorship/Size controls all live
- * inside "General Settings", so it must be expanded before interacting with
- * any of them.
+ * The iDevice form fieldsets (Instructions, General Settings, Advanced
+ * Options, Content after) are accordions, but they do not all start
+ * collapsed: ideviceNode.legacyExeFieldsetAction() opens on load every
+ * `fieldset.exe-fieldset` that does not carry `exe-fieldset-closed`, and
+ * "General Settings" is one of those. Clicking its legend unconditionally
+ * would therefore CLOSE it. The URL/Title/Authorship/Size controls all live
+ * inside it, so click only when it is collapsed and assert the open state
+ * either way.
  */
 async function openGeneralSettings(page: Page, ideviceId: string): Promise<void> {
-    const legend = page
-        .locator(`#${ideviceId} fieldset.exe-fieldset legend`)
-        .filter({ hasText: 'General Settings' })
-        .locator('a');
-    await legend.click();
+    const isCollapsed = await page.evaluate(id => {
+        const node = document.getElementById(id);
+        const fieldsets = Array.from(node?.querySelectorAll('fieldset.exe-fieldset') || []);
+        const generalSettings = fieldsets.find(fs =>
+            fs.querySelector('legend')?.textContent?.includes('General Settings'),
+        );
+        return generalSettings?.classList.contains('exe-fieldset-closed') ?? false;
+    }, ideviceId);
+
+    if (isCollapsed) {
+        const legend = page
+            .locator(`#${ideviceId} fieldset.exe-fieldset legend`)
+            .filter({ hasText: 'General Settings' })
+            .locator('a');
+        await legend.click();
+    }
+
     await page.waitForFunction(
         id => {
             const node = document.getElementById(id);
