@@ -122,6 +122,13 @@ jobs:
           name: build-static
           path: dist/static
 
+      # Static shards overlay dist/static only, so public/libs is absent on the
+      # runner. Specs such as resource-cache-upgrade.spec.ts read those files
+      # from disk (chromium/firefox already get them via build-public).
+      - name: Copy vendor libs from npm
+        if: matrix.browser == 'static'
+        run: bun run bundle:vendor
+
       - name: Install Playwright Browsers
         run: |
           if [ "${{ matrix.browser }}" = "static" ]; then
