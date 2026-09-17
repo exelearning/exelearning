@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG BUN_VERSION=1.3
+ARG BUN_VERSION=1.4
 ARG VERSION=v0.0.0-alpha
 
 ################################################################################
