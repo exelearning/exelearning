@@ -683,4 +683,35 @@ describe('3dmol iDevice export', () => {
             expect($(`#dmolpOverErrors-${instance}`).html()).toBe('Errors: 1');
         });
     });
+
+    /**
+     * The end-of-attempt colour was a fixed 2, the pass colour, so every
+     * attempt closed green -- including one the progress report beside it
+     * called failed. There was no literal threshold to scan for, which is why
+     * only a behavioural test protects this.
+     */
+    describe('the end-of-attempt colour follows the pass mark', () => {
+        const attempt = (scoreGame, passScoreMode, passScoreCustom) => {
+            dmol.options[0] = {
+                activityMode: 'test',
+                scoreGame,
+                scoreTotal: 10,
+                passScoreMode,
+                passScoreCustom,
+            };
+            return dmol.getVerdictColor(0);
+        };
+
+        it('passes six out of ten on the project mark of 5', () => {
+            expect(attempt(6, 'global')).toBe(2);
+        });
+
+        it('fails the same attempt when the author set the mark at 8', () => {
+            expect(attempt(6, 'custom', 8)).toBe(1);
+        });
+
+        it('no longer paints an empty attempt in the pass colour', () => {
+            expect(attempt(0, 'global')).toBe(1);
+        });
+    });
 });

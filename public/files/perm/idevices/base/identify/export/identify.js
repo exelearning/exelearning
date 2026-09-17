@@ -960,7 +960,11 @@ var $eXeIdentifica = {
         $('#idfCursor-' + instance).hide();
 
         let message = mOptions.msgs.msgGameEnd;
-        $eXeIdentifica.showMessage(1, message, instance);
+        $eXeIdentifica.showMessage(
+            $eXeIdentifica.getVerdictColor(instance),
+            message,
+            instance
+        );
         $eXeIdentifica.showScoreGame(instance);
 
         $('#idfPNumber-' + instance).text('0');
@@ -1301,6 +1305,23 @@ var $eXeIdentifica = {
             x: xImage,
             y: yImage,
         };
+    },
+
+    /**
+     * The colour the end-of-attempt message is painted in: 2 when the learner
+     * passed, 1 when they did not.
+     *
+     * It used to be a fixed 1, the fail colour. A perfect ten closed the
+     * activity in red, and the progress report beside it said the learner had
+     * passed. Judged on the same `score` that is handed to the report as
+     * `scorerp`, so the two cannot disagree.
+     *
+     * @param {number} instance Index of the activity on the page.
+     * @returns {number} An index into the colour table showMessage paints with.
+     */
+    getVerdictColor: function (instance) {
+        const mOptions = $eXeIdentifica.options[instance];
+        return mOptions.score >= $exe.passScore.resolve(mOptions) ? 2 : 1;
     },
 
     saveEvaluation: function (instance) {

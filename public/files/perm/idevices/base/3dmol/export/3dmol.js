@@ -85,6 +85,23 @@ var $eXe3Dmol = {
         $eXe3Dmol.previousScore = mOptions.previousScore;
     },
 
+    /**
+     * The colour the end-of-attempt message is painted in: 2 when the learner
+     * passed, 1 when they did not.
+     *
+     * It used to be a fixed 2. Every attempt closed in the pass colour, a
+     * perfect one and an empty one alike, while the progress report beside it
+     * told the learner the opposite. Judged on getScoreRP, which is the very
+     * mark sent to the report and to the LMS.
+     *
+     * @param {number} instance Index of the activity on the page.
+     * @returns {number} An index into the colour table showMessage paints with.
+     */
+    getVerdictColor: function (instance) {
+        const mOptions = $eXe3Dmol.options[instance];
+        return $eXe3Dmol.getScoreRP(instance) >= $exe.passScore.resolve(mOptions) ? 2 : 1;
+    },
+
     getShowScoreRP: function (instance) {
         const mOptions = $eXe3Dmol.options[instance];
         const total = mOptions.selectsGame.length;
@@ -1486,7 +1503,7 @@ var $eXe3Dmol = {
             $gamerOver = $(`#dmolpGamerOver-${instance}`);
 
         let message = '',
-            messageColor = 2;
+            messageColor = $eXe3Dmol.getVerdictColor(instance);
 
         $histGame.hide();
         $overPoint.show();
@@ -1519,6 +1536,10 @@ var $eXe3Dmol = {
                 }
                 break;
             case 2:
+                // Not an outcome: the learner is still exploring the model, and
+                // the score panel is hidden. Neutral, so it is not read as a
+                // verdict on an attempt that has not finished.
+                messageColor = 0;
                 message = msgs.msgInformationLooking;
                 $overPoint.hide();
                 $overHits.hide();
@@ -1697,7 +1718,11 @@ var $eXe3Dmol = {
         $exeDevices.iDevice.gamification.media.stopSound();
 
         const message = mOptions.msgs.msgAllQuestions;
-        $eXe3Dmol.showMessage(2, message, instance);
+        $eXe3Dmol.showMessage(
+            $eXe3Dmol.getVerdictColor(instance),
+            message,
+            instance
+        );
         $eXe3Dmol.showScoreGame(type, instance);
         $eXe3Dmol.clearQuestions(instance);
         $eXe3Dmol.updateTime(0, instance);
