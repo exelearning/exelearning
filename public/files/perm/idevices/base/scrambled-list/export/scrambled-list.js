@@ -520,7 +520,18 @@ var $scrambledlist = {
             .closest('.idevice_node')
             .attr('data-idevice-json-data', JSON.stringify(data));
 
+        // Computed here rather than above, because it needs the options the node
+        // carries and those are only parsed a few lines up.
+        const passed = this.hasPassed(
+            nRightAnswers,
+            userList[0].children.length,
+            data
+        );
+
         const errors = userList[0].children.length - nRightAnswers;
+        // The retry still goes by the perfect order, not by the verdict. It is
+        // the author's offer to put the list right, and a learner who passed
+        // with two items swapped has as much use for it as one who did not.
         if (!right && data.pendingAttempts > 0) {
             const retryQuestion = this.getRetryMessage(data, errors);
             this.setListActiveState(listOrder, false);
@@ -536,11 +547,12 @@ var $scrambledlist = {
                     this.showResultFeedback(
                         activity,
                         feedback,
-                        right,
+                        passed,
                         rightAnswers,
                         data,
                         nRightAnswers,
-                        userList[0].children.length
+                        userList[0].children.length,
+                        right
                     );
                 }
             );
@@ -550,11 +562,12 @@ var $scrambledlist = {
         this.showResultFeedback(
             activity,
             feedback,
-            right,
+            passed,
             rightAnswers,
             data,
             nRightAnswers,
-            userList[0].children.length
+            userList[0].children.length,
+            right
         );
         const listHtml = $('#sl' + data.id).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(listHtml)) {
@@ -562,26 +575,55 @@ var $scrambledlist = {
         }
     },
 
+    /**
+     * Tell the learner how the attempt went.
+     *
+     * Two questions used to be answered by one flag. The verdict -- the
+     * author's "right" or "wrong" text, and the colour that goes with it -- is
+     * the pass mark's to give. Whether every item landed in its place is a
+     * separate matter, and the one the solution list answers: a learner who
+     * passed with two items swapped has passed, and still wants to see which
+     * two. Reporting them as having failed contradicted the progress report
+     * printed beside them.
+     *
+     * @param {jQuery} activity The activity node, holding the author's texts.
+     * @param {jQuery} feedback Where the verdict is written.
+     * @param {boolean} passed Whether the mark reached the threshold.
+     * @param {jQuery} rightAnswers The list in its correct order.
+     * @param {Object} data The activity options.
+     * @param {number} nRightAnswers Items left in their place.
+     * @param {number} totalOptions Items in the list.
+     * @param {boolean} isPerfect Whether every item landed in its place.
+     */
     showResultFeedback: function (
         activity,
         feedback,
-        right,
+        passed,
         rightAnswers,
         data,
         nRightAnswers,
-        totalOptions
+        totalOptions,
+        isPerfect
     ) {
         if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
             this.sendScore(nRightAnswers, totalOptions, data);
             return;
         }
 
-        if (right) {
+        // Nothing to correct on a list that is already in order, so a perfect
+        // attempt still gets the bare congratulation it always got.
+        const solutions =
+            data.showSolutions && !isPerfect
+                ? '<ul>' + rightAnswers.html() + '</ul>'
+                : '';
+
+        if (passed) {
             feedback
                 .html(
                     '<p>' +
                         $('.exe-sortableList-rightText', activity).html() +
-                        '</p>'
+                        '</p>' +
+                        solutions
                 )
                 .hide()
                 .attr('class', 'feedback feedback-right')
@@ -602,9 +644,8 @@ var $scrambledlist = {
             .html(
                 '<p>' +
                     $('.exe-sortableList-wrongText', activity).html() +
-                    '</p><ul>' +
-                    rightAnswers.html() +
-                    '</ul>'
+                    '</p>' +
+                    solutions
             )
             .hide()
             .attr('class', 'feedback feedback-wrong')
@@ -740,8 +781,40 @@ var $scrambledlist = {
         }
     },
 
+    /**
+     * The mark out of 10, the one number the report and the LMS both receive.
+     *
+     * @param {number} nRightAnswers Items left in their place.
+     * @param {number} total Items in the list.
+     * @returns {number} The mark in [0, 10].
+     */
+    getScore: function (nRightAnswers, total) {
+        return total > 0 ? (nRightAnswers * 10) / total : 0;
+    },
+
+    /**
+     * Whether the learner passed.
+     *
+     * The activity used to have no notion of passing: it asked only whether
+     * every item had landed in its place, and told a learner who got eight of
+     * ten "wrong" while the progress report beside it said they had passed.
+     * Ordering the list perfectly and reaching the pass mark are two different
+     * achievements, and only the second one is a verdict.
+     *
+     * @param {number} nRightAnswers Items left in their place.
+     * @param {number} total Items in the list.
+     * @param {Object} data The activity options, carrying the author's choice.
+     * @returns {boolean} True when the mark reaches the threshold in force.
+     */
+    hasPassed: function (nRightAnswers, total, data) {
+        return (
+            $scrambledlist.getScore(nRightAnswers, total) >=
+            $exe.passScore.resolve(data)
+        );
+    },
+
     saveEvaluation: function (nRightAnswers, total, data) {
-        data.scorerp = (nRightAnswers * 10) / total;
+        data.scorerp = $scrambledlist.getScore(nRightAnswers, total);
         $exeDevices.iDevice.gamification.report.saveEvaluation(data);
     },
 
@@ -908,7 +981,7 @@ var $scrambledlist = {
      *
      */
     sendScore: function (rightAnswers, totalOptions, data) {
-        data.scorerp = (rightAnswers * 10) / totalOptions;
+        data.scorerp = $scrambledlist.getScore(rightAnswers, totalOptions);
         data.gameStarted = true;
         // The learner pressed Check and the list has been graded, so the activity is
         // finished. common.js derives completion from `gameOver` alone, so without this

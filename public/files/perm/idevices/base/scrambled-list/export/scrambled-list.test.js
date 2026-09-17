@@ -970,4 +970,98 @@ describe('scrambled-list iDevice export', () => {
       expect(nonEnglish).toEqual([]);
     });
   });
+
+  /**
+   * The activity used to have no notion of passing: ordering every item right
+   * was the only success it recognised. Eight of ten was reported to the
+   * learner as "wrong" while the progress report printed beside it said passed.
+   */
+  describe('the verdict follows the pass mark', () => {
+    const options = (passScoreMode, passScoreCustom) => ({
+      passScoreMode,
+      passScoreCustom,
+      showSolutions: true,
+      isScorm: 0,
+      msgs: { msgTestFailed: 'Not passed' },
+    });
+
+    describe('hasPassed', () => {
+      it('scores eight of ten as an 8', () => {
+        expect($scrambledlist.getScore(8, 10)).toBe(8);
+      });
+
+      it('passes eight of ten on the project mark of 5', () => {
+        expect($scrambledlist.hasPassed(8, 10, options('global'))).toBe(true);
+      });
+
+      it('fails the same attempt when the author set the mark at 9', () => {
+        expect($scrambledlist.hasPassed(8, 10, options('custom', 9))).toBe(false);
+      });
+
+      it('survives an empty list without dividing by zero', () => {
+        expect($scrambledlist.getScore(0, 0)).toBe(0);
+      });
+    });
+
+    describe('showResultFeedback', () => {
+      let feedback;
+      let activity;
+      let rightAnswers;
+
+      beforeEach(() => {
+        document.body.innerHTML = `
+          <div id="activity">
+            <span class="exe-sortableList-rightText">Well done</span>
+            <span class="exe-sortableList-wrongText">Not quite</span>
+          </div>
+          <div id="feedback"></div>
+          <div id="solution"><li>a</li><li>b</li></div>`;
+        activity = $('#activity');
+        feedback = $('#feedback');
+        rightAnswers = $('#solution');
+      });
+
+      const show = (passed, isPerfect, data) =>
+        $scrambledlist.showResultFeedback(
+          activity,
+          feedback,
+          passed,
+          rightAnswers,
+          data,
+          8,
+          10,
+          isPerfect
+        );
+
+      it('congratulates a learner who passed without ordering everything right', () => {
+        show(true, false, options('global'));
+        expect(feedback.attr('class')).toBe('feedback feedback-right');
+        expect(feedback.html()).toContain('Well done');
+      });
+
+      it('still shows them which items were out of place', () => {
+        show(true, false, options('global'));
+        expect(feedback.html()).toContain('<li>a</li>');
+      });
+
+      it('leaves a perfect attempt with the bare congratulation', () => {
+        show(true, true, options('global'));
+        expect(feedback.html()).not.toContain('<li>a</li>');
+      });
+
+      it('marks an attempt below the mark as wrong, with the solution', () => {
+        show(false, false, options('custom', 9));
+        expect(feedback.attr('class')).toBe('feedback feedback-wrong');
+        expect(feedback.html()).toContain('Not quite');
+        expect(feedback.html()).toContain('<li>a</li>');
+      });
+
+      it('withholds the solution when the author turned it off', () => {
+        const data = { ...options('custom', 9), showSolutions: false };
+        show(false, false, data);
+        expect(feedback.html()).toContain('Not passed');
+        expect(feedback.html()).not.toContain('<li>a</li>');
+      });
+    });
+  });
 });
