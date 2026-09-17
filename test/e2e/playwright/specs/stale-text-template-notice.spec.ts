@@ -29,7 +29,11 @@ test.describe('Missing asset notice with a stale eXe 3 text template', () => {
 
         const modal = page.locator('#modalAlert');
         await expect(modal).toBeVisible({ timeout: 30000 });
-        await expect(modal).toContainText('select-media-files');
+        const title = await page.evaluate(
+            () => (window as any).eXeLearning.app.idevices.getIdeviceInstalled('select-media-files').title,
+        );
+        await expect(modal).toContainText(`iDevice 1 (${title}) on page "Stale template"`);
+        await expect(modal.locator('li strong')).not.toHaveText('select-media-files');
         await expect(modal).toContainText('imagen1.jpg');
         await expect(modal).not.toContainText('map');
         await expect(modal).not.toContainText('do.mp3');
