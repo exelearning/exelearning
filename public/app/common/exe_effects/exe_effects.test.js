@@ -113,6 +113,45 @@ describe('exe_effects (app/common)', () => {
     expect(assigned).toBe(1);
   });
 
+  it('reloads h5p iframes embedded from a WordPress site', () => {
+    // A WordPress H5P embed is recognized by its query, not by the path it is
+    // served from: wp-admin can be renamed or moved, and the same embed is also
+    // reachable through a site's own permalink structure.
+    const block = document.createElement('div');
+    const iframe = document.createElement('iframe');
+    let src = 'https://example.org/wp/backend/admin-ajax.php?action=h5p_embed&id=7';
+    let assigned = 0;
+    Object.defineProperty(iframe, 'src', {
+      get: () => src,
+      set: (value) => {
+        src = value;
+        assigned += 1;
+      },
+      configurable: true,
+    });
+    block.appendChild(iframe);
+    exeFX.h5pResize($(block));
+    expect(assigned).toBe(1);
+  });
+
+  it('leaves iframes that are not h5p embeds alone', () => {
+    const block = document.createElement('div');
+    const iframe = document.createElement('iframe');
+    let src = 'https://example.org/wp-admin/admin-ajax.php?action=something_else';
+    let assigned = 0;
+    Object.defineProperty(iframe, 'src', {
+      get: () => src,
+      set: (value) => {
+        src = value;
+        assigned += 1;
+      },
+      configurable: true,
+    });
+    block.appendChild(iframe);
+    exeFX.h5pResize($(block));
+    expect(assigned).toBe(0);
+  });
+
   it('builds accordion structure from headings', () => {
     const container = document.createElement('div');
     container.innerHTML = '<h2>One</h2><p>A</p><h2>Two</h2><p>B</p>';
