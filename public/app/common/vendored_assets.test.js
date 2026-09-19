@@ -63,6 +63,53 @@ describe('exe_media legacy plugin binaries', () => {
     });
 });
 
+describe('exemindmap editor dependency loading', () => {
+    // The upstream mindmaps page loads jQuery, Filestack and FileSaver from three CDNs.
+    // eXeLearning must not: offline installations, exports and the Electron build have no
+    // network, and a third party should not learn who opens a mind map. This is the cheap
+    // guard; mindmap-offline.spec.ts checks the same contract in a browser.
+    const editorDir = path.join(commonDir, '../../libs/tinymce_5/js/tinymce/plugins/exemindmap/editor');
+
+    /** Every URL the page loads as a dependency, ignoring links a user can click. */
+    function dependencyUrls(html) {
+        const urls = [];
+        const patterns = [
+            /<script[^>]+src=["']([^"']+)["']/gi,
+            /<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/gi,
+            // The editor builds some of its own tags, so the string literals count too.
+            /document\.write\(['"]<script src="['"]?\s*\+?\s*([^'"+)]*)/gi,
+        ];
+        for (const pattern of patterns) {
+            let match;
+            while ((match = pattern.exec(html)) !== null) urls.push(match[1]);
+        }
+        return urls;
+    }
+
+    it('loads no dependency from an absolute or protocol-relative remote URL', () => {
+        const html = fs.readFileSync(path.join(editorDir, 'index.html'), 'utf-8');
+
+        for (const url of dependencyUrls(html)) {
+            expect(url.startsWith('//'), `${url} is protocol-relative`).toBe(false);
+            expect(/^https?:\/\//i.test(url), `${url} is remote`).toBe(false);
+        }
+    });
+
+    it('names no known CDN host anywhere in its dependency wiring', () => {
+        const html = fs.readFileSync(path.join(editorDir, 'index.html'), 'utf-8');
+        const scripts = fs
+            .readdirSync(path.join(editorDir, 'js'))
+            .filter(name => name.endsWith('.js'))
+            .map(name => fs.readFileSync(path.join(editorDir, 'js', name), 'utf-8'));
+
+        for (const source of [html, ...scripts]) {
+            for (const host of ['ajax.googleapis.com', 'cdnjs.cloudflare.com', 'api.filestackapi.com']) {
+                expect(source.includes(host), `${host} is referenced`).toBe(false);
+            }
+        }
+    });
+});
+
 describe('vendored FileSaver in the mindmap editor', () => {
     // FileSaver is loaded by the exemindmap editor but called from mindmaps' own
     // SaveDocument.js, so nothing in eXeLearning's sources mentions it. It is generated

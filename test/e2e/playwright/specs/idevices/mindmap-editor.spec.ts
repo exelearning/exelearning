@@ -3,7 +3,9 @@ import {
     clickRootNode,
     nodeCaptions,
     openMindmapEditor,
+    pickColour,
     readZoomPercent,
+    rootNodeColour,
     wheelOverCanvas,
 } from '../../helpers/mindmap-helpers';
 
@@ -308,31 +310,119 @@ test.describe('Mind map editor', () => {
             expect(errors, `uncaught page errors: ${errors.join(' | ')}`).toEqual([]);
         });
 
-        test('the colour pickers are initialised by minicolors and expose a value', async ({
+        test('changing the font colour updates the node and survives reselection', async ({
             authenticatedPage,
             createProject,
         }) => {
             const page = authenticatedPage;
+            const errors = trackPageErrors(page);
             const { frame, frame2 } = await openMindmapEditor(page, createProject, 'MindMap Colours');
 
             await clickRootNode(frame);
+            const before = await rootNodeColour(frame2);
 
-            // Operate through the initialised plugin rather than its generated markup: the
-            // hidden input holds the value and minicolors renders a trigger beside it. An
-            // upgrade that failed to initialise would leave the trigger absent.
-            const state = await frame2.evaluate(() => {
-                const win = window as unknown as { jQuery: (s: string) => { length: number; val: () => string } };
-                const input = win.jQuery('#inspector-font-color-picker');
-                return {
-                    inputPresent: input.length === 1,
-                    value: input.val(),
-                    triggerCount: win.jQuery('.minicolors-trigger, .miniColors-trigger').length,
-                };
-            });
+            const { value } = await pickColour(page, frame, frame2, 'inspector-font-color-picker');
+            expect(value).toMatch(/^#[0-9a-fA-F]{6}$/);
+            expect(value).not.toBe('#000000');
 
-            expect(state.inputPresent).toBe(true);
-            expect(state.value).toMatch(/^#[0-9a-fA-F]{3,6}$/);
-            expect(state.triggerCount).toBeGreaterThan(0);
+            // The rendered node has to follow the picker, not just the input.
+            await expect.poll(() => rootNodeColour(frame2), { timeout: 5000 }).not.toBe(before);
+
+            // Deselect, reselect: the inspector reads the value back out of the model, so
+            // this is what proves the colour was stored rather than only painted.
+            await frame.locator('#canvas-container').click({ position: { x: 20, y: 20 } });
+            await clickRootNode(frame);
+
+            const restored = await frame2.evaluate(() =>
+                (window as unknown as { jQuery: (s: string) => { val: () => string } })
+                    .jQuery('#inspector-font-color-picker')
+                    .val(),
+            );
+            expect(restored.toLowerCase()).toBe(value.toLowerCase());
+            expect(errors, `uncaught page errors: ${errors.join(' | ')}`).toEqual([]);
+        });
+
+        test('changing the branch colour updates the model', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const { frame, frame2 } = await openMindmapEditor(page, createProject, 'MindMap Branch Colour');
+
+            // A child node, because the root has no incoming branch to colour.
+            await frame.locator('#button-CREATE_NODE_COMMAND').click();
+            await expect.poll(async () => (await nodeCaptions(frame2)).length, { timeout: 5000 }).toBe(2);
+
+            const { value } = await pickColour(page, frame, frame2, 'inspector-branch-color-picker');
+
+            expect(value).toMatch(/^#[0-9a-fA-F]{6}$/);
+            const stored = await frame2.evaluate(() =>
+                (window as unknown as { jQuery: (s: string) => { val: () => string } })
+                    .jQuery('#inspector-branch-color-picker')
+                    .val(),
+            );
+            expect(stored.toLowerCase()).toBe(value.toLowerCase());
+        });
+    });
+
+    /**
+     * jquery.tmpl actually rendering, not merely being defined.
+     *
+     * Every panel and dialog in the editor is produced by $.tmpl() from a
+     * <script type="text/x-jquery-tmpl"> block in the host page, using ${...} substitution
+     * and {{if}} blocks. A jQuery upgrade that broke the plugin would leave those blocks
+     * empty or unsubstituted rather than throwing, so the assertions look for the
+     * substituted text.
+     */
+    test.describe('templates', () => {
+        test('renders float panel titles through $.tmpl substitution', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const errors = trackPageErrors(page);
+            const { frame, frame2 } = await openMindmapEditor(page, createProject, 'MindMap Templates');
+
+            // #template-float-panel interpolates ${title}; the inspector and navigator
+            // panels are built from it at startup.
+            const titles = await frame2.evaluate(() =>
+                Array.from(document.querySelectorAll('.float-panel .ui-dialog-title')).map(t =>
+                    (t.textContent || '').trim(),
+                ),
+            );
+
+            expect(titles.length).toBeGreaterThanOrEqual(2);
+            for (const title of titles) {
+                expect(title).not.toBe('');
+                // An unsubstituted template leaves the placeholder behind.
+                expect(title).not.toContain('${');
+            }
+
+            expect(errors, `uncaught page errors: ${errors.join(' | ')}`).toEqual([]);
+        });
+
+        test('renders a dialog body through $.tmpl when one is opened', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const { frame, frame2 } = await openMindmapEditor(page, createProject, 'MindMap Template Dialog');
+
+            await frame
+                .locator('#toolbar')
+                .getByText(/Tools|Herramientas/i)
+                .first()
+                .click();
+            await frame
+                .getByText(/^(Export|Exportar|Save|Guardar)$/i)
+                .first()
+                .click();
+            await expect(frame.locator('#save-dialog')).toBeVisible({ timeout: 10000 });
+
+            // #template-save interpolates ${customStrings.saveMap} and friends.
+            const body = await frame2.evaluate(() => (document.querySelector('#save-dialog') as HTMLElement).innerText);
+            expect(body.trim()).not.toBe('');
+            expect(body).not.toContain('${');
+
+            // $.tmpl is what produced it.
+            const tmpl = await frame2.evaluate(
+                () => typeof (window as unknown as { jQuery: { tmpl?: unknown } }).jQuery.tmpl,
+            );
+            expect(tmpl).toBe('function');
         });
     });
 

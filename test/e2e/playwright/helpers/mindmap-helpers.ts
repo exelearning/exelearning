@@ -113,3 +113,49 @@ export async function clickRootNode(frame: FrameLocator, options: { double?: boo
     if (options.double) await root.dblclick(target);
     else await root.click(target);
 }
+
+/**
+ * Opens a minicolors picker and clicks inside its gradient, returning the colour chosen.
+ *
+ * Drives the real initialised widget rather than calling its value setter: the trigger and
+ * the gradient are what a user touches, and they are what an upgrade would break.
+ */
+export async function pickColour(
+    page: Page,
+    frame: FrameLocator,
+    frame2: Frame,
+    inputId: string,
+): Promise<{ value: string }> {
+    await frame.locator(`#${inputId}`).locator('xpath=following-sibling::a').first().click();
+    const gradient = frame.locator('.miniColors-colors, .minicolors-grid').first();
+    await gradient.waitFor({ state: 'visible', timeout: 5000 });
+    const box = await gradient.boundingBox();
+    if (!box) throw new Error('colour gradient has no box');
+
+    // Away from the corners so the result is neither black nor white.
+    await page.mouse.click(box.x + box.width * 0.8, box.y + box.height * 0.2);
+    await page.waitForTimeout(300);
+
+    const value = await frame2.evaluate(
+        id => (window as unknown as { jQuery: (s: string) => { val: () => string } }).jQuery(`#${id}`).val(),
+        inputId,
+    );
+
+    // minicolors keeps a full-window overlay up until the picker is dismissed, and it
+    // swallows every later click in the editor. Closing it is part of using the control.
+    const overlay = frame.locator('.miniColors-overlay, .minicolors-overlay').first();
+    if (await overlay.isVisible().catch(() => false)) {
+        await overlay.click({ position: { x: 5, y: 5 } });
+        await overlay.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => undefined);
+    }
+
+    return { value };
+}
+
+/** Computed colour of the root node's caption. */
+export async function rootNodeColour(frame2: Frame): Promise<string> {
+    return frame2.evaluate(() => {
+        const node = document.querySelector('.node-caption.root') as HTMLElement;
+        return window.getComputedStyle(node).color;
+    });
+}
