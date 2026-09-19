@@ -49,10 +49,7 @@ test.describe('Mind map editor offline contract', () => {
             .getByText(/Tools|Herramientas/i)
             .first()
             .click();
-        await frame
-            .getByText(SAVE_MENU_ITEM)
-            .first()
-            .click();
+        await frame.getByText(SAVE_MENU_ITEM).first().click();
         await expect(frame.locator('#button-save-hdd')).toBeVisible({ timeout: 10000 });
 
         expect(foreign, `editor requested remote resources:\n${foreign.join('\n')}`).toEqual([]);

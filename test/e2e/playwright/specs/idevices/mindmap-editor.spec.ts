@@ -405,10 +405,7 @@ test.describe('Mind map editor', () => {
                 .getByText(/Tools|Herramientas/i)
                 .first()
                 .click();
-            await frame
-                .getByText(SAVE_MENU_ITEM)
-                .first()
-                .click();
+            await frame.getByText(SAVE_MENU_ITEM).first().click();
             await expect(frame.locator('#save-dialog')).toBeVisible({ timeout: 10000 });
 
             // #template-save interpolates ${customStrings.saveMap} and friends.
@@ -440,10 +437,7 @@ test.describe('Mind map editor', () => {
                 .getByText(/Tools|Herramientas/i)
                 .first()
                 .click();
-            await frame
-                .getByText(SAVE_MENU_ITEM)
-                .first()
-                .click();
+            await frame.getByText(SAVE_MENU_ITEM).first().click();
             await expect(frame.locator('#button-save-hdd')).toBeVisible({ timeout: 10000 });
 
             // Scoped to the dialog that owns the save button: the inspector and navigator
