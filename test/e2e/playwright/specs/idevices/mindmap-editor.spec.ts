@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import {
+    SAVE_MENU_ITEM,
     clickRootNode,
     nodeCaptions,
     openMindmapEditor,
@@ -405,7 +406,7 @@ test.describe('Mind map editor', () => {
                 .first()
                 .click();
             await frame
-                .getByText(/^(Export|Exportar|Save|Guardar)$/i)
+                .getByText(SAVE_MENU_ITEM)
                 .first()
                 .click();
             await expect(frame.locator('#save-dialog')).toBeVisible({ timeout: 10000 });
@@ -440,7 +441,7 @@ test.describe('Mind map editor', () => {
                 .first()
                 .click();
             await frame
-                .getByText(/^(Export|Exportar|Save|Guardar)$/i)
+                .getByText(SAVE_MENU_ITEM)
                 .first()
                 .click();
             await expect(frame.locator('#button-save-hdd')).toBeVisible({ timeout: 10000 });

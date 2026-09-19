@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { openMindmapEditor } from '../../helpers/mindmap-helpers';
+import { SAVE_MENU_ITEM, openMindmapEditor } from '../../helpers/mindmap-helpers';
 
 /**
  * Exporting a mind map writes a file through FileSaver.
@@ -33,7 +33,7 @@ test.describe('Mind map export', () => {
             .first();
         await toolsMenu.click();
 
-        const exportItem = frame.getByText(/^(Export|Exportar|Save|Guardar)$/i).first();
+        const exportItem = frame.getByText(SAVE_MENU_ITEM).first();
         await exportItem.click();
 
         const saveButton = frame.locator('#button-save-hdd');

@@ -1,7 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '../../fixtures/auth.fixture';
-import { clickRootNode, openMindmapEditor, readZoomPercent, wheelOverCanvas } from '../../helpers/mindmap-helpers';
+import {
+    SAVE_MENU_ITEM,
+    clickRootNode,
+    openMindmapEditor,
+    readZoomPercent,
+    wheelOverCanvas,
+} from '../../helpers/mindmap-helpers';
 
 /**
  * The mindmaps editor must not fetch executable code or styles from anywhere but this
@@ -44,7 +50,7 @@ test.describe('Mind map editor offline contract', () => {
             .first()
             .click();
         await frame
-            .getByText(/^(Export|Exportar|Save|Guardar)$/i)
+            .getByText(SAVE_MENU_ITEM)
             .first()
             .click();
         await expect(frame.locator('#button-save-hdd')).toBeVisible({ timeout: 10000 });

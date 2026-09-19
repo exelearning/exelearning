@@ -10,6 +10,16 @@ import { waitForAppReady, gotoWorkarea, addTextIdevice } from './workarea-helper
  * #navi-zoom-level, #button-<COMMAND>) rather than generated classes, which is what makes
  * them survive a jQuery or jQuery UI change.
  */
+/**
+ * The toolbar menu's save/export entry, in either language.
+ *
+ * The leading `\s*` is not decoration. jQuery UI 1.12 and later separate a button's icon
+ * from its label with `<span class="ui-button-icon-space"> </span>`, so the entry's text
+ * is " Guardar" rather than "Guardar", and Playwright applies a regular expression to the
+ * text as it stands -- unlike a plain string, which it would normalise first.
+ */
+export const SAVE_MENU_ITEM = /^\s*(Export|Exportar|Save|Guardar)\s*$/i;
+
 export async function openMindmapEditor(
     page: Page,
     createProject: (page: Page, name: string) => Promise<string>,
