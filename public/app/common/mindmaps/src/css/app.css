@@ -124,6 +124,122 @@ html,body {
 }
 
 /*
+ * jQuery UI 1.12 rebuilt the button widget. The markup the theme was written for
+ * -- a button carrying ui-state-default whose label sat in a ui-button-text span
+ * -- is now a bare button carrying ui-button, and a buttonset is a controlgroup.
+ * None of the theme's button rules match that, so every button in the editor
+ * fell back to the browser's native control. These rules put the theme's own
+ * declarations back on the classes 1.14 actually emits.
+ *
+ * ui-widget is in every selector on purpose: the theme loads after this file, so
+ * a single-class rule would lose to its .ui-button rule on source order.
+ */
+.ui-button.ui-widget {
+  padding: 0.4em 1em;
+  border: 1px solid #B6B6B6;
+  border-radius: 3px;
+  color: #4F4F4F;
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.4;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: url("Aristo/images/bg_fallback.png") 0 0 repeat-x;
+  background: linear-gradient(to bottom, rgb(237, 237, 237), rgb(196, 196, 196));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+.ui-button.ui-widget:hover,
+.ui-button.ui-widget:focus {
+  outline: none;
+  border-color: #9D9D9D;
+  color: #313131;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+}
+
+.ui-button.ui-widget.ui-state-active {
+  border-color: #7096AB;
+  color: #1c4257;
+  background: url("Aristo/images/bg_fallback.png") 0 -50px repeat-x;
+  background: linear-gradient(to bottom, rgb(185, 224, 245), rgb(146, 189, 214));
+  box-shadow: none;
+}
+
+.ui-button.ui-widget.ui-state-disabled {
+  background-image: none;
+}
+
+/* The icon is a plain child now rather than an absolutely placed overlay. */
+.ui-button.ui-widget .ui-button-icon,
+.ui-button.ui-widget .menu-arrow {
+  display: inline-block;
+  vertical-align: text-bottom;
+}
+
+/* The overlay sat inside the padding, so pull the child back into it: without
+ * this every icon button grows by its icon's width. */
+.ui-button.ui-widget .ui-button-icon {
+  margin-left: -0.5em;
+  margin-right: 0.2em;
+}
+
+.ui-button.ui-widget .menu-arrow {
+  margin-left: 0.2em;
+  margin-right: -0.5em;
+}
+
+.ui-button.ui-widget .ui-icon {
+  background-image: url("Aristo/images/ui-icons_454545_256x240.png");
+}
+
+/*
+ * An icon-only button is just the icon in a frame. font-size: 0 hides the label
+ * 1.12 started writing into it as a bare text node -- the theme used to hide it
+ * by indenting the span that no longer exists -- and the icons size themselves
+ * in pixels, so nothing else in the button notices.
+ */
+.ui-button.ui-widget.ui-button-icon-only {
+  padding: 1px;
+  width: auto;
+  font-size: 0;
+}
+
+/*
+ * A dialog's close control was a link in 1.8 and is a button in 1.14, so the
+ * rules above would frame it. It stays the bare icon the theme draws in the
+ * titlebar, from the theme's own sprite.
+ */
+.ui-dialog .ui-button.ui-widget.ui-dialog-titlebar-close {
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.ui-dialog .ui-dialog-titlebar-close .ui-icon {
+  background-image: url("Aristo/images/icon_sprite.png");
+}
+
+.ui-button.ui-widget.ui-button-icon-only .ui-button-icon {
+  position: static;
+  margin: 0;
+}
+
+/* A controlgroup is the old buttonset: one pill, rounded at its two ends. */
+.ui-controlgroup .ui-button.ui-widget {
+  margin-right: -1px;
+  border-radius: 0;
+}
+
+.ui-controlgroup .ui-button.ui-widget:first-of-type {
+  border-radius: 3px 0 0 3px;
+}
+
+.ui-controlgroup .ui-button.ui-widget:last-of-type {
+  margin-right: 0;
+  border-radius: 0 3px 3px 0;
+}
+
+/*
  * jQuery UI 1.12 introduced .ui-front for stacking, and the dialog widget relies
  * on it: _moveToTop reads the z-index of its visible .ui-front siblings and raises
  * itself above the highest. The Aristo theme predates that class, so those reads
@@ -216,17 +332,17 @@ html,body {
 }
 
 /* apply styles to button and wrapper div */
-.buttons-small .ui-button .ui-button-text,.buttons-small.ui-button .ui-button-text
+.buttons-small .ui-button.ui-widget,.buttons-small.ui-button.ui-widget
   {
   font-size: 12px;
 }
 
-.buttons-very-small .ui-button .ui-button-text,.buttons-very-small.ui-button .ui-button-text
+.buttons-very-small .ui-button.ui-widget,.buttons-very-small.ui-button.ui-widget
   {
   font-size: 10px;
 }
 
-.buttons-less-padding .ui-button .ui-button-text,.buttons-less-padding.ui-button .ui-button-text
+.buttons-less-padding .ui-button.ui-widget,.buttons-less-padding.ui-button.ui-widget
   {
   padding: 0.2em 0.6em;
 }
@@ -516,25 +632,36 @@ html,body {
   font-size: 12px;
 }
 
-#inspector-table .font-styles .ui-button-text {
+#inspector-table .font-styles .ui-button.ui-widget {
   font-size: 11px;
   font-weight: normal;
 }
 
-#inspector-label-font-bold .ui-button-text {
+#inspector-label-font-bold {
   font-weight: bold !important;
 }
 
-#inspector-label-font-italic .ui-button-text {
+#inspector-label-font-italic {
   font-style: italic;
 }
 
-#inspector-label-font-underline .ui-button-text {
-  text-decoration: underline;
+/* !important: the theme takes text-decoration off every button, with one. */
+#inspector-label-font-underline {
+  text-decoration: underline !important;
 }
 
-#inspector-label-font-linethrough .ui-button-text {
-  text-decoration: line-through;
+#inspector-label-font-linethrough {
+  text-decoration: line-through !important;
+}
+
+/*
+ * MiniColors 2 sizes its swatch to sit inside a text input. The inspector has
+ * no input to speak of -- the pickers are hidden fields -- so the swatch is the
+ * whole control, and it keeps the square the 1.x trigger drew.
+ */
+#inspector-table .minicolors-swatch {
+  width: 22px;
+  height: 22px;
 }
 
 .file-dialog {

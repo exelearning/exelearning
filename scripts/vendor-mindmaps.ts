@@ -69,14 +69,17 @@ export const SOURCE_REPOSITORY = 'exelearning/mindmaps';
  * Bumping this is how eXeLearning takes a change from the fork: merge it to the fork's
  * `main`, put the resulting commit here, and regenerate.
  *
- * This revision is the fork's `main` after exelearning/mindmaps#9 through #15, which added
- * CI and brought jquery.mousewheel, MiniColors and the build tooling up to date. Earlier,
- * #5 through #8 moved the
- * application onto modern jQuery and stopped bundling jQuery UI. The bundle no longer
- * carries jQuery UI at all: the editor iframe loads eXeLearning's canonical copy, so a
- * second one inside the bundle would fight it for the same widgets.
+ * This revision is the fork's `main` after exelearning/mindmaps#9 through #18. The last
+ * of those restores the editor's appearance: jQuery UI 1.12 rebuilt the button widget,
+ * so the theme's rules and the widget calls had to be re-aimed at the markup 1.14 emits,
+ * without which every button in the editor rendered as a native control and no icon was
+ * drawn at all. Before it, #9 through #17 added CI and brought jquery.mousewheel,
+ * MiniColors and the build tooling up to date, and #5 through #8 moved the application
+ * onto modern jQuery and stopped bundling jQuery UI. The bundle no longer carries jQuery
+ * UI at all: the editor iframe loads eXeLearning's canonical copy, so a second one inside
+ * the bundle would fight it for the same widgets.
  */
-export const PINNED_REVISION = 'b12d1ff67e6602a53a519499a5d5686576e34d4d';
+export const PINNED_REVISION = 'fda1ec23701ae7b610a0fca39abebc32d67a5e87';
 
 /** Where the vendored tree lives, relative to the repository root. */
 export const VENDORED_ROOT = path.join('public', 'app', 'common', 'mindmaps');
@@ -119,9 +122,9 @@ export const VENDORED: readonly VendoredFile[] = [
         source: 'dist/js/script.js',
         // The build output as emitted. Verifying this proves the build was reproduced
         // before anything is written, and catches a toolchain that has drifted.
-        sourceSha256: 'a3a26210ce5e662136417e436b5e75ba36a80e68bcd0e90f34602d378faedd26',
+        sourceSha256: '7409a350e83d95896136437b9db57e421f8d88cc65ee6b17850456d8d35c3c9b',
         // The same bytes with newlines normalised, which is what ships here.
-        sha256: '3e0a868d17d402559fc0540b72f8a79005697ba4385340642ca99cb61dae18d6',
+        sha256: '6ab4ecb91883e06fe9c444109ee01015bf2cb96b232cb46dd72d31a3c33f79e0',
     },
     {
         path: 'src/css/Aristo/images/bg_fallback.png',
@@ -176,8 +179,8 @@ export const VENDORED: readonly VendoredFile[] = [
         path: 'src/css/app.css',
         provenance: 'copy-lf',
         source: 'src/css/app.css',
-        sourceSha256: 'ae3bf151cc32729997ed439cbfb139a8fccbb7cbf66a042904930baf968600ed',
-        sha256: '2d36a8829547b2d288c05acf98e6b7bf6b6e94abe326e20095ac0d61be898219',
+        sourceSha256: '4bc8ed56b6a9eaaacde3eab37fcb9e26fb19cdb728d333cfa4672b4dc2d32e26',
+        sha256: '32f3538278a148481d13730eeb795447ae249564623943c476aa6671f76e99c0',
     },
     {
         path: 'src/css/common.css',
