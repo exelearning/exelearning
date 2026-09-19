@@ -478,6 +478,20 @@ vendor-mathjax: check-bun
 vendor-edicuatex: check-bun
 	bun run scripts/vendor-edicuatex.ts
 
+# Refresh public/app/common/mindmaps/ from the pinned revision of the eXeLearning
+# maintenance fork of mindmaps (https://github.com/exelearning/mindmaps). The tree is
+# committed, so this is only needed after bumping PINNED_REVISION in the script.
+# Only the files eXeLearning takes from the fork verbatim are rewritten; the
+# locally recompressed images and the bundle built from eXeLearning-patched sources
+# are left alone. Use `--check` (no network) to verify the committed tree.
+.PHONY: vendor-mindmaps
+vendor-mindmaps: check-bun
+	bun run scripts/vendor-mindmaps.ts
+
+.PHONY: vendor-mindmaps-check
+vendor-mindmaps-check: check-bun
+	bun run scripts/vendor-mindmaps.ts --check
+
 # Print the architecture record index, derived from document frontmatter.
 # Deliberately not a committed file: it would conflict on every concurrent branch.
 .PHONY: architecture-records
@@ -926,6 +940,8 @@ help:
 	@echo "  make translations-format [LOCALE=es]          Add CDATA where needed and normalise indentation"
 	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
 	@echo "  make update-licenses-check                    Fail if license info has drifted"
+	@echo "  make vendor-mindmaps                          Refresh mindmaps from the pinned fork revision"
+	@echo "  make vendor-mindmaps-check                    Fail if the vendored mindmaps tree has drifted"
 	@echo ""
 	@echo "ELPX Processing:"
 	@echo "  make convert-elp INPUT=x OUTPUT=y             Convert ELP v2.x to v3.0 (elpx)"

@@ -15,6 +15,7 @@
     "build:standalone": "bun scripts/build-standalone.js",
     "build:all": "bun run vendor:edicuatex && bun run build && bun run --parallel css:node bundle:resources bundle:i18n bundle:app bundle:importers bundle:exporters bundle:slide-editor",
     "vendor:edicuatex": "bun scripts/vendor-edicuatex.ts",
+    "vendor:mindmaps": "bun scripts/vendor-mindmaps.ts",
     "bundle:i18n": "bun scripts/build-i18n-bundles.js",
     "generate:truefalse-messages": "bun scripts/generate-truefalse-messages.ts",
     "build:static": "bun run build:all && bun scripts/build-static-bundle.ts",

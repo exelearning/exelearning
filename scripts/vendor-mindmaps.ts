@@ -1,0 +1,506 @@
+/**
+ * vendor-mindmaps
+ *
+ * Establishes where public/app/common/mindmaps/ comes from, and keeps it honest.
+ *
+ * mindmaps is David Richard's application (https://github.com/drichard/mindmaps).
+ * eXeLearning embeds it in the exemindmap TinyMCE plugin's editor iframe, and takes
+ * its maintained copy from the conservative maintenance fork at
+ * https://github.com/exelearning/mindmaps -- `master` there mirrors upstream, `main`
+ * carries eXeLearning maintenance. Background: drichard/mindmaps#107.
+ *
+ * The tree is committed, because exports, the static build and Electron all need it
+ * on disk with no network. So this script is not a build step: it is the provenance
+ * record for a tree that was, until now, copied by hand with nothing written down.
+ *
+ *   bun scripts/vendor-mindmaps.ts            # refresh from the pinned revision
+ *   bun scripts/vendor-mindmaps.ts --check    # verify the committed tree (no network)
+ *
+ * --check is the cheap one and the one CI wants: it recomputes every hash in VENDORED
+ * against the working tree and needs no network. The default refresh additionally
+ * downloads the pinned revision and rewrites the files eXeLearning takes verbatim.
+ *
+ * Not every file can be rewritten, and pretending otherwise is the failure this
+ * script exists to prevent. Each file declares how it relates to the fork:
+ *
+ *   copy          byte-for-byte from the fork.
+ *   copy-lf       from the fork with CRLF normalised to LF. The fork stores some CSS
+ *                 with CRLF; eXeLearning has always shipped it as LF. Normalising is
+ *                 declared here rather than left to a .gitattributes accident.
+ *   recompressed  an eXeLearning-local lossless recompression of the fork's image
+ *                 (#1015, #1908, #2260 shrank the static build and exports). The
+ *                 pixels match; the bytes do not. Refresh will not overwrite these,
+ *                 but it does verify `sourceSha256`, so if the fork ever changes one
+ *                 of these images we find out instead of silently shipping the old
+ *                 recompression forever.
+ *   built         min/js/script.js. This is the only real gap: it is a build of
+ *                 eXeLearning-patched sources -- 43 strings are wrapped in the `_()`
+ *                 translator that langs/all.js pulls from `top._`, and they are
+ *                 carried in translations/messages.*.xlf. Those patched sources are
+ *                 not in the fork and were never committed here either; only this
+ *                 minified artefact survived. It therefore cannot be regenerated from
+ *                 any revision of any repository today, and refresh leaves it alone.
+ *
+ * Closing the `built` gap means landing the i18n hooks (and ideally the image
+ * recompression) on exelearning/mindmaps:main, then bumping PINNED_REVISION and
+ * flipping those entries. That is deliberately a separate change: it touches running
+ * code, while this one only writes down what is already shipping.
+ */
+
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+/** The fork, and the exact commit eXeLearning vendors from. Never a branch name. */
+export const SOURCE_REPOSITORY = 'exelearning/mindmaps';
+
+/**
+ * Pinned to a commit, so the download is immutable and a refresh is reproducible.
+ *
+ * This revision is the tip of the fork's `main` at the time of vendoring, and is also
+ * byte-identical to drichard/mindmaps:master -- `main` was branched from the mirror
+ * and carries no code change yet. That is the honest starting point: eXeLearning is
+ * not yet shipping anything the fork changed, and the provenance says so.
+ */
+export const PINNED_REVISION = 'c56f3ed3f22fc355103632393043db978f24b8d5';
+
+/** Where the vendored tree lives, relative to the repository root. */
+export const VENDORED_ROOT = path.join('public', 'app', 'common', 'mindmaps');
+
+export type Provenance = 'copy' | 'copy-lf' | 'recompressed' | 'built';
+
+export interface VendoredFile {
+    /** Path inside VENDORED_ROOT, POSIX separators. */
+    path: string;
+    provenance: Provenance;
+    /** Path inside the fork this file comes from, or null when nothing maps to it. */
+    source: string | null;
+    /** sha256 of the fork's file at PINNED_REVISION. Absent only when source is null. */
+    sourceSha256?: string;
+    /** sha256 of the committed file here. */
+    sha256: string;
+}
+
+/**
+ * Every file eXeLearning ships from mindmaps, and nothing else.
+ *
+ * The first five are the live set: the editor iframe loads min/js/script.js plus those
+ * four stylesheets, and LICENSE ships because an AGPL application must carry it. The
+ * rest are referenced from the CSS. The development half of the upstream tree (src/js,
+ * src/index.html, src/about.html, src/cache.appcache, src/css/about.css) is
+ * deliberately absent -- see public/app/common/vendored_assets.test.js.
+ */
+export const VENDORED: readonly VendoredFile[] = [
+    {
+        path: 'LICENSE',
+        provenance: 'copy',
+        source: 'LICENSE',
+        sourceSha256: '91b65277959ec273763d28ef002e83a6b3fba57c7a35436c9e5b66536333d720',
+        sha256: '91b65277959ec273763d28ef002e83a6b3fba57c7a35436c9e5b66536333d720',
+    },
+    {
+        path: 'min/js/script.js',
+        provenance: 'built',
+        source: null,
+        sha256: '2c697ce9b250902c1b94cf455d819362c0ab6d5d683a2b75ffedb9d5f78f068d',
+    },
+    {
+        path: 'src/css/Aristo/images/bg_fallback.png',
+        provenance: 'recompressed',
+        source: 'src/css/Aristo/images/bg_fallback.png',
+        sourceSha256: '1dd120f7d1847260c637bbdf4351b7112624a72ade8a2c292b81ecfef19f80ca',
+        sha256: '2d3da83a0c4f86779868970ae5cea4997134e2570e2e4e1dce61763fa880f6ba',
+    },
+    {
+        path: 'src/css/Aristo/images/icon_sprite.png',
+        provenance: 'recompressed',
+        source: 'src/css/Aristo/images/icon_sprite.png',
+        sourceSha256: '6c6790bc0d3cbd7ab641601afdd959127db01381fdbb442322a1764808c935c6',
+        sha256: 'b7a2c383efa4500efb4901dc1e8b963eea8cd7a2b9bd3887720b2807b6609374',
+    },
+    {
+        path: 'src/css/Aristo/images/progress_bar.gif',
+        provenance: 'recompressed',
+        source: 'src/css/Aristo/images/progress_bar.gif',
+        sourceSha256: '6127765ca60a3b1edbf1f38b74cc8047edf5a56d9b5dcb397557e5ba98274896',
+        sha256: 'a2ed712d76dcffc7a06918cd389511bca2cf7bb91c12b1d865bf44c7b2c46289',
+    },
+    {
+        path: 'src/css/Aristo/images/slider_handles.png',
+        provenance: 'recompressed',
+        source: 'src/css/Aristo/images/slider_handles.png',
+        sourceSha256: '7cccc7df5771e3dd1ca470b72bd8e5c92ebf659002c01a6948b01aeab733a362',
+        sha256: 'c1ea1470b6481092b088d71d76b9ccbed848ca2085027d968371938638ea92e2',
+    },
+    {
+        path: 'src/css/Aristo/images/ui-icons_222222_256x240.png',
+        provenance: 'recompressed',
+        source: 'src/css/Aristo/images/ui-icons_222222_256x240.png',
+        sourceSha256: 'a2ccfdc001858222885a9df39200840ac7a3f479ba889727d32a10398db7918a',
+        sha256: '3bf3c80b69008d47a7480e7bf89ff8ff388ffad663f39ebad3d3fe9b51df2b21',
+    },
+    {
+        path: 'src/css/Aristo/images/ui-icons_454545_256x240.png',
+        provenance: 'recompressed',
+        source: 'src/css/Aristo/images/ui-icons_454545_256x240.png',
+        sourceSha256: 'cb36e80beaf2a527d463da552a5c679a46c4ff8c881318a194bb0ccb61cb2d5c',
+        sha256: 'c3f55fa4ff1db6c7fd56b4c0f44f4d77c6fe00faf89552642a61fb098e2d2020',
+    },
+    {
+        path: 'src/css/Aristo/jquery-ui-1.8.7.custom.css',
+        provenance: 'copy-lf',
+        source: 'src/css/Aristo/jquery-ui-1.8.7.custom.css',
+        sourceSha256: '77d751610f8d1727dd2413f5484142ef835a95f6e4b6f6fd7032384205f28c9b',
+        sha256: '3b308d74d644ec4fbcbcb2ecdfe1cd44346272518a1631da11c1a2815d5f3d16',
+    },
+    {
+        path: 'src/css/app.css',
+        provenance: 'copy-lf',
+        source: 'src/css/app.css',
+        sourceSha256: '8a9fcf93575a6fb2b5b2f2852ad850e0fd85eda9823043a612bc5fcdd0083fa4',
+        sha256: '042a96f080b05b2fad4426e780b901554a493e2ecba2e98ce7d7a0329046990c',
+    },
+    {
+        path: 'src/css/common.css',
+        provenance: 'copy-lf',
+        source: 'src/css/common.css',
+        sourceSha256: '356683300c73cdbadc79d647d6c60d8379b73daf4b9b9a152061352a20b4e8e6',
+        sha256: '73ec02f1384ef5270c5eaac4d2e9207f9a7520a9a4f159180274b42f176a81ab',
+    },
+    {
+        path: 'src/css/minicolors/images/circle.gif',
+        provenance: 'recompressed',
+        source: 'src/css/minicolors/images/circle.gif',
+        sourceSha256: 'c624c7b31c6f0007f8f302d84445c14ecc907dbac4ac669aab54bb1231227b40',
+        sha256: '116cb5a86249b41bb455a8e993b267765a64bcaaed939b09c6607c3ebfa31187',
+    },
+    {
+        path: 'src/css/minicolors/images/gradient.png',
+        provenance: 'recompressed',
+        source: 'src/css/minicolors/images/gradient.png',
+        sourceSha256: '473bc8ca699232bc002945702515df870395a8bb97448954d759a445db459e7c',
+        sha256: '237c9dc7e2c61b6f9f9afae6728130e22a74a54cea34e927d30432b537bd1f31',
+    },
+    {
+        path: 'src/css/minicolors/images/line.gif',
+        provenance: 'recompressed',
+        source: 'src/css/minicolors/images/line.gif',
+        sourceSha256: '6cf57ad99fbb92585b31dd1936407973c27f3fe9844cd02297ba5449da46686d',
+        sha256: 'c1304c233e90a20a213402b549cbe88de15b65832d9883b365a5b2e0e95bc689',
+    },
+    {
+        path: 'src/css/minicolors/images/rainbow.png',
+        provenance: 'recompressed',
+        source: 'src/css/minicolors/images/rainbow.png',
+        sourceSha256: 'cd5bd8d758a9efca5e176dcdb08965fc1419d49d87c3bfd6038b56e935576058',
+        sha256: '92840826c32774242730fb3c01576f77082b7013b86d78ad3c6ae4501ce272b1',
+    },
+    {
+        path: 'src/css/minicolors/images/trigger.png',
+        provenance: 'recompressed',
+        source: 'src/css/minicolors/images/trigger.png',
+        sourceSha256: '9aa01be23bf2286b2fe5fd33140f9a1db6441bf6936b6e69cceb8af242d0fb05',
+        sha256: 'ba1b8954265fe16284dc265965f8f547c24631ede3ad22cd70d6b3b067011776',
+    },
+    {
+        path: 'src/css/minicolors/jquery.miniColors.css',
+        provenance: 'copy',
+        source: 'src/css/minicolors/jquery.miniColors.css',
+        sourceSha256: '10605d2fe0dd13da5942c604b461e5f6a3cbb48e4d21bd907ce846747b2380dc',
+        sha256: '10605d2fe0dd13da5942c604b461e5f6a3cbb48e4d21bd907ce846747b2380dc',
+    },
+    {
+        path: 'src/img/ajax-loader.gif',
+        provenance: 'recompressed',
+        source: 'src/img/ajax-loader.gif',
+        sourceSha256: 'f6ecff617ec2ba7f559e6f535cad9b70a3f91120737535dab4d4548a6c83576c',
+        sha256: 'bbe10e2c8cc41eb0613798530547255880c80d28709cfe19b3a06ffb04f45a08',
+    },
+    {
+        path: 'src/img/closedhand.png',
+        provenance: 'recompressed',
+        source: 'src/img/closedhand.png',
+        sourceSha256: '4dbda38788f30c13c30079eaf55a4c952e9188ae21fe7d4f4ef05460c5b33de2',
+        sha256: '2a4f0c3f1cd73f62427841a899a98974c6c7da575832a15580667cb949ff79df',
+    },
+    {
+        path: 'src/img/creator-nub-sprite.png',
+        provenance: 'recompressed',
+        source: 'src/img/creator-nub-sprite.png',
+        sourceSha256: '8bf6883a4cc44367278005340f7909ca81e9f221454a3b7024c7b1b23fa21df6',
+        sha256: 'aeddd1e3802e9d569119a5540f0f983f1e2ff2f37dcc144910ebac346acf3f7e',
+    },
+    {
+        path: 'src/img/favicon.png',
+        provenance: 'recompressed',
+        source: 'src/img/favicon.png',
+        sourceSha256: 'a82df30ae87b63faedcb2499e386550a7602b42f85f412009dda36d41a888219',
+        sha256: 'e654aee1459e0cf21c017b8ea8ab8ae08c4329e01bf53e56c2a38832edc426c9',
+    },
+    {
+        path: 'src/img/grid.gif',
+        provenance: 'recompressed',
+        source: 'src/img/grid.gif',
+        sourceSha256: '41b87113aecdc0e51c69c88984735ebce03a9754a6262d1d3dd724304b0f0aaf',
+        sha256: '9323856e5c690596ab70528c954a2a1874d173e5804e8beca405b228cfb583fd',
+    },
+    {
+        path: 'src/img/openhand.png',
+        provenance: 'recompressed',
+        source: 'src/img/openhand.png',
+        sourceSha256: 'dd901ae268dc46e9b45799195c6f4fe487bc6197a92884d1631113c912b08caf',
+        sha256: 'aae4c54e769de4760964709a5951a5aa76f8c7f5c14b8527b360f10d8ca5b4ac',
+    },
+    {
+        path: 'src/img/plus-minus.png',
+        provenance: 'recompressed',
+        source: 'src/img/plus-minus.png',
+        sourceSha256: '86ea79b19c0e8e180b681572f63ed074bc0055411155491ad85c05a5560b3a3e',
+        sha256: '97ca0ff6853fcb84f70efcee0ffadc5d3d1de0613efe6b563b25815ff0219ec9',
+    },
+] as const;
+
+/** Files the exemindmap editor iframe loads directly. Kept in step with vendored_assets.test.js. */
+export const LIVE_ASSETS: readonly string[] = [
+    'min/js/script.js',
+    'src/css/common.css',
+    'src/css/app.css',
+    'src/css/Aristo/jquery-ui-1.8.7.custom.css',
+    'src/css/minicolors/jquery.miniColors.css',
+    'LICENSE',
+] as const;
+
+export function tarballUrl(revision = PINNED_REVISION): string {
+    return `https://codeload.github.com/${SOURCE_REPOSITORY}/tar.gz/${revision}`;
+}
+
+export function sha256(data: Buffer): string {
+    return createHash('sha256').update(data).digest('hex');
+}
+
+/**
+ * CRLF -> LF, for the `copy-lf` files. Lone CR is left alone: the fork's CSS uses
+ * CRLF throughout, and rewriting a bare CR would be a transform nobody asked for.
+ */
+export function normalizeLineEndings(data: Buffer): Buffer {
+    return Buffer.from(data.toString('binary').replace(/\r\n/g, '\n'), 'binary');
+}
+
+/** Bytes this file should have, given the fork's bytes. Null for files we do not write. */
+export function renderFile(entry: VendoredFile, sourceBytes: Buffer): Buffer | null {
+    if (entry.provenance === 'copy') return sourceBytes;
+    if (entry.provenance === 'copy-lf') return normalizeLineEndings(sourceBytes);
+    return null;
+}
+
+export function isWritable(entry: VendoredFile): boolean {
+    return entry.provenance === 'copy' || entry.provenance === 'copy-lf';
+}
+
+function listFilesRecursively(root: string, prefix = ''): string[] {
+    const here = path.join(root, prefix);
+    if (!fs.existsSync(here)) return [];
+    const files: string[] = [];
+    for (const entry of fs.readdirSync(here, { withFileTypes: true })) {
+        const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) files.push(...listFilesRecursively(root, relativePath));
+        else files.push(relativePath);
+    }
+    return files.sort();
+}
+
+export interface TreeDrift {
+    missing: string[];
+    extra: string[];
+    changed: string[];
+}
+
+/** Compares the vendored tree against VENDORED. Reads only; no network. */
+export function verifyVendoredTree(vendoredRoot: string, manifest: readonly VendoredFile[] = VENDORED): TreeDrift {
+    const expected = new Map(manifest.map(entry => [entry.path, entry]));
+    const actual = new Set(listFilesRecursively(vendoredRoot));
+
+    const missing: string[] = [];
+    const changed: string[] = [];
+    for (const [relativePath, entry] of expected) {
+        if (!actual.has(relativePath)) {
+            missing.push(relativePath);
+            continue;
+        }
+        if (sha256(fs.readFileSync(path.join(vendoredRoot, ...relativePath.split('/')))) !== entry.sha256) {
+            changed.push(relativePath);
+        }
+    }
+    const extra = [...actual].filter(relativePath => !expected.has(relativePath)).sort();
+
+    return { missing: missing.sort(), extra, changed: changed.sort() };
+}
+
+export interface SourceDrift {
+    missing: string[];
+    changed: string[];
+}
+
+/**
+ * Checks the downloaded revision still contains what VENDORED says it does.
+ *
+ * This runs before anything is written, and a failure here means the manifest and the
+ * pin disagree -- so refusing to write is the point: a half-refreshed tree is worse
+ * than an unrefreshed one.
+ */
+export function verifySourceTree(sourceRoot: string, manifest: readonly VendoredFile[] = VENDORED): SourceDrift {
+    const missing: string[] = [];
+    const changed: string[] = [];
+    for (const entry of manifest) {
+        if (entry.source === null) continue;
+        const sourcePath = path.join(sourceRoot, ...entry.source.split('/'));
+        if (!fs.existsSync(sourcePath)) {
+            missing.push(entry.source);
+            continue;
+        }
+        if (sha256(fs.readFileSync(sourcePath)) !== entry.sourceSha256) changed.push(entry.source);
+    }
+    return { missing: missing.sort(), changed: changed.sort() };
+}
+
+/**
+ * Writes the `copy` and `copy-lf` files. Touches nothing else under the destination,
+ * and nothing at all outside it: `recompressed` and `built` files are left exactly as
+ * committed, so this never removes the tree it cannot fully rebuild.
+ */
+export function writeWritableFiles(
+    sourceRoot: string,
+    vendoredRoot: string,
+    manifest: readonly VendoredFile[] = VENDORED,
+): string[] {
+    const written: string[] = [];
+    for (const entry of manifest) {
+        if (!isWritable(entry) || entry.source === null) continue;
+        const bytes = renderFile(entry, fs.readFileSync(path.join(sourceRoot, ...entry.source.split('/'))));
+        if (bytes === null) continue;
+        const destination = path.join(vendoredRoot, ...entry.path.split('/'));
+        fs.mkdirSync(path.dirname(destination), { recursive: true });
+        fs.writeFileSync(destination, bytes);
+        written.push(entry.path);
+    }
+    return written;
+}
+
+export function countByProvenance(manifest: readonly VendoredFile[] = VENDORED): Record<Provenance, number> {
+    const counts: Record<Provenance, number> = { copy: 0, 'copy-lf': 0, recompressed: 0, built: 0 };
+    for (const entry of manifest) counts[entry.provenance] += 1;
+    return counts;
+}
+
+export interface CliIo {
+    log: (message: string) => void;
+    error: (message: string) => void;
+}
+
+const consoleIo: CliIo = { log: m => console.log(m), error: m => console.error(m) };
+
+function reportTreeDrift(drift: TreeDrift, io: CliIo): void {
+    for (const file of drift.missing) io.error(`  missing  ${file}`);
+    for (const file of drift.extra) io.error(`  extra    ${file}`);
+    for (const file of drift.changed) io.error(`  changed  ${file}`);
+}
+
+/** Downloads the pinned revision into a fresh temp directory and returns its root. */
+function downloadPinnedRevision(io: CliIo): { root: string; cleanup: () => void } {
+    const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vendor-mindmaps-'));
+    const cleanup = () => fs.rmSync(workDir, { recursive: true, force: true });
+    try {
+        const url = tarballUrl();
+        io.log(`Downloading ${SOURCE_REPOSITORY}@${PINNED_REVISION.slice(0, 10)} ...`);
+        // curl over fetch: this is a one-shot developer command, and curl already
+        // fails the exit code on a 404, which is what a bad pin looks like.
+        execFileSync(
+            'curl',
+            ['--fail', '--silent', '--show-error', '--location', '--output', path.join(workDir, 'source.tar.gz'), url],
+            { stdio: ['ignore', 'ignore', 'inherit'] },
+        );
+        execFileSync('tar', ['-xzf', path.join(workDir, 'source.tar.gz'), '-C', workDir], {
+            stdio: ['ignore', 'ignore', 'inherit'],
+        });
+
+        const extracted = fs
+            .readdirSync(workDir, { withFileTypes: true })
+            .filter(e => e.isDirectory())
+            .map(e => e.name);
+        if (extracted.length !== 1) {
+            throw new Error(
+                `expected exactly one directory in the tarball, found ${extracted.length}: ${extracted.join(', ')}`,
+            );
+        }
+        return { root: path.join(workDir, extracted[0]), cleanup };
+    } catch (error) {
+        cleanup();
+        throw error;
+    }
+}
+
+/** Runs the command and returns the process exit code. */
+export function run(argv: string[], repoRoot: string, io: CliIo = consoleIo): number {
+    const vendoredRoot = path.join(repoRoot, VENDORED_ROOT);
+    const counts = countByProvenance();
+    const pinLabel = `${SOURCE_REPOSITORY}@${PINNED_REVISION.slice(0, 10)}`;
+
+    if (argv.includes('--check')) {
+        const drift = verifyVendoredTree(vendoredRoot);
+        if (drift.missing.length + drift.extra.length + drift.changed.length === 0) {
+            io.log(`${VENDORED_ROOT} matches its provenance record (${VENDORED.length} files, pinned to ${pinLabel}).`);
+            io.log(
+                `  ${counts.copy} verbatim, ${counts['copy-lf']} newline-normalised, ${counts.recompressed} recompressed here, ${counts.built} built from patched sources.`,
+            );
+            return 0;
+        }
+        io.error(`${VENDORED_ROOT} has drifted from its provenance record:`);
+        reportTreeDrift(drift, io);
+        io.error('\nIf the change was intended, update VENDORED in scripts/vendor-mindmaps.ts.');
+        io.error('Otherwise run `make vendor-mindmaps` to restore the files taken from the fork.');
+        return 1;
+    }
+
+    let source: { root: string; cleanup: () => void };
+    try {
+        source = downloadPinnedRevision(io);
+    } catch (error) {
+        io.error(`Could not fetch ${tarballUrl()}: ${error instanceof Error ? error.message : String(error)}`);
+        io.error('Check network access and that PINNED_REVISION exists in the fork.');
+        return 1;
+    }
+
+    try {
+        const sourceDrift = verifySourceTree(source.root);
+        if (sourceDrift.missing.length + sourceDrift.changed.length > 0) {
+            io.error(`${pinLabel} does not match what scripts/vendor-mindmaps.ts expects, so nothing was written:`);
+            for (const file of sourceDrift.missing) io.error(`  missing in fork  ${file}`);
+            for (const file of sourceDrift.changed) io.error(`  hash mismatch    ${file}`);
+            io.error('\nThis means PINNED_REVISION and VENDORED disagree. Update both together.');
+            return 1;
+        }
+
+        const written = writeWritableFiles(source.root, vendoredRoot);
+
+        const drift = verifyVendoredTree(vendoredRoot);
+        if (drift.missing.length + drift.extra.length + drift.changed.length > 0) {
+            io.error(`${VENDORED_ROOT} does not match its provenance record after refreshing:`);
+            reportTreeDrift(drift, io);
+            return 1;
+        }
+
+        io.log(`Refreshed ${written.length} file(s) in ${VENDORED_ROOT} from ${pinLabel}.`);
+        io.log(
+            `  left as committed: ${counts.recompressed} recompressed image(s), ${counts.built} built bundle(s) from eXeLearning-patched sources.`,
+        );
+        return 0;
+    } finally {
+        source.cleanup();
+    }
+}
+
+if (import.meta.main) {
+    process.exit(run(process.argv.slice(2), path.resolve(import.meta.dir, '..')));
+}
