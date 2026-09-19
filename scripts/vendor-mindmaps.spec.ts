@@ -268,8 +268,8 @@ describe('vendor-mindmaps', () => {
             // Both hashes are pinned on purpose: sourceSha256 is what `npm run build`
             // must emit, sha256 is what gets committed here. Swapping the bundle for one
             // nobody can rebuild would have to change these lines to pass.
-            expect(bundle.sourceSha256).toBe('dc80600f65946f51161f394ff5448a8a2206db435278720d20a9ee906dc85f91');
-            expect(bundle.sha256).toBe('4480ffc0375391e1c9fcec1b1bdf8e043d9103b77a96b69c39408351b9883a32');
+            expect(bundle.sourceSha256).toBe('43aa91b85d8dce5364aaa12828436eac1a2583694fcad0926e85d5109630e6d2');
+            expect(bundle.sha256).toBe('1d65b0e4dbfb9936570a5c18acbbd99fd5b441ce294a6fee8d309eb6ee2abe9c');
         });
 
         it('is the committed file, byte for byte', () => {

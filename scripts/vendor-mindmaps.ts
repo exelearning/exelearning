@@ -69,10 +69,12 @@ export const SOURCE_REPOSITORY = 'exelearning/mindmaps';
  * Bumping this is how eXeLearning takes a change from the fork: merge it to the fork's
  * `main`, put the resulting commit here, and regenerate.
  *
- * This revision is the fork's `main` after exelearning/mindmaps#4, which updated
- * jquery.mousewheel to 3.1.13.
+ * This revision is the fork's `main` after exelearning/mindmaps#5 through #8, which moved the
+ * application onto modern jQuery and stopped bundling jQuery UI. The bundle no longer
+ * carries jQuery UI at all: the editor iframe loads eXeLearning's canonical copy, so a
+ * second one inside the bundle would fight it for the same widgets.
  */
-export const PINNED_REVISION = 'f3ac613f6769b9c6872d57bad248972244ae4c94';
+export const PINNED_REVISION = '7b91fd7b4eada54a67803f50992db8719faf441f';
 
 /** Where the vendored tree lives, relative to the repository root. */
 export const VENDORED_ROOT = path.join('public', 'app', 'common', 'mindmaps');
@@ -115,9 +117,9 @@ export const VENDORED: readonly VendoredFile[] = [
         source: 'dist/js/script.js',
         // The build output as emitted. Verifying this proves the build was reproduced
         // before anything is written, and catches a toolchain that has drifted.
-        sourceSha256: 'dc80600f65946f51161f394ff5448a8a2206db435278720d20a9ee906dc85f91',
+        sourceSha256: '43aa91b85d8dce5364aaa12828436eac1a2583694fcad0926e85d5109630e6d2',
         // The same bytes with newlines normalised, which is what ships here.
-        sha256: '4480ffc0375391e1c9fcec1b1bdf8e043d9103b77a96b69c39408351b9883a32',
+        sha256: '1d65b0e4dbfb9936570a5c18acbbd99fd5b441ce294a6fee8d309eb6ee2abe9c',
     },
     {
         path: 'src/css/Aristo/images/bg_fallback.png',
@@ -172,8 +174,8 @@ export const VENDORED: readonly VendoredFile[] = [
         path: 'src/css/app.css',
         provenance: 'copy-lf',
         source: 'src/css/app.css',
-        sourceSha256: '8a9fcf93575a6fb2b5b2f2852ad850e0fd85eda9823043a612bc5fcdd0083fa4',
-        sha256: '042a96f080b05b2fad4426e780b901554a493e2ecba2e98ce7d7a0329046990c',
+        sourceSha256: 'd4edfd43178111e07431df1b6ceab7bb830484b101733260ca188896668e582d',
+        sha256: '3063fb38905704ae94a361321db22c4a06f22f89ab80e664bd9249cd198fefba',
     },
     {
         path: 'src/css/common.css',

@@ -161,28 +161,25 @@ test.describe('Mind map editor', () => {
             expect(await readZoomPercent(frame2)).toBe(300);
         });
 
-        test('a horizontal wheel drives the zoom the same way a vertical one does', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+        test('a horizontal wheel does not zoom', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
             const { frame, frame2 } = await openMindmapEditor(page, createProject, 'MindMap Zoom Horizontal');
 
-            // Not the behaviour you would design, but the behaviour that ships: the plugin
-            // falls back to the horizontal delta when the vertical one is zero, and
-            // CanvasPresenter zooms on whatever sign it receives. A two-finger sideways
-            // swipe therefore zooms. Measured identically on mousewheel 3.0.4 and 3.1.13,
-            // so it is a property of the application rather than of the plugin version.
-            //
-            // Asserted one gesture at a time on purpose: a pair of opposite scrolls cancels
-            // out and would hide this entirely.
+            // One gesture at a time, and asserted after each: a pair of opposite scrolls
+            // cancels out and would hide a zoom that did happen. That is exactly how this
+            // went unnoticed before -- the plugin falls back to the horizontal delta when
+            // the vertical one is zero, so a sideways two-finger swipe used to zoom.
             expect(await readZoomPercent(frame2)).toBe(100);
 
             await wheelOverCanvas(page, frame, 0, 240);
-            expect(await readZoomPercent(frame2)).toBe(75);
+            expect(await readZoomPercent(frame2), 'scrolling right must not zoom').toBe(100);
 
             await wheelOverCanvas(page, frame, 0, -240);
-            expect(await readZoomPercent(frame2)).toBe(100);
+            expect(await readZoomPercent(frame2), 'scrolling left must not zoom').toBe(100);
+
+            // The vertical gesture still zooms, so this is a narrowing rather than a mute.
+            await wheelOverCanvas(page, frame, -240);
+            expect(await readZoomPercent(frame2)).toBe(125);
         });
 
         test('the navigator zoom buttons work independently of the wheel', async ({

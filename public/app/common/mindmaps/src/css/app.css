@@ -101,6 +101,44 @@ html,body {
   margin-right: 14px;
 }
 
+/*
+ * jQuery UI 1.12 replaced the buttonset widget with controlgroup, and a
+ * controlgroup is a block element that takes the full width of its parent. The
+ * button groups have always sat side by side on one row here, so they are put
+ * back inline; without this each group claims its own line, the toolbar grows,
+ * and its right-hand buttons drop underneath it.
+ *
+ * Two classes on purpose: controlgroup also carries ui-helper-clearfix, and the
+ * Aristo theme loads after this file and sets that to display:block. A
+ * single-class rule here would lose on source order.
+ */
+.ui-controlgroup.ui-helper-clearfix,
+.ui-controlgroup.ui-controlgroup-horizontal {
+  display: inline-block;
+  width: auto;
+  vertical-align: middle;
+}
+
+#toolbar .ui-controlgroup {
+  margin-right: 14px;
+}
+
+/*
+ * jQuery UI 1.12 introduced .ui-front for stacking, and the dialog widget relies
+ * on it: _moveToTop reads the z-index of its visible .ui-front siblings and raises
+ * itself above the highest. The Aristo theme predates that class, so those reads
+ * return "auto", the comparison is NaN, the dialog is never raised, and the modal
+ * overlay -- appended after it -- covers the dialog it is meant to sit behind.
+ * Every button inside a modal dialog then refuses to click.
+ *
+ * This is the one structural rule the theme is missing; the rest of jQuery UI's
+ * own stylesheet is deliberately not loaded, because it would restyle the whole
+ * application.
+ */
+.ui-front {
+  z-index: 100;
+}
+
 .buttons-right {
   position: absolute;
   right: 0;
