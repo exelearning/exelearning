@@ -13,9 +13,9 @@ function guessContent(
     return `<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
 }
 
-/** Component HTML for a gamified activity with no adapter yet. */
-function crosswordContent(): string {
-    return `<div class="crucigrama-DataGame js-hidden">${encryptDataGame('{"rows":[]}')}</div>`;
+/** Component HTML for a gamified activity with no adapter yet: word search stores under 'sopa'. */
+function wordSearchContent(): string {
+    return `<div class="sopa-DataGame js-hidden">${encryptDataGame('{"rows":[]}')}</div>`;
 }
 
 interface PageSpec {
@@ -235,14 +235,14 @@ describe('WorksheetExporter', () => {
                         title: 'La Edad Media',
                         components: [
                             { type: 'guess', content: guessContent() },
-                            { type: 'crossword', content: crosswordContent() },
+                            { type: 'word-search', content: wordSearchContent() },
                         ],
                     },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'crossword', pageTitle: 'La Edad Media' },
+                { ideviceType: 'word-search', pageTitle: 'La Edad Media' },
             ]);
         });
 
@@ -268,17 +268,17 @@ describe('WorksheetExporter', () => {
                     {
                         title: 'Una',
                         components: [
-                            { type: 'crossword', content: crosswordContent() },
-                            { type: 'crossword', content: crosswordContent() },
+                            { type: 'word-search', content: wordSearchContent() },
+                            { type: 'word-search', content: wordSearchContent() },
                         ],
                     },
-                    { title: 'Otra', components: [{ type: 'crossword', content: crosswordContent() }] },
+                    { title: 'Otra', components: [{ type: 'word-search', content: wordSearchContent() }] },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'crossword', pageTitle: 'Una' },
-                { ideviceType: 'crossword', pageTitle: 'Otra' },
+                { ideviceType: 'word-search', pageTitle: 'Una' },
+                { ideviceType: 'word-search', pageTitle: 'Otra' },
             ]);
         });
     });

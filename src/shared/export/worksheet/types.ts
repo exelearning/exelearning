@@ -41,16 +41,55 @@ export interface PrintableMedia {
     src: string;
     alt?: string;
     author?: string;
+    /** 'small' keeps a clue illustration from dominating the page. Defaults to 'normal'. */
+    size?: 'normal' | 'small';
 }
+
+/**
+ * One cell of a crossword grid.
+ *
+ * `null` is a blocked cell — no box is drawn there at all. A playable cell carries the letter
+ * when the activity gives it away, and the clue number when a word starts there.
+ */
+export type CrosswordCell = null | {
+    letter: string | null;
+    number?: number;
+};
+
+/**
+ * A shared answer space drawn above an activity's questions.
+ *
+ * Some activities do not answer question by question: a crossword has one grid that every clue
+ * writes into, so the boxes belong to the activity rather than to any single item.
+ */
+export type PrintableBoard = {
+    kind: 'crosswordGrid';
+    rows: CrosswordCell[][];
+    /**
+     * Picture drawn behind the grid, as the activity shows it on screen.
+     *
+     * When there is one, `rows` covers the activity's whole board rather than being cropped to
+     * the words: the cells only line up with the picture at their original coordinates.
+     */
+    background?: { src: string; author?: string };
+};
 
 /** One numbered question inside an activity. */
 export interface PrintableItem {
     /** Question text as sanitised HTML. */
     prompt: string;
     media?: PrintableMedia;
-    answer: PrintableAnswer;
+    /**
+     * Where this question is answered. Absent when the activity answers into a shared board.
+     */
+    answer?: PrintableAnswer;
     /** Extra author-written HTML shown between the prompt and the answer space. */
     extraText?: string;
+    /**
+     * Printed number, when it must match something outside the list — a crossword numbers its
+     * clues after the grid, not after their order on the page. Absent means "number by position".
+     */
+    number?: number;
 }
 
 /** One activity (one iDevice) converted to printable form. */
@@ -61,6 +100,8 @@ export interface PrintableActivity {
     title: string;
     /** Author's general instructions, as sanitised HTML. */
     instructions?: string;
+    /** Shared answer space drawn above the questions, for activities that need one. */
+    board?: PrintableBoard;
     items: PrintableItem[];
     /** Author's closing text, as sanitised HTML. */
     textAfter?: string;
@@ -130,4 +171,11 @@ export interface WorksheetAdapterOptions {
      * Injectable so tests can pin the outcome; defaults to `Math.random`.
      */
     random?: () => number;
+    /**
+     * Base URL the iDevice export files are served from, ending in a slash.
+     *
+     * Some activities fall back to a picture shipped with their iDevice rather than one stored in
+     * the project; without this they simply go without it.
+     */
+    ideviceBasePath?: string;
 }

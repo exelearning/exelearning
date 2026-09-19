@@ -208,6 +208,23 @@ describe('renderWorksheet', () => {
             expect(html).toContain('>É</span>');
         });
 
+        it('omits the answer space for questions answered on a shared board', () => {
+            const html = renderWorksheet(
+                model({
+                    pages: [
+                        {
+                            pageId: 'p1',
+                            title: 'Página',
+                            activities: [activity({ items: [{ prompt: 'Vivienda', number: 1 }] })],
+                        },
+                    ],
+                }),
+            );
+
+            expect(html).toContain('<div class="worksheet-prompt">Vivienda</div>');
+            expect(html).not.toContain('<div class="worksheet-answer">');
+        });
+
         it('throws for answer kinds that have no renderer yet', () => {
             const broken = model({
                 pages: [

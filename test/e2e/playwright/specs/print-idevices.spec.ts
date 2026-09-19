@@ -20,6 +20,9 @@ import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-
 
 const FIXTURE = 'test/fixtures/old_el_cid.elp';
 
+/** Carries two crossword activities, both with illustrated clues. */
+const CROSSWORD_FIXTURE = 'test/fixtures/todos-los-idevices_dos_informes.elpx';
+
 /** Questions in the fixture's Guess activity. */
 const EXPECTED_QUESTIONS = 8;
 /** One box per character of each solution. */
@@ -39,9 +42,25 @@ async function openFixtureProject(page: Page, createProject: (page: Page, title?
 }
 
 /**
+ * Dismiss the alert the importer raises for packages with unresolved references.
+ *
+ * Some fixtures ship with assets stripped out, and the resulting "Missing files" alert sits over
+ * the menu bar. It says nothing about printing, so the tests clear it and move on.
+ */
+async function dismissImportAlert(page: Page) {
+    const alert = page.locator('#modalAlert');
+
+    if (await alert.isVisible().catch(() => false)) {
+        await alert.getByRole('button', { name: /accept|aceptar/i }).click();
+        await expect(alert).toBeHidden();
+    }
+}
+
+/**
  * Open File → Print iDevices and wait for the worksheet to load.
  */
 async function openWorksheet(page: Page) {
+    await dismissImportAlert(page);
     await page.locator('#dropdownFile').click();
 
     const entry = page.locator('#navbar-button-print-idevices');
@@ -59,6 +78,10 @@ async function openWorksheet(page: Page) {
 }
 
 test.describe('Print iDevices', () => {
+    // Serial: several of these import multi-megabyte fixtures, and running them against one
+    // another starves the dev server enough to time out the workarea handshake.
+    test.describe.configure({ mode: 'serial' });
+
     test('builds a worksheet from the activities in the project', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
@@ -159,6 +182,71 @@ test.describe('Print iDevices', () => {
         await page.locator('#dropdownFile').click();
         await page.locator('#navbar-button-export-print').click();
         await expect(overlay.locator('.print-preview-title-text')).toHaveText('Print preview');
+    });
+
+    /**
+     * One test rather than several: the crossword fixture is 22 MB, and importing it from more
+     * than one worker at a time starves the server enough to time out the workarea handshake.
+     * Every crossword assertion is about the same rendered worksheet anyway.
+     */
+    test('prints a crossword as a grid above its illustrated, numbered clues', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Print iDevices Crossword');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        // Two crosswords, both asking 100% of their questions at difficulty 100, which gives no
+        // letters away, and both with illustrated clues.
+        await openElpFile(page, CROSSWORD_FIXTURE);
+
+        const { frame } = await openWorksheet(page);
+
+        const activity = frame
+            .locator('.worksheet-activity')
+            .filter({ has: frame.locator('.worksheet-grid') })
+            .first();
+
+        // A grid of cells, with gaps where the puzzle is blocked.
+        await expect(activity.locator('.worksheet-grid')).toBeVisible();
+        expect(await activity.locator('.worksheet-grid-cell').count()).toBeGreaterThan(0);
+        expect(await activity.locator('.worksheet-grid-gap').count()).toBeGreaterThan(0);
+
+        // Difficulty 100 gives nothing away, so a cell holds at most its clue number.
+        await expect(activity.locator('.worksheet-grid-cell').first()).toHaveText(/^\d*$/);
+
+        // Clues are numbered from one and answer into the grid, not into boxes of their own.
+        const clues = activity.locator('.worksheet-item');
+        expect(await clues.count()).toBeGreaterThan(1);
+        await expect(clues.first()).toHaveAttribute('value', '1');
+        await expect(activity.locator('.worksheet-answer')).toHaveCount(0);
+
+        // The grid comes before the clue list.
+        const gridBox = await activity.locator('.worksheet-grid').boundingBox();
+        const cluesBox = await activity.locator('.worksheet-items').boundingBox();
+        expect(gridBox?.y ?? 0).toBeLessThan(cluesBox?.y ?? 0);
+
+        // The activity draws a picture behind its board, so the worksheet does too.
+        const backdrop = activity.locator('.worksheet-grid-background');
+        await expect(backdrop).toBeVisible();
+        // An <img>, not a CSS background: browsers leave background graphics out of printouts.
+        expect(await backdrop.evaluate(node => node.tagName)).toBe('IMG');
+
+        // An illustration sits below its definition, at a small size.
+        const illustrated = frame
+            .locator('.worksheet-item')
+            .filter({ has: frame.locator('.worksheet-media-small') })
+            .first();
+        const promptBox = await illustrated.locator('.worksheet-prompt').boundingBox();
+        // Measured on the img: the figure around it is a block, so it spans the whole column.
+        const mediaBox = await illustrated.locator('.worksheet-media-small img').boundingBox();
+
+        expect(mediaBox?.y ?? 0).toBeGreaterThan(promptBox?.y ?? 0);
+        // Capped at 30mm, which is about 113px, against the 80mm a full question picture gets.
+        expect(mediaBox?.width ?? 0).toBeGreaterThan(0);
+        expect(mediaBox?.width ?? 0).toBeLessThanOrEqual(120);
     });
 
     test('closes on Escape', async ({ authenticatedPage, createProject }) => {

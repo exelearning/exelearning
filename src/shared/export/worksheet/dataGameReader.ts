@@ -92,6 +92,27 @@ export function extractDataGame<T = Record<string, unknown>>(html: string, prefi
 }
 
 /**
+ * Read the href of a single sidecar link.
+ *
+ * Some sidecars carry one reference for the whole activity rather than one per question — the
+ * crossword's background image, for instance, whose link text is a label and not an index.
+ *
+ * @param html - Component HTML, after asset URLs have been resolved
+ * @param className - Full sidecar class, e.g. 'crucigrama-LinkBack'
+ * @returns The href, or '' when the link is absent
+ */
+export function extractLinkHref(html: string, className: string): string {
+    if (!html) return '';
+
+    const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`<a\\b([^>]*\\bclass\\s*=\\s*["'][^"']*\\b${escaped}\\b[^"']*["'][^>]*)>`, 'i');
+    const match = pattern.exec(html);
+    if (!match) return '';
+
+    return /\bhref\s*=\s*["']([^"']*)["']/i.exec(match[1])?.[1] ?? '';
+}
+
+/**
  * Collect the media sidecar links of a component, keyed by question index.
  *
  * @param html - Component HTML, after asset URLs have been resolved

@@ -68,6 +68,52 @@ export function selectQuestions<T>(
 }
 
 /**
+ * Pick the questions a Crossword activity asks.
+ *
+ * The Crossword iDevice does not share `getQuestions` with the rest; it carries its own variant
+ * (`$eXeCrucigrama.getQuestions`) and differs in three ways worth keeping:
+ * - the draw is always random, there being no option to turn it off;
+ * - it keeps a minimum of two words, since one word is not a crossword;
+ * - the chosen indices are sorted back into stored order afterwards.
+ *
+ * @param questions - Every question the activity stores
+ * @param percentage - Share of them to ask, 0-100 (defaults to all)
+ * @param maxWords - Hard cap the board can seat, applied after the share
+ * @param randomSource - Randomness, injectable for tests
+ * @returns The selected questions
+ */
+export function selectCrosswordQuestions<T>(
+    questions: T[],
+    percentage: number | undefined,
+    maxWords: number,
+    randomSource: RandomSource = Math.random,
+): T[] {
+    if (!Array.isArray(questions) || questions.length === 0) return [];
+
+    const total = questions.length;
+    const share = typeof percentage === 'number' && Number.isFinite(percentage) ? percentage : 100;
+
+    let chosen = questions;
+    if (share < 100) {
+        const wanted = Math.max(2, Math.round((share * total) / 100));
+
+        if (wanted < total) {
+            const indices = shuffle(
+                Array.from({ length: total }, (_, index) => index),
+                randomSource,
+            );
+            chosen = indices
+                .slice(0, wanted)
+                .sort((a, b) => a - b)
+                .map(index => questions[index]);
+        }
+    }
+
+    // The board cannot seat more than this however generous the share was.
+    return chosen.length > maxWords ? chosen.slice(0, maxWords) : chosen;
+}
+
+/**
  * Normalise a solution the way the runtime does before drawing it.
  *
  * Collapses separators and whitespace to single spaces and trims, and upper-cases the whole

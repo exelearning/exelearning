@@ -11,8 +11,10 @@
 import { escapeText } from './sanitizeHtml';
 import type {
     CharacterBoxGroup,
+    CrosswordCell,
     PrintableAnswer,
     PrintableActivity,
+    PrintableBoard,
     PrintableItem,
     WorksheetLabels,
     WorksheetModel,
@@ -125,6 +127,89 @@ body {
     height: auto;
 }
 
+/* A clue illustration sits under its definition without taking the page over. */
+.worksheet-media-small img {
+    max-width: 30mm;
+    max-height: 24mm;
+}
+
+/*
+ * Crossword grid: equal tracks, as the activity lays its board out on screen. Blocked cells are
+ * gaps, so the shape of the puzzle reads at a glance and any picture behind it shows through.
+ */
+/*
+ * On its own the board is drawn at a fixed cell size: it is cropped to the words, so stretching
+ * it to the page width would blow a six-column puzzle up to enormous squares.
+ */
+.worksheet-grid {
+    display: grid;
+    width: max-content;
+    max-width: 100%;
+    grid-auto-rows: 9mm;
+    margin: 0 auto 6mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* With a picture behind it the board keeps its full size, so the cells stay over their subject. */
+.worksheet-grid-frame {
+    position: relative;
+    width: 160mm;
+    max-width: 100%;
+    aspect-ratio: 1;
+    margin: 0 auto 6mm;
+    border: 1px solid #999;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* Behind a picture the board is stretched to fill it, so the cells stay over their subject. */
+.worksheet-grid-frame .worksheet-grid {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    grid-auto-rows: 1fr;
+    margin: 0;
+}
+
+.worksheet-grid-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.worksheet-grid-cell {
+    position: relative;
+    border: 1px solid #1a1a1a;
+    margin: -1px 0 0 -1px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11pt;
+    font-weight: bold;
+}
+
+.worksheet-grid-number {
+    position: absolute;
+    top: 0;
+    left: 0.4mm;
+    font-size: 5pt;
+    font-weight: normal;
+    line-height: 1.2;
+}
+
+.worksheet-grid-credit {
+    margin: -4mm 0 6mm;
+    text-align: center;
+    font-size: 8pt;
+    color: #666;
+}
+
 .worksheet-media figcaption {
     font-size: 8pt;
     color: #666;
@@ -225,10 +310,66 @@ function renderAnswer(answer: PrintableAnswer): string {
 }
 
 /**
+ * Render a crossword grid.
+ *
+ * Blocked cells are drawn as gaps rather than boxes, so the shape of the puzzle is visible. A cell
+ * shows its clue number when a word starts there, and a letter when the activity gives one away.
+ */
+function renderCrosswordGrid(board: PrintableBoard): string {
+    const columns = board.rows[0]?.length ?? 0;
+    if (columns === 0) return '';
+
+    const cells = board.rows
+        .flat()
+        .map(cell => {
+            if (cell === null) return '<span class="worksheet-grid-gap"></span>';
+
+            const number = cell.number === undefined ? '' : `<span class="worksheet-grid-number">${cell.number}</span>`;
+            const letter = cell.letter === null ? '' : escapeText(cell.letter);
+
+            return `<span class="worksheet-grid-cell">${number}${letter}</span>`;
+        })
+        .join('');
+
+    // A CSS grid of equal tracks, as the activity lays its board out on screen. With a picture
+    // behind it that is what keeps every cell over the part of the picture it belongs to.
+    const grid =
+        // Behind a picture the tracks share it out; on its own they take a fixed printed size.
+        `<div class="worksheet-grid" style="grid-template-columns: repeat(${columns}, ${board.background ? '1fr' : '9mm'});"` +
+        ` aria-hidden="true">${cells}</div>`;
+
+    if (!board.background) return grid;
+
+    // An <img> rather than a CSS background, for two reasons: browsers leave background graphics
+    // out of printouts unless the user opts in, and a URL inside a style attribute is decoded
+    // before the CSS is parsed, which would let a crafted project inject declarations of its own.
+    let html = '<div class="worksheet-grid-frame">';
+    html += `<img class="worksheet-grid-background" src="${escapeText(board.background.src)}" alt="" />`;
+    html += `${grid}</div>`;
+
+    if (board.background.author) {
+        html += `<p class="worksheet-grid-credit">${escapeText(board.background.author)}</p>`;
+    }
+
+    return html;
+}
+
+/**
+ * Render the shared answer space some activities draw above their questions.
+ */
+function renderBoard(board: PrintableBoard): string {
+    return renderCrosswordGrid(board);
+}
+
+/**
  * Render one question: prompt, optional picture, optional extra text, answer space.
+ *
+ * The answer space is absent for activities that answer into a shared board, and the number is
+ * explicit when it has to match something outside the list, such as a crossword grid.
  */
 function renderItem(item: PrintableItem): string {
-    let html = '<li class="worksheet-item">';
+    const value = item.number === undefined ? '' : ` value="${item.number}"`;
+    let html = `<li class="worksheet-item"${value}>`;
 
     if (item.prompt) {
         html += `<div class="worksheet-prompt">${item.prompt}</div>`;
@@ -236,7 +377,8 @@ function renderItem(item: PrintableItem): string {
 
     if (item.media) {
         const alt = escapeText(item.media.alt ?? '');
-        html += '<figure class="worksheet-media">';
+        const size = item.media.size === 'small' ? ' worksheet-media-small' : '';
+        html += `<figure class="worksheet-media${size}">`;
         html += `<img src="${escapeText(item.media.src)}" alt="${alt}" />`;
         if (item.media.author) {
             html += `<figcaption>${escapeText(item.media.author)}</figcaption>`;
@@ -248,7 +390,10 @@ function renderItem(item: PrintableItem): string {
         html += `<div class="worksheet-extra">${item.extraText}</div>`;
     }
 
-    html += `<div class="worksheet-answer">${renderAnswer(item.answer)}</div>`;
+    if (item.answer) {
+        html += `<div class="worksheet-answer">${renderAnswer(item.answer)}</div>`;
+    }
+
     html += '</li>';
 
     return html;
@@ -263,6 +408,12 @@ function renderActivity(activity: PrintableActivity): string {
 
     if (activity.instructions) {
         html += `<div class="worksheet-instructions">${activity.instructions}</div>`;
+    }
+
+    // The shared answer space goes above the questions: on a crossword the grid is what the
+    // student works in, and the clues below refer to its numbers.
+    if (activity.board) {
+        html += renderBoard(activity.board);
     }
 
     html += `<ol class="worksheet-items">${activity.items.map(renderItem).join('')}</ol>`;

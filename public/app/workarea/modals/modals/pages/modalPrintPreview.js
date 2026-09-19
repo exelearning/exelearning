@@ -121,6 +121,28 @@ export default class ModalPrintPreview {
     }
 
     /**
+     * Work out where the iDevice export files are served from.
+     *
+     * Some activities fall back to a picture shipped with their iDevice rather than one stored in
+     * the project. The worksheet is a standalone document, so it needs an absolute URL to reach
+     * one. Mirrors the path PrintPreviewExporter builds for the same files.
+     *
+     * @returns {string} Base URL ending in a slash
+     */
+    getIdeviceBasePath() {
+        const config = window.eXeLearning?.config || {};
+        const baseUrl = config.isStaticMode
+            ? window.location.origin
+            : config.baseURL || window.location.origin;
+        const basePath = (config.basePath || '').replace(/\/$/, '');
+        const version = config.isStaticMode ? '' : config.version || '';
+        // v1.0.0 is the unversioned development default, which is not part of the path.
+        const versionSegment = version && version !== 'v1.0.0' ? `/${version}` : '';
+
+        return `${baseUrl}${basePath}${versionSegment}/files/perm/idevices/base/`;
+    }
+
+    /**
      * Build the worksheet from the activities in the project.
      *
      * The shared export code does not translate, so the user-visible strings are wrapped here
@@ -146,7 +168,11 @@ export default class ModalPrintPreview {
                     empty: _('This project has no printable activities yet.'),
                     unsupportedHeading: _('Activities that cannot be printed yet'),
                 },
-                ideviceTitles: { guess: _('Guess') },
+                ideviceTitles: {
+                    guess: _('Guess'),
+                    crossword: _('Crossword'),
+                },
+                ideviceBasePath: this.getIdeviceBasePath(),
             },
             yjsBridge.assetManager || null
         );

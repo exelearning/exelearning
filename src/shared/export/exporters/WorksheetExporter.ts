@@ -35,6 +35,8 @@ export interface WorksheetOptions {
      * Defaults to `Math.random`; injectable so a worksheet can be made reproducible.
      */
     random?: () => number;
+    /** Base URL the iDevice export files are served from, ending in a slash. */
+    ideviceBasePath?: string;
 }
 
 export interface WorksheetResult {
@@ -103,6 +105,7 @@ export class WorksheetExporter {
                 const activity = adapter.build(content, {
                     title: options.ideviceTitles?.[component.type],
                     random: options.random,
+                    ideviceBasePath: options.ideviceBasePath,
                 });
                 if (activity) activities.push(activity);
             }

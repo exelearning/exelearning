@@ -7,10 +7,11 @@
  */
 
 import type { WorksheetAdapter } from '../types';
+import { CrosswordWorksheetAdapter } from './CrosswordWorksheetAdapter';
 import { GuessWorksheetAdapter } from './GuessWorksheetAdapter';
 
 /** Every adapter shipped today, in no particular order. */
-const ADAPTERS: readonly WorksheetAdapter[] = [GuessWorksheetAdapter];
+const ADAPTERS: readonly WorksheetAdapter[] = [GuessWorksheetAdapter, CrosswordWorksheetAdapter];
 
 const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapter.ideviceType, adapter]));
 
