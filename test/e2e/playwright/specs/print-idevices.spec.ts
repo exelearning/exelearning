@@ -305,6 +305,42 @@ test.describe('Print iDevices', () => {
         expect(await activity.locator('.worksheet-option-box').count()).toBeGreaterThan(0);
     });
 
+    test('prints a complete activity as gapped text, with its words when they are offered', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Print iDevices Complete');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await openElpFile(page, CROSSWORD_FIXTURE);
+
+        const { frame } = await openWorksheet(page);
+
+        const activities = frame.locator('.worksheet-activity[data-idevice="complete"]');
+        await expect(activities).toHaveCount(3);
+
+        // Every one of them prints its text with gaps to fill in.
+        for (let index = 0; index < 3; index++) {
+            expect(await activities.nth(index).locator('.worksheet-gap').count()).toBeGreaterThan(0);
+        }
+
+        // The gaps are sized to the word they hide, so they are not all the same width.
+        const widths = await activities
+            .first()
+            .locator('.worksheet-gap')
+            .evaluateAll(nodes => nodes.map(node => (node as HTMLElement).style.width));
+        expect(widths.every(width => width.endsWith('mm'))).toBe(true);
+
+        // The drag and select modes list the words above the text; writing them from memory does
+        // not, so this project shows both cases.
+        const banks = frame.locator('.worksheet-activity[data-idevice="complete"] .worksheet-word-bank');
+        expect(await banks.count()).toBeGreaterThan(0);
+        expect(await banks.count()).toBeLessThan(3);
+        await expect(banks.first().locator('.worksheet-word').first()).not.toBeEmpty();
+    });
+
     test('closes on Escape', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);

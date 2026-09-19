@@ -67,7 +67,19 @@ export type CrosswordCell = null | {
  * Some activities do not answer question by question: a crossword has one grid that every clue
  * writes into, so the boxes belong to the activity rather than to any single item.
  */
-export type PrintableBoard = {
+export type PrintableBoard =
+    | CrosswordBoard
+    /**
+     * The words an activity offers, listed above its text.
+     *
+     * Some activities show the student which words are available instead of asking them to recall
+     * one, and the list mixes in wrong ones. Printing the text without it would set a different,
+     * much harder exercise.
+     */
+    | { kind: 'wordBank'; words: string[] };
+
+/** A crossword grid, drawn above its clues. */
+export type CrosswordBoard = {
     kind: 'crosswordGrid';
     rows: CrosswordCell[][];
     /**

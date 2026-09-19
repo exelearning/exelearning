@@ -11,6 +11,7 @@
 import { escapeText } from './sanitizeHtml';
 import type {
     CharacterBoxGroup,
+    CrosswordBoard,
     CrosswordCell,
     PrintableAnswer,
     PrintableActivity,
@@ -108,6 +109,12 @@ body {
 .worksheet-items {
     margin: 0;
     padding-left: 7mm;
+}
+
+/* A lone question carries no number, so it needs neither the marker nor the indent. */
+.worksheet-items-plain {
+    padding-left: 0;
+    list-style: none;
 }
 
 /* Keep a question and its answer space on the same sheet. */
@@ -236,6 +243,29 @@ body {
     line-height: 9mm;
     text-align: center;
     font-size: 11pt;
+}
+
+/* The words an activity offers, laid out above the text they go into. */
+.worksheet-word-bank {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2mm 4mm;
+    margin: 0 0 4mm;
+    padding: 3mm 4mm;
+    border: 1px solid #1a1a1a;
+    list-style: none;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.worksheet-word {
+    font-weight: bold;
+}
+
+/* A gap to write one word in. Its width is set per gap, from the length of the word. */
+.worksheet-gap {
+    display: inline-block;
+    border-bottom: 1px solid #1a1a1a;
 }
 
 /* Multiple choice: a box to tick beside each option. */
@@ -373,7 +403,7 @@ function renderAnswer(answer: PrintableAnswer): string {
  * Blocked cells are drawn as gaps rather than boxes, so the shape of the puzzle is visible. A cell
  * shows its clue number when a word starts there, and a letter when the activity gives one away.
  */
-function renderCrosswordGrid(board: PrintableBoard): string {
+function renderCrosswordGrid(board: CrosswordBoard): string {
     const columns = board.rows[0]?.length ?? 0;
     if (columns === 0) return '';
 
@@ -416,7 +446,39 @@ function renderCrosswordGrid(board: PrintableBoard): string {
  * Render the shared answer space some activities draw above their questions.
  */
 function renderBoard(board: PrintableBoard): string {
+    if (board.kind === 'wordBank') return renderWordBank(board.words);
+
     return renderCrosswordGrid(board);
+}
+
+/**
+ * Render a gap to write one word into, inline in a sentence.
+ *
+ * The width follows the word's length, so a long answer gets a long gap. The iDevice makes that
+ * proportional sizing optional and otherwise uses a fixed width; on paper it is always on, since
+ * a printed gap cannot grow as the student writes.
+ *
+ * @param characters - How many characters the hidden word has
+ * @returns The gap markup
+ */
+export function renderInlineGap(characters: number): string {
+    // About one character per 2.2mm at the body size, with a floor so a one-letter word still
+    // gets something writable.
+    const width = Math.max(3, characters) * 2.2;
+
+    return `<span class="worksheet-gap" style="width: ${width.toFixed(1)}mm"></span>`;
+}
+
+/**
+ * Render the words an activity offers, above the text they go into.
+ *
+ * The list is what makes a drag-and-drop or select activity answerable on paper: without it the
+ * student would have to recall the word rather than choose it.
+ */
+function renderWordBank(words: string[]): string {
+    const items = words.map(word => `<li class="worksheet-word">${word}</li>`).join('');
+
+    return `<ul class="worksheet-word-bank">${items}</ul>`;
 }
 
 /**
@@ -476,7 +538,13 @@ function renderActivity(activity: PrintableActivity): string {
         html += renderBoard(activity.board);
     }
 
-    html += `<ol class="worksheet-items">${activity.items.map(renderItem).join('')}</ol>`;
+    // A number tells one question from another, so a lone question does not need one. An explicit
+    // number is kept whatever the count, since it refers to something outside the list — a
+    // crossword numbers its clues after the grid.
+    const numbered = activity.items.length > 1 || activity.items[0]?.number !== undefined;
+    const listClass = numbered ? 'worksheet-items' : 'worksheet-items worksheet-items-plain';
+
+    html += `<ol class="${listClass}">${activity.items.map(renderItem).join('')}</ol>`;
 
     if (activity.textAfter) {
         html += `<div class="worksheet-after">${activity.textAfter}</div>`;
