@@ -5,16 +5,16 @@ describe('worksheet adapter registry', () => {
     it('resolves the adapters it ships', () => {
         expect(getWorksheetAdapter('guess')?.ideviceType).toBe('guess');
         expect(getWorksheetAdapter('crossword')?.ideviceType).toBe('crossword');
+        expect(getWorksheetAdapter('quick-questions')?.ideviceType).toBe('quick-questions');
     });
 
     it('returns undefined for iDevices that are not printable yet', () => {
-        expect(getWorksheetAdapter('quick-questions')).toBeUndefined();
         expect(getWorksheetAdapter('text')).toBeUndefined();
         expect(getWorksheetAdapter('')).toBeUndefined();
     });
 
     it('lists the supported types', () => {
-        expect(getSupportedIdeviceTypes()).toEqual(['crossword', 'guess']);
+        expect(getSupportedIdeviceTypes()).toEqual(['crossword', 'guess', 'quick-questions']);
     });
 
     it('registers every adapter under its own declared type', () => {

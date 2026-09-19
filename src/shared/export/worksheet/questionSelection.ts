@@ -33,6 +33,17 @@ function shuffle<T>(items: T[], random: RandomSource): T[] {
 }
 
 /**
+ * Shuffle a copy of a list, for callers that must not disturb the original.
+ *
+ * @param items - The list to shuffle
+ * @param random - Randomness, injectable for tests
+ * @returns A shuffled copy
+ */
+export function shuffleWith<T>(items: T[], random: RandomSource = Math.random): T[] {
+    return shuffle([...items], random);
+}
+
+/**
  * Pick the questions an activity actually asks.
  *
  * With `random` off the first `percentage`% are taken in stored order; with it on the selection

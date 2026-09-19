@@ -249,6 +249,37 @@ test.describe('Print iDevices', () => {
         expect(mediaBox?.width ?? 0).toBeLessThanOrEqual(120);
     });
 
+    test('prints a test as questions with a box to tick per option', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Print iDevices Test activity');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        // Four Test activities, all asking 100% of their questions in stored order, none of them
+        // a video one.
+        await openElpFile(page, CROSSWORD_FIXTURE);
+
+        const { frame } = await openWorksheet(page);
+
+        const options = frame.locator('.worksheet-option');
+        expect(await options.count()).toBeGreaterThan(0);
+
+        // Every option carries its own box and its label.
+        const first = options.first();
+        await expect(first.locator('.worksheet-option-box')).toBeVisible();
+        await expect(first.locator('.worksheet-option-label')).not.toBeEmpty();
+
+        // The boxes sit inside a question, under its text.
+        const question = frame
+            .locator('.worksheet-item')
+            .filter({ has: frame.locator('.worksheet-options') })
+            .first();
+        const promptBox = await question.locator('.worksheet-prompt').boundingBox();
+        const optionsBox = await question.locator('.worksheet-options').boundingBox();
+
+        expect(optionsBox?.y ?? 0).toBeGreaterThan(promptBox?.y ?? 0);
+    });
+
     test('closes on Escape', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);

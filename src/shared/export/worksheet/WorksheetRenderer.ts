@@ -239,6 +239,33 @@ body {
     font-size: 11pt;
 }
 
+/* Multiple choice: a box to tick beside each option. */
+.worksheet-options {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.worksheet-option {
+    display: flex;
+    align-items: baseline;
+    gap: 2mm;
+    margin-bottom: 1mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.worksheet-option-box {
+    flex: 0 0 4mm;
+    width: 4mm;
+    height: 4mm;
+    border: 1px solid #1a1a1a;
+}
+
+.worksheet-option-label > p {
+    margin: 0;
+}
+
 /* A letter the activity gives away, so the student can tell it apart from their own writing. */
 .worksheet-box-filled {
     font-weight: bold;
@@ -296,11 +323,32 @@ function renderCharacterBoxes(groups: CharacterBoxGroup[]): string {
 }
 
 /**
+ * Render a list of options with a box to tick beside each.
+ *
+ * The labels are sanitised HTML rather than text, since a question's options can carry formatting.
+ */
+function renderOptions(labels: string[]): string {
+    const options = labels
+        .map(
+            label =>
+                `<li class="worksheet-option"><span class="worksheet-option-box"></span>` +
+                `<span class="worksheet-option-label">${label}</span></li>`,
+        )
+        .join('');
+
+    return `<ul class="worksheet-options">${options}</ul>`;
+}
+
+/**
  * Render the answer space for one question.
  */
 function renderAnswer(answer: PrintableAnswer): string {
     if (answer.kind === 'characterBoxes') {
         return renderCharacterBoxes(answer.groups);
+    }
+
+    if (answer.kind === 'options') {
+        return renderOptions(answer.labels);
     }
 
     // Declared in the model so adapters have a contract to build against, but with no adapter

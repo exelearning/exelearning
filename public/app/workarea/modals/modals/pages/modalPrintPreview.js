@@ -171,6 +171,7 @@ export default class ModalPrintPreview {
                 ideviceTitles: {
                     guess: _('Guess'),
                     crossword: _('Crossword'),
+                    'quick-questions': _('Test'),
                 },
                 ideviceBasePath: this.getIdeviceBasePath(),
             },
