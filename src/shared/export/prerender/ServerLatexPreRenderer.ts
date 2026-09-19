@@ -21,6 +21,7 @@ import { liteAdaptor } from '@mathjax/src/js/adaptors/liteAdaptor.js';
 import { RegisterHTMLHandler } from '@mathjax/src/js/handlers/html.js';
 import type { LatexPreRenderResult, ServerLatexPreRendererInterface } from './interfaces';
 import { TEX_PACKAGES } from './mathjax-packages';
+import { decryptDataGame, encryptDataGame } from '../utils/dataGameCipher';
 
 // LaTeX detection patterns (for hasLatex quick check)
 const HAS_LATEX_PATTERN = /\\\(|\\\[|\$\$|\\begin\{|\\(?:eq)?ref\{/;
@@ -60,42 +61,6 @@ const RECURSIVE_JSON_LATEX_IDEVICES = new Set(['trueorfalse', 'adaptative-quiz',
 // (form dropdown wrongAnswersValue).
 // Mirrors NON_RENDERABLE_JSON_KEYS in public/app/common/LatexPreRenderer.js.
 const NON_RENDERABLE_JSON_KEYS = new Set(['codeAccess', 'buttonText', 'wrongAnswersValue']);
-
-// XOR encryption key (same as common.js)
-const ENCRYPT_KEY = 146;
-
-/**
- * Decrypt XOR-encoded string (matches common.js helpers.decrypt)
- */
-function decrypt(str: string): string {
-    if (!str || str === 'undefined' || str === 'null') return '';
-    try {
-        const decoded = unescape(str);
-        let result = '';
-        for (let i = 0; i < decoded.length; i++) {
-            result += String.fromCharCode(ENCRYPT_KEY ^ decoded.charCodeAt(i));
-        }
-        return result;
-    } catch {
-        return '';
-    }
-}
-
-/**
- * Encrypt string with XOR (matches common.js helpers.encrypt)
- */
-function encrypt(str: string): string {
-    if (!str) return '';
-    try {
-        let result = '';
-        for (let i = 0; i < str.length; i++) {
-            result += String.fromCharCode(str.charCodeAt(i) ^ ENCRYPT_KEY);
-        }
-        return escape(result);
-    } catch {
-        return '';
-    }
-}
 
 /**
  * Clean LaTeX string by removing HTML tags and decoding entities
@@ -653,7 +618,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
             if (!encryptedContent) continue;
 
             // Decrypt the content
-            const decrypted = decrypt(encryptedContent);
+            const decrypted = decryptDataGame(encryptedContent);
 
             // Quick check for LaTeX
             if (!this.hasLatex(decrypted)) continue;
@@ -666,7 +631,7 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
                 const processedData = await this.preRenderLatexInGameData(data);
 
                 // Re-encrypt
-                const newEncrypted = encrypt(JSON.stringify(processedData));
+                const newEncrypted = encryptDataGame(JSON.stringify(processedData));
 
                 // Replace in HTML
                 const newDiv = fullMatch.replace(encryptedContent, newEncrypted);

@@ -407,14 +407,16 @@ describe('LibraryDetector', () => {
     });
 
     describe('DataGame LaTeX detection', () => {
-        // Helper to create XOR-encrypted content (matches Symfony/PHP encrypt)
+        // Helper to create XOR-encrypted content. Must mirror common.js `helpers.encrypt`
+        // (XOR + escape), which is what actually writes the DataGame divs — encodeURIComponent
+        // produces double-UTF-8-encoded output that no producer emits.
         function encrypt(str: string): string {
             const key = 146;
             let result = '';
             for (let i = 0; i < str.length; i++) {
                 result += String.fromCharCode(key ^ str.charCodeAt(i));
             }
-            return encodeURIComponent(result);
+            return escape(result);
         }
 
         it('should detect LaTeX in DataGame with inline math', () => {
@@ -553,7 +555,7 @@ describe('LibraryDetector', () => {
                 for (let i = 0; i < str.length; i++) {
                     result += String.fromCharCode(key ^ str.charCodeAt(i));
                 }
-                return encodeURIComponent(result);
+                return escape(result);
             }
 
             const latexContent = 'Question: \\(x^2\\) is a formula';
@@ -619,7 +621,7 @@ describe('LibraryDetector', () => {
             for (let i = 0; i < str.length; i++) {
                 result += String.fromCharCode(key ^ str.charCodeAt(i));
             }
-            return encodeURIComponent(result);
+            return escape(result);
         }
 
         it('should decrypt XOR-encoded content correctly', () => {
@@ -655,6 +657,19 @@ describe('LibraryDetector', () => {
 
             const mathGames = result.libraries.find(l => l.name === 'exe_math_datagame');
             expect(mathGames).toBeDefined();
+        });
+
+        it('should decode payloads that decodeURIComponent rejects', () => {
+            // Regression: _decrypt used to call decodeURIComponent, which throws URIError on the
+            // lone high bytes that escape() emits (XOR-146 pushes most ASCII above 0x7F). Every
+            // real DataGame payload hit that catch and returned '', so LaTeX inside gamified
+            // iDevices never pulled MathJax into the export.
+            const encrypted = encrypt('Formula: \\(x^2\\)');
+            expect(() => decodeURIComponent(encrypted)).toThrow();
+
+            const result = detector.detectLibraries(`<div class="DataGame">${encrypted}</div>`);
+
+            expect(result.libraries.find(l => l.name === 'exe_math_datagame')).toBeDefined();
         });
     });
 });
