@@ -139,6 +139,17 @@ html,body {
   z-index: 100;
 }
 
+/*
+ * MiniColors 2 renders its panel inside the input's own wrapper rather than
+ * appending it to the body as 1.5 did, so the panel is trapped in the float
+ * panel's stacking context. The float panels all sit at z-index 1000, and the
+ * navigator comes after the inspector in the document, so it painted straight
+ * over the colour grid. Lift whichever panel currently has a picker open.
+ */
+.float-panel:has(.minicolors-focus) {
+  z-index: 1001;
+}
+
 .buttons-right {
   position: absolute;
   right: 0;

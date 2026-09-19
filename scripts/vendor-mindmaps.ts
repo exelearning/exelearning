@@ -69,12 +69,14 @@ export const SOURCE_REPOSITORY = 'exelearning/mindmaps';
  * Bumping this is how eXeLearning takes a change from the fork: merge it to the fork's
  * `main`, put the resulting commit here, and regenerate.
  *
- * This revision is the fork's `main` after exelearning/mindmaps#5 through #8, which moved the
+ * This revision is the fork's `main` after exelearning/mindmaps#9 through #15, which added
+ * CI and brought jquery.mousewheel, MiniColors and the build tooling up to date. Earlier,
+ * #5 through #8 moved the
  * application onto modern jQuery and stopped bundling jQuery UI. The bundle no longer
  * carries jQuery UI at all: the editor iframe loads eXeLearning's canonical copy, so a
  * second one inside the bundle would fight it for the same widgets.
  */
-export const PINNED_REVISION = '7b91fd7b4eada54a67803f50992db8719faf441f';
+export const PINNED_REVISION = 'b12d1ff67e6602a53a519499a5d5686576e34d4d';
 
 /** Where the vendored tree lives, relative to the repository root. */
 export const VENDORED_ROOT = path.join('public', 'app', 'common', 'mindmaps');
@@ -117,9 +119,9 @@ export const VENDORED: readonly VendoredFile[] = [
         source: 'dist/js/script.js',
         // The build output as emitted. Verifying this proves the build was reproduced
         // before anything is written, and catches a toolchain that has drifted.
-        sourceSha256: '43aa91b85d8dce5364aaa12828436eac1a2583694fcad0926e85d5109630e6d2',
+        sourceSha256: 'a3a26210ce5e662136417e436b5e75ba36a80e68bcd0e90f34602d378faedd26',
         // The same bytes with newlines normalised, which is what ships here.
-        sha256: '1d65b0e4dbfb9936570a5c18acbbd99fd5b441ce294a6fee8d309eb6ee2abe9c',
+        sha256: '3e0a868d17d402559fc0540b72f8a79005697ba4385340642ca99cb61dae18d6',
     },
     {
         path: 'src/css/Aristo/images/bg_fallback.png',
@@ -174,8 +176,8 @@ export const VENDORED: readonly VendoredFile[] = [
         path: 'src/css/app.css',
         provenance: 'copy-lf',
         source: 'src/css/app.css',
-        sourceSha256: 'd4edfd43178111e07431df1b6ceab7bb830484b101733260ca188896668e582d',
-        sha256: '3063fb38905704ae94a361321db22c4a06f22f89ab80e664bd9249cd198fefba',
+        sourceSha256: 'ae3bf151cc32729997ed439cbfb139a8fccbb7cbf66a042904930baf968600ed',
+        sha256: '2d36a8829547b2d288c05acf98e6b7bf6b6e94abe326e20095ac0d61be898219',
     },
     {
         path: 'src/css/common.css',
@@ -185,46 +187,20 @@ export const VENDORED: readonly VendoredFile[] = [
         sha256: '73ec02f1384ef5270c5eaac4d2e9207f9a7520a9a4f159180274b42f176a81ab',
     },
     {
-        path: 'src/css/minicolors/images/circle.gif',
-        provenance: 'recompressed',
-        source: 'src/css/minicolors/images/circle.gif',
-        sourceSha256: 'c624c7b31c6f0007f8f302d84445c14ecc907dbac4ac669aab54bb1231227b40',
-        sha256: '116cb5a86249b41bb455a8e993b267765a64bcaaed939b09c6607c3ebfa31187',
-    },
-    {
-        path: 'src/css/minicolors/images/gradient.png',
-        provenance: 'recompressed',
-        source: 'src/css/minicolors/images/gradient.png',
-        sourceSha256: '473bc8ca699232bc002945702515df870395a8bb97448954d759a445db459e7c',
-        sha256: '237c9dc7e2c61b6f9f9afae6728130e22a74a54cea34e927d30432b537bd1f31',
-    },
-    {
-        path: 'src/css/minicolors/images/line.gif',
-        provenance: 'recompressed',
-        source: 'src/css/minicolors/images/line.gif',
-        sourceSha256: '6cf57ad99fbb92585b31dd1936407973c27f3fe9844cd02297ba5449da46686d',
-        sha256: 'c1304c233e90a20a213402b549cbe88de15b65832d9883b365a5b2e0e95bc689',
-    },
-    {
-        path: 'src/css/minicolors/images/rainbow.png',
-        provenance: 'recompressed',
-        source: 'src/css/minicolors/images/rainbow.png',
-        sourceSha256: 'cd5bd8d758a9efca5e176dcdb08965fc1419d49d87c3bfd6038b56e935576058',
-        sha256: '92840826c32774242730fb3c01576f77082b7013b86d78ad3c6ae4501ce272b1',
-    },
-    {
-        path: 'src/css/minicolors/images/trigger.png',
-        provenance: 'recompressed',
-        source: 'src/css/minicolors/images/trigger.png',
-        sourceSha256: '9aa01be23bf2286b2fe5fd33140f9a1db6441bf6936b6e69cceb8af242d0fb05',
-        sha256: 'ba1b8954265fe16284dc265965f8f547c24631ede3ad22cd70d6b3b067011776',
-    },
-    {
         path: 'src/css/minicolors/jquery.miniColors.css',
         provenance: 'copy',
         source: 'src/css/minicolors/jquery.miniColors.css',
-        sourceSha256: '10605d2fe0dd13da5942c604b461e5f6a3cbb48e4d21bd907ce846747b2380dc',
-        sha256: '10605d2fe0dd13da5942c604b461e5f6a3cbb48e4d21bd907ce846747b2380dc',
+        sourceSha256: '922e1b105f79325c6aa6dbdaef9cba57e5ac0f618394fcb3685bd54c6e151e4e',
+        sha256: '922e1b105f79325c6aa6dbdaef9cba57e5ac0f618394fcb3685bd54c6e151e4e',
+    },
+    {
+        // MiniColors 2 draws its picker from one sprite sheet; the five small
+        // images 1.5 used are gone with it.
+        path: 'src/css/minicolors/jquery.minicolors.png',
+        provenance: 'copy',
+        source: 'src/css/minicolors/jquery.minicolors.png',
+        sourceSha256: 'a70bb7e086d845e9fa52b74ad102c26e1c879d425c997eda656039ca4a95496c',
+        sha256: 'a70bb7e086d845e9fa52b74ad102c26e1c879d425c997eda656039ca4a95496c',
     },
     {
         path: 'src/img/ajax-loader.gif',

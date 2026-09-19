@@ -126,8 +126,20 @@ export async function pickColour(
     frame2: Frame,
     inputId: string,
 ): Promise<{ value: string }> {
-    await frame.locator(`#${inputId}`).locator('xpath=following-sibling::a').first().click();
-    const gradient = frame.locator('.miniColors-colors, .minicolors-grid').first();
+    // MiniColors 2 renders the trigger as a <span class="minicolors-input-swatch">;
+    // 1.5 used an <a class="miniColors-trigger">. Either is the thing a user clicks.
+    const trigger = frame
+        .locator(`#${inputId}`)
+        .locator('xpath=following-sibling::*[self::a or self::span][1]')
+        .first();
+    await trigger.click();
+    // Scoped to this picker's own wrapper: both colour inputs render a grid, and the
+    // one belonging to the closed picker is still in the DOM, just hidden.
+    const gradient = frame
+        .locator('.minicolors')
+        .filter({ has: frame.locator(`#${inputId}`) })
+        .locator('.minicolors-grid, .miniColors-colors')
+        .first();
     await gradient.waitFor({ state: 'visible', timeout: 5000 });
     const box = await gradient.boundingBox();
     if (!box) throw new Error('colour gradient has no box');
