@@ -110,6 +110,9 @@
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta
     *   License: MIT
+*   Package: file-saver
+    *   Copyright: Eli Grey
+    *   License: MIT
 *   Package: fs-extra
     *   Copyright: JP Richardson
     *   License: MIT
@@ -374,6 +377,10 @@
 *   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/FileSaver.min.js
     *   Copyright: Eli Grey
     *   License: MIT
+    *   Version: 2.0.5, vendored from the pinned `file-saver` devDependency by
+        `make vendor-filesaver`. The published source map is not shipped, so its
+        `sourceMappingURL` announcement is stripped. Its only consumer is the mindmaps
+        export dialog, which calls `window.saveAs(blob, filename)`.
 *   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
     *   Copyright: John Resig
     *   License: MIT

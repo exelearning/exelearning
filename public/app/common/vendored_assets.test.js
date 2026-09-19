@@ -63,6 +63,30 @@ describe('exe_media legacy plugin binaries', () => {
     });
 });
 
+describe('vendored FileSaver in the mindmap editor', () => {
+    // FileSaver is loaded by the exemindmap editor but called from mindmaps' own
+    // SaveDocument.js, so nothing in eXeLearning's sources mentions it. It is generated
+    // from the pinned `file-saver` devDependency by `make vendor-filesaver`, and the
+    // published .map is not shipped, so the announcement has to stay stripped.
+    const fileSaver = path.join(
+        commonDir,
+        '../../libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/js/FileSaver.min.js',
+    );
+
+    it('ships the file the editor iframe loads', () => {
+        expect(fs.existsSync(fileSaver)).toBe(true);
+    });
+
+    it('does not announce a source map the project no longer ships', () => {
+        expect(fs.readFileSync(fileSaver, 'utf-8').includes('sourceMappingURL')).toBe(false);
+        expect(fs.existsSync(`${fileSaver}.map`)).toBe(false);
+    });
+
+    it('still defines the global the mindmaps export dialog calls', () => {
+        expect(fs.readFileSync(fileSaver, 'utf-8')).toMatch(/saveAs=/);
+    });
+});
+
 describe('vendored Bootstrap dist files', () => {
     // Dropping the .map files from BASE_LIBRARIES and from the resource bundle
     // is only half the change: a `//# sourceMappingURL=` left behind turns every

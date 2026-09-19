@@ -492,6 +492,17 @@ vendor-mindmaps: check-bun
 vendor-mindmaps-check: check-bun
 	bun run scripts/vendor-mindmaps.ts --check
 
+# Regenerate the FileSaver the exemindmap editor loads, from the pinned `file-saver`
+# devDependency. The file is committed because the browser loads it with no network; the
+# package is tooling-only and is never shipped. `--check` verifies the committed bytes.
+.PHONY: vendor-filesaver
+vendor-filesaver: check-bun
+	bun run scripts/vendor-filesaver.ts
+
+.PHONY: vendor-filesaver-check
+vendor-filesaver-check: check-bun
+	bun run scripts/vendor-filesaver.ts --check
+
 # Print the architecture record index, derived from document frontmatter.
 # Deliberately not a committed file: it would conflict on every concurrent branch.
 .PHONY: architecture-records
@@ -942,6 +953,8 @@ help:
 	@echo "  make update-licenses-check                    Fail if license info has drifted"
 	@echo "  make vendor-mindmaps                          Refresh mindmaps from the pinned fork revision"
 	@echo "  make vendor-mindmaps-check                    Fail if the vendored mindmaps tree has drifted"
+	@echo "  make vendor-filesaver                         Regenerate FileSaver from the pinned package"
+	@echo "  make vendor-filesaver-check                   Fail if the vendored FileSaver has drifted"
 	@echo ""
 	@echo "ELPX Processing:"
 	@echo "  make convert-elp INPUT=x OUTPUT=y             Convert ELP v2.x to v3.0 (elpx)"
