@@ -1,8 +1,17 @@
 /**
  * Print Preview Overlay
  *
- * Simple fullscreen overlay for print preview (no Bootstrap dependency)
+ * Simple fullscreen overlay for print preview (no Bootstrap dependency).
+ *
+ * Serves two modes over the same chrome, since only the source of the HTML differs:
+ * - 'document' prints the project as the browser renders it (generatePrintPreview).
+ * - 'idevices' prints a worksheet rebuilt from each activity's stored data (generateWorksheet).
  */
+
+/** Preview modes this overlay can display. */
+export const PREVIEW_MODE_DOCUMENT = 'document';
+export const PREVIEW_MODE_IDEVICES = 'idevices';
+
 export default class ModalPrintPreview {
     constructor(manager) {
         this.manager = manager;
@@ -11,7 +20,9 @@ export default class ModalPrintPreview {
         this.loadingEl = this.overlay?.querySelector('.print-preview-loading');
         this.printBtn = this.overlay?.querySelector('.print-preview-print-btn');
         this.closeBtn = this.overlay?.querySelector('.print-preview-close-btn');
+        this.titleEl = this.overlay?.querySelector('.print-preview-title-text');
         this.blobUrl = null;
+        this.mode = PREVIEW_MODE_DOCUMENT;
     }
 
     /**
@@ -47,12 +58,17 @@ export default class ModalPrintPreview {
 
     /**
      * Show the print preview
+     *
+     * @param {string} mode - PREVIEW_MODE_DOCUMENT (default) or PREVIEW_MODE_IDEVICES
      */
-    async show() {
+    async show(mode = PREVIEW_MODE_DOCUMENT) {
         if (!this.overlay) {
             console.error('[PrintPreview] Overlay element not found');
             return;
         }
+
+        this.mode = mode;
+        this.applyTitle();
 
         // Show overlay with loading
         this.showLoading(true);
@@ -67,6 +83,16 @@ export default class ModalPrintPreview {
     }
 
     /**
+     * Put the heading in step with the current mode.
+     */
+    applyTitle() {
+        if (!this.titleEl) return;
+
+        this.titleEl.textContent =
+            this.mode === PREVIEW_MODE_IDEVICES ? _('Print iDevices') : _('Print preview');
+    }
+
+    /**
      * Close the overlay
      */
     close() {
@@ -77,10 +103,11 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * Generate and load the print preview
+     * Resolve the Yjs bridge, or explain why the preview cannot run.
+     *
+     * @returns {object} The bridge, guaranteed to carry a documentManager
      */
-    async generatePreview() {
-        // Check Yjs mode
+    requireYjsBridge() {
         if (!eXeLearning.app.project?._yjsEnabled) {
             throw new Error(_('Print preview requires server mode'));
         }
@@ -90,15 +117,48 @@ export default class ModalPrintPreview {
             throw new Error(_('Document manager not available'));
         }
 
-        console.log('[ModalPrintPreview] yjsBridge available:', !!yjsBridge);
-        console.log('[ModalPrintPreview] AssetManager available:', !!yjsBridge?.assetManager);
-        if (yjsBridge?.assetManager) {
-             console.log('[ModalPrintPreview] AssetManager details:', yjsBridge.assetManager);
-        } else {
-             console.warn('[ModalPrintPreview] AssetManager is MISSING in yjsBridge');
+        return yjsBridge;
+    }
+
+    /**
+     * Build the worksheet from the activities in the project.
+     *
+     * The shared export code does not translate, so the user-visible strings are wrapped here
+     * and handed over.
+     *
+     * @returns {Promise<object>} Result carrying the worksheet HTML
+     */
+    async generateIdevicesWorksheet() {
+        const yjsBridge = this.requireYjsBridge();
+        const generateWorksheetFn =
+            window.generateWorksheet || window.SharedExporters?.generateWorksheet;
+
+        if (typeof generateWorksheetFn !== 'function') {
+            throw new Error(_('Print iDevices is not available.'));
         }
 
-        // Get generatePrintPreview function
+        return generateWorksheetFn(
+            yjsBridge.documentManager,
+            {
+                labels: {
+                    studentName: _('Name'),
+                    date: _('Date'),
+                    empty: _('This project has no printable activities yet.'),
+                    unsupportedHeading: _('Activities that cannot be printed yet'),
+                },
+                ideviceTitles: { guess: _('Guess') },
+            },
+            yjsBridge.assetManager || null
+        );
+    }
+
+    /**
+     * Render the project the way the browser shows it.
+     *
+     * @returns {Promise<object>} Result carrying the preview HTML
+     */
+    async generateDocumentPreview() {
+        const yjsBridge = this.requireYjsBridge();
         const generatePrintPreviewFn =
             window.generatePrintPreview || window.SharedExporters?.generatePrintPreview;
 
@@ -106,20 +166,30 @@ export default class ModalPrintPreview {
             throw new Error(_('Print preview not available'));
         }
 
-        // Generate preview (use resourceFetcher from yjsBridge, already initialized with bundle manifest)
-        const result = await generatePrintPreviewFn(
+        // Use resourceFetcher from yjsBridge, already initialized with bundle manifest
+        return generatePrintPreviewFn(
             yjsBridge.documentManager,
             yjsBridge.resourceFetcher || null,
             {
                 // Static mode requires absolute URLs for Blob compatibility
-                baseUrl: window.eXeLearning?.config?.isStaticMode 
-                    ? window.location.origin 
+                baseUrl: window.eXeLearning?.config?.isStaticMode
+                    ? window.location.origin
                     : (window.eXeLearning?.config?.baseURL || window.location.origin),
                 basePath: window.eXeLearning?.config?.basePath || '',
                 version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
             },
             yjsBridge.assetManager || null
         );
+    }
+
+    /**
+     * Generate and load the preview for the current mode
+     */
+    async generatePreview() {
+        const result =
+            this.mode === PREVIEW_MODE_IDEVICES
+                ? await this.generateIdevicesWorksheet()
+                : await this.generateDocumentPreview();
 
         if (!result.success || !result.html) {
             throw new Error(result.error || _('Failed to generate preview'));

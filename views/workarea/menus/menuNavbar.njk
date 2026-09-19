@@ -71,6 +71,7 @@
                     <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.project_properties or 'Project Properties' }}</a></li>
                     <li class="dropdown-divider"></li>
                     <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ t.print or 'Print' }}</a></li>
+                    <li><a id="navbar-button-print-idevices" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ t.print_idevices or 'Print iDevices' }}</a></li>
                     {% if config.isOfflineInstallation %}
                         {# Desktop only: close the current window (Cmd+W / Ctrl+W). The divider and
                            entry are hidden by default and revealed by navbarFile.js only when the

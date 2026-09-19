@@ -1000,6 +1000,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     single_page: trans('Single page', {}, locale),
                     export_to_folder: trans('Export to Folder (Unzipped Website)', {}, locale),
                     print: trans('Print', {}, locale),
+                    print_idevices: trans('Print iDevices', {}, locale),
                     upload_to: trans('Upload to', {}, locale),
                     metadata: trans('Metadata', {}, locale),
                     import: trans('Import', {}, locale),

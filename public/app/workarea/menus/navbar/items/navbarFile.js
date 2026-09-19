@@ -8,6 +8,10 @@ import {
     openProjectFolderInBrowser,
     saveProjectFolderInBrowser,
 } from '../../../../core/ProjectFolderStorage.js';
+import {
+    PREVIEW_MODE_DOCUMENT,
+    PREVIEW_MODE_IDEVICES,
+} from '../../../modals/modals/pages/modalPrintPreview.js';
 
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
@@ -81,6 +85,9 @@ export default class NavbarFile {
         this.exportPrintButton = this.menu.navbar.querySelector(
             '#navbar-button-export-print'
         );
+        this.printIdevicesButton = this.menu.navbar.querySelector(
+            '#navbar-button-print-idevices'
+        );
         this.exportSCORM12Button = this.menu.navbar.querySelector(
             '#navbar-button-export-scorm12'
         );
@@ -145,6 +152,7 @@ export default class NavbarFile {
         this.setExportHTML5SPEvent();
         this.setExportHTML5SPAsEvent();
         this.setExportPrintEvent();
+        this.setPrintIdevicesEvent();
         this.setExportSCORM12Event();
         this.setExportSCORM12AsEvent();
         this.setExportSCORM2004Event();
@@ -849,16 +857,35 @@ export default class NavbarFile {
         });
     }
 
-    openPrintPreview() {
+    /**
+     * Open the worksheet built from the activities in the project.
+     */
+    setPrintIdevicesEvent() {
+        if (!this.printIdevicesButton) return;
+        this.printIdevicesButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.openPrintPreview(PREVIEW_MODE_IDEVICES);
+        });
+    }
+
+    /**
+     * Show the print preview overlay in the given mode.
+     *
+     * @param {string} mode - PREVIEW_MODE_DOCUMENT (default) or PREVIEW_MODE_IDEVICES
+     */
+    openPrintPreview(mode = PREVIEW_MODE_DOCUMENT) {
         // Open print preview modal
         const printPreviewModal = eXeLearning?.app?.modals?.printpreview;
         if (printPreviewModal) {
-            printPreviewModal.show();
+            printPreviewModal.show(mode);
         } else {
             console.warn('[NavbarFile] Print preview modal not available');
             eXeLearning?.app?.modals?.alert?.show({
                 title: _('Error'),
-                body: _('Print preview is not available.'),
+                body:
+                    mode === PREVIEW_MODE_IDEVICES
+                        ? _('Print iDevices is not available.')
+                        : _('Print preview is not available.'),
             });
         }
     }

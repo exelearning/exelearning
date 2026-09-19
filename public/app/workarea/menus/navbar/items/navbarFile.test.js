@@ -49,6 +49,7 @@ describe('NavbarFile', () => {
             exportHTML5SPButton: createButton('navbar-button-export-html5-sp'),
             exportHTML5SPAsButton: createButton('navbar-button-exportas-html5-sp'),
             exportPrintButton: createButton('navbar-button-export-print'),
+            printIdevicesButton: createButton('navbar-button-print-idevices'),
             exportSCORM12Button: createButton('navbar-button-export-scorm12'),
             exportSCORM12AsButton: createButton('navbar-button-exportas-scorm12'),
             exportSCORM2004Button: createButton('navbar-button-export-scorm2004'),
@@ -1657,6 +1658,88 @@ describe('NavbarFile', () => {
 
             expect(consoleWarnSpy).toHaveBeenCalledWith('[NavbarFile] Print preview modal not available');
             consoleWarnSpy.mockRestore();
+        });
+
+        it('should open the overlay in document mode by default', () => {
+            const mockPrintPreviewModal = { show: vi.fn() };
+            eXeLearning.app.modals.printpreview = mockPrintPreviewModal;
+
+            navbarFile.openPrintPreview();
+
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document');
+        });
+
+        it('should open the overlay in idevices mode when asked', () => {
+            const mockPrintPreviewModal = { show: vi.fn() };
+            eXeLearning.app.modals.printpreview = mockPrintPreviewModal;
+
+            navbarFile.openPrintPreview('idevices');
+
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('idevices');
+        });
+
+        it('should name the right feature in the error for each mode', () => {
+            eXeLearning.app.modals.printpreview = null;
+            const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            navbarFile.openPrintPreview('idevices');
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'Print iDevices is not available.' })
+            );
+
+            navbarFile.openPrintPreview();
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'Print preview is not available.' })
+            );
+
+            consoleWarnSpy.mockRestore();
+        });
+    });
+
+    describe('setPrintIdevicesEvent', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should find the print idevices button', () => {
+            expect(navbarFile.printIdevicesButton).toBe(mockButtons.printIdevicesButton);
+        });
+
+        it('should register a click listener', () => {
+            navbarFile.setPrintIdevicesEvent();
+
+            expect(mockButtons.printIdevicesButton.addEventListener).toHaveBeenCalledWith(
+                'click',
+                expect.any(Function)
+            );
+        });
+
+        it('should open the worksheet overlay on click', () => {
+            const openSpy = vi.spyOn(navbarFile, 'openPrintPreview').mockImplementation(() => {});
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+            navbarFile.setPrintIdevicesEvent();
+
+            const handler = mockButtons.printIdevicesButton.addEventListener.mock.calls[0][1];
+            handler();
+
+            expect(openSpy).toHaveBeenCalledWith('idevices');
+        });
+
+        it('should do nothing while an iDevice is open for editing', () => {
+            const openSpy = vi.spyOn(navbarFile, 'openPrintPreview').mockImplementation(() => {});
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
+            navbarFile.setPrintIdevicesEvent();
+
+            const handler = mockButtons.printIdevicesButton.addEventListener.mock.calls[0][1];
+            handler();
+
+            expect(openSpy).not.toHaveBeenCalled();
+        });
+
+        it('should not throw when the button is absent', () => {
+            navbarFile.printIdevicesButton = null;
+
+            expect(() => navbarFile.setPrintIdevicesEvent()).not.toThrow();
         });
     });
 

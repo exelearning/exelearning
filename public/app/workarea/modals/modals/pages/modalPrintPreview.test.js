@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import ModalPrintPreview from './modalPrintPreview.js';
+import ModalPrintPreview, {
+    PREVIEW_MODE_DOCUMENT,
+    PREVIEW_MODE_IDEVICES,
+} from './modalPrintPreview.js';
 
 describe('ModalPrintPreview', () => {
     let modal;
@@ -14,7 +17,7 @@ describe('ModalPrintPreview', () => {
         overlayElement.setAttribute('data-visible', 'false');
         overlayElement.innerHTML = `
             <div class="print-preview-header">
-                <div class="print-preview-title">Print preview</div>
+                <div class="print-preview-title"><span class="print-preview-title-text">Print preview</span></div>
                 <div class="print-preview-actions">
                     <button class="print-preview-print-btn"></button>
                     <button class="print-preview-close-btn"></button>
@@ -54,6 +57,10 @@ describe('ModalPrintPreview', () => {
         global.window.generatePrintPreview = vi.fn().mockResolvedValue({
             success: true,
             html: '<html><body>Test content</body></html>',
+        });
+        global.window.generateWorksheet = vi.fn().mockResolvedValue({
+            success: true,
+            html: '<html><body>Worksheet</body></html>',
         });
         global.window.ResourceFetcher = class MockResourceFetcher {};
 
@@ -327,6 +334,101 @@ describe('ModalPrintPreview', () => {
             modal.blobUrl = null;
 
             expect(() => modal.cleanup()).not.toThrow();
+        });
+    });
+
+    describe('preview modes', () => {
+        it('should default to the document mode', async () => {
+            await modal.show();
+
+            expect(modal.mode).toBe(PREVIEW_MODE_DOCUMENT);
+            expect(global.window.generatePrintPreview).toHaveBeenCalled();
+            expect(global.window.generateWorksheet).not.toHaveBeenCalled();
+        });
+
+        it('should build the worksheet in the idevices mode', async () => {
+            await modal.show(PREVIEW_MODE_IDEVICES);
+
+            expect(modal.mode).toBe(PREVIEW_MODE_IDEVICES);
+            expect(global.window.generateWorksheet).toHaveBeenCalled();
+            expect(global.window.generatePrintPreview).not.toHaveBeenCalled();
+        });
+
+        it('should load the worksheet into the iframe', async () => {
+            await modal.show(PREVIEW_MODE_IDEVICES);
+
+            expect(global.URL.createObjectURL).toHaveBeenCalled();
+            expect(modal.iframe.src).toContain('blob:test-url');
+        });
+
+        it('should pass the document manager, labels and asset manager to the worksheet', async () => {
+            await modal.show(PREVIEW_MODE_IDEVICES);
+
+            const [documentManager, options, assetManager] =
+                global.window.generateWorksheet.mock.calls[0];
+
+            expect(documentManager).toBe(
+                global.eXeLearning.app.project._yjsBridge.documentManager
+            );
+            expect(assetManager).toBe(
+                global.eXeLearning.app.project._yjsBridge.assetManager
+            );
+            expect(options.labels.studentName).toBe('Name');
+            expect(options.labels.date).toBe('Date');
+            expect(options.ideviceTitles.guess).toBe('Guess');
+        });
+
+        it('should switch the heading to match the mode', async () => {
+            await modal.show(PREVIEW_MODE_IDEVICES);
+            expect(modal.titleEl.textContent).toBe('Print iDevices');
+
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            expect(modal.titleEl.textContent).toBe('Print preview');
+        });
+
+        it('should fall back to SharedExporters when the global is absent', async () => {
+            delete global.window.generateWorksheet;
+            const shared = vi
+                .fn()
+                .mockResolvedValue({ success: true, html: '<html></html>' });
+            global.window.SharedExporters = { generateWorksheet: shared };
+
+            await modal.show(PREVIEW_MODE_IDEVICES);
+
+            expect(shared).toHaveBeenCalled();
+            delete global.window.SharedExporters;
+        });
+
+        it('should report a missing worksheet generator', async () => {
+            delete global.window.generateWorksheet;
+
+            await modal.show(PREVIEW_MODE_IDEVICES);
+
+            expect(modal.loadingEl.innerHTML).toContain(
+                'Print iDevices is not available.'
+            );
+        });
+
+        it('should report a failed worksheet generation', async () => {
+            global.window.generateWorksheet.mockResolvedValue({
+                success: false,
+                error: 'No activities',
+            });
+
+            await modal.show(PREVIEW_MODE_IDEVICES);
+
+            expect(modal.loadingEl.innerHTML).toContain('No activities');
+        });
+
+        it('should require Yjs mode', async () => {
+            global.eXeLearning.app.project._yjsEnabled = false;
+
+            await modal.show(PREVIEW_MODE_IDEVICES);
+
+            expect(modal.loadingEl.innerHTML).toContain(
+                'Print preview requires server mode'
+            );
+            expect(global.window.generateWorksheet).not.toHaveBeenCalled();
         });
     });
 });
