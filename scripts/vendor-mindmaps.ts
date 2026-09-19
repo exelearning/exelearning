@@ -69,10 +69,10 @@ export const SOURCE_REPOSITORY = 'exelearning/mindmaps';
  * Bumping this is how eXeLearning takes a change from the fork: merge it to the fork's
  * `main`, put the resulting commit here, and regenerate.
  *
- * This revision is the fork's `main` after exelearning/mindmaps#2, which restored the
- * eXeLearning-specific mindmaps sources that make the bundle below reproducible.
+ * This revision is the fork's `main` after exelearning/mindmaps#3, which added the four
+ * translation hooks eXeLearning wrapped in 2026 but never rebuilt into a shipped bundle.
  */
-export const PINNED_REVISION = '5d9db35d3d5cf2dbd04c2addaa974b287c420d70';
+export const PINNED_REVISION = '7a731bcd11d70731b5801ca92acf7959553cfeb4';
 
 /** Where the vendored tree lives, relative to the repository root. */
 export const VENDORED_ROOT = path.join('public', 'app', 'common', 'mindmaps');
@@ -115,9 +115,9 @@ export const VENDORED: readonly VendoredFile[] = [
         source: 'dist/js/script.js',
         // The build output as emitted. Verifying this proves the build was reproduced
         // before anything is written, and catches a toolchain that has drifted.
-        sourceSha256: '2ef32154b15a3a4267404ff3835bddf39537f5c9d94160f8f453373a5a55f7bf',
+        sourceSha256: 'dc49af37aafe6cd3e4c369c660198c8bc97a21a9295f3c25fd56cf6818a9203b',
         // The same bytes with newlines normalised, which is what ships here.
-        sha256: 'd27f2379253300a8593509480809aa895ab840864d5b1eeefa9948c3d589de93',
+        sha256: '678f3ccd474e493c5df2382bf828419f757f303e58a63cd3ba1035cc2a7907e6',
     },
     {
         path: 'src/css/Aristo/images/bg_fallback.png',

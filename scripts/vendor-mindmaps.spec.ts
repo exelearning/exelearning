@@ -268,8 +268,8 @@ describe('vendor-mindmaps', () => {
             // Both hashes are pinned on purpose: sourceSha256 is what `npm run build`
             // must emit, sha256 is what gets committed here. Swapping the bundle for one
             // nobody can rebuild would have to change these lines to pass.
-            expect(bundle.sourceSha256).toBe('2ef32154b15a3a4267404ff3835bddf39537f5c9d94160f8f453373a5a55f7bf');
-            expect(bundle.sha256).toBe('d27f2379253300a8593509480809aa895ab840864d5b1eeefa9948c3d589de93');
+            expect(bundle.sourceSha256).toBe('dc49af37aafe6cd3e4c369c660198c8bc97a21a9295f3c25fd56cf6818a9203b');
+            expect(bundle.sha256).toBe('678f3ccd474e493c5df2382bf828419f757f303e58a63cd3ba1035cc2a7907e6');
         });
 
         it('is the committed file, byte for byte', () => {
@@ -295,13 +295,14 @@ describe('vendor-mindmaps', () => {
             expect(committed).toContain('typeof window._r');
         });
 
-        it('does not yet carry the four hooks that were never shipped', () => {
-            // exelearning/mindmaps a87f7b759 added these to source but no build followed;
-            // turning them on changes which strings get translated, so it waits.
+        it('carries the four hooks eXeLearning wrapped but never rebuilt', () => {
+            // exelearning/mindmaps#3 brought these in. They were added to eXeLearning's
+            // source in a87f7b759 and no build ever followed, so this is the first
+            // bundle to contain them.
             const committed = fs.readFileSync(path.join(vendoredRoot, 'min', 'js', 'script.js'), 'utf8');
 
-            for (const missing of ['_("Mind map saved")', '_("Warning")']) {
-                expect(committed).not.toContain(missing);
+            for (const hook of ['_("Mind map saved")', '_("Warning")', '_("Error")']) {
+                expect(committed).toContain(hook);
             }
         });
 
