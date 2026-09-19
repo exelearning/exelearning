@@ -28,6 +28,25 @@ describe('renderWorksheet with multiple-choice answers', () => {
         expect(html).toContain('<span class="worksheet-option-label">A</span>');
     });
 
+    it('draws a line instead of a box when the question asks for an order', () => {
+        const html = renderWorksheet(
+            modelWith([{ prompt: 'Q', answer: { kind: 'options', labels: ['A', 'B'], marker: 'line' } }]),
+        );
+
+        // A line is written on, a box is ticked.
+        expect(html.match(/class="worksheet-option-line"/g)).toHaveLength(2);
+        expect(html).not.toContain('<span class="worksheet-option-box">');
+    });
+
+    it('defaults to a box to tick', () => {
+        const html = renderWorksheet(
+            modelWith([{ prompt: 'Q', answer: { kind: 'options', labels: ['A'], marker: 'box' } }]),
+        );
+
+        expect(html).toContain('<span class="worksheet-option-box">');
+        expect(html).not.toContain('<span class="worksheet-option-line">');
+    });
+
     it('keeps formatting inside an option label', () => {
         const html = renderWorksheet(
             modelWith([{ prompt: 'Q', answer: { kind: 'options', labels: ['<b>Bold</b>'] } }]),

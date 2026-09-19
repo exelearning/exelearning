@@ -46,6 +46,12 @@ describe('renderWorksheet', () => {
         expect(renderWorksheet(model({ language: '' }))).toContain('<html lang="en">');
     });
 
+    it('marks each activity with the iDevice it came from', () => {
+        const html = renderWorksheet(model());
+
+        expect(html).toContain('<article class="worksheet-activity" data-idevice="guess">');
+    });
+
     it('groups activities under their page title', () => {
         const html = renderWorksheet(model());
 

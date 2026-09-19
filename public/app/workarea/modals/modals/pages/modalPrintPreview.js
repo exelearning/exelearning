@@ -172,6 +172,7 @@ export default class ModalPrintPreview {
                     guess: _('Guess'),
                     crossword: _('Crossword'),
                     'quick-questions': _('Test'),
+                    'quick-questions-multiple-choice': _('Select'),
                 },
                 ideviceBasePath: this.getIdeviceBasePath(),
             },

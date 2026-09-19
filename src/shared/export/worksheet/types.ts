@@ -32,8 +32,13 @@ export type PrintableAnswer =
     | { kind: 'characterBoxes'; groups: CharacterBoxGroup[] }
     /** Ruled writing lines, for open-ended answers. Not rendered yet. */
     | { kind: 'lines'; count: number }
-    /** A checkbox per option, for multiple choice. Not rendered yet. */
-    | { kind: 'options'; labels: string[] };
+    /**
+     * One option per line, each with something to fill in beside it.
+     *
+     * `marker` says what: a box to tick for a choice, or a line to write on when the question asks
+     * for the options to be put in order.
+     */
+    | { kind: 'options'; labels: string[]; marker?: 'box' | 'line' };
 
 /** A picture that belongs to a question. */
 export interface PrintableMedia {

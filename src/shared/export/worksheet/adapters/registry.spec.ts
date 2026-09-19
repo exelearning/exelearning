@@ -6,6 +6,9 @@ describe('worksheet adapter registry', () => {
         expect(getWorksheetAdapter('guess')?.ideviceType).toBe('guess');
         expect(getWorksheetAdapter('crossword')?.ideviceType).toBe('crossword');
         expect(getWorksheetAdapter('quick-questions')?.ideviceType).toBe('quick-questions');
+        expect(getWorksheetAdapter('quick-questions-multiple-choice')?.ideviceType).toBe(
+            'quick-questions-multiple-choice',
+        );
     });
 
     it('returns undefined for iDevices that are not printable yet', () => {
@@ -14,7 +17,12 @@ describe('worksheet adapter registry', () => {
     });
 
     it('lists the supported types', () => {
-        expect(getSupportedIdeviceTypes()).toEqual(['crossword', 'guess', 'quick-questions']);
+        expect(getSupportedIdeviceTypes()).toEqual([
+            'crossword',
+            'guess',
+            'quick-questions',
+            'quick-questions-multiple-choice',
+        ]);
     });
 
     it('registers every adapter under its own declared type', () => {

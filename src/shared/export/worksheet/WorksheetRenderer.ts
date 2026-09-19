@@ -136,8 +136,7 @@ body {
 /*
  * Crossword grid: equal tracks, as the activity lays its board out on screen. Blocked cells are
  * gaps, so the shape of the puzzle reads at a glance and any picture behind it shows through.
- */
-/*
+ *
  * On its own the board is drawn at a fixed cell size: it is cropped to the words, so stretching
  * it to the page width would blow a six-column puzzle up to enormous squares.
  */
@@ -262,6 +261,14 @@ body {
     border: 1px solid #1a1a1a;
 }
 
+/* Ordering questions ask for a number, so the student gets a line rather than a box. */
+.worksheet-option-line {
+    flex: 0 0 8mm;
+    width: 8mm;
+    border-bottom: 1px solid #1a1a1a;
+    align-self: flex-end;
+}
+
 .worksheet-option-label > p {
     margin: 0;
 }
@@ -327,11 +334,14 @@ function renderCharacterBoxes(groups: CharacterBoxGroup[]): string {
  *
  * The labels are sanitised HTML rather than text, since a question's options can carry formatting.
  */
-function renderOptions(labels: string[]): string {
+function renderOptions(labels: string[], marker: 'box' | 'line' = 'box'): string {
+    // A box is ticked; a line is written on, which is what an ordering question needs.
+    const markerClass = marker === 'line' ? 'worksheet-option-line' : 'worksheet-option-box';
+
     const options = labels
         .map(
             label =>
-                `<li class="worksheet-option"><span class="worksheet-option-box"></span>` +
+                `<li class="worksheet-option"><span class="${markerClass}"></span>` +
                 `<span class="worksheet-option-label">${label}</span></li>`,
         )
         .join('');
@@ -348,7 +358,7 @@ function renderAnswer(answer: PrintableAnswer): string {
     }
 
     if (answer.kind === 'options') {
-        return renderOptions(answer.labels);
+        return renderOptions(answer.labels, answer.marker);
     }
 
     // Declared in the model so adapters have a contract to build against, but with no adapter
@@ -451,7 +461,9 @@ function renderItem(item: PrintableItem): string {
  * Render one activity: heading, instructions, questions, closing text.
  */
 function renderActivity(activity: PrintableActivity): string {
-    let html = '<article class="worksheet-activity">';
+    // The type is carried through so a reader, a stylesheet or a test can tell one kind of
+    // activity from another on the printed sheet.
+    let html = `<article class="worksheet-activity" data-idevice="${escapeText(activity.ideviceType)}">`;
     html += `<h3 class="worksheet-activity-title">${escapeText(activity.title)}</h3>`;
 
     if (activity.instructions) {

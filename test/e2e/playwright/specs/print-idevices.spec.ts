@@ -20,7 +20,11 @@ import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-
 
 const FIXTURE = 'test/fixtures/old_el_cid.elp';
 
-/** Carries two crossword activities, both with illustrated clues. */
+/**
+ * Carries one activity of each kind the worksheet supports: a crossword with illustrated
+ * clues, a test and a select. Counted by component, not by DataGame div: several of the divs in
+ * this package sit nested inside other content and are not activities of their own.
+ */
 const CROSSWORD_FIXTURE = 'test/fixtures/todos-los-idevices_dos_informes.elpx';
 
 /** Questions in the fixture's Guess activity. */
@@ -198,8 +202,8 @@ test.describe('Print iDevices', () => {
 
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
-        // Two crosswords, both asking 100% of their questions at difficulty 100, which gives no
-        // letters away, and both with illustrated clues.
+        // Its crossword asks 100% of its questions at difficulty 100, which gives no letters
+        // away, and its clues are illustrated.
         await openElpFile(page, CROSSWORD_FIXTURE);
 
         const { frame } = await openWorksheet(page);
@@ -255,8 +259,7 @@ test.describe('Print iDevices', () => {
 
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
-        // Four Test activities, all asking 100% of their questions in stored order, none of them
-        // a video one.
+        // Its test asks 100% of its questions in stored order.
         await openElpFile(page, CROSSWORD_FIXTURE);
 
         const { frame } = await openWorksheet(page);
@@ -278,6 +281,28 @@ test.describe('Print iDevices', () => {
         const optionsBox = await question.locator('.worksheet-options').boundingBox();
 
         expect(optionsBox?.y ?? 0).toBeGreaterThan(promptBox?.y ?? 0);
+    });
+
+    // No fixture in the repository has a video question in a Select activity, so leaving those
+    // out is covered by the adapter's unit tests rather than here.
+    test('prints a select activity with its options', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Print iDevices Select');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await openElpFile(page, CROSSWORD_FIXTURE);
+
+        const { frame } = await openWorksheet(page);
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="quick-questions-multiple-choice"]');
+        await expect(activity).toHaveCount(1);
+
+        // It asks 100% of its four questions in stored order, so all four print.
+        await expect(activity.locator('.worksheet-item')).toHaveCount(4);
+
+        // Its questions offer options to tick.
+        expect(await activity.locator('.worksheet-option-box').count()).toBeGreaterThan(0);
     });
 
     test('closes on Escape', async ({ authenticatedPage, createProject }) => {
