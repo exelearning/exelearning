@@ -24,8 +24,10 @@ describe('sanitizeHtml', () => {
         expect(sanitizeHtml('<style>body{display:none}</style><p>Text</p>')).toBe('<p>Text</p>');
     });
 
-    it('removes an unterminated script tag', () => {
-        expect(sanitizeHtml('<p>Text</p><script>alert(1)')).toBe('<p>Text</p>alert(1)');
+    it('removes an unterminated script tag together with what follows it', () => {
+        // HTML5 parsing treats the rest of the input as the script's content, so none of it is
+        // left behind as text.
+        expect(sanitizeHtml('<p>Text</p><script>alert(1)')).toBe('<p>Text</p>');
     });
 
     it('removes embedded frames and objects', () => {

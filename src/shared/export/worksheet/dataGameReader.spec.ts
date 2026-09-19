@@ -30,10 +30,17 @@ describe('extractDivContent', () => {
         expect(extractDivContent(html, 'adivina-Data')).toBe('');
     });
 
-    it('returns empty string for missing div, empty input and unterminated div', () => {
+    it('returns empty string for a missing div and for empty input', () => {
         expect(extractDivContent('<div class="other">x</div>', 'adivina-DataGame')).toBe('');
         expect(extractDivContent('', 'adivina-DataGame')).toBe('');
-        expect(extractDivContent('<div class="adivina-DataGame">never closed', 'adivina-DataGame')).toBe('');
+    });
+
+    it('reads an unterminated div, as a browser would', () => {
+        // HTML5 parsing closes the tag implicitly rather than discarding it, so a payload saved
+        // without its closing tag is still recovered.
+        expect(extractDivContent('<div class="adivina-DataGame">never closed', 'adivina-DataGame')).toBe(
+            'never closed',
+        );
     });
 });
 
@@ -48,6 +55,17 @@ describe('extractDataGame', () => {
         const html = '<div class="adivina-DataGame js-hidden">{"typeGame":"Adivina","wordsGame":[]}</div>';
 
         expect(extractDataGame(html, 'adivina')).toEqual({ typeGame: 'Adivina', wordsGame: [] });
+    });
+
+    it('preserves literal formatting and image attributes inside legacy plaintext JSON', () => {
+        const data = { instructions: '<p>Read <b>this</b></p>', options: ['<img src="asset://pic" alt="A &amp; B">'] };
+        const html = `<div class="quext-DataGame">${JSON.stringify(data)}</div>`;
+        expect(extractDataGame(html, 'quext')).toEqual(data);
+    });
+
+    it('also decodes legacy JSON escaped as HTML text', () => {
+        const html = '<div class="quext-DataGame">{&quot;instructions&quot;:&quot;A &amp; B&quot;}</div>';
+        expect(extractDataGame(html, 'quext')).toEqual({ instructions: 'A & B' });
     });
 
     it('preserves accents and non latin-1 characters', () => {
