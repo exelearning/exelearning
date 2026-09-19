@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { test, expect } from '../../fixtures/auth.fixture';
 import { clickRootNode, openMindmapEditor, readZoomPercent, wheelOverCanvas } from '../../helpers/mindmap-helpers';
 
@@ -48,6 +50,64 @@ test.describe('Mind map editor offline contract', () => {
         await expect(frame.locator('#button-save-hdd')).toBeVisible({ timeout: 10000 });
 
         expect(foreign, `editor requested remote resources:\n${foreign.join('\n')}`).toEqual([]);
+    });
+
+    test('runs on the exact jQuery and jQuery UI this application ships', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const { frame2 } = await openMindmapEditor(page, createProject, 'MindMap jQuery Version');
+
+        // Read the expected versions out of the canonical assets rather than hardcoding
+        // them, so upgrading eXeLearning's jQuery does not leave this quietly asserting an
+        // old number that the editor no longer uses.
+        const repoRoot = path.resolve(__dirname, '../../../../..');
+        const jqueryAsset = fs.readFileSync(path.join(repoRoot, 'public/libs/jquery/jquery.min.js'), 'utf8');
+        const jqueryUiAsset = fs.readFileSync(path.join(repoRoot, 'public/libs/jquery-ui/jquery-ui.min.js'), 'utf8');
+        const expectedJquery = /jQuery v(\d+\.\d+\.\d+)/.exec(jqueryAsset)?.[1];
+        const expectedJqueryUi = /jQuery UI - v(\d+\.\d+\.\d+)/.exec(jqueryUiAsset)?.[1];
+        expect(expectedJquery, 'could not read the shipped jQuery version').toBeTruthy();
+        expect(expectedJqueryUi, 'could not read the shipped jQuery UI version').toBeTruthy();
+
+        const runtime = await frame2.evaluate(() => {
+            const win = window as unknown as { jQuery: { fn: { jquery: string }; ui?: { version: string } } };
+            return { jquery: win.jQuery.fn.jquery, jqueryUi: win.jQuery.ui?.version };
+        });
+
+        expect(runtime.jquery).toBe(expectedJquery);
+        expect(runtime.jqueryUi).toBe(expectedJqueryUi);
+    });
+
+    test('loads exactly one jQuery into the editor document', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const { frame2 } = await openMindmapEditor(page, createProject, 'MindMap Single jQuery');
+
+        // Counted inside the iframe rather than across the page: the workarea that hosts
+        // the editor loads its own jQuery, and that is a different document. What matters
+        // is that the editor document holds one, and that it is the application's copy.
+        const loaded = await frame2.evaluate(() =>
+            Array.from(document.querySelectorAll('script[src]'))
+                .map(script => new URL((script as HTMLScriptElement).src).pathname)
+                .filter(pathname => /\/jquery(\.min)?\.js$/i.test(pathname)),
+        );
+
+        expect(loaded, `editor document loaded: ${loaded.join(', ')}`).toHaveLength(1);
+        expect(loaded[0]).toContain('/libs/jquery/jquery.min.js');
+    });
+
+    test('keeps no private jQuery beside the plugin', async () => {
+        const repoRoot = path.resolve(__dirname, '../../../../..');
+        const editorJs = path.join(repoRoot, 'public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/js');
+
+        // The plugin used to ship its own jQuery 1.6.1 here. Reintroducing one would load a
+        // second copy into the editor and silently shadow the application's.
+        const strays = fs.readdirSync(editorJs).filter(name => /^jquery(\.min)?\.js$/i.test(name));
+        expect(strays, `private jQuery reintroduced: ${strays.join(', ')}`).toEqual([]);
+
+        const html = fs.readFileSync(path.join(editorJs, '..', 'index.html'), 'utf8');
+        expect(html).toContain('/libs/jquery/jquery.min.js');
+        expect(html).toContain('/libs/jquery-ui/jquery-ui.min.js');
     });
 
     test('serves the editor its jQuery from this application', async ({ authenticatedPage, createProject }) => {

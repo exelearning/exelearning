@@ -381,12 +381,10 @@
         `make vendor-filesaver`. The published source map is not shipped, so its
         `sourceMappingURL` announcement is stripped. Its only consumer is the mindmaps
         export dialog, which calls `window.saveAs(blob, filename)`.
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
-    *   Copyright: John Resig
-    *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
-    *   Copyright: John Resig
-    *   License: MIT
+*   Note: the exemindmap editor no longer ships its own jQuery. It loads
+    /public/libs/jquery/jquery.min.js and /public/libs/jquery-ui/jquery-ui.min.js,
+    the same copies the rest of eXeLearning uses, so the editor document holds
+    exactly one of each.
 *   Files: /public/style/workarea/fonts/\Catamaran*
     *   Copyright: The Catamaran Authors. Designed by Pria Ravichandran
     *   License: SIL Open Font License version 1.1

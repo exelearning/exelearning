@@ -242,15 +242,25 @@
   <script>
   (function() {
       var base = window.__EDITOR_BASE__;
-      // js/langs/all.js first, and through document.write rather than appendChild.
-      // A dynamically inserted script defaults to async, so it used to race the
-      // mindmaps bundle below: when it lost, the bundle installed its own identity
-      // fallback and mindmaps.Notification.Defaults captured an untranslated string
-      // that a later assignment could no longer fix. Parser-inserted scripts run in
-      // order, so the translators now always exist before the bundle evaluates.
-      var scripts = ['js/langs/all.js', 'js/jquery.min.js', 'js/FileSaver.min.js'];
-      scripts.forEach(function(src) {
-          document.write('<script src="' + base + src + '"><\/script>');
+      // Everything here is parser-inserted through document.write, so it runs in this
+      // order. A dynamically inserted script defaults to async, and langs/all.js used to
+      // race the mindmaps bundle that way: when it lost, the bundle installed its own
+      // identity fallback and mindmaps.Notification.Defaults captured an untranslated
+      // string that a later assignment could no longer fix.
+      //
+      // jQuery and jQuery UI are eXeLearning's own, not a private copy kept beside this
+      // plugin, so the editor runs the versions the rest of the application runs and the
+      // document only ever holds one of each. They are addressed through deployBase
+      // rather than as absolute "/libs/..." paths, which would break a BASE_PATH
+      // deployment. The mindmaps bundle below expects both to be present already.
+      var dependencies = [
+          window.__DEPLOY_BASE__ + '/libs/jquery/jquery.min.js',
+          window.__DEPLOY_BASE__ + '/libs/jquery-ui/jquery-ui.min.js',
+          base + 'js/langs/all.js',
+          base + 'js/FileSaver.min.js'
+      ];
+      dependencies.forEach(function(src) {
+          document.write('<script src="' + src + '"><\/script>');
       });
   })();
   </script>

@@ -226,8 +226,16 @@ describe('exemindmap editor - host translators', () => {
         expect(langsAt).toBeGreaterThan(-1);
         expect(bundleAt).toBeGreaterThan(-1);
         expect(langsAt).toBeLessThan(bundleAt);
-        // Both go through document.write, which is ordered and blocking.
-        expect(indexHtml).toMatch(/var scripts = \['js\/langs\/all\.js'/);
+        // Everything goes through document.write, which is ordered and blocking.
+        expect(indexHtml).toMatch(/var dependencies = \[/);
+        expect(indexHtml).toContain("base + 'js/langs/all.js'");
+
+        // jQuery and jQuery UI are the application's own, and must precede the bundle.
+        const jqueryAt = indexHtml.indexOf('/libs/jquery/jquery.min.js');
+        const jqueryUiAt = indexHtml.indexOf('/libs/jquery-ui/jquery-ui.min.js');
+        expect(jqueryAt).toBeGreaterThan(-1);
+        expect(jqueryUiAt).toBeGreaterThan(jqueryAt);
+        expect(jqueryUiAt).toBeLessThan(bundleAt);
     });
 
     it('no longer inserts langs/all.js with appendChild, which would race', () => {
