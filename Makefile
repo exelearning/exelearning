@@ -478,12 +478,12 @@ vendor-mathjax: check-bun
 vendor-edicuatex: check-bun
 	bun run scripts/vendor-edicuatex.ts
 
-# Refresh public/app/common/mindmaps/ from the pinned revision of the eXeLearning
+# Regenerate public/app/common/mindmaps/ from the pinned revision of the eXeLearning
 # maintenance fork of mindmaps (https://github.com/exelearning/mindmaps). The tree is
 # committed, so this is only needed after bumping PINNED_REVISION in the script.
-# Only the files eXeLearning takes from the fork verbatim are rewritten; the
-# locally recompressed images and the bundle built from eXeLearning-patched sources
-# are left alone. Use `--check` (no network) to verify the committed tree.
+# This downloads that revision and builds it (npm ci && npm test && npm run build) in a
+# temporary directory to produce min/js/script.js; only the locally recompressed images
+# are left as committed. Use `--check` (no network, no build) to verify the tree.
 .PHONY: vendor-mindmaps
 vendor-mindmaps: check-bun
 	bun run scripts/vendor-mindmaps.ts

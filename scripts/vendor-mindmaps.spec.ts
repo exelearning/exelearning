@@ -5,6 +5,10 @@
  * what is on disk, it agrees with what the editor iframe actually loads, and it cannot
  * quietly pin a branch instead of a commit. The drift detectors are tested against
  * fixtures rather than the real tree, so a failure names the rule that broke.
+ *
+ * The runtime bundle now has a contract of its own, so it gets its own block: it is the
+ * build output of the pinned revision, both of its hashes are pinned, and no entry is
+ * an artefact whose origin is unknown any more.
  */
 import { afterEach, describe, expect, it } from 'bun:test';
 import fs from 'node:fs';
@@ -13,6 +17,7 @@ import path from 'node:path';
 import {
     countByProvenance,
     isWritable,
+    needsBuild,
     LIVE_ASSETS,
     normalizeLineEndings,
     PINNED_REVISION,
@@ -23,6 +28,7 @@ import {
     tarballUrl,
     VENDORED,
     VENDORED_ROOT,
+    writeWritableFiles,
     type CliIo,
     verifySourceTree,
     verifyVendoredTree,
@@ -55,11 +61,15 @@ describe('vendor-mindmaps', () => {
         const cssSource = Buffer.from('a {\r\n  color: red;\r\n}\r\n');
         const imageSource = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x01]);
         const recompressed = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+        // Stands in for the fork's build output, newlines and all.
+        const buildOutput = Buffer.from('var a=1;\r\nvar b=2;\r\n');
 
         fs.mkdirSync(path.join(sourceRoot, 'src', 'css'), { recursive: true });
         fs.writeFileSync(path.join(sourceRoot, 'src', 'css', 'app.css'), cssSource);
         fs.mkdirSync(path.join(sourceRoot, 'src', 'img'), { recursive: true });
         fs.writeFileSync(path.join(sourceRoot, 'src', 'img', 'grid.gif'), imageSource);
+        fs.mkdirSync(path.join(sourceRoot, 'dist', 'js'), { recursive: true });
+        fs.writeFileSync(path.join(sourceRoot, 'dist', 'js', 'script.js'), buildOutput);
 
         const manifest: VendoredFile[] = [
             {
@@ -76,12 +86,21 @@ describe('vendor-mindmaps', () => {
                 sourceSha256: sha256(imageSource),
                 sha256: sha256(recompressed),
             },
+            {
+                path: 'min/js/script.js',
+                provenance: 'generated',
+                source: 'dist/js/script.js',
+                sourceSha256: sha256(buildOutput),
+                sha256: sha256(normalizeLineEndings(buildOutput)),
+            },
         ];
 
         fs.mkdirSync(path.join(targetRoot, 'src', 'css'), { recursive: true });
         fs.writeFileSync(path.join(targetRoot, 'src', 'css', 'app.css'), normalizeLineEndings(cssSource));
         fs.mkdirSync(path.join(targetRoot, 'src', 'img'), { recursive: true });
         fs.writeFileSync(path.join(targetRoot, 'src', 'img', 'grid.gif'), recompressed);
+        fs.mkdirSync(path.join(targetRoot, 'min', 'js'), { recursive: true });
+        fs.writeFileSync(path.join(targetRoot, 'min', 'js', 'script.js'), normalizeLineEndings(buildOutput));
 
         return { sourceRoot, vendoredRoot: targetRoot, manifest };
     }
@@ -139,17 +158,19 @@ describe('vendor-mindmaps', () => {
             }
         });
 
-        it('records a fork source for everything except the patched bundle', () => {
+        it('records a fork source and a pair of hashes for every file', () => {
+            // There is no longer any entry whose origin is unknown. The bundle used to be
+            // one -- an opaque artefact with `source: null` that nothing could rebuild.
             for (const entry of VENDORED) {
-                if (entry.path === 'min/js/script.js') {
-                    expect(entry.source).toBeNull();
-                    expect(entry.provenance).toBe('built');
-                } else {
-                    expect(entry.source, `${entry.path} has no source`).not.toBeNull();
-                    expect(entry.sourceSha256, `${entry.path} has no source hash`).toMatch(/^[0-9a-f]{64}$/);
-                }
+                expect(entry.source, `${entry.path} has no source`).not.toBeNull();
+                expect(entry.sourceSha256, `${entry.path} has no source hash`).toMatch(/^[0-9a-f]{64}$/);
                 expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
             }
+        });
+
+        it('no longer treats anything as an unreproducible historical artefact', () => {
+            expect(VENDORED.every(entry => entry.source !== null)).toBe(true);
+            expect(VENDORED.some(entry => (entry.provenance as string) === 'built')).toBe(false);
         });
 
         it('has no duplicate entries', () => {
@@ -161,15 +182,22 @@ describe('vendor-mindmaps', () => {
             expect(licence?.provenance).toBe('copy');
         });
 
-        it('only rewrites files taken from the fork verbatim', () => {
+        it('rewrites everything it can derive, and leaves the recompressed images alone', () => {
             for (const entry of VENDORED) {
-                expect(isWritable(entry)).toBe(entry.provenance === 'copy' || entry.provenance === 'copy-lf');
+                expect(isWritable(entry)).toBe(entry.provenance !== 'recompressed');
             }
-            // The bundle and the recompressed images are eXeLearning-local derivatives; a
-            // refresh that overwrote them would regress localisation and asset size.
+            // The images are eXeLearning's own lossless recompression: regenerating them
+            // from the fork would undo the size work, so they are verified, never written.
             const counts = countByProvenance();
-            expect(counts.built).toBe(1);
+            expect(counts.generated).toBe(1);
             expect(counts.recompressed).toBeGreaterThan(0);
+        });
+
+        it('builds the pinned revision only for the generated bundle', () => {
+            const built = VENDORED.filter(needsBuild);
+
+            expect(built.map(entry => entry.path)).toEqual(['min/js/script.js']);
+            expect(built[0].source).toBe('dist/js/script.js');
         });
     });
 
@@ -230,6 +258,98 @@ describe('vendor-mindmaps', () => {
             fs.rmSync(path.join(sourceRoot, 'src', 'img', 'grid.gif'));
 
             expect(verifySourceTree(sourceRoot, manifest).missing).toEqual(['src/img/grid.gif']);
+        });
+    });
+
+    describe('the generated bundle', () => {
+        const bundle = VENDORED.find(entry => entry.path === 'min/js/script.js') as VendoredFile;
+
+        it('is the build output of the pinned revision, recorded by hash', () => {
+            // Both hashes are pinned on purpose: sourceSha256 is what `npm run build`
+            // must emit, sha256 is what gets committed here. Swapping the bundle for one
+            // nobody can rebuild would have to change these lines to pass.
+            expect(bundle.sourceSha256).toBe('2ef32154b15a3a4267404ff3835bddf39537f5c9d94160f8f453373a5a55f7bf');
+            expect(bundle.sha256).toBe('d27f2379253300a8593509480809aa895ab840864d5b1eeefa9948c3d589de93');
+        });
+
+        it('is the committed file, byte for byte', () => {
+            const committed = fs.readFileSync(path.join(vendoredRoot, 'min', 'js', 'script.js'));
+
+            expect(sha256(committed)).toBe(bundle.sha256);
+        });
+
+        it('differs from the build output only by newline normalisation', () => {
+            // .gitattributes pins *.js to LF here while the fork stores CRLF sources, so
+            // the two hashes must differ -- and only for that reason.
+            expect(bundle.sourceSha256).not.toBe(bundle.sha256);
+            expect(fs.readFileSync(path.join(vendoredRoot, 'min', 'js', 'script.js')).includes(0x0d)).toBe(false);
+        });
+
+        it('still carries the translation hooks the editor needs', () => {
+            const committed = fs.readFileSync(path.join(vendoredRoot, 'min', 'js', 'script.js'), 'utf8');
+
+            expect(committed).toContain('_("Add")');
+            expect(committed).toContain('_("Central Idea")');
+            expect(committed).toMatch(/_r\(/);
+            // The fallback, so the bundle cannot throw when the host installs no translator.
+            expect(committed).toContain('typeof window._r');
+        });
+
+        it('does not yet carry the four hooks that were never shipped', () => {
+            // exelearning/mindmaps a87f7b759 added these to source but no build followed;
+            // turning them on changes which strings get translated, so it waits.
+            const committed = fs.readFileSync(path.join(vendoredRoot, 'min', 'js', 'script.js'), 'utf8');
+
+            for (const missing of ['_("Mind map saved")', '_("Warning")']) {
+                expect(committed).not.toContain(missing);
+            }
+        });
+
+        it('is reported as drifted when the build output changes', () => {
+            const { sourceRoot, manifest } = fixture();
+            fs.writeFileSync(path.join(sourceRoot, 'dist', 'js', 'script.js'), 'var a=2;\r\n');
+
+            expect(verifySourceTree(sourceRoot, manifest).changed).toEqual(['dist/js/script.js']);
+        });
+
+        it('is reported as drifted when someone edits the vendored copy by hand', () => {
+            const { vendoredRoot: root, manifest } = fixture();
+            fs.writeFileSync(path.join(root, 'min', 'js', 'script.js'), 'tampered');
+
+            expect(verifyVendoredTree(root, manifest).changed).toEqual(['min/js/script.js']);
+        });
+
+        it('is written identically twice, so regenerating leaves no diff', () => {
+            const { sourceRoot, vendoredRoot: root, manifest } = fixture();
+            const target = path.join(root, 'min', 'js', 'script.js');
+
+            writeWritableFiles(sourceRoot, root, manifest);
+            const first = fs.readFileSync(target);
+            writeWritableFiles(sourceRoot, root, manifest);
+            const second = fs.readFileSync(target);
+
+            expect(second.equals(first)).toBe(true);
+            expect(verifyVendoredTree(root, manifest)).toEqual({ missing: [], extra: [], changed: [] });
+        });
+
+        it('leaves the recompressed images untouched when regenerating', () => {
+            const { sourceRoot, vendoredRoot: root, manifest } = fixture();
+            const image = path.join(root, 'src', 'img', 'grid.gif');
+            const before = fs.readFileSync(image);
+
+            writeWritableFiles(sourceRoot, root, manifest);
+
+            expect(fs.readFileSync(image).equals(before)).toBe(true);
+        });
+
+        it('leaves no temporary build directory behind', () => {
+            // Every exit path of the regenerate command removes its work directory; the
+            // download, the npm build and the verification all sit inside one try/finally.
+            const leftovers = fs
+                .readdirSync(os.tmpdir())
+                .filter(name => name.startsWith('vendor-mindmaps-') && !name.startsWith('vendor-mindmaps-spec-'));
+
+            expect(leftovers).toEqual([]);
         });
     });
 

@@ -10,18 +10,23 @@
  * carries eXeLearning maintenance. Background: drichard/mindmaps#107.
  *
  * The tree is committed, because exports, the static build and Electron all need it
- * on disk with no network. So this script is not a build step: it is the provenance
- * record for a tree that was, until now, copied by hand with nothing written down.
+ * on disk with no network. So this script is not part of the normal build: it
+ * regenerates that committed tree from one pinned revision, and records what every
+ * file in it is.
  *
- *   bun scripts/vendor-mindmaps.ts            # refresh from the pinned revision
+ *   bun scripts/vendor-mindmaps.ts            # regenerate from the pinned revision
  *   bun scripts/vendor-mindmaps.ts --check    # verify the committed tree (no network)
  *
  * --check is the cheap one and the one CI wants: it recomputes every hash in VENDORED
- * against the working tree and needs no network. The default refresh additionally
- * downloads the pinned revision and rewrites the files eXeLearning takes verbatim.
+ * against the working tree, with no network and no build. The default regenerates,
+ * which downloads the pinned revision and builds it.
  *
- * Not every file can be rewritten, and pretending otherwise is the failure this
- * script exists to prevent. Each file declares how it relates to the fork:
+ * The contract for the runtime bundle is:
+ *
+ *   pinned fork commit + its committed package-lock.json + npm ci + npm run build
+ *     = exactly the vendored min/js/script.js
+ *
+ * Each file declares how it relates to the fork, because not all of them are copies:
  *
  *   copy          byte-for-byte from the fork.
  *   copy-lf       from the fork with CRLF normalised to LF. The fork stores some CSS
@@ -33,18 +38,19 @@
  *                 but it does verify `sourceSha256`, so if the fork ever changes one
  *                 of these images we find out instead of silently shipping the old
  *                 recompression forever.
- *   built         min/js/script.js. This is the only real gap: it is a build of
- *                 eXeLearning-patched sources -- 43 strings are wrapped in the `_()`
- *                 translator that langs/all.js pulls from `top._`, and they are
- *                 carried in translations/messages.*.xlf. Those patched sources are
- *                 not in the fork and were never committed here either; only this
- *                 minified artefact survived. It therefore cannot be regenerated from
- *                 any revision of any repository today, and refresh leaves it alone.
+ *   generated     min/js/script.js, produced by building the pinned revision with
+ *                 `npm ci && npm test && npm run build` and then normalising newlines
+ *                 like the other text assets, which .gitattributes requires for .js.
+ *                 `npm ci` and not `npm install`: the latter resolves uglify-js past
+ *                 the fork's locked 3.3.27 and changes the minified output.
  *
- * Closing the `built` gap means landing the i18n hooks (and ideally the image
- * recompression) on exelearning/mindmaps:main, then bumping PINNED_REVISION and
- * flipping those entries. That is deliberately a separate change: it touches running
- * code, while this one only writes down what is already shipping.
+ * That last entry used to read "built", and meant the opposite of what it says now: a
+ * historical minified artefact whose sources had been deleted from eXeLearning, so
+ * nothing could rebuild it and this script could only pin its hash. The sources were
+ * recovered from eXeLearning's own history and now live in the fork
+ * (exelearning/mindmaps#2), so the bundle is derived rather than inherited. The
+ * artefact it replaces had also been hand-edited after minification, which is why it
+ * could never have been reproduced by any build.
  */
 
 import { createHash } from 'node:crypto';
@@ -57,19 +63,21 @@ import path from 'node:path';
 export const SOURCE_REPOSITORY = 'exelearning/mindmaps';
 
 /**
- * Pinned to a commit, so the download is immutable and a refresh is reproducible.
+ * Pinned to a commit, so the download is immutable and regenerating is reproducible.
  *
- * This revision is the tip of the fork's `main` at the time of vendoring, and is also
- * byte-identical to drichard/mindmaps:master -- `main` was branched from the mirror
- * and carries no code change yet. That is the honest starting point: eXeLearning is
- * not yet shipping anything the fork changed, and the provenance says so.
+ * A branch name would defeat the whole point, and a test asserts the 40-hex shape.
+ * Bumping this is how eXeLearning takes a change from the fork: merge it to the fork's
+ * `main`, put the resulting commit here, and regenerate.
+ *
+ * This revision is the fork's `main` after exelearning/mindmaps#2, which restored the
+ * eXeLearning-specific mindmaps sources that make the bundle below reproducible.
  */
-export const PINNED_REVISION = 'c56f3ed3f22fc355103632393043db978f24b8d5';
+export const PINNED_REVISION = '5d9db35d3d5cf2dbd04c2addaa974b287c420d70';
 
 /** Where the vendored tree lives, relative to the repository root. */
 export const VENDORED_ROOT = path.join('public', 'app', 'common', 'mindmaps');
 
-export type Provenance = 'copy' | 'copy-lf' | 'recompressed' | 'built';
+export type Provenance = 'copy' | 'copy-lf' | 'recompressed' | 'generated';
 
 export interface VendoredFile {
     /** Path inside VENDORED_ROOT, POSIX separators. */
@@ -102,9 +110,14 @@ export const VENDORED: readonly VendoredFile[] = [
     },
     {
         path: 'min/js/script.js',
-        provenance: 'built',
-        source: null,
-        sha256: '2c697ce9b250902c1b94cf455d819362c0ab6d5d683a2b75ffedb9d5f78f068d',
+        provenance: 'generated',
+        // Produced by the fork's own Jakefile, which writes dist/js/script.js.
+        source: 'dist/js/script.js',
+        // The build output as emitted. Verifying this proves the build was reproduced
+        // before anything is written, and catches a toolchain that has drifted.
+        sourceSha256: '2ef32154b15a3a4267404ff3835bddf39537f5c9d94160f8f453373a5a55f7bf',
+        // The same bytes with newlines normalised, which is what ships here.
+        sha256: 'd27f2379253300a8593509480809aa895ab840864d5b1eeefa9948c3d589de93',
     },
     {
         path: 'src/css/Aristo/images/bg_fallback.png',
@@ -291,12 +304,19 @@ export function normalizeLineEndings(data: Buffer): Buffer {
 /** Bytes this file should have, given the fork's bytes. Null for files we do not write. */
 export function renderFile(entry: VendoredFile, sourceBytes: Buffer): Buffer | null {
     if (entry.provenance === 'copy') return sourceBytes;
-    if (entry.provenance === 'copy-lf') return normalizeLineEndings(sourceBytes);
+    // The generated bundle is normalised for the same reason the CSS is: .gitattributes
+    // pins *.js to LF here, while the fork stores its sources with CRLF.
+    if (entry.provenance === 'copy-lf' || entry.provenance === 'generated') return normalizeLineEndings(sourceBytes);
     return null;
 }
 
 export function isWritable(entry: VendoredFile): boolean {
-    return entry.provenance === 'copy' || entry.provenance === 'copy-lf';
+    return entry.provenance === 'copy' || entry.provenance === 'copy-lf' || entry.provenance === 'generated';
+}
+
+/** True for entries that only exist once the pinned revision has been built. */
+export function needsBuild(entry: VendoredFile): boolean {
+    return entry.provenance === 'generated';
 }
 
 function listFilesRecursively(root: string, prefix = ''): string[] {
@@ -389,7 +409,7 @@ export function writeWritableFiles(
 }
 
 export function countByProvenance(manifest: readonly VendoredFile[] = VENDORED): Record<Provenance, number> {
-    const counts: Record<Provenance, number> = { copy: 0, 'copy-lf': 0, recompressed: 0, built: 0 };
+    const counts: Record<Provenance, number> = { copy: 0, 'copy-lf': 0, recompressed: 0, generated: 0 };
     for (const entry of manifest) counts[entry.provenance] += 1;
     return counts;
 }
@@ -441,6 +461,24 @@ function downloadPinnedRevision(io: CliIo): { root: string; cleanup: () => void 
     }
 }
 
+/**
+ * Builds the downloaded revision in place, so `dist/js/script.js` exists.
+ *
+ * Runs the fork's own documented commands and nothing clever: `npm ci` to honour its
+ * committed lockfile, `npm test` because a bundle that fails the fork's own checks has
+ * no business shipping here, then `npm run build`. Everything happens inside the
+ * throwaway directory the download created -- no node_modules, dist or lockfile is
+ * ever written into this repository.
+ */
+function buildPinnedRevision(sourceRoot: string, io: CliIo): void {
+    // `npm ci`, never `npm install`: install would resolve uglify-js past the fork's
+    // locked 3.3.27 and silently change the minified output.
+    for (const args of [['ci'], ['test'], ['run', 'build']]) {
+        io.log(`  npm ${args.join(' ')} ...`);
+        execFileSync('npm', args, { cwd: sourceRoot, stdio: ['ignore', 'ignore', 'inherit'] });
+    }
+}
+
 /** Runs the command and returns the process exit code. */
 export function run(argv: string[], repoRoot: string, io: CliIo = consoleIo): number {
     const vendoredRoot = path.join(repoRoot, VENDORED_ROOT);
@@ -452,14 +490,14 @@ export function run(argv: string[], repoRoot: string, io: CliIo = consoleIo): nu
         if (drift.missing.length + drift.extra.length + drift.changed.length === 0) {
             io.log(`${VENDORED_ROOT} matches its provenance record (${VENDORED.length} files, pinned to ${pinLabel}).`);
             io.log(
-                `  ${counts.copy} verbatim, ${counts['copy-lf']} newline-normalised, ${counts.recompressed} recompressed here, ${counts.built} built from patched sources.`,
+                `  ${counts.generated} generated from source, ${counts.copy} verbatim, ${counts['copy-lf']} newline-normalised, ${counts.recompressed} recompressed here.`,
             );
             return 0;
         }
         io.error(`${VENDORED_ROOT} has drifted from its provenance record:`);
         reportTreeDrift(drift, io);
         io.error('\nIf the change was intended, update VENDORED in scripts/vendor-mindmaps.ts.');
-        io.error('Otherwise run `make vendor-mindmaps` to restore the files taken from the fork.');
+        io.error('Otherwise run `make vendor-mindmaps` to regenerate the tree from the pinned revision.');
         return 1;
     }
 
@@ -473,30 +511,58 @@ export function run(argv: string[], repoRoot: string, io: CliIo = consoleIo): nu
     }
 
     try {
-        const sourceDrift = verifySourceTree(source.root);
-        if (sourceDrift.missing.length + sourceDrift.changed.length > 0) {
+        // Check the files the tarball already carries before paying for a build, so a
+        // stale pin fails in seconds rather than after npm ci.
+        const checkedOut = VENDORED.filter(entry => !needsBuild(entry));
+        const reportSourceDrift = (drift: SourceDrift): void => {
             io.error(`${pinLabel} does not match what scripts/vendor-mindmaps.ts expects, so nothing was written:`);
-            for (const file of sourceDrift.missing) io.error(`  missing in fork  ${file}`);
-            for (const file of sourceDrift.changed) io.error(`  hash mismatch    ${file}`);
+            for (const file of drift.missing) io.error(`  missing in fork  ${file}`);
+            for (const file of drift.changed) io.error(`  hash mismatch    ${file}`);
             io.error('\nThis means PINNED_REVISION and VENDORED disagree. Update both together.');
+        };
+
+        const sourceDrift = verifySourceTree(source.root, checkedOut);
+        if (sourceDrift.missing.length + sourceDrift.changed.length > 0) {
+            reportSourceDrift(sourceDrift);
             return 1;
+        }
+
+        const generated = VENDORED.filter(needsBuild);
+        if (generated.length > 0) {
+            io.log(`Building ${pinLabel} ...`);
+            try {
+                buildPinnedRevision(source.root, io);
+            } catch (error) {
+                io.error(`\nBuilding ${pinLabel} failed: ${error instanceof Error ? error.message : String(error)}`);
+                io.error('Nothing was written. npm needs network access for `npm ci`.');
+                return 1;
+            }
+
+            // The build has to land on the exact bytes recorded here. If it does not,
+            // the toolchain moved and the bundle is not the one that was reviewed.
+            const buildDrift = verifySourceTree(source.root, generated);
+            if (buildDrift.missing.length + buildDrift.changed.length > 0) {
+                reportSourceDrift(buildDrift);
+                io.error('A hash mismatch here means the build is no longer reproducible.');
+                return 1;
+            }
         }
 
         const written = writeWritableFiles(source.root, vendoredRoot);
 
         const drift = verifyVendoredTree(vendoredRoot);
         if (drift.missing.length + drift.extra.length + drift.changed.length > 0) {
-            io.error(`${VENDORED_ROOT} does not match its provenance record after refreshing:`);
+            io.error(`${VENDORED_ROOT} does not match its provenance record after regenerating:`);
             reportTreeDrift(drift, io);
             return 1;
         }
 
-        io.log(`Refreshed ${written.length} file(s) in ${VENDORED_ROOT} from ${pinLabel}.`);
-        io.log(
-            `  left as committed: ${counts.recompressed} recompressed image(s), ${counts.built} built bundle(s) from eXeLearning-patched sources.`,
-        );
+        io.log(`Wrote ${written.length} file(s) in ${VENDORED_ROOT} from ${pinLabel}.`);
+        io.log(`  left as committed: ${counts.recompressed} locally recompressed image(s).`);
         return 0;
     } finally {
+        // Also runs when a build or a verification failed, so no temporary tree and no
+        // downloaded node_modules survives this command.
         source.cleanup();
     }
 }
