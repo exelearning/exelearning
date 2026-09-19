@@ -7,6 +7,12 @@
  * that does not exist in any build). The dead development half was removed;
  * these tests pin the live set and keep the dead set from coming back.
  *
+ * Where that tree comes from is recorded separately, in
+ * scripts/vendor-mindmaps.ts: it is vendored from a pinned revision of
+ * https://github.com/exelearning/mindmaps, the eXeLearning maintenance fork of
+ * drichard/mindmaps. That script hashes every file; these tests stay behaviour
+ * facing, asserting what the iframe loads rather than which bytes it loads.
+ *
  * exe_media: the MediaElement 2.x Flash/Silverlight fallback binaries can
  * never load in any shipping browser (plugin APIs removed in 2015-2021)
  * and were excluded from exports already; only inert config-string

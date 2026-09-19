@@ -235,9 +235,18 @@
 *   Files: /public/app/common/mindmaps/\*
     *   Copyright: David Richard
     *   License: AGPL V3
+    *   Original project: [drichard/mindmaps](https://github.com/drichard/mindmaps)
+    *   Maintained eXeLearning fork: [exelearning/mindmaps](https://github.com/exelearning/mindmaps)
     *   Note: [mindmaps](https://www.mindmaps.app/) is included in eXeLearning
         with the developer's consent. For a different use of mindmaps, read
         its LICENSE file or contact its author.
+    *   Note: eXeLearning takes its copy from the maintenance fork above, which
+        exists so that dependency, security and browser-compatibility updates
+        can be made without changing the nature of the original project.
+        `master` there mirrors the original repository and `main` carries the
+        eXeLearning maintenance. Provenance for each vendored file, and the exact
+        revision it comes from, is recorded in `scripts/vendor-mindmaps.ts`; run
+        `make vendor-mindmaps-check` to verify the tree.
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
