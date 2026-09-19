@@ -7,6 +7,14 @@
  * that does not exist in any build). The dead development half was removed;
  * these tests pin the live set and keep the dead set from coming back.
  *
+ * Where that tree comes from is recorded separately, in
+ * scripts/vendor-mindmaps.ts: it is regenerated from a pinned revision of
+ * https://github.com/exelearning/mindmaps, the eXeLearning maintenance fork of
+ * drichard/mindmaps, and min/js/script.js is built from that revision rather
+ * than inherited as an opaque artefact. That script hashes every file; these
+ * tests stay behaviour facing, asserting what the iframe loads rather than
+ * which bytes it loads.
+ *
  * exe_media: the MediaElement 2.x Flash/Silverlight fallback binaries can
  * never load in any shipping browser (plugin APIs removed in 2015-2021)
  * and were excluded from exports already; only inert config-string
@@ -52,6 +60,77 @@ describe('exe_media legacy plugin binaries', () => {
 
     it('still ships the player scripts the Text iDevice and TinyMCE plugins load', () => {
         expect(fs.existsSync(path.join(commonDir, 'exe_media/exe_media.js'))).toBe(true);
+    });
+});
+
+describe('exemindmap editor dependency loading', () => {
+    // The upstream mindmaps page loads jQuery, Filestack and FileSaver from three CDNs.
+    // eXeLearning must not: offline installations, exports and the Electron build have no
+    // network, and a third party should not learn who opens a mind map. This is the cheap
+    // guard; mindmap-offline.spec.ts checks the same contract in a browser.
+    const editorDir = path.join(commonDir, '../../libs/tinymce_5/js/tinymce/plugins/exemindmap/editor');
+
+    /** Every URL the page loads as a dependency, ignoring links a user can click. */
+    function dependencyUrls(html) {
+        const urls = [];
+        const patterns = [
+            /<script[^>]+src=["']([^"']+)["']/gi,
+            /<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["']/gi,
+            // The editor builds some of its own tags, so the string literals count too.
+            /document\.write\(['"]<script src="['"]?\s*\+?\s*([^'"+)]*)/gi,
+        ];
+        for (const pattern of patterns) {
+            let match;
+            while ((match = pattern.exec(html)) !== null) urls.push(match[1]);
+        }
+        return urls;
+    }
+
+    it('loads no dependency from an absolute or protocol-relative remote URL', () => {
+        const html = fs.readFileSync(path.join(editorDir, 'index.html'), 'utf-8');
+
+        for (const url of dependencyUrls(html)) {
+            expect(url.startsWith('//'), `${url} is protocol-relative`).toBe(false);
+            expect(/^https?:\/\//i.test(url), `${url} is remote`).toBe(false);
+        }
+    });
+
+    it('names no known CDN host anywhere in its dependency wiring', () => {
+        const html = fs.readFileSync(path.join(editorDir, 'index.html'), 'utf-8');
+        const scripts = fs
+            .readdirSync(path.join(editorDir, 'js'))
+            .filter(name => name.endsWith('.js'))
+            .map(name => fs.readFileSync(path.join(editorDir, 'js', name), 'utf-8'));
+
+        for (const source of [html, ...scripts]) {
+            for (const host of ['ajax.googleapis.com', 'cdnjs.cloudflare.com', 'api.filestackapi.com']) {
+                expect(source.includes(host), `${host} is referenced`).toBe(false);
+            }
+        }
+    });
+});
+
+describe('vendored FileSaver in the mindmap editor', () => {
+    // FileSaver is loaded by the exemindmap editor but called from mindmaps' own
+    // SaveDocument.js, so nothing in eXeLearning's sources mentions it. It is generated
+    // from the pinned `file-saver` devDependency by `make vendor-filesaver`, and the
+    // published .map is not shipped, so the announcement has to stay stripped.
+    const fileSaver = path.join(
+        commonDir,
+        '../../libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/js/FileSaver.min.js',
+    );
+
+    it('ships the file the editor iframe loads', () => {
+        expect(fs.existsSync(fileSaver)).toBe(true);
+    });
+
+    it('does not announce a source map the project no longer ships', () => {
+        expect(fs.readFileSync(fileSaver, 'utf-8').includes('sourceMappingURL')).toBe(false);
+        expect(fs.existsSync(`${fileSaver}.map`)).toBe(false);
+    });
+
+    it('still defines the global the mindmaps export dialog calls', () => {
+        expect(fs.readFileSync(fileSaver, 'utf-8')).toMatch(/saveAs=/);
     });
 });
 

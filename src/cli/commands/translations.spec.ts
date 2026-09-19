@@ -9,6 +9,7 @@ describe('Translations Command', () => {
     const testDir = path.join(process.cwd(), 'test', 'temp', 'translations-test');
     const testTranslationsDir = path.join(testDir, 'translations');
     const generatedSourceDir = path.join(testDir, 'public', 'app', 'common', 'edicuatex');
+    const mindmapsSourceDir = path.join(testDir, 'public', 'app', 'common', 'mindmaps');
     const originalCwd = process.cwd;
 
     beforeEach(async () => {
@@ -19,6 +20,11 @@ describe('Translations Command', () => {
         // depends on are present, so the missing-generated guard stays out of the way.
         // Tests that exercise the guard remove this directory themselves.
         await fs.ensureDir(generatedSourceDir);
+
+        // Same for the mindmaps tree. An empty directory is enough: its inspection makes
+        // no claim about a tree that holds none of the files it expects, so the fixture
+        // satisfies the guard without dragging real mindmaps strings into every scan.
+        await fs.ensureDir(mindmapsSourceDir);
 
         // Create sample XLF file
         const sampleXlf = `<?xml version="1.0" encoding="UTF-8"?>
@@ -1217,5 +1223,123 @@ describe('Translations Command', () => {
             // Should not add just "key" as a translation
             expect(content).not.toMatch(/resname="key"/);
         });
+    });
+});
+
+/**
+ * The mindmaps translation source.
+ *
+ * mindmaps is maintained in exelearning/mindmaps, so its translatable strings are not in
+ * this repository as readable source -- they arrive inside the generated bundle that
+ * `vendor:mindmaps` builds from the pinned fork revision. That bundle is committed and it
+ * sits under a scanned path, so extraction does find the strings; what it cannot do is
+ * notice when the bundle has drifted. Deleting it and running --remove-obsolete destroys
+ * four mindmaps trans-units in every locale, translations included.
+ *
+ * These run against the real working tree rather than a fixture, because the contract
+ * being checked is about this repository's own vendored bundle.
+ */
+describe('mindmaps translation source', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+
+    const repoRoot = process.cwd();
+    const bundlePath = path.join(repoRoot, 'public', 'app', 'common', 'mindmaps', 'min', 'js', 'script.js');
+
+    it('rediscovers the mindmaps strings from the vendored bundle', async () => {
+        const { extractTranslationKeys } = await import('./translations');
+        const keys = await extractTranslationKeys();
+
+        // A short _() label, so an ordinary mindmaps string is covered.
+        expect(keys.has('Central Idea')).toBe(true);
+        expect(keys.has('Inspector')).toBe(true);
+        // A long _r() help string: invisible until _r became an extracted alias of _.
+        expect(keys.has('This is your main idea')).toBe(true);
+        // Wrapped in the fork but absent from the catalogues until this extraction.
+        expect(keys.has('Mind map saved')).toBe(true);
+    });
+
+    it('extracts _r() strings under the same key as _(), without a special case', async () => {
+        const { extractTranslationKeys } = await import('./translations');
+        const keys = await extractTranslationKeys();
+
+        // The catalogue records the string; which alias called it is not its business.
+        for (const help of [
+            'This is the navigator',
+            'This is the inspector',
+            'This is your toolbar',
+            'Those buttons do what they say. You can use them or work with keyboard shortcuts. Hover over the buttons for the key combinations.',
+        ]) {
+            expect(keys.has(help), `${help} is not extracted`).toBe(true);
+        }
+    });
+
+    it('carries every extracted mindmaps string in the catalogues', () => {
+        const catalogue = fs.readFileSync(path.join(repoRoot, 'translations', 'messages.en.xlf'), 'utf8');
+
+        for (const key of ['Central Idea', 'Mind map saved', 'This is your main idea', 'This is your toolbar']) {
+            expect(catalogue.includes(`resname="${key}"`), `${key} is missing from messages.en.xlf`).toBe(true);
+        }
+    });
+
+    it('names the tree as a generated source tied to the pinned fork revision', async () => {
+        const { GENERATED_SOURCE_DIRS } = await import('./translations');
+        const { PINNED_REVISION } = await import('../../../scripts/vendor-mindmaps');
+
+        const entry = GENERATED_SOURCE_DIRS.find(source => source.path === 'public/app/common/mindmaps');
+        expect(entry).toBeDefined();
+        expect(entry?.regenerateWith).toBe('make vendor-mindmaps');
+        // An immutable commit, never a branch: the strings must be reproducible.
+        expect(PINNED_REVISION).toMatch(/^[0-9a-f]{40}$/);
+    });
+
+    it('trusts the committed tree, offline and without building', async () => {
+        const { findUntrustedGeneratedSources } = await import('./translations');
+
+        // Every expected hash is compiled into the vendor script, so this needs no network
+        // and no npm run: a plain checkout is enough to answer the question.
+        const problems = findUntrustedGeneratedSources(repoRoot).filter(
+            problem => problem.source.path === 'public/app/common/mindmaps',
+        );
+
+        expect(problems).toEqual([]);
+    });
+
+    it('reports drift when the vendored bundle changes', async () => {
+        const { findUntrustedGeneratedSources } = await import('./translations');
+        const original = fs.readFileSync(bundlePath);
+
+        try {
+            fs.writeFileSync(bundlePath, `${original.toString('utf8')}\n// edited by hand\n`);
+
+            const problems = findUntrustedGeneratedSources(repoRoot).filter(
+                problem => problem.source.path === 'public/app/common/mindmaps',
+            );
+
+            expect(problems).toHaveLength(1);
+            expect(problems[0].kind).toBe('incomplete');
+            expect(problems[0].detail).toContain('min/js/script.js');
+        } finally {
+            fs.writeFileSync(bundlePath, original);
+        }
+    });
+
+    it('makes no claim about a directory that holds none of the vendored files', async () => {
+        const { findUntrustedGeneratedSources } = await import('./translations');
+        const scratch = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'mindmaps-source-'));
+
+        try {
+            fs.mkdirSync(path.join(scratch, 'public', 'app', 'common', 'mindmaps'), { recursive: true });
+
+            // An empty directory is not a drifted tree, it is an unrelated one. Claiming
+            // drift here would fail every fixture-based test in this file.
+            const problems = findUntrustedGeneratedSources(scratch).filter(
+                problem => problem.source.path === 'public/app/common/mindmaps',
+            );
+
+            expect(problems).toEqual([]);
+        } finally {
+            fs.rmSync(scratch, { recursive: true, force: true });
+        }
     });
 });

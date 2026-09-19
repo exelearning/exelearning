@@ -110,6 +110,9 @@
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta
     *   License: MIT
+*   Package: file-saver
+    *   Copyright: Eli Grey
+    *   License: MIT
 *   Package: fs-extra
     *   Copyright: JP Richardson
     *   License: MIT
@@ -235,9 +238,18 @@
 *   Files: /public/app/common/mindmaps/\*
     *   Copyright: David Richard
     *   License: AGPL V3
+    *   Original project: [drichard/mindmaps](https://github.com/drichard/mindmaps)
+    *   Maintained eXeLearning fork: [exelearning/mindmaps](https://github.com/exelearning/mindmaps)
     *   Note: [mindmaps](https://www.mindmaps.app/) is included in eXeLearning
         with the developer's consent. For a different use of mindmaps, read
         its LICENSE file or contact its author.
+    *   Note: eXeLearning takes its copy from the maintenance fork above, which
+        exists so that dependency, security and browser-compatibility updates
+        can be made without changing the nature of the original project.
+        `master` there mirrors the original repository and `main` carries the
+        eXeLearning maintenance. Provenance for each vendored file, and the exact
+        revision it comes from, is recorded in `scripts/vendor-mindmaps.ts`; run
+        `make vendor-mindmaps-check` to verify the tree.
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
@@ -365,12 +377,14 @@
 *   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/FileSaver.min.js
     *   Copyright: Eli Grey
     *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
-    *   Copyright: John Resig
-    *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
-    *   Copyright: John Resig
-    *   License: MIT
+    *   Version: 2.0.5, vendored from the pinned `file-saver` devDependency by
+        `make vendor-filesaver`. The published source map is not shipped, so its
+        `sourceMappingURL` announcement is stripped. Its only consumer is the mindmaps
+        export dialog, which calls `window.saveAs(blob, filename)`.
+*   Note: the exemindmap editor no longer ships its own jQuery. It loads
+    /public/libs/jquery/jquery.min.js and /public/libs/jquery-ui/jquery-ui.min.js,
+    the same copies the rest of eXeLearning uses, so the editor document holds
+    exactly one of each.
 *   Files: /public/style/workarea/fonts/\Catamaran*
     *   Copyright: The Catamaran Authors. Designed by Pria Ravichandran
     *   License: SIL Open Font License version 1.1

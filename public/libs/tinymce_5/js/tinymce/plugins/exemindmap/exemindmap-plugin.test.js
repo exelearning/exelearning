@@ -155,3 +155,102 @@ describe('exemindmap plugin - Path Handling', () => {
         });
     });
 });
+
+/**
+ * The translator handshake between eXeLearning and the embedded mindmaps bundle.
+ *
+ * mindmaps calls _() for short labels and _r() for its longer help texts, and
+ * defines both as the identity function when no host provides them. eXeLearning
+ * supplies the real ones in editor/js/langs/all.js. Two things have to hold: both
+ * names must reach the host translator, and langs/all.js must run before the
+ * bundle -- it used to be inserted with appendChild, which defaults to async, so
+ * it raced a bundle that document.write inserts in order. When it lost that race
+ * mindmaps.Notification.Defaults captured an untranslated string permanently.
+ */
+describe('exemindmap editor - host translators', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+
+    const editorDir = path.join(__dirname, 'editor');
+    const langs = fs.readFileSync(path.join(editorDir, 'js', 'langs', 'all.js'), 'utf8');
+    const indexHtml = fs.readFileSync(path.join(editorDir, 'index.html'), 'utf8');
+
+    /**
+     * Runs langs/all.js against a stubbed parent window and returns its globals.
+     * State is captured even if the file throws, so the no-translator case can be
+     * inspected rather than just observed to fail.
+     */
+    function loadLangs(hostTranslator) {
+        // eslint-disable-next-line no-new-func
+        const runner = new Function(
+            'top',
+            `var _, _r, customStrings, error = null;
+             try { ${langs} } catch (e) { error = e; }
+             return { _: _, _r: _r, customStrings: customStrings, error: error };`,
+        );
+        return runner({ _: hostTranslator });
+    }
+
+    it('defines both translators from the host', () => {
+        const translated = loadLangs(s => `T:${s}`);
+
+        expect(translated._('Open map')).toBe('T:Open map');
+        expect(translated._r('This is your main idea')).toBe('T:This is your main idea');
+    });
+
+    it('routes the long help texts through the same service as the labels', () => {
+        // eXeLearning has one GUI translator and it does no HTML escaping, so there
+        // is nothing a separate "raw" variant would need to do differently.
+        const seen = [];
+        const translated = loadLangs(s => {
+            seen.push(s);
+            return s;
+        });
+
+        translated._r('Those buttons do what they say.');
+        expect(seen).toContain('Those buttons do what they say.');
+        expect(translated._).toBe(translated._r);
+    });
+
+    it('still builds the editor strings through the translator', () => {
+        const translated = loadLangs(s => `T:${s}`);
+
+        expect(translated.customStrings.openMap).toBe('T:Open map');
+        expect(translated.customStrings.save).toBe('T:Save');
+    });
+
+    it('loads langs/all.js before the mindmaps bundle, in parser order', () => {
+        const langsAt = indexHtml.indexOf("'js/langs/all.js'");
+        const bundleAt = indexHtml.indexOf('/app/common/mindmaps/min/js/script.js');
+
+        expect(langsAt).toBeGreaterThan(-1);
+        expect(bundleAt).toBeGreaterThan(-1);
+        expect(langsAt).toBeLessThan(bundleAt);
+        // Everything goes through document.write, which is ordered and blocking.
+        expect(indexHtml).toMatch(/var dependencies = \[/);
+        expect(indexHtml).toContain("base + 'js/langs/all.js'");
+
+        // jQuery and jQuery UI are the application's own, and must precede the bundle.
+        const jqueryAt = indexHtml.indexOf('/libs/jquery/jquery.min.js');
+        const jqueryUiAt = indexHtml.indexOf('/libs/jquery-ui/jquery-ui.min.js');
+        expect(jqueryAt).toBeGreaterThan(-1);
+        expect(jqueryUiAt).toBeGreaterThan(jqueryAt);
+        expect(jqueryUiAt).toBeLessThan(bundleAt);
+    });
+
+    it('no longer inserts langs/all.js with appendChild, which would race', () => {
+        expect(indexHtml).not.toMatch(/langsScript/);
+        expect(indexHtml).not.toMatch(/createElement\('script'\)/);
+    });
+
+    it('leaves the translators undefined when the host has none, so the bundle falls back', () => {
+        // The bundle installs its identity fallback for any name that is not already
+        // a function, which is exactly what this leaves behind. The editor only runs
+        // inside eXeLearning, so this is a degradation path rather than a supported
+        // configuration -- customStrings cannot be built without a translator.
+        const result = loadLangs(undefined);
+
+        expect(typeof result._).not.toBe('function');
+        expect(typeof result._r).not.toBe('function');
+    });
+});
