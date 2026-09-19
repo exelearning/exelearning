@@ -18,6 +18,7 @@ import type {
     ExportComponentProperties,
 } from '../interfaces';
 import { getIdeviceConfig, getIdeviceExportFiles, isIdeviceJsModule } from '../../../services/idevice-config';
+import { isComponentVisible, isTeacherOnly } from '../utils/visibility';
 import { deriveBlockIcon, resolveRenamedThemeIcon } from '../../block-icon';
 import { HELP_ICON_FALLBACK_DATA_URI, MATERIAL_ICON_FALLBACK } from '../../material-icons/spriteParser';
 
@@ -169,15 +170,11 @@ export class IdeviceRenderer {
         if (!htmlContent) {
             classes.push('db-no-data');
         }
-        // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
-        if (structProps.visibility === false || structProps.visibility === 'false') {
+        // Both flag spellings are handled in one place: Yjs stores booleans, ELP uses strings.
+        if (!isComponentVisible(component)) {
             classes.push('novisible');
         }
-        if (
-            structProps.teacherOnly === true ||
-            structProps.teacherOnly === 'true' ||
-            (jsonProps as Record<string, unknown>).visibilityType === 'teacher'
-        ) {
+        if (isTeacherOnly(component)) {
             classes.push('teacher-only');
         }
         if (structProps.cssClass && typeof structProps.cssClass === 'string') {

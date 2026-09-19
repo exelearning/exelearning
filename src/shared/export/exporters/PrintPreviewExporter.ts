@@ -5,7 +5,6 @@
  * Wraps PageRenderer (Single Page export logic) and patches paths for browser preview.
  */
 import type {
-    ExportAsset,
     ExportDocument,
     ExportPage,
     ExportComponent,
@@ -16,6 +15,8 @@ import type {
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
+import { AssetUrlResolver } from '../utils/AssetUrlResolver';
+import { isPageVisible } from '../utils/visibility';
 import { resolveMaterialIconDataUris } from './BaseExporter';
 
 /**
@@ -74,6 +75,7 @@ export class PrintPreviewExporter {
     private assets: AssetProvider | null;
     private resources: ResourceProvider;
     private assetExportPathMap: Map<string, string> | null = null;
+    private assetResolver: AssetUrlResolver;
 
     /**
      * Create a PrintPreviewExporter
@@ -89,6 +91,7 @@ export class PrintPreviewExporter {
         this.document = document;
         this.resources = resourceProvider;
         this.assets = assetProvider;
+        this.assetResolver = new AssetUrlResolver(assetProvider);
         // User IdeviceRenderer to render content.
         // We initialize it here to use it for single-page rendering and icon resolution
         this.ideviceRenderer = new IdeviceRenderer();
@@ -236,12 +239,7 @@ export class PrintPreviewExporter {
     private filterVisiblePages(pages: ExportPage[]): ExportPage[] {
         return (
             pages
-                .filter(page => {
-                    // Check visibility property. Default is visible if undefined.
-                    // strict check for false or 'false'
-                    const isHidden = page.properties?.visibility === false || page.properties?.visibility === 'false';
-                    return !isHidden;
-                })
+                .filter(isPageVisible)
                 // Recursively filter children (though ExportPage definition implies flat list,
                 // if PageRenderer handles hierarchy via other means, this is safe for future proofing
                 // or if ExportPage has children property not shown in interface file but present in runtime)
@@ -433,34 +431,8 @@ ${logoCss}
      * Resolve asset:// and content/resources/ URLs to Blob URLs
      */
     private async resolveAssetUrls(content: string): Promise<string> {
-        if (!content || !this.assetExportPathMap) return content;
-
-        // Replace asset://UUID or content/resources/UUID with blob:URL
-        // Capture group 1 is the ID/Filename
-        // IMPORTANT: Exclude \ (backslash) to prevent consuming JSON escape characters (e.g. \")
-        return content.replace(/(?:asset:\/\/|content\/resources\/)([^"'\s\\]+)/gi, (_match, idOrFilename) => {
-            // 1. Try direct lookup (UUID or Filename as is)
-            let blobUrl = this.assetExportPathMap?.get(idOrFilename) || this.assetFilenameMap?.get(idOrFilename);
-
-            // 2. Try removing extension (e.g. UUID.png -> UUID)
-            if (!blobUrl && idOrFilename.includes('.')) {
-                const idWithoutExt = idOrFilename.substring(0, idOrFilename.lastIndexOf('.'));
-                blobUrl = this.assetExportPathMap?.get(idWithoutExt);
-            }
-
-            if (blobUrl) {
-                return blobUrl;
-            }
-
-            // Fallback: If it was asset://, convert to path. If it was already path, keep it.
-            if (_match.startsWith('asset://')) {
-                return `content/resources/${idOrFilename}`;
-            }
-            return _match;
-        });
+        return this.assetResolver.resolve(content);
     }
-
-    private assetFilenameMap: Map<string, string> | null = null;
 
     /**
      * Build map of asset UUIDs to Blob URLs
@@ -471,56 +443,8 @@ ${logoCss}
             return;
         }
 
-        this.assetExportPathMap = new Map();
-        this.assetFilenameMap = new Map();
-
-        try {
-            const processAsset = async (asset: ExportAsset) => {
-                // Create Blob URL
-                let blobUrl = '';
-                if (asset.data) {
-                    try {
-                        const blob =
-                            asset.data instanceof Blob
-                                ? asset.data
-                                : // biome-ignore lint/suspicious/noExplicitAny: legacy data type compatibility
-                                  new Blob([asset.data as any], { type: asset.mime });
-                        blobUrl = URL.createObjectURL(blob);
-                    } catch (err) {
-                        console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);
-                    }
-                } else {
-                    console.warn('[PrintPreview] Asset has no data:', asset.id);
-                }
-
-                if (blobUrl) {
-                    this.assetExportPathMap!.set(asset.id, blobUrl);
-                    if (asset.filename) {
-                        this.assetFilenameMap!.set(asset.filename, blobUrl);
-                    }
-                }
-            };
-
-            await this.iterateAssets(processAsset);
-            console.log('[PrintPreview] Asset map built. Size:', this.assetExportPathMap.size);
-        } catch (e) {
-            console.warn('[PrintPreviewExporter] Failed to build asset map:', e);
-        }
-    }
-
-    /**
-     * Iterate over all assets using the most efficient method available.
-     * Uses forEachAsset() when supported (streaming), otherwise falls back to getAllAssets().
-     */
-    private async iterateAssets(callback: (asset: ExportAsset) => Promise<void>): Promise<void> {
-        if (this.assets!.forEachAsset) {
-            await this.assets!.forEachAsset(callback);
-        } else {
-            const assets = await this.assets!.getAllAssets();
-            for (const asset of assets) {
-                await callback(asset);
-            }
-        }
+        await this.assetResolver.build();
+        this.assetExportPathMap = this.assetResolver.getExportPathMap() ?? null;
     }
 
     /**
