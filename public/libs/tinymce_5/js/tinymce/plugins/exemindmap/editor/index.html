@@ -72,10 +72,6 @@
     localLink.href = editorBase + 'css/custom.css';
     document.head.appendChild(localLink);
 
-    // Load langs script
-    var langsScript = document.createElement('script');
-    langsScript.src = editorBase + 'js/langs/all.js';
-    document.head.appendChild(langsScript);
 })();
 </script>
 <!-- CSS and initial JS loaded dynamically above to avoid speculative prefetch issues -->
@@ -246,7 +242,13 @@
   <script>
   (function() {
       var base = window.__EDITOR_BASE__;
-      var scripts = ['js/jquery.min.js', 'js/FileSaver.min.js'];
+      // js/langs/all.js first, and through document.write rather than appendChild.
+      // A dynamically inserted script defaults to async, so it used to race the
+      // mindmaps bundle below: when it lost, the bundle installed its own identity
+      // fallback and mindmaps.Notification.Defaults captured an untranslated string
+      // that a later assignment could no longer fix. Parser-inserted scripts run in
+      // order, so the translators now always exist before the bundle evaluates.
+      var scripts = ['js/langs/all.js', 'js/jquery.min.js', 'js/FileSaver.min.js'];
       scripts.forEach(function(src) {
           document.write('<script src="' + base + src + '"><\/script>');
       });
