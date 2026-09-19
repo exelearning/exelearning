@@ -1,0 +1,115 @@
+import { describe, expect, it } from 'bun:test';
+import { encryptDataGame } from '../utils/dataGameCipher';
+import { extractDataGame, extractDivContent, extractMediaLinks } from './dataGameReader';
+
+/** Build a DataGame div the way the iDevice editors write it. */
+function dataGameDiv(prefix: string, data: unknown): string {
+    return `<div class="${prefix}-DataGame js-hidden">${encryptDataGame(JSON.stringify(data))}</div>`;
+}
+
+describe('extractDivContent', () => {
+    it('reads the inner HTML of a div identified by class', () => {
+        const html = '<div class="adivina-extra-content">The Cantar de Mio Cid</div>';
+
+        expect(extractDivContent(html, 'adivina-extra-content')).toBe('The Cantar de Mio Cid');
+    });
+
+    it('keeps nested divs intact instead of stopping at the first close tag', () => {
+        const html =
+            '<div class="adivina-IDevice">' +
+            '<div class="adivina-extra-content"><div class="note"><p>Inner</p></div> tail</div>' +
+            '</div>';
+
+        expect(extractDivContent(html, 'adivina-extra-content')).toBe('<div class="note"><p>Inner</p></div> tail');
+    });
+
+    it('matches the class among other classes and ignores partial names', () => {
+        const html = '<div class="js-hidden adivina-DataGame extra">payload</div>';
+
+        expect(extractDivContent(html, 'adivina-DataGame')).toBe('payload');
+        expect(extractDivContent(html, 'adivina-Data')).toBe('');
+    });
+
+    it('returns empty string for missing div, empty input and unterminated div', () => {
+        expect(extractDivContent('<div class="other">x</div>', 'adivina-DataGame')).toBe('');
+        expect(extractDivContent('', 'adivina-DataGame')).toBe('');
+        expect(extractDivContent('<div class="adivina-DataGame">never closed', 'adivina-DataGame')).toBe('');
+    });
+});
+
+describe('extractDataGame', () => {
+    it('decodes an obfuscated payload', () => {
+        const data = { typeGame: 'Adivina', wordsGame: [{ word: 'Valencia' }] };
+
+        expect(extractDataGame(dataGameDiv('adivina', data), 'adivina')).toEqual(data);
+    });
+
+    it('reads legacy activities that stored the JSON in the clear', () => {
+        const html = '<div class="adivina-DataGame js-hidden">{"typeGame":"Adivina","wordsGame":[]}</div>';
+
+        expect(extractDataGame(html, 'adivina')).toEqual({ typeGame: 'Adivina', wordsGame: [] });
+    });
+
+    it('preserves accents and non latin-1 characters', () => {
+        const data = { instructions: 'Rellene la palabra que falta: Ω, señor' };
+
+        expect(extractDataGame(dataGameDiv('adivina', data), 'adivina')).toEqual(data);
+    });
+
+    it('returns null for absent, empty and corrupt payloads', () => {
+        expect(extractDataGame('<div class="quext-DataGame">x</div>', 'adivina')).toBeNull();
+        expect(extractDataGame('<div class="adivina-DataGame js-hidden">   </div>', 'adivina')).toBeNull();
+        expect(extractDataGame('<div class="adivina-DataGame js-hidden">not json</div>', 'adivina')).toBeNull();
+    });
+
+    it('returns null when the payload decodes to a non-object', () => {
+        const html = `<div class="adivina-DataGame js-hidden">${encryptDataGame('42')}</div>`;
+
+        expect(extractDataGame(html, 'adivina')).toBeNull();
+    });
+});
+
+describe('extractMediaLinks', () => {
+    it('keys sidecar links by the question index held in the link text', () => {
+        const html =
+            '<a href="blob:http://x/aaa" class="js-hidden adivina-LinkImages">0</a>' +
+            '<a href="blob:http://x/bbb" class="js-hidden adivina-LinkImages">2</a>';
+
+        const links = extractMediaLinks(html, 'adivina', 'Images');
+
+        expect(links.get(0)).toBe('blob:http://x/aaa');
+        expect(links.get(2)).toBe('blob:http://x/bbb');
+        expect(links.size).toBe(2);
+    });
+
+    it('keeps the image and audio families apart', () => {
+        const html =
+            '<a href="pic.png" class="js-hidden adivina-LinkImages">0</a>' +
+            '<a href="sound.mp3" class="js-hidden adivina-LinkAudios">0</a>';
+
+        expect(extractMediaLinks(html, 'adivina', 'Images').get(0)).toBe('pic.png');
+        expect(extractMediaLinks(html, 'adivina', 'Audios').get(0)).toBe('sound.mp3');
+    });
+
+    it('ignores another iDevice prefix in the same document', () => {
+        const html = '<a href="pic.png" class="js-hidden quext-LinkImages">0</a>';
+
+        expect(extractMediaLinks(html, 'adivina', 'Images').size).toBe(0);
+    });
+
+    it('skips links with an empty href or a non-numeric index', () => {
+        const html =
+            '<a href="" class="js-hidden adivina-LinkImages">0</a>' +
+            '<a href="pic.png" class="js-hidden adivina-LinkImages">n/a</a>' +
+            '<a href="ok.png" class="js-hidden adivina-LinkImages">1</a>';
+
+        const links = extractMediaLinks(html, 'adivina', 'Images');
+
+        expect(links.size).toBe(1);
+        expect(links.get(1)).toBe('ok.png');
+    });
+
+    it('returns an empty map for empty input', () => {
+        expect(extractMediaLinks('', 'adivina', 'Images').size).toBe(0);
+    });
+});

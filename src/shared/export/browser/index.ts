@@ -34,6 +34,8 @@ import { Epub3Exporter } from '../exporters/Epub3Exporter';
 import { ElpxExporter } from '../exporters/ElpxExporter';
 import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
+import { WorksheetExporter } from '../exporters/WorksheetExporter';
+import type { WorksheetOptions, WorksheetResult } from '../exporters/WorksheetExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
 import { PageElpxExporter } from '../exporters/PageElpxExporter';
 
@@ -663,6 +665,39 @@ export async function generatePrintPreview(
 }
 
 /**
+ * Generate a printable worksheet from the activities in a Yjs document
+ *
+ * Unlike generatePrintPreview, which prints the rendered export, this reads each activity's
+ * stored data and rebuilds it as a paper exercise.
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param options - Translated labels and activity titles
+ * @param assetManager - Optional AssetManager (or cache) so pictures resolve
+ * @returns Worksheet result with HTML string
+ */
+export async function generateWorksheet(
+    documentManager: YjsDocumentManagerLike,
+    options?: WorksheetOptions,
+    assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
+): Promise<WorksheetResult> {
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    const document = new YjsDocumentAdapter(documentManager as any);
+
+    let assets: BrowserAssetProvider | null = null;
+    if (assetManager) {
+        const isNewManager = 'getProjectAssets' in assetManager;
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+        const cache = isNewManager ? null : (assetManager as any);
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+        const manager = isNewManager ? (assetManager as any) : null;
+
+        assets = new BrowserAssetProvider(cache, manager);
+    }
+
+    return new WorksheetExporter(document, assets).generate(options);
+}
+
+/**
  * Create a print preview exporter for advanced usage
  *
  * @param documentManager - YjsDocumentManager instance
@@ -836,7 +871,7 @@ export {
 };
 
 // Export types for TypeScript consumers
-export type { PrintPreviewOptions, PrintPreviewResult };
+export type { PrintPreviewOptions, PrintPreviewResult, WorksheetOptions, WorksheetResult };
 
 // Expose to window for browser use
 if (typeof window !== 'undefined') {
@@ -850,6 +885,8 @@ if (typeof window !== 'undefined') {
         // Print preview functions
         generatePrintPreview,
         createPrintPreviewExporter,
+        // Worksheet (printable activities) functions
+        generateWorksheet,
         // Adapters
         YjsDocumentAdapter,
         BrowserResourceProvider,
@@ -866,6 +903,7 @@ if (typeof window !== 'undefined') {
         Epub3Exporter,
         ElpxExporter,
         PrintPreviewExporter,
+        WorksheetExporter,
         ComponentExporter,
         PageElpxExporter,
         // Renderers
@@ -885,6 +923,7 @@ if (typeof window !== 'undefined') {
         PrintPreviewExporter;
     (window as unknown as { generatePrintPreview: typeof generatePrintPreview }).generatePrintPreview =
         generatePrintPreview;
+    (window as unknown as { generateWorksheet: typeof generateWorksheet }).generateWorksheet = generateWorksheet;
 
     // Export as SharedExporters namespace
     (window as unknown as { SharedExporters: typeof windowExports }).SharedExporters = windowExports;
