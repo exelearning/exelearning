@@ -69,10 +69,10 @@ export const SOURCE_REPOSITORY = 'exelearning/mindmaps';
  * Bumping this is how eXeLearning takes a change from the fork: merge it to the fork's
  * `main`, put the resulting commit here, and regenerate.
  *
- * This revision is the fork's `main` after exelearning/mindmaps#3, which added the four
- * translation hooks eXeLearning wrapped in 2026 but never rebuilt into a shipped bundle.
+ * This revision is the fork's `main` after exelearning/mindmaps#4, which updated
+ * jquery.mousewheel to 3.1.13.
  */
-export const PINNED_REVISION = '7a731bcd11d70731b5801ca92acf7959553cfeb4';
+export const PINNED_REVISION = 'f3ac613f6769b9c6872d57bad248972244ae4c94';
 
 /** Where the vendored tree lives, relative to the repository root. */
 export const VENDORED_ROOT = path.join('public', 'app', 'common', 'mindmaps');
@@ -115,9 +115,9 @@ export const VENDORED: readonly VendoredFile[] = [
         source: 'dist/js/script.js',
         // The build output as emitted. Verifying this proves the build was reproduced
         // before anything is written, and catches a toolchain that has drifted.
-        sourceSha256: 'dc49af37aafe6cd3e4c369c660198c8bc97a21a9295f3c25fd56cf6818a9203b',
+        sourceSha256: 'dc80600f65946f51161f394ff5448a8a2206db435278720d20a9ee906dc85f91',
         // The same bytes with newlines normalised, which is what ships here.
-        sha256: '678f3ccd474e493c5df2382bf828419f757f303e58a63cd3ba1035cc2a7907e6',
+        sha256: '4480ffc0375391e1c9fcec1b1bdf8e043d9103b77a96b69c39408351b9883a32',
     },
     {
         path: 'src/css/Aristo/images/bg_fallback.png',
