@@ -1666,7 +1666,7 @@ describe('NavbarFile', () => {
 
             navbarFile.openPrintPreview();
 
-            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document');
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document', null);
         });
 
         it('should open the overlay in idevices mode when asked', () => {
@@ -1675,7 +1675,7 @@ describe('NavbarFile', () => {
 
             navbarFile.openPrintPreview('idevices');
 
-            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('idevices');
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('idevices', null);
         });
 
         it('should name the right feature in the error for each mode', () => {
@@ -3351,6 +3351,153 @@ describe('NavbarFile', () => {
             navbarFile.openUserOdeFilesEvent();
 
             expect(staticSpy).not.toHaveBeenCalled();
+        });
+    });
+});
+
+describe('NavbarFile printing with interactive activities', () => {
+    let navbarFile;
+    let printPreview;
+    let confirmModal;
+
+    /** Build the dialog body and hand back the radio inputs it contains. */
+    const radios = () => {
+        const host = document.createElement('div');
+        host.innerHTML = navbarFile.printActivitiesDialogBody();
+        return [...host.querySelectorAll('input[type="radio"]')];
+    };
+
+    /** Run the dialog and answer it by picking the option with the given value. */
+    const answerDialog = (value) => {
+        const host = document.createElement('div');
+        host.innerHTML = navbarFile.printActivitiesDialogBody();
+        if (value !== null) host.querySelector(`input[value="${value}"]`).checked = true;
+        confirmModal.modalElementBody = host;
+
+        navbarFile.startPrint();
+        confirmModal.show.mock.calls.at(-1)[0].confirmExec();
+    };
+
+    beforeEach(() => {
+        // The methods under test do not touch the navbar's buttons, so the prototype is exercised
+        // directly rather than rebuilding the whole menu fixture.
+        navbarFile = Object.create(NavbarFile.prototype);
+        printPreview = { show: vi.fn() };
+        confirmModal = { show: vi.fn(), modalElementBody: null };
+
+        global._ = (str) => str;
+        global.eXeLearning = {
+            app: {
+                project: { _yjsBridge: { documentManager: {} } },
+                modals: { printpreview: printPreview, confirm: confirmModal },
+            },
+        };
+        // The suite above deletes global.window in its teardown, so this stands one up again.
+        global.window = { countInteractiveActivities: vi.fn(() => 2) };
+    });
+
+    afterEach(() => {
+        delete global.window;
+        vi.clearAllMocks();
+    });
+
+    describe('when the project has no interactive activity', () => {
+        beforeEach(() => {
+            global.window.countInteractiveActivities = vi.fn(() => 0);
+        });
+
+        it('prints without asking anything', () => {
+            navbarFile.startPrint();
+
+            expect(confirmModal.show).not.toHaveBeenCalled();
+            expect(printPreview.show).toHaveBeenCalledWith('document', null);
+        });
+    });
+
+    describe('when the project has them', () => {
+        it('asks before printing', () => {
+            navbarFile.startPrint();
+
+            expect(printPreview.show).not.toHaveBeenCalled();
+            expect(confirmModal.show).toHaveBeenCalledTimes(1);
+        });
+
+        it('prints nothing if the dialog is dismissed', () => {
+            navbarFile.startPrint();
+
+            // confirmExec is what the dialog runs on Accept; leaving it uncalled is a cancel.
+            expect(printPreview.show).not.toHaveBeenCalled();
+        });
+
+        it('offers the four choices, with printing them in place preselected', () => {
+            navbarFile.startPrint();
+
+            expect(radios().map((input) => input.value)).toEqual([
+                'omit',
+                'in-place',
+                'appendix',
+                'idevices',
+            ]);
+            expect(radios().filter((input) => input.checked).map((input) => input.value)).toEqual([
+                'in-place',
+            ]);
+        });
+
+        it('ties every label to its own input, so clicking the text selects it', () => {
+            const ids = radios().map((input) => input.id);
+
+            expect(new Set(ids).size).toBe(ids.length);
+            expect(ids.every((id) => id)).toBe(true);
+        });
+
+        it.each([
+            ['omit', ['document', 'omit']],
+            ['in-place', ['document', 'in-place']],
+            ['appendix', ['document', 'appendix']],
+        ])('prints the document with the %s mode', (value, expected) => {
+            answerDialog(value);
+
+            expect(printPreview.show).toHaveBeenCalledWith(...expected);
+        });
+
+        it('prints the worksheet alone when only the activities were asked for', () => {
+            answerDialog('idevices');
+
+            expect(printPreview.show).toHaveBeenCalledWith('idevices', null);
+        });
+
+        it('falls back to printing them in place when nothing is selected', () => {
+            answerDialog(null);
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place');
+        });
+    });
+
+    describe('when the project cannot be inspected', () => {
+        it('prints untouched rather than failing, if the counter is missing', () => {
+            delete global.window.countInteractiveActivities;
+
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', null);
+        });
+
+        it('prints untouched rather than failing, if the counter throws', () => {
+            global.window.countInteractiveActivities = vi.fn(() => {
+                throw new Error('broken');
+            });
+
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', null);
+        });
+
+        it('prints them in place when the dialog itself is unavailable', () => {
+            eXeLearning.app.modals.confirm = null;
+
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place');
         });
     });
 });

@@ -51,6 +51,8 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 
 // Import utilities
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { isPageVisible } from '../utils/visibility';
+import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
@@ -612,6 +614,36 @@ export async function exportAndDownload(
  * @param assetProvider - Optional AssetProvider (or manager/cache to create it)
  * @returns Preview result with HTML string
  */
+/**
+ * Count the interactive activities a printed document would contain.
+ *
+ * Printing asks the user what to do with them, and this is what decides whether there is anything
+ * to ask about: with none, printing goes straight to the preview as it always did.
+ *
+ * Pages hidden from export are left out, matching what the print path itself does. Blocks and
+ * components are all counted, so the question is asked whenever it might apply — an extra
+ * question costs a click, while a missed one prints a game board.
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @returns How many interactive activities are in the document
+ */
+export function countInteractiveActivities(documentManager: YjsDocumentManagerLike): number {
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    const document = new YjsDocumentAdapter(documentManager as any);
+    let count = 0;
+
+    for (const page of document.getNavigation()) {
+        if (!isPageVisible(page)) continue;
+        for (const block of page.blocks || []) {
+            for (const component of block.components || []) {
+                if (isInteractiveActivity(component.type)) count++;
+            }
+        }
+    }
+
+    return count;
+}
+
 export async function generatePrintPreview(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
@@ -885,6 +917,7 @@ if (typeof window !== 'undefined') {
         generatePreviewForSW,
         // Print preview functions
         generatePrintPreview,
+        countInteractiveActivities,
         createPrintPreviewExporter,
         // Worksheet (printable activities) functions
         generateWorksheet,
