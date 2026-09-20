@@ -201,6 +201,7 @@ export default class ModalPrintPreview {
             dragdrop: _('Drag and drop'),
             'az-quiz-game': _('A-Z quiz'),
             sort: _('Sort'),
+            'word-search': _('Word search'),
         };
     }
 

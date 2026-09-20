@@ -846,3 +846,39 @@ describe('cards with fixed headings', () => {
         expect(ordered({ columns: 1 })).not.toContain('grid-template-columns');
     });
 });
+
+describe('the word search grid', () => {
+    const grid = (rows: string[][]) =>
+        renderActivityFragment(
+            activity({ ideviceType: 'word-search', board: { kind: 'wordGrid', rows } as never, items: [] }),
+        );
+
+    it('draws every letter of the grid', () => {
+        const html = grid([
+            ['C', 'A'],
+            ['S', 'A'],
+        ]);
+
+        expect(html).toContain('class="worksheet-word-grid"');
+        expect(html.match(/class="worksheet-word-cell"/g)).toHaveLength(4);
+    });
+
+    it('lays it out in as many columns as the grid has', () => {
+        expect(grid([['A', 'B', 'C']])).toContain('grid-template-columns: repeat(3, 7mm)');
+    });
+
+    it('draws nothing for an empty grid', () => {
+        expect(grid([])).not.toContain('worksheet-word-grid');
+        expect(grid([[]])).not.toContain('worksheet-word-grid');
+    });
+
+    it('escapes a letter instead of letting it become markup', () => {
+        expect(grid([['<']])).toContain('&lt;');
+    });
+
+    it('keeps the grid whole on one sheet', () => {
+        const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-word-grid {')[1].split('}')[0];
+
+        expect(rule).toContain('break-inside: avoid');
+    });
+});

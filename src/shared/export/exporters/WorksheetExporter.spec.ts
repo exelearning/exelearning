@@ -13,9 +13,9 @@ function guessContent(
     return `<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
 }
 
-/** Component HTML for a gamified activity with no adapter yet: word search stores under 'sopa'. */
-function wordSearchContent(): string {
-    return `<div class="sopa-DataGame js-hidden">${encryptDataGame('{"rows":[]}')}</div>`;
+/** Component HTML for a gamified activity with no adapter yet: the map stores under 'mapa'. */
+function unadaptedContent(): string {
+    return `<div class="mapa-DataGame js-hidden">${encryptDataGame('{"rows":[]}')}</div>`;
 }
 
 interface PageSpec {
@@ -235,14 +235,14 @@ describe('WorksheetExporter', () => {
                         title: 'La Edad Media',
                         components: [
                             { type: 'guess', content: guessContent() },
-                            { type: 'word-search', content: wordSearchContent() },
+                            { type: 'map', content: unadaptedContent() },
                         ],
                     },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'word-search', pageTitle: 'La Edad Media' },
+                { ideviceType: 'map', pageTitle: 'La Edad Media' },
             ]);
         });
 
@@ -312,17 +312,17 @@ describe('WorksheetExporter', () => {
                     {
                         title: 'Una',
                         components: [
-                            { type: 'word-search', content: wordSearchContent() },
-                            { type: 'word-search', content: wordSearchContent() },
+                            { type: 'map', content: unadaptedContent() },
+                            { type: 'map', content: unadaptedContent() },
                         ],
                     },
-                    { title: 'Otra', components: [{ type: 'word-search', content: wordSearchContent() }] },
+                    { title: 'Otra', components: [{ type: 'map', content: unadaptedContent() }] },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'word-search', pageTitle: 'Una' },
-                { ideviceType: 'word-search', pageTitle: 'Otra' },
+                { ideviceType: 'map', pageTitle: 'Una' },
+                { ideviceType: 'map', pageTitle: 'Otra' },
             ]);
         });
     });

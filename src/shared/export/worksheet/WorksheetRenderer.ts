@@ -400,6 +400,29 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-bottom: 1mm;
 }
 
+/* A grid of letters with the answers hidden in it. Square cells and no rules between them, as the
+   activity draws it: the letters are the puzzle, and a border on each would fight the reading. */
+.worksheet-word-grid {
+    display: grid;
+    width: max-content;
+    max-width: 100%;
+    grid-auto-rows: 7mm;
+    margin: 0 auto 6mm;
+    border: 1px solid #1a1a1a;
+    padding: 2mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.worksheet-word-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: monospace;
+    font-size: 11pt;
+    letter-spacing: 0;
+}
+
 /* The ring an alphabet game is played on. A square box the letters are placed around by angle,
    centred on the sheet, kept whole so the board never breaks across two pages. */
 .worksheet-ring {
@@ -730,6 +753,7 @@ function renderBoard(board: PrintableBoard): string {
     if (board.kind === 'matchColumns') return renderMatchColumns(board.cards, board.containers);
     if (board.kind === 'pairColumns') return renderPairColumns(board.groups);
     if (board.kind === 'letterRing') return renderLetterRing(board.letters);
+    if (board.kind === 'wordGrid') return renderWordGrid(board.rows);
 
     return renderCrosswordGrid(board);
 }
@@ -862,6 +886,25 @@ function renderLetterRing(letters: PrintableRingLetter[]): string {
         .join('');
 
     return `<ul class="worksheet-ring">${placed}</ul>`;
+}
+
+/**
+ * Render a grid of letters with the answers hidden in it.
+ *
+ * Square cells so a word reads as straight down a diagonal as it does across, which is what makes
+ * one findable at all. The grid is sized by its own column count rather than stretched to the
+ * page, so a small one is not blown up into enormous squares.
+ */
+function renderWordGrid(rows: string[][]): string {
+    const columns = rows[0]?.length ?? 0;
+    if (columns === 0) return '';
+
+    const cells = rows
+        .flatMap(row => row.map(letter => `<span class="worksheet-word-cell">${escapeText(letter)}</span>`))
+        .join('');
+
+    // A computed count, never author content, so it is safe in a style attribute.
+    return `<div class="worksheet-word-grid" style="grid-template-columns: repeat(${columns}, 7mm)">${cells}</div>`;
 }
 
 function renderMatchColumns(cards: PrintableCard[], containers: PrintableContainer[]): string {

@@ -122,7 +122,14 @@ export type PrintableBoard =
      * The whole alphabet is shown, not only the letters that carry a question: which letters are
      * in play is part of what the student reads off the board, exactly as on screen.
      */
-    | { kind: 'letterRing'; letters: PrintableRingLetter[] };
+    | { kind: 'letterRing'; letters: PrintableRingLetter[] }
+    /**
+     * A grid of letters with the answers hidden in it.
+     *
+     * Every cell carries a letter: the ones that spell a word and the ones that hide it read
+     * alike, which is the whole exercise. Where the words are is never printed.
+     */
+    | { kind: 'wordGrid'; rows: string[][] };
 
 /** One page-sized set of pairs, each card's partner among them. */
 export interface PrintablePairGroup {

@@ -29,6 +29,7 @@ describe('worksheet adapter registry', () => {
             'quick-questions',
             'quick-questions-multiple-choice',
             'sort',
+            'word-search',
         ]);
     });
 
