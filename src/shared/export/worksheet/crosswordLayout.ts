@@ -22,6 +22,8 @@ import type { RandomSource } from './questionSelection';
 export interface Placement {
     /** Index of the word in the input array, so callers can match clues back to placements. */
     index: number;
+    /** Shared by clues starting in the same cell. */
+    number: number;
     /** Letters actually placed, after normalisation. */
     letters: string[];
     row: number;
@@ -96,7 +98,7 @@ function shuffled<T>(items: T[], random: RandomSource): T[] {
 }
 
 /** Scratch grid of letters, null where nothing is placed yet. */
-type Scratch = (string | null)[][];
+type Scratch = ({ letter: string; horizontal: boolean; vertical: boolean } | null)[][];
 
 function emptyScratch(size: number): Scratch {
     return Array.from({ length: size }, () => Array.from({ length: size }, () => null));
@@ -134,7 +136,8 @@ function scorePlacement(grid: Scratch, letters: string[], row: number, col: numb
         const occupant = grid[r][c];
 
         if (occupant !== null) {
-            if (occupant !== letters[offset]) return -1;
+            if (occupant.letter !== letters[offset] || (horizontal ? occupant.horizontal : occupant.vertical))
+                return -1;
             crossings++;
             continue;
         }
@@ -155,7 +158,12 @@ function write(grid: Scratch, letters: string[], row: number, col: number, horiz
     letters.forEach((letter, offset) => {
         const r = horizontal ? row : row + offset;
         const c = horizontal ? col + offset : col;
-        grid[r][c] = letter;
+        const existing = grid[r][c];
+        grid[r][c] = {
+            letter,
+            horizontal: horizontal || existing?.horizontal === true,
+            vertical: !horizontal || existing?.vertical === true,
+        };
     });
 }
 
@@ -170,7 +178,7 @@ function bestPlacement(grid: Scratch, letters: string[], index: number, size: nu
     for (let offset = 0; offset < letters.length; offset++) {
         for (let row = 0; row < size; row++) {
             for (let col = 0; col < size; col++) {
-                if (grid[row][col] !== letters[offset]) continue;
+                if (grid[row][col]?.letter !== letters[offset]) continue;
 
                 for (const horizontal of [true, false]) {
                     const startRow = horizontal ? row : row - offset;
@@ -178,7 +186,7 @@ function bestPlacement(grid: Scratch, letters: string[], index: number, size: nu
                     const crossings = scorePlacement(grid, letters, startRow, startCol, horizontal);
 
                     if (crossings > 0 && (best === null || crossings > best.crossings)) {
-                        best = { index, letters, row: startRow, col: startCol, horizontal, crossings };
+                        best = { index, number: 0, letters, row: startRow, col: startCol, horizontal, crossings };
                     }
                 }
             }
@@ -199,7 +207,7 @@ function attemptLayout(words: string[][], size: number, random: RandomSource): P
         words.map((letters, index) => ({ letters, index })),
         random,
     )
-        .filter(entry => entry.letters.length > 1)
+        .filter(entry => entry.letters.length > 1 && entry.letters.length <= size)
         .sort((a, b) => b.letters.length - a.letters.length);
 
     if (order.length === 0) return [];
@@ -213,7 +221,15 @@ function attemptLayout(words: string[][], size: number, random: RandomSource): P
 
     write(grid, seed.letters, seedRow, seedCol, true);
     const placements: Placement[] = [
-        { index: seed.index, letters: seed.letters, row: seedRow, col: seedCol, horizontal: true, crossings: 0 },
+        {
+            index: seed.index,
+            number: 0,
+            letters: seed.letters,
+            row: seedRow,
+            col: seedCol,
+            horizontal: true,
+            crossings: 0,
+        },
     ];
 
     for (const entry of order.slice(1)) {
@@ -267,6 +283,12 @@ export function buildCrosswordLayout(
 
     // Vertical clues are numbered first, then horizontal ones, as the iDevice does.
     const ordered = [...best.filter(p => !p.horizontal), ...best.filter(p => p.horizontal)];
+    const starts = new Map<string, number>();
+    for (const placement of ordered) {
+        const key = `${placement.row}:${placement.col}`;
+        if (!starts.has(key)) starts.set(key, starts.size + 1);
+        placement.number = starts.get(key)!;
+    }
 
     return { rows: buildGrid(ordered, size, revealed, options.crop !== false), placements: ordered };
 }
@@ -287,7 +309,7 @@ function buildGrid(
         Array.from({ length: size }, () => null as CrosswordCell),
     );
 
-    placements.forEach((placement, order) => {
+    placements.forEach(placement => {
         const hints = revealed[placement.index] ?? new Set<number>();
 
         placement.letters.forEach((letter, offset) => {
@@ -298,7 +320,7 @@ function buildGrid(
             // A crossing cell keeps a hint either word gives it, and the lower clue number.
             cells[row][col] = {
                 letter: hints.has(offset) ? letter : (existing?.letter ?? null),
-                number: offset === 0 ? (existing?.number ?? order + 1) : existing?.number,
+                number: offset === 0 ? placement.number : existing?.number,
             };
         });
     });

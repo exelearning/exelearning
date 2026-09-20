@@ -107,6 +107,80 @@ describe('ModalPrintPreview', () => {
         });
     });
 
+    describe('concurrent previews', () => {
+        it('keeps the new mode when an older generation finishes last', async () => {
+            let resolveOld;
+            const oldDispose = vi.fn();
+            const currentDispose = vi.fn();
+            window.generatePrintPreview.mockReturnValue(new Promise(resolve => { resolveOld = resolve; }));
+            window.generateWorksheet.mockResolvedValue({ success: true, html: 'NEW', dispose: currentDispose });
+            const oldRequest = modal.show(PREVIEW_MODE_DOCUMENT);
+            modal.close();
+            await modal.show(PREVIEW_MODE_IDEVICES);
+            const created = URL.createObjectURL.mock.calls.length;
+            resolveOld({ success: true, html: 'OLD', dispose: oldDispose });
+            await oldRequest;
+            expect(URL.createObjectURL).toHaveBeenCalledTimes(created);
+            expect(modal.mode).toBe(PREVIEW_MODE_IDEVICES);
+            expect(oldDispose).toHaveBeenCalledOnce();
+            expect(currentDispose).not.toHaveBeenCalled();
+            modal.close();
+            modal.close();
+            expect(currentDispose).toHaveBeenCalledOnce();
+        });
+
+        it('ignores a rejected generation after switching mode', async () => {
+            let rejectOld;
+            window.generatePrintPreview.mockReturnValue(new Promise((resolve, reject) => { rejectOld = reject; }));
+            const error = vi.spyOn(modal, 'showError');
+            const oldRequest = modal.show();
+            await modal.show(PREVIEW_MODE_IDEVICES);
+            rejectOld(new Error('stale error'));
+            await oldRequest;
+            expect(error).not.toHaveBeenCalled();
+        });
+
+        it('disposes a result that arrives after the overlay was closed', async () => {
+            let resolve;
+            const dispose = vi.fn();
+            window.generatePrintPreview.mockReturnValue(new Promise(done => { resolve = done; }));
+            const pending = modal.show();
+            modal.close();
+            resolve({ success: true, html: 'CLOSED', dispose });
+            await pending;
+            expect(modal.isVisible()).toBe(false);
+            expect(modal.iframe.getAttribute('src')).toBe('about:blank');
+            expect(URL.createObjectURL).not.toHaveBeenCalled();
+            expect(dispose).toHaveBeenCalledOnce();
+        });
+
+        it('ignores load handlers belonging to the previous request', async () => {
+            await modal.show();
+            const oldLoad = modal.iframe.onload;
+            await modal.show(PREVIEW_MODE_IDEVICES);
+            const loading = vi.spyOn(modal, 'showLoading');
+            oldLoad();
+            expect(loading).not.toHaveBeenCalled();
+            modal.iframe.onload();
+            expect(loading).toHaveBeenCalledWith(false);
+        });
+
+        it('releases result assets if creating the document URL fails', async () => {
+            const dispose = vi.fn();
+            window.generatePrintPreview.mockResolvedValue({ success: true, html: 'HTML', dispose });
+            URL.createObjectURL.mockImplementationOnce(() => { throw new Error('URL failure'); });
+            await expect(modal.generatePreview()).rejects.toThrow('URL failure');
+            expect(dispose).toHaveBeenCalledOnce();
+        });
+
+        it('releases assets attached to a failed result', async () => {
+            const dispose = vi.fn();
+            window.generatePrintPreview.mockResolvedValue({ success: false, error: 'failed', dispose });
+            await expect(modal.generatePreview()).rejects.toThrow('failed');
+            expect(dispose).toHaveBeenCalledOnce();
+        });
+    });
+
     describe('behaviour', () => {
         it('should add click listener to print button', () => {
             const printSpy = vi.spyOn(modal, 'print').mockImplementation(() => {});

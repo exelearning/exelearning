@@ -9,7 +9,8 @@
  * - The DataGame class prefix is 'completa'.
  * - `textText` is the author's text, escape()'d, with each hidden word wrapped in `@@`. The
  *   runtime pairs those markers up and swaps each pair for a gap.
- * - A hidden word may list alternatives separated by `|`; the first is the one that is printed.
+ * - A hidden word may list alternatives separated by `|`; select mode offers all of them,
+ *   while drag mode offers the primary word.
  * - `wordsErrors` are the wrong words, comma separated, each also allowing `|` alternatives.
  * - `type` is the game mode: 0 the student writes the word, 1 drags it, 2 picks it from a list.
  *
@@ -24,7 +25,7 @@
 
 import { extractDataGame, extractDivContent } from '../dataGameReader';
 import { shuffleWith, type RandomSource } from '../questionSelection';
-import { sanitizeHtml } from '../sanitizeHtml';
+import { htmlToText, sanitizeHtml } from '../sanitizeHtml';
 import { renderInlineGap } from '../WorksheetRenderer';
 import type { PrintableActivity, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 
@@ -49,6 +50,8 @@ interface CompleteDataGame {
     wordsErrors?: string;
     /** Whether a gap is as wide as the word it hides, rather than a fixed width. */
     wordsSize?: boolean;
+    /** Select mode may offer different alternatives at each gap. */
+    wordsLimit?: boolean;
 }
 
 /** The author's text with each gap marked, plus the words those gaps hide. */
@@ -125,10 +128,15 @@ export const CompleteWorksheetAdapter: WorksheetAdapter = {
 
     build(html: string, options: WorksheetAdapterOptions = {}): PrintableActivity | null {
         const dataGame = extractDataGame<CompleteDataGame>(html, PREFIX);
-        if (!dataGame?.textText) return null;
+        if (!dataGame) return null;
 
         const random: RandomSource = options.random ?? Math.random;
-        const { text, words } = splitGappedText(unescape(dataGame.textText));
+        const source =
+            extractDivContent(html, 'completa-text-game') ||
+            (typeof dataGame.textText === 'string' ? unescape(dataGame.textText) : '');
+        const { text, words } = splitGappedText(source);
+        const limited = dataGame.type === MODE_SELECT && dataGame.wordsLimit === true;
+        const alternatives = (word: string) => [...new Set(word.split('|').map(htmlToText).filter(Boolean))];
 
         // A text with no hidden word is not an exercise.
         if (words.length === 0) return null;
@@ -138,10 +146,18 @@ export const CompleteWorksheetAdapter: WorksheetAdapter = {
         const gapWidth = (word: string) =>
             dataGame.wordsSize === true ? [...primaryWord(word)].length : FIXED_GAP_CHARACTERS;
 
-        const prompt = words.reduce(
-            (result, word, index) => result.replace(gapToken(index), renderInlineGap(gapWidth(word))),
-            sanitizeHtml(text),
+        const gaps = words.map(word =>
+            renderInlineGap(gapWidth(word), limited ? shuffleWith(alternatives(word), random) : undefined),
         );
+        // Only text nodes can become answer spaces; tokens in attributes must stay attributes.
+        const prompt = sanitizeHtml(text)
+            .split(/(<[^>]+>)/g)
+            .map(part =>
+                part.startsWith('<')
+                    ? part
+                    : part.replace(/\{\{gap-(\d+)\}\}/g, (token, index) => gaps[Number(index)] ?? token),
+            )
+            .join('');
 
         const activity: PrintableActivity = {
             ideviceType: 'complete',
@@ -150,8 +166,12 @@ export const CompleteWorksheetAdapter: WorksheetAdapter = {
         };
 
         // Dragging and picking show the words on screen, so the sheet lists them too.
-        if (dataGame.type === MODE_DRAG || dataGame.type === MODE_SELECT) {
-            const offered = shuffleWith([...words.map(primaryWord), ...readWrongWords(dataGame.wordsErrors)], random);
+        if (dataGame.type === MODE_DRAG || (dataGame.type === MODE_SELECT && !limited)) {
+            const answers = dataGame.type === MODE_SELECT ? words.flatMap(alternatives) : words.map(primaryWord);
+            const candidates = [...answers, ...readWrongWords(dataGame.wordsErrors)];
+            // Drag mode needs one copy per gap, including repeated words. Select menus share
+            // their choices and remove duplicates, as the interactive activity does.
+            const offered = shuffleWith(dataGame.type === MODE_SELECT ? [...new Set(candidates)] : candidates, random);
 
             if (offered.length > 0) {
                 activity.board = { kind: 'wordBank', words: offered.map(word => sanitizeHtml(word)) };

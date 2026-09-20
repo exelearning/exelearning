@@ -11,6 +11,8 @@
 import { escapeText } from './sanitizeHtml';
 import type {
     CharacterBoxGroup,
+    PrintableCard,
+    PrintableContainer,
     CrosswordBoard,
     CrosswordCell,
     PrintableAnswer,
@@ -22,6 +24,11 @@ import type {
 } from './types';
 
 const DEFAULT_LABELS: Required<WorksheetLabels> = {
+    across: 'Across',
+    down: 'Down',
+    mediaRequired: 'Requires multimedia',
+    invalidData: 'Invalid or empty activity data',
+    unplacedWords: 'Words that could not be placed',
     studentName: 'Name',
     date: 'Date',
     empty: 'This project has no printable activities yet.',
@@ -245,6 +252,65 @@ body {
     font-size: 11pt;
 }
 
+/* Two columns to match up, with room between them to draw the pairing. */
+/* Centred against one another, so a short column of containers sits beside the middle of the
+   cards rather than trailing off the top. */
+.worksheet-match {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30mm;
+    margin: 0 0 4mm;
+}
+
+.worksheet-cards,
+.worksheet-containers {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3mm;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.worksheet-card {
+    min-width: 34mm;
+    padding: 2mm 3mm;
+    border: 1px solid #1a1a1a;
+    text-align: center;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.worksheet-card img {
+    display: block;
+    margin: 0 auto;
+    max-width: 30mm;
+    max-height: 24mm;
+    height: auto;
+}
+
+.worksheet-card-text {
+    display: block;
+}
+
+/* Containers are squares outlined in their colour, with the name in the middle. Outline
+   rather than fill: a solid block eats ink and makes the name hard to read on paper. */
+.worksheet-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34mm;
+    height: 34mm;
+    padding: 2mm;
+    border: 2px solid #1a1a1a;
+    text-align: center;
+    font-weight: bold;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
 /* The words an activity offers, laid out above the text they go into. */
 .worksheet-word-bank {
     display: flex;
@@ -324,6 +390,9 @@ body {
 }
 
 @media print {
+    .worksheet-unsupported {
+        display: none;
+    }
     body {
         padding: 0;
         background: #fff;
@@ -447,6 +516,7 @@ function renderCrosswordGrid(board: CrosswordBoard): string {
  */
 function renderBoard(board: PrintableBoard): string {
     if (board.kind === 'wordBank') return renderWordBank(board.words);
+    if (board.kind === 'matchColumns') return renderMatchColumns(board.cards, board.containers);
 
     return renderCrosswordGrid(board);
 }
@@ -461,12 +531,53 @@ function renderBoard(board: PrintableBoard): string {
  * @param characters - How many characters the hidden word has
  * @returns The gap markup
  */
-export function renderInlineGap(characters: number): string {
+export function renderInlineGap(characters: number, options?: string[]): string {
     // About one character per 2.2mm at the body size, with a floor so a one-letter word still
     // gets something writable.
     const width = Math.max(3, characters) * 2.2;
 
-    return `<span class="worksheet-gap" style="width: ${width.toFixed(1)}mm"></span>`;
+    const choices = options?.length
+        ? `<span class="worksheet-gap-options"> (${options.map(escapeText).join(' / ')})</span>`
+        : '';
+    return `<span class="worksheet-gap" style="width: ${width.toFixed(1)}mm"></span>${choices}`;
+}
+
+/**
+ * Render the two columns of a matching exercise.
+ *
+ * Cards on the left, containers on the right, with room between them for the student to draw the
+ * pairing. Both columns are centred, so the sheet reads as one exercise rather than two lists.
+ */
+function renderMatchColumns(cards: PrintableCard[], containers: PrintableContainer[]): string {
+    const renderedCards = cards
+        .map(card => {
+            // The picture first, with any text underneath it.
+            let content = '';
+            if (card.media) {
+                const alt = escapeText(card.media.alt ?? '');
+                content += `<img src="${escapeText(card.media.src)}" alt="${alt}" />`;
+            }
+            if (card.text) {
+                content += `<span class="worksheet-card-text">${card.text}</span>`;
+            }
+            return `<li class="worksheet-card">${content}</li>`;
+        })
+        .join('');
+
+    const renderedContainers = containers
+        .map(
+            container =>
+                `<li class="worksheet-container" style="border-color: ${container.color}">` +
+                `${escapeText(container.name)}</li>`,
+        )
+        .join('');
+
+    return (
+        '<div class="worksheet-match">' +
+        `<ul class="worksheet-cards">${renderedCards}</ul>` +
+        `<ul class="worksheet-containers">${renderedContainers}</ul>` +
+        '</div>'
+    );
 }
 
 /**
@@ -487,9 +598,10 @@ function renderWordBank(words: string[]): string {
  * The answer space is absent for activities that answer into a shared board, and the number is
  * explicit when it has to match something outside the list, such as a crossword grid.
  */
-function renderItem(item: PrintableItem): string {
+function renderItem(item: PrintableItem, labels: Required<WorksheetLabels>): string {
     const value = item.number === undefined ? '' : ` value="${item.number}"`;
     let html = `<li class="worksheet-item"${value}>`;
+    if (item.direction) html += `<strong class="worksheet-direction">${escapeText(labels[item.direction])}</strong>`;
 
     if (item.prompt) {
         html += `<div class="worksheet-prompt">${item.prompt}</div>`;
@@ -522,7 +634,7 @@ function renderItem(item: PrintableItem): string {
 /**
  * Render one activity: heading, instructions, questions, closing text.
  */
-function renderActivity(activity: PrintableActivity): string {
+function renderActivity(activity: PrintableActivity, labels: Required<WorksheetLabels>): string {
     // The type is carried through so a reader, a stylesheet or a test can tell one kind of
     // activity from another on the printed sheet.
     let html = `<article class="worksheet-activity" data-idevice="${escapeText(activity.ideviceType)}">`;
@@ -544,7 +656,10 @@ function renderActivity(activity: PrintableActivity): string {
     const numbered = activity.items.length > 1 || activity.items[0]?.number !== undefined;
     const listClass = numbered ? 'worksheet-items' : 'worksheet-items worksheet-items-plain';
 
-    html += `<ol class="${listClass}">${activity.items.map(renderItem).join('')}</ol>`;
+    // An activity whose whole exercise is its board, such as a matching one, has no questions.
+    if (activity.items.length > 0) {
+        html += `<ol class="${listClass}">${activity.items.map(item => renderItem(item, labels)).join('')}</ol>`;
+    }
 
     if (activity.textAfter) {
         html += `<div class="worksheet-after">${activity.textAfter}</div>`;
@@ -565,7 +680,18 @@ function renderUnsupported(model: WorksheetModel, labels: Required<WorksheetLabe
     if (model.unsupported.length === 0) return '';
 
     const entries = model.unsupported
-        .map(entry => `<li>${escapeText(entry.ideviceType)} — ${escapeText(entry.pageTitle)}</li>`)
+        .map(entry => {
+            const reason =
+                entry.reason === 'media-required'
+                    ? labels.mediaRequired
+                    : entry.reason === 'invalid-data'
+                      ? labels.invalidData
+                      : entry.reason === 'unplaced-word'
+                        ? labels.unplacedWords
+                        : '';
+            const detail = reason ? `: ${escapeText(reason)} (${entry.count ?? 1})` : '';
+            return `<li>${escapeText(entry.title || entry.ideviceType)} — ${escapeText(entry.pageTitle)}${detail}</li>`;
+        })
         .join('');
 
     return `<aside class="worksheet-unsupported"><p>${escapeText(labels.unsupportedHeading)}</p><ul>${entries}</ul></aside>`;
@@ -585,7 +711,7 @@ export function renderWorksheet(model: WorksheetModel, labels: WorksheetLabels =
     const pages = model.pages
         .filter(page => page.activities.length > 0)
         .map(page => {
-            const activities = page.activities.map(renderActivity).join('');
+            const activities = page.activities.map(activity => renderActivity(activity, text)).join('');
             return `<section class="worksheet-page"><h2 class="worksheet-page-title">${escapeText(page.title)}</h2>${activities}</section>`;
         })
         .join('');

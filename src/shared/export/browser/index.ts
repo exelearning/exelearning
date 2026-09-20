@@ -694,7 +694,8 @@ export async function generateWorksheet(
         assets = new BrowserAssetProvider(cache, manager);
     }
 
-    return new WorksheetExporter(document, assets).generate(options);
+    const latexHooks = await getLatexPreRendererHooks();
+    return new WorksheetExporter(document, assets).generate({ ...latexHooks, ...options });
 }
 
 /**

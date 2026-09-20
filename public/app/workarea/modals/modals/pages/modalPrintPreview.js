@@ -23,6 +23,8 @@ export default class ModalPrintPreview {
         this.titleEl = this.overlay?.querySelector('.print-preview-title-text');
         this.blobUrl = null;
         this.mode = PREVIEW_MODE_DOCUMENT;
+        this.requestId = 0;
+        this.disposePreview = null;
     }
 
     /**
@@ -68,6 +70,8 @@ export default class ModalPrintPreview {
         }
 
         this.mode = mode;
+        const requestId = ++this.requestId;
+        this.cleanup();
         this.applyTitle();
 
         // Show overlay with loading
@@ -75,8 +79,9 @@ export default class ModalPrintPreview {
         this.overlay.setAttribute('data-visible', 'true');
 
         try {
-            await this.generatePreview();
+            await this.generatePreview(requestId);
         } catch (error) {
+            if (requestId !== this.requestId) return;
             console.error('[PrintPreview] Error:', error);
             this.showError(error.message || 'An error occurred');
         }
@@ -96,6 +101,7 @@ export default class ModalPrintPreview {
      * Close the overlay
      */
     close() {
+        this.requestId++;
         if (this.overlay) {
             this.overlay.setAttribute('data-visible', 'false');
         }
@@ -163,6 +169,11 @@ export default class ModalPrintPreview {
             yjsBridge.documentManager,
             {
                 labels: {
+                    across: _('Across'),
+                    down: _('Down'),
+                    mediaRequired: _('Requires multimedia'),
+                    invalidData: _('Invalid or empty activity data'),
+                    unplacedWords: _('Words that could not be placed'),
                     studentName: _('Name'),
                     date: _('Date'),
                     empty: _('This project has no printable activities yet.'),
@@ -174,6 +185,7 @@ export default class ModalPrintPreview {
                     'quick-questions': _('Test'),
                     'quick-questions-multiple-choice': _('Select'),
                     complete: _('Complete'),
+                    classify: _('Classify'),
                 },
                 ideviceBasePath: this.getIdeviceBasePath(),
             },
@@ -214,13 +226,18 @@ export default class ModalPrintPreview {
     /**
      * Generate and load the preview for the current mode
      */
-    async generatePreview() {
+    async generatePreview(requestId = ++this.requestId) {
         const result =
             this.mode === PREVIEW_MODE_IDEVICES
                 ? await this.generateIdevicesWorksheet()
                 : await this.generateDocumentPreview();
 
+        if (requestId !== this.requestId) {
+            result.dispose?.();
+            return;
+        }
         if (!result.success || !result.html) {
+            result.dispose?.();
             throw new Error(result.error || _('Failed to generate preview'));
         }
 
@@ -229,14 +246,20 @@ export default class ModalPrintPreview {
 
         // Create blob URL and load into iframe
         this.cleanup();
+        this.disposePreview = result.dispose || null;
         const blob = new Blob([html], { type: 'text/html' });
-        this.blobUrl = URL.createObjectURL(blob);
+        try {
+            this.blobUrl = URL.createObjectURL(blob);
+        } catch (error) {
+            this.cleanup();
+            throw error;
+        }
 
         // Load into iframe
         if (this.iframe) {
             this.iframe.src = this.blobUrl;
             this.iframe.onload = () => {
-                this.showLoading(false);
+                if (requestId === this.requestId) this.showLoading(false);
             };
         }
     }
@@ -283,11 +306,14 @@ export default class ModalPrintPreview {
      * Clean up resources
      */
     cleanup() {
+        this.disposePreview?.();
+        this.disposePreview = null;
         if (this.blobUrl) {
             URL.revokeObjectURL(this.blobUrl);
             this.blobUrl = null;
         }
         if (this.iframe) {
+            this.iframe.onload = null;
             this.iframe.src = 'about:blank';
             this.iframe.classList.add('hidden');
         }
