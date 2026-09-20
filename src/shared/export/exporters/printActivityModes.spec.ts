@@ -1,0 +1,256 @@
+import { describe, expect, it } from 'bun:test';
+import { encryptDataGame } from '../utils/dataGameCipher';
+import type { ExportComponent, ExportPage } from '../interfaces';
+import {
+    applyActivityMode,
+    PRINTABLE_ACTIVITY_TYPE,
+    type ApplyActivityModeOptions,
+    type DocumentActivityMode,
+} from './printActivityModes';
+
+/** Component HTML the Guess editor writes, with one answerable question. */
+function guessHtml(definition = 'Ciudad conquistada', word = 'Valencia'): string {
+    const payload = JSON.stringify({
+        typeGame: 'Adivina',
+        wordsGame: [{ definition, word, percentageShow: 0 }],
+    });
+    return `<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+}
+
+/** Component HTML the Crossword editor writes, with two words that can cross. */
+function crosswordHtml(): string {
+    const payload = JSON.stringify({
+        typeGame: 'Crucigrama',
+        difficulty: 100,
+        wordsGame: [
+            { word: 'CASA', definition: 'Hogar' },
+            { word: 'SOL', definition: 'Astro' },
+        ],
+    });
+    return `<div class="crucigrama-DataGame js-hidden">${encryptDataGame(payload)}</div>`;
+}
+
+function component(overrides: Partial<ExportComponent> = {}): ExportComponent {
+    return { id: 'c1', type: 'guess', order: 0, content: guessHtml(), properties: {}, ...overrides };
+}
+
+/** One page, one block, holding the given components. */
+function page(components: ExportComponent[], overrides: Partial<ExportPage> = {}): ExportPage {
+    return {
+        id: 'p1',
+        title: 'El Poema de Mio Cid',
+        parentId: null,
+        order: 0,
+        blocks: [{ id: 'b1', name: 'Bloque', order: 0, components }],
+        ...overrides,
+    };
+}
+
+const text = () => component({ id: 'text-1', type: 'text', content: '<p>El Cid</p>' });
+
+function componentsOf(pages: ExportPage[]): ExportComponent[] {
+    return pages.flatMap(p => (p.blocks || []).flatMap(b => b.components || []));
+}
+
+function run(pages: ExportPage[], mode: DocumentActivityMode, options: ApplyActivityModeOptions = {}): ExportPage[] {
+    return applyActivityMode(pages, mode, options);
+}
+
+describe('applyActivityMode', () => {
+    it('leaves a project with no interactive activity untouched', () => {
+        for (const mode of ['omit', 'in-place', 'appendix'] as DocumentActivityMode[])
+            expect(run([page([text()])], mode)).toEqual([page([text()])]);
+    });
+
+    it('never modifies the pages it is given', () => {
+        const pages = [page([component(), text()])];
+        const before = JSON.stringify(pages);
+
+        run(pages, 'in-place');
+        run(pages, 'appendix');
+        run(pages, 'omit');
+
+        expect(JSON.stringify(pages)).toBe(before);
+    });
+
+    describe('omit', () => {
+        it('drops the activity and keeps everything else', () => {
+            const types = componentsOf(run([page([text(), component()])], 'omit')).map(c => c.type);
+
+            expect(types).toEqual(['text']);
+        });
+
+        it('drops a block it has emptied, so no heading is left hanging', () => {
+            const result = run([page([component()])], 'omit');
+
+            expect(result[0].blocks).toHaveLength(0);
+        });
+
+        it('keeps a block that arrived empty, which is how the document already prints', () => {
+            const empty = page([], { blocks: [{ id: 'b1', name: 'Bloque', order: 0, components: [] }] });
+
+            expect(run([empty], 'omit')[0].blocks).toHaveLength(1);
+        });
+
+        it('adds no appendix', () => {
+            expect(run([page([component()])], 'omit')).toHaveLength(1);
+        });
+    });
+
+    describe('in place', () => {
+        it('replaces the activity with its exercise, where the author put it', () => {
+            const components = componentsOf(run([page([text(), component()])], 'in-place'));
+
+            expect(components.map(c => c.type)).toEqual(['text', PRINTABLE_ACTIVITY_TYPE]);
+            expect(components[1].content).toContain('<article class="worksheet-activity"');
+            expect(components[1].content).toContain('Ciudad conquistada');
+        });
+
+        it('keeps the component where it was in the document', () => {
+            const components = componentsOf(run([page([component({ id: 'c9', order: 3 })])], 'in-place'));
+
+            expect(components[0].id).toBe('c9');
+            expect(components[0].order).toBe(3);
+        });
+
+        it('drops the stored game configuration along with the game', () => {
+            const withProps = component({ properties: { percentajeQuestions: 50 } });
+
+            expect(componentsOf(run([page([withProps])], 'in-place'))[0].properties).toEqual({});
+        });
+
+        it('prints a note where an activity has no printable form yet', () => {
+            const content = componentsOf(run([page([component({ type: 'puzzle', content: '<div/>' })])], 'in-place'))[0]
+                .content;
+
+            expect(content).toContain('worksheet-activity-unprintable');
+            expect(content).toContain('This activity cannot be printed yet.');
+            expect(content).toContain('puzzle');
+        });
+
+        it('prints the same note when the payload cannot be read', () => {
+            const broken = component({ content: '<div class="adivina-DataGame js-hidden">not a payload</div>' });
+
+            expect(componentsOf(run([page([broken])], 'in-place'))[0].content).toContain('worksheet-not-printable');
+        });
+
+        it('adds no appendix', () => {
+            expect(run([page([component()])], 'in-place')).toHaveLength(1);
+        });
+    });
+
+    describe('appendix', () => {
+        it('leaves a pointer in place and puts the exercise at the back', () => {
+            const result = run([page([component()])], 'appendix');
+
+            expect(result).toHaveLength(2);
+            expect(componentsOf([result[0]])[0].content).toContain('See appendix, activity 1');
+            expect(componentsOf([result[1]])[0].content).toContain('Ciudad conquistada');
+        });
+
+        it('numbers the pointer and its exercise the same', () => {
+            const result = run([page([component({ id: 'a' }), component({ id: 'b' })])], 'appendix');
+
+            expect(componentsOf([result[0]]).map(c => c.content)).toEqual([
+                expect.stringContaining('activity 1'),
+                expect.stringContaining('activity 2'),
+            ]);
+            expect(componentsOf([result[1]]).map(c => c.content)).toEqual([
+                expect.stringContaining('1. Guess'),
+                expect.stringContaining('2. Guess'),
+            ]);
+        });
+
+        it('numbers across pages, in document order', () => {
+            const result = run(
+                [page([component()], { id: 'p1' }), page([component()], { id: 'p2', order: 1 })],
+                'appendix',
+            );
+
+            expect(componentsOf([result[0]])[0].content).toContain('activity 1');
+            expect(componentsOf([result[1]])[0].content).toContain('activity 2');
+            expect(componentsOf([result[2]])).toHaveLength(2);
+        });
+
+        it('numbers an activity with no printable form too, so the pointers still line up', () => {
+            const result = run([page([component({ type: 'puzzle', content: '<div/>' }), component()])], 'appendix');
+            const inAppendix = componentsOf([result[result.length - 1]]);
+
+            expect(inAppendix[0].content).toContain('worksheet-not-printable');
+            expect(inAppendix[0].content).toContain('1. puzzle');
+            expect(inAppendix[1].content).toContain('2. Guess');
+        });
+
+        it('builds the appendix as an ordinary page, after the last one', () => {
+            const appendixPage = run([page([component()], { order: 4 })], 'appendix')[1];
+
+            expect(appendixPage.id).toBe('worksheet-appendix');
+            expect(appendixPage.title).toBe('Appendix');
+            expect(appendixPage.parentId).toBeNull();
+            expect(appendixPage.order).toBe(5);
+            expect(appendixPage.blocks[0].name).toBe('');
+        });
+
+        it('gives the copy at the back its own id, so nothing is duplicated', () => {
+            const result = run([page([component({ id: 'c7' })])], 'appendix');
+
+            expect(componentsOf([result[0]])[0].id).toBe('c7');
+            expect(componentsOf([result[1]])[0].id).toBe('c7-appendix');
+        });
+
+        it('orders the appendix entries as they appear in the document', () => {
+            const result = run([page([component({ id: 'a' }), component({ id: 'b' })])], 'appendix');
+
+            expect(componentsOf([result[1]]).map(c => c.order)).toEqual([0, 1]);
+        });
+    });
+
+    describe('translated strings', () => {
+        it('uses the labels it is given', () => {
+            const result = run([page([component(), component({ type: 'puzzle', content: '<div/>' })])], 'appendix', {
+                labels: {
+                    appendixTitle: 'Anexo',
+                    appendixReference: 'Ver anexo, actividad %s',
+                    notPrintable: 'Todavía no se puede imprimir',
+                },
+                ideviceTitles: { guess: 'Adivina', puzzle: 'Puzle' },
+            });
+
+            expect(result[1].title).toBe('Anexo');
+            expect(componentsOf([result[0]])[0].content).toContain('Ver anexo, actividad 1');
+            expect(componentsOf([result[1]])[0].content).toContain('1. Adivina');
+            expect(componentsOf([result[1]])[1].content).toContain('Todavía no se puede imprimir');
+            expect(componentsOf([result[1]])[1].content).toContain('2. Puzle');
+        });
+
+        it('passes the worksheet labels down into the exercise itself', () => {
+            // A crossword numbers its clues by direction, which is the one place the worksheet
+            // labels show up inside an activity rather than around it.
+            const result = run([page([component({ type: 'crossword', content: crosswordHtml() })])], 'in-place', {
+                labels: { across: 'Horizontal', down: 'Vertical' },
+            });
+            const content = componentsOf(result)[0].content;
+
+            expect(content).toMatch(/Horizontal|Vertical/);
+            expect(content).not.toContain('Across');
+            expect(content).not.toContain('Down');
+        });
+    });
+
+    describe('untrusted content', () => {
+        it('escapes the iDevice type before putting it in markup', () => {
+            const nasty = component({ type: 'evil"><script>alert(1)</script>', content: '<div/>' });
+
+            expect(componentsOf(run([page([nasty])], 'in-place'))[0].content).not.toContain('<script>');
+        });
+
+        it('escapes a translated label before putting it in markup', () => {
+            const result = run([page([component({ type: 'puzzle', content: '<div/>' })])], 'in-place', {
+                labels: { notPrintable: '<img src=x onerror=alert(1)>' },
+            });
+
+            expect(componentsOf(result)[0].content).not.toContain('<img');
+            expect(componentsOf(result)[0].content).toContain('&lt;img');
+        });
+    });
+});

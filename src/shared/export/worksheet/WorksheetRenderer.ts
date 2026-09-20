@@ -392,6 +392,19 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     font-weight: bold;
     background: #f0f0f0;
 }
+
+/* Stands in for an activity with no printable form yet, and for the pointer left behind when the
+   exercises are printed at the back. Both say something is missing from this spot, so both are
+   set apart from the text around them rather than passing for content. */
+.worksheet-not-printable,
+.worksheet-reference {
+    margin: 0;
+    padding: 3mm;
+    border: 1px dashed #999;
+    font-size: 10pt;
+    font-style: italic;
+    color: #666;
+}
 `;
 
 /**
