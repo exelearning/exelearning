@@ -7,6 +7,7 @@
  */
 
 import type { WorksheetAdapter } from '../types';
+import { AzQuizGameWorksheetAdapter } from './AzQuizGameWorksheetAdapter';
 import { ClassifyWorksheetAdapter } from './ClassifyWorksheetAdapter';
 import { CompleteWorksheetAdapter } from './CompleteWorksheetAdapter';
 import { CrosswordWorksheetAdapter } from './CrosswordWorksheetAdapter';
@@ -24,6 +25,7 @@ const ADAPTERS: readonly WorksheetAdapter[] = [
     CompleteWorksheetAdapter,
     ClassifyWorksheetAdapter,
     DragDropWorksheetAdapter,
+    AzQuizGameWorksheetAdapter,
 ];
 
 const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapter.ideviceType, adapter]));

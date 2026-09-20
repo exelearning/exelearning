@@ -199,6 +199,7 @@ export default class ModalPrintPreview {
             complete: _('Complete'),
             classify: _('Classify'),
             dragdrop: _('Drag and drop'),
+            'az-quiz-game': _('A-Z quiz'),
         };
     }
 

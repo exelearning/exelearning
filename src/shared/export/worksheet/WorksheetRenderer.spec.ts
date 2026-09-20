@@ -639,3 +639,100 @@ describe('two-column boards and the page break', () => {
         expect(rule).toContain('break-inside: avoid');
     });
 });
+
+describe('the letter ring', () => {
+    const ring = (letters: { letter: string; active: boolean }[], overrides = {}) =>
+        renderActivityFragment(
+            activity({
+                ideviceType: 'az-quiz-game',
+                board: { kind: 'letterRing', letters } as never,
+                items: [],
+                ...overrides,
+            }),
+        );
+
+    const all = (letters: string) => [...letters].map(letter => ({ letter, active: true }));
+
+    it('draws every letter of the ring', () => {
+        const html = ring(all('ABC'));
+
+        expect(html).toContain('<ul class="worksheet-ring">');
+        expect(html.match(/class="worksheet-ring-letter/g)).toHaveLength(3);
+    });
+
+    it('marks only the letters that carry a question', () => {
+        const html = ring([
+            { letter: 'A', active: true },
+            { letter: 'B', active: false },
+        ]);
+
+        expect(html.match(/worksheet-ring-letter worksheet-ring-active/g)).toHaveLength(1);
+        expect(html).toContain('<li class="worksheet-ring-letter" ');
+    });
+
+    it('places the letters round the ring rather than in a row', () => {
+        // First at the top, the rest spread clockwise: a row would put them all on one line.
+        const html = ring(all('ABCD'));
+        const positions = [...html.matchAll(/left: ([\d.]+)%; top: ([\d.]+)%/g)].map(match => [
+            Number(match[1]),
+            Number(match[2]),
+        ]);
+
+        expect(positions).toHaveLength(4);
+        expect(positions[0][1]).toBeLessThan(positions[2][1]);
+        expect(new Set(positions.map(([left]) => left)).size).toBeGreaterThan(1);
+    });
+
+    it('spaces the letters evenly, whatever their number', () => {
+        for (const count of [1, 5, 27]) {
+            const html = ring(all('X'.repeat(count)));
+
+            expect(html.match(/class="worksheet-ring-letter/g)).toHaveLength(count);
+        }
+    });
+
+    it('draws nothing for an empty ring', () => {
+        expect(ring([])).not.toContain('worksheet-ring');
+    });
+
+    it('escapes a letter instead of letting it become markup', () => {
+        expect(ring([{ letter: '<b>', active: true }])).toContain('&lt;b&gt;');
+    });
+
+    it('keeps the ring whole on one sheet', () => {
+        const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-ring {')[1].split('}')[0];
+
+        expect(rule).toContain('break-inside: avoid');
+    });
+});
+
+describe('questions that carry their own label', () => {
+    const lettered = () =>
+        renderActivityFragment(
+            activity({
+                ideviceType: 'az-quiz-game',
+                unnumbered: true,
+                items: [
+                    { prompt: 'A. Starts with A', answer: { kind: 'characterBoxes', groups: emptyBoxes(3) } },
+                    { prompt: 'B. Starts with B', answer: { kind: 'characterBoxes', groups: emptyBoxes(3) } },
+                ],
+            }),
+        );
+
+    it('are not numbered on top of their label', () => {
+        expect(lettered()).toContain('<ol class="worksheet-items worksheet-items-plain">');
+    });
+
+    it('still numbers an activity that carries no label of its own', () => {
+        const html = renderActivityFragment(
+            activity({
+                items: [
+                    { prompt: 'Primera', answer: { kind: 'characterBoxes', groups: emptyBoxes(3) } },
+                    { prompt: 'Segunda', answer: { kind: 'characterBoxes', groups: emptyBoxes(3) } },
+                ],
+            }),
+        );
+
+        expect(html).toContain('<ol class="worksheet-items">');
+    });
+});

@@ -97,12 +97,27 @@ export type PrintableBoard =
      * contained exercise: the partner of every card in it is in the same group, and each column of
      * the group is shuffled on its own.
      */
-    | { kind: 'pairColumns'; groups: PrintablePairGroup[] };
+    | { kind: 'pairColumns'; groups: PrintablePairGroup[] }
+    /**
+     * The ring of letters an alphabet game is played on, drawn above its clues.
+     *
+     * The whole alphabet is shown, not only the letters that carry a question: which letters are
+     * in play is part of what the student reads off the board, exactly as on screen.
+     */
+    | { kind: 'letterRing'; letters: PrintableRingLetter[] };
 
 /** One page-sized set of pairs, each card's partner among them. */
 export interface PrintablePairGroup {
     left: PrintableCard[];
     right: PrintableCard[];
+}
+
+/** One letter of a ring. */
+export interface PrintableRingLetter {
+    /** As it is read, with any digraph spelled out rather than left as its stored code. */
+    letter: string;
+    /** Whether a question hangs on it. An inactive letter is drawn plainly, as on screen. */
+    active: boolean;
 }
 
 /** One card to be matched to a container. */
@@ -180,6 +195,11 @@ export interface PrintableActivity {
     instructions?: string;
     /** Shared answer space drawn above the questions, for activities that need one. */
     board?: PrintableBoard;
+    /**
+     * Set when the questions already carry a label of their own — a letter, say — so the list must
+     * not number them a second time.
+     */
+    unnumbered?: boolean;
     items: PrintableItem[];
     /** Author's closing text, as sanitised HTML. */
     textAfter?: string;

@@ -14,6 +14,7 @@ import type {
     PrintableCard,
     PrintableContainer,
     PrintablePairGroup,
+    PrintableRingLetter,
     CrosswordBoard,
     CrosswordCell,
     PrintableAnswer,
@@ -353,6 +354,54 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     overflow-wrap: anywhere;
 }
 
+/* The letter a clue hangs on, and how the answer relates to it. Its own line above the clue, so
+   the student reads which letter they are on before reading what is being asked. */
+.worksheet-letter-cue {
+    display: block;
+    margin-bottom: 1mm;
+}
+
+/* The ring an alphabet game is played on. A square box the letters are placed around by angle,
+   centred on the sheet, kept whole so the board never breaks across two pages. */
+.worksheet-ring {
+    position: relative;
+    width: 73mm;
+    max-width: 100%;
+    aspect-ratio: 1;
+    margin: 0 auto 6mm;
+    padding: 0;
+    list-style: none;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* An inactive letter carries no question: drawn plainly, as the activity draws it.
+   Sized in step with the ring: shrinking the board alone would crowd a full alphabet until the
+   letters ran into one another. */
+.worksheet-ring-letter {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 7.3mm;
+    height: 7.3mm;
+    transform: translate(-50%, -50%);
+    border: 1px solid #1a1a1a;
+    border-radius: 50%;
+    background: #fff;
+    color: #1a1a1a;
+    font-weight: bold;
+    font-size: 7pt;
+}
+
+/* A letter with a question on it. Printed solid so the board reads at a glance, and dark enough
+   to keep the white lettering legible in greyscale. */
+.worksheet-ring-active {
+    border-color: #1d4ed8;
+    background: #1d4ed8;
+    color: #fff;
+}
+
 /* The words an activity offers, laid out above the text they go into. */
 .worksheet-word-bank {
     display: flex;
@@ -589,6 +638,7 @@ function renderBoard(board: PrintableBoard): string {
     if (board.kind === 'wordBank') return renderWordBank(board.words);
     if (board.kind === 'matchColumns') return renderMatchColumns(board.cards, board.containers);
     if (board.kind === 'pairColumns') return renderPairColumns(board.groups);
+    if (board.kind === 'letterRing') return renderLetterRing(board.letters);
 
     return renderCrosswordGrid(board);
 }
@@ -646,6 +696,9 @@ function renderCard(card: PrintableCard): string {
  */
 const ROWS_PER_BLOCK = 5;
 
+/** How far the ring's letters sit from its centre, as a share of the board's half-width. */
+const RING_RADIUS_PERCENT = 40;
+
 /** Split a list into chunks of at most `size`. */
 function chunk<T>(items: T[], size: number): T[][] {
     const chunks: T[][] = [];
@@ -680,6 +733,38 @@ function renderPairColumns(groups: PrintablePairGroup[]): string {
  * card can go in any container, so repeating them costs nothing and means a block never leaves its
  * cards on a sheet with nowhere to put them.
  */
+/**
+ * Render the ring of letters an alphabet game is played on.
+ *
+ * Laid out as the ring it is, rather than as a row: the shape is how the activity is recognised,
+ * and the student reads the letters still in play off it. Each letter is placed at its own angle,
+ * the same way the activity lays out its board, starting at the top and running clockwise.
+ *
+ * The coordinates are computed numbers, never author content, so they are safe in a style
+ * attribute.
+ */
+function renderLetterRing(letters: PrintableRingLetter[]): string {
+    if (letters.length === 0) return '';
+
+    const step = (2 * Math.PI) / letters.length;
+    const placed = letters
+        .map((entry, index) => {
+            // Start at the top and run clockwise, which is how the ring reads.
+            const angle = index * step - Math.PI / 2;
+            const left = 50 + RING_RADIUS_PERCENT * Math.cos(angle);
+            const top = 50 + RING_RADIUS_PERCENT * Math.sin(angle);
+            const state = entry.active ? ' worksheet-ring-active' : '';
+
+            return (
+                `<li class="worksheet-ring-letter${state}" ` +
+                `style="left: ${left.toFixed(2)}%; top: ${top.toFixed(2)}%">${escapeText(entry.letter)}</li>`
+            );
+        })
+        .join('');
+
+    return `<ul class="worksheet-ring">${placed}</ul>`;
+}
+
 function renderMatchColumns(cards: PrintableCard[], containers: PrintableContainer[]): string {
     const renderedContainers = containers
         .map(
@@ -799,8 +884,9 @@ function renderActivity(activity: PrintableActivity, labels: Required<WorksheetL
 
     // A number tells one question from another, so a lone question does not need one. An explicit
     // number is kept whatever the count, since it refers to something outside the list — a
-    // crossword numbers its clues after the grid.
-    const numbered = activity.items.length > 1 || activity.items[0]?.number !== undefined;
+    // crossword numbers its clues after the grid. An activity whose questions already carry a
+    // label of their own, such as the letter of an alphabet game, is never numbered on top of it.
+    const numbered = !activity.unnumbered && (activity.items.length > 1 || activity.items[0]?.number !== undefined);
     const listClass = numbered ? 'worksheet-items' : 'worksheet-items worksheet-items-plain';
 
     // An activity whose whole exercise is its board, such as a matching one, has no questions.
