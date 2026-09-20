@@ -360,10 +360,6 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-top: 2mm;
 }
 
-/* Ruled when what goes there is a single value written on a line. */
-.worksheet-writing-space-ruled {
-    border-bottom: 1px solid #1a1a1a;
-}
 
 /* A line to write a single value on, under the card it belongs to. */
 .worksheet-line {
@@ -654,11 +650,10 @@ function renderOptions(labels: string[], marker: 'box' | 'line' = 'box'): string
  * Left empty rather than ruled. The height is a computed number, never author content, so it is
  * safe in a style attribute.
  */
-function renderWritingSpace(lines: number, ruled = false): string {
+function renderWritingSpace(lines: number): string {
     const height = Math.max(1, Math.floor(lines)) * WRITING_LINE_HEIGHT_MM;
-    const state = ruled ? ' worksheet-writing-space-ruled' : '';
 
-    return `<div class="worksheet-writing-space${state}" style="height: ${height}mm"></div>`;
+    return `<div class="worksheet-writing-space" style="height: ${height}mm"></div>`;
 }
 
 /**
@@ -703,7 +698,7 @@ function renderAnswer(answer: PrintableAnswer): string {
     }
 
     if (answer.kind === 'writingSpace') {
-        return renderWritingSpace(answer.lines, answer.ruled);
+        return renderWritingSpace(answer.lines);
     }
 
     if (answer.kind === 'orderCards') {

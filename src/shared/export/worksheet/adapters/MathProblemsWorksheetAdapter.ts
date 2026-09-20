@@ -29,6 +29,9 @@ import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapt
 /** DataGame class prefix used by this iDevice. */
 const PREFIX = 'mathproblems';
 
+/** Lines of room left under a problem, for the working and the answer under it. */
+const WORKING_LINES = 3;
+
 /** One problem as stored by the Maths problems iDevice. */
 interface MathProblem extends ProblemValues {
     /** The statement, with a hole for each number. */
@@ -70,8 +73,9 @@ function buildProblem(
 
     return {
         prompt: statement,
-        // A line to write the answer on: what goes there is one value, not a passage.
-        answer: { kind: 'writingSpace', lines: 1, ruled: true },
+        // Room to work in, not a line to answer on: a maths problem is worked out before it is
+        // answered, and a rule under it would leave nowhere for the working.
+        answer: { kind: 'writingSpace', lines: WORKING_LINES },
     };
 }
 

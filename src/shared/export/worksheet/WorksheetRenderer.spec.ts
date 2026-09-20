@@ -882,20 +882,3 @@ describe('the word search grid', () => {
         expect(rule).toContain('break-inside: avoid');
     });
 });
-
-describe('a ruled answer space', () => {
-    const spaced = (answer: unknown) =>
-        renderActivityFragment(activity({ ideviceType: 'mathproblems', items: [{ prompt: 'x', answer } as never] }));
-
-    it('draws a rule when what goes there is a single value', () => {
-        expect(spaced({ kind: 'writingSpace', lines: 1, ruled: true })).toContain('worksheet-writing-space-ruled');
-    });
-
-    it('leaves the space blank otherwise', () => {
-        expect(spaced({ kind: 'writingSpace', lines: 1 })).not.toContain('worksheet-writing-space-ruled');
-    });
-
-    it('is still as tall as the lines it is asked for', () => {
-        expect(spaced({ kind: 'writingSpace', lines: 2, ruled: true })).toContain('height: 14mm');
-    });
-});
