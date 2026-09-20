@@ -492,3 +492,157 @@ test.describe('Print iDevices', () => {
         await expect(testActivity.locator('svg')).toBeVisible();
     });
 });
+
+/**
+ * Open File → Print and return the dialog that asks about the interactive activities.
+ */
+async function openPrintDialog(page: Page) {
+    await dismissImportAlert(page);
+    await page.locator('#dropdownFile').click();
+
+    const entry = page.locator('#navbar-button-export-print');
+    await entry.waitFor({ state: 'visible', timeout: 5000 });
+    await entry.click();
+
+    return page.locator('#modalConfirm');
+}
+
+/**
+ * Answer the print dialog and wait for the preview it produces.
+ */
+async function choosePrintOption(page: Page, value: string) {
+    const dialog = page.locator('#modalConfirm');
+    await dialog.waitFor({ state: 'visible', timeout: 15000 });
+    await dialog.locator(`input[name="print-activity-mode"][value="${value}"]`).check();
+    await dialog.locator('button.btn.button-primary').click();
+
+    const overlay = page.locator('#printPreviewOverlay');
+    await expect(overlay).toHaveAttribute('data-visible', 'true', { timeout: 15000 });
+
+    const frame = page.frameLocator('.print-preview-iframe');
+    // Hidden frames measure zero, so wait for the document to actually be shown.
+    await frame.locator('body').waitFor({ state: 'visible', timeout: 30000 });
+
+    return { overlay, frame };
+}
+
+test.describe('Print: choosing what happens to the interactive activities', () => {
+    // Serial for the same reason as above: these import multi-megabyte fixtures.
+    test.describe.configure({ mode: 'serial' });
+
+    test('prints without asking when the project has no interactive activity', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        // A project straight off the template has prose and no games in it.
+        const uuid = await createProject(page, 'Print Without Activities');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        await openPrintDialog(page);
+
+        await expect(page.locator('#modalConfirm')).toBeHidden();
+        await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true', {
+            timeout: 15000,
+        });
+    });
+
+    test('asks when the project has them, with printing them in place preselected', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        const dialog = await openPrintDialog(page);
+        await dialog.waitFor({ state: 'visible', timeout: 15000 });
+
+        await expect(dialog.locator('input[name="print-activity-mode"]')).toHaveCount(4);
+        await expect(dialog.locator('input[name="print-activity-mode"][value="in-place"]')).toBeChecked();
+        await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'false');
+    });
+
+    test('prints nothing when the dialog is cancelled', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        const dialog = await openPrintDialog(page);
+        await dialog.waitFor({ state: 'visible', timeout: 15000 });
+        await dialog.locator('button.cancel.btn.button-tertiary').click();
+
+        await expect(dialog).toBeHidden();
+        await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'false');
+    });
+
+    test('leaves the activity out of the document when asked to', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'omit');
+
+        // Neither the game nor an exercise in its place; the project's prose stays.
+        await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
+        await expect(frame.locator('.worksheet-activity')).toHaveCount(0);
+        await expect(frame.locator('.exe-single-page')).toBeVisible();
+    });
+
+    test('prints the exercise where the author put it', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'in-place');
+
+        // The exercise replaces the game board, inside the document rather than on a sheet of
+        // its own.
+        await expect(frame.locator('.worksheet-activity')).toHaveCount(1);
+        await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
+        await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
+        await expect(frame.locator('.exe-single-page .worksheet-activity')).toHaveCount(1);
+
+        // The exercise sits inside the component the activity occupied, and the wrapper does not
+        // answer to the same class the exercise does.
+        await expect(frame.locator('.idevice_node.printable-activity .worksheet-activity')).toHaveCount(1);
+    });
+
+    test('points into an appendix and prints the exercise there', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'appendix');
+
+        // One pointer per interactive activity, numbered from one without gaps.
+        const references = frame.locator('.worksheet-reference');
+        const count = await references.count();
+        expect(count).toBeGreaterThan(0);
+        for (let index = 0; index < count; index++) {
+            await expect(references.nth(index)).toContainText(String(index + 1));
+        }
+
+        // The appendix holds one entry per pointer, under the matching number. This is the
+        // correspondence the mode lives or dies by: a pointer to the wrong exercise is worse
+        // than no appendix at all.
+        const appendixTitles = frame.locator('.worksheet-activity-title').last();
+        await expect(appendixTitles).toContainText(`${count}.`);
+        await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
+    });
+
+    test('prints the worksheet alone when only the activities were asked for', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        // The same worksheet File → Print iDevices produces: the sheet, not the document.
+        await expect(frame.locator('.worksheet')).toBeVisible();
+        await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
+        await expect(frame.locator('.exe-single-page')).toHaveCount(0);
+    });
+});
