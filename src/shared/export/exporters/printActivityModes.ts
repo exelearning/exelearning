@@ -46,8 +46,13 @@ export type DocumentActivityMode = Exclude<PrintActivityMode, 'activities-only'>
  * caller keeps this type out of `usedIdevices` so no iDevice script or stylesheet is pulled in for
  * it. Reusing `text` would not work — its `renderView` rewrites the content from stored JSON on
  * load, erasing the exercise.
+ *
+ * It must also not be named after a class the worksheet itself uses. `IdeviceRenderer` turns a
+ * component's type into a class on the wrapper it emits, so a type called `worksheet-activity`
+ * would put that class on both the wrapper and the exercise inside it, leaving every selector
+ * ambiguous.
  */
-export const PRINTABLE_ACTIVITY_TYPE = 'worksheet-activity';
+export const PRINTABLE_ACTIVITY_TYPE = 'printable-activity';
 
 /** User-visible strings, passed in already translated. */
 export interface PrintActivityLabels extends WorksheetLabels {

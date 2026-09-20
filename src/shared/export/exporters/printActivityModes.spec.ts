@@ -254,3 +254,15 @@ describe('applyActivityMode', () => {
         });
     });
 });
+
+describe('PRINTABLE_ACTIVITY_TYPE', () => {
+    it('is not named after a class the worksheet markup uses', () => {
+        // IdeviceRenderer puts the component's type on the wrapper it emits as a CSS class. A type
+        // sharing a name with a worksheet class would land on both the wrapper and the exercise
+        // inside it, so every selector — in a stylesheet or a test — would match twice.
+        const markup = componentsOf(applyActivityMode([page([component()])], 'in-place'))[0].content;
+        const classes = [...markup.matchAll(/class="([^"]+)"/g)].flatMap(match => match[1].split(/\s+/));
+
+        expect(classes).not.toContain(PRINTABLE_ACTIVITY_TYPE);
+    });
+});
