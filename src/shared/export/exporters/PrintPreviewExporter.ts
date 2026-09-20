@@ -17,7 +17,14 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
 import { isPageVisible } from '../utils/visibility';
+import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
 import { resolveMaterialIconDataUris } from './BaseExporter';
+import {
+    applyActivityMode,
+    PRINTABLE_ACTIVITY_TYPE,
+    type ApplyActivityModeOptions,
+    type DocumentActivityMode,
+} from './printActivityModes';
 
 /**
  * Options for print preview generation
@@ -52,6 +59,13 @@ export interface PrintPreviewOptions {
      * If true, enables auto-print mode (injects print scripts and onload handler).
      */
     printMode?: boolean;
+    /**
+     * What to do with the project's interactive activities, and the strings to do it with.
+     *
+     * Left out, the document prints exactly as the browser draws it, which is how printing
+     * behaved before there was anything else to choose.
+     */
+    activities?: ApplyActivityModeOptions & { mode: DocumentActivityMode };
 }
 
 /**
@@ -117,6 +131,14 @@ export class PrintPreviewExporter {
 
             // Deduplicate components to remove artifacts from complex iDevices (e.g. Complete)
             processedPages = this.deduplicateComponents(processedPages);
+
+            // Carry out what the user chose to do with the interactive activities. This works on
+            // the page model, so everything below renders it as it would any other document.
+            // Asset URLs are already resolved by this point, which is what lets a converted
+            // activity keep its pictures.
+            if (options.activities) {
+                processedPages = applyActivityMode(processedPages, options.activities.mode, options.activities);
+            }
 
             // Fetch theme files and configure icon resolution (from main)
             const themeName = meta.theme || 'base';
@@ -216,7 +238,9 @@ export class PrintPreviewExporter {
             };
 
             const logoUrl = getPath('app/common/exe_powered_logo/exe_powered_logo.png');
-            html = this.injectPreviewStyles(html, logoUrl);
+            // Only a mode that puts exercises in the document needs their styling.
+            const convertsActivities = options.activities !== undefined && options.activities.mode !== 'omit';
+            html = this.injectPreviewStyles(html, logoUrl, convertsActivities);
 
             // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {
@@ -257,7 +281,7 @@ export class PrintPreviewExporter {
     /**
      * Inject styles to force content to fit within the page width
      */
-    private injectPreviewStyles(html: string, logoUrl?: string): string {
+    private injectPreviewStyles(html: string, logoUrl?: string, includeActivityStyles = false): string {
         const logoCss = logoUrl
             ? `
 /* Fix for eXe logo 404 */
@@ -386,6 +410,7 @@ figure img {
     display: block !important;
 }
 ${logoCss}
+${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES : ''}
 </style>
 `;
         return html.replace('</head>', `${styles}</head>`);
@@ -449,13 +474,17 @@ ${logoCss}
 
     /**
      * Get all unique iDevice types used in pages
+     *
+     * A component holding a converted activity is left out: it carries finished markup, so
+     * listing it here would ask the document for an iDevice script and stylesheet that do not
+     * exist.
      */
     private getUsedIdevices(pages: ExportPage[]): string[] {
         const types = new Set<string>();
         for (const page of pages) {
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
-                    if (component.type) {
+                    if (component.type && component.type !== PRINTABLE_ACTIVITY_TYPE) {
                         types.add(component.type);
                     }
                 }

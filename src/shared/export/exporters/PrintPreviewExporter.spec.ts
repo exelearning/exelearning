@@ -2,7 +2,8 @@
  * Tests for PrintPreviewExporter
  */
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'bun:test';
-import { PrintPreviewExporter } from './PrintPreviewExporter';
+import { PrintPreviewExporter, type PrintPreviewOptions } from './PrintPreviewExporter';
+import { encryptDataGame } from '../utils/dataGameCipher';
 import type { ExportDocument, ExportMetadata, ExportPage, ResourceProvider } from '../interfaces';
 
 // Mock URL.createObjectURL
@@ -1630,5 +1631,99 @@ describe('PrintPreviewExporter', () => {
                 `data-idevice-path="${SERVER_BASE}/app/v1/files/perm/idevices/base/relate/export/"`,
             );
         });
+    });
+});
+
+describe('PrintPreviewExporter and interactive activities', () => {
+    const resources = createMockResourceProvider();
+
+    /** Component HTML the Guess editor writes, with one answerable question. */
+    function guessHtml(): string {
+        const payload = JSON.stringify({
+            typeGame: 'Adivina',
+            wordsGame: [{ definition: 'Ciudad conquistada', word: 'Valencia', percentageShow: 0 }],
+        });
+        return `<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+    }
+
+    /** A project with one page holding some prose and one Guess activity. */
+    function projectWithActivity(): ExportDocument {
+        return createMockDocument([
+            {
+                id: 'page-1',
+                title: 'El Poema de Mio Cid',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Bloque',
+                        order: 0,
+                        components: [
+                            { id: 'c1', type: 'text', order: 0, content: '<p>El Cid</p>', properties: {} },
+                            { id: 'c2', type: 'guess', order: 1, content: guessHtml(), properties: {} },
+                        ],
+                    },
+                ],
+            },
+        ]);
+    }
+
+    async function preview(activities?: PrintPreviewOptions['activities']): Promise<string> {
+        const result = await new PrintPreviewExporter(projectWithActivity(), resources).generatePreview({
+            activities,
+        });
+
+        expect(result.success).toBe(true);
+        return result.html ?? '';
+    }
+
+    it('prints the game board when asked nothing, as it always did', async () => {
+        const html = await preview();
+
+        expect(html).toContain('adivina-DataGame');
+        expect(html).toContain('guess.js');
+        expect(html).not.toContain('worksheet-activity');
+    });
+
+    it('carries none of the worksheet styling unless an exercise needs it', async () => {
+        expect(await preview()).not.toContain('.worksheet-box {');
+        expect(await preview({ mode: 'omit' })).not.toContain('.worksheet-box {');
+        expect(await preview({ mode: 'in-place' })).toContain('.worksheet-box {');
+    });
+
+    it('leaves the activity out when asked to', async () => {
+        const html = await preview({ mode: 'omit' });
+
+        expect(html).not.toContain('adivina-DataGame');
+        expect(html).toContain('El Cid');
+    });
+
+    it('prints the exercise in place of the game board', async () => {
+        const html = await preview({ mode: 'in-place' });
+
+        expect(html).toContain('worksheet-activity');
+        expect(html).toContain('Ciudad conquistada');
+        expect(html).not.toContain('adivina-DataGame');
+        expect(html).toContain('El Cid');
+    });
+
+    it('points into an appendix and prints the exercise there', async () => {
+        const html = await preview({ mode: 'appendix', labels: { appendixTitle: 'Anexo' } });
+
+        expect(html).toContain('See appendix, activity 1');
+        expect(html).toContain('Anexo');
+        expect(html).toContain('Ciudad conquistada');
+    });
+
+    it('asks for no iDevice files for markup that needs none', async () => {
+        const html = await preview({ mode: 'in-place' });
+
+        // The converted component carries finished markup; a script or stylesheet for it would
+        // be a 404 in the printed document.
+        expect(html).not.toContain('worksheet-activity.js');
+        expect(html).not.toContain('worksheet-activity.css');
+        // The activity it replaced no longer needs its own script either.
+        expect(html).not.toContain('guess.js');
     });
 });
