@@ -62,8 +62,9 @@ describe('renderWorksheet with multiple-choice answers', () => {
         expect(html).not.toContain('class="worksheet-option"');
     });
 
-    it('still throws for answer kinds with no renderer', () => {
-        expect(() => renderWorksheet(modelWith([{ prompt: 'Q', answer: { kind: 'lines', count: 2 } }]))).toThrow(
+    it('still throws for an answer kind with no renderer', () => {
+        // 'lines' is drawn now, so the guard is reached with a kind the model does not declare.
+        expect(() => renderWorksheet(modelWith([{ prompt: 'Q', answer: { kind: 'something-new' } as never }]))).toThrow(
             'not implemented yet',
         );
     });

@@ -233,13 +233,18 @@ describe('renderWorksheet', () => {
             expect(html).not.toContain('<div class="worksheet-answer">');
         });
 
-        it('throws for answer kinds that have no renderer yet', () => {
+        it('throws for an answer kind that has no renderer yet', () => {
+            // Every kind in the model is rendered today, so this reaches the guard with one that
+            // is not. It is there so the next kind added fails loudly rather than printing an
+            // answer space with nothing in it.
             const broken = model({
                 pages: [
                     {
                         pageId: 'p1',
                         title: 'Página',
-                        activities: [activity({ items: [{ prompt: 'x', answer: { kind: 'lines', count: 3 } }] })],
+                        activities: [
+                            activity({ items: [{ prompt: 'x', answer: { kind: 'something-new' } as never }] }),
+                        ],
                     },
                 ],
             });
@@ -734,5 +739,110 @@ describe('questions that carry their own label', () => {
         );
 
         expect(html).toContain('<ol class="worksheet-items">');
+    });
+});
+
+describe('writing lines and cards to be ordered', () => {
+    const answered = (answer: unknown) =>
+        renderActivityFragment(activity({ ideviceType: 'sort', items: [{ prompt: 'x', answer } as never] }));
+
+    it('leaves blank room to write an answer in, with nothing ruled', () => {
+        const html = answered({ kind: 'writingSpace', lines: 1 });
+
+        expect(html).toContain('class="worksheet-writing-space"');
+        expect(html).not.toContain('class="worksheet-line"');
+    });
+
+    it('makes the room as tall as the lines it is asked for', () => {
+        const one = answered({ kind: 'writingSpace', lines: 1 });
+        const three = answered({ kind: 'writingSpace', lines: 3 });
+
+        expect(one).toContain('height: 7mm');
+        expect(three).toContain('height: 21mm');
+    });
+
+    it('leaves a line of room at least, whatever it is asked for', () => {
+        // Zero would print an answer space with nowhere to write.
+        for (const lines of [0, -2]) {
+            expect(answered({ kind: 'writingSpace', lines })).toContain('height: 7mm');
+        }
+    });
+
+    it('gives every card its own line to be numbered on', () => {
+        const html = answered({
+            kind: 'orderCards',
+            cards: [{ text: 'Uno' }, { text: 'Dos' }, { text: 'Tres' }],
+        });
+
+        expect(html).toContain('<ul class="worksheet-order">');
+        expect(html.match(/class="worksheet-order-card"/g)).toHaveLength(3);
+        expect(html.match(/class="worksheet-line"/g)).toHaveLength(3);
+    });
+
+    it('draws a card the same way the other boards do', () => {
+        const html = answered({
+            kind: 'orderCards',
+            cards: [{ media: { kind: 'image', src: 'dog.png', alt: 'Un perro' }, text: 'Perro' }],
+        });
+
+        expect(html).toContain('<img src="dog.png" alt="Un perro" />');
+        expect(html).toContain('<span class="worksheet-card-text">Perro</span>');
+    });
+
+    it('nests no list inside a list item', () => {
+        // The card renderer returns an <li> for the column boards; reusing it here would have
+        // put one inside another.
+        const html = answered({ kind: 'orderCards', cards: [{ text: 'Uno' }] });
+
+        expect(html).not.toContain('<li class="worksheet-card">');
+        expect(html).toContain('<div class="worksheet-card">');
+    });
+
+    it('escapes a card picture instead of letting it become markup', () => {
+        const html = answered({
+            kind: 'orderCards',
+            cards: [{ media: { kind: 'image', src: 'a.png" onerror="alert(1)' } }],
+        });
+
+        expect(html).not.toContain('onerror="alert(1)"');
+    });
+});
+
+describe('cards with fixed headings', () => {
+    const ordered = (extra: Record<string, unknown>) =>
+        renderActivityFragment(
+            activity({
+                ideviceType: 'sort',
+                items: [
+                    {
+                        prompt: 'x',
+                        answer: {
+                            kind: 'orderCards',
+                            cards: [{ text: 'A' }, { text: 'B' }, { text: 'C' }, { text: 'D' }],
+                            ...extra,
+                        },
+                    } as never,
+                ],
+            }),
+        );
+
+    it('gives a heading no line, since it is given rather than asked', () => {
+        const html = ordered({ headers: 2 });
+
+        expect(html.match(/class="worksheet-order-card worksheet-order-heading"/g)).toHaveLength(2);
+        expect(html.match(/class="worksheet-line"/g)).toHaveLength(2);
+    });
+
+    it('gives every card a line when none is a heading', () => {
+        expect(ordered({}).match(/class="worksheet-line"/g)).toHaveLength(4);
+    });
+
+    it('lays the cards out in the columns it is given, so a heading stands over its own', () => {
+        expect(ordered({ columns: 2, headers: 2 })).toContain('grid-template-columns: repeat(2, auto)');
+    });
+
+    it('leaves the layout alone when the activity has no columns to speak of', () => {
+        expect(ordered({})).not.toContain('grid-template-columns');
+        expect(ordered({ columns: 1 })).not.toContain('grid-template-columns');
     });
 });

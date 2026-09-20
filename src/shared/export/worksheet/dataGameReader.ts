@@ -57,8 +57,22 @@ export function extractLinkHref(html: string, className: string): string {
 }
 
 export function extractMediaLinks(html: string, prefix: string, kind: MediaLinkKind): Map<number, string> {
+    return extractMediaLinksByClass(html, `${prefix}-Link${kind}`);
+}
+
+/**
+ * The same sidecar rule, for an iDevice whose link class is not built from prefix and kind.
+ *
+ * Sort keys its links twice over — the class carries the round, `ordena-LinkImages-0`, and the
+ * link text the card within it — so it names the class itself rather than having one composed.
+ *
+ * @param html - The component's stored HTML
+ * @param className - Class the sidecar links carry
+ * @returns Href by index, as read from each link's text
+ */
+export function extractMediaLinksByClass(html: string, className: string): Map<number, string> {
     const links = new Map<number, string>();
-    for (const node of elements(html, 'a', `${prefix}-Link${kind}`)) {
+    for (const node of elements(html, 'a', className)) {
         const href = node.attrs.find(attr => attr.name === 'href')?.value ?? '';
         const text = nodeText(node).trim();
         const index = /^\d+$/.test(text) ? Number(text) : -1;

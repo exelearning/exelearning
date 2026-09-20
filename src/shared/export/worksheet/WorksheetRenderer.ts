@@ -354,6 +354,45 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     overflow-wrap: anywhere;
 }
 
+/* Room to write an answer out in. Deliberately blank: a rule under a sentence being copied out
+   would impose a constraint the exercise never asked for. */
+.worksheet-writing-space {
+    margin-top: 2mm;
+}
+
+/* A line to write a single value on, under the card it belongs to. */
+.worksheet-line {
+    display: block;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+/* Cards to be put in order. Laid in a row that wraps, each card over its own line so a number
+   written there can only belong to that card. */
+.worksheet-order {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4mm;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.worksheet-order-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* The line is as wide as the card above it and centred on it, so the pairing is unambiguous. */
+.worksheet-order-card .worksheet-line {
+    width: 34mm;
+    height: 7mm;
+}
+
 /* The letter a clue hangs on, and how the answer relates to it. Its own line above the clue, so
    the student reads which letter they are on before reading what is being asked. */
 .worksheet-letter-cue {
@@ -571,6 +610,50 @@ function renderOptions(labels: string[], marker: 'box' | 'line' = 'box'): string
 /**
  * Render the answer space for one question.
  */
+/**
+ * Render blank space to write an answer out in.
+ *
+ * Left empty rather than ruled. The height is a computed number, never author content, so it is
+ * safe in a style attribute.
+ */
+function renderWritingSpace(lines: number): string {
+    const height = Math.max(1, Math.floor(lines)) * WRITING_LINE_HEIGHT_MM;
+
+    return `<div class="worksheet-writing-space" style="height: ${height}mm"></div>`;
+}
+
+/**
+ * Render cards in a row, each with a line under it to write its position in.
+ *
+ * The line sits centred under its own card, so a number written on it can only belong to that one.
+ */
+function renderOrderCards(cards: PrintableCard[], columns?: number, headers = 0): string {
+    const drawn = cards
+        .map((card, index) => {
+            // A heading is given, not asked: it stands where it belongs with nothing to fill in.
+            const given = index < headers;
+            const state = given ? ' worksheet-order-heading' : '';
+            const line = given ? '' : '<span class="worksheet-line"></span>';
+
+            return (
+                `<li class="worksheet-order-card${state}">` +
+                `<div class="worksheet-card">${cardContent(card)}</div>` +
+                line +
+                '</li>'
+            );
+        })
+        .join('');
+
+    // Laid out in the activity's own columns when it has them, so a heading stands over its own.
+    // The count is a computed number, never author content, so it is safe in a style attribute.
+    const grid =
+        typeof columns === 'number' && columns >= 2
+            ? ` style="display: grid; grid-template-columns: repeat(${Math.floor(columns)}, auto)"`
+            : '';
+
+    return `<ul class="worksheet-order"${grid}>${drawn}</ul>`;
+}
+
 function renderAnswer(answer: PrintableAnswer): string {
     if (answer.kind === 'characterBoxes') {
         return renderCharacterBoxes(answer.groups);
@@ -580,10 +663,18 @@ function renderAnswer(answer: PrintableAnswer): string {
         return renderOptions(answer.labels, answer.marker);
     }
 
-    // Declared in the model so adapters have a contract to build against, but with no adapter
-    // emitting them yet there is nothing to render. Fail loudly rather than printing a blank
-    // answer space, so whoever adds the first such adapter notices immediately.
-    throw new Error(`Worksheet answer kind not implemented yet: ${answer.kind}`);
+    if (answer.kind === 'writingSpace') {
+        return renderWritingSpace(answer.lines);
+    }
+
+    if (answer.kind === 'orderCards') {
+        return renderOrderCards(answer.cards, answer.columns, answer.headers);
+    }
+
+    // Every kind the model declares is rendered above. This guards the next one: fail loudly
+    // rather than printing an answer space with nothing in it, so whoever adds a kind and forgets
+    // to draw it notices immediately.
+    throw new Error(`Worksheet answer kind not implemented yet: ${(answer as { kind: string }).kind}`);
 }
 
 /**
@@ -673,7 +764,7 @@ export function renderInlineGap(characters: number, options?: string[]): string 
 /**
  * Render one card of a two-column exercise: the picture first, with any text underneath it.
  */
-function renderCard(card: PrintableCard): string {
+function cardContent(card: PrintableCard): string {
     let content = '';
 
     if (card.media) {
@@ -684,7 +775,12 @@ function renderCard(card: PrintableCard): string {
         content += `<span class="worksheet-card-text">${card.text}</span>`;
     }
 
-    return `<li class="worksheet-card">${content}</li>`;
+    return content;
+}
+
+/** The same card as a list entry, for the boards that lay cards out in columns. */
+function renderCard(card: PrintableCard): string {
+    return `<li class="worksheet-card">${cardContent(card)}</li>`;
 }
 
 /**
@@ -698,6 +794,9 @@ const ROWS_PER_BLOCK = 5;
 
 /** How far the ring's letters sit from its centre, as a share of the board's half-width. */
 const RING_RADIUS_PERCENT = 40;
+
+/** Height of one line of writing space, in millimetres. */
+const WRITING_LINE_HEIGHT_MM = 7;
 
 /** Split a list into chunks of at most `size`. */
 function chunk<T>(items: T[], size: number): T[][] {

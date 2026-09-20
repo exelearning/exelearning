@@ -30,8 +30,26 @@ export type PrintableAnswer =
      * letters the activity gives away — without revealing the whole answer.
      */
     | { kind: 'characterBoxes'; groups: CharacterBoxGroup[] }
-    /** Ruled writing lines, for open-ended answers. Not rendered yet. */
-    | { kind: 'lines'; count: number }
+    /**
+     * Blank space to write an answer out in, as many line-heights tall as it needs.
+     *
+     * Nothing is ruled: the gap is the invitation, and a rule under a sentence the student is
+     * copying out adds a constraint the exercise never asked for.
+     */
+    | { kind: 'writingSpace'; lines: number }
+    /**
+     * Cards to be put in order, each with a line under it to write its position in.
+     *
+     * An activity that asks for things to be put in order cannot be dragged on paper, so the
+     * student numbers them instead. The cards are printed shuffled; their stored order is the
+     * answer and is never printed.
+     *
+     * `headers` says how many of the leading cards are given rather than asked: an activity can
+     * fix its first row as column headings, and those are printed where they belong, in order and
+     * with nothing to fill in. `columns` lays the cards out as the activity does, so a heading
+     * stands over its own column.
+     */
+    | { kind: 'orderCards'; cards: PrintableCard[]; columns?: number; headers?: number }
     /**
      * One option per line, each with something to fill in beside it.
      *

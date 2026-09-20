@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { encryptDataGame } from '../utils/dataGameCipher';
-import { extractDataGame, extractDivContent, extractMediaLinks } from './dataGameReader';
+import { extractDataGame, extractDivContent, extractMediaLinks, extractMediaLinksByClass } from './dataGameReader';
 
 /** Build a DataGame div the way the iDevice editors write it. */
 function dataGameDiv(prefix: string, data: unknown): string {
@@ -129,5 +129,36 @@ describe('extractMediaLinks', () => {
 
     it('returns an empty map for empty input', () => {
         expect(extractMediaLinks('', 'adivina', 'Images').size).toBe(0);
+    });
+});
+
+describe('extractMediaLinksByClass', () => {
+    const link = (className: string, index: number, href: string) =>
+        `<a href="${href}" class="js-hidden ${className}">${index}</a>`;
+
+    it('reads the links of the class it is given', () => {
+        const html = link('ordena-LinkImages-0', 0, 'blob:one') + link('ordena-LinkImages-0', 1, 'blob:two');
+
+        expect([...extractMediaLinksByClass(html, 'ordena-LinkImages-0')]).toEqual([
+            [0, 'blob:one'],
+            [1, 'blob:two'],
+        ]);
+    });
+
+    it('keeps the rounds apart when their classes only differ by number', () => {
+        // Sort keys its links twice over, so one round must not read another's pictures.
+        const html =
+            link('ordena-LinkImages-0', 0, 'blob:round-one') + link('ordena-LinkImages-1', 0, 'blob:round-two');
+
+        expect(extractMediaLinksByClass(html, 'ordena-LinkImages-0').get(0)).toBe('blob:round-one');
+        expect(extractMediaLinksByClass(html, 'ordena-LinkImages-1').get(0)).toBe('blob:round-two');
+    });
+
+    it('is what the prefix-and-kind form is built on', () => {
+        const html = link('adivina-LinkImages', 3, 'blob:three');
+
+        expect(extractMediaLinks(html, 'adivina', 'Images')).toEqual(
+            extractMediaLinksByClass(html, 'adivina-LinkImages'),
+        );
     });
 });

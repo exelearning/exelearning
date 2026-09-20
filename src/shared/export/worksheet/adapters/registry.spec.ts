@@ -28,6 +28,7 @@ describe('worksheet adapter registry', () => {
             'guess',
             'quick-questions',
             'quick-questions-multiple-choice',
+            'sort',
         ]);
     });
 
