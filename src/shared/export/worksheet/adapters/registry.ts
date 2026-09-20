@@ -7,6 +7,7 @@
  */
 
 import type { WorksheetAdapter } from '../types';
+import { ClassifyWorksheetAdapter } from './ClassifyWorksheetAdapter';
 import { CompleteWorksheetAdapter } from './CompleteWorksheetAdapter';
 import { CrosswordWorksheetAdapter } from './CrosswordWorksheetAdapter';
 import { MultipleChoiceWorksheetAdapter } from './MultipleChoiceWorksheetAdapter';
@@ -20,6 +21,7 @@ const ADAPTERS: readonly WorksheetAdapter[] = [
     QuickQuestionsWorksheetAdapter,
     MultipleChoiceWorksheetAdapter,
     CompleteWorksheetAdapter,
+    ClassifyWorksheetAdapter,
 ];
 
 const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapter.ideviceType, adapter]));

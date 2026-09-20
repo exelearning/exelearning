@@ -6,6 +6,7 @@ describe('worksheet adapter registry', () => {
         expect(getWorksheetAdapter('guess')?.ideviceType).toBe('guess');
         expect(getWorksheetAdapter('crossword')?.ideviceType).toBe('crossword');
         expect(getWorksheetAdapter('quick-questions')?.ideviceType).toBe('quick-questions');
+        expect(getWorksheetAdapter('classify')?.ideviceType).toBe('classify');
         expect(getWorksheetAdapter('complete')?.ideviceType).toBe('complete');
         expect(getWorksheetAdapter('quick-questions-multiple-choice')?.ideviceType).toBe(
             'quick-questions-multiple-choice',
@@ -19,6 +20,7 @@ describe('worksheet adapter registry', () => {
 
     it('lists the supported types', () => {
         expect(getSupportedIdeviceTypes()).toEqual([
+            'classify',
             'complete',
             'crossword',
             'guess',

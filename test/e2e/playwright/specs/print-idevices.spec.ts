@@ -17,6 +17,7 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-helpers';
+import { encryptDataGame } from '../../../../src/shared/export/utils/dataGameCipher';
 
 const FIXTURE = 'test/fixtures/old_el_cid.elp';
 
@@ -74,9 +75,11 @@ async function openWorksheet(page: Page) {
     const overlay = page.locator('#printPreviewOverlay');
     await expect(overlay).toHaveAttribute('data-visible', 'true', { timeout: 15000 });
 
-    // The worksheet is generated in memory and handed to the iframe as a blob.
+    // The worksheet is generated in memory and handed to the iframe as a blob. Waiting for it to
+    // be visible rather than merely attached matters: the overlay keeps the iframe hidden until it
+    // loads, and everything inside a hidden frame measures zero.
     const frame = page.frameLocator('.print-preview-iframe');
-    await frame.locator('.worksheet').waitFor({ state: 'attached', timeout: 30000 });
+    await frame.locator('.worksheet').waitFor({ state: 'visible', timeout: 30000 });
 
     return { overlay, frame };
 }
@@ -264,7 +267,9 @@ test.describe('Print iDevices', () => {
 
         const { frame } = await openWorksheet(page);
 
-        const options = frame.locator('.worksheet-option');
+        const testActivity = frame.locator('.worksheet-activity[data-idevice="quick-questions"]');
+        await expect(testActivity).toHaveCount(1);
+        const options = testActivity.locator('.worksheet-option');
         expect(await options.count()).toBeGreaterThan(0);
 
         // Every option carries its own box and its label.
@@ -273,7 +278,7 @@ test.describe('Print iDevices', () => {
         await expect(first.locator('.worksheet-option-label')).not.toBeEmpty();
 
         // The boxes sit inside a question, under its text.
-        const question = frame
+        const question = testActivity
             .locator('.worksheet-item')
             .filter({ has: frame.locator('.worksheet-options') })
             .first();
@@ -341,6 +346,45 @@ test.describe('Print iDevices', () => {
         await expect(banks.first().locator('.worksheet-word').first()).not.toBeEmpty();
     });
 
+    test('prints a classify activity as cards facing their containers', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Print iDevices Classify');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await openElpFile(page, CROSSWORD_FIXTURE);
+
+        const { frame } = await openWorksheet(page);
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="classify"]');
+        await expect(activity).toHaveCount(1);
+
+        const cards = activity.locator('.worksheet-card');
+        const containers = activity.locator('.worksheet-container');
+        expect(await cards.count()).toBeGreaterThan(0);
+        expect(await containers.count()).toBeGreaterThan(0);
+
+        // Cards on the left, containers on the right.
+        const cardBox = await cards.first().boundingBox();
+        const containerBox = await containers.first().boundingBox();
+        expect(cardBox?.x ?? 0).toBeLessThan(containerBox?.x ?? 0);
+
+        // Each container is outlined in its own colour rather than filled.
+        const outline = await containers.first().evaluate(node => {
+            const style = getComputedStyle(node as HTMLElement);
+            return { width: style.borderTopWidth, color: style.borderTopColor, fill: style.backgroundColor };
+        });
+        expect(outline.width).toBe('2px');
+        expect(outline.color).not.toBe('rgb(26, 26, 26)');
+        expect(outline.fill).toBe('rgba(0, 0, 0, 0)');
+
+        // The exercise is the two columns, so it prints no numbered questions.
+        await expect(activity.locator('.worksheet-item')).toHaveCount(0);
+    });
+
     test('closes on Escape', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
@@ -350,5 +394,101 @@ test.describe('Print iDevices', () => {
         await page.keyboard.press('Escape');
 
         await expect(overlay).toHaveAttribute('data-visible', 'false');
+    });
+
+    test('preserves worksheet formulas, encrypted images, distractors and hidden-block visibility', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Worksheet regression cases');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const pictureId = 'd60f409d-a1cc-4a34-a56c-d9e8c042afab';
+        const pack = (prefix: string, data: Record<string, unknown>) =>
+            `<div class="${prefix}-DataGame">${encryptDataGame(JSON.stringify(data))}</div>`;
+        const components = [
+            {
+                type: 'quick-questions',
+                html: pack('quext', {
+                    questionsGame: [
+                        {
+                            type: 0,
+                            quextion: 'Solve \\(x^2 = 4\\)',
+                            numberOptions: 2,
+                            options: [`<img src="asset://${pictureId}">`, 'Text'],
+                        },
+                    ],
+                }),
+            },
+            {
+                type: 'complete',
+                html: pack('completa', {
+                    type: 2,
+                    wordsLimit: true,
+                    textText: escape('Capital: @@Madrid|Barcelona|Sevilla@@.'),
+                }),
+            },
+            {
+                type: 'crossword',
+                html: pack('crucigrama', {
+                    wordsGame: [
+                        { word: 'CASA', definition: 'Home' },
+                        { word: 'CAMA', definition: 'Bed' },
+                    ],
+                }),
+            },
+        ];
+        await page.evaluate(
+            async ({ components, pictureId }) => {
+                const bridge = window.eXeLearning.app.project._yjsBridge;
+                const binding = bridge.structureBinding;
+                const parent = binding.createPage('Printable cases');
+                const blockId = binding.createBlock(parent.id);
+                for (const component of components)
+                    binding.createComponent(parent.id, blockId, component.type, {
+                        htmlContent: component.html,
+                    });
+                const hiddenId = binding.createBlock(parent.id, 'Teacher content');
+                binding.getBlockMap(parent.id, hiddenId).get('properties').set('teacherOnly', 'true');
+                binding.createComponent(parent.id, hiddenId, 'complete', { htmlContent: components[1].html });
+                const png = Uint8Array.from(
+                    atob(
+                        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/n9sAAAAASUVORK5CYII=',
+                    ),
+                    c => c.charCodeAt(0),
+                );
+                const blob = new Blob([png], { type: 'image/png' });
+                await bridge.assetManager.putAsset({
+                    id: pictureId,
+                    filename: 'pixel.png',
+                    mime: 'image/png',
+                    size: blob.size,
+                    blob,
+                });
+            },
+            { components, pictureId },
+        );
+        const { frame } = await openWorksheet(page);
+        await expect(frame.locator('.worksheet-activity')).toHaveCount(3);
+        const testActivity = frame.locator('[data-idevice="quick-questions"]');
+        await expect(testActivity.locator('.worksheet-prompt svg')).toBeVisible();
+        await expect(testActivity.locator('.worksheet-prompt')).not.toContainText('\\(');
+        await expect(testActivity.locator('.worksheet-option')).toHaveCount(2);
+        const picture = testActivity.locator('.worksheet-option img');
+        await expect
+            .poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+            .toBe(true);
+        await expect(picture).toHaveAttribute('src', /^blob:/);
+        const choices = frame.locator('[data-idevice="complete"] .worksheet-gap-options');
+        for (const word of ['Madrid', 'Barcelona', 'Sevilla']) await expect(choices).toContainText(word);
+        const crossword = frame.locator('[data-idevice="crossword"]');
+        const gridNumbers = await crossword.locator('.worksheet-grid-number').allTextContents();
+        for (const clue of await crossword.locator('.worksheet-item').all()) {
+            expect(gridNumbers).toContain(await clue.getAttribute('value'));
+            await expect(clue.locator('.worksheet-direction')).not.toBeEmpty();
+        }
+        await page.emulateMedia({ media: 'print' });
+        await expect(choices).toBeVisible();
+        await expect(testActivity.locator('svg')).toBeVisible();
     });
 });
