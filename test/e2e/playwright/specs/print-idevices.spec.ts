@@ -185,9 +185,15 @@ test.describe('Print iDevices', () => {
         await overlay.locator('.print-preview-close-btn').click();
         await expect(overlay).toHaveAttribute('data-visible', 'false');
 
-        // The plain print preview shares this overlay, so its heading must come back.
+        // The plain print preview shares this overlay, so its heading must come back. This
+        // project has interactive activities, so printing asks what to do with them first.
         await page.locator('#dropdownFile').click();
         await page.locator('#navbar-button-export-print').click();
+
+        const dialog = page.locator('#modalConfirm');
+        await dialog.waitFor({ state: 'visible', timeout: 15000 });
+        await dialog.locator('button.btn.button-primary').click();
+
         await expect(overlay.locator('.print-preview-title-text')).toHaveText('Print preview');
     });
 
