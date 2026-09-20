@@ -15,7 +15,7 @@
  */
 
 import { extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
-import { buildAnswerBoxes, selectQuestions, type RandomSource } from '../questionSelection';
+import { buildAnswerBoxes, indexedQuestions, type RandomSource, selectQuestions } from '../questionSelection';
 import { escapeText, htmlToText, sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 
@@ -121,7 +121,11 @@ export const GuessWorksheetAdapter: WorksheetAdapter = {
         // Selection happens on index-carrying pairs: the sidecar links are keyed by a question's
         // position in the stored array, which selecting and shuffling would otherwise destroy.
         const selected = selectQuestions<IndexedWord>(
-            dataGame.wordsGame.map((question, index) => ({ question, index })),
+            indexedQuestions(dataGame.wordsGame, options).filter(({ question }) => {
+                if (question.type !== 2) return true;
+                options.onOmission?.('media-required');
+                return false;
+            }),
             dataGame.percentajeQuestions,
             dataGame.optionsRamdon,
             random,

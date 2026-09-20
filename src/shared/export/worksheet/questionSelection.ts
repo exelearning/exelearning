@@ -17,6 +17,8 @@
  */
 
 import type { CharacterBoxGroup } from './types';
+import type { WorksheetAdapterOptions } from './types';
+import { hasPrintableContent, sanitizeHtml } from './sanitizeHtml';
 
 /** A source of randomness in [0, 1), injectable so callers can make output deterministic. */
 export type RandomSource = () => number;
@@ -41,6 +43,36 @@ function shuffle<T>(items: T[], random: RandomSource): T[] {
  */
 export function shuffleWith<T>(items: T[], random: RandomSource = Math.random): T[] {
     return shuffle([...items], random);
+}
+
+/** Preserve stored indices for sidecars while isolating invalid entries in imported payloads. */
+export function indexedQuestions<T>(
+    questions: T[],
+    options: WorksheetAdapterOptions,
+): { question: T; index: number }[] {
+    return questions.flatMap((question, index) => {
+        if (!question || typeof question !== 'object' || Array.isArray(question)) {
+            options.onOmission?.('invalid-data');
+            return [];
+        }
+        return [{ question, index }];
+    });
+}
+
+/** Shared option handling: padding is empty, an image-only answer is not. */
+export function readPrintableOptions(
+    options: string[] | undefined,
+    count: number | undefined,
+    randomize: boolean,
+    random: RandomSource,
+): string[] {
+    const stored = Array.isArray(options) ? options : [];
+    const length = typeof count === 'number' && Number.isFinite(count) ? Math.max(0, count) : stored.length;
+    const offered = stored
+        .slice(0, length)
+        .map(option => sanitizeHtml(option))
+        .filter(hasPrintableContent);
+    return randomize ? shuffleWith(offered, random) : offered;
 }
 
 /**
@@ -151,7 +183,7 @@ export function buildAnswerBoxes(
     caseSensitive = false,
     randomSource: RandomSource = Math.random,
 ): CharacterBoxGroup[] {
-    if (!solution) return [];
+    if (typeof solution !== 'string' || !solution) return [];
 
     const phrase = normaliseSolution(solution, caseSensitive);
     if (!phrase) return [];

@@ -320,7 +320,7 @@ describe('GuessWorksheetAdapter', () => {
             expect(activity?.items[0].extraText).toBe('<p>Texto plano</p>');
         });
 
-        it('carries a video question as a plain prompt, since video cannot be printed', () => {
+        it('omits a video question that cannot be answered from paper', () => {
             const activity = GuessWorksheetAdapter.build(
                 guessHtml({
                     wordsGame: [{ word: 'Batalla', definition: 'Mira el vídeo', type: 2, url: 'https://youtu.be/x' }],
@@ -328,8 +328,7 @@ describe('GuessWorksheetAdapter', () => {
                 {},
             );
 
-            expect(activity?.items[0].media).toBeUndefined();
-            expect(activity?.items[0].prompt).toBe('Mira el vídeo');
+            expect(activity).toBeNull();
         });
     });
 

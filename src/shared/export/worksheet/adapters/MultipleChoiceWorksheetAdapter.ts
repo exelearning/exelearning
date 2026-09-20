@@ -21,8 +21,14 @@
  */
 
 import { extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
-import { buildAnswerBoxes, selectQuestions, shuffleWith, type RandomSource } from '../questionSelection';
-import { htmlToText, sanitizeHtml } from '../sanitizeHtml';
+import {
+    buildAnswerBoxes,
+    indexedQuestions,
+    readPrintableOptions,
+    selectQuestions,
+    type RandomSource,
+} from '../questionSelection';
+import { sanitizeHtml } from '../sanitizeHtml';
 import type {
     PrintableActivity,
     PrintableAnswer,
@@ -103,17 +109,6 @@ export function isRandomOrder(dataGame: SelectDataGame): boolean {
 }
 
 /**
- * Read the options a question offers, dropping the blank padding the editor leaves behind.
- */
-function readOptions(question: SelectQuestion, shuffle: boolean, random: RandomSource): string[] {
-    const stored = Array.isArray(question.options) ? question.options : [];
-    const count = typeof question.numberOptions === 'number' ? question.numberOptions : stored.length;
-    const offered = stored.slice(0, Math.max(0, count)).filter(option => htmlToText(option) !== '');
-
-    return shuffle ? shuffleWith(offered, random) : offered;
-}
-
-/**
  * Build the answer space for one question, which depends on its kind.
  *
  * @returns The answer, or null when there is nothing for the student to fill in
@@ -126,14 +121,19 @@ function buildAnswer(question: SelectQuestion, dataGame: SelectDataGame, random:
         return groups.length > 0 ? { kind: 'characterBoxes', groups } : null;
     }
 
-    const labels = readOptions(question, dataGame.answersRamdon === true, random);
+    const labels = readPrintableOptions(
+        question.options,
+        question.numberOptions,
+        dataGame.answersRamdon === true,
+        random,
+    );
     if (labels.length === 0) return null;
 
     // An ordering question asks for a position rather than a tick, so its options get a line to
     // write the number on instead of a box.
     const marker = question.typeSelect === SELECT_KIND_ORDER ? 'line' : 'box';
 
-    return { kind: 'options', labels: labels.map(label => sanitizeHtml(label)), marker };
+    return { kind: 'options', labels, marker };
 }
 
 /**
@@ -188,9 +188,11 @@ export const MultipleChoiceWorksheetAdapter: WorksheetAdapter = {
 
         // Video questions go before the share is applied, so it governs how much of the printable
         // activity is asked rather than coming out short by however many the draw happened to hit.
-        const printable = dataGame.selectsGame
-            .map((question, index) => ({ question, index }))
-            .filter(entry => entry.question.type !== QUESTION_TYPE_VIDEO);
+        const printable = indexedQuestions(dataGame.selectsGame, options).filter(entry => {
+            if (entry.question.type !== QUESTION_TYPE_VIDEO) return true;
+            options.onOmission?.('media-required');
+            return false;
+        });
 
         const selected = selectQuestions<IndexedQuestion>(
             printable,

@@ -6,7 +6,7 @@
  * which is exactly why the checks live here instead of being written out again each time.
  */
 
-import type { ExportComponent, ExportComponentProperties, ExportPage } from '../interfaces';
+import type { ExportBlock, ExportComponent, ExportComponentProperties, ExportPage } from '../interfaces';
 
 /**
  * Read a flag that may be stored as a boolean or as its string spelling.
@@ -25,6 +25,32 @@ function readFlag(value: unknown, fallback: boolean): boolean {
  */
 export function isPageVisible(page: ExportPage): boolean {
     return readFlag(page.properties?.visibility, true);
+}
+
+/** Visibility inherited by the student worksheet, including hidden ancestors and malformed cycles. */
+export function visibleWorksheetPages(pages: ExportPage[]): ExportPage[] {
+    const byId = new Map(pages.map(page => [page.id, page]));
+    const visible = new Map<string, boolean>();
+    const check = (page: ExportPage, visiting = new Set<string>()): boolean => {
+        if (visible.has(page.id)) return visible.get(page.id)!;
+        if (visiting.has(page.id) || !isPageVisible(page)) return false;
+        visiting.add(page.id);
+        const parent = page.parentId ? byId.get(page.parentId) : undefined;
+        const result = !parent || check(parent, visiting);
+        visiting.delete(page.id);
+        visible.set(page.id, result);
+        return result;
+    };
+    return pages.filter(page => check(page));
+}
+
+/** A visible component in a hidden or teacher-only block is still excluded. */
+export function isStudentBlock(block: ExportBlock): boolean {
+    return (
+        readFlag(block.properties?.visibility, true) &&
+        !readFlag(block.properties?.teacherOnly, false) &&
+        block.properties?.visibilityType !== 'teacher'
+    );
 }
 
 /**

@@ -18,8 +18,8 @@
 
 import { buildCrosswordLayout } from '../crosswordLayout';
 import { extractDataGame, extractDivContent, extractLinkHref, extractMediaLinks } from '../dataGameReader';
-import { selectCrosswordQuestions, type RandomSource } from '../questionSelection';
-import { escapeText, htmlToText, sanitizeHtml } from '../sanitizeHtml';
+import { selectCrosswordQuestions, indexedQuestions, type RandomSource } from '../questionSelection';
+import { escapeText, htmlToText, isSafeImageUrl, sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 
 /** DataGame and sidecar class prefix used by this iDevice. */
@@ -142,7 +142,16 @@ export const CrosswordWorksheetAdapter: WorksheetAdapter = {
         // Selection carries the stored index along: the sidecars are keyed by it, and both the
         // random draw and the solver reorder the words.
         const selected = selectCrosswordQuestions<IndexedWord>(
-            dataGame.wordsGame.map((question, index) => ({ question, index })),
+            indexedQuestions(dataGame.wordsGame, options).filter(({ question, index }) => {
+                const src = imageLinks.get(index) ?? question.url ?? '';
+                if (
+                    htmlToText(question.definition) ||
+                    (typeof src === 'string' && src.length >= MIN_MEDIA_HREF_LENGTH && isSafeImageUrl(src))
+                )
+                    return true;
+                options.onOmission?.('media-required');
+                return false;
+            }),
             dataGame.percentajeQuestions,
             MAX_WORDS,
             random,
@@ -183,11 +192,19 @@ export const CrosswordWorksheetAdapter: WorksheetAdapter = {
             layoutOptions,
         );
 
+        const omitted = selected.length - layout.placements.length;
+        if (omitted > 0) options.onOmission?.('unplaced-word', omitted);
         if (layout.placements.length === 0) return null;
 
-        const items = layout.placements.map((placement, order) =>
-            buildClue(selected[placement.index].question, selected[placement.index].index, order + 1, imageLinks),
-        );
+        const items = layout.placements.map(placement => ({
+            ...buildClue(
+                selected[placement.index].question,
+                selected[placement.index].index,
+                placement.number,
+                imageLinks,
+            ),
+            direction: placement.horizontal ? ('across' as const) : ('down' as const),
+        }));
 
         const activity: PrintableActivity = {
             ideviceType: 'crossword',

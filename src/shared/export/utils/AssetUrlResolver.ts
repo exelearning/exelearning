@@ -17,6 +17,7 @@ export class AssetUrlResolver {
     private assets: AssetProvider | null;
     private byId: Map<string, string> | null = null;
     private byFilename: Map<string, string> | null = null;
+    private ownedUrls = new Set<string>();
 
     /**
      * @param assets - Asset provider, or null when the caller has no assets to resolve
@@ -28,20 +29,47 @@ export class AssetUrlResolver {
     /**
      * Map every asset to a blob URL. Safe to call more than once; later calls are no-ops.
      */
-    async build(): Promise<void> {
+    async build(content?: string): Promise<void> {
         if (this.byId || !this.assets) return;
 
         this.byId = new Map();
         this.byFilename = new Map();
+        const references =
+            content === undefined
+                ? null
+                : new Set([...content.matchAll(ASSET_REFERENCE_PATTERN)].map(match => match[1]));
+        if (references?.size === 0) return;
+        const referencedIds = new Set(
+            [...(references ?? [])].map(reference =>
+                reference.includes('.') ? reference.slice(0, reference.lastIndexOf('.')) : reference,
+            ),
+        );
+        const needed = (asset: { id: string; filename: string; folderPath?: string }) =>
+            !references ||
+            references.has(asset.id) ||
+            referencedIds.has(asset.id) ||
+            references.has(asset.filename) ||
+            references.has(`${asset.folderPath}/${asset.filename}`);
 
         try {
-            await this.iterateAssets(async (asset: ExportAsset) => {
+            const add = async (asset: ExportAsset) => {
+                if (!needed(asset)) return;
                 const blobUrl = this.createBlobUrl(asset);
                 if (!blobUrl) return;
 
                 this.byId?.set(asset.id, blobUrl);
                 if (asset.filename) this.byFilename?.set(asset.filename, blobUrl);
-            });
+                if (asset.folderPath) this.byFilename?.set(`${asset.folderPath}/${asset.filename}`, blobUrl);
+            };
+            if (references && this.assets.listAssetMetadata) {
+                for (const metadata of await this.assets.listAssetMetadata()) {
+                    if (!needed(metadata)) continue;
+                    const asset = await this.assets.getAsset(metadata.id);
+                    if (asset) await add(asset);
+                }
+            } else {
+                await this.iterateAssets(add);
+            }
         } catch (error) {
             console.warn('[AssetUrlResolver] Failed to build asset map:', error);
         }
@@ -54,6 +82,14 @@ export class AssetUrlResolver {
      */
     getExportPathMap(): Map<string, string> | undefined {
         return this.byId ?? undefined;
+    }
+
+    /** Idempotent cleanup; only URLs created by this resolver belong to it. */
+    dispose(): void {
+        for (const url of this.ownedUrls) URL.revokeObjectURL(url);
+        this.ownedUrls.clear();
+        this.byId = null;
+        this.byFilename = null;
     }
 
     /**
@@ -99,7 +135,9 @@ export class AssetUrlResolver {
                     ? asset.data
                     : // biome-ignore lint/suspicious/noExplicitAny: legacy asset data types
                       new Blob([asset.data as any], { type: asset.mime });
-            return URL.createObjectURL(blob);
+            const url = URL.createObjectURL(blob);
+            this.ownedUrls.add(url);
+            return url;
         } catch (error) {
             console.error('[AssetUrlResolver] Failed to create blob URL for asset:', asset.id, error);
             return '';

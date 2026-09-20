@@ -11,9 +11,9 @@
  * It only reads the document — nothing here writes back to the project.
  */
 
-import type { AssetProvider, ExportComponent, ExportDocument } from '../interfaces';
+import type { AssetProvider, ExportBlock, ExportComponent, ExportDocument, LatexPreRenderResult } from '../interfaces';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
-import { isComponentVisible, isPageVisible, isTeacherOnly } from '../utils/visibility';
+import { isComponentVisible, isStudentBlock, isTeacherOnly, visibleWorksheetPages } from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
 import { renderWorksheet } from '../worksheet/WorksheetRenderer';
 import type {
@@ -25,6 +25,8 @@ import type {
 } from '../worksheet/types';
 
 export interface WorksheetOptions {
+    /** Trusted formula renderer, run after author HTML has been sanitized. */
+    preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
     /** Translated user-visible strings for the worksheet chrome. */
     labels?: WorksheetLabels;
     /** Translated activity headings keyed by iDevice type, e.g. `{ guess: 'Adivina' }`. */
@@ -43,6 +45,8 @@ export interface WorksheetResult {
     success: boolean;
     html?: string;
     error?: string;
+    /** Release asset URLs when the preview is closed or superseded. */
+    dispose?: () => void;
 }
 
 /**
@@ -58,7 +62,7 @@ function carriesGameData(content: string): boolean {
 
 export class WorksheetExporter {
     private document: ExportDocument;
-    private assetResolver: AssetUrlResolver;
+    private assets: AssetProvider | null;
 
     /**
      * @param document - Export document adapter over the project
@@ -66,7 +70,7 @@ export class WorksheetExporter {
      */
     constructor(document: ExportDocument, assetProvider: AssetProvider | null = null) {
         this.document = document;
-        this.assetResolver = new AssetUrlResolver(assetProvider);
+        this.assets = assetProvider;
     }
 
     /**
@@ -78,19 +82,16 @@ export class WorksheetExporter {
      * @returns The worksheet model, including activities that had no adapter
      */
     async buildModel(options: WorksheetOptions = {}): Promise<WorksheetModel> {
-        await this.assetResolver.build();
-
         const metadata = this.document.getMetadata();
         const pages: PrintablePage[] = [];
         const unsupported: UnsupportedActivity[] = [];
 
-        for (const page of this.document.getNavigation()) {
-            if (!isPageVisible(page)) continue;
-
+        // Ancestors count: a page inside a hidden one does not reach the worksheet either.
+        for (const page of visibleWorksheetPages(this.document.getNavigation())) {
             const activities: PrintableActivity[] = [];
 
             for (const component of this.collectComponents(page.blocks || [])) {
-                const content = this.assetResolver.resolve(component.content || '');
+                const content = component.content || '';
                 const adapter = getWorksheetAdapter(component.type);
 
                 if (!adapter) {
@@ -102,12 +103,32 @@ export class WorksheetExporter {
                     continue;
                 }
 
-                const activity = adapter.build(content, {
-                    title: options.ideviceTitles?.[component.type],
-                    random: options.random,
-                    ideviceBasePath: options.ideviceBasePath,
-                });
-                if (activity) activities.push(activity);
+                const omissions = new Map<NonNullable<UnsupportedActivity['reason']>, number>();
+                const onOmission = (reason: NonNullable<UnsupportedActivity['reason']>, count = 1) => {
+                    omissions.set(reason, (omissions.get(reason) ?? 0) + count);
+                };
+                try {
+                    const activity = adapter.build(content, {
+                        title: options.ideviceTitles?.[component.type],
+                        random: options.random,
+                        ideviceBasePath: options.ideviceBasePath,
+                        onOmission,
+                    });
+                    if (activity) activities.push(activity);
+                    else if (omissions.size === 0) onOmission('invalid-data');
+                } catch {
+                    onOmission('invalid-data');
+                }
+                for (const [reason, count] of omissions)
+                    unsupported.push({
+                        ideviceType: component.type,
+                        pageTitle: page.title,
+                        pageId: page.id,
+                        componentId: component.id,
+                        title: options.ideviceTitles?.[component.type] || adapter.defaultTitle,
+                        reason,
+                        count,
+                    });
             }
 
             if (activities.length > 0) {
@@ -130,10 +151,21 @@ export class WorksheetExporter {
      * @returns The document, or the reason it could not be produced
      */
     async generate(options: WorksheetOptions = {}): Promise<WorksheetResult> {
+        const resolver = new AssetUrlResolver(this.assets);
         try {
             const model = await this.buildModel(options);
-            return { success: true, html: renderWorksheet(model, options.labels) };
+            let html = renderWorksheet(model, options.labels);
+            await resolver.build(html);
+            html = resolver.resolve(html);
+            if (options.preRenderLatex) {
+                const rendered = await options.preRenderLatex(html);
+                if (rendered.hasLatex && !rendered.latexRendered)
+                    throw new Error('Could not render worksheet formulas');
+                html = rendered.html;
+            }
+            return { success: true, html, dispose: () => resolver.dispose() };
         } catch (error) {
+            resolver.dispose();
             console.error('[WorksheetExporter] Failed to generate worksheet:', error);
             return { success: false, error: error instanceof Error ? error.message : String(error) };
         }
@@ -155,12 +187,17 @@ export class WorksheetExporter {
     /**
      * Flatten a page's blocks into the components a student should see, in document order.
      *
-     * Hidden and teacher-only components are dropped: the worksheet is the student's copy.
+     * Hidden and teacher-only blocks and components are dropped: the worksheet is the
+     * student's copy.
      */
-    private collectComponents(blocks: { components?: ExportComponent[] }[]): ExportComponent[] {
+    private collectComponents(blocks: ExportBlock[]): ExportComponent[] {
         const components: ExportComponent[] = [];
 
         for (const block of blocks) {
+            // A block can be hidden or reserved for teachers, which excludes everything in it
+            // however each component is marked.
+            if (!isStudentBlock(block)) continue;
+
             for (const component of block.components || []) {
                 if (!isComponentVisible(component) || isTeacherOnly(component)) continue;
                 components.push(component);

@@ -76,7 +76,29 @@ export type PrintableBoard =
      * one, and the list mixes in wrong ones. Printing the text without it would set a different,
      * much harder exercise.
      */
-    | { kind: 'wordBank'; words: string[] };
+    | { kind: 'wordBank'; words: string[] }
+    /**
+     * Two columns to match up: loose cards on the left, the containers they belong in on the
+     * right.
+     *
+     * Paper cannot be dragged, so an activity that sorts cards into containers becomes a matching
+     * exercise. Which card belongs where is never printed.
+     */
+    | { kind: 'matchColumns'; cards: PrintableCard[]; containers: PrintableContainer[] };
+
+/** One card to be matched to a container. */
+export interface PrintableCard {
+    /** Sanitised HTML, when the card carries text. */
+    text?: string;
+    media?: PrintableMedia;
+}
+
+/** One container a card can belong to. */
+export interface PrintableContainer {
+    name: string;
+    /** Outline colour, assigned by position: the activity stores names only. */
+    color: string;
+}
 
 /** A crossword grid, drawn above its clues. */
 export type CrosswordBoard = {
@@ -93,6 +115,8 @@ export type CrosswordBoard = {
 
 /** One numbered question inside an activity. */
 export interface PrintableItem {
+    /** Direction disambiguates crossword clues sharing a start cell. */
+    direction?: 'across' | 'down';
     /** Question text as sanitised HTML. */
     prompt: string;
     media?: PrintableMedia;
@@ -135,6 +159,11 @@ export interface PrintablePage {
 export interface UnsupportedActivity {
     ideviceType: string;
     pageTitle: string;
+    pageId?: string;
+    componentId?: string;
+    title?: string;
+    reason?: 'unsupported' | 'invalid-data' | 'media-required' | 'unplaced-word';
+    count?: number;
 }
 
 /** Everything the renderer needs to lay out the worksheet. */
@@ -155,6 +184,11 @@ export interface WorksheetModel {
  * from the CLI and from tests.
  */
 export interface WorksheetLabels {
+    across?: string;
+    down?: string;
+    mediaRequired?: string;
+    invalidData?: string;
+    unplacedWords?: string;
     /** Heading above the "name / date" line. Defaults to the project title. */
     studentName?: string;
     date?: string;
@@ -180,6 +214,8 @@ export interface WorksheetAdapter {
 
 /** Per-call context handed to an adapter. */
 export interface WorksheetAdapterOptions {
+    /** Report questions that cannot be represented faithfully on paper. */
+    onOmission?: (reason: NonNullable<UnsupportedActivity['reason']>, count?: number) => void;
     /** Translated heading for this activity type, supplied by the frontend. */
     title?: string;
     /**

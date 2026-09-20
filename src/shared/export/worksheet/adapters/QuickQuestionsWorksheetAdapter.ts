@@ -17,8 +17,8 @@
  */
 
 import { extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
-import { selectQuestions, shuffleWith, type RandomSource } from '../questionSelection';
-import { htmlToText, sanitizeHtml } from '../sanitizeHtml';
+import { readPrintableOptions, indexedQuestions, type RandomSource, selectQuestions } from '../questionSelection';
+import { sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 
 /** DataGame and sidecar class prefix used by this iDevice. */
@@ -66,19 +66,6 @@ interface IndexedQuestion {
 }
 
 /**
- * Read the options a question actually offers.
- *
- * Blank entries are dropped: the stored array is padded to four however many the author filled in.
- */
-function readOptions(question: QuextQuestion, shuffle: boolean, random: RandomSource): string[] {
-    const stored = Array.isArray(question.options) ? question.options : [];
-    const count = typeof question.numberOptions === 'number' ? question.numberOptions : stored.length;
-    const offered = stored.slice(0, Math.max(0, count)).filter(option => htmlToText(option) !== '');
-
-    return shuffle ? shuffleWith(offered, random) : offered;
-}
-
-/**
  * Convert one stored question into a printable item.
  *
  * @returns The item, or null when it offers nothing to answer
@@ -89,7 +76,12 @@ function buildItem(
     imageLinks: Map<number, string>,
     random: RandomSource,
 ): PrintableItem | null {
-    const labels = readOptions(question, dataGame.answersRamdon === true, random);
+    const labels = readPrintableOptions(
+        question.options,
+        question.numberOptions,
+        dataGame.answersRamdon === true,
+        random,
+    );
     const prompt = sanitizeHtml(question.quextion);
 
     // Nothing to tick and nothing to read is not a question.
@@ -97,7 +89,7 @@ function buildItem(
 
     const item: PrintableItem = {
         prompt,
-        answer: { kind: 'options', labels: labels.map(label => sanitizeHtml(label)) },
+        answer: { kind: 'options', labels },
     };
 
     if (question.type === QUESTION_TYPE_IMAGE) {
@@ -135,9 +127,11 @@ export const QuickQuestionsWorksheetAdapter: WorksheetAdapter = {
         // Video questions are dropped before the share is applied, so the share governs how much
         // of the printable activity is asked rather than coming out short by however many videos
         // the draw happened to catch.
-        const printable = dataGame.questionsGame
-            .map((question, index) => ({ question, index }))
-            .filter(entry => entry.question.type !== QUESTION_TYPE_VIDEO);
+        const printable = indexedQuestions(dataGame.questionsGame, options).filter(entry => {
+            if (entry.question.type !== QUESTION_TYPE_VIDEO) return true;
+            options.onOmission?.('media-required');
+            return false;
+        });
 
         const selected = selectQuestions<IndexedQuestion>(
             printable,
