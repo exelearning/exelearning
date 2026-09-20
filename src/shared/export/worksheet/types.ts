@@ -92,9 +92,18 @@ export type PrintableBoard =
      * caption has media down one column and text down the other. Which side holds the text is the
      * activity's own setting, so the adapter decides it rather than the renderer.
      *
-     * Each column is shuffled separately, so a row of the printed page pairs nothing.
+     * Carried as groups rather than as two long columns because paper has pages. A pair whose
+     * halves land on different sheets cannot be joined with a line, so each group is a self
+     * contained exercise: the partner of every card in it is in the same group, and each column of
+     * the group is shuffled on its own.
      */
-    | { kind: 'pairColumns'; left: PrintableCard[]; right: PrintableCard[] };
+    | { kind: 'pairColumns'; groups: PrintablePairGroup[] };
+
+/** One page-sized set of pairs, each card's partner among them. */
+export interface PrintablePairGroup {
+    left: PrintableCard[];
+    right: PrintableCard[];
+}
 
 /** One card to be matched to a container. */
 export interface PrintableCard {

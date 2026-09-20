@@ -305,3 +305,95 @@ describe('the iDevice name is never printed', () => {
         expect(inAppendix).toContain('<h3 class="worksheet-activity-title">1.</h3>');
     });
 });
+
+describe('what the author restricted', () => {
+    /** A block carrying the given properties, holding one Guess activity. */
+    const restrictedPage = (properties: Record<string, unknown>) =>
+        page([component()], {
+            blocks: [{ id: 'b1', name: 'Bloque', order: 0, components: [component()], properties } as never],
+        });
+
+    it.each([
+        ['a teacher-only block', { teacherOnly: true }],
+        ['a hidden block', { visibility: false }],
+        ['a legacy teacher block', { visibilityType: 'teacher' }],
+    ])('leaves %s exactly as the document prints it', (_name, properties) => {
+        for (const mode of ['omit', 'in-place', 'appendix'] as DocumentActivityMode[]) {
+            const result = applyActivityMode([restrictedPage(properties)], mode);
+
+            // Untouched: still the activity, still in its own block, and no appendix built from it.
+            expect(result).toHaveLength(1);
+            expect(componentsOf(result)[0].type).toBe('guess');
+            expect(componentsOf(result)[0].content).toContain('adivina-DataGame');
+        }
+    });
+
+    it('never copies a hidden component into the appendix', () => {
+        // The appendix is a block of ours, so a copy there would not carry the restriction the
+        // original block applied — and both markers are display:none in the export stylesheet.
+        const hidden = component({ structureProperties: { visibility: 'false' } });
+        const teacherOnly = component({ id: 'c2', structureProperties: { teacherOnly: 'true' } });
+
+        const result = applyActivityMode([page([hidden, teacherOnly])], 'appendix');
+
+        expect(result).toHaveLength(1);
+        expect(componentsOf(result).map(entry => entry.type)).toEqual(['guess', 'guess']);
+    });
+
+    it('still converts an ordinary activity beside a restricted one', () => {
+        const restricted = component({ id: 'c1', structureProperties: { teacherOnly: 'true' } });
+        const ordinary = component({ id: 'c2' });
+
+        const types = componentsOf(applyActivityMode([page([restricted, ordinary])], 'in-place')).map(
+            entry => entry.type,
+        );
+
+        expect(types).toEqual(['guess', PRINTABLE_ACTIVITY_TYPE]);
+    });
+});
+
+describe('questions an adapter had to leave out', () => {
+    /** A Guess activity with one answerable question and one that needs a video. */
+    const withVideoQuestion = () => {
+        const payload = JSON.stringify({
+            typeGame: 'Adivina',
+            wordsGame: [
+                { definition: 'Ciudad conquistada', word: 'Valencia', percentageShow: 0 },
+                { type: 2, definition: 'Un vídeo', word: 'Nada', percentageShow: 0 },
+            ],
+        });
+        return component({
+            content: `<div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div>`,
+        });
+    };
+
+    it('says so beside the exercise instead of dropping the news', () => {
+        const markup = componentsOf(applyActivityMode([page([withVideoQuestion()])], 'in-place'))[0].content;
+
+        expect(markup).toContain('worksheet-unsupported');
+        expect(markup).toContain('Requires multimedia');
+        expect(markup).toContain('(1)');
+    });
+
+    it('uses the translated wording', () => {
+        const markup = componentsOf(
+            applyActivityMode([page([withVideoQuestion()])], 'in-place', {
+                labels: { mediaRequired: 'Necesita multimedia' },
+            }),
+        )[0].content;
+
+        expect(markup).toContain('Necesita multimedia');
+    });
+
+    it('says nothing when nothing was left out', () => {
+        const markup = componentsOf(applyActivityMode([page([component()])], 'in-place'))[0].content;
+
+        expect(markup).not.toContain('worksheet-unsupported');
+    });
+
+    it('reports in the appendix too, where the exercise actually is', () => {
+        const result = applyActivityMode([page([withVideoQuestion()])], 'appendix');
+
+        expect(componentsOf([result[1]])[0].content).toContain('worksheet-unsupported');
+    });
+});

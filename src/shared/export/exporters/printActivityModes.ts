@@ -14,11 +14,12 @@
  */
 
 import type { ExportBlock, ExportComponent, ExportPage } from '../interfaces';
+import { isComponentVisible, isStudentBlock, isTeacherOnly } from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
 import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import { escapeText } from '../worksheet/sanitizeHtml';
-import type { WorksheetLabels } from '../worksheet/types';
-import { renderActivityFragment } from '../worksheet/WorksheetRenderer';
+import type { UnsupportedActivity, WorksheetLabels } from '../worksheet/types';
+import { renderActivityFragment, resolveWorksheetLabels } from '../worksheet/WorksheetRenderer';
 
 /** What the user chose to do with the interactive activities. */
 export type PrintActivityMode =
@@ -105,6 +106,34 @@ function activityTitle(type: string, options: ApplyActivityModeOptions): string 
     return options.ideviceTitles?.[type] || getWorksheetAdapter(type)?.defaultTitle || type;
 }
 
+/**
+ * A note listing what an adapter had to leave out of an exercise.
+ *
+ * Shown to whoever is setting the work, not to the student: the export stylesheet hides
+ * `worksheet-unsupported` when printing, the same rule the worksheet's own list relies on. So the
+ * teacher sees on screen that a question was dropped, and the handout stays clean.
+ */
+function omissionNote(
+    omissions: Map<NonNullable<UnsupportedActivity['reason']>, number>,
+    options: ApplyActivityModeOptions,
+): string {
+    if (omissions.size === 0) return '';
+
+    // Resolved through the renderer so this note and the worksheet's own list say the same thing.
+    const labels = resolveWorksheetLabels(options.labels);
+    const wording: Record<string, string> = {
+        'media-required': labels.mediaRequired,
+        'invalid-data': labels.invalidData,
+        'unplaced-word': labels.unplacedWords,
+    };
+
+    const entries = [...omissions.entries()]
+        .map(([reason, count]) => `<li>${escapeText(wording[reason] || reason)} (${count})</li>`)
+        .join('');
+
+    return `<aside class="worksheet-unsupported"><ul>${entries}</ul></aside>`;
+}
+
 /** The heading an appendix entry needs so the body's pointer can be followed to it. */
 function numberHeading(number?: number): string {
     return number === undefined ? '' : `<h3 class="worksheet-activity-title">${number}.</h3>`;
@@ -149,16 +178,25 @@ function convert(component: ExportComponent, options: ApplyActivityModeOptions, 
     if (!adapter) return null;
 
     try {
+        // What the adapter had to leave out is collected rather than dropped: the worksheet path
+        // reports it, and printing the document should not be the quieter way to lose content.
+        const omissions = new Map<NonNullable<UnsupportedActivity['reason']>, number>();
         const activity = adapter.build(component.content || '', {
             title: activityTitle(component.type, options),
             random: options.random,
             ideviceBasePath: options.ideviceBasePath,
+            onOmission: (reason, count = 1) => omissions.set(reason, (omissions.get(reason) ?? 0) + count),
         });
         if (!activity) return null;
 
         // The number is the only heading an exercise carries, and only in the appendix, where the
         // body's pointer has to lead somewhere.
-        return renderActivityFragment(number === undefined ? activity : { ...activity, number }, options.labels);
+        const fragment = renderActivityFragment(
+            number === undefined ? activity : { ...activity, number },
+            options.labels,
+        );
+
+        return fragment + omissionNote(omissions, options);
     } catch {
         // A payload this adapter cannot read is reported as unprintable rather than taking the
         // whole print job down with it.
@@ -188,8 +226,20 @@ export function applyActivityMode(
             const components = block.components || [];
             const kept: ExportComponent[] = [];
 
+            // What the author restricted stays exactly as the document prints it. Converting it
+            // would be harmless, but moving it to the appendix would not: the appendix is a block
+            // of our own, and a copy there would not carry the restriction its own block applies.
+            // `novisible` and `teacher-only` are display:none in the export stylesheet, so a copy
+            // that loses them puts hidden or teacher-only material on the student's sheet.
+            const restricted = !isStudentBlock(block);
+
             for (const component of components) {
-                if (!isInteractiveActivity(component.type)) {
+                if (
+                    restricted ||
+                    !isComponentVisible(component) ||
+                    isTeacherOnly(component) ||
+                    !isInteractiveActivity(component.type)
+                ) {
                     kept.push(component);
                     continue;
                 }

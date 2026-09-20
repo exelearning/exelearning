@@ -36,6 +36,14 @@ const TEXT_ON_THE_LEFT = 0;
 /** Shortest href the runtime accepts as a real media reference. */
 const MIN_MEDIA_HREF_LENGTH = 4;
 
+/**
+ * How many pairs go in one block of the printed exercise.
+ *
+ * Paper has pages, and a pair whose halves land on different sheets cannot be joined with a line.
+ * Grouping keeps each block a self-contained exercise; the renderer sizes its blocks to match.
+ */
+const PAIRS_PER_GROUP = 5;
+
 /** One card as stored by the Drag and drop iDevice. Each holds both halves of one pair. */
 interface DragDropCard {
     /** The text half, as plain HTML. */
@@ -114,27 +122,34 @@ export const DragDropWorksheetAdapter: WorksheetAdapter = {
         const selected = selectQuestions(pairs, dataGame.percentajeCards, dataGame.randomCards, random);
         if (selected.length === 0) return null;
 
-        // Each column is shuffled on its own. Shuffling them together, or not at all, would leave
-        // each pair sharing a line and give the whole exercise away.
-        const texts = shuffleWith(
-            selected.map(pair => pair.text),
-            random,
-        );
-        const media = shuffleWith(
-            selected.map(pair => pair.media),
-            random,
-        );
-
         const textOnTheLeft = (dataGame.typeDrag ?? TEXT_ON_THE_LEFT) === TEXT_ON_THE_LEFT;
+
+        // Grouped before shuffling, so a card's partner is always in the same group and the two
+        // never end up on different sheets. Each column of a group is then shuffled on its own:
+        // shuffling them together, or not at all, would leave every pair sharing a line and give
+        // the exercise away.
+        const groups = [];
+        for (let start = 0; start < selected.length; start += PAIRS_PER_GROUP) {
+            const group = selected.slice(start, start + PAIRS_PER_GROUP);
+            const texts = shuffleWith(
+                group.map(pair => pair.text),
+                random,
+            );
+            const media = shuffleWith(
+                group.map(pair => pair.media),
+                random,
+            );
+
+            groups.push({
+                left: textOnTheLeft ? texts : media,
+                right: textOnTheLeft ? media : texts,
+            });
+        }
 
         const activity: PrintableActivity = {
             ideviceType: 'dragdrop',
             title: options.title || DragDropWorksheetAdapter.defaultTitle,
-            board: {
-                kind: 'pairColumns',
-                left: textOnTheLeft ? texts : media,
-                right: textOnTheLeft ? media : texts,
-            },
+            board: { kind: 'pairColumns', groups },
             // The whole exercise is the two columns; there are no questions to number.
             items: [],
         };

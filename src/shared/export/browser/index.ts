@@ -51,7 +51,7 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 
 // Import utilities
 import { LibraryDetector } from '../utils/LibraryDetector';
-import { isPageVisible } from '../utils/visibility';
+import { isComponentVisible, isPageVisible, isStudentBlock, isTeacherOnly } from '../utils/visibility';
 import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import '../../../../public/app/common/LatexPreRenderer.js';
 
@@ -620,9 +620,9 @@ export async function exportAndDownload(
  * Printing asks the user what to do with them, and this is what decides whether there is anything
  * to ask about: with none, printing goes straight to the preview as it always did.
  *
- * Pages hidden from export are left out, matching what the print path itself does. Blocks and
- * components are all counted, so the question is asked whenever it might apply — an extra
- * question costs a click, while a missed one prints a game board.
+ * Counts exactly what `applyActivityMode` would act on, so the dialog never asks about activities
+ * the modes leave alone: hidden pages, restricted blocks and teacher-only or hidden components are
+ * all left as the document prints them.
  *
  * @param documentManager - YjsDocumentManager instance
  * @returns How many interactive activities are in the document
@@ -635,7 +635,9 @@ export function countInteractiveActivities(documentManager: YjsDocumentManagerLi
     for (const page of document.getNavigation()) {
         if (!isPageVisible(page)) continue;
         for (const block of page.blocks || []) {
+            if (!isStudentBlock(block)) continue;
             for (const component of block.components || []) {
+                if (!isComponentVisible(component) || isTeacherOnly(component)) continue;
                 if (isInteractiveActivity(component.type)) count++;
             }
         }

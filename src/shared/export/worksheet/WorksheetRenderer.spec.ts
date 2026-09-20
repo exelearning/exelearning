@@ -510,7 +510,7 @@ describe('pairColumns board', () => {
             activity({
                 ideviceType: 'dragdrop',
                 title: 'Drag and drop',
-                board: { kind: 'pairColumns', left, right } as never,
+                board: { kind: 'pairColumns', groups: [{ left, right }] } as never,
                 items: [],
             }),
         );
@@ -547,5 +547,70 @@ describe('pairColumns board', () => {
 
     it('draws an empty column without failing', () => {
         expect(pairs([], [])).toContain('worksheet-pairs');
+    });
+});
+
+describe('two-column boards and the page break', () => {
+    const cards = (count: number) => Array.from({ length: count }, (_, index) => ({ text: `c${index}` }));
+
+    const matchBoard = (cardCount: number, containerCount: number) =>
+        renderActivityFragment(
+            activity({
+                ideviceType: 'classify',
+                board: {
+                    kind: 'matchColumns',
+                    cards: cards(cardCount),
+                    containers: Array.from({ length: containerCount }, (_, index) => ({
+                        name: `G${index}`,
+                        color: '#000',
+                    })),
+                } as never,
+                items: [],
+            }),
+        );
+
+    it('splits a long list of cards into blocks', () => {
+        // Sixteen cards in one column ran off the sheet, stranding cards on pages with no
+        // containers to match them to.
+        const html = matchBoard(16, 2);
+
+        expect(html.match(/<div class="worksheet-match">/g)?.length).toBeGreaterThan(1);
+    });
+
+    it('repeats the containers beside every block', () => {
+        const html = matchBoard(16, 2);
+        const blocks = html.match(/<div class="worksheet-match">/g)?.length ?? 0;
+
+        // Any card can go in any container, so each block carries its own copy of all of them.
+        expect(html.match(/class="worksheet-container"/g)).toHaveLength(blocks * 2);
+    });
+
+    it('keeps a short list in a single block', () => {
+        expect(matchBoard(2, 2).match(/<div class="worksheet-match">/g)).toHaveLength(1);
+    });
+
+    it('gives a block to every group of pairs it is handed', () => {
+        const html = renderActivityFragment(
+            activity({
+                ideviceType: 'dragdrop',
+                board: {
+                    kind: 'pairColumns',
+                    groups: [
+                        { left: cards(5), right: cards(5) },
+                        { left: cards(3), right: cards(3) },
+                    ],
+                } as never,
+                items: [],
+            }),
+        );
+
+        expect(html.match(/worksheet-pairs/g)).toHaveLength(2);
+    });
+
+    it('asks the browser to keep each block on one sheet', () => {
+        // Without this the two columns split and a pairing becomes impossible to draw.
+        const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-match {')[1].split('}')[0];
+
+        expect(rule).toContain('break-inside: avoid');
     });
 });

@@ -13,6 +13,7 @@ import type {
     CharacterBoxGroup,
     PrintableCard,
     PrintableContainer,
+    PrintablePairGroup,
     CrosswordBoard,
     CrosswordCell,
     PrintableAnswer,
@@ -273,12 +274,16 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 /* Two columns to match up, with room between them to draw the pairing. */
 /* Centred against one another, so a short column of containers sits beside the middle of the
    cards rather than trailing off the top. */
+/* Kept whole on one sheet: what the student joins with a line has to be reachable from both ends,
+   so a block that would straddle a page break moves to the next page instead. */
 .worksheet-match {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 30mm;
     margin: 0 0 4mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
 .worksheet-cards,
@@ -415,6 +420,22 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     font-style: italic;
     color: #666;
 }
+
+/* What an activity had to leave out. Addressed to whoever is setting the work, so it is shown on
+   screen and never printed: the student's sheet says nothing about questions they never saw. */
+.worksheet-unsupported {
+    margin-top: 10mm;
+    padding-top: 4mm;
+    border-top: 1px solid #999;
+    font-size: 9pt;
+    color: #666;
+}
+
+@media print {
+    .worksheet-unsupported {
+        display: none;
+    }
+}
 `;
 
 /**
@@ -424,14 +445,6 @@ export const WORKSHEET_ACTIVITY_STYLES = `
  * `@media print` overrides stay last, where the cascade needs them.
  */
 const DOCUMENT_STYLES_AFTER = `
-.worksheet-unsupported {
-    margin-top: 10mm;
-    padding-top: 4mm;
-    border-top: 1px solid #999;
-    font-size: 9pt;
-    color: #666;
-}
-
 .worksheet-empty {
     padding: 20mm 0;
     text-align: center;
@@ -439,9 +452,6 @@ const DOCUMENT_STYLES_AFTER = `
 }
 
 @media print {
-    .worksheet-unsupported {
-        display: none;
-    }
     body {
         padding: 0;
         background: #fff;
@@ -569,7 +579,7 @@ function renderCrosswordGrid(board: CrosswordBoard): string {
 function renderBoard(board: PrintableBoard): string {
     if (board.kind === 'wordBank') return renderWordBank(board.words);
     if (board.kind === 'matchColumns') return renderMatchColumns(board.cards, board.containers);
-    if (board.kind === 'pairColumns') return renderPairColumns(board.left, board.right);
+    if (board.kind === 'pairColumns') return renderPairColumns(board.groups);
 
     return renderCrosswordGrid(board);
 }
@@ -619,23 +629,49 @@ function renderCard(card: PrintableCard): string {
 }
 
 /**
- * Render two columns of cards to pair off.
+ * How many rows one two-column block holds before the next one starts.
+ *
+ * A card is 34mm tall with 3mm between them, so five rows come to 185mm — comfortably inside an
+ * A4 page's 267mm of printable height, with room for a heading and instructions above. Each block
+ * is kept whole by `break-inside: avoid`, so what the student has to join never straddles a sheet.
+ */
+const ROWS_PER_BLOCK = 5;
+
+/** Split a list into chunks of at most `size`. */
+function chunk<T>(items: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let start = 0; start < items.length; start += size) {
+        chunks.push(items.slice(start, start + size));
+    }
+    return chunks.length > 0 ? chunks : [[]];
+}
+
+/**
+ * Render two columns of cards to pair off, one block per group.
  *
  * Shares the layout of the cards-and-containers board, since both ask the student to draw lines
  * between two columns.
  */
-function renderPairColumns(left: PrintableCard[], right: PrintableCard[]): string {
-    return (
-        '<div class="worksheet-match worksheet-pairs">' +
-        `<ul class="worksheet-cards">${left.map(renderCard).join('')}</ul>` +
-        `<ul class="worksheet-cards">${right.map(renderCard).join('')}</ul>` +
-        '</div>'
-    );
+function renderPairColumns(groups: PrintablePairGroup[]): string {
+    return groups
+        .map(
+            group =>
+                '<div class="worksheet-match worksheet-pairs">' +
+                `<ul class="worksheet-cards">${group.left.map(renderCard).join('')}</ul>` +
+                `<ul class="worksheet-cards">${group.right.map(renderCard).join('')}</ul>` +
+                '</div>',
+        )
+        .join('');
 }
 
+/**
+ * Render cards facing the containers they belong in.
+ *
+ * The cards are split into page-sized blocks with the containers repeated beside each one. Any
+ * card can go in any container, so repeating them costs nothing and means a block never leaves its
+ * cards on a sheet with nowhere to put them.
+ */
 function renderMatchColumns(cards: PrintableCard[], containers: PrintableContainer[]): string {
-    const renderedCards = cards.map(renderCard).join('');
-
     const renderedContainers = containers
         .map(
             container =>
@@ -644,12 +680,19 @@ function renderMatchColumns(cards: PrintableCard[], containers: PrintableContain
         )
         .join('');
 
-    return (
-        '<div class="worksheet-match">' +
-        `<ul class="worksheet-cards">${renderedCards}</ul>` +
-        `<ul class="worksheet-containers">${renderedContainers}</ul>` +
-        '</div>'
-    );
+    // The containers take a row each too, so a block holds as many cards as rows are left over
+    // once they are accounted for — at least one, or a long list would never advance.
+    const perBlock = Math.max(1, ROWS_PER_BLOCK - Math.min(containers.length, ROWS_PER_BLOCK - 1));
+
+    return chunk(cards, perBlock)
+        .map(
+            group =>
+                '<div class="worksheet-match">' +
+                `<ul class="worksheet-cards">${group.map(renderCard).join('')}</ul>` +
+                `<ul class="worksheet-containers">${renderedContainers}</ul>` +
+                '</div>',
+        )
+        .join('');
 }
 
 /**
@@ -760,7 +803,20 @@ function renderActivity(activity: PrintableActivity, labels: Required<WorksheetL
  * @returns The activity's markup, with no surrounding document
  */
 export function renderActivityFragment(activity: PrintableActivity, labels: WorksheetLabels = {}): string {
-    return renderActivity(activity, { ...DEFAULT_LABELS, ...labels });
+    return renderActivity(activity, resolveWorksheetLabels(labels));
+}
+
+/**
+ * Fill any gaps in a caller's labels with the English defaults.
+ *
+ * Exposed so anything else printing worksheet wording — the note listing what an activity had to
+ * leave out, for one — words it the same way rather than keeping a second set of defaults.
+ *
+ * @param labels - Translated strings, possibly partial
+ * @returns Every label, translated where one was given
+ */
+export function resolveWorksheetLabels(labels: WorksheetLabels = {}): Required<WorksheetLabels> {
+    return { ...DEFAULT_LABELS, ...labels };
 }
 
 /**
