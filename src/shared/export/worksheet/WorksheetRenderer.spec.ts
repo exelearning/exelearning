@@ -589,6 +589,31 @@ describe('two-column boards and the page break', () => {
         expect(matchBoard(2, 2).match(/<div class="worksheet-match">/g)).toHaveLength(1);
     });
 
+    it.each([2, 3, 4, 5, 6, 7, 8, 9])(
+        'keeps every destination beside each group of cards with %i categories',
+        count => {
+            const html = matchBoard(6, count);
+            const blocks = html.split(/<div class="worksheet-match[^"]*">/).slice(1);
+
+            expect(blocks).toHaveLength(2);
+            expect(blocks[0].match(/class="worksheet-card"/g)).toHaveLength(5);
+            expect(blocks[1].match(/class="worksheet-card"/g)).toHaveLength(1);
+            for (const block of blocks) {
+                expect(block.match(/class="worksheet-container"/g)).toHaveLength(count);
+                for (let index = 0; index < count; index++) expect(block).toContain(`>G${index}</li>`);
+            }
+            expect(html.includes('worksheet-match-compact')).toBe(count > 5);
+        },
+    );
+
+    it('compacts nine categories even when there is only one card', () => {
+        const html = matchBoard(1, 9);
+
+        expect(html.match(/class="worksheet-match worksheet-match-compact"/g)).toHaveLength(1);
+        expect(html.match(/class="worksheet-card"/g)).toHaveLength(1);
+        expect(html.match(/class="worksheet-container"/g)).toHaveLength(9);
+    });
+
     it('gives a block to every group of pairs it is handed', () => {
         const html = renderActivityFragment(
             activity({

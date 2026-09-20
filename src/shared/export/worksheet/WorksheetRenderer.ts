@@ -344,6 +344,15 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     break-inside: avoid;
 }
 
+/* Larger sets of square destinations can outgrow an A4 sheet. Wider, shorter labels keep every
+   destination beside its cards without clipping names or revealing which answer belongs where. */
+.worksheet-match-compact .worksheet-container {
+    width: 50mm;
+    height: auto;
+    min-height: 20mm;
+    overflow-wrap: anywhere;
+}
+
 /* The words an activity offers, laid out above the text they go into. */
 .worksheet-word-bank {
     display: flex;
@@ -631,7 +640,7 @@ function renderCard(card: PrintableCard): string {
 /**
  * How many rows one two-column block holds before the next one starts.
  *
- * A card is 34mm tall with 3mm between them, so five rows come to 185mm — comfortably inside an
+ * A card is 34mm tall with 3mm between them, so five rows come to 182mm — comfortably inside an
  * A4 page's 267mm of printable height, with room for a heading and instructions above. Each block
  * is kept whole by `break-inside: avoid`, so what the student has to join never straddles a sheet.
  */
@@ -680,14 +689,15 @@ function renderMatchColumns(cards: PrintableCard[], containers: PrintableContain
         )
         .join('');
 
-    // The containers take a row each too, so a block holds as many cards as rows are left over
-    // once they are accounted for — at least one, or a long list would never advance.
-    const perBlock = Math.max(1, ROWS_PER_BLOCK - Math.min(containers.length, ROWS_PER_BLOCK - 1));
+    // The columns stand side by side: their heights do not add up. Keep five cards per block,
+    // and compact larger sets of destinations (nine labels occupy 204mm at their minimum height).
+    const className =
+        containers.length > ROWS_PER_BLOCK ? 'worksheet-match worksheet-match-compact' : 'worksheet-match';
 
-    return chunk(cards, perBlock)
+    return chunk(cards, ROWS_PER_BLOCK)
         .map(
             group =>
-                '<div class="worksheet-match">' +
+                `<div class="${className}">` +
                 `<ul class="worksheet-cards">${group.map(renderCard).join('')}</ul>` +
                 `<ul class="worksheet-containers">${renderedContainers}</ul>` +
                 '</div>',
