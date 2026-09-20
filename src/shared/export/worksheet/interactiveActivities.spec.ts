@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { getSupportedIdeviceTypes } from './adapters/registry';
 import { getIdeviceConfig } from '../browser/idevice-config-browser';
-import { getNonActivityIdevices, isInteractiveActivity } from './interactiveActivities';
+import { getJsonActivityIdevices, getNonActivityIdevices, isInteractiveActivity } from './interactiveActivities';
 
 describe('isInteractiveActivity', () => {
     it('counts the gamified iDevices as activities', () => {
@@ -9,9 +9,34 @@ describe('isInteractiveActivity', () => {
             expect(isInteractiveActivity(type)).toBe(true);
     });
 
-    it('leaves out the iDevices that render from stored JSON', () => {
-        for (const type of ['text', 'form', 'trueorfalse', 'image-gallery', 'markdown-text'])
+    it('leaves out the iDevices that render content rather than an exercise', () => {
+        for (const type of ['text', 'image-gallery', 'markdown-text', 'slide', 'file-attachment'])
             expect(isInteractiveActivity(type)).toBe(false);
+    });
+
+    it('counts the activities that happen to store their data as JSON', () => {
+        // How an iDevice stores its data says nothing about whether the student has to work
+        // through it. These four do, so printing must offer the same choices for them.
+        for (const type of ['adaptative-quiz', 'form', 'trueorfalse', 'scrambled-list'])
+            expect(isInteractiveActivity(type)).toBe(true);
+    });
+
+    it('lists those four, sorted, each with a reason', () => {
+        const included = getJsonActivityIdevices();
+
+        expect(included.map(entry => entry.type)).toEqual([
+            'adaptative-quiz',
+            'form',
+            'scrambled-list',
+            'true-or-false',
+            'trueorfalse',
+        ]);
+        for (const entry of included) expect(entry.reason.length).toBeGreaterThan(0);
+    });
+
+    it('would otherwise have been left out, so none of those entries is dead weight', () => {
+        // An entry for an HTML iDevice would be counted twice over and quietly rot.
+        for (const { type } of getJsonActivityIdevices()) expect(getIdeviceConfig(type).componentType).toBe('json');
     });
 
     it('leaves out digcompedu and lomloe, which declare json in their config.xml', () => {
