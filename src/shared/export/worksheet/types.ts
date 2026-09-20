@@ -164,8 +164,16 @@ export interface PrintableActivity {
      */
     title: string;
     /**
-     * Printed above the activity when it has to be found from somewhere else — an exercise in the
-     * appendix carries the number the body points at. Absent otherwise.
+     * The author's own heading for the block this activity sits in.
+     *
+     * This is what names the exercise on paper, and it is printed wherever the block's own header
+     * is not: on the worksheet, and on an appendix entry. In place, the block draws its heading
+     * itself, so repeating it here would say it twice.
+     */
+    blockTitle?: string;
+    /**
+     * Printed with the heading when the activity has to be found from somewhere else — an exercise
+     * in the appendix carries the number the body points at. Absent otherwise.
      */
     number?: number;
     /** Author's general instructions, as sanitised HTML. */

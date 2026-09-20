@@ -757,6 +757,24 @@ function renderItem(item: PrintableItem, labels: Required<WorksheetLabels>): str
 }
 
 /**
+ * Render the heading above an activity: the author's own block title, numbered when the exercise
+ * has to be found from elsewhere.
+ *
+ * The iDevice's type is never part of it. What names the exercise is what the author called the
+ * block; 'CLASIFICA' named the tool instead and said nothing a student or a teacher needed.
+ *
+ * @returns The heading, or nothing when there is neither a title nor a number
+ */
+export function renderActivityHeading(activity: PrintableActivity): string {
+    const parts = [
+        activity.number === undefined ? '' : `${activity.number}.`,
+        escapeText(activity.blockTitle ?? ''),
+    ].filter(Boolean);
+
+    return parts.length === 0 ? '' : `<h3 class="worksheet-activity-title">${parts.join(' ')}</h3>`;
+}
+
+/**
  * Render one activity: instructions, questions, closing text.
  *
  * The iDevice's type name is deliberately not printed. The author's own heading already says what
@@ -767,9 +785,7 @@ function renderActivity(activity: PrintableActivity, labels: Required<WorksheetL
     // The type is carried through so a reader, a stylesheet or a test can tell one kind of
     // activity from another on the printed sheet.
     let html = `<article class="worksheet-activity" data-idevice="${escapeText(activity.ideviceType)}">`;
-    if (activity.number !== undefined) {
-        html += `<h3 class="worksheet-activity-title">${activity.number}.</h3>`;
-    }
+    html += renderActivityHeading(activity);
 
     if (activity.instructions) {
         html += `<div class="worksheet-instructions">${activity.instructions}</div>`;

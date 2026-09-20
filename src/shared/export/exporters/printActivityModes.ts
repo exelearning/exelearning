@@ -19,7 +19,7 @@ import { getWorksheetAdapter } from '../worksheet/adapters/registry';
 import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import { escapeText } from '../worksheet/sanitizeHtml';
 import type { UnsupportedActivity, WorksheetLabels } from '../worksheet/types';
-import { renderActivityFragment, resolveWorksheetLabels } from '../worksheet/WorksheetRenderer';
+import { renderActivityFragment, renderActivityHeading, resolveWorksheetLabels } from '../worksheet/WorksheetRenderer';
 
 /** What the user chose to do with the interactive activities. */
 export type PrintActivityMode =
@@ -134,9 +134,12 @@ function omissionNote(
     return `<aside class="worksheet-unsupported"><ul>${entries}</ul></aside>`;
 }
 
-/** The heading an appendix entry needs so the body's pointer can be followed to it. */
-function numberHeading(number?: number): string {
-    return number === undefined ? '' : `<h3 class="worksheet-activity-title">${number}.</h3>`;
+/**
+ * The heading an appendix entry needs: the number the body points at, and what the author called
+ * the block it came from. Built by the renderer, so both printing paths word it the same way.
+ */
+function appendixHeading(entry?: { number: number; blockTitle: string }): string {
+    return entry === undefined ? '' : renderActivityHeading({ ideviceType: '', title: '', items: [], ...entry });
 }
 
 /**
@@ -146,12 +149,16 @@ function numberHeading(number?: number): string {
  * wondering whether the page lost it. It does not name the iDevice: that name belongs to the
  * editor, not to the handout.
  */
-function unprintableMarkup(type: string, options: ApplyActivityModeOptions, number?: number): string {
+function unprintableMarkup(
+    type: string,
+    options: ApplyActivityModeOptions,
+    entry?: { number: number; blockTitle: string },
+): string {
     const label = options.labels?.notPrintable || DEFAULT_LABELS.notPrintable;
 
     return (
         `<article class="worksheet-activity worksheet-activity-unprintable" data-idevice="${escapeText(type)}">` +
-        numberHeading(number) +
+        appendixHeading(entry) +
         `<p class="worksheet-not-printable">${escapeText(label)}</p>` +
         `</article>`
     );
@@ -173,7 +180,11 @@ function referenceMarkup(type: string, options: ApplyActivityModeOptions, number
  *
  * @returns The markup, or null when the iDevice has no adapter
  */
-function convert(component: ExportComponent, options: ApplyActivityModeOptions, number?: number): string | null {
+function convert(
+    component: ExportComponent,
+    options: ApplyActivityModeOptions,
+    appendix?: { number: number; blockTitle: string },
+): string | null {
     const adapter = getWorksheetAdapter(component.type);
     if (!adapter) return null;
 
@@ -189,10 +200,10 @@ function convert(component: ExportComponent, options: ApplyActivityModeOptions, 
         });
         if (!activity) return null;
 
-        // The number is the only heading an exercise carries, and only in the appendix, where the
-        // body's pointer has to lead somewhere.
+        // In place the block draws its own heading, so the exercise carries none. In the appendix
+        // it needs both: the number the body points at, and what the author called the block.
         const fragment = renderActivityFragment(
-            number === undefined ? activity : { ...activity, number },
+            appendix === undefined ? activity : { ...activity, ...appendix },
             options.labels,
         );
 
@@ -255,11 +266,14 @@ export function applyActivityMode(
                 // The appendix numbers every activity it holds, printable or not, so the pointers
                 // in the body and the exercises at the back always agree.
                 const number = ++numbered;
-                const markup = convert(component, options, number);
+                // The appendix entry leaves its block behind, so it carries the block's heading
+                // with it — otherwise the exercise arrives at the back of the document unnamed.
+                const entry = { number, blockTitle: (block.name || '').trim() };
+                const markup = convert(component, options, entry);
                 appendix.push(
                     printableComponent(
                         { ...component, id: `${component.id}-appendix` },
-                        markup ?? unprintableMarkup(component.type, options, number),
+                        markup ?? unprintableMarkup(component.type, options, entry),
                     ),
                 );
                 kept.push(printableComponent(component, referenceMarkup(component.type, options, number)));

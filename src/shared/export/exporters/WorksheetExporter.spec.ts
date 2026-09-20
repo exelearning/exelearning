@@ -406,3 +406,56 @@ describe('WorksheetExporter', () => {
         });
     });
 });
+
+describe('WorksheetExporter and the block heading', () => {
+    /** One page whose block carries the given name. */
+    function pageWithBlock(name: string): ExportDocument {
+        const pages = [
+            {
+                id: 'page-0',
+                title: 'El Poema',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-0',
+                        name,
+                        order: 0,
+                        components: [{ id: 'c1', type: 'guess', order: 0, properties: {}, content: guessContent() }],
+                    },
+                ],
+            },
+        ] as unknown as ExportPage[];
+
+        return {
+            getNavigation: () => pages,
+            getMetadata: () => ({ title: 'Un héroe medieval', language: 'es' }),
+        } as unknown as ExportDocument;
+    }
+
+    it('names each exercise after the block the author put it in', async () => {
+        // Nothing else draws that heading on a worksheet, and it is what names the exercise.
+        const model = await new WorksheetExporter(pageWithBlock('Adivina el personaje')).buildModel();
+
+        expect(model.pages[0].activities[0].blockTitle).toBe('Adivina el personaje');
+    });
+
+    it('prints it above the exercise', async () => {
+        const result = await new WorksheetExporter(pageWithBlock('Adivina el personaje')).generate();
+
+        expect(result.html).toContain('<h3 class="worksheet-activity-title">Adivina el personaje</h3>');
+    });
+
+    it('leaves the heading out when the author named no block', async () => {
+        const result = await new WorksheetExporter(pageWithBlock('   ')).generate();
+
+        expect(result.html).not.toContain('<h3 class="worksheet-activity-title">');
+    });
+
+    it('escapes a block name instead of letting it become markup', async () => {
+        const result = await new WorksheetExporter(pageWithBlock('<img src=x onerror=alert(1)>')).generate();
+
+        expect(result.html).not.toContain('<img src=x');
+        expect(result.html).toContain('&lt;img');
+    });
+});

@@ -80,7 +80,7 @@ export class WorksheetExporter {
         for (const page of visibleWorksheetPages(this.document.getNavigation())) {
             const activities: PrintableActivity[] = [];
 
-            for (const component of this.collectComponents(page.blocks || [])) {
+            for (const { component, blockTitle } of this.collectComponents(page.blocks || [])) {
                 const content = component.content || '';
                 const adapter = getWorksheetAdapter(component.type);
 
@@ -104,7 +104,7 @@ export class WorksheetExporter {
                         ideviceBasePath: options.ideviceBasePath,
                         onOmission,
                     });
-                    if (activity) activities.push(activity);
+                    if (activity) activities.push(blockTitle ? { ...activity, blockTitle } : activity);
                     else if (omissions.size === 0) onOmission('invalid-data');
                 } catch {
                     onOmission('invalid-data');
@@ -180,8 +180,8 @@ export class WorksheetExporter {
      * Hidden and teacher-only blocks and components are dropped: the worksheet is the
      * student's copy.
      */
-    private collectComponents(blocks: ExportBlock[]): ExportComponent[] {
-        const components: ExportComponent[] = [];
+    private collectComponents(blocks: ExportBlock[]): { component: ExportComponent; blockTitle: string }[] {
+        const components: { component: ExportComponent; blockTitle: string }[] = [];
 
         for (const block of blocks) {
             // A block can be hidden or reserved for teachers, which excludes everything in it
@@ -190,7 +190,9 @@ export class WorksheetExporter {
 
             for (const component of block.components || []) {
                 if (!isComponentVisible(component) || isTeacherOnly(component)) continue;
-                components.push(component);
+                // The block's own heading comes along: on the worksheet nothing else draws it, and
+                // it is what the author called the exercise.
+                components.push({ component, blockTitle: (block.name || '').trim() });
             }
         }
 

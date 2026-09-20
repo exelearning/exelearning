@@ -158,8 +158,8 @@ describe('applyActivityMode', () => {
                 expect.stringContaining('activity 2'),
             ]);
             expect(componentsOf([result[1]]).map(c => c.content)).toEqual([
-                expect.stringContaining('>1.<'),
-                expect.stringContaining('>2.<'),
+                expect.stringContaining('>1. Bloque<'),
+                expect.stringContaining('>2. Bloque<'),
             ]);
         });
 
@@ -179,8 +179,8 @@ describe('applyActivityMode', () => {
             const inAppendix = componentsOf([result[result.length - 1]]);
 
             expect(inAppendix[0].content).toContain('worksheet-not-printable');
-            expect(inAppendix[0].content).toContain('>1.<');
-            expect(inAppendix[1].content).toContain('>2.<');
+            expect(inAppendix[0].content).toContain('>1. Bloque<');
+            expect(inAppendix[1].content).toContain('>2. Bloque<');
         });
 
         it('builds the appendix as an ordinary page, after the last one', () => {
@@ -220,9 +220,9 @@ describe('applyActivityMode', () => {
 
             expect(result[1].title).toBe('Anexo');
             expect(componentsOf([result[0]])[0].content).toContain('Ver anexo, actividad 1');
-            expect(componentsOf([result[1]])[0].content).toContain('>1.<');
+            expect(componentsOf([result[1]])[0].content).toContain('>1. Bloque<');
             expect(componentsOf([result[1]])[1].content).toContain('Todavía no se puede imprimir');
-            expect(componentsOf([result[1]])[1].content).toContain('>2.<');
+            expect(componentsOf([result[1]])[1].content).toContain('>2. Bloque<');
         });
 
         it('passes the worksheet labels down into the exercise itself', () => {
@@ -302,7 +302,7 @@ describe('the iDevice name is never printed', () => {
         const result = applyActivityMode([page([component()])], 'appendix', named);
         const inAppendix = componentsOf([result[1]])[0].content;
 
-        expect(inAppendix).toContain('<h3 class="worksheet-activity-title">1.</h3>');
+        expect(inAppendix).toContain('<h3 class="worksheet-activity-title">1. Bloque</h3>');
     });
 });
 
@@ -395,5 +395,48 @@ describe('questions an adapter had to leave out', () => {
         const result = applyActivityMode([page([withVideoQuestion()])], 'appendix');
 
         expect(componentsOf([result[1]])[0].content).toContain('worksheet-unsupported');
+    });
+});
+
+describe("the author's own heading", () => {
+    const named = (name: string) =>
+        page([component()], { blocks: [{ id: 'b1', name, order: 0, components: [component()] }] });
+
+    it('names the appendix entry after the block it came from', () => {
+        const result = applyActivityMode([named('Une cada pareja')], 'appendix');
+
+        expect(componentsOf([result[1]])[0].content).toContain(
+            '<h3 class="worksheet-activity-title">1. Une cada pareja</h3>',
+        );
+    });
+
+    it('names an appendix entry that has no printable form too', () => {
+        const unprintable = component({ type: 'puzzle', content: '<div/>' });
+        const result = applyActivityMode(
+            [page([unprintable], { blocks: [{ id: 'b1', name: 'El puzle', order: 0, components: [unprintable] }] })],
+            'appendix',
+        );
+
+        expect(componentsOf([result[1]])[0].content).toContain('1. El puzle');
+    });
+
+    it('leaves the exercise unnamed in place, where the block draws its own heading', () => {
+        // Repeating it under the block's own header would say the same thing twice.
+        const markup = componentsOf(applyActivityMode([named('Une cada pareja')], 'in-place'))[0].content;
+
+        expect(markup).not.toContain('worksheet-activity-title');
+    });
+
+    it('prints just the number when the author left the block unnamed', () => {
+        const result = applyActivityMode([named('   ')], 'appendix');
+
+        expect(componentsOf([result[1]])[0].content).toContain('<h3 class="worksheet-activity-title">1.</h3>');
+    });
+
+    it('escapes a block name before putting it in markup', () => {
+        const result = applyActivityMode([named('<img src=x onerror=alert(1)>')], 'appendix');
+
+        expect(componentsOf([result[1]])[0].content).not.toContain('<img');
+        expect(componentsOf([result[1]])[0].content).toContain('&lt;img');
     });
 });
