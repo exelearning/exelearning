@@ -467,6 +467,38 @@ describe('WORKSHEET_ACTIVITY_STYLES', () => {
     it('is part of the worksheet document, so the two never diverge', () => {
         expect(renderWorksheet(model())).toContain(WORKSHEET_ACTIVITY_STYLES);
     });
+
+    describe('the two-column boards', () => {
+        /** The declarations of one rule, by property. */
+        const rule = (selector: string) => {
+            const body = WORKSHEET_ACTIVITY_STYLES.split(`${selector} {`)[1].split('}')[0];
+            return Object.fromEntries(
+                body
+                    .split(';')
+                    .map(line => line.split(':').map(part => part.trim()))
+                    .filter(parts => parts.length === 2),
+            );
+        };
+
+        it('gives a card the same width as the box it faces', () => {
+            // A card holding a word and one holding a picture are the same size, so a column of
+            // words does not straggle beside a column of pictures.
+            expect(rule('.worksheet-card').width).toBe(rule('.worksheet-container').width);
+            expect(rule('.worksheet-card')['min-height']).toBe(rule('.worksheet-container').height);
+        });
+
+        it('lets a card grow rather than clipping what the author wrote', () => {
+            const card = rule('.worksheet-card');
+
+            expect(card['min-height']).toBeDefined();
+            expect(card.height).toBeUndefined();
+            expect(card.overflow).toBeUndefined();
+        });
+
+        it('centres the two columns against each other', () => {
+            expect(rule('.worksheet-match')['align-items']).toBe('center');
+        });
+    });
 });
 
 describe('pairColumns board', () => {

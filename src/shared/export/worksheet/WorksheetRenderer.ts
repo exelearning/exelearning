@@ -281,12 +281,6 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin: 0 0 4mm;
 }
 
-/* Two columns of cards to pair off. They hold the same number of cards, so they read as parallel
-   lists rather than one being centred against the other. */
-.worksheet-pairs {
-    align-items: flex-start;
-}
-
 .worksheet-cards,
 .worksheet-containers {
     display: flex;
@@ -298,11 +292,21 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     list-style: none;
 }
 
+/* Square, and the same size whether it holds a picture or a word, so the two columns line up
+   instead of one straggling beside the other. The height is a minimum rather than fixed: a card
+   the author filled with a sentence grows to hold it, since clipping a teacher's text to keep the
+   shape would be the wrong trade. */
 .worksheet-card {
-    min-width: 34mm;
-    padding: 2mm 3mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 34mm;
+    min-height: 34mm;
+    padding: 2mm;
     border: 1px solid #1a1a1a;
     text-align: center;
+    overflow-wrap: break-word;
     page-break-inside: avoid;
     break-inside: avoid;
 }
@@ -310,8 +314,8 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 .worksheet-card img {
     display: block;
     margin: 0 auto;
-    max-width: 30mm;
-    max-height: 24mm;
+    max-width: 100%;
+    max-height: 26mm;
     height: auto;
 }
 
