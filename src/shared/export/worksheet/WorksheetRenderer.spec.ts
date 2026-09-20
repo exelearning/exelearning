@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { renderWorksheet } from './WorksheetRenderer';
+import { WORKSHEET_ACTIVITY_STYLES, renderActivityFragment, renderWorksheet } from './WorksheetRenderer';
 import type { CharacterBoxGroup, PrintableActivity, WorksheetModel } from './types';
 
 /** Boxes with nothing given away: one group per size. */
@@ -407,5 +407,64 @@ describe('renderWorksheet', () => {
             expect(html).not.toContain('onerror="alert(1)"');
             expect(html).toContain('&quot;');
         });
+    });
+});
+
+describe('renderActivityFragment', () => {
+    it('renders the activity without a document around it', () => {
+        const html = renderActivityFragment(activity());
+
+        expect(html.startsWith('<article class="worksheet-activity"')).toBe(true);
+        expect(html.endsWith('</article>')).toBe(true);
+        expect(html).not.toContain('<!DOCTYPE');
+        expect(html).not.toContain('<html');
+        expect(html).not.toContain('<style');
+        expect(html).not.toContain('<div class="worksheet">');
+    });
+
+    it('renders the same markup the worksheet document uses', () => {
+        // The two paths must not drift: a fix to one has to reach the other.
+        expect(renderWorksheet(model())).toContain(renderActivityFragment(activity()));
+    });
+
+    it('uses the labels it is given', () => {
+        const html = renderActivityFragment(
+            activity({
+                ideviceType: 'crossword',
+                items: [{ prompt: 'Ciudad', direction: 'across', number: 1 }],
+            }),
+            { across: 'Horizontal' },
+        );
+
+        expect(html).toContain('Horizontal');
+        expect(html).not.toContain('Across');
+    });
+
+    it('falls back to the english labels when given none', () => {
+        const html = renderActivityFragment(
+            activity({ ideviceType: 'crossword', items: [{ prompt: 'Ciudad', direction: 'down', number: 1 }] }),
+        );
+
+        expect(html).toContain('Down');
+    });
+});
+
+describe('WORKSHEET_ACTIVITY_STYLES', () => {
+    // The fragment is injected into a document this renderer did not build, so a rule reaching
+    // outside the activity would restyle the user's own content.
+    it('touches nothing the host document owns', () => {
+        expect(WORKSHEET_ACTIVITY_STYLES).not.toContain('@page');
+        expect(WORKSHEET_ACTIVITY_STYLES).not.toMatch(/(^|\})\s*body\s*\{/);
+        expect(WORKSHEET_ACTIVITY_STYLES).not.toMatch(/(^|\})\s*\*\s*\{/);
+        expect(WORKSHEET_ACTIVITY_STYLES).not.toMatch(/(^|\})\s*\.worksheet\s*\{/);
+    });
+
+    it('carries the rules the fragment relies on', () => {
+        for (const rule of ['.worksheet-activity', '.worksheet-box', '.worksheet-grid-cell', '.worksheet-gap'])
+            expect(WORKSHEET_ACTIVITY_STYLES).toContain(`${rule} {`);
+    });
+
+    it('is part of the worksheet document, so the two never diverge', () => {
+        expect(renderWorksheet(model())).toContain(WORKSHEET_ACTIVITY_STYLES);
     });
 });

@@ -35,7 +35,15 @@ const DEFAULT_LABELS: Required<WorksheetLabels> = {
     unsupportedHeading: 'Activities that cannot be printed yet',
 };
 
-const STYLES = `
+/**
+ * Styling for the worksheet's own document: the page, the body and the sheet around the
+ * activities.
+ *
+ * Kept apart from the activity styling below because it is not safe to reuse. These rules set the
+ * page size, reset every element's box model and restyle `body`, which is right for a document
+ * this renderer owns end to end and wrong for one it is only contributing a fragment to.
+ */
+const DOCUMENT_STYLES = `
 @page {
     size: A4;
     margin: 15mm;
@@ -90,7 +98,17 @@ body {
     border-bottom: 1px solid #999;
     font-size: 14pt;
 }
+`;
 
+/**
+ * Styling for the activities themselves.
+ *
+ * Every rule is scoped to a `worksheet-` class and none of them touches the page, the body or any
+ * element the surrounding document owns. That makes this block safe to inject into a document
+ * this renderer did not build — which is what printing a project with its activities converted in
+ * place does.
+ */
+export const WORKSHEET_ACTIVITY_STYLES = `
 .worksheet-activity {
     margin-bottom: 8mm;
 }
@@ -374,7 +392,15 @@ body {
     font-weight: bold;
     background: #f0f0f0;
 }
+`;
 
+/**
+ * The rest of the document's own styling, which has to come after the activity rules.
+ *
+ * Split by position rather than by subject so the activity rules stay contiguous and the
+ * `@media print` overrides stay last, where the cascade needs them.
+ */
+const DOCUMENT_STYLES_AFTER = `
 .worksheet-unsupported {
     margin-top: 10mm;
     padding-top: 4mm;
@@ -405,6 +431,9 @@ body {
     }
 }
 `;
+
+/** The worksheet document's complete stylesheet, in cascade order. */
+const STYLES = DOCUMENT_STYLES + WORKSHEET_ACTIVITY_STYLES + DOCUMENT_STYLES_AFTER;
 
 /**
  * Render the boxes a student writes the answer into.
@@ -668,6 +697,21 @@ function renderActivity(activity: PrintableActivity, labels: Required<WorksheetL
     html += '</article>';
 
     return html;
+}
+
+/**
+ * Render one activity on its own, for a document this renderer does not own.
+ *
+ * Printing a project can convert each interactive activity in place, which needs the activity's
+ * markup without the worksheet document around it. Pair it with `WORKSHEET_ACTIVITY_STYLES`, which
+ * carries every rule the fragment relies on and nothing that would disturb the host document.
+ *
+ * @param activity - The activity, as an adapter built it
+ * @param labels - Translated user-visible strings; English defaults fill any gaps
+ * @returns The activity's markup, with no surrounding document
+ */
+export function renderActivityFragment(activity: PrintableActivity, labels: WorksheetLabels = {}): string {
+    return renderActivity(activity, { ...DEFAULT_LABELS, ...labels });
 }
 
 /**
