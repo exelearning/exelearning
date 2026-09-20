@@ -54,6 +54,64 @@ function documentOf(pageSpecs: PageSpec[], metadata: Record<string, unknown> = {
 }
 
 describe('WorksheetExporter', () => {
+    it('exports round statements and reports unprintable headings and ring clues on the server', async () => {
+        const pack = (prefix: string, data: unknown) =>
+            `<div class="${prefix}-DataGame">${encryptDataGame(JSON.stringify(data))}</div>`;
+        const exporter = new WorksheetExporter(
+            documentOf([
+                {
+                    components: [
+                        {
+                            type: 'sort',
+                            content: pack('ordena', {
+                                type: 1,
+                                gameColumns: 2,
+                                orderedColumns: true,
+                                phrasesGame: [
+                                    {
+                                        definition: 'Order by age',
+                                        cards: ['Heading A', 'Heading B', 'Adult'].map(eText => ({ type: 1, eText })),
+                                    },
+                                    {
+                                        definition: 'Omitted round',
+                                        cards: [
+                                            { type: 0, audio: 'sound.mp3' },
+                                            { type: 1, eText: 'Wrong heading' },
+                                        ],
+                                    },
+                                ],
+                            }),
+                        },
+                        {
+                            type: 'az-quiz-game',
+                            content: pack('rosco', {
+                                letters: 'DC',
+                                wordsGame: [
+                                    { word: 'DOG', type: 0, definition: '<audio controls></audio>' },
+                                    { word: 'CAT', type: 0, definition: 'A small feline' },
+                                ],
+                            }),
+                        },
+                    ],
+                },
+            ]),
+        );
+
+        const model = await exporter.buildModel();
+        expect(model.pages[0].activities.map(activity => activity.items.length)).toEqual([1, 1]);
+        expect(model.unsupported.map(entry => entry.reason)).toEqual(['media-required', 'media-required']);
+        const result = await exporter.generate();
+        try {
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('Order by age');
+            expect(result.html).toContain('A small feline');
+            expect(result.html).not.toContain('Wrong heading');
+            expect(result.html).not.toContain('Starts with D');
+        } finally {
+            result.dispose?.();
+        }
+    });
+
     describe('buildModel', () => {
         it('collects guess activities grouped under their page', async () => {
             const exporter = new WorksheetExporter(

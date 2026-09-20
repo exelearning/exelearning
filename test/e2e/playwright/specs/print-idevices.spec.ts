@@ -89,6 +89,101 @@ test.describe('Print iDevices', () => {
     // another starves the dev server enough to time out the workarea handshake.
     test.describe.configure({ mode: 'serial' });
 
+    for (const mode of ['idevices', 'in-place']) {
+        test(`preserves sorting statements and printable clues in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Sorting and ring print regressions');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const pack = (prefix: string, data: unknown) =>
+                `<div class="${prefix}-DataGame">${encryptDataGame(JSON.stringify(data))}</div>`;
+            const cards = Array.from({ length: 10 }, (_, index) => ({
+                type: 2,
+                eText: index < 5 ? `Heading ${index + 1}` : `Answer ${index - 4}`,
+                url: '',
+            }));
+            const components = [
+                {
+                    type: 'sort',
+                    html: pack('ordena', {
+                        type: 1,
+                        gameColumns: 5,
+                        orderedColumns: true,
+                        phrasesGame: [
+                            { definition: 'Arrange by increasing age', cards },
+                            {
+                                definition: 'Unprintable round',
+                                cards: [{ type: 0, eText: '', url: '', audio: 'sound.mp3' }, ...cards.slice(1)],
+                            },
+                        ],
+                    }),
+                },
+                {
+                    type: 'az-quiz-game',
+                    html: pack('rosco', {
+                        letters: 'DC',
+                        wordsGame: [
+                            { word: 'DOG', type: 0, definition: '<audio controls></audio>', url: '' },
+                            { word: 'CAT', type: 0, definition: 'A small feline', url: '' },
+                        ],
+                    }),
+                },
+            ];
+            await page.evaluate(components => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Printable regressions');
+                for (const component of components) {
+                    const block = binding.createBlock(parent.id);
+                    binding.createComponent(parent.id, block, component.type, { htmlContent: component.html });
+                }
+            }, components);
+            await openPrintDialog(page);
+            const { frame } = await choosePrintOption(page, mode);
+            const sort = frame.locator('[data-idevice="sort"]');
+            await expect(sort.locator('.worksheet-prompt')).toHaveText('Arrange by increasing age');
+            await expect(sort.locator('.worksheet-order-heading')).toHaveText(
+                Array.from({ length: 5 }, (_, index) => `Heading ${index + 1}`),
+            );
+            await expect(sort.locator('.worksheet-line')).toHaveCount(5);
+            const warnings = frame.locator('.worksheet-unsupported');
+            await expect(warnings).toHaveCount(mode === 'idevices' ? 1 : 2);
+            for (const warning of await warnings.all()) await expect(warning).toBeVisible();
+            const ring = frame.locator('[data-idevice="az-quiz-game"]');
+            await expect(ring.locator('.worksheet-item')).toHaveCount(1);
+            await expect(ring.locator('.worksheet-prompt')).toContainText('A small feline');
+            await expect(ring.locator('.worksheet-ring-active')).toHaveText('C');
+
+            await page.emulateMedia({ media: 'print' });
+            await page.locator('.print-preview-iframe').evaluate((iframe: HTMLIFrameElement) => {
+                // A4's content width with the worksheet's 15 mm margins.
+                iframe.style.width = '180mm';
+            });
+            const geometry = await sort.locator('.worksheet-order').evaluate(list => {
+                const bounds = list.getBoundingClientRect();
+                return [...list.querySelectorAll('.worksheet-order-card')].map(card => {
+                    const box = card.getBoundingClientRect();
+                    const line = card.querySelector('.worksheet-line')?.getBoundingClientRect();
+                    return {
+                        left: box.left - bounds.left,
+                        right: bounds.right - box.right,
+                        top: box.top,
+                        width: box.width,
+                        lineWidth: line?.width,
+                    };
+                });
+            });
+            expect(geometry).toHaveLength(10);
+            for (const box of geometry) {
+                expect(box.left).toBeGreaterThanOrEqual(-1);
+                expect(box.right).toBeGreaterThanOrEqual(-1);
+                if (box.lineWidth !== undefined) expect(Math.abs(box.lineWidth - box.width)).toBeLessThan(1);
+            }
+            expect(new Set(geometry.slice(0, 5).map(box => Math.round(box.top))).size).toBe(1);
+        });
+    }
+
     test('builds a worksheet from the activities in the project', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         await openFixtureProject(page, createProject);
