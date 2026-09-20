@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { encryptDataGame } from '../utils/dataGameCipher';
-import { extractDataGame, extractDivContent, extractMediaLinks, extractMediaLinksByClass } from './dataGameReader';
+import {
+    extractDataGame,
+    extractDivContent,
+    extractKeyedDivContent,
+    extractMediaLinks,
+    extractMediaLinksByClass,
+} from './dataGameReader';
 
 /** Build a DataGame div the way the iDevice editors write it. */
 function dataGameDiv(prefix: string, data: unknown): string {
@@ -160,5 +166,42 @@ describe('extractMediaLinksByClass', () => {
         expect(extractMediaLinks(html, 'adivina', 'Images')).toEqual(
             extractMediaLinksByClass(html, 'adivina-LinkImages'),
         );
+    });
+});
+
+describe('extractKeyedDivContent', () => {
+    const sidecar = (index: number, body: string) =>
+        `<div class="js-hidden mathproblems-LinkWordings" data-id="${index}">${body}</div>`;
+
+    it('reads each sidecar under the index it carries', () => {
+        const html = sidecar(0, '<p>Primero</p>') + sidecar(1, '<p>Segundo</p>');
+        const found = extractKeyedDivContent(html, 'mathproblems-LinkWordings');
+
+        expect(found.get(0)).toBe('<p>Primero</p>');
+        expect(found.get(1)).toBe('<p>Segundo</p>');
+    });
+
+    it('keeps the markup inside, pictures and all', () => {
+        const html = sidecar(0, '<img src="blob:figure" alt="Figura">');
+
+        expect(extractKeyedDivContent(html, 'mathproblems-LinkWordings').get(0)).toContain('<img');
+    });
+
+    it('ignores a sidecar with no index to file it under', () => {
+        const html = '<div class="mathproblems-LinkWordings">Sin id</div>' + sidecar(1, 'Con id');
+        const found = extractKeyedDivContent(html, 'mathproblems-LinkWordings');
+
+        expect([...found.keys()]).toEqual([1]);
+    });
+
+    it('keeps the first when an index is written twice', () => {
+        const html = sidecar(0, 'Primera') + sidecar(0, 'Segunda');
+
+        expect(extractKeyedDivContent(html, 'mathproblems-LinkWordings').get(0)).toBe('Primera');
+    });
+
+    it('reads nothing from markup that carries none', () => {
+        expect(extractKeyedDivContent('<p>Nada</p>', 'mathproblems-LinkWordings').size).toBe(0);
+        expect(extractKeyedDivContent('', 'mathproblems-LinkWordings').size).toBe(0);
     });
 });

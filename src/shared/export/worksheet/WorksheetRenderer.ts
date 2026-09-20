@@ -360,6 +360,11 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-top: 2mm;
 }
 
+/* Ruled when what goes there is a single value written on a line. */
+.worksheet-writing-space-ruled {
+    border-bottom: 1px solid #1a1a1a;
+}
+
 /* A line to write a single value on, under the card it belongs to. */
 .worksheet-line {
     display: block;
@@ -383,13 +388,23 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     flex-direction: column;
     align-items: center;
     gap: 2mm;
+    width: 34mm;
+    max-width: 100%;
+    min-width: 0;
     page-break-inside: avoid;
     break-inside: avoid;
 }
 
+/* Column tracks shrink to the printable width; both the card and its line follow that track. */
+.worksheet-order-card .worksheet-card {
+    box-sizing: border-box;
+    width: 100%;
+    overflow-wrap: anywhere;
+}
+
 /* The line is as wide as the card above it and centred on it, so the pairing is unambiguous. */
 .worksheet-order-card .worksheet-line {
-    width: 34mm;
+    width: 100%;
     height: 7mm;
 }
 
@@ -639,10 +654,11 @@ function renderOptions(labels: string[], marker: 'box' | 'line' = 'box'): string
  * Left empty rather than ruled. The height is a computed number, never author content, so it is
  * safe in a style attribute.
  */
-function renderWritingSpace(lines: number): string {
+function renderWritingSpace(lines: number, ruled = false): string {
     const height = Math.max(1, Math.floor(lines)) * WRITING_LINE_HEIGHT_MM;
+    const state = ruled ? ' worksheet-writing-space-ruled' : '';
 
-    return `<div class="worksheet-writing-space" style="height: ${height}mm"></div>`;
+    return `<div class="worksheet-writing-space${state}" style="height: ${height}mm"></div>`;
 }
 
 /**
@@ -671,7 +687,7 @@ function renderOrderCards(cards: PrintableCard[], columns?: number, headers = 0)
     // The count is a computed number, never author content, so it is safe in a style attribute.
     const grid =
         typeof columns === 'number' && columns >= 2
-            ? ` style="display: grid; grid-template-columns: repeat(${Math.floor(columns)}, auto)"`
+            ? ` style="display: grid; grid-template-columns: repeat(${Math.floor(columns)}, minmax(0, 34mm))"`
             : '';
 
     return `<ul class="worksheet-order"${grid}>${drawn}</ul>`;
@@ -687,7 +703,7 @@ function renderAnswer(answer: PrintableAnswer): string {
     }
 
     if (answer.kind === 'writingSpace') {
-        return renderWritingSpace(answer.lines);
+        return renderWritingSpace(answer.lines, answer.ruled);
     }
 
     if (answer.kind === 'orderCards') {

@@ -202,6 +202,7 @@ export default class ModalPrintPreview {
             'az-quiz-game': _('A-Z quiz'),
             sort: _('Sort'),
             'word-search': _('Word search'),
+            mathproblems: _('Math problems'),
         };
     }
 

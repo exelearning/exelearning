@@ -10,6 +10,7 @@ import type { WorksheetAdapter } from '../types';
 import { AzQuizGameWorksheetAdapter } from './AzQuizGameWorksheetAdapter';
 import { ClassifyWorksheetAdapter } from './ClassifyWorksheetAdapter';
 import { SortWorksheetAdapter } from './SortWorksheetAdapter';
+import { MathProblemsWorksheetAdapter } from './MathProblemsWorksheetAdapter';
 import { WordSearchWorksheetAdapter } from './WordSearchWorksheetAdapter';
 import { CompleteWorksheetAdapter } from './CompleteWorksheetAdapter';
 import { CrosswordWorksheetAdapter } from './CrosswordWorksheetAdapter';
@@ -30,6 +31,7 @@ const ADAPTERS: readonly WorksheetAdapter[] = [
     AzQuizGameWorksheetAdapter,
     SortWorksheetAdapter,
     WordSearchWorksheetAdapter,
+    MathProblemsWorksheetAdapter,
 ];
 
 const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapter.ideviceType, adapter]));

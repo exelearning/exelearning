@@ -33,10 +33,11 @@ export type PrintableAnswer =
     /**
      * Blank space to write an answer out in, as many line-heights tall as it needs.
      *
-     * Nothing is ruled: the gap is the invitation, and a rule under a sentence the student is
-     * copying out adds a constraint the exercise never asked for.
+     * `ruled` draws a line at the foot of the space. Right for a single value written on a line,
+     * which is what a line means; wrong for a sentence being copied out, where it adds a
+     * constraint the exercise never set.
      */
-    | { kind: 'writingSpace'; lines: number }
+    | { kind: 'writingSpace'; lines: number; ruled?: boolean }
     /**
      * Cards to be put in order, each with a line under it to write its position in.
      *

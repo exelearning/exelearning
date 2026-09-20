@@ -838,7 +838,7 @@ describe('cards with fixed headings', () => {
     });
 
     it('lays the cards out in the columns it is given, so a heading stands over its own', () => {
-        expect(ordered({ columns: 2, headers: 2 })).toContain('grid-template-columns: repeat(2, auto)');
+        expect(ordered({ columns: 2, headers: 2 })).toContain('grid-template-columns: repeat(2, minmax(0, 34mm))');
     });
 
     it('leaves the layout alone when the activity has no columns to speak of', () => {
@@ -880,5 +880,22 @@ describe('the word search grid', () => {
         const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-word-grid {')[1].split('}')[0];
 
         expect(rule).toContain('break-inside: avoid');
+    });
+});
+
+describe('a ruled answer space', () => {
+    const spaced = (answer: unknown) =>
+        renderActivityFragment(activity({ ideviceType: 'mathproblems', items: [{ prompt: 'x', answer } as never] }));
+
+    it('draws a rule when what goes there is a single value', () => {
+        expect(spaced({ kind: 'writingSpace', lines: 1, ruled: true })).toContain('worksheet-writing-space-ruled');
+    });
+
+    it('leaves the space blank otherwise', () => {
+        expect(spaced({ kind: 'writingSpace', lines: 1 })).not.toContain('worksheet-writing-space-ruled');
+    });
+
+    it('is still as tall as the lines it is asked for', () => {
+        expect(spaced({ kind: 'writingSpace', lines: 2, ruled: true })).toContain('height: 14mm');
     });
 });

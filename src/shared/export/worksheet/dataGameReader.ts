@@ -24,6 +24,30 @@ function elements(html: string, tagName: string, className: string, sourceLocati
     return found;
 }
 
+/**
+ * Rich text sidecars keyed by the index they carry, one per question.
+ *
+ * Some iDevices keep a question's text outside the payload, in a hidden div per question tagged
+ * with `data-id`. That copy is the one that counts: the export pipeline can see it, so its
+ * `asset://` references have been rewritten and any picture in it still resolves, while the copy
+ * inside the payload was never reachable and has gone stale.
+ *
+ * @param html - The component's stored HTML
+ * @param className - Class the sidecar divs carry
+ * @returns The inner HTML of each, by the index in its `data-id`
+ */
+export function extractKeyedDivContent(html: string, className: string): Map<number, string> {
+    const found = new Map<number, string>();
+
+    for (const node of elements(html, 'div', className)) {
+        const key = node.attrs.find(attr => attr.name === 'data-id')?.value ?? '';
+        const index = /^\d+$/.test(key.trim()) ? Number(key.trim()) : -1;
+        if (index >= 0 && !found.has(index)) found.set(index, serialize(node));
+    }
+
+    return found;
+}
+
 /** Current rich text sidecar, including nested elements and decoded/re-serialized attributes. */
 export function extractDivContent(html: string, className: string): string {
     const node = elements(html, 'div', className)[0];
