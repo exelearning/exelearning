@@ -12,6 +12,16 @@
 export const PREVIEW_MODE_DOCUMENT = 'document';
 export const PREVIEW_MODE_IDEVICES = 'idevices';
 
+/**
+ * What the document preview does with the project's interactive activities.
+ *
+ * These match the modes the shared exporter understands. Printing only the activities is not one
+ * of them: that is PREVIEW_MODE_IDEVICES, which produces the worksheet on its own.
+ */
+export const ACTIVITY_MODE_OMIT = 'omit';
+export const ACTIVITY_MODE_IN_PLACE = 'in-place';
+export const ACTIVITY_MODE_APPENDIX = 'appendix';
+
 export default class ModalPrintPreview {
     constructor(manager) {
         this.manager = manager;
@@ -23,6 +33,8 @@ export default class ModalPrintPreview {
         this.titleEl = this.overlay?.querySelector('.print-preview-title-text');
         this.blobUrl = null;
         this.mode = PREVIEW_MODE_DOCUMENT;
+        /** Null means print the document untouched, as it did before there was a choice. */
+        this.activityMode = null;
         this.requestId = 0;
         this.disposePreview = null;
     }
@@ -62,14 +74,17 @@ export default class ModalPrintPreview {
      * Show the print preview
      *
      * @param {string} mode - PREVIEW_MODE_DOCUMENT (default) or PREVIEW_MODE_IDEVICES
+     * @param {string|null} activityMode - What to do with the interactive activities, for the
+     *     document mode. Null prints the document untouched.
      */
-    async show(mode = PREVIEW_MODE_DOCUMENT) {
+    async show(mode = PREVIEW_MODE_DOCUMENT, activityMode = null) {
         if (!this.overlay) {
             console.error('[PrintPreview] Overlay element not found');
             return;
         }
 
         this.mode = mode;
+        this.activityMode = activityMode;
         const requestId = ++this.requestId;
         this.cleanup();
         this.applyTitle();
@@ -149,10 +164,45 @@ export default class ModalPrintPreview {
     }
 
     /**
-     * Build the worksheet from the activities in the project.
+     * User-visible strings the printable activities need.
      *
-     * The shared export code does not translate, so the user-visible strings are wrapped here
-     * and handed over.
+     * The shared export code does not translate, so they are wrapped here and handed over. Both
+     * printing paths draw the same exercises, so both read them from here.
+     *
+     * @returns {object} Translated worksheet labels
+     */
+    getWorksheetLabels() {
+        return {
+            across: _('Across'),
+            down: _('Down'),
+            mediaRequired: _('Requires multimedia'),
+            invalidData: _('Invalid or empty activity data'),
+            unplacedWords: _('Words that could not be placed'),
+            studentName: _('Name'),
+            date: _('Date'),
+            empty: _('This project has no printable activities yet.'),
+            unsupportedHeading: _('Activities that cannot be printed yet'),
+        };
+    }
+
+    /**
+     * Translated heading for each activity, keyed by iDevice type.
+     *
+     * @returns {object} Titles keyed by iDevice type
+     */
+    getIdeviceTitles() {
+        return {
+            guess: _('Guess'),
+            crossword: _('Crossword'),
+            'quick-questions': _('Test'),
+            'quick-questions-multiple-choice': _('Select'),
+            complete: _('Complete'),
+            classify: _('Classify'),
+        };
+    }
+
+    /**
+     * Build the worksheet from the activities in the project.
      *
      * @returns {Promise<object>} Result carrying the worksheet HTML
      */
@@ -168,29 +218,39 @@ export default class ModalPrintPreview {
         return generateWorksheetFn(
             yjsBridge.documentManager,
             {
-                labels: {
-                    across: _('Across'),
-                    down: _('Down'),
-                    mediaRequired: _('Requires multimedia'),
-                    invalidData: _('Invalid or empty activity data'),
-                    unplacedWords: _('Words that could not be placed'),
-                    studentName: _('Name'),
-                    date: _('Date'),
-                    empty: _('This project has no printable activities yet.'),
-                    unsupportedHeading: _('Activities that cannot be printed yet'),
-                },
-                ideviceTitles: {
-                    guess: _('Guess'),
-                    crossword: _('Crossword'),
-                    'quick-questions': _('Test'),
-                    'quick-questions-multiple-choice': _('Select'),
-                    complete: _('Complete'),
-                    classify: _('Classify'),
-                },
+                labels: this.getWorksheetLabels(),
+                ideviceTitles: this.getIdeviceTitles(),
                 ideviceBasePath: this.getIdeviceBasePath(),
             },
             yjsBridge.assetManager || null
         );
+    }
+
+    /**
+     * What the exporter should do with the interactive activities.
+     *
+     * Absent when no mode was chosen, which leaves the document printing exactly as it always
+     * has.
+     *
+     * @returns {object} An options fragment, empty when there is nothing to do
+     */
+    getActivityOptions() {
+        if (!this.activityMode) return {};
+
+        return {
+            activities: {
+                mode: this.activityMode,
+                labels: {
+                    ...this.getWorksheetLabels(),
+                    appendixTitle: _('Appendix'),
+                    // %s is the activity's number in the appendix.
+                    appendixReference: _('See appendix, activity %s'),
+                    notPrintable: _('This activity cannot be printed yet.'),
+                },
+                ideviceTitles: this.getIdeviceTitles(),
+                ideviceBasePath: this.getIdeviceBasePath(),
+            },
+        };
     }
 
     /**
@@ -218,6 +278,7 @@ export default class ModalPrintPreview {
                     : (window.eXeLearning?.config?.baseURL || window.location.origin),
                 basePath: window.eXeLearning?.config?.basePath || '',
                 version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
+                ...this.getActivityOptions(),
             },
             yjsBridge.assetManager || null
         );

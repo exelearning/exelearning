@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ModalPrintPreview, {
+    ACTIVITY_MODE_APPENDIX,
+    ACTIVITY_MODE_IN_PLACE,
+    ACTIVITY_MODE_OMIT,
     PREVIEW_MODE_DOCUMENT,
     PREVIEW_MODE_IDEVICES,
 } from './modalPrintPreview.js';
@@ -504,5 +507,93 @@ describe('ModalPrintPreview', () => {
             );
             expect(global.window.generateWorksheet).not.toHaveBeenCalled();
         });
+    });
+});
+
+describe('ModalPrintPreview and interactive activities', () => {
+    let modal;
+    let overlayElement;
+
+    /** The options object handed to the shared exporter on the last call. */
+    const lastOptions = () => global.window.generatePrintPreview.mock.calls.at(-1)[2];
+
+    beforeEach(() => {
+        overlayElement = document.createElement('div');
+        overlayElement.id = 'printPreviewOverlay';
+        overlayElement.setAttribute('data-visible', 'false');
+        overlayElement.innerHTML = `
+            <span class="print-preview-title-text"></span>
+            <button class="print-preview-print-btn"></button>
+            <button class="print-preview-close-btn"></button>
+            <div class="print-preview-loading"></div>
+            <iframe class="print-preview-iframe"></iframe>
+        `;
+        document.body.appendChild(overlayElement);
+
+        global.eXeLearning = {
+            app: { project: { _yjsEnabled: true, _yjsBridge: { documentManager: {}, assetManager: {} } } },
+            config: { baseURL: 'http://localhost:8080', basePath: '', version: 'v1.0.0' },
+        };
+        global.window.generatePrintPreview = vi.fn().mockResolvedValue({ success: true, html: '<html></html>' });
+        global.window.generateWorksheet = vi.fn().mockResolvedValue({ success: true, html: '<html></html>' });
+        global.URL.createObjectURL = vi.fn(() => 'blob:test-url');
+        global.URL.revokeObjectURL = vi.fn();
+        global._ = (str) => str;
+
+        modal = new ModalPrintPreview({});
+    });
+
+    afterEach(() => {
+        document.body.removeChild(overlayElement);
+        vi.clearAllMocks();
+    });
+
+    it('asks for nothing when no mode is chosen, as printing always behaved', async () => {
+        await modal.show(PREVIEW_MODE_DOCUMENT);
+
+        expect(lastOptions().activities).toBeUndefined();
+    });
+
+    it('passes the chosen mode through to the exporter', async () => {
+        for (const mode of [ACTIVITY_MODE_OMIT, ACTIVITY_MODE_IN_PLACE, ACTIVITY_MODE_APPENDIX]) {
+            await modal.show(PREVIEW_MODE_DOCUMENT, mode);
+
+            expect(lastOptions().activities.mode).toBe(mode);
+        }
+    });
+
+    it('hands over the strings the exercises need, translated', async () => {
+        await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX);
+        const { labels, ideviceTitles } = lastOptions().activities;
+
+        expect(labels.appendixTitle).toBe('Appendix');
+        expect(labels.appendixReference).toContain('%s');
+        expect(labels.notPrintable).toBeTruthy();
+        // The worksheet's own labels come along, since the same exercises are drawn either way.
+        expect(labels.across).toBe('Across');
+        expect(ideviceTitles.guess).toBe('Guess');
+    });
+
+    it('tells the exporter where the iDevice files are, for pictures they ship', async () => {
+        await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE);
+
+        expect(lastOptions().activities.ideviceBasePath).toBe(
+            'http://localhost:8080/files/perm/idevices/base/'
+        );
+    });
+
+    it('forgets the mode when the next preview does not ask for one', async () => {
+        await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE);
+        await modal.show(PREVIEW_MODE_DOCUMENT);
+
+        expect(lastOptions().activities).toBeUndefined();
+    });
+
+    it('draws the worksheet from the same labels the document preview uses', async () => {
+        await modal.show(PREVIEW_MODE_IDEVICES);
+        const worksheetOptions = global.window.generateWorksheet.mock.calls.at(-1)[1];
+
+        expect(worksheetOptions.labels).toEqual(modal.getWorksheetLabels());
+        expect(worksheetOptions.ideviceTitles).toEqual(modal.getIdeviceTitles());
     });
 });
