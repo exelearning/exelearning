@@ -15,7 +15,7 @@ interface ClassifyFixtureOptions {
 
 /** A text card belonging to the first container. */
 function card(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-    return { type: 1, eText: escape('Perro'), group: 0, ...overrides };
+    return { type: 1, eText: 'Perro', group: 0, ...overrides };
 }
 
 /** Build component HTML the way the Classify editor writes it. */
@@ -94,7 +94,7 @@ describe('ClassifyWorksheetAdapter', () => {
     describe('containers', () => {
         it('gives each one a colour of its own', () => {
             const containers = containersOf(
-                ClassifyWorksheetAdapter.build(classifyHtml({ groups: ['A', 'B', 'C'] }), {}),
+                ClassifyWorksheetAdapter.build(classifyHtml({ groups: ['A', 'B', 'C'], numberGroups: 3 }), {}),
             );
 
             expect(new Set(containers.map(container => container.color)).size).toBe(3);
@@ -102,7 +102,9 @@ describe('ClassifyWorksheetAdapter', () => {
 
         it('wraps the palette round when there are more containers than colours', () => {
             const groups = Array.from({ length: 9 }, (_, index) => `G${index}`);
-            const containers = containersOf(ClassifyWorksheetAdapter.build(classifyHtml({ groups }), {}));
+            const containers = containersOf(
+                ClassifyWorksheetAdapter.build(classifyHtml({ groups, numberGroups: 9 }), {}),
+            );
 
             expect(containers).toHaveLength(9);
             expect(containers[8].color).toBe(containers[0].color);
@@ -130,15 +132,19 @@ describe('ClassifyWorksheetAdapter', () => {
             expect(containers.map(container => container.name)).toEqual(['Aves', 'Peces']);
         });
 
-        it('returns null when the activity has no containers', () => {
-            expect(ClassifyWorksheetAdapter.build(classifyHtml({ groups: [] }), {})).toBeNull();
+        it('pads the containers an old project never stored, as the runtime does', () => {
+            // The runtime never leaves an activity without somewhere to put its cards: with no
+            // names stored it invents two. Returning nothing here would drop the exercise.
+            const containers = containersOf(ClassifyWorksheetAdapter.build(classifyHtml({ groups: [] }), {}));
+
+            expect(containers.map(container => container.name)).toEqual(['Group 1', 'Group 2']);
         });
     });
 
     describe('cards', () => {
         it('reads the text of a text card', () => {
             const activity = ClassifyWorksheetAdapter.build(
-                classifyHtml({ wordsGame: [card({ eText: escape('<b>Perro</b>') })] }),
+                classifyHtml({ wordsGame: [card({ eText: '<b>Perro</b>' })] }),
                 {},
             );
 
@@ -163,7 +169,7 @@ describe('ClassifyWorksheetAdapter', () => {
         it('reads both halves of a card that carries text and a picture', () => {
             const activity = ClassifyWorksheetAdapter.build(
                 classifyHtml({
-                    wordsGame: [card({ type: 2, eText: escape('Perro') })],
+                    wordsGame: [card({ type: 2, eText: 'Perro' })],
                     imageLinks: { 0: 'blob:http://localhost/dog' },
                 }),
                 {},
@@ -176,7 +182,7 @@ describe('ClassifyWorksheetAdapter', () => {
         it('keeps each picture matched to its own card despite the shuffle', () => {
             const activity = ClassifyWorksheetAdapter.build(
                 classifyHtml({
-                    wordsGame: [card({ eText: escape('Texto') }), card({ type: 0 })],
+                    wordsGame: [card({ eText: 'Texto' }), card({ type: 0 })],
                     imageLinks: { 1: 'blob:http://localhost/second' },
                 }),
                 { random: () => 0 },
@@ -189,7 +195,7 @@ describe('ClassifyWorksheetAdapter', () => {
 
         it('skips a card that carries nothing', () => {
             const activity = ClassifyWorksheetAdapter.build(
-                classifyHtml({ wordsGame: [card({ eText: '' }), card({ eText: escape('Gato') })] }),
+                classifyHtml({ wordsGame: [card({ eText: '' }), card({ eText: 'Gato' })] }),
                 {},
             );
 
@@ -198,7 +204,7 @@ describe('ClassifyWorksheetAdapter', () => {
         });
 
         it('shuffles the cards, so their order gives nothing away', () => {
-            const four = ['uno', 'dos', 'tres', 'cuatro'].map(text => card({ eText: escape(text) }));
+            const four = ['uno', 'dos', 'tres', 'cuatro'].map(text => card({ eText: text }));
             const activity = ClassifyWorksheetAdapter.build(classifyHtml({ wordsGame: four }), {
                 random: () => 0,
             });
@@ -209,7 +215,7 @@ describe('ClassifyWorksheetAdapter', () => {
         });
 
         it('prints only the share of cards the activity uses', () => {
-            const four = ['uno', 'dos', 'tres', 'cuatro'].map(text => card({ eText: escape(text) }));
+            const four = ['uno', 'dos', 'tres', 'cuatro'].map(text => card({ eText: text }));
             const activity = ClassifyWorksheetAdapter.build(
                 classifyHtml({ wordsGame: four, percentajeQuestions: 50 }),
                 {},
@@ -219,7 +225,7 @@ describe('ClassifyWorksheetAdapter', () => {
         });
 
         it('prints every card when the activity sets no share', () => {
-            const four = ['uno', 'dos', 'tres', 'cuatro'].map(text => card({ eText: escape(text) }));
+            const four = ['uno', 'dos', 'tres', 'cuatro'].map(text => card({ eText: text }));
 
             expect(cardsOf(ClassifyWorksheetAdapter.build(classifyHtml({ wordsGame: four }), {}))).toHaveLength(4);
         });
@@ -247,7 +253,7 @@ describe('ClassifyWorksheetAdapter', () => {
     describe('untrusted content', () => {
         it('strips a script smuggled into a card', () => {
             const activity = ClassifyWorksheetAdapter.build(
-                classifyHtml({ wordsGame: [card({ eText: escape('<p>Hi</p><script>alert(1)</script>') })] }),
+                classifyHtml({ wordsGame: [card({ eText: '<p>Hi</p><script>alert(1)</script>' })] }),
                 {},
             );
 
@@ -262,5 +268,87 @@ describe('ClassifyWorksheetAdapter', () => {
 
             expect(activity?.instructions).toBe('<p>Hi</p>');
         });
+    });
+});
+
+describe('ClassifyWorksheetAdapter and the editor contract', () => {
+    it('prints a per-cent sequence as the teacher typed it', () => {
+        // Unlike its siblings, this editor stores eText straight from the input and the runtime
+        // injects it without decoding. Unescaping here rewrote '%41' into 'A'.
+        const activity = ClassifyWorksheetAdapter.build(
+            classifyHtml({ wordsGame: [card({ eText: 'Literal %41 and 100%' })] }),
+            {},
+        );
+
+        expect(cardsOf(activity)[0].text).toBe('Literal %41 and 100%');
+    });
+
+    describe('how many containers an old project gets', () => {
+        /** Cards spread across the given groups, each with text of its own. */
+        const inGroups = (...groups: number[]) => groups.map((group, index) => card({ eText: `c${index}`, group }));
+
+        it('honours a stored number the activity supports', () => {
+            const containers = containersOf(
+                ClassifyWorksheetAdapter.build(
+                    classifyHtml({ groups: ['A', 'B', 'C'], numberGroups: 2, wordsGame: inGroups(0, 1) }),
+                    {},
+                ),
+            );
+
+            expect(containers).toHaveLength(2);
+        });
+
+        it('infers the number from the cards when the project stored none', () => {
+            // Older versions saved null here. Nine names may be left over from before the number
+            // was turned down, so the cards say how many the activity really uses.
+            const nine = Array.from({ length: 9 }, (_, index) => `G${index}`);
+            const containers = containersOf(
+                ClassifyWorksheetAdapter.build(
+                    classifyHtml({ groups: nine, numberGroups: undefined, wordsGame: inGroups(0, 1) }),
+                    {},
+                ),
+            );
+
+            expect(containers).toHaveLength(2);
+        });
+
+        it('gives a card in a later group somewhere to go', () => {
+            const containers = containersOf(
+                ClassifyWorksheetAdapter.build(
+                    classifyHtml({ groups: ['Aves'], numberGroups: undefined, wordsGame: inGroups(0, 3) }),
+                    {},
+                ),
+            );
+
+            expect(containers).toHaveLength(4);
+            expect(containers.map(container => container.name)).toEqual(['Aves', 'Group 2', 'Group 3', 'Group 4']);
+        });
+
+        it('falls back to the cards when the stored number is outside the range', () => {
+            // 1 and 40 are both impossible for this activity, so neither is trusted: the number
+            // comes from the cards instead, exactly as the runtime decides it.
+            for (const numberGroups of [1, 40]) {
+                const containers = containersOf(
+                    ClassifyWorksheetAdapter.build(classifyHtml({ groups: ['A'], numberGroups }), {}),
+                );
+
+                expect(containers).toHaveLength(2);
+            }
+        });
+    });
+
+    it('reports a card it cannot print instead of dropping it quietly', () => {
+        // A sound-only card is valid to the editor and playable at runtime, but there is nothing
+        // to put on paper for it.
+        const omissions: string[] = [];
+        const activity = ClassifyWorksheetAdapter.build(
+            classifyHtml({
+                wordsGame: [card({ eText: 'Perro' }), card({ type: 0, url: '', audio: 'asset://sound' })],
+            }),
+            { onOmission: reason => omissions.push(reason) },
+        );
+
+        expect(cardsOf(activity)).toHaveLength(1);
+        expect(omissions).toEqual(['media-required']);
     });
 });

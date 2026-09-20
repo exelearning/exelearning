@@ -87,8 +87,10 @@ function buildCard({ question: card, index }: IndexedCard, imageLinks: Map<numbe
     const printable: PrintableCard = {};
 
     if (card.type === CARD_TYPE_TEXT || card.type === CARD_TYPE_BOTH) {
-        // Mirrors the runtime, which unescapes before injecting.
-        const text = sanitizeHtml(unescape(card.eText ?? ''));
+        // Stored as typed, unlike the other gamified iDevices: this editor writes `eText` straight
+        // from the input and the runtime injects it without decoding. Unescaping it here would
+        // rewrite a teacher's own '%41' into 'A'.
+        const text = sanitizeHtml(card.eText ?? '');
         if (text) printable.text = text;
     }
 
@@ -107,22 +109,44 @@ function buildCard({ question: card, index }: IndexedCard, imageLinks: Map<numbe
     return printable.text || printable.media ? printable : null;
 }
 
+/** Smallest and largest number of containers the activity works with. */
+const MIN_GROUPS = 2;
+const MAX_GROUPS = 9;
+
+/**
+ * Work out how many containers the activity uses, as the runtime does.
+ *
+ * A stored `numberGroups` is honoured when it is one of the values the activity supports. Projects
+ * saved by older versions carry `null` there, and the runtime infers the count from the highest
+ * group any card belongs to rather than from how many names happen to be stored — an activity can
+ * keep nine names from before the number was turned down.
+ *
+ * @param numberGroups - The stored count, often null in older projects
+ * @param cards - The stored cards, whose `group` says which container they belong in
+ */
+function countContainers(numberGroups: unknown, cards: ClassifyCard[]): number {
+    const stored = Number.parseInt(String(numberGroups), 10);
+    if (Number.isFinite(stored) && stored >= MIN_GROUPS && stored <= MAX_GROUPS) return stored;
+
+    const highest = cards.reduce((max, card) => {
+        const group = Number.parseInt(String(card?.group), 10);
+        return Number.isFinite(group) ? Math.max(max, group) : max;
+    }, 1);
+
+    return Math.min(Math.max(highest + 1, MIN_GROUPS), MAX_GROUPS);
+}
+
 /**
  * Give each container a name and an outline colour.
  *
- * Only as many as the activity is configured to use are kept. An activity can store more names
- * than that, from before the number was turned down, and those extra ones are not part of the
- * exercise. Short of names, the runtime falls back to a numbered label and so does this.
+ * Short of names, the runtime pads with a numbered label and so does this, so a card never ends up
+ * without a container to be matched to.
  *
  * @param groups - The stored names
- * @param numberGroups - How many containers the activity uses; all of them when absent
+ * @param wanted - How many containers the activity uses
  */
-function buildContainers(groups: string[], numberGroups: number | undefined): PrintableContainer[] {
+function buildContainers(groups: string[], wanted: number): PrintableContainer[] {
     const named = groups.map(name => (typeof name === 'string' ? name.trim() : ''));
-    const wanted =
-        typeof numberGroups === 'number' && Number.isFinite(numberGroups) && numberGroups > 0
-            ? numberGroups
-            : named.length;
 
     return Array.from({ length: wanted }, (_, index) => ({
         name: named[index] || `Group ${index + 1}`,
@@ -140,9 +164,8 @@ export const ClassifyWorksheetAdapter: WorksheetAdapter = {
 
         const containers = buildContainers(
             Array.isArray(dataGame.groups) ? dataGame.groups : [],
-            dataGame.numberGroups,
+            countContainers(dataGame.numberGroups, dataGame.wordsGame),
         );
-        if (containers.length === 0) return null;
 
         const random: RandomSource = options.random ?? Math.random;
         const imageLinks = extractMediaLinks(html, PREFIX, 'Images');
@@ -156,9 +179,15 @@ export const ClassifyWorksheetAdapter: WorksheetAdapter = {
             random,
         );
 
-        const cards = shuffleWith(selected, random)
-            .map(entry => buildCard(entry, imageLinks))
-            .filter((card): card is PrintableCard => card !== null);
+        // A card carrying only a sound clip is a valid activity card — the editor accepts it and
+        // the runtime gives it a play button — but there is nothing to print for it. It is left
+        // out and reported, so a worksheet missing a card never looks complete.
+        const cards = shuffleWith(selected, random).flatMap(entry => {
+            const card = buildCard(entry, imageLinks);
+            if (card) return [card];
+            options.onOmission?.('media-required');
+            return [];
+        });
 
         if (cards.length === 0) return null;
 
