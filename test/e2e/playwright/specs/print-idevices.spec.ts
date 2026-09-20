@@ -14,7 +14,7 @@
  * screen, so the hint assertions below bound the count rather than pinning it.
  */
 
-import type { Page } from '@playwright/test';
+import { chromium, type Page } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-helpers';
 import { encryptDataGame } from '../../../../src/shared/export/utils/dataGameCipher';
@@ -402,6 +402,110 @@ test.describe('Print iDevices', () => {
         await expect(overlay).toHaveAttribute('data-visible', 'false');
     });
 
+    for (const cardCount of [1, 6]) {
+        test(`keeps all nine categories with their ${cardCount} cards on printed sheets`, async ({
+            authenticatedPage: page,
+            createProject,
+        }, testInfo) => {
+            const uuid = await createProject(page, 'Nine printable categories');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const html = `<div class="clasifica-DataGame">${encryptDataGame(
+                JSON.stringify({
+                    numberGroups: 9,
+                    groups: Array.from({ length: 9 }, (_, index) => `Category ${index + 1}`),
+                    wordsGame: Array.from({ length: cardCount }, (_, index) => ({
+                        type: 1,
+                        eText: `Printed card ${index + 1}`,
+                        group: 8,
+                    })),
+                }),
+            )}</div>`;
+            await page.evaluate(html => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Matching exercise');
+                const block = binding.createBlock(parent.id);
+                binding.createComponent(parent.id, block, 'classify', { htmlContent: html });
+            }, html);
+
+            const { frame } = await openWorksheet(page);
+            await page.emulateMedia({ media: 'print' });
+            const boards = frame.locator('.worksheet-match');
+            const expectedSheets = cardCount === 1 ? 1 : 2;
+            await expect(boards).toHaveCount(expectedSheets);
+            await expect(frame.locator('.worksheet-card')).toHaveCount(cardCount);
+            for (const board of await boards.all()) {
+                await expect(board.locator('.worksheet-container')).toHaveCount(9);
+                const heightMm = await board.evaluate(node => (node.getBoundingClientRect().height * 25.4) / 96);
+                expect(heightMm).toBeLessThan(267);
+            }
+
+            // Inspect real page breaks as well as the unpaginated DOM. Chromium provides PDF
+            // output even when the editor flow above is exercised by the Firefox project.
+            const pdfBrowser = await chromium.launch();
+            try {
+                const pdfPage = await pdfBrowser.newPage();
+                await pdfPage.setContent(
+                    `<!DOCTYPE html>${await frame.locator('html').evaluate(node => node.outerHTML)}`,
+                );
+                const bytes = await pdfPage.pdf({
+                    path: testInfo.outputPath('nine-categories.pdf'),
+                    format: 'A4',
+                    preferCSSPageSize: true,
+                });
+                await testInfo.attach('nine-categories.pdf', { body: bytes, contentType: 'application/pdf' });
+                const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+                const task = getDocument({ data: new Uint8Array(bytes), useSystemFonts: true });
+                try {
+                    const pdf = await task.promise;
+                    expect(pdf.numPages).toBe(expectedSheets);
+                    const printedCards: string[] = [];
+                    for (let index = 1; index <= pdf.numPages; index++) {
+                        const content = await (await pdf.getPage(index)).getTextContent();
+                        const text = content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+                        expect(text).toContain('Printed card');
+                        for (let category = 1; category <= 9; category++)
+                            expect(text).toContain(`Category ${category}`);
+                        printedCards.push(...(text.match(/Printed card \d+/g) || []));
+                    }
+                    expect(printedCards.sort()).toEqual(
+                        Array.from({ length: cardCount }, (_, index) => `Printed card ${index + 1}`),
+                    );
+                } finally {
+                    await task.destroy();
+                }
+            } finally {
+                await pdfBrowser.close();
+            }
+        });
+    }
+
+    test('warns about unsupported JSON exercises when printing only activities', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'JSON worksheet omissions');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const types = ['adaptative-quiz', 'form', 'trueorfalse', 'scrambled-list'];
+        await page.evaluate(types => {
+            const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('JSON exercises');
+            const block = binding.createBlock(parent.id);
+            for (const type of types) binding.createComponent(parent.id, block, type, { htmlContent: '' });
+        }, types);
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+        const warning = frame.locator('.worksheet-unsupported');
+        await expect(warning).toBeVisible();
+        await expect(warning.locator('li')).toHaveCount(types.length);
+        for (const type of types) await expect(warning).toContainText(`${type} — JSON exercises`);
+        await expect(frame.locator('.worksheet-activity')).toHaveCount(0);
+        await page.emulateMedia({ media: 'print' });
+        await expect(warning).toBeHidden();
+    });
+
     test('preserves worksheet formulas, encrypted images, distractors and hidden-block visibility', async ({
         authenticatedPage: page,
         createProject,
@@ -603,14 +707,20 @@ test.describe('Print: choosing what happens to the interactive activities', () =
 
         // The exercise replaces the game board, inside the document rather than on a sheet of
         // its own.
-        await expect(frame.locator('.worksheet-activity')).toHaveCount(1);
+        const exercise = '.worksheet-activity[data-idevice="guess"]';
+        await expect(frame.locator(exercise)).toHaveCount(1);
+        // The fixture also contains two JSON activities without paper adapters. Their notes
+        // belong in the document too, but they are not additional Guess exercises.
+        await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(2);
         await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
         await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
-        await expect(frame.locator('.exe-single-page .worksheet-activity')).toHaveCount(1);
+        await expect(frame.locator(`.exe-single-page ${exercise}`)).toHaveCount(1);
+        await expect(frame.locator('.exe-single-page .worksheet-activity-unprintable')).toHaveCount(2);
 
         // The exercise sits inside the component the activity occupied, and the wrapper does not
         // answer to the same class the exercise does.
-        await expect(frame.locator('.idevice_node.printable-activity .worksheet-activity')).toHaveCount(1);
+        await expect(frame.locator(`.idevice_node.printable-activity ${exercise}`)).toHaveCount(1);
+        await expect(frame.locator('.idevice_node.printable-activity .worksheet-activity-unprintable')).toHaveCount(2);
     });
 
     test('points into an appendix and prints the exercise there', async ({ authenticatedPage, createProject }) => {
