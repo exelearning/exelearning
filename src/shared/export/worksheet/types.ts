@@ -147,8 +147,18 @@ export interface PrintableItem {
 export interface PrintableActivity {
     /** iDevice type as stored in the document, e.g. 'guess'. */
     ideviceType: string;
-    /** Heading for the activity, e.g. 'Guess'. */
+    /**
+     * The activity's name, e.g. 'Guess'.
+     *
+     * Not printed. A worksheet names the exercise the way the author named their block, and the
+     * iDevice's own type name above it said nothing a student or a teacher needed.
+     */
     title: string;
+    /**
+     * Printed above the activity when it has to be found from somewhere else — an exercise in the
+     * appendix carries the number the body points at. Absent otherwise.
+     */
+    number?: number;
     /** Author's general instructions, as sanitised HTML. */
     instructions?: string;
     /** Shared answer space drawn above the questions, for activities that need one. */

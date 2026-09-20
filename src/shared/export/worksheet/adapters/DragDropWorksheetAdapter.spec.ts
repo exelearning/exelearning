@@ -92,14 +92,17 @@ describe('DragDropWorksheetAdapter', () => {
     });
 
     describe('which column holds the text', () => {
-        it('puts it on the left when the activity says so', () => {
+        it('puts the words on the left in the text-to-picture mode', () => {
+            // typeDrag 0 is what the editor labels 'Media': the pictures are dragged onto the
+            // words, so the words are the column that stays put and reads first.
             const activity = DragDropWorksheetAdapter.build(dragdropHtml({ typeDrag: 0 }), {});
 
             expect(columns(activity).left[0].text).toBe('Perro');
             expect(columns(activity).right[0].media?.src).toBe('asset://dog');
         });
 
-        it('puts it on the right when the activity says so', () => {
+        it('puts the pictures on the left in the picture-to-text mode', () => {
+            // typeDrag 1 is 'Text' in the editor: the words are dragged onto the pictures.
             const activity = DragDropWorksheetAdapter.build(dragdropHtml({ typeDrag: 1 }), {});
 
             expect(columns(activity).right[0].text).toBe('Perro');

@@ -125,7 +125,9 @@ describe('applyActivityMode', () => {
 
             expect(content).toContain('worksheet-activity-unprintable');
             expect(content).toContain('This activity cannot be printed yet.');
-            expect(content).toContain('puzzle');
+            // The type survives as an attribute, for stylesheets and tests, but is not written out
+            // anywhere a reader would see it.
+            expect(content).toContain('data-idevice="puzzle"');
         });
 
         it('prints the same note when the payload cannot be read', () => {
@@ -156,8 +158,8 @@ describe('applyActivityMode', () => {
                 expect.stringContaining('activity 2'),
             ]);
             expect(componentsOf([result[1]]).map(c => c.content)).toEqual([
-                expect.stringContaining('1. Guess'),
-                expect.stringContaining('2. Guess'),
+                expect.stringContaining('>1.<'),
+                expect.stringContaining('>2.<'),
             ]);
         });
 
@@ -177,8 +179,8 @@ describe('applyActivityMode', () => {
             const inAppendix = componentsOf([result[result.length - 1]]);
 
             expect(inAppendix[0].content).toContain('worksheet-not-printable');
-            expect(inAppendix[0].content).toContain('1. puzzle');
-            expect(inAppendix[1].content).toContain('2. Guess');
+            expect(inAppendix[0].content).toContain('>1.<');
+            expect(inAppendix[1].content).toContain('>2.<');
         });
 
         it('builds the appendix as an ordinary page, after the last one', () => {
@@ -218,9 +220,9 @@ describe('applyActivityMode', () => {
 
             expect(result[1].title).toBe('Anexo');
             expect(componentsOf([result[0]])[0].content).toContain('Ver anexo, actividad 1');
-            expect(componentsOf([result[1]])[0].content).toContain('1. Adivina');
+            expect(componentsOf([result[1]])[0].content).toContain('>1.<');
             expect(componentsOf([result[1]])[1].content).toContain('Todavía no se puede imprimir');
-            expect(componentsOf([result[1]])[1].content).toContain('2. Puzle');
+            expect(componentsOf([result[1]])[1].content).toContain('>2.<');
         });
 
         it('passes the worksheet labels down into the exercise itself', () => {
@@ -264,5 +266,42 @@ describe('PRINTABLE_ACTIVITY_TYPE', () => {
         const classes = [...markup.matchAll(/class="([^"]+)"/g)].flatMap(match => match[1].split(/\s+/));
 
         expect(classes).not.toContain(PRINTABLE_ACTIVITY_TYPE);
+    });
+});
+
+describe('the iDevice name is never printed', () => {
+    /** The text a reader would see, with attributes and tags stripped out. */
+    const visibleText = (markup: string) => markup.replace(/<[^>]*>/g, ' ');
+
+    const named = { ideviceTitles: { guess: 'Adivina', puzzle: 'Puzle' } };
+
+    it('is absent from an exercise', () => {
+        const markup = componentsOf(applyActivityMode([page([component()])], 'in-place', named))[0].content;
+
+        expect(visibleText(markup)).not.toContain('Adivina');
+        expect(visibleText(markup)).not.toContain('Guess');
+    });
+
+    it('is absent from the note for an activity with no printable form', () => {
+        const unprintable = component({ type: 'puzzle', content: '<div/>' });
+        const markup = componentsOf(applyActivityMode([page([unprintable])], 'in-place', named))[0].content;
+
+        expect(visibleText(markup)).not.toContain('Puzle');
+        expect(visibleText(markup)).not.toContain('puzzle');
+    });
+
+    it('is absent from the pointer into the appendix and from the entry it points at', () => {
+        const result = applyActivityMode([page([component()])], 'appendix', named);
+
+        for (const markup of componentsOf(result).map(entry => entry.content)) {
+            expect(visibleText(markup)).not.toContain('Adivina');
+        }
+    });
+
+    it('still leaves the appendix entry findable by its number', () => {
+        const result = applyActivityMode([page([component()])], 'appendix', named);
+        const inAppendix = componentsOf([result[1]])[0].content;
+
+        expect(inAppendix).toContain('<h3 class="worksheet-activity-title">1.</h3>');
     });
 });

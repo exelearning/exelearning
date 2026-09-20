@@ -100,24 +100,29 @@ function printableComponent(original: ExportComponent, content: string): ExportC
     };
 }
 
-/** Heading for an activity, preferring the translated name of its iDevice. */
+/** The activity's name, preferring the translated one. Used to build an exercise, never printed. */
 function activityTitle(type: string, options: ApplyActivityModeOptions): string {
     return options.ideviceTitles?.[type] || getWorksheetAdapter(type)?.defaultTitle || type;
+}
+
+/** The heading an appendix entry needs so the body's pointer can be followed to it. */
+function numberHeading(number?: number): string {
+    return number === undefined ? '' : `<h3 class="worksheet-activity-title">${number}.</h3>`;
 }
 
 /**
  * Markup for an activity that cannot be converted yet.
  *
- * It still prints its heading, so the teacher can see that something stood there rather than
- * wondering whether the page lost it.
+ * The note stands in for it, so the teacher can see that something stood there rather than
+ * wondering whether the page lost it. It does not name the iDevice: that name belongs to the
+ * editor, not to the handout.
  */
 function unprintableMarkup(type: string, options: ApplyActivityModeOptions, number?: number): string {
     const label = options.labels?.notPrintable || DEFAULT_LABELS.notPrintable;
-    const title = numberedTitle(activityTitle(type, options), number);
 
     return (
         `<article class="worksheet-activity worksheet-activity-unprintable" data-idevice="${escapeText(type)}">` +
-        `<h3 class="worksheet-activity-title">${escapeText(title)}</h3>` +
+        numberHeading(number) +
         `<p class="worksheet-not-printable">${escapeText(label)}</p>` +
         `</article>`
     );
@@ -129,15 +134,9 @@ function referenceMarkup(type: string, options: ApplyActivityModeOptions, number
 
     return (
         `<article class="worksheet-activity worksheet-activity-reference" data-idevice="${escapeText(type)}">` +
-        `<h3 class="worksheet-activity-title">${escapeText(activityTitle(type, options))}</h3>` +
         `<p class="worksheet-reference">${escapeText(pattern.replace('%s', String(number)))}</p>` +
         `</article>`
     );
-}
-
-/** Prefix a title with its appendix number, when it has one. */
-function numberedTitle(title: string, number?: number): string {
-    return number === undefined ? title : `${number}. ${title}`;
 }
 
 /**
@@ -157,7 +156,9 @@ function convert(component: ExportComponent, options: ApplyActivityModeOptions, 
         });
         if (!activity) return null;
 
-        return renderActivityFragment({ ...activity, title: numberedTitle(activity.title, number) }, options.labels);
+        // The number is the only heading an exercise carries, and only in the appendix, where the
+        // body's pointer has to lead somewhere.
+        return renderActivityFragment(number === undefined ? activity : { ...activity, number }, options.labels);
     } catch {
         // A payload this adapter cannot read is reported as unprintable rather than taking the
         // whole print job down with it.

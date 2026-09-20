@@ -113,11 +113,11 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-bottom: 8mm;
 }
 
+/* The number an appendix entry carries, so the pointer in the body can be followed to it. It is
+   the only heading an activity gets: the iDevice's own name is not printed. */
 .worksheet-activity-title {
     margin: 0 0 2mm;
     font-size: 12pt;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
     color: #444;
 }
 
@@ -704,13 +704,19 @@ function renderItem(item: PrintableItem, labels: Required<WorksheetLabels>): str
 }
 
 /**
- * Render one activity: heading, instructions, questions, closing text.
+ * Render one activity: instructions, questions, closing text.
+ *
+ * The iDevice's type name is deliberately not printed. The author's own heading already says what
+ * the exercise is, and 'CLASIFICA' above it told a student nothing. The only heading left is the
+ * number an appendix entry needs, so the body's pointer can be followed to it.
  */
 function renderActivity(activity: PrintableActivity, labels: Required<WorksheetLabels>): string {
     // The type is carried through so a reader, a stylesheet or a test can tell one kind of
     // activity from another on the printed sheet.
     let html = `<article class="worksheet-activity" data-idevice="${escapeText(activity.ideviceType)}">`;
-    html += `<h3 class="worksheet-activity-title">${escapeText(activity.title)}</h3>`;
+    if (activity.number !== undefined) {
+        html += `<h3 class="worksheet-activity-title">${activity.number}.</h3>`;
+    }
 
     if (activity.instructions) {
         html += `<div class="worksheet-instructions">${activity.instructions}</div>`;

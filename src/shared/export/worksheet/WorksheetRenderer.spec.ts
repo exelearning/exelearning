@@ -56,7 +56,9 @@ describe('renderWorksheet', () => {
         const html = renderWorksheet(model());
 
         expect(html).toContain('<h2 class="worksheet-page-title">El Poema de Mio Cid</h2>');
-        expect(html).toContain('<h3 class="worksheet-activity-title">Guess</h3>');
+        // The iDevice's own name is not printed: the author's heading already says what it is.
+        // Matched on the markup, since the class name also appears in the inlined stylesheet.
+        expect(html).not.toContain('<h3 class="worksheet-activity-title">');
     });
 
     it('skips pages that hold no activities', () => {
@@ -378,7 +380,8 @@ describe('renderWorksheet', () => {
             expect(html).not.toContain('<script>alert(1)</script>');
             expect(html).toContain('&lt;script&gt;');
             expect(html).toContain('&lt;b&gt;Page&lt;/b&gt;');
-            expect(html).toContain('&lt;i&gt;Act&lt;/i&gt;');
+            // The activity's own name never reaches the page, escaped or otherwise.
+            expect(html).not.toContain('Act');
         });
 
         it('escapes image sources and captions', () => {

@@ -11,9 +11,11 @@
  * Notes on the stored data:
  * - The DataGame class prefix is 'dragdrop'.
  * - Cards live in `cardsGame`; each carries both halves of one pair, `definition` and `url`.
- * - `typeDrag` says which column the text goes in. The activity fills its first column from
- *   `cardsGame` as targets and its second as sources, so 0 puts the text on the left and 1 on the
- *   right. This is the setting the teacher chose, so it is followed rather than fixed here.
+ * - `typeDrag` says which half is dragged, and with it which column each half ends up in. The
+ *   editor offers it as 'Media' (0) or 'Text' (1), and the activity draws the half that is *not*
+ *   dragged first. So 0 is the text-to-picture arrangement, with the words on the left, and 1 is
+ *   picture-to-text, with the pictures on the left. This is the teacher's own setting, so it is
+ *   followed rather than fixed here.
  * - `definition` is plain HTML, not escaped — unlike the Classify cards, which store `eText`.
  * - `percentajeCards` and `randomCards` are the share and the draw, as everywhere else.
  * - A card whose picture is missing, or which carries only audio, cannot be paired on paper. It is

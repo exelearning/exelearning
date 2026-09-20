@@ -294,7 +294,9 @@ describe('WorksheetExporter', () => {
             expect(result.success).toBe(true);
             expect(result.html).toContain('<!DOCTYPE html>');
             expect(result.html).toContain('El Poema');
-            expect(result.html).toContain('Adivina');
+            // The translated name reaches the adapter but is not printed: a worksheet names the
+            // exercise the way the author named their page, not after the iDevice.
+            expect(result.html).not.toContain('Adivina');
             expect(result.html?.match(/class="worksheet-box"/g)).toHaveLength(8);
         });
 
