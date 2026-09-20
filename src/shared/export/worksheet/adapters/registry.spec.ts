@@ -23,6 +23,7 @@ describe('worksheet adapter registry', () => {
             'classify',
             'complete',
             'crossword',
+            'dragdrop',
             'guess',
             'quick-questions',
             'quick-questions-multiple-choice',

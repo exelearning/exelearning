@@ -198,6 +198,7 @@ export default class ModalPrintPreview {
             'quick-questions-multiple-choice': _('Select'),
             complete: _('Complete'),
             classify: _('Classify'),
+            dragdrop: _('Drag and drop'),
         };
     }
 

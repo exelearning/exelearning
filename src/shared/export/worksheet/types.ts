@@ -84,7 +84,17 @@ export type PrintableBoard =
      * Paper cannot be dragged, so an activity that sorts cards into containers becomes a matching
      * exercise. Which card belongs where is never printed.
      */
-    | { kind: 'matchColumns'; cards: PrintableCard[]; containers: PrintableContainer[] };
+    | { kind: 'matchColumns'; cards: PrintableCard[]; containers: PrintableContainer[] }
+    /**
+     * Two columns of cards to pair off, one card in the left matching one in the right.
+     *
+     * Unlike `matchColumns`, both sides are cards: an activity that pairs a picture with its
+     * caption has media down one column and text down the other. Which side holds the text is the
+     * activity's own setting, so the adapter decides it rather than the renderer.
+     *
+     * Each column is shuffled separately, so a row of the printed page pairs nothing.
+     */
+    | { kind: 'pairColumns'; left: PrintableCard[]; right: PrintableCard[] };
 
 /** One card to be matched to a container. */
 export interface PrintableCard {

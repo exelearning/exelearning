@@ -281,6 +281,12 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin: 0 0 4mm;
 }
 
+/* Two columns of cards to pair off. They hold the same number of cards, so they read as parallel
+   lists rather than one being centred against the other. */
+.worksheet-pairs {
+    align-items: flex-start;
+}
+
 .worksheet-cards,
 .worksheet-containers {
     display: flex;
@@ -559,6 +565,7 @@ function renderCrosswordGrid(board: CrosswordBoard): string {
 function renderBoard(board: PrintableBoard): string {
     if (board.kind === 'wordBank') return renderWordBank(board.words);
     if (board.kind === 'matchColumns') return renderMatchColumns(board.cards, board.containers);
+    if (board.kind === 'pairColumns') return renderPairColumns(board.left, board.right);
 
     return renderCrosswordGrid(board);
 }
@@ -590,21 +597,40 @@ export function renderInlineGap(characters: number, options?: string[]): string 
  * Cards on the left, containers on the right, with room between them for the student to draw the
  * pairing. Both columns are centred, so the sheet reads as one exercise rather than two lists.
  */
+/**
+ * Render one card of a two-column exercise: the picture first, with any text underneath it.
+ */
+function renderCard(card: PrintableCard): string {
+    let content = '';
+
+    if (card.media) {
+        const alt = escapeText(card.media.alt ?? '');
+        content += `<img src="${escapeText(card.media.src)}" alt="${alt}" />`;
+    }
+    if (card.text) {
+        content += `<span class="worksheet-card-text">${card.text}</span>`;
+    }
+
+    return `<li class="worksheet-card">${content}</li>`;
+}
+
+/**
+ * Render two columns of cards to pair off.
+ *
+ * Shares the layout of the cards-and-containers board, since both ask the student to draw lines
+ * between two columns.
+ */
+function renderPairColumns(left: PrintableCard[], right: PrintableCard[]): string {
+    return (
+        '<div class="worksheet-match worksheet-pairs">' +
+        `<ul class="worksheet-cards">${left.map(renderCard).join('')}</ul>` +
+        `<ul class="worksheet-cards">${right.map(renderCard).join('')}</ul>` +
+        '</div>'
+    );
+}
+
 function renderMatchColumns(cards: PrintableCard[], containers: PrintableContainer[]): string {
-    const renderedCards = cards
-        .map(card => {
-            // The picture first, with any text underneath it.
-            let content = '';
-            if (card.media) {
-                const alt = escapeText(card.media.alt ?? '');
-                content += `<img src="${escapeText(card.media.src)}" alt="${alt}" />`;
-            }
-            if (card.text) {
-                content += `<span class="worksheet-card-text">${card.text}</span>`;
-            }
-            return `<li class="worksheet-card">${content}</li>`;
-        })
-        .join('');
+    const renderedCards = cards.map(renderCard).join('');
 
     const renderedContainers = containers
         .map(

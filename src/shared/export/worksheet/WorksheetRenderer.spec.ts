@@ -468,3 +468,49 @@ describe('WORKSHEET_ACTIVITY_STYLES', () => {
         expect(renderWorksheet(model())).toContain(WORKSHEET_ACTIVITY_STYLES);
     });
 });
+
+describe('pairColumns board', () => {
+    const pairs = (left: unknown[], right: unknown[]) =>
+        renderActivityFragment(
+            activity({
+                ideviceType: 'dragdrop',
+                title: 'Drag and drop',
+                board: { kind: 'pairColumns', left, right } as never,
+                items: [],
+            }),
+        );
+
+    it('draws two columns of cards', () => {
+        const html = pairs([{ text: '<p>Perro</p>' }], [{ media: { kind: 'image', src: 'dog.png' } }]);
+
+        expect(html).toContain('<div class="worksheet-match worksheet-pairs">');
+        expect(html.match(/<ul class="worksheet-cards">/g)).toHaveLength(2);
+        expect(html.match(/<li class="worksheet-card">/g)).toHaveLength(2);
+    });
+
+    it('keeps each side in the order the adapter chose', () => {
+        const html = pairs([{ text: 'izquierda' }], [{ text: 'derecha' }]);
+
+        expect(html.indexOf('izquierda')).toBeLessThan(html.indexOf('derecha'));
+    });
+
+    it('draws a card the same way the matching board does', () => {
+        const html = pairs([{ media: { kind: 'image', src: 'dog.png', alt: 'Un perro' }, text: 'Perro' }], []);
+
+        // Picture first, text underneath — one renderer for both boards, so they cannot drift.
+        expect(html).toContain('<img src="dog.png" alt="Un perro" />');
+        expect(html).toContain('<span class="worksheet-card-text">Perro</span>');
+        expect(html.indexOf('<img')).toBeLessThan(html.indexOf('worksheet-card-text'));
+    });
+
+    it('escapes a card picture instead of letting it become markup', () => {
+        const html = pairs([], [{ media: { kind: 'image', src: 'a.png" onerror="alert(1)', alt: 'b"c' } }]);
+
+        expect(html).not.toContain('onerror="alert(1)"');
+        expect(html).toContain('&quot;');
+    });
+
+    it('draws an empty column without failing', () => {
+        expect(pairs([], [])).toContain('worksheet-pairs');
+    });
+});
