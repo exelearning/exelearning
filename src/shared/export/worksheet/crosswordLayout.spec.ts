@@ -153,13 +153,14 @@ describe('buildCrosswordLayout', () => {
             expect(render(layout)).toBe('CASA');
         });
 
-        it('drops a word that cannot cross anything', () => {
-            // 'XYZW' shares no letter with 'CASAS'. The longest word seeds the grid, so 'CASAS'
-            // is the one that survives.
+        it('seats a word that cannot cross anything instead of dropping it', () => {
+            // 'XYZW' shares no letter with 'CASAS', so it crosses nothing. The activity's own
+            // solver seats it on its own rather than losing it, and so does this: a dropped word
+            // takes its clue off the sheet with it.
             const layout = buildCrosswordLayout(['CASAS', 'XYZW'], []);
 
-            expect(layout.placements).toHaveLength(1);
-            expect(layout.placements[0].letters.join('')).toBe('CASAS');
+            expect(layout.placements).toHaveLength(2);
+            expect(layout.placements.map(placement => placement.letters.join('')).sort()).toEqual(['CASAS', 'XYZW']);
         });
 
         it('survives undefined entries', () => {
@@ -172,5 +173,38 @@ describe('buildCrosswordLayout', () => {
             expect(layout.rows.length).toBeLessThanOrEqual(6);
             for (const row of layout.rows) expect(row.length).toBeLessThanOrEqual(6);
         });
+    });
+});
+
+describe('words that cross nothing', () => {
+    it('seats a word sharing no letter with the others, rather than dropping its clue', () => {
+        // BCDF shares no letter with AAA or with itself-adjacent words. The activity's own solver
+        // seats it isolated on the board; before this, it was silently left off the worksheet.
+        const layout = buildCrosswordLayout(['CASA', 'SOL', 'BUFF'], [], { randomSource: () => 0 });
+
+        expect(layout.placements).toHaveLength(3);
+        expect(layout.placements.map(placement => placement.letters.join(''))).toEqual(
+            expect.arrayContaining(['CASA', 'SOL', 'BUFF']),
+        );
+    });
+
+    it('seats several unconnected words', () => {
+        const layout = buildCrosswordLayout(['AAA', 'BBB', 'CCC', 'DDD'], [], { randomSource: () => 0 });
+
+        expect(layout.placements).toHaveLength(4);
+    });
+
+    it('never overlaps a word it seats on its own', () => {
+        const layout = buildCrosswordLayout(['AAA', 'BBB', 'CCC'], [], { randomSource: () => 0 });
+
+        // Every cell a word occupies must hold that word's letter: an isolated placement that
+        // trampled another would corrupt both answers.
+        for (const placement of layout.placements) {
+            placement.letters.forEach((letter, offset) => {
+                const row = placement.horizontal ? placement.row : placement.row + offset;
+                const col = placement.horizontal ? placement.col + offset : placement.col;
+                expect(layout.rows[row]?.[col]).not.toBeNull();
+            });
+        }
     });
 });

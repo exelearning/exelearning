@@ -11,8 +11,11 @@
  * random anyway, this builds its own: a compact greedy placer whose job is a valid, well-crossed
  * grid that fits on paper.
  *
- * It follows the iDevice where the reader would notice: clue numbering runs down the vertical
- * words first and then the horizontal ones, the same convention the activity uses.
+ * It follows the iDevice where the reader would notice: twenty attempts, two placement passes —
+ * crossings first, then anything left over seated on its own — and clue numbering that runs down
+ * the vertical words before the horizontal ones. The second pass matters: without it a word
+ * sharing no letter with the others loses its clue off the printed sheet, which is neither what
+ * the activity does nor what the author wrote.
  */
 
 import type { CrosswordCell } from './types';
@@ -197,8 +200,52 @@ function bestPlacement(grid: Scratch, letters: string[], index: number, size: nu
 }
 
 /**
- * Run one greedy pass: seed the longest word in the middle, then place the rest at their best
- * crossing.
+ * Find any valid spot for a word that crossed nothing, isolated if need be.
+ *
+ * Crossing is what makes a crossword, but a word that crosses nothing still belongs on the board:
+ * dropping it would take its clue off the sheet, and the activity itself seats it. Preference goes
+ * to a spot that does cross something — one may exist now that later words have been placed — and
+ * then to the most central one, so the board stays compact.
+ *
+ * @returns The placement, or null when the board has no room for it at all
+ */
+function freePlacement(grid: Scratch, letters: string[], index: number, size: number): Placement | null {
+    const centre = (size - 1) / 2;
+    let best: Placement | null = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+            for (const horizontal of [true, false]) {
+                const crossings = scorePlacement(grid, letters, row, col, horizontal);
+                if (crossings < 0) continue;
+
+                const endRow = horizontal ? row : row + letters.length - 1;
+                const endCol = horizontal ? col + letters.length - 1 : col;
+                const distance = Math.abs((row + endRow) / 2 - centre) + Math.abs((col + endCol) / 2 - centre);
+
+                if (
+                    best === null ||
+                    crossings > best.crossings ||
+                    (crossings === best.crossings && distance < bestDistance)
+                ) {
+                    best = { index, number: 0, letters, row, col, horizontal, crossings };
+                    bestDistance = distance;
+                }
+            }
+        }
+    }
+
+    return best;
+}
+
+/**
+ * Run one greedy pass: seed the longest word in the middle, place the rest at their best crossing,
+ * then seat whatever is left anywhere it fits.
+ *
+ * The two passes mirror the activity's own solver. Without the second one, a word sharing no
+ * letter with the others is silently dropped along with its clue, which is not what the iDevice
+ * does and not what the author asked for.
  */
 function attemptLayout(words: string[][], size: number, random: RandomSource): Placement[] {
     // Shuffling before the length sort varies which equal-length word seeds the grid, so repeated
@@ -232,8 +279,22 @@ function attemptLayout(words: string[][], size: number, random: RandomSource): P
         },
     ];
 
+    // Pass one: every word at its best crossing with something already on the board.
+    const unplaced: { letters: string[]; index: number }[] = [];
     for (const entry of order.slice(1)) {
         const placement = bestPlacement(grid, entry.letters, entry.index, size);
+        if (!placement) {
+            unplaced.push(entry);
+            continue;
+        }
+
+        write(grid, placement.letters, placement.row, placement.col, placement.horizontal);
+        placements.push(placement);
+    }
+
+    // Pass two: whatever crossed nothing goes wherever it fits, rather than off the sheet.
+    for (const entry of unplaced) {
+        const placement = freePlacement(grid, entry.letters, entry.index, size);
         if (!placement) continue;
 
         write(grid, placement.letters, placement.row, placement.col, placement.horizontal);

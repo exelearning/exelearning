@@ -359,19 +359,20 @@ describe('CrosswordWorksheetAdapter', () => {
             expect(CrosswordWorksheetAdapter.build(html, {})).toBeNull();
         });
 
-        it('ignores a word the solver cannot cross into the grid', () => {
+        it('keeps the clue of a word that crosses nothing, since the word is still seated', () => {
+            const omissions: string[] = [];
             const activity = CrosswordWorksheetAdapter.build(
                 crosswordHtml({
                     wordsGame: [
                         { word: 'CASAS', definition: 'Viviendas' },
-                        { word: 'XYZW', definition: 'Imposible' },
+                        { word: 'XYZW', definition: 'Aislada' },
                     ],
                 }),
-                {},
+                { onOmission: reason => omissions.push(reason) },
             );
 
-            expect(activity?.items).toHaveLength(1);
-            expect(activity?.items[0].prompt).toBe('Viviendas');
+            expect(activity?.items.map(item => item.prompt).sort()).toEqual(['Aislada', 'Viviendas']);
+            expect(omissions).toEqual([]);
         });
     });
 
