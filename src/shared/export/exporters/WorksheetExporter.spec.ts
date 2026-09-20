@@ -254,12 +254,56 @@ describe('WorksheetExporter', () => {
                             { type: 'guess', content: guessContent() },
                             { type: 'text', content: '<p>Texto</p>' },
                             { type: 'image-gallery', content: '<div class="gallery"></div>' },
+                            { type: 'magnifier', content: '' },
+                            { type: 'digcompedu', content: '' },
+                            { type: 'checklist', content: '<input type="checkbox">' },
                         ],
                     },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toHaveLength(0);
+        });
+
+        it.each(['adaptative-quiz', 'form', 'trueorfalse', 'true-or-false', 'scrambled-list'])(
+            'reports an unsupported %s activity even when its HTML is empty',
+            async type => {
+                const exporter = new WorksheetExporter(
+                    documentOf([
+                        {
+                            title: 'JSON exercises',
+                            components: [{ type, content: '', properties: { questions: [{ text: 'Question' }] } }],
+                        },
+                    ]),
+                );
+
+                const model = await exporter.buildModel();
+                expect(model.pages).toHaveLength(0);
+                expect(model.unsupported).toEqual([{ ideviceType: type, pageTitle: 'JSON exercises' }]);
+                const result = await exporter.generate();
+                expect(result.success).toBe(true);
+                expect(result.html).toContain('<aside class="worksheet-unsupported">');
+                expect(result.html).toContain(`<li>${type} — JSON exercises</li>`);
+            },
+        );
+
+        it('reports JSON omissions alongside printable exercises, once per type and page', async () => {
+            const exporter = new WorksheetExporter(
+                documentOf([
+                    {
+                        title: 'Mixed exercises',
+                        components: [
+                            { type: 'guess', content: guessContent() },
+                            { type: 'form', content: '' },
+                            { type: 'form', content: '' },
+                        ],
+                    },
+                ]),
+            );
+
+            const model = await exporter.buildModel();
+            expect(model.pages[0].activities).toHaveLength(1);
+            expect(model.unsupported).toEqual([{ ideviceType: 'form', pageTitle: 'Mixed exercises' }]);
         });
 
         it('reports each type once per page', async () => {

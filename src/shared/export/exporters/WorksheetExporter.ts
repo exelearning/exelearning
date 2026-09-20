@@ -15,6 +15,7 @@ import type { AssetProvider, ExportBlock, ExportComponent, ExportDocument, Latex
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
 import { isComponentVisible, isStudentBlock, isTeacherOnly, visibleWorksheetPages } from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
+import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import { renderWorksheet } from '../worksheet/WorksheetRenderer';
 import type {
     PrintableActivity,
@@ -47,17 +48,6 @@ export interface WorksheetResult {
     error?: string;
     /** Release asset URLs when the preview is closed or superseded. */
     dispose?: () => void;
-}
-
-/**
- * Whether a component holds a gamified activity's stored state.
- *
- * Used to decide what is worth reporting as "not printable yet". This catches the DataGame
- * family only; activities that keep their data in jsonProperties (trueorfalse, form, ...) are not
- * flagged, which is acceptable while no adapter covers them either.
- */
-function carriesGameData(content: string): boolean {
-    return /class\s*=\s*["'][^"']*-DataGame\b/i.test(content);
 }
 
 export class WorksheetExporter {
@@ -97,7 +87,7 @@ export class WorksheetExporter {
                 if (!adapter) {
                     // Report only what a teacher would expect to find on the worksheet. A text
                     // block is not missing from it, it simply does not belong; an activity is.
-                    if (carriesGameData(content)) {
+                    if (isInteractiveActivity(component.type)) {
                         this.reportUnsupported(unsupported, component.type, page.title);
                     }
                     continue;
