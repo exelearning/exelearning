@@ -25,7 +25,7 @@
 
 import { extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
 import { buildAnswerBoxes, type RandomSource } from '../questionSelection';
-import { escapeText, htmlToText, sanitizeHtml } from '../sanitizeHtml';
+import { escapeText, hasPrintableContent, sanitizeHtml } from '../sanitizeHtml';
 import type {
     PrintableActivity,
     PrintableItem,
@@ -121,7 +121,7 @@ function buildClue(
     dataGame: RoscoDataGame,
     imageLinks: Map<number, string>,
     random: RandomSource,
-): PrintableItem {
+): PrintableItem | null {
     const cue = `<strong class="worksheet-letter-cue">${escapeText(letterCue(word, letter, dataGame))}</strong>`;
     const definition = sanitizeHtml(oneDefinition(word.definition, random));
 
@@ -146,7 +146,9 @@ function buildClue(
         };
     }
 
-    return item;
+    // The letter cue is generated guidance, not the clue. It must not make an audio-only or
+    // empty definition look printable. Inline illustrations are valid clues too.
+    return hasPrintableContent(definition) || item.media ? item : null;
 }
 
 export const AzQuizGameWorksheetAdapter: WorksheetAdapter = {
@@ -170,15 +172,17 @@ export const AzQuizGameWorksheetAdapter: WorksheetAdapter = {
             // In play when it has an answer, exactly as the runtime decides it.
             const active = typeof word?.word === 'string' && word.word.trim() !== '';
 
-            ring.push({ letter, active });
+            const ringLetter = { letter, active: false };
+            ring.push(ringLetter);
             if (!active || !word) return;
 
             const clue = buildClue(word, letter, index, dataGame, imageLinks, random);
             // A letter whose clue is only a sound clip has nothing to read on paper.
-            if (!htmlToText(clue.prompt).trim() && !clue.media) {
+            if (!clue) {
                 options.onOmission?.('media-required');
                 return;
             }
+            ringLetter.active = true;
             items.push(clue);
         });
 

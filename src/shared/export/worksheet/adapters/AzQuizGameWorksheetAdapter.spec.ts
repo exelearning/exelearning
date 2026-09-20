@@ -54,6 +54,52 @@ function ringOf(activity: PrintableActivity | null): PrintableRingLetter[] {
 }
 
 describe('AzQuizGameWorksheetAdapter', () => {
+    it.each(['', '   ', '<audio controls src="sound.mp3"></audio>'])(
+        'reports an unprintable definition: %s',
+        definition => {
+            const omissions: string[] = [];
+            const activity = AzQuizGameWorksheetAdapter.build(
+                roscoHtml({ wordsGame: [word({ definition, audio: 'asset://sound' })] }),
+                { onOmission: reason => omissions.push(reason) },
+            );
+
+            expect(activity).toBeNull();
+            expect(omissions).toEqual(['media-required']);
+        },
+    );
+
+    it('marks omitted clues inactive while keeping the printable clues in the ring', () => {
+        const activity = AzQuizGameWorksheetAdapter.build(
+            roscoHtml({ letters: 'DC', wordsGame: [word({ definition: '' }), word({ word: 'CAT' })] }),
+        );
+
+        expect(ringOf(activity)).toEqual([
+            { letter: 'D', active: false },
+            { letter: 'C', active: true },
+        ]);
+        expect(activity?.items).toHaveLength(1);
+        expect(activity?.items[0].prompt).toContain('Starts with C');
+    });
+
+    it('keeps a clue whose only printable content is an inline illustration', () => {
+        const activity = AzQuizGameWorksheetAdapter.build(
+            roscoHtml({ wordsGame: [word({ definition: '<img src="dog.png" />' })] }),
+        );
+
+        expect(activity?.items).toHaveLength(1);
+        expect(activity?.items[0].prompt).toContain('dog.png');
+        expect(ringOf(activity)[0].active).toBe(true);
+    });
+
+    it('keeps a clue whose only printable content is a sidecar illustration', () => {
+        const activity = AzQuizGameWorksheetAdapter.build(
+            roscoHtml({ wordsGame: [word({ definition: '' })], imageLinks: { 0: 'asset://dog' } }),
+        );
+
+        expect(activity?.items[0].media?.src).toBe('asset://dog');
+        expect(ringOf(activity)[0].active).toBe(true);
+    });
+
     it('declares the iDevice type it handles', () => {
         expect(AzQuizGameWorksheetAdapter.ideviceType).toBe('az-quiz-game');
     });
