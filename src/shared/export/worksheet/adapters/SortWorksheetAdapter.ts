@@ -73,6 +73,7 @@ interface SortCard {
 /** One round: a sentence to put in order, or a set of cards. */
 interface SortPhrase {
     phrase?: string;
+    definition?: string;
     cards?: SortCard[];
 }
 
@@ -135,25 +136,29 @@ function buildCardRound(
     const imageLinks = extractMediaLinksByClass(html, `${PREFIX}-LinkImages-${index}`);
     const stored = Array.isArray(round.cards) ? round.cards : [];
 
-    const cards = stored.flatMap((card, position) => {
+    const printableCards = stored.map((card, position) => {
         const printable = buildCard(card, imageLinks.get(position) ?? card.url ?? '');
-        if (printable) return [printable];
+        if (printable) return printable;
         // A card carrying only a sound clip is playable on screen and blank on paper.
         options.onOmission?.('media-required');
-        return [];
+        return null;
     });
 
+    // Headings identify columns. Removing one would move the next heading and promote an answer
+    // into the fixed row, so a round without all its headings cannot be printed faithfully.
+    const headers = Math.min(headings, stored.length);
+    if (printableCards.slice(0, headers).some(card => card === null)) return null;
+    const cards = printableCards.filter((card): card is PrintableCard => card !== null);
     if (cards.length === 0) return null;
 
     // With fixed headings the activity keeps its first row where it belongs and shuffles only what
     // is below it (`getFixedOrder`), so the same holds on paper: the headings are given, and only
     // the rest are shuffled and numbered.
-    const headers = Math.min(headings, cards.length);
     const given = cards.slice(0, headers);
     const asked = shuffleWith(cards.slice(headers), random);
 
     return {
-        prompt: '',
+        prompt: sanitizeHtml(round.definition),
         answer: {
             kind: 'orderCards',
             cards: [...given, ...asked],
@@ -177,9 +182,11 @@ function buildSentenceRound(round: SortPhrase, random: RandomSource): PrintableI
 
     if (words.length === 0) return null;
 
+    const statement = sanitizeHtml(round.definition);
+    const scrambled = sanitizeHtml(shuffleWith(words, random).join(WORD_SEPARATOR));
     return {
         // Out of order and separated by bars, so each word is legible as its own.
-        prompt: sanitizeHtml(shuffleWith(words, random).join(WORD_SEPARATOR)),
+        prompt: (statement ? `<div>${statement}</div>` : '') + scrambled,
         // One line to write the sentence out in its proper order.
         answer: { kind: 'writingSpace', lines: 1 },
     };

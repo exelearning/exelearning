@@ -87,6 +87,15 @@ describe('SortWorksheetAdapter', () => {
     });
 
     describe('the sentence mode', () => {
+        it('keeps the round statement before its scrambled sentence', () => {
+            const activity = SortWorksheetAdapter.build(
+                sortHtml({ type: 0, phrasesGame: [{ definition: 'Build a question', phrase: 'Are you ready' }] }),
+                { random: () => 0 },
+            );
+
+            expect(activity?.items[0].prompt).toBe('<div>Build a question</div>you / ready / Are');
+        });
+
         const sentence = (phrase: string, random?: () => number) =>
             SortWorksheetAdapter.build(sortHtml({ type: 0, phrasesGame: [{ phrase }] }), { random });
 
@@ -123,6 +132,22 @@ describe('SortWorksheetAdapter', () => {
     });
 
     describe('the multimedia mode', () => {
+        it('keeps each statement with its cards when rounds are shuffled and sanitizes it', () => {
+            const activity = SortWorksheetAdapter.build(
+                sortHtml({
+                    phrasesGame: [
+                        { definition: '<b>Oldest first</b><script>bad()</script>', cards: [card({ eText: 'Adult' })] },
+                        { definition: 'Youngest first', cards: [card({ eText: 'Child' })] },
+                    ],
+                }),
+                { random: () => 0 },
+            );
+
+            expect(activity?.items.map(item => item.prompt)).toEqual(['Youngest first', '<b>Oldest first</b>']);
+            expect(cardsOf(activity, 0)).toEqual([{ text: 'Child' }]);
+            expect(cardsOf(activity, 1)).toEqual([{ text: 'Adult' }]);
+        });
+
         it('is what an activity storing no mode gets, as the runtime decides it', () => {
             const activity = SortWorksheetAdapter.build(sortHtml(), {});
 
@@ -287,6 +312,60 @@ describe('SortWorksheetAdapter', () => {
 });
 
 describe('SortWorksheetAdapter with fixed headings', () => {
+    it.each([0, 1])('omits a round whose heading at index %i cannot be printed without promoting an answer', index => {
+        const omissions: string[] = [];
+        const cards = ['Header A', 'Header B', 'Child', 'Adult'].map(eText => card({ eText }));
+        cards[index] = card({ type: 0, eText: '', url: '', audio: 'asset://heading' });
+        const activity = SortWorksheetAdapter.build(
+            sortHtml({ gameColumns: 2, orderedColumns: true, phrasesGame: [{ cards }] }),
+            { onOmission: reason => omissions.push(reason) },
+        );
+
+        expect(activity).toBeNull();
+        expect(omissions).toEqual(['media-required']);
+    });
+
+    it('keeps the original headings when an answer card is omitted', () => {
+        const omissions: string[] = [];
+        const activity = SortWorksheetAdapter.build(
+            sortHtml({
+                gameColumns: 2,
+                orderedColumns: true,
+                phrasesGame: [
+                    {
+                        cards: [
+                            card({ eText: 'Header A' }),
+                            card({ eText: 'Header B' }),
+                            card({ type: 0, eText: '', audio: 'asset://answer' }),
+                            card({ eText: 'Adult' }),
+                        ],
+                    },
+                ],
+            }),
+            { onOmission: reason => omissions.push(reason) },
+        );
+
+        expect(cardsOf(activity).map(card => card.text)).toEqual(['Header A', 'Header B', 'Adult']);
+        expect(activity?.items[0].answer).toMatchObject({ headers: 2 });
+        expect(omissions).toEqual(['media-required']);
+    });
+
+    it('keeps other rounds when one has an unprintable heading', () => {
+        const activity = SortWorksheetAdapter.build(
+            sortHtml({
+                gameColumns: 2,
+                orderedColumns: true,
+                phrasesGame: [
+                    { cards: [card({ type: 0, eText: '', audio: 'asset://heading' }), card(), card()] },
+                    { definition: 'Printable round', cards: [card(), card(), card()] },
+                ],
+            }),
+        );
+
+        expect(activity?.items).toHaveLength(1);
+        expect(activity?.items[0].prompt).toBe('Printable round');
+    });
+
     /** Six cards, each naming its stored position. */
     const six = () => Array.from({ length: 6 }, (_, order) => card({ eText: `c${order}`, order }));
 
