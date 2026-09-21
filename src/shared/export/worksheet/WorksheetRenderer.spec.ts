@@ -515,7 +515,7 @@ describe('pairColumns board', () => {
             activity({
                 ideviceType: 'dragdrop',
                 title: 'Drag and drop',
-                board: { kind: 'pairColumns', groups: [{ left, right }] } as never,
+                board: { kind: 'groupColumns', groups: [{ columns: [left, right] }] } as never,
                 items: [],
             }),
         );
@@ -523,7 +523,7 @@ describe('pairColumns board', () => {
     it('draws two columns of cards', () => {
         const html = pairs([{ text: '<p>Perro</p>' }], [{ media: { kind: 'image', src: 'dog.png' } }]);
 
-        expect(html).toContain('<div class="worksheet-match worksheet-pairs">');
+        expect(html).toContain('<div class="worksheet-match worksheet-pairs" style="gap: 30mm">');
         expect(html.match(/<ul class="worksheet-cards">/g)).toHaveLength(2);
         expect(html.match(/<li class="worksheet-card">/g)).toHaveLength(2);
     });
@@ -624,11 +624,8 @@ describe('two-column boards and the page break', () => {
             activity({
                 ideviceType: 'dragdrop',
                 board: {
-                    kind: 'pairColumns',
-                    groups: [
-                        { left: cards(5), right: cards(5) },
-                        { left: cards(3), right: cards(3) },
-                    ],
+                    kind: 'groupColumns',
+                    groups: [{ columns: [cards(5), cards(5)] }, { columns: [cards(3), cards(3)] }],
                 } as never,
                 items: [],
             }),

@@ -15,7 +15,7 @@ import type {
     PrintableCard,
     PrintableContainer,
     PrintableOperationRow,
-    PrintablePairGroup,
+    PrintableCardGroup,
     PrintableRingLetter,
     CrosswordBoard,
     PrintableAnswer,
@@ -114,6 +114,16 @@ body {
  * place does.
  */
 export const WORKSHEET_ACTIVITY_STYLES = `
+/* Every width below is the width the element ends up, border and padding included. The
+   standalone worksheet sets this on everything, but a fragment injected into someone else's
+   document cannot rely on that document having done it — and a card declared 34mm wide that
+   measures 38.5mm makes a nonsense of any arithmetic done against the page. Scoped to this
+   renderer's own elements, so the host's box model is left alone. */
+[class^="worksheet-"],
+[class*=" worksheet-"] {
+    box-sizing: border-box;
+}
+
 .worksheet-activity {
     margin-bottom: 8mm;
 }
@@ -811,7 +821,7 @@ function renderCrosswordGrid(board: CrosswordBoard): string {
 function renderBoard(board: PrintableBoard, labels: Required<WorksheetLabels>): string {
     if (board.kind === 'wordBank') return renderWordBank(board.words);
     if (board.kind === 'matchColumns') return renderMatchColumns(board.cards, board.containers);
-    if (board.kind === 'pairColumns') return renderPairColumns(board.groups);
+    if (board.kind === 'groupColumns') return renderGroupColumns(board.groups);
     if (board.kind === 'letterRing') return renderLetterRing(board.letters);
     if (board.kind === 'wordGrid') return renderWordGrid(board.rows);
     if (board.kind === 'operationTable') return renderOperationTable(board.rows, labels);
@@ -914,19 +924,44 @@ function chunk<T>(items: T[], size: number): T[][] {
     return chunks.length > 0 ? chunks : [[]];
 }
 
+/** Width of a card and of the sheet's printable measure, both in millimetres. */
+const CARD_WIDTH_MM = 34;
+const MEASURE_MM = 170;
+
+/** Widest a gap between columns is allowed to be, which is what two columns get. */
+const MAX_COLUMN_GAP_MM = 30;
+
 /**
- * Render two columns of cards to pair off, one block per group.
+ * How far apart to set the columns of one group.
+ *
+ * Two columns get a generous channel to draw lines in. Four would not fit the sheet at that gap —
+ * 136mm of card plus 90mm of air is wider than A4 — so the gap closes as the columns multiply,
+ * exactly as far as it has to and no further.
+ *
+ * @param columns - How many columns the group has
+ * @returns The gap in millimetres, rounded to a tenth
+ */
+export function columnGap(columns: number): number {
+    if (columns < 2) return 0;
+
+    const room = (MEASURE_MM - columns * CARD_WIDTH_MM) / (columns - 1);
+    return Math.round(Math.max(0, Math.min(MAX_COLUMN_GAP_MM, room)) * 10) / 10;
+}
+
+/**
+ * Render columns of cards to join up, one block per group.
  *
  * Shares the layout of the cards-and-containers board, since both ask the student to draw lines
- * between two columns.
+ * between columns.
  */
-function renderPairColumns(groups: PrintablePairGroup[]): string {
+function renderGroupColumns(groups: PrintableCardGroup[]): string {
     return groups
         .map(
             group =>
-                '<div class="worksheet-match worksheet-pairs">' +
-                `<ul class="worksheet-cards">${group.left.map(renderCard).join('')}</ul>` +
-                `<ul class="worksheet-cards">${group.right.map(renderCard).join('')}</ul>` +
+                `<div class="worksheet-match worksheet-pairs" style="gap: ${columnGap(group.columns.length)}mm">` +
+                group.columns
+                    .map(column => `<ul class="worksheet-cards">${column.map(renderCard).join('')}</ul>`)
+                    .join('') +
                 '</div>',
         )
         .join('');

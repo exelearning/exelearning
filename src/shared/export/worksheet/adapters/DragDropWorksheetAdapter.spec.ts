@@ -50,18 +50,18 @@ function dragdropHtml(options: DragDropFixtureOptions = {}): string {
 /** Both columns end to end, for the assertions that do not care how they are grouped. */
 function columns(activity: PrintableActivity | null): { left: PrintableCard[]; right: PrintableCard[] } {
     const board = activity?.board;
-    if (board?.kind !== 'pairColumns') return { left: [], right: [] };
+    if (board?.kind !== 'groupColumns') return { left: [], right: [] };
 
     return {
-        left: board.groups.flatMap(group => group.left),
-        right: board.groups.flatMap(group => group.right),
+        left: board.groups.flatMap(group => group.columns[0]),
+        right: board.groups.flatMap(group => group.columns[1]),
     };
 }
 
 /** The groups themselves, for the assertions that do. */
 function groupsOf(activity: PrintableActivity | null) {
     const board = activity?.board;
-    return board?.kind === 'pairColumns' ? board.groups : [];
+    return board?.kind === 'groupColumns' ? board.groups : [];
 }
 
 /** Four cards whose texts are easy to tell apart. */
@@ -79,7 +79,7 @@ describe('DragDropWorksheetAdapter', () => {
     it('lays the two halves of each pair out facing each other', () => {
         const activity = DragDropWorksheetAdapter.build(dragdropHtml(), {});
 
-        expect(activity?.board?.kind).toBe('pairColumns');
+        expect(activity?.board?.kind).toBe('groupColumns');
         expect(columns(activity).left).toHaveLength(1);
         expect(columns(activity).right).toHaveLength(1);
     });
@@ -323,9 +323,9 @@ describe('DragDropWorksheetAdapter and the printed page', () => {
     it('splits a long exercise into blocks that fit a sheet', () => {
         const groups = groupsOf(DragDropWorksheetAdapter.build(dragdropHtml({ cardsGame: twelve() }), {}));
 
-        expect(groups.map(group => group.left.length)).toEqual([5, 5, 2]);
+        expect(groups.map(group => group.columns[0].length)).toEqual([5, 5, 2]);
         // Both halves of a block hold the same rows, or the columns would not face each other.
-        for (const group of groups) expect(group.left.length).toBe(group.right.length);
+        for (const group of groups) expect(group.columns[0].length).toBe(group.columns[1].length);
     });
 
     it('keeps both halves of every pair in the same block', () => {
@@ -333,8 +333,8 @@ describe('DragDropWorksheetAdapter and the printed page', () => {
         const groups = groupsOf(DragDropWorksheetAdapter.build(dragdropHtml({ cardsGame: twelve() }), {}));
 
         for (const group of groups) {
-            const texts = group.left.map(entry => entry.text?.replace('t', ''));
-            const pictures = group.right.map(entry => entry.media?.src?.replace('asset://i', ''));
+            const texts = group.columns[0].map(entry => entry.text?.replace('t', ''));
+            const pictures = group.columns[1].map(entry => entry.media?.src?.replace('asset://i', ''));
 
             expect([...texts].sort()).toEqual([...pictures].sort());
         }

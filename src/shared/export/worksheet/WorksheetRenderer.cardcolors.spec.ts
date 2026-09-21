@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { renderWorksheet } from './WorksheetRenderer';
+import { columnGap, renderWorksheet } from './WorksheetRenderer';
 import type { PrintableCard, WorksheetModel } from './types';
 
 function modelWith(left: PrintableCard[], right: PrintableCard[] = [{ text: 'Horse' }]): WorksheetModel {
@@ -14,7 +14,7 @@ function modelWith(left: PrintableCard[], right: PrintableCard[] = [{ text: 'Hor
                     {
                         ideviceType: 'relate',
                         title: 'Relate',
-                        board: { kind: 'pairColumns', groups: [{ left, right }] },
+                        board: { kind: 'groupColumns', groups: [{ columns: [left, right] }] },
                         items: [],
                     },
                 ],
@@ -92,5 +92,28 @@ describe('renderWorksheet with coloured cards', () => {
         const card = body.slice(body.indexOf('<li class="worksheet-card"'));
 
         expect(card.slice(0, card.indexOf('</li>'))).not.toContain('background-color');
+    });
+});
+
+describe('columnGap', () => {
+    it('gives two columns a generous channel to draw lines in', () => {
+        expect(columnGap(2)).toBe(30);
+    });
+
+    it('closes the gap as the columns multiply, so a quartet still fits the sheet', () => {
+        // 34mm a card against 170mm of measure: four columns leave 34mm of air in total.
+        expect(columnGap(3)).toBe(30);
+        expect(columnGap(4)).toBeCloseTo(11.3, 1);
+    });
+
+    it('never lets a row run past the printable measure', () => {
+        for (const columns of [2, 3, 4]) {
+            expect(columns * 34 + (columns - 1) * columnGap(columns)).toBeLessThanOrEqual(170);
+        }
+    });
+
+    it('gives a single column nothing to space', () => {
+        expect(columnGap(1)).toBe(0);
+        expect(columnGap(0)).toBe(0);
     });
 });

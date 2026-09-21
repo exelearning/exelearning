@@ -105,18 +105,22 @@ export type PrintableBoard =
      */
     | { kind: 'matchColumns'; cards: PrintableCard[]; containers: PrintableContainer[] }
     /**
-     * Two columns of cards to pair off, one card in the left matching one in the right.
+     * Columns of cards to join up, one card per column belonging to each answer.
      *
-     * Unlike `matchColumns`, both sides are cards: an activity that pairs a picture with its
-     * caption has media down one column and text down the other. Which side holds the text is the
+     * Unlike `matchColumns`, every side is a card: an activity that pairs a picture with its
+     * caption has media down one column and text down the other. Which column holds what is the
      * activity's own setting, so the adapter decides it rather than the renderer.
      *
-     * Carried as groups rather than as two long columns because paper has pages. A pair whose
-     * halves land on different sheets cannot be joined with a line, so each group is a self
-     * contained exercise: the partner of every card in it is in the same group, and each column of
-     * the group is shuffled on its own.
+     * Two columns is the common case — a pair to join — but not the only one: an activity can ask
+     * for trios or quartets, and then a card in each of three or four columns belongs to the same
+     * answer.
+     *
+     * Carried as groups rather than as long columns because paper has pages. Cards that belong
+     * together but land on different sheets cannot be joined with a line, so each group is a self
+     * contained exercise: every card's partners are in the same group, and each column of the
+     * group is shuffled on its own.
      */
-    | { kind: 'pairColumns'; groups: PrintablePairGroup[] }
+    | { kind: 'groupColumns'; groups: PrintableCardGroup[] }
     /**
      * The ring of letters an alphabet game is played on, drawn above its clues.
      *
@@ -147,10 +151,15 @@ export interface PrintableOperationRow {
     result: string | null;
 }
 
-/** One page-sized set of pairs, each card's partner among them. */
-export interface PrintablePairGroup {
-    left: PrintableCard[];
-    right: PrintableCard[];
+/**
+ * One page-sized set of answers, every card's partners among them.
+ *
+ * `columns` holds one column per member of an answer: two for a pair, three for a trio, four for
+ * a quartet. Each column is shuffled on its own, so a card's position says nothing about where
+ * its partners are.
+ */
+export interface PrintableCardGroup {
+    columns: PrintableCard[][];
 }
 
 /** One letter of a ring. */

@@ -140,16 +140,13 @@ export const DragDropWorksheetAdapter: WorksheetAdapter = {
                 random,
             );
 
-            groups.push({
-                left: textOnTheLeft ? texts : media,
-                right: textOnTheLeft ? media : texts,
-            });
+            groups.push({ columns: textOnTheLeft ? [texts, media] : [media, texts] });
         }
 
         const activity: PrintableActivity = {
             ideviceType: 'dragdrop',
             title: options.title || DragDropWorksheetAdapter.defaultTitle,
-            board: { kind: 'pairColumns', groups },
+            board: { kind: 'groupColumns', groups },
             // The whole exercise is the two columns; there are no questions to number.
             items: [],
         };

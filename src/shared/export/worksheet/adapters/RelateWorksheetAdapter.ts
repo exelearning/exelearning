@@ -228,21 +228,23 @@ export const RelateWorksheetAdapter: WorksheetAdapter = {
             const group = selected.slice(start, start + PAIRS_PER_GROUP);
 
             groups.push({
-                left: shuffleWith(
-                    group.map(pair => pair.front),
-                    random,
-                ),
-                right: shuffleWith(
-                    group.map(pair => pair.back),
-                    random,
-                ),
+                columns: [
+                    shuffleWith(
+                        group.map(pair => pair.front),
+                        random,
+                    ),
+                    shuffleWith(
+                        group.map(pair => pair.back),
+                        random,
+                    ),
+                ],
             });
         }
 
         const activity: PrintableActivity = {
             ideviceType: 'relate',
             title: options.title || RelateWorksheetAdapter.defaultTitle,
-            board: { kind: 'pairColumns', groups },
+            board: { kind: 'groupColumns', groups },
             // The whole exercise is the two columns; there are no questions to number.
             items: [],
         };
