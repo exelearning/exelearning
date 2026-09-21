@@ -206,6 +206,7 @@ export default class ModalPrintPreview {
             'word-search': _('Word search'),
             mathproblems: _('Math problems'),
             mathematicaloperations: _('Math operations'),
+            relate: _('Relate'),
         };
     }
 

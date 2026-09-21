@@ -3,7 +3,14 @@ import { parseFragment, serialize, type DefaultTreeAdapterMap } from 'parse5';
 import { decryptDataGame } from '../utils/dataGameCipher';
 import { nodeText } from './sanitizeHtml';
 
-export type MediaLinkKind = 'Images' | 'Audios';
+/**
+ * The sidecar link classes an iDevice can key its media by.
+ *
+ * The `Back` pair belongs to the activities whose cards have two faces — Relate stores a picture
+ * for each side of a pair, and keys them under `-LinkImages` and `-LinkImagesBack` with the same
+ * card index in both.
+ */
+export type MediaLinkKind = 'Images' | 'Audios' | 'ImagesBack' | 'AudiosBack';
 type Element = DefaultTreeAdapterMap['element'];
 
 function elements(html: string, tagName: string, className: string, sourceLocations = false): Element[] {

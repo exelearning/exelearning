@@ -166,6 +166,21 @@ export interface PrintableCard {
     /** Sanitised HTML, when the card carries text. */
     text?: string;
     media?: PrintableMedia;
+    /**
+     * Colour to write the card's text in, when the author chose one the reader can see.
+     *
+     * Already checked against the paper by `cardColors`, so the renderer writes it out as given.
+     */
+    textColor?: string;
+    /**
+     * Colour the author gave the card, drawn as an outline and a band across its top rather than
+     * as a fill.
+     *
+     * A filled card is a block of toner on every copy of a class set, and it puts the label on a
+     * background the author picked for a backlit screen. The outline and the band say which cards
+     * go together for a fraction of the ink, and leave the words on white.
+     */
+    accentColor?: string;
 }
 
 /** One container a card can belong to. */

@@ -8,6 +8,7 @@
  * the same approach PrintPreviewExporter takes for its own injected styles.
  */
 
+import { accentOutline } from './cardColors';
 import { escapeText } from './sanitizeHtml';
 import type {
     CharacterBoxGroup,
@@ -305,6 +306,7 @@ export const WORKSHEET_ACTIVITY_STYLES = `
    the author filled with a sentence grows to hold it, since clipping a teacher's text to keep the
    shape would be the wrong trade. */
 .worksheet-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -329,6 +331,24 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 
 .worksheet-card-text {
     display: block;
+}
+
+/* The colour the author gave a card, as a band across its top. Taken out of the flow rather than
+   laid in it: the card centres its contents, so a band left in the flow would be centred with
+   them and float somewhere in the middle instead of marking the edge. The marked card reserves
+   the height back as padding, so the words never run under the band.
+   The card's outline takes the same colour when it is dark enough to be seen. The fill never
+   does, since a class set is thirty copies of it. */
+.worksheet-card-band {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3mm;
+}
+
+.worksheet-card-marked {
+    padding-top: 5mm;
 }
 
 /* Containers are squares outlined in their colour, with the name in the middle. Outline
@@ -700,7 +720,7 @@ function renderOrderCards(cards: PrintableCard[], columns?: number, headers = 0)
 
             return (
                 `<li class="worksheet-order-card${state}">` +
-                `<div class="worksheet-card">${cardContent(card)}</div>` +
+                `<div${cardAttributes(card)}>${cardContent(card)}</div>` +
                 line +
                 '</li>'
             );
@@ -828,24 +848,46 @@ export function renderInlineGap(characters: number, options?: string[]): string 
  */
 /**
  * Render one card of a two-column exercise: the picture first, with any text underneath it.
+ *
+ * A card the author coloured opens with a band in that colour. It is drawn as a child of the card
+ * rather than as a background so it bleeds to the edges over the card's own padding, and so a card
+ * without one costs nothing.
  */
 function cardContent(card: PrintableCard): string {
     let content = '';
 
+    // Colours have already been checked by `cardColors`, which returns hex or nothing — the only
+    // reason these are safe to write into a style attribute without escaping.
+    if (card.accentColor) {
+        content += `<span class="worksheet-card-band" style="background: ${card.accentColor}"></span>`;
+    }
     if (card.media) {
         const alt = escapeText(card.media.alt ?? '');
         content += `<img src="${escapeText(card.media.src)}" alt="${alt}" />`;
     }
     if (card.text) {
-        content += `<span class="worksheet-card-text">${card.text}</span>`;
+        const color = card.textColor ? ` style="color: ${card.textColor}"` : '';
+        content += `<span class="worksheet-card-text"${color}>${card.text}</span>`;
     }
 
     return content;
 }
 
+/**
+ * The class and the outline of a marked card.
+ *
+ * The class reserves the band's height so the content is not centred under it; the outline takes
+ * the accent when it is dark enough to be seen, and black when it is not.
+ */
+function cardAttributes(card: PrintableCard): string {
+    if (!card.accentColor) return ' class="worksheet-card"';
+
+    return ` class="worksheet-card worksheet-card-marked" style="border-color: ${accentOutline(card.accentColor)}"`;
+}
+
 /** The same card as a list entry, for the boards that lay cards out in columns. */
 function renderCard(card: PrintableCard): string {
-    return `<li class="worksheet-card">${cardContent(card)}</li>`;
+    return `<li${cardAttributes(card)}>${cardContent(card)}</li>`;
 }
 
 /**
