@@ -594,6 +594,47 @@ Common functionality found in built-in eXe styles:
   $exeExport.teacherMode.init();
   ```
 
+### Knowing whether the page is being printed
+
+A script in a resource sometimes has to behave differently on paper: draw a chart statically
+rather than interactively, not start a timer, open a panel it would otherwise leave folded.
+There are two different questions, and `libs/exe_export.js` answers each separately.
+
+**"Is the browser paginating right now?"** — available in every exported resource:
+
+```js
+if ($exeExport.isPrinting()) { … }            // matchMedia('print'), guarded
+window.addEventListener('beforeprint', …);    // prepare
+window.addEventListener('afterprint', …);     // restore
+```
+
+**"Was this page built to be printed?"** — `$exeExport.printing` is `null` in an ordinary
+resource, and an object in the documents eXeLearning generates for paper:
+
+```js
+if ($exeExport.printing) { … }                              // any print document
+if ($exeExport.printing?.kind === 'worksheet') { … }        // only the activities
+if ($exeExport.printing?.activities === 'appendix') { … }   // exercises at the end
+```
+
+| Field | Values |
+|---|---|
+| `kind` | `'document'` the project with its prose · `'worksheet'` only the activities, rebuilt as exercises |
+| `activities` | `'omit'` · `'in-place'` · `'appendix'`, or `null` when the author was not asked. Only for `'document'` |
+
+The two are not interchangeable. A print preview sits **on screen** before anything is sent to
+the printer, so `isPrinting()` is `false` while `printing` is already set — and that is exactly
+the moment a script has to have decided what to draw. Conversely `printing` stays `null` in an
+ordinary resource even while the reader presses Ctrl+P.
+
+For CSS that cannot wait for a script, the same documents carry `class="exe-print-document"` and
+`data-exe-print="document|worksheet"` on `<html>`:
+
+```css
+html.exe-print-document .my-widget-controls { display: none; }
+html[data-exe-print="worksheet"] .my-widget { break-inside: avoid; }
+```
+
 ### Rewriting URLs: use `$exeExport.setUrlParam`
 
 A style that carries its own state across navigation — `nav=false` for a collapsed menu is

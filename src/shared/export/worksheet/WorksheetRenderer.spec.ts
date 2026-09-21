@@ -879,3 +879,16 @@ describe('the word search grid', () => {
         expect(rule).toContain('break-inside: avoid');
     });
 });
+
+describe('the printing context in the worksheet document', () => {
+    const html = renderWorksheet({ projectTitle: 'Demo', language: 'es', pages: [], unsupported: [] });
+
+    it('tells a script that this document is a worksheet', () => {
+        expect(html).toContain('"kind":"worksheet"');
+        expect(html).toContain('runtime.printing =');
+    });
+
+    it('sets it in the head, before anything in the body can run', () => {
+        expect(html.indexOf('runtime.printing')).toBeLessThan(html.indexOf('</head>'));
+    });
+});

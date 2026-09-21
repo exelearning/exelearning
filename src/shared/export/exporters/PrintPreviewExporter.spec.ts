@@ -1727,3 +1727,47 @@ describe('PrintPreviewExporter and interactive activities', () => {
         expect(html).not.toContain('guess.js');
     });
 });
+
+describe('the printing context in the document', () => {
+    const page = (): ExportPage => ({
+        id: 'page-1',
+        title: 'Home',
+        parentId: null,
+        order: 0,
+        blocks: [],
+    });
+
+    it('tells a script that this document was built to be printed', async () => {
+        const exporter = new PrintPreviewExporter(createMockDocument([page()]), createMockResourceProvider());
+        const { html = '' } = await exporter.generatePreview();
+
+        expect(html).toContain('"kind":"document"');
+        expect(html).toContain("root.setAttribute('data-exe-print'");
+    });
+
+    it('says what became of the interactive activities', async () => {
+        const exporter = new PrintPreviewExporter(createMockDocument([page()]), createMockResourceProvider());
+        const { html = '' } = await exporter.generatePreview({
+            activities: { mode: 'appendix', labels: {}, ideviceTitles: {} },
+        });
+
+        expect(html).toContain('"activities":"appendix"');
+    });
+
+    it('reports no activity mode when the author was never asked', async () => {
+        const exporter = new PrintPreviewExporter(createMockDocument([page()]), createMockResourceProvider());
+        const { html = '' } = await exporter.generatePreview();
+
+        expect(html).toContain('"activities":null');
+    });
+
+    it('sets it after the runtime has defined itself, never before', async () => {
+        // exe_export.js builds the whole runtime only when the global is absent, so a stub set
+        // ahead of it would leave the resource with no runtime at all.
+        const exporter = new PrintPreviewExporter(createMockDocument([page()]), createMockResourceProvider());
+        const { html = '' } = await exporter.generatePreview();
+
+        expect(html.indexOf('libs/exe_export.js')).toBeLessThan(html.indexOf('runtime.printing'));
+        expect(html.indexOf('runtime.printing')).toBeLessThan(html.indexOf('</head>'));
+    });
+});

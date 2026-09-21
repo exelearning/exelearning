@@ -2856,4 +2856,35 @@ describe('exe_export.js', () => {
       expect(() => window.$exeExport.searchBar.init()).not.toThrow();
     });
   });
+
+  describe('telling a resource whether it is being printed', () => {
+    it('reports no printing context in an ordinary exported resource', () => {
+      // The flag is set by the documents eXeLearning builds for paper, and by nothing else.
+      expect(window.$exeExport.printing).toBeNull();
+    });
+
+    it('answers whether the browser is paginating right now', () => {
+      window.matchMedia = vi.fn(() => ({ matches: true }));
+      expect(window.$exeExport.isPrinting()).toBe(true);
+
+      window.matchMedia = vi.fn(() => ({ matches: false }));
+      expect(window.$exeExport.isPrinting()).toBe(false);
+    });
+
+    it('asks for the print medium and nothing else', () => {
+      const matchMedia = vi.fn(() => ({ matches: false }));
+      window.matchMedia = matchMedia;
+      window.$exeExport.isPrinting();
+
+      expect(matchMedia).toHaveBeenCalledWith('print');
+    });
+
+    it('says no rather than throwing where matchMedia does not exist', () => {
+      // Some EPUB readers ship an incomplete window.
+      const saved = window.matchMedia;
+      window.matchMedia = undefined;
+      expect(window.$exeExport.isPrinting()).toBe(false);
+      window.matchMedia = saved;
+    });
+  });
 });

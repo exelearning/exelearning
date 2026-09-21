@@ -13,6 +13,7 @@ import type {
     LatexPreRenderResult,
     MermaidPreRenderResult,
 } from '../interfaces';
+import { renderPrintContextScript } from '../printContext';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
@@ -241,6 +242,14 @@ export class PrintPreviewExporter {
             // Only a mode that puts exercises in the document needs their styling.
             const convertsActivities = options.activities !== undefined && options.activities.mode !== 'omit';
             html = this.injectPreviewStyles(html, logoUrl, convertsActivities);
+
+            // Tell the resource's own scripts what kind of document they are running in, before
+            // any of them runs. Always — the flag is how a script knows it is on paper, and that
+            // is as true of the preview on screen as of the sheet coming out of the printer.
+            html = html.replace(
+                '</head>',
+                `${renderPrintContextScript({ kind: 'document', activities: options.activities?.mode ?? null })}</head>`,
+            );
 
             // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {

@@ -8,6 +8,7 @@
  * the same approach PrintPreviewExporter takes for its own injected styles.
  */
 
+import { renderPrintContextScript } from '../printContext';
 import { accentOutline } from './cardColors';
 import { escapeText } from './sanitizeHtml';
 import type {
@@ -1273,6 +1274,7 @@ export function renderWorksheet(model: WorksheetModel, labels: WorksheetLabels =
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${title}</title>
 <style>${STYLES}</style>
+${renderPrintContextScript({ kind: 'worksheet' })}
 </head>
 <body>
 <div class="worksheet">

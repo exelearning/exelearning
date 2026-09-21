@@ -27,6 +27,40 @@ function translateI18nElement(key, defaultText) {
 if (typeof window.$exeExport === 'undefined') {
 window.$exeExport = {
 
+    /**
+     * Whether this document is one eXeLearning generated to be printed, and which one.
+     *
+     * Null in an ordinary exported resource, even while the reader is printing it: this answers
+     * "was this page built for paper", which is a different question from "is the browser
+     * paginating right now" — ask `isPrinting()` for that one.
+     *
+     * When it is not null it carries:
+     *   kind        'document'  the project, with its pages and prose
+     *               'worksheet' only the activities, rebuilt as exercises
+     *   activities  what became of the interactive activities, for kind 'document':
+     *               'omit' | 'in-place' | 'appendix', or null when the author was not asked
+     *
+     * A script inserted in a resource can therefore do either:
+     *   if ($exeExport.printing) { ... }
+     *   if ($exeExport.printing && $exeExport.printing.kind === 'worksheet') { ... }
+     *
+     * The print document overwrites this from a script of its own; nothing else writes to it.
+     */
+    printing: null,
+
+    /**
+     * Whether the browser is laying this page out for paper at this moment.
+     *
+     * True during `window.print()`, during the browser's own print dialog and under print media
+     * emulation, and false the rest of the time — including while an eXeLearning print preview is
+     * on screen. Pair it with the `beforeprint` and `afterprint` events to prepare and restore.
+     *
+     * @returns {boolean} true while the page is being printed
+     */
+    isPrinting: function () {
+        return typeof window.matchMedia === 'function' && window.matchMedia('print').matches;
+    },
+
     isTogglingBox: false,
     delayLoadingPageTime: 200,
     delayLoadingIdevicesJson: 50,
