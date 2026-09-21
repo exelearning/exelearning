@@ -28,6 +28,7 @@ describe('worksheet adapter registry', () => {
             'dragdrop',
             'flipcards',
             'guess',
+            'hidden-image',
             'mathematicaloperations',
             'mathproblems',
             'quick-questions',

@@ -18,6 +18,7 @@ import { CrosswordWorksheetAdapter } from './CrosswordWorksheetAdapter';
 import { DiscoverWorksheetAdapter } from './DiscoverWorksheetAdapter';
 import { DragDropWorksheetAdapter } from './DragDropWorksheetAdapter';
 import { FlipcardsWorksheetAdapter } from './FlipcardsWorksheetAdapter';
+import { HiddenImageWorksheetAdapter } from './HiddenImageWorksheetAdapter';
 import { MultipleChoiceWorksheetAdapter } from './MultipleChoiceWorksheetAdapter';
 import { GuessWorksheetAdapter } from './GuessWorksheetAdapter';
 import { QuickQuestionsWorksheetAdapter } from './QuickQuestionsWorksheetAdapter';
@@ -40,6 +41,7 @@ const ADAPTERS: readonly WorksheetAdapter[] = [
     RelateWorksheetAdapter,
     DiscoverWorksheetAdapter,
     FlipcardsWorksheetAdapter,
+    HiddenImageWorksheetAdapter,
 ];
 
 const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapter.ideviceType, adapter]));

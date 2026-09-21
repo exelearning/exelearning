@@ -209,6 +209,7 @@ export default class ModalPrintPreview {
             relate: _('Relate'),
             discover: _('Discover'),
             flipcards: _('Flip cards'),
+            'hidden-image': _('Hidden image'),
         };
     }
 
