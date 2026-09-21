@@ -25,9 +25,9 @@
  * - `eText` is stored **raw**, straight off the editor's input. Relate keeps the same-named field
  *   URI-encoded and Classify keeps its own unescaped: the family agrees on the name and on
  *   nothing else, so each adapter has to read its own iDevice rather than its neighbour.
- * - A card carrying only a sound has nothing to print, and an answer is only printable when every
- *   one of its members is. An answer that loses a member is reported and left out, since a line
- *   cannot be drawn to something that is not there.
+ * - A card carrying only a sound has nothing to print, and a quartet whose fourth card is a clip
+ *   in every answer is common — it is how the activity adds listening to a matching game. That
+ *   costs the column, not the exercise: see `printableColumns`.
  */
 
 import { cardAccent, textInk } from '../cardColors';
@@ -147,29 +147,41 @@ function buildCard(source: DiscoverCard, href: string | undefined): PrintableCar
 }
 
 /**
- * Build one whole answer, or nothing.
+ * Build one answer, with a gap wherever a member has nothing to show.
  *
- * @returns The members in their stored order, or null when any of them would print blank
+ * @returns One entry per member, null where that member would print blank
  */
-function buildAnswer(
+function buildRow(
     { question: word, index }: IndexedWord,
     members: number,
     pictures: Map<number, string>[],
-): PrintableCard[] | null {
+): (PrintableCard | null)[] {
     const stored = Array.isArray(word.data) ? word.data : [];
-    const cards: PrintableCard[] = [];
 
-    for (let member = 0; member < members; member++) {
+    return Array.from({ length: members }, (_, member) => {
         const source = stored[member];
-        if (!source) return null;
+        return source ? buildCard(source, pictures[member]?.get(index) ?? source.url) : null;
+    });
+}
 
-        const card = buildCard(source, pictures[member]?.get(index) ?? source.url);
-        // An answer is only printable whole: a line cannot be drawn to a member that is not there.
-        if (!card) return null;
-        cards.push(card);
-    }
-
-    return cards;
+/**
+ * Which positions of an answer are worth a column.
+ *
+ * A position no answer can print is one the activity built out of sound: a quartet whose fourth
+ * card is a clip in every answer is, on paper, a trio. Dropping that column costs the listening
+ * half of the exercise, which paper could not carry anyway, and keeps the rest — where dropping
+ * the answers instead would print nothing at all.
+ *
+ * A position most answers can print is kept, and an answer missing its card there is dropped
+ * instead: that is one author's gap rather than the activity's shape, and taking the column away
+ * would punish every other answer for it.
+ *
+ * @param rows - Every answer, with nulls where a member prints blank
+ * @param members - How many members the activity's Type gives an answer
+ * @returns The positions to draw, in order
+ */
+export function printableColumns(rows: (PrintableCard | null)[][], members: number): number[] {
+    return Array.from({ length: members }, (_, member) => member).filter(member => rows.some(row => row[member]));
 }
 
 export const DiscoverWorksheetAdapter: WorksheetAdapter = {
@@ -188,11 +200,17 @@ export const DiscoverWorksheetAdapter: WorksheetAdapter = {
             extractMediaLinksByClass(html, `${PREFIX}-LinkImages-${member}`),
         );
 
+        const rows = indexedQuestions(dataGame.wordsGame, options).map(entry => buildRow(entry, members, pictures));
+        const columns = printableColumns(rows, members);
+
+        // Two columns is the least an exercise about joining things can be made of.
+        if (columns.length < 2) return null;
+        if (columns.length < members) options.onOmission?.('media-required', members - columns.length);
+
         // Unusable answers go before the share is applied, so one that cannot be printed does not
         // take up part of the number the teacher asked for.
-        const answers = indexedQuestions(dataGame.wordsGame, options).flatMap(entry => {
-            const answer = buildAnswer(entry, members, pictures);
-            if (answer) return [answer];
+        const answers = rows.flatMap(row => {
+            if (columns.every(member => row[member])) return [columns.map(member => row[member] as PrintableCard)];
             options.onOmission?.('media-required');
             return [];
         });
@@ -210,9 +228,9 @@ export const DiscoverWorksheetAdapter: WorksheetAdapter = {
             const group = selected.slice(start, start + ANSWERS_PER_GROUP);
 
             groups.push({
-                columns: Array.from({ length: members }, (_, member) =>
+                columns: columns.map((_, column) =>
                     shuffleWith(
-                        group.map(answer => answer[member]),
+                        group.map(answer => answer[column]),
                         random,
                     ),
                 ),

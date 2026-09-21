@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { encryptDataGame } from '../../utils/dataGameCipher';
 import type { PrintableCard, PrintableCardGroup, UnsupportedActivity } from '../types';
-import { answersAtMediumLevel, DiscoverWorksheetAdapter, membersPerAnswer } from './DiscoverWorksheetAdapter';
+import {
+    answersAtMediumLevel,
+    DiscoverWorksheetAdapter,
+    membersPerAnswer,
+    printableColumns,
+} from './DiscoverWorksheetAdapter';
 
 interface DiscoverFixture {
     instructions?: string;
@@ -247,6 +252,81 @@ describe('DiscoverWorksheetAdapter', () => {
 
             expect(group.columns[0][0].accentColor).toBeUndefined();
             expect(group.columns[0][0].textColor).toBeUndefined();
+        });
+    });
+
+    describe('a member that is only a sound', () => {
+        /** A quartet whose fourth card is a clip in every answer — how the activity adds listening. */
+        const withAudioFourth = [
+            word(['', 'Rabbit', 'Conejo', ''], [{ url: 'files/a.png' }, {}, {}, { audio: 'files/a.mp3' }]),
+            word(['', 'Dog', 'Perro', ''], [{ url: 'files/b.png' }, {}, {}, { audio: 'files/b.mp3' }]),
+        ];
+
+        it('prints the quartet as the trio it is on paper', () => {
+            // It used to print nothing at all: every answer was dropped for the one card paper
+            // cannot carry, and the activity came out as "cannot be printed yet".
+            const [group] = groupsOf({ gameMode: 2, words: withAudioFourth, images: { 0: {} } });
+
+            expect(group.columns).toHaveLength(3);
+            expect(group.columns[1].map(card => card.text).sort()).toEqual(['Dog', 'Rabbit']);
+        });
+
+        it('says how many columns it had to leave out', () => {
+            const omissions: [string, number | undefined][] = [];
+            groupsOf(
+                { gameMode: 2, words: withAudioFourth },
+                { onOmission: (reason: string, count?: number) => omissions.push([reason, count]) },
+            );
+
+            expect(omissions).toEqual([['media-required', 1]]);
+        });
+
+        it('keeps every answer, since none of them lost anything a sheet could show', () => {
+            const groups = groupsOf({ gameMode: 2, words: withAudioFourth });
+
+            expect(allCards(groups)).toHaveLength(6);
+        });
+
+        it('skips the activity when fewer than two columns are left to join', () => {
+            // Two columns is the least an exercise about joining things can be made of.
+            const audioOnly = [word(['', ''], [{ url: 'files/a.png' }, { audio: 'files/a.mp3' }])];
+
+            expect(DiscoverWorksheetAdapter.build(discoverHtml({ words: audioOnly }), {})).toBeNull();
+        });
+    });
+
+    describe('printableColumns', () => {
+        it('drops a position no answer can print', () => {
+            const card = { text: 'x' };
+
+            expect(
+                printableColumns(
+                    [
+                        [card, card, null],
+                        [card, card, null],
+                    ],
+                    3,
+                ),
+            ).toEqual([0, 1]);
+        });
+
+        it('keeps a position most answers can print, gaps and all', () => {
+            // One author's gap is not the activity's shape; the answer goes, not the column.
+            const card = { text: 'x' };
+
+            expect(
+                printableColumns(
+                    [
+                        [card, card, card],
+                        [card, null, card],
+                    ],
+                    3,
+                ),
+            ).toEqual([0, 1, 2]);
+        });
+
+        it('drops every position when nothing can be printed at all', () => {
+            expect(printableColumns([[null, null]], 2)).toEqual([]);
         });
     });
 
