@@ -42,7 +42,7 @@ describe('renderWorksheet with coloured cards', () => {
     it('marks a coloured card with a band across its top', () => {
         const body = render([{ text: 'El caballo', accentColor: '#ffd95c' }]);
 
-        expect(body).toContain('<span class="worksheet-card-band" style="background: #ffd95c"></span>');
+        expect(body).toContain('<span class="worksheet-card-band" style="border-color: #ffd95c"></span>');
     });
 
     it('opens the card with the band, above the picture and the words', () => {
@@ -66,7 +66,7 @@ describe('renderWorksheet with coloured cards', () => {
         const body = render([{ text: 'El caballo', accentColor: '#fff9c4' }]);
 
         expect(body).toContain('<li class="worksheet-card worksheet-card-marked" style="border-color: #1a1a1a">');
-        expect(body).toContain('style="background: #fff9c4"');
+        expect(body).toContain('style="border-color: #fff9c4"');
     });
 
     it('writes the words in the colour the author chose', () => {
@@ -81,8 +81,8 @@ describe('renderWorksheet with coloured cards', () => {
             [{ text: 'Horse', accentColor: '#a30000' }],
         );
 
-        expect(body).toContain('style="background: #0d5aa7"');
-        expect(body).toContain('style="background: #a30000"');
+        expect(body).toContain('style="border-color: #0d5aa7"');
+        expect(body).toContain('style="border-color: #a30000"');
     });
 
     it('never fills the card, whatever the author chose', () => {

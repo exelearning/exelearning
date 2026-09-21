@@ -10,6 +10,7 @@
 
 import { renderPrintContextScript } from '../printContext';
 import { accentOutline } from './cardColors';
+import { renderMatchingLayoutScript } from './matchingLayout';
 import { escapeText } from './sanitizeHtml';
 import type {
     CharacterBoxGroup,
@@ -346,6 +347,33 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     display: block;
 }
 
+.worksheet-card-reference {
+    display: none;
+}
+
+/* Exceptionally long individual cards remain readable across sheets. Their shuffled labels
+   let the student write the matching reference instead of drawing a line across page edges. */
+.worksheet-pairs-referenced,
+.worksheet-pairs-referenced .worksheet-cards,
+.worksheet-pairs-referenced .worksheet-card {
+    display: block;
+    page-break-inside: auto;
+    break-inside: auto;
+}
+
+.worksheet-pairs-referenced .worksheet-card {
+    width: auto;
+    min-height: 0;
+    margin-bottom: 3mm;
+    text-align: left;
+}
+
+.worksheet-pairs-referenced .worksheet-card-reference {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 2mm;
+}
+
 /* The colour the author gave a card, as a band across its top. Taken out of the flow rather than
    laid in it: the card centres its contents, so a band left in the flow would be centred with
    them and float somewhere in the middle instead of marking the edge. The marked card reserves
@@ -357,7 +385,8 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     top: 0;
     left: 0;
     right: 0;
-    height: 3mm;
+    height: 0;
+    border-top: 3mm solid;
 }
 
 .worksheet-card-marked {
@@ -912,7 +941,7 @@ function cardContent(card: PrintableCard): string {
     // Colours have already been checked by `cardColors`, which returns hex or nothing — the only
     // reason these are safe to write into a style attribute without escaping.
     if (card.accentColor) {
-        content += `<span class="worksheet-card-band" style="background: ${card.accentColor}"></span>`;
+        content += `<span class="worksheet-card-band" style="border-color: ${card.accentColor}"></span>`;
     }
     if (card.media) {
         const alt = escapeText(card.media.alt ?? '');
@@ -1017,6 +1046,10 @@ function renderGroupColumns(groups: PrintableCardGroup[]): string {
                 .map(column => `<ul class="worksheet-cards">${column.map(renderCard).join('')}</ul>`)
                 .join('');
             const row = `<div class="worksheet-match worksheet-pairs${wide}" style="gap: ${gap}mm">${columns}</div>`;
+
+            if (group.rowIndices && !group.aligned) {
+                return `<div class="worksheet-matching-set" data-worksheet-matches="${escapeText(JSON.stringify(group.rowIndices))}">${row}</div>`;
+            }
 
             if (!group.headings?.length) return row;
 
@@ -1339,6 +1372,7 @@ export function renderWorksheet(model: WorksheetModel, labels: WorksheetLabels =
 <title>${title}</title>
 <style>${STYLES}</style>
 ${renderPrintContextScript({ kind: 'worksheet' })}
+${pages.includes('data-worksheet-matches') ? renderMatchingLayoutScript() : ''}
 </head>
 <body>
 <div class="worksheet">

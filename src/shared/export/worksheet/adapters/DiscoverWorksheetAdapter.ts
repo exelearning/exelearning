@@ -32,7 +32,8 @@
 
 import { cardAccent, textInk } from '../cardColors';
 import { extractDataGame, extractDivContent, extractMediaLinksByClass } from '../dataGameReader';
-import { indexedQuestions, type RandomSource, selectQuestions, shuffleWith } from '../questionSelection';
+import { groupMatchingCards } from '../matchingCards';
+import { indexedQuestions, type RandomSource, selectQuestions } from '../questionSelection';
 import { sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableCard, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 
@@ -45,11 +46,9 @@ const MIN_MEDIA_HREF_LENGTH = 4;
 /** Slots the editor keeps on every entry, whatever the game mode uses. */
 const MAX_MEMBERS = 4;
 
-/** How many answers go in one block of the printed exercise. */
-const ANSWERS_PER_GROUP = 5;
-
 /** One member of an answer, as stored. */
 interface DiscoverCard {
+    type?: number;
     eText?: string;
     url?: string;
     audio?: string;
@@ -62,10 +61,13 @@ interface DiscoverCard {
 /** One answer: the cards that belong together. */
 interface DiscoverWord {
     data?: DiscoverCard[];
+    type?: number;
+    [key: string]: unknown;
 }
 
 /** The Discover activity payload. */
 interface DiscoverDataGame {
+    version?: number;
     instructions?: string;
     wordsGame?: DiscoverWord[];
     /** The activity's "Type": 0 pairs, 1 trios, 2 quartets. */
@@ -155,12 +157,34 @@ function buildRow(
     { question: word, index }: IndexedWord,
     members: number,
     pictures: Map<number, string>[],
+    version: number | undefined,
 ): (PrintableCard | null)[] {
-    const stored = Array.isArray(word.data) ? word.data : [];
+    const legacy = !Array.isArray(word.data) && (version === undefined || version < 1);
+    const stored = legacy ? readLegacyCards(word) : Array.isArray(word.data) ? word.data : [];
 
     return Array.from({ length: members }, (_, member) => {
         const source = stored[member];
-        return source ? buildCard(source, pictures[member]?.get(index) ?? source.url) : null;
+        if (!source) return null;
+        // Older editors retain a previous picture when a card is switched to text-only.
+        const textOnly = version !== undefined && version < 4 && (legacy ? word.type === 0 : source.type === 1);
+        const href = textOnly ? undefined : (pictures[member]?.get(index) ?? source.url);
+        return buildCard(source, href);
+    });
+}
+
+/** Pre-v1 Discover stores three faces directly on the answer, with numeric field suffixes. */
+export function readLegacyCards(word: DiscoverWord): DiscoverCard[] {
+    return Array.from({ length: 3 }, (_, member) => {
+        const read = (field: string): string => {
+            const value = word[`${field}${member}`];
+            return typeof value === 'string' ? value : '';
+        };
+        return {
+            eText: read('eText'),
+            url: read('url'),
+            alt: read('alt'),
+            author: read('author') || read('autmor'),
+        };
     });
 }
 
@@ -200,7 +224,9 @@ export const DiscoverWorksheetAdapter: WorksheetAdapter = {
             extractMediaLinksByClass(html, `${PREFIX}-LinkImages-${member}`),
         );
 
-        const rows = indexedQuestions(dataGame.wordsGame, options).map(entry => buildRow(entry, members, pictures));
+        const rows = indexedQuestions(dataGame.wordsGame, options).map(entry =>
+            buildRow(entry, members, pictures, dataGame.version),
+        );
         const columns = printableColumns(rows, members);
 
         // Two columns is the least an exercise about joining things can be made of.
@@ -219,23 +245,7 @@ export const DiscoverWorksheetAdapter: WorksheetAdapter = {
         const selected = shared.slice(0, answersAtMediumLevel(shared.length, dataGame.gameLevels));
         if (selected.length === 0) return null;
 
-        // Grouped before shuffling, so an answer's members are always in the same group and never
-        // end up on different sheets. Each column of a group is then shuffled on its own:
-        // shuffling them together, or not at all, would leave every answer sharing a line and give
-        // the exercise away.
-        const groups = [];
-        for (let start = 0; start < selected.length; start += ANSWERS_PER_GROUP) {
-            const group = selected.slice(start, start + ANSWERS_PER_GROUP);
-
-            groups.push({
-                columns: columns.map((_, column) =>
-                    shuffleWith(
-                        group.map(answer => answer[column]),
-                        random,
-                    ),
-                ),
-            });
-        }
+        const groups = groupMatchingCards(selected, random);
 
         const activity: PrintableActivity = {
             ideviceType: 'discover',

@@ -33,17 +33,17 @@ export interface PrintContext {
 /**
  * The script that marks a document as one built for printing.
  *
- * **It must be injected at the end of `<head>`, never earlier.** `exe_export.js` defines the whole
+ * **Insert immediately after `exe_export.js`, before theme and iDevice scripts.** It defines the whole
  * runtime inside `if (typeof window.$exeExport === 'undefined')`, so a stub created before it
  * loads would make it skip its own definition and leave the resource without a runtime at all.
  * After it, adding two properties to the object it already built is safe. The worksheet document
  * does not load that file, which is why the stub exists at all.
  *
- * The end of `<head>` is also early enough: the body does not exist yet, so every script in the
- * document sees the flag already set, and CSS matching on `<html>` never sees an unmarked frame.
+ * Theme and iDevice scripts can consult the context during their initial execution, without
+ * waiting for DOMContentLoaded. A standalone worksheet can insert this directly in its head.
  *
  * @param context - Which document this is
- * @returns A `<script>` element, ready to insert before `</head>`
+ * @returns A `<script>` element, ready to insert after the export runtime
  */
 export function renderPrintContextScript(context: PrintContext): string {
     // JSON.stringify of a value built from two closed sets, so there is nothing here an author

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { encryptDataGame } from '../../utils/dataGameCipher';
 import type { PrintableCard, PrintableCardGroup, UnsupportedActivity } from '../types';
 import { RelateWorksheetAdapter } from './RelateWorksheetAdapter';
+import { FileSystemAssetHandler } from '../../../import/FileSystemAssetHandler';
 
 interface RelateFixture {
     instructions?: string;
@@ -73,6 +74,22 @@ function allCards(groups: PrintableCardGroup[]): PrintableCard[] {
 }
 
 describe('RelateWorksheetAdapter', () => {
+    it('uses imported instruction images from the sidecar rather than stale JSON references', () => {
+        const instructions = '<p>Read <img src="resources/diagram.png" alt="Diagram"></p>';
+        const payload = JSON.stringify({ instructions, cardsGame: [card()] });
+        const html =
+            `<div class="relaciona-instructions">${instructions}</div>` +
+            `<div class="relaciona-DataGame">${payload}</div>`;
+        const imported = FileSystemAssetHandler.prototype.convertContextPathToAssetRefs.call(
+            {} as FileSystemAssetHandler,
+            html,
+            new Map([['diagram.png', 'current-image']]),
+        );
+        const activity = RelateWorksheetAdapter.build(imported);
+        expect(activity?.instructions).toContain('src="asset://current-image"');
+        expect(activity?.instructions).not.toContain('resources/diagram.png');
+    });
+
     it('declares the iDevice type it handles', () => {
         expect(RelateWorksheetAdapter.ideviceType).toBe('relate');
     });

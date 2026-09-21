@@ -12,7 +12,7 @@
  * - The DataGame class prefix is 'relaciona', not the iDevice's name.
  * - The card shape is shared with Flip cards and is read by `twoFacedCards`, which is also where
  *   the text encoding, the four sidecar classes and the colours are explained.
- * - `instructions` is a field of the payload here. Flip cards keeps its own in a div beside it.
+ * - Instructions also have an HTML sidecar, whose asset references are updated during import.
  */
 
 import { extractDataGame, extractDivContent } from '../dataGameReader';
@@ -45,7 +45,7 @@ export const RelateWorksheetAdapter: WorksheetAdapter = {
             items: [],
         };
 
-        const instructions = sanitizeHtml(dataGame.instructions);
+        const instructions = sanitizeHtml(extractDivContent(html, `${PREFIX}-instructions`) || dataGame.instructions);
         if (instructions) activity.instructions = instructions;
 
         const textAfter = sanitizeHtml(extractDivContent(html, `${PREFIX}-extra-content`));

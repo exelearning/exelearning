@@ -15,20 +15,13 @@
 
 import { cardAccent, textInk } from './cardColors';
 import { extractMediaLinks } from './dataGameReader';
-import { indexedQuestions, type RandomSource, selectQuestions, shuffleWith } from './questionSelection';
+import { groupMatchingCards } from './matchingCards';
+import { indexedQuestions, type RandomSource, selectQuestions } from './questionSelection';
 import { sanitizeHtml } from './sanitizeHtml';
 import type { PrintableCard, PrintableCardGroup, WorksheetAdapterOptions } from './types';
 
 /** Shortest href the runtimes accept as a real media reference. */
 const MIN_MEDIA_HREF_LENGTH = 4;
-
-/**
- * How many pairs go in one block of the printed exercise.
- *
- * Paper has pages, and a pair whose halves land on different sheets cannot be joined with a line.
- * Grouping keeps each block a self-contained exercise; the renderer sizes its blocks to match.
- */
-const PAIRS_PER_GROUP = 5;
 
 /** One card as these iDevices store it: both faces in one object. */
 export interface TwoFacedCard {
@@ -183,27 +176,8 @@ export function buildFacingColumns(
     const selected = selectQuestions(pairs, dataGame.percentajeCards, dataGame.randomCards, random);
     if (selected.length === 0) return null;
 
-    // Grouped before shuffling, so a card's partner is always in the same group and the two never
-    // end up on different sheets. Each column of a group is then shuffled on its own: shuffling
-    // them together, or not at all, would leave every pair sharing a line and give the exercise
-    // away.
-    const groups: PrintableCardGroup[] = [];
-    for (let start = 0; start < selected.length; start += PAIRS_PER_GROUP) {
-        const group = selected.slice(start, start + PAIRS_PER_GROUP);
-
-        groups.push({
-            columns: [
-                shuffleWith(
-                    group.map(pair => pair.front),
-                    random,
-                ),
-                shuffleWith(
-                    group.map(pair => pair.back),
-                    random,
-                ),
-            ],
-        });
-    }
-
-    return groups;
+    return groupMatchingCards(
+        selected.map(pair => [pair.front, pair.back]),
+        random,
+    );
 }

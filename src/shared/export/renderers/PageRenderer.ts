@@ -15,6 +15,7 @@
  */
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
+import { renderPrintContextScript, type PrintContext } from '../printContext';
 import { IdeviceRenderer } from './IdeviceRenderer';
 import {
     LIBRARY_PATTERNS,
@@ -1251,6 +1252,7 @@ ${userFooterHtml}</div></footer>`;
             userFooterContent?: string;
             navLabels?: { previous?: string; next?: string; page?: string; license?: string };
             materialIconDataUris?: Map<string, string>;
+            printContext?: PrintContext;
         } = {},
     ): string {
         const {
@@ -1355,6 +1357,7 @@ ${this.renderFavicon('', faviconPath, faviconType)}
 <script src="libs/common_i18n.js"> </script>
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
+${options.printContext ? renderPrintContextScript(options.printContext) : ''}
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}${libraryIncludes}${atoolsIncludes}
 <link rel="stylesheet" href="content/css/base.css">

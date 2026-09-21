@@ -160,6 +160,8 @@ export interface PrintableOperationRow {
  */
 export interface PrintableCardGroup {
     columns: PrintableCard[][];
+    /** Source row per shuffled card, used only to keep partners together during print layout. */
+    rowIndices?: number[][];
     /**
      * What each column is called, drawn above it.
      *

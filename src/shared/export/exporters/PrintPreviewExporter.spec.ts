@@ -1769,5 +1769,16 @@ describe('the printing context in the document', () => {
 
         expect(html.indexOf('libs/exe_export.js')).toBeLessThan(html.indexOf('runtime.printing'));
         expect(html.indexOf('runtime.printing')).toBeLessThan(html.indexOf('</head>'));
+        expect(html.indexOf('runtime.printing')).toBeLessThan(html.indexOf('/style.js'));
+        expect(html.indexOf('runtime.printing')).toBeLessThan(html.indexOf('bootstrap.bundle.min.js'));
+    });
+
+    it('provides the context before an iDevice script executes', async () => {
+        const withActivity = page();
+        withActivity.blocks = [{ id: 'b', order: 0, components: [{ id: 'c', type: 'relate', order: 0, content: '' }] }];
+        const exporter = new PrintPreviewExporter(createMockDocument([withActivity]), createMockResourceProvider());
+        const { html = '' } = await exporter.generatePreview();
+        expect(html).toContain('relate.js');
+        expect(html.indexOf('runtime.printing')).toBeLessThan(html.indexOf('relate.js'));
     });
 });

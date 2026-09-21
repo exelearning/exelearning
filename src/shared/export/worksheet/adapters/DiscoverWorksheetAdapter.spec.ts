@@ -6,9 +6,11 @@ import {
     DiscoverWorksheetAdapter,
     membersPerAnswer,
     printableColumns,
+    readLegacyCards,
 } from './DiscoverWorksheetAdapter';
 
 interface DiscoverFixture {
+    version?: number | null;
     instructions?: string;
     textAfter?: string;
     words?: Record<string, unknown>[];
@@ -34,7 +36,7 @@ function word(texts: string[], overrides: Record<string, unknown>[] = []): Recor
 function discoverHtml(fixture: DiscoverFixture = {}): string {
     const payload = JSON.stringify({
         typeGame: 'Descubre',
-        version: 4,
+        version: fixture.version === null ? undefined : (fixture.version ?? 4),
         gameMode: fixture.gameMode ?? 0,
         gameLevels: fixture.gameLevels,
         percentajeQuestions: fixture.percentajeQuestions,
@@ -116,6 +118,56 @@ describe('answersAtMediumLevel', () => {
 });
 
 describe('DiscoverWorksheetAdapter', () => {
+    it('reads the flat pairs and trios used before version 1, including unversioned activities', () => {
+        for (const version of [0, null]) {
+            const [group] = groupsOf({
+                version,
+                gameMode: 1,
+                words: [{ eText0: 'Horse', eText1: 'Caballo', eText2: 'Cheval' }],
+            });
+            expect(group.columns.map(column => column[0].text)).toEqual(['Horse', 'Caballo', 'Cheval']);
+        }
+    });
+
+    it('keeps legacy picture sidecars tied to their original answer index', () => {
+        const [group] = groupsOf({
+            version: 0,
+            words: [
+                null as never,
+                { eText0: '', url0: 'resources/stale.png', alt0: 'Horse', author0: 'Author', eText1: 'Caballo' },
+            ],
+            images: { 0: { 1: 'asset://current.png' } },
+        });
+        expect(group.columns[0][0].media).toEqual({
+            kind: 'image',
+            src: 'asset://current.png',
+            alt: 'Horse',
+            author: 'Author',
+        });
+    });
+
+    it('ignores pictures retained by old text-only card modes', () => {
+        const [legacy] = groupsOf({
+            version: 0,
+            words: [{ type: 0, eText0: 'A', eText1: 'B' }],
+            images: { 0: { 0: 'stale.png' } },
+        });
+        const [modernShape] = groupsOf({
+            version: 1,
+            words: [word(['A', 'B'], [{ type: 1 }])],
+            images: { 0: { 0: 'stale.png' } },
+        });
+        expect(legacy.columns[0][0].media).toBeUndefined();
+        expect(modernShape.columns[0][0].media).toBeUndefined();
+        expect(readLegacyCards({ eText0: 42, autmor1: 'Legacy author' })[1].author).toBe('Legacy author');
+    });
+
+    it('does not interpret a malformed current payload as a legacy one', () => {
+        expect(
+            DiscoverWorksheetAdapter.build(discoverHtml({ version: 4, words: [{ eText0: 'A', eText1: 'B' }] })),
+        ).toBeNull();
+    });
+
     it('declares the iDevice type it handles', () => {
         expect(DiscoverWorksheetAdapter.ideviceType).toBe('discover');
     });

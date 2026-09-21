@@ -14,7 +14,7 @@
  * - The DataGame class prefix is the iDevice's own name here, unlike most of the family.
  * - The card shape is shared with Relate and is read by `twoFacedCards`, which is also where the
  *   text encoding, the four sidecar classes and the colours are explained.
- * - `instructions` is a div beside the payload, not a field inside it. Relate keeps its own inside.
+ * - Instructions are read from the HTML sidecar, where imported asset references stay current.
  * - `type` picks the game: 0 show, 1 navigate, 2 identify, 3 memory. It changes nothing here — the
  *   pairing is the same in all four, and a printed sheet cannot offer any of them.
  */
