@@ -214,6 +214,7 @@ export default class ModalPrintPreview {
             flipcards: _('Flip cards'),
             'hidden-image': _('Hidden image'),
             beforeafter: _('Before/After'),
+            'electrical-circuits': _('Electrical circuits'),
         };
     }
 

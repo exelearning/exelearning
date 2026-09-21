@@ -27,6 +27,7 @@ describe('worksheet adapter registry', () => {
             'crossword',
             'discover',
             'dragdrop',
+            'electrical-circuits',
             'flipcards',
             'guess',
             'hidden-image',
