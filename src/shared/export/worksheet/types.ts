@@ -130,7 +130,22 @@ export type PrintableBoard =
      * Every cell carries a letter: the ones that spell a word and the ones that hide it read
      * alike, which is the whole exercise. Where the words are is never printed.
      */
-    | { kind: 'wordGrid'; rows: string[][] };
+    | { kind: 'wordGrid'; rows: string[][] }
+    /**
+     * A table of sums: the operation on one side, its result on the other.
+     *
+     * Whichever part the activity asks for is left blank, so the same table sets a drill that
+     * asks for the result, for a missing operand or for the sign between them.
+     */
+    | { kind: 'operationTable'; rows: PrintableOperationRow[] };
+
+/** One row of a table of sums. Either side may be blank, and that is what is asked. */
+export interface PrintableOperationRow {
+    /** The operation as posed, with a gap in it when the missing part is not the result. */
+    operation: string;
+    /** The result, or null when the result is what is asked. */
+    result: string | null;
+}
 
 /** One page-sized set of pairs, each card's partner among them. */
 export interface PrintablePairGroup {
@@ -277,6 +292,9 @@ export interface WorksheetLabels {
     date?: string;
     /** Shown instead of the worksheet when nothing printable was found. */
     empty?: string;
+    /** Column headings of a table of sums. */
+    operation?: string;
+    result?: string;
     /** Introduces the list of activities that have no adapter yet. */
     unsupportedHeading?: string;
 }

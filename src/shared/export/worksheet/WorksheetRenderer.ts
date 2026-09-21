@@ -13,10 +13,10 @@ import type {
     CharacterBoxGroup,
     PrintableCard,
     PrintableContainer,
+    PrintableOperationRow,
     PrintablePairGroup,
     PrintableRingLetter,
     CrosswordBoard,
-    CrosswordCell,
     PrintableAnswer,
     PrintableActivity,
     PrintableBoard,
@@ -35,6 +35,8 @@ const DEFAULT_LABELS: Required<WorksheetLabels> = {
     date: 'Date',
     empty: 'This project has no printable activities yet.',
     unsupportedHeading: 'Activities that cannot be printed yet',
+    operation: 'Operation',
+    result: 'Result',
 };
 
 /**
@@ -411,6 +413,33 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-bottom: 1mm;
 }
 
+/* A table of sums. Narrow rather than page-wide: an arithmetic drill reads as a column of sums,
+   and stretching it across the sheet puts the answer a hand's width from its question. */
+.worksheet-operations {
+    width: auto;
+    min-width: 70mm;
+    margin: 0 0 4mm;
+    border-collapse: collapse;
+}
+
+.worksheet-operations th,
+.worksheet-operations td {
+    border: 1px solid #1a1a1a;
+    padding: 2mm 4mm;
+    text-align: left;
+}
+
+.worksheet-operations th {
+    font-size: 10pt;
+    font-weight: bold;
+}
+
+/* Room to write in, whichever cell was left blank. */
+.worksheet-operations td {
+    height: 9mm;
+    min-width: 25mm;
+}
+
 /* A grid of letters with the answers hidden in it. Square cells and no rules between them, as the
    activity draws it: the letters are the puzzle, and a border on each would fight the reading. */
 .worksheet-word-grid {
@@ -759,12 +788,13 @@ function renderCrosswordGrid(board: CrosswordBoard): string {
 /**
  * Render the shared answer space some activities draw above their questions.
  */
-function renderBoard(board: PrintableBoard): string {
+function renderBoard(board: PrintableBoard, labels: Required<WorksheetLabels>): string {
     if (board.kind === 'wordBank') return renderWordBank(board.words);
     if (board.kind === 'matchColumns') return renderMatchColumns(board.cards, board.containers);
     if (board.kind === 'pairColumns') return renderPairColumns(board.groups);
     if (board.kind === 'letterRing') return renderLetterRing(board.letters);
     if (board.kind === 'wordGrid') return renderWordGrid(board.rows);
+    if (board.kind === 'operationTable') return renderOperationTable(board.rows, labels);
 
     return renderCrosswordGrid(board);
 }
@@ -918,6 +948,33 @@ function renderWordGrid(rows: string[][]): string {
     return `<div class="worksheet-word-grid" style="grid-template-columns: repeat(${columns}, 7mm)">${cells}</div>`;
 }
 
+/**
+ * Render a table of sums, the operation beside its result.
+ *
+ * A blank cell is what the student fills in; the headings say which side is which, so a drill
+ * asking for a missing operand reads as plainly as one asking for the answer.
+ */
+function renderOperationTable(rows: PrintableOperationRow[], labels: Required<WorksheetLabels>): string {
+    if (rows.length === 0) return '';
+
+    const body = rows
+        .map(
+            row =>
+                '<tr>' +
+                `<td class="worksheet-operation">${row.operation}</td>` +
+                `<td class="worksheet-operation-result">${row.result ?? ''}</td>` +
+                '</tr>',
+        )
+        .join('');
+
+    return (
+        '<table class="worksheet-operations">' +
+        `<thead><tr><th>${escapeText(labels.operation)}</th><th>${escapeText(labels.result)}</th></tr></thead>` +
+        `<tbody>${body}</tbody>` +
+        '</table>'
+    );
+}
+
 function renderMatchColumns(cards: PrintableCard[], containers: PrintableContainer[]): string {
     const renderedContainers = containers
         .map(
@@ -1032,7 +1089,7 @@ function renderActivity(activity: PrintableActivity, labels: Required<WorksheetL
     // The shared answer space goes above the questions: on a crossword the grid is what the
     // student works in, and the clues below refer to its numbers.
     if (activity.board) {
-        html += renderBoard(activity.board);
+        html += renderBoard(activity.board, labels);
     }
 
     // A number tells one question from another, so a lone question does not need one. An explicit

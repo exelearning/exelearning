@@ -26,6 +26,7 @@ describe('worksheet adapter registry', () => {
             'crossword',
             'dragdrop',
             'guess',
+            'mathematicaloperations',
             'mathproblems',
             'quick-questions',
             'quick-questions-multiple-choice',

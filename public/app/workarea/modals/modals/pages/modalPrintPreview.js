@@ -182,6 +182,8 @@ export default class ModalPrintPreview {
             date: _('Date'),
             empty: _('This project has no printable activities yet.'),
             unsupportedHeading: _('Activities that cannot be printed yet'),
+            operation: _('Operation'),
+            result: _('Result'),
         };
     }
 
@@ -203,6 +205,7 @@ export default class ModalPrintPreview {
             sort: _('Sort'),
             'word-search': _('Word search'),
             mathproblems: _('Math problems'),
+            mathematicaloperations: _('Math operations'),
         };
     }
 
