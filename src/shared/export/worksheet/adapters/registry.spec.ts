@@ -24,6 +24,7 @@ describe('worksheet adapter registry', () => {
             'classify',
             'complete',
             'crossword',
+            'discover',
             'dragdrop',
             'guess',
             'mathematicaloperations',

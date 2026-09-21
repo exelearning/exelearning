@@ -207,6 +207,7 @@ export default class ModalPrintPreview {
             mathproblems: _('Math problems'),
             mathematicaloperations: _('Math operations'),
             relate: _('Relate'),
+            discover: _('Discover'),
         };
     }
 
