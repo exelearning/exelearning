@@ -857,3 +857,59 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         await expect(frame.locator('.exe-single-page')).toHaveCount(0);
     });
 });
+
+test.describe('Print: a folded block opens on paper', () => {
+    test('prints a folded block that is visible, and leaves the hidden ones folded', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Folded blocks');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        // Three blocks, all folded. Only the first is the reader's to see.
+        await page.evaluate(() => {
+            const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Folded');
+            const kinds: [string, string, string][] = [
+                ['ep-open', '', ''],
+                ['ep-hidden', 'visibility', 'false'],
+                ['ep-teacher', 'teacherOnly', 'true'],
+            ];
+            for (const [cssClass, property, value] of kinds) {
+                const block = binding.createBlock(parent.id, `Block ${cssClass}`);
+                const properties = binding.getBlockMap(parent.id, block).get('properties');
+                properties.set('cssClass', cssClass);
+                properties.set('minimized', 'true');
+                if (property) properties.set(property, value);
+                binding.createComponent(parent.id, block, 'text', {
+                    htmlContent: `<p>Content of ${cssClass}</p>`,
+                });
+            }
+        });
+
+        // Nothing here is an interactive activity, so Print opens the preview without asking —
+        // which is the path most projects take, and the one this rule has to hold on.
+        await openPrintDialog(page);
+        await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true', {
+            timeout: 15000,
+        });
+        const frame = page.frameLocator('.print-preview-iframe');
+        await frame.locator('body').waitFor({ state: 'visible', timeout: 30000 });
+
+        const content = (cssClass: string) => frame.locator(`article.${cssClass} .box-content`);
+
+        // On screen the fold is what the reader chose, and printing does not touch it.
+        await expect(content('ep-open')).toBeHidden();
+
+        await page.emulateMedia({ media: 'print' });
+        await expect(content('ep-open')).toBeVisible();
+        await expect(content('ep-open')).toContainText('Content of ep-open');
+        // Folded is not the same as hidden: neither of these is the reader's to see.
+        await expect(frame.locator('article.ep-hidden')).toBeHidden();
+        await expect(frame.locator('article.ep-teacher')).toBeHidden();
+
+        await page.emulateMedia({ media: 'screen' });
+        await expect(content('ep-open')).toBeHidden();
+    });
+});

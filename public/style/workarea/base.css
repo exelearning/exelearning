@@ -822,3 +822,25 @@ html:not(.mode-teacher) .js .teacher-only {
         padding-top: 40px;
     }
 }
+
+/* Printing opens every block that is merely folded.
+   A folded block is not hidden content: it is in the page, collapsed, and printing it gives a
+   sheet with a heading and nothing under it — which reads as an empty block rather than a missing
+   one, so nobody notices. The fold is not only the author's either. A reader collapses blocks
+   while reading and the state stays, so the same resource would print differently for two people;
+   and a block whose author turned its toggle off cannot be opened at all before printing.
+
+   `!important` is what the runtime fold requires: the toggle collapses with jQuery's slideUp(),
+   which leaves `display: none` in a style attribute on the element, and only `!important` beats
+   an inline style. The author's own fold is just the `.minimized` class and would not need it.
+
+   This reveals nothing the author hid. `novisible` and `teacher-only` sit on the <article>, which
+   the rules further up take out of the layout with `!important` of their own, so nothing inside
+   one is ever laid out — and an iDevice carrying either class keeps its own rule inside a block
+   that does open. `teacher-only` is deliberately not excluded here: in teacher mode that block is
+   meant to print, folded or not. */
+@media print {
+    .exe-export article.box.minimized > .box-content {
+        display: block !important;
+    }
+}
