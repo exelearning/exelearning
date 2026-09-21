@@ -301,7 +301,7 @@ export interface UnsupportedActivity {
     pageId?: string;
     componentId?: string;
     title?: string;
-    reason?: 'unsupported' | 'invalid-data' | 'media-required' | 'unplaced-word';
+    reason?: 'unsupported' | 'invalid-data' | 'media-required' | 'unplaced-word' | 'not-printable';
     count?: number;
 }
 
@@ -336,6 +336,8 @@ export interface WorksheetLabels {
     /** Column headings of a table of sums. */
     operation?: string;
     result?: string;
+    /** Shown against an activity that will not be given a printed form. */
+    notAvailableInPrint?: string;
     /** Column headings of a before-and-after comparison. */
     before?: string;
     after?: string;

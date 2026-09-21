@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'bun:test';
 import { getSupportedIdeviceTypes } from './adapters/registry';
 import { getIdeviceConfig } from '../browser/idevice-config-browser';
-import { getJsonActivityIdevices, getNonActivityIdevices, isInteractiveActivity } from './interactiveActivities';
+import {
+    getJsonActivityIdevices,
+    getNeverPrintableIdevices,
+    getNonActivityIdevices,
+    isInteractiveActivity,
+    isNeverPrintable,
+} from './interactiveActivities';
 
 describe('isInteractiveActivity', () => {
     it('counts the gamified iDevices as activities', () => {
@@ -67,15 +73,13 @@ describe('isInteractiveActivity', () => {
             for (const { type } of getNonActivityIdevices()) expect(isInteractiveActivity(type)).toBe(false);
         });
 
-        it('lists the seven, sorted, each with a reason', () => {
+        it('lists the five, sorted, each with a reason', () => {
             const excluded = getNonActivityIdevices();
 
             expect(excluded.map(entry => entry.type)).toEqual([
                 'checklist',
                 'download-source-file',
                 'external-website',
-                'geogebra-activity',
-                'progress-report',
                 'rubric',
                 'udl-content',
             ]);
@@ -94,5 +98,46 @@ describe('isInteractiveActivity', () => {
         // interactive activity, so an adapter for a type printing never asks about would never
         // run.
         for (const type of getSupportedIdeviceTypes()) expect(isInteractiveActivity(type)).toBe(true);
+    });
+});
+
+describe('the activities that will never have a printed form', () => {
+    it('names the ones whose answer is settled', () => {
+        expect(getNeverPrintableIdevices().map(entry => entry.type)).toEqual([
+            'geogebra-activity',
+            'interactive-video',
+            'map',
+            'progress-report',
+            'puzzle',
+            'quick-questions-video',
+            'trivial',
+        ]);
+    });
+
+    it('says why for each of them', () => {
+        for (const { reason } of getNeverPrintableIdevices()) expect(reason.length).toBeGreaterThan(10);
+    });
+
+    it('recognises them however the type is written', () => {
+        expect(isNeverPrintable('trivial')).toBe(true);
+        expect(isNeverPrintable('interactive-video')).toBe(true);
+        expect(isNeverPrintable('quick-questions-video')).toBe(true);
+    });
+
+    it('says nothing about an activity that is merely waiting for an adapter', () => {
+        // The distinction is the whole point: "yet" promises a release, and these do not get one.
+        expect(isNeverPrintable('identify')).toBe(false);
+        expect(isNeverPrintable('trueorfalse')).toBe(false);
+    });
+
+    it('still counts them as interactive, so printing keeps asking about them', () => {
+        // They are activities; what is settled is only whether they become an exercise.
+        for (const { type } of getNeverPrintableIdevices()) expect(isInteractiveActivity(type)).toBe(true);
+    });
+
+    it('never names one that already has an adapter', () => {
+        const supported = new Set(getSupportedIdeviceTypes());
+
+        for (const { type } of getNeverPrintableIdevices()) expect(supported.has(type)).toBe(false);
     });
 });

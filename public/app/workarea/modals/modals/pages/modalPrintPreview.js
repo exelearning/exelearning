@@ -182,6 +182,7 @@ export default class ModalPrintPreview {
             date: _('Date'),
             empty: _('This project has no printable activities yet.'),
             unsupportedHeading: _('Activities that cannot be printed yet'),
+            notAvailableInPrint: _('Not available in print'),
             before: _('Before'),
             after: _('After'),
             operation: _('Operation'),
@@ -261,6 +262,7 @@ export default class ModalPrintPreview {
                     // %s is the activity's number in the appendix.
                     appendixReference: _('See appendix, activity %s'),
                     notPrintable: _('This activity cannot be printed yet.'),
+                    notAvailable: _('Not available in print.'),
                 },
                 ideviceTitles: this.getIdeviceTitles(),
                 ideviceBasePath: this.getIdeviceBasePath(),

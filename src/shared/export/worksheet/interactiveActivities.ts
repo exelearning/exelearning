@@ -15,6 +15,11 @@
  * How an iDevice stores its data is not, however, the same question as whether it is an activity,
  * and two lists record where the two part company. Both are exceptions to the derived rule, and
  * each entry says why.
+ *
+ * A third list answers a different question again. Being an activity says printing should ask
+ * what to do with it; it does not say a printed form is on its way. For most of them one is, and
+ * the note they carry meanwhile says "not yet". For the ones in `NEVER_PRINTABLE` the answer is
+ * settled, and saying "yet" would promise a release that is not coming.
  */
 
 import { getIdeviceConfig } from '../browser/idevice-config-browser';
@@ -31,9 +36,7 @@ const NOT_ACTIVITIES = new Map<string, string>([
     ['external-website', 'embeds someone else’s site, which this code cannot convert'],
     ['udl-content', 'presents the same content several ways; the printable way already prints'],
     ['checklist', 'is already a list of boxes to tick, which is what it should be on paper'],
-    ['progress-report', 'reports what the student did; it is not something they answer'],
     ['rubric', 'is an assessment table, and prints as the table it is'],
-    ['geogebra-activity', 'embeds a GeoGebra applet, which has no paper equivalent'],
 ]);
 
 /**
@@ -52,6 +55,52 @@ const JSON_ACTIVITIES = new Map<string, string>([
     ['true-or-false', 'asks the student to judge each statement'],
     ['scrambled-list', 'asks the student to put the items in order'],
 ]);
+
+/**
+ * Activities that will not be given a printed form.
+ *
+ * These are interactive activities, and printing still asks what to do with them — but the answer
+ * to "convert it into an exercise" is settled, not pending. What each one does cannot be carried
+ * to paper at all: a board game is its board, and a video is a video. The note that stands in for
+ * them says so, rather than promising an adapter that is not coming.
+ *
+ * The value is the reason, kept beside the entry so a later reader can tell whether it still
+ * holds. A decision to print one of these would be a change of mind about the activity, not an
+ * adapter someone forgot to write.
+ */
+const NEVER_PRINTABLE = new Map<string, string>([
+    ['trivial', 'is a board game played in turns; the board is the activity'],
+    ['map', 'is answered by placing things on a map, which a printed one cannot record'],
+    ['geogebra-activity', 'embeds a GeoGebra applet, which is the construction being worked on'],
+    ['progress-report', 'reports results the student has not produced yet when the sheet is printed'],
+    ['puzzle', 'is a picture cut up and reassembled by dragging; paper has nothing to drag'],
+    ['interactive-video', 'is a video, and its questions are answered against what is playing'],
+    ['quick-questions-video', 'asks about a video that paper cannot show'],
+]);
+
+/**
+ * Whether printing should promise an exercise for this activity later.
+ *
+ * False for the ones whose answer is settled. Everything else that lacks an adapter is simply
+ * waiting for one.
+ *
+ * @param type - iDevice type as stored in the document, e.g. 'trivial'
+ * @returns true when no printed form is coming
+ */
+export function isNeverPrintable(type: string): boolean {
+    return NEVER_PRINTABLE.has(getIdeviceConfig(type).cssClass);
+}
+
+/**
+ * The activities that will not be given a printed form, with the reason for each.
+ *
+ * Exposed so the list can be reviewed and tested rather than buried.
+ *
+ * @returns Type/reason pairs, sorted by type for stable output
+ */
+export function getNeverPrintableIdevices(): { type: string; reason: string }[] {
+    return listed(NEVER_PRINTABLE);
+}
 
 /**
  * Whether an iDevice type is an interactive activity.

@@ -347,6 +347,22 @@ describe('renderWorksheet', () => {
             expect(html).toContain('crossword — La Edad Media');
         });
 
+        it('says which of them are not waiting for anything', () => {
+            // The heading reads as a promise, so an activity that is never getting a printed form
+            // has to say so on its own line.
+            const html = renderWorksheet(
+                model({
+                    unsupported: [
+                        { ideviceType: 'map', pageTitle: 'Geografía' },
+                        { ideviceType: 'trivial', pageTitle: 'Repaso', reason: 'not-printable' },
+                    ],
+                }),
+            );
+
+            expect(html).toContain('map — Geografía</li>');
+            expect(html).toContain('trivial — Repaso: Not available in print');
+        });
+
         it('omits the unsupported note when everything was printable', () => {
             expect(renderWorksheet(model())).not.toContain('<aside class="worksheet-unsupported">');
         });

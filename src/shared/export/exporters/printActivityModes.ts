@@ -16,7 +16,7 @@
 import type { ExportBlock, ExportComponent, ExportPage } from '../interfaces';
 import { isComponentVisible, isStudentBlock, isTeacherOnly } from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
-import { isInteractiveActivity } from '../worksheet/interactiveActivities';
+import { isInteractiveActivity, isNeverPrintable } from '../worksheet/interactiveActivities';
 import { escapeText } from '../worksheet/sanitizeHtml';
 import type { UnsupportedActivity, WorksheetLabels } from '../worksheet/types';
 import { renderActivityFragment, renderActivityHeading, resolveWorksheetLabels } from '../worksheet/WorksheetRenderer';
@@ -63,6 +63,8 @@ export interface PrintActivityLabels extends WorksheetLabels {
     appendixReference?: string;
     /** Shown in place of an activity that has no printable form yet. */
     notPrintable?: string;
+    /** Shown in place of an activity that will not be given one. */
+    notAvailable?: string;
 }
 
 export interface ApplyActivityModeOptions {
@@ -79,6 +81,7 @@ const DEFAULT_LABELS = {
     appendixTitle: 'Appendix',
     appendixReference: 'See appendix, activity %s',
     notPrintable: 'This activity cannot be printed yet.',
+    notAvailable: 'Not available in print.',
 };
 
 /** Id of the appendix page, fixed so a test or a stylesheet can find it. */
@@ -143,18 +146,24 @@ function appendixHeading(entry?: { number: number; blockTitle: string }): string
 }
 
 /**
- * Markup for an activity that cannot be converted yet.
+ * Markup for an activity that has no printed form.
  *
  * The note stands in for it, so the teacher can see that something stood there rather than
  * wondering whether the page lost it. It does not name the iDevice: that name belongs to the
  * editor, not to the handout.
+ *
+ * Which note depends on whether one is coming. An activity that is simply waiting for an adapter
+ * says so; one whose answer is settled says that instead, because "yet" would have the teacher
+ * waiting for a release that is not on its way.
  */
 function unprintableMarkup(
     type: string,
     options: ApplyActivityModeOptions,
     entry?: { number: number; blockTitle: string },
 ): string {
-    const label = options.labels?.notPrintable || DEFAULT_LABELS.notPrintable;
+    const label = isNeverPrintable(type)
+        ? options.labels?.notAvailable || DEFAULT_LABELS.notAvailable
+        : options.labels?.notPrintable || DEFAULT_LABELS.notPrintable;
 
     return (
         `<article class="worksheet-activity worksheet-activity-unprintable" data-idevice="${escapeText(type)}">` +

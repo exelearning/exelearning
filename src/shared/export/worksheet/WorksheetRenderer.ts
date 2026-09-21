@@ -40,6 +40,7 @@ const DEFAULT_LABELS: Required<WorksheetLabels> = {
     unsupportedHeading: 'Activities that cannot be printed yet',
     operation: 'Operation',
     result: 'Result',
+    notAvailableInPrint: 'Not available in print',
     before: 'Before',
     after: 'After',
 };
@@ -1334,7 +1335,9 @@ function renderUnsupported(model: WorksheetModel, labels: Required<WorksheetLabe
                       ? labels.invalidData
                       : entry.reason === 'unplaced-word'
                         ? labels.unplacedWords
-                        : '';
+                        : entry.reason === 'not-printable'
+                          ? labels.notAvailableInPrint
+                          : '';
             const detail = reason ? `: ${escapeText(reason)} (${entry.count ?? 1})` : '';
             return `<li>${escapeText(entry.title || entry.ideviceType)} — ${escapeText(entry.pageTitle)}${detail}</li>`;
         })

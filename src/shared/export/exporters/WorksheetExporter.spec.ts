@@ -293,15 +293,42 @@ describe('WorksheetExporter', () => {
                         title: 'La Edad Media',
                         components: [
                             { type: 'guess', content: guessContent() },
-                            { type: 'map', content: unadaptedContent() },
+                            { type: 'identify', content: unadaptedContent() },
                         ],
                     },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'map', pageTitle: 'La Edad Media' },
+                { ideviceType: 'identify', pageTitle: 'La Edad Media' },
             ]);
+        });
+
+        it('marks as settled the activities that will never have a printed form', async () => {
+            // Identify is waiting for an adapter; these three are not. The list has to say which
+            // is which, or a teacher reads the whole of it as a promise.
+            const exporter = new WorksheetExporter(
+                documentOf([
+                    {
+                        title: 'Repaso',
+                        components: [
+                            { type: 'trivial', content: unadaptedContent() },
+                            { type: 'interactive-video', content: unadaptedContent() },
+                            { type: 'quick-questions-video', content: unadaptedContent() },
+                            { type: 'identify', content: unadaptedContent() },
+                        ],
+                    },
+                ]),
+            );
+
+            const reported = (await exporter.buildModel()).unsupported;
+
+            expect(reported.filter(entry => entry.reason === 'not-printable').map(entry => entry.ideviceType)).toEqual([
+                'trivial',
+                'interactive-video',
+                'quick-questions-video',
+            ]);
+            expect(reported.find(entry => entry.ideviceType === 'identify')?.reason).toBeUndefined();
         });
 
         it('does not report plain content as a missing activity', async () => {
@@ -370,17 +397,17 @@ describe('WorksheetExporter', () => {
                     {
                         title: 'Una',
                         components: [
-                            { type: 'map', content: unadaptedContent() },
-                            { type: 'map', content: unadaptedContent() },
+                            { type: 'identify', content: unadaptedContent() },
+                            { type: 'identify', content: unadaptedContent() },
                         ],
                     },
-                    { title: 'Otra', components: [{ type: 'map', content: unadaptedContent() }] },
+                    { title: 'Otra', components: [{ type: 'identify', content: unadaptedContent() }] },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'map', pageTitle: 'Una' },
-                { ideviceType: 'map', pageTitle: 'Otra' },
+                { ideviceType: 'identify', pageTitle: 'Una' },
+                { ideviceType: 'identify', pageTitle: 'Otra' },
             ]);
         });
     });

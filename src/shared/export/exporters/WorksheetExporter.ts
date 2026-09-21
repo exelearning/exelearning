@@ -15,7 +15,7 @@ import type { AssetProvider, ExportBlock, ExportComponent, ExportDocument, Latex
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
 import { isComponentVisible, isStudentBlock, isTeacherOnly, visibleWorksheetPages } from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
-import { isInteractiveActivity } from '../worksheet/interactiveActivities';
+import { isInteractiveActivity, isNeverPrintable } from '../worksheet/interactiveActivities';
 import { renderWorksheet } from '../worksheet/WorksheetRenderer';
 import type {
     PrintableActivity,
@@ -172,7 +172,14 @@ export class WorksheetExporter {
             entry => entry.ideviceType === ideviceType && entry.pageTitle === pageTitle,
         );
 
-        if (!alreadyReported) collected.push({ ideviceType, pageTitle });
+        // Saying "not yet" about an activity that is never getting a printed form would have the
+        // teacher waiting for a release that is not coming.
+        if (!alreadyReported)
+            collected.push(
+                isNeverPrintable(ideviceType)
+                    ? { ideviceType, pageTitle, reason: 'not-printable' }
+                    : { ideviceType, pageTitle },
+            );
     }
 
     /**
