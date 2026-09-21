@@ -160,6 +160,21 @@ export interface PrintableOperationRow {
  */
 export interface PrintableCardGroup {
     columns: PrintableCard[][];
+    /**
+     * What each column is called, drawn above it.
+     *
+     * Repeated on every group, because a group is a page-sized block and the next one may be on
+     * another sheet, where a heading left behind would be no use.
+     */
+    headings?: string[];
+    /**
+     * Set when the rows line up: the cards on one row belong together and are meant to be read
+     * across, rather than shuffled for the student to pair off.
+     *
+     * A comparison is looked at rather than joined, so its cards are drawn as wide as the sheet
+     * allows and the channel between them closes — there are no lines to draw in it.
+     */
+    aligned?: boolean;
 }
 
 /** One letter of a ring. */
@@ -319,6 +334,9 @@ export interface WorksheetLabels {
     /** Column headings of a table of sums. */
     operation?: string;
     result?: string;
+    /** Column headings of a before-and-after comparison. */
+    before?: string;
+    after?: string;
     /** Introduces the list of activities that have no adapter yet. */
     unsupportedHeading?: string;
 }
@@ -343,6 +361,14 @@ export interface WorksheetAdapterOptions {
     onOmission?: (reason: NonNullable<UnsupportedActivity['reason']>, count?: number) => void;
     /** Translated heading for this activity type, supplied by the frontend. */
     title?: string;
+    /**
+     * The worksheet's own translated words, for an adapter that has to name something the
+     * activity has no wording of its own for — a column the iDevice never labels on screen.
+     *
+     * Reach for the activity's stored words first: several keep their user-visible wording where
+     * the author can edit it, and ours would ignore that edit.
+     */
+    labels?: WorksheetLabels;
     /**
      * Source of randomness, for activities that pick questions or hint letters at random.
      *

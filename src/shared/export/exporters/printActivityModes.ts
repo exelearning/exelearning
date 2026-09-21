@@ -194,6 +194,7 @@ function convert(
         const omissions = new Map<NonNullable<UnsupportedActivity['reason']>, number>();
         const activity = adapter.build(component.content || '', {
             title: activityTitle(component.type, options),
+            labels: options.labels,
             random: options.random,
             ideviceBasePath: options.ideviceBasePath,
             onOmission: (reason, count = 1) => omissions.set(reason, (omissions.get(reason) ?? 0) + count),

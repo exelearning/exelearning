@@ -100,6 +100,7 @@ export class WorksheetExporter {
                 try {
                     const activity = adapter.build(content, {
                         title: options.ideviceTitles?.[component.type],
+                        labels: options.labels,
                         random: options.random,
                         ideviceBasePath: options.ideviceBasePath,
                         onOmission,

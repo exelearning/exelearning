@@ -144,7 +144,11 @@ describe('HiddenImageWorksheetAdapter', () => {
             expect([...shuffled].sort()).toEqual(['A0', 'B0', 'C0', 'D0']);
             expect(shuffled).not.toEqual(['A0', 'B0', 'C0', 'D0']);
 
-            expect(labelsOf(itemsOf({ questions: four, optionsRamdon: true })[0])).toEqual(['A0', 'B0', 'C0', 'D0']);
+            // `optionsRamdon` shuffles the questions, so which one comes back first is not fixed.
+            // What matters is that whichever it is, its own options kept their stored order.
+            for (const item of itemsOf({ questions: four, optionsRamdon: true })) {
+                expect(labelsOf(item).map(label => label[0])).toEqual(['A', 'B', 'C', 'D']);
+            }
         });
     });
 

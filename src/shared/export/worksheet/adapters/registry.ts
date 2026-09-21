@@ -8,6 +8,7 @@
 
 import type { WorksheetAdapter } from '../types';
 import { AzQuizGameWorksheetAdapter } from './AzQuizGameWorksheetAdapter';
+import { BeforeAfterWorksheetAdapter } from './BeforeAfterWorksheetAdapter';
 import { ClassifyWorksheetAdapter } from './ClassifyWorksheetAdapter';
 import { SortWorksheetAdapter } from './SortWorksheetAdapter';
 import { MathOperationsWorksheetAdapter } from './MathOperationsWorksheetAdapter';
@@ -42,6 +43,7 @@ const ADAPTERS: readonly WorksheetAdapter[] = [
     DiscoverWorksheetAdapter,
     FlipcardsWorksheetAdapter,
     HiddenImageWorksheetAdapter,
+    BeforeAfterWorksheetAdapter,
 ];
 
 const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapter.ideviceType, adapter]));

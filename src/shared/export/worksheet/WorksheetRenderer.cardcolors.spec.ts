@@ -117,3 +117,68 @@ describe('columnGap', () => {
         expect(columnGap(0)).toBe(0);
     });
 });
+
+describe('renderWorksheet with a comparison', () => {
+    function comparison(group: Record<string, unknown>): string {
+        const html = renderWorksheet({
+            projectTitle: 'Demo',
+            language: 'es',
+            unsupported: [],
+            pages: [
+                {
+                    pageId: 'p1',
+                    title: 'Página',
+                    activities: [
+                        {
+                            ideviceType: 'beforeafter',
+                            title: 'Before/After',
+                            board: { kind: 'groupColumns', groups: [group as never] },
+                            items: [],
+                        },
+                    ],
+                },
+            ],
+        });
+
+        return html.slice(html.indexOf('<body>'));
+    }
+
+    const columns = [[{ text: 'Antes' }], [{ text: 'Después' }]];
+
+    it('names each column above it', () => {
+        const body = comparison({ columns, headings: ['Antes', 'Después'], aligned: true });
+
+        expect(body).toContain('<p class="worksheet-column-heading">Antes</p>');
+        expect(body).toContain('<p class="worksheet-column-heading">Después</p>');
+    });
+
+    it('escapes a heading rather than letting it become markup', () => {
+        const body = comparison({ columns, headings: ['<script>x</script>'], aligned: true });
+
+        expect(body).not.toContain('<script>x</script>');
+        expect(body).toContain('&lt;script&gt;');
+    });
+
+    it('marks an aligned row so its cards take the joining channel', () => {
+        const body = comparison({ columns, headings: ['A', 'B'], aligned: true });
+
+        expect(body).toContain('worksheet-pairs worksheet-wide');
+        // 78mm a card leaves 14mm between two of them on a 170mm measure.
+        expect(body).toContain('style="gap: 14mm"');
+    });
+
+    it('keeps the heading with the row it heads', () => {
+        const body = comparison({ columns, headings: ['A', 'B'], aligned: true });
+
+        expect(body).toContain('<div class="worksheet-headed">');
+        expect(body.indexOf('worksheet-column-heading')).toBeLessThan(body.indexOf('worksheet-cards'));
+    });
+
+    it('draws no heading row for a board that has none', () => {
+        const body = comparison({ columns });
+
+        expect(body).not.toContain('worksheet-headed');
+        expect(body).not.toContain('worksheet-column-heading');
+        expect(body).toContain('style="gap: 30mm"');
+    });
+});

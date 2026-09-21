@@ -182,6 +182,8 @@ export default class ModalPrintPreview {
             date: _('Date'),
             empty: _('This project has no printable activities yet.'),
             unsupportedHeading: _('Activities that cannot be printed yet'),
+            before: _('Before'),
+            after: _('After'),
             operation: _('Operation'),
             result: _('Result'),
         };
@@ -210,6 +212,7 @@ export default class ModalPrintPreview {
             discover: _('Discover'),
             flipcards: _('Flip cards'),
             'hidden-image': _('Hidden image'),
+            beforeafter: _('Before/After'),
         };
     }
 

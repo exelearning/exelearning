@@ -39,6 +39,8 @@ const DEFAULT_LABELS: Required<WorksheetLabels> = {
     unsupportedHeading: 'Activities that cannot be printed yet',
     operation: 'Operation',
     result: 'Result',
+    before: 'Before',
+    after: 'After',
 };
 
 /**
@@ -360,6 +362,46 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 
 .worksheet-card-marked {
     padding-top: 5mm;
+}
+
+/* A comparison: what each column holds, named above it, and the cards wide enough that the two
+   pictures can actually be told apart. Nothing is joined across the row, so the channel a
+   matching exercise keeps between its columns goes to the cards instead. */
+.worksheet-headed {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.worksheet-headings {
+    display: flex;
+    justify-content: center;
+    margin: 0 0 2mm;
+}
+
+.worksheet-column-heading {
+    width: 34mm;
+    margin: 0;
+    text-align: center;
+    font-weight: bold;
+}
+
+.worksheet-headings.worksheet-wide .worksheet-column-heading {
+    width: 78mm;
+}
+
+.worksheet-pairs.worksheet-wide .worksheet-card {
+    width: 78mm;
+    min-height: 0;
+}
+
+.worksheet-pairs.worksheet-wide .worksheet-card img {
+    max-height: 55mm;
+}
+
+/* The rows have to line up across the columns, so a card is as tall as its row needs. */
+.worksheet-pairs.worksheet-wide .worksheet-cards {
+    flex: 0 0 auto;
+    align-items: stretch;
 }
 
 /* Containers are squares outlined in their colour, with the name in the middle. Outline
@@ -929,6 +971,14 @@ function chunk<T>(items: T[], size: number): T[][] {
 const CARD_WIDTH_MM = 34;
 const MEASURE_MM = 170;
 
+/**
+ * Width of a card on a comparison, where the pictures are the point.
+ *
+ * Nothing is joined across an aligned row, so the space a joining exercise keeps as a channel
+ * goes to the cards instead: two of these fill the measure almost exactly.
+ */
+const WIDE_CARD_WIDTH_MM = 78;
+
 /** Widest a gap between columns is allowed to be, which is what two columns get. */
 const MAX_COLUMN_GAP_MM = 30;
 
@@ -940,12 +990,13 @@ const MAX_COLUMN_GAP_MM = 30;
  * exactly as far as it has to and no further.
  *
  * @param columns - How many columns the group has
+ * @param cardWidth - How wide each card is, in millimetres
  * @returns The gap in millimetres, rounded to a tenth
  */
-export function columnGap(columns: number): number {
+export function columnGap(columns: number, cardWidth = CARD_WIDTH_MM): number {
     if (columns < 2) return 0;
 
-    const room = (MEASURE_MM - columns * CARD_WIDTH_MM) / (columns - 1);
+    const room = (MEASURE_MM - columns * cardWidth) / (columns - 1);
     return Math.round(Math.max(0, Math.min(MAX_COLUMN_GAP_MM, room)) * 10) / 10;
 }
 
@@ -957,14 +1008,27 @@ export function columnGap(columns: number): number {
  */
 function renderGroupColumns(groups: PrintableCardGroup[]): string {
     return groups
-        .map(
-            group =>
-                `<div class="worksheet-match worksheet-pairs" style="gap: ${columnGap(group.columns.length)}mm">` +
-                group.columns
-                    .map(column => `<ul class="worksheet-cards">${column.map(renderCard).join('')}</ul>`)
-                    .join('') +
-                '</div>',
-        )
+        .map(group => {
+            // A comparison is read across rather than joined, so its cards take the channel a
+            // joining exercise would have kept between them.
+            const wide = group.aligned ? ' worksheet-wide' : '';
+            const gap = columnGap(group.columns.length, group.aligned ? WIDE_CARD_WIDTH_MM : CARD_WIDTH_MM);
+            const columns = group.columns
+                .map(column => `<ul class="worksheet-cards">${column.map(renderCard).join('')}</ul>`)
+                .join('');
+            const row = `<div class="worksheet-match worksheet-pairs${wide}" style="gap: ${gap}mm">${columns}</div>`;
+
+            if (!group.headings?.length) return row;
+
+            const headings = group.headings
+                .map(heading => `<p class="worksheet-column-heading">${escapeText(heading)}</p>`)
+                .join('');
+            return (
+                '<div class="worksheet-headed">' +
+                `<div class="worksheet-headings${wide}" style="gap: ${gap}mm">${headings}</div>` +
+                `${row}</div>`
+            );
+        })
         .join('');
 }
 
