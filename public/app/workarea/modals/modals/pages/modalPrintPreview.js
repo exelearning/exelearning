@@ -208,6 +208,7 @@ export default class ModalPrintPreview {
             mathematicaloperations: _('Math operations'),
             relate: _('Relate'),
             discover: _('Discover'),
+            flipcards: _('Flip cards'),
         };
     }
 
