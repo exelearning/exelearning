@@ -55,10 +55,24 @@ export function extractKeyedDivContent(html: string, className: string): Map<num
     return found;
 }
 
+/**
+ * Rich text sidecars keyed by nothing but their order, one per question.
+ *
+ * Where `extractKeyedDivContent` reads a `data-id`, some iDevices write one div per question and
+ * let position do the keying — Challenge writes its challenges' descriptions that way. The same
+ * rule applies to both: this copy is the one the export pipeline could see and rewrite.
+ *
+ * @param html - The component's stored HTML
+ * @param className - Class the sidecar divs carry
+ * @returns The inner HTML of each, in document order
+ */
+export function extractDivContents(html: string, className: string): string[] {
+    return elements(html, 'div', className).map(node => serialize(node));
+}
+
 /** Current rich text sidecar, including nested elements and decoded/re-serialized attributes. */
 export function extractDivContent(html: string, className: string): string {
-    const node = elements(html, 'div', className)[0];
-    return node ? serialize(node) : '';
+    return extractDivContents(html, className)[0] ?? '';
 }
 
 /** Encrypted and legacy plaintext payloads; malformed input is reported by the caller. */

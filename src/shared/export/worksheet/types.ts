@@ -31,13 +31,17 @@ export type PrintableAnswer =
      */
     | { kind: 'characterBoxes'; groups: CharacterBoxGroup[] }
     /**
-     * Blank space to write an answer out in, as many line-heights tall as it needs.
+     * Space to write an answer out in, as many line-heights tall as it needs.
      *
-     * Nothing is ruled: the gap is the invitation. A rule says *write here, on this line*, which
-     * is a constraint the exercise never set — wrong for a sentence being copied out, and wrong
-     * again for working a sum out before writing the answer.
+     * Blank by default: the gap is the invitation. A rule says *write here, on this line*, which
+     * is a constraint most of these exercises never set — wrong for a sentence being copied out,
+     * and wrong again for working a sum out before writing the answer.
+     *
+     * `ruled` is for the exercises that do set it. Where the answer is a word and the question is
+     * surrounded by the author's own prose, an unruled gap is invisible: nothing on the sheet says
+     * an answer goes there.
      */
-    | { kind: 'writingSpace'; lines: number }
+    | { kind: 'writingSpace'; lines: number; ruled?: boolean }
     /**
      * Cards to be put in order, each with a line under it to write its position in.
      *

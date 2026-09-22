@@ -3,6 +3,7 @@ import { encryptDataGame } from '../utils/dataGameCipher';
 import {
     extractDataGame,
     extractDivContent,
+    extractDivContents,
     extractKeyedDivContent,
     extractMediaLinks,
     extractMediaLinksByClass,
@@ -47,6 +48,35 @@ describe('extractDivContent', () => {
         expect(extractDivContent('<div class="adivina-DataGame">never closed', 'adivina-DataGame')).toBe(
             'never closed',
         );
+    });
+});
+
+describe('extractDivContents', () => {
+    it('reads every div of the class, in document order', () => {
+        // Challenge writes one description per challenge and lets position do the keying.
+        const html =
+            '<div class="desafio-IDevice">' +
+            '<div class="desafio-ChallengeDescription"><p>Primero</p></div>' +
+            '<div class="desafio-ChallengeDescription"><p>Segundo</p></div>' +
+            '</div>';
+
+        expect(extractDivContents(html, 'desafio-ChallengeDescription')).toEqual([
+            '<p>Primero</p>',
+            '<p>Segundo</p>',
+        ]);
+    });
+
+    it('keeps an empty one in place, so the positions still line up', () => {
+        const html =
+            '<div class="desafio-ChallengeDescription"></div>' +
+            '<div class="desafio-ChallengeDescription"><p>Segundo</p></div>';
+
+        expect(extractDivContents(html, 'desafio-ChallengeDescription')).toEqual(['', '<p>Segundo</p>']);
+    });
+
+    it('returns nothing for a missing class and for empty input', () => {
+        expect(extractDivContents('<div class="other">x</div>', 'desafio-ChallengeDescription')).toEqual([]);
+        expect(extractDivContents('', 'desafio-ChallengeDescription')).toEqual([]);
     });
 });
 

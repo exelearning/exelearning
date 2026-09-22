@@ -73,19 +73,54 @@ export function isSafeImageUrl(value: string): boolean {
     );
 }
 
-function renderNode(node: HtmlNode): string {
-    if ('value' in node) return escapeText(node.value);
-    if (!('tagName' in node) || STRIPPED_WITH_CONTENT.has(node.tagName)) return '';
-    const children = node.childNodes.map(renderNode).join('');
-    if (!Object.hasOwn(ALLOWED_TAGS, node.tagName)) return children;
+/**
+ * Cells and rows, which are kept even when empty.
+ *
+ * A table's shape is the columns lining up. Dropping a cell because a video used to be the only
+ * thing in it would shift every cell after it one place to the left.
+ */
+const TABLE_STRUCTURE = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th']);
+
+/** What a sanitised fragment leaves behind, and whether anything was taken out of it. */
+interface Rendered {
+    html: string;
+    /** True when an element that cannot be printed was removed from this subtree. */
+    stripped: boolean;
+}
+
+/** Whether a sanitised fragment would put anything on the page. */
+function showsSomething(html: string): boolean {
+    return /<(?:img|hr)\b/i.test(html) || html.replace(/<[^>]*>/g, '').trim() !== '';
+}
+
+function renderNode(node: HtmlNode): Rendered {
+    if ('value' in node) return { html: escapeText(node.value), stripped: false };
+    if (!('tagName' in node)) return { html: '', stripped: false };
+    if (STRIPPED_WITH_CONTENT.has(node.tagName)) return { html: '', stripped: true };
+
+    const parts = node.childNodes.map(renderNode);
+    const children = parts.map(part => part.html).join('');
+    const stripped = parts.some(part => part.stripped);
+
+    if (!Object.hasOwn(ALLOWED_TAGS, node.tagName)) return { html: children, stripped };
+
+    // An element left with nothing to show, because what was in it could not be printed, goes with
+    // it. A video in a paragraph of its own would otherwise print as a hole the size of the words
+    // it replaced. An element the author left empty is theirs and is kept: a blank paragraph
+    // between two others is spacing they asked for.
+    if (stripped && !VOID_TAGS.has(node.tagName) && !TABLE_STRUCTURE.has(node.tagName) && !showsSomething(children))
+        return { html: '', stripped };
+
     const allowed = ALLOWED_TAGS[node.tagName];
     const attrs = node.attrs
         .filter(attr => allowed.includes(attr.name) && (attr.name !== 'src' || isSafeImageUrl(attr.value)))
         .map(attr => ` ${attr.name}="${escapeText(attr.value)}"`)
         .join('');
-    return VOID_TAGS.has(node.tagName)
+    const html = VOID_TAGS.has(node.tagName)
         ? `<${node.tagName}${attrs} />`
         : `<${node.tagName}${attrs}>${children}</${node.tagName}>`;
+
+    return { html, stripped };
 }
 
 /** Keep safe formatting, discarding executable elements and rebuilding allowed attributes. */
@@ -94,7 +129,7 @@ export function sanitizeHtml(html: string | null | undefined): string {
     // NUL is dropped before parsing: browsers treat it inconsistently inside markup.
     // biome-ignore lint/suspicious/noControlCharactersInRegex: removing NUL is deliberate
     return parseFragment(html.replace(/\u0000/g, ''))
-        .childNodes.map(renderNode)
+        .childNodes.map(node => renderNode(node).html)
         .join('')
         .trim();
 }

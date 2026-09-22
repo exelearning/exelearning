@@ -465,6 +465,13 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-top: 2mm;
 }
 
+/* Ruled, for an answer that is a word rather than a passage. Each line is its own rule, so the
+   student writes on a line instead of somewhere inside a gap. */
+.worksheet-writing-ruled {
+    display: flex;
+    flex-direction: column;
+}
+
 
 /* A line to write a single value on, under the card it belongs to. */
 .worksheet-line {
@@ -513,6 +520,14 @@ export const WORKSHEET_ACTIVITY_STYLES = `
    the student reads which letter they are on before reading what is being asked. */
 .worksheet-letter-cue {
     display: block;
+    margin-bottom: 1mm;
+}
+
+/* The name of a challenge, above the wording of it. An unnumbered list of them is otherwise a
+   wall of prose, with nothing to say where one ends and the next begins. */
+.worksheet-challenge-title {
+    display: block;
+    font-size: 11.5pt;
     margin-bottom: 1mm;
 }
 
@@ -777,15 +792,23 @@ function renderOptions(labels: string[], marker: 'box' | 'line' = 'box'): string
  * Render the answer space for one question.
  */
 /**
- * Render blank space to write an answer out in.
+ * Render the space to write an answer out in.
  *
- * Left empty rather than ruled. The height is a computed number, never author content, so it is
- * safe in a style attribute.
+ * Blank unless the exercise asked to be ruled, in which case it is drawn as that many lines rather
+ * than as one box of the same height. Both heights are computed numbers, never author content, so
+ * they are safe in a style attribute.
  */
-function renderWritingSpace(lines: number): string {
-    const height = Math.max(1, Math.floor(lines)) * WRITING_LINE_HEIGHT_MM;
+function renderWritingSpace(lines: number, ruled = false): string {
+    const count = Math.max(1, Math.floor(lines));
 
-    return `<div class="worksheet-writing-space" style="height: ${height}mm"></div>`;
+    if (ruled)
+        return (
+            '<div class="worksheet-writing-space worksheet-writing-ruled">' +
+            `<span class="worksheet-line" style="height: ${WRITING_LINE_HEIGHT_MM}mm"></span>`.repeat(count) +
+            '</div>'
+        );
+
+    return `<div class="worksheet-writing-space" style="height: ${count * WRITING_LINE_HEIGHT_MM}mm"></div>`;
 }
 
 /**
@@ -830,7 +853,7 @@ function renderAnswer(answer: PrintableAnswer): string {
     }
 
     if (answer.kind === 'writingSpace') {
-        return renderWritingSpace(answer.lines);
+        return renderWritingSpace(answer.lines, answer.ruled);
     }
 
     if (answer.kind === 'orderCards') {

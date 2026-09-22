@@ -35,6 +35,39 @@ describe('sanitizeHtml', () => {
         expect(sanitizeHtml('<object data="x"></object><p>Text</p>')).toBe('<p>Text</p>');
     });
 
+    describe('what a removed element leaves behind', () => {
+        it('takes the paragraph that held nothing but a video', () => {
+            // Otherwise it prints as a hole the size of the words it replaced.
+            const html = '<p><span><iframe src="https://v/1"></iframe><br /></span></p><p>Texto</p>';
+
+            expect(sanitizeHtml(html)).toBe('<p>Texto</p>');
+        });
+
+        it('keeps the paragraph when something in it still prints', () => {
+            const html = '<p>Mira<iframe src="https://v/1"></iframe></p>';
+
+            expect(sanitizeHtml(html)).toBe('<p>Mira</p>');
+        });
+
+        it('counts a picture as something that prints', () => {
+            const html = '<p><iframe src="https://v/1"></iframe><img src="pic.png" /></p>';
+
+            expect(sanitizeHtml(html)).toBe('<p><img src="pic.png" /></p>');
+        });
+
+        it('keeps a blank paragraph the author left, nothing having been taken out of it', () => {
+            // An empty paragraph between two others is spacing they asked for.
+            expect(sanitizeHtml('<p>Uno</p><p></p><p>Dos</p>')).toBe('<p>Uno</p><p></p><p>Dos</p>');
+            expect(sanitizeHtml('<p>Uno</p><p><br /></p><p>Dos</p>')).toBe('<p>Uno</p><p><br /></p><p>Dos</p>');
+        });
+
+        it('keeps a table cell, whose emptiness is the shape of the table', () => {
+            const html = '<table><tr><td><iframe src="https://v/1"></iframe></td><td>Dos</td></tr></table>';
+
+            expect(sanitizeHtml(html)).toContain('<td></td>');
+        });
+    });
+
     it('unwraps disallowed tags but keeps their text', () => {
         expect(sanitizeHtml('<a href="http://x">Read this</a>')).toBe('Read this');
         expect(sanitizeHtml('<marquee>Moving</marquee>')).toBe('Moving');

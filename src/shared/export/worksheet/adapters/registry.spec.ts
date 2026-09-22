@@ -23,6 +23,7 @@ describe('worksheet adapter registry', () => {
             '3dmol',
             'az-quiz-game',
             'beforeafter',
+            'challenge',
             'classify',
             'complete',
             'crossword',
