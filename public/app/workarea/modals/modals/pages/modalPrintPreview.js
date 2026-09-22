@@ -220,6 +220,7 @@ export default class ModalPrintPreview {
             identify: _('Identify'),
             rubric: _('Rubric'),
             'select-media-files': _('Select multimedia'),
+            'periodic-table': _('Periodic table'),
         };
     }
 

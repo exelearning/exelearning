@@ -23,6 +23,7 @@ import type {
     PrintableAnswer,
     PrintableActivity,
     PrintableBoard,
+    PrintableElementCard,
     PrintableItem,
     PrintableRubric,
     WorksheetLabels,
@@ -569,6 +570,91 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     min-width: 25mm;
 }
 
+/* Element cards, one per question, across the sheet and wrapping. Centred so a last row holding
+   two of five still reads as a row. */
+.worksheet-element-cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4mm;
+    margin: 1mm 0 4mm;
+    padding: 0;
+    list-style: none;
+}
+
+/* Kept whole: half a card on one sheet and half on the next answers nothing. */
+.worksheet-element-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 42mm;
+    padding: 2mm;
+    border: 1px solid #1a1a1a;
+    text-align: center;
+    line-height: 1.25;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* The only labelled row, as it is the only labelled one on the activity's own card. */
+.worksheet-element-group {
+    font-size: 7.5pt;
+    margin-bottom: 1mm;
+}
+
+.worksheet-element-number {
+    align-self: flex-start;
+    font-size: 9pt;
+}
+
+.worksheet-element-symbol {
+    font-size: 20pt;
+    font-weight: bold;
+    line-height: 1.1;
+}
+
+.worksheet-element-name {
+    font-size: 10pt;
+}
+
+.worksheet-element-mass,
+.worksheet-element-negativity,
+.worksheet-element-configuration {
+    font-size: 7.5pt;
+}
+
+.worksheet-element-configuration {
+    margin-top: 1mm;
+}
+
+/* Oxidation states side by side, as the activity spaces them out. */
+.worksheet-element-oxidation {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5mm;
+    font-size: 7.5pt;
+}
+
+/* What the student writes: a rule where the value would be, and under it the activity's own word
+   for what goes there — the word its input offers as a placeholder. */
+.worksheet-element-ask {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    align-self: stretch;
+    gap: 0.5mm;
+}
+
+.worksheet-element-ask .worksheet-line {
+    height: 7mm;
+}
+
+.worksheet-element-ask small {
+    font-size: 7pt;
+    color: #666;
+}
+
 /* An assessment table. Full width and small type, because every cell holds a descriptor the
    teacher has to read to choose between: shrinking the text is what keeps four levels of them on a
    sheet, and dropping them would leave a grid of numbers. */
@@ -1061,8 +1147,46 @@ function renderBoard(board: PrintableBoard, labels: Required<WorksheetLabels>): 
     if (board.kind === 'wordGrid') return renderWordGrid(board.rows);
     if (board.kind === 'operationTable') return renderOperationTable(board.rows, labels);
     if (board.kind === 'rubricTable') return renderRubricTable(board.table);
+    if (board.kind === 'elementCards') return renderElementCards(board.cards);
 
     return renderCrosswordGrid(board);
+}
+
+/**
+ * Render the element cards, laid across the sheet and wrapping.
+ *
+ * Each card follows the one the activity draws on a phone, row for row: the group above, then the
+ * number, the symbol, the name and the chemistry under it. Whichever of the three the activity
+ * asks for is a rule to write on, with its own word under it — the word its input offers as a
+ * placeholder, so the sheet asks in the same terms the screen does.
+ */
+function renderElementCards(cards: PrintableElementCard[]): string {
+    const slot = (value: string | null, className: string, asks: string) =>
+        value === null
+            ? `<span class="${className} worksheet-element-ask">` +
+              `<span class="worksheet-line"></span><small>${escapeText(asks)}</small></span>`
+            : `<span class="${className}">${escapeText(value)}</span>`;
+
+    const drawn = cards
+        .map(card => {
+            let body = `<span class="worksheet-element-group">${escapeText(card.groupLabel)}: ${escapeText(card.group)}</span>`;
+            body += slot(card.number, 'worksheet-element-number', card.asks);
+            body += slot(card.symbol, 'worksheet-element-symbol', card.asks);
+            body += slot(card.name, 'worksheet-element-name', card.asks);
+            body += `<span class="worksheet-element-mass">${escapeText(card.mass)}</span>`;
+            if (card.electronegativity !== undefined)
+                body += `<span class="worksheet-element-negativity">${escapeText(card.electronegativity)}</span>`;
+            if (card.oxidation.length > 0)
+                body += `<span class="worksheet-element-oxidation">${card.oxidation
+                    .map(state => `<span>${escapeText(state)}</span>`)
+                    .join('')}</span>`;
+            body += `<span class="worksheet-element-configuration">${escapeText(card.configuration)}</span>`;
+
+            return `<li class="worksheet-element-card">${body}</li>`;
+        })
+        .join('');
+
+    return `<ul class="worksheet-element-cards">${drawn}</ul>`;
 }
 
 /**

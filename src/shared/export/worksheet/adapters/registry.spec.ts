@@ -36,6 +36,7 @@ describe('worksheet adapter registry', () => {
             'identify',
             'mathematicaloperations',
             'mathproblems',
+            'periodic-table',
             'quick-questions',
             'quick-questions-multiple-choice',
             'relate',

@@ -158,7 +158,40 @@ export type PrintableBoard =
      * a teacher fills in rather than a table with questions around it. The marking is done by
      * ringing a cell, so nothing here is left blank except the fields and the room for notes.
      */
-    | { kind: 'rubricTable'; table: PrintableRubric };
+    | { kind: 'rubricTable'; table: PrintableRubric }
+    /**
+     * Element cards, one per question, laid across the sheet and wrapping.
+     *
+     * The activity asks the same thing of every element it draws, so there are no questions beside
+     * the cards: each card is the question. The periodic table itself is not drawn — on a phone the
+     * activity does not draw it either, and a table that fills a sheet leaves no room for the cards
+     * that are the exercise.
+     */
+    | { kind: 'elementCards'; cards: PrintableElementCard[] };
+
+/**
+ * One element as the activity shows it on a phone, with the field it asks for left blank.
+ *
+ * The rows carry no labels because the activity's card carries none either. Only the group is
+ * labelled, as it is there, and the blank says which of the three it wants.
+ */
+export interface PrintableElementCard {
+    /** The activity's word for 'group', which it prints before the group's name. */
+    groupLabel: string;
+    group: string;
+    /** Atomic number, symbol and name. Whichever the activity asks for is null. */
+    number: string | null;
+    symbol: string | null;
+    name: string | null;
+    /** The activity's word for the one being asked, as its own input offers it. */
+    asks: string;
+    mass: string;
+    /** Absent for the noble gases the activity records none for. */
+    electronegativity?: string;
+    /** Oxidation states, one per entry, as the activity draws them. */
+    oxidation: string[];
+    configuration: string;
+}
 
 /** One row of a table of sums. Either side may be blank, and that is what is asked. */
 export interface PrintableOperationRow {
