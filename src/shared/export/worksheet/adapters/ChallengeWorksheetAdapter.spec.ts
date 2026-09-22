@@ -14,6 +14,8 @@ interface ChallengeFixture {
     /** The div the later version of the iDevice writes beside the payload. */
     mainDiv?: string;
     challengeDivs?: string[];
+    /** The activity own word for a smaller challenge. */
+    msgChallenge?: string;
 }
 
 /** One of the smaller challenges, as the editor stores it. */
@@ -39,6 +41,7 @@ function challengeHtml(fixture: ChallengeFixture = {}): string {
         instructionsExe: fixture.instructionsExe,
         instructions: fixture.instructions,
         challengesGame: fixture.challenges ?? [challenge()],
+        msgs: { msgChallenge: fixture.msgChallenge ?? "Reto" },
     });
 
     let html = '<div class="desafio-IDevice">';
@@ -61,6 +64,11 @@ function titled(name: string): string {
     return `<strong class="worksheet-challenge-title">${name}</strong>`;
 }
 
+/** A smaller challenge, under the activity's own name for it. */
+function numbered(position: number, name: string): string {
+    return titled(`Reto ${position}. ${name}`);
+}
+
 /** Two blank lines, which is the room every challenge is answered in. */
 const ANSWER = { kind: 'writingSpace', lines: 2 };
 
@@ -76,10 +84,14 @@ describe('ChallengeWorksheetAdapter', () => {
 
     it('prints the main challenge first, then the smaller ones', () => {
         const items = itemsOf({
-            challenges: [challenge({ title: 'Reto 1' }), challenge({ title: 'Reto 2' })],
+            challenges: [challenge({ title: 'Primer paso' }), challenge({ title: 'Segundo paso' })],
         });
 
-        expect(items.map(item => item.prompt)).toEqual(['Pandemia reto mundial', 'Reto 1', 'Reto 2'].map(titled));
+        expect(items.map(item => item.prompt)).toEqual([
+            titled('Pandemia reto mundial'),
+            numbered(1, 'Primer paso'),
+            numbered(2, 'Segundo paso'),
+        ]);
     });
 
     it('sets each one as title, wording, then room to answer', () => {
@@ -93,12 +105,46 @@ describe('ChallengeWorksheetAdapter', () => {
     it('leaves the same room under a smaller challenge as under the main one', () => {
         const [, first] = itemsOf();
 
-        expect(first.prompt).toBe(titled('Los primeros síntomas'));
+        expect(first.prompt).toBe(numbered(1, 'Los primeros síntomas'));
         expect(first.extraText).toBe('<p>Busca la fecha del primer caso</p>');
         expect(first.answer).toEqual(ANSWER);
     });
 
-    it('does not number them, each carrying the title its author gave it', () => {
+    describe('what a smaller challenge is called', () => {
+        it('the activity own word for one, numbered from one as its runtime numbers them', () => {
+            const [, first, second] = itemsOf({
+                challenges: [challenge({ title: 'Uno' }), challenge({ title: 'Dos' })],
+            });
+
+            expect(first.prompt).toBe(numbered(1, 'Uno'));
+            expect(second.prompt).toBe(numbered(2, 'Dos'));
+        });
+
+        it('the author word, where they changed it', () => {
+            const [, first] = itemsOf({ msgChallenge: 'Prueba' });
+
+            expect(first.prompt).toBe(titled('Prueba 1. Los primeros síntomas'));
+        });
+
+        it('the number alone where the activity names none', () => {
+            // Inventing a word would need a translation for something already translated.
+            const [, first] = itemsOf({ msgChallenge: '' });
+
+            expect(first.prompt).toBe(titled('1. Los primeros síntomas'));
+        });
+
+        it('escaped, an author being free to type anything into it', () => {
+            const [, first] = itemsOf({ msgChallenge: '<b>Reto' });
+
+            expect(first.prompt).toContain('&lt;b&gt;Reto 1.');
+        });
+
+        it('never goes on the main challenge, which is not one of them', () => {
+            expect(itemsOf()[0].prompt).toBe(titled('Pandemia reto mundial'));
+        });
+    });
+
+    it('does not number the list on top of the names they already carry', () => {
         expect(ChallengeWorksheetAdapter.build(challengeHtml(), {})?.unnumbered).toBe(true);
     });
 
@@ -207,7 +253,7 @@ describe('ChallengeWorksheetAdapter', () => {
         it('prints the smaller challenges when the main one is empty', () => {
             const items = itemsOf({ desafioTitle: '', desafioDescription: '' });
 
-            expect(items.map(item => item.prompt)).toEqual([titled('Los primeros síntomas')]);
+            expect(items.map(item => item.prompt)).toEqual([numbered(1, 'Los primeros síntomas')]);
         });
 
         it('skips the activity when nothing survives', () => {
@@ -223,7 +269,7 @@ describe('ChallengeWorksheetAdapter', () => {
     it('prints a challenge that has a title and no words', () => {
         const [, first] = itemsOf({ challenges: [challenge({ description: '' })] });
 
-        expect(first.prompt).toBe(titled('Los primeros síntomas'));
+        expect(first.prompt).toBe(numbered(1, 'Los primeros síntomas'));
         expect(first.extraText).toBeUndefined();
         expect(first.answer).toEqual(ANSWER);
     });

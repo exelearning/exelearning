@@ -2,7 +2,8 @@
  * Challenge ('challenge') worksheet adapter
  *
  * Turns a Challenge activity into the sheet it already is underneath: a challenge to solve, the
- * smaller ones that lead up to it, and room to write each answer.
+ * smaller ones that lead up to it, each under the activity's own name for it, and room to write
+ * each answer.
  *
  * On screen this is a room to be escaped — a clock runs, clues appear as time passes, and in linear
  * mode one challenge unlocks the next. None of that survives the trip, and none of it has to: what
@@ -18,6 +19,9 @@
  *   the copy the export pipeline rewrote, so it is the one to read — but the divs arrived with a
  *   later version of the iDevice, and a project saved before that has only the payload's copy.
  * - The challenges' divs are keyed by position, not by a `data-id`.
+ * - The activity's own word for a smaller challenge is in `msgs.msgChallenge`, where the author may
+ *   have changed it, and its runtime numbers them from one. The sheet says the same, so a project
+ *   calling them Retos does not become a sheet calling them Trials.
  * - `instructionsExe` is stored raw here, where most of the family `escape()`s it. Unescaping it
  *   would rewrite a literal `%41` in an author's instructions into an `A`.
  * - `desafioType` is 0 linear or 1 free. It changes nothing on paper: every challenge is there to
@@ -28,7 +32,7 @@
  */
 
 import { extractDataGame, extractDivContent, extractDivContents } from '../dataGameReader';
-import { sanitizeHtml } from '../sanitizeHtml';
+import { escapeText, sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 
 /** DataGame class prefix used by this iDevice. */
@@ -55,33 +59,48 @@ interface ChallengeDataGame {
     instructionsExe?: string;
     instructions?: string;
     challengesGame?: Challenge[];
+    /** The activity's own wording, which the author can edit. */
+    msgs?: { msgChallenge?: string };
 }
 
 /**
- * Build one challenge: its title, its wording, then the room to answer in.
+ * Build one challenge: what it is called, its wording, then the room to answer in.
  *
- * The title is marked as one. Nothing else on the sheet would say so — the challenges carry their
- * own names rather than numbers, and a title set in the same type as the paragraphs under it reads
- * as the first line of them.
+ * The heading is marked as one. Nothing else on the sheet would say so — the challenges are not
+ * numbered by the list they sit in, and a title set in the same type as the paragraphs under it
+ * reads as the first line of them.
  *
  * @param title - The challenge's own title
  * @param description - Its wording, already chosen between the div and the payload
+ * @param label - What to call it before its title, for the smaller challenges
  * @returns The item, or null when there is neither a title nor a description to print
  */
-function buildChallenge(title: string | undefined, description: string): PrintableItem | null {
+function buildChallenge(title: string | undefined, description: string, label = ''): PrintableItem | null {
     const name = sanitizeHtml(title);
     const wording = sanitizeHtml(description);
 
     // A challenge with no words at all is a heading over an empty space.
     if (!name && !wording) return null;
 
+    const heading = [label, name].filter(part => part !== '').join(' ');
     const item: PrintableItem = {
-        prompt: name ? `<strong class="worksheet-challenge-title">${name}</strong>` : '',
+        prompt: heading ? `<strong class="worksheet-challenge-title">${heading}</strong>` : '',
         answer: { kind: 'writingSpace', lines: ANSWER_LINES },
     };
     if (wording) item.extraText = wording;
 
     return item;
+}
+
+/**
+ * What to call the smaller challenge in position `index`.
+ *
+ * The activity's own word for one, numbered the way its own runtime numbers them, and the number
+ * alone where the activity names none — inventing a word here would need a translation for
+ * something the activity already translates.
+ */
+function challengeLabel(word: string, index: number): string {
+    return word ? `${escapeText(word)} ${index + 1}.` : `${index + 1}.`;
 }
 
 export const ChallengeWorksheetAdapter: WorksheetAdapter = {
@@ -102,8 +121,13 @@ export const ChallengeWorksheetAdapter: WorksheetAdapter = {
         if (main) items.push(main);
         else if (dataGame.desafioTitle !== undefined) options.onOmission?.('invalid-data');
 
+        const word = (dataGame.msgs?.msgChallenge ?? '').trim();
         for (const [index, challenge] of (dataGame.challengesGame ?? []).entries()) {
-            const item = buildChallenge(challenge?.title, challengeDivs[index] || challenge?.description || '');
+            const item = buildChallenge(
+                challenge?.title,
+                challengeDivs[index] || challenge?.description || '',
+                challengeLabel(word, index),
+            );
             if (item) items.push(item);
             else options.onOmission?.('invalid-data');
         }
