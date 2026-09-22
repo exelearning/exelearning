@@ -10,7 +10,8 @@
  * `captureMolecule` hook. The same arrangement the LaTeX and Mermaid pre-renderers already use.
  *
  * Everything happens off-screen: a container sized to the printed picture, rendered once, read back
- * as a PNG, then taken down again. Nothing is left behind in the page.
+ * as a PNG, then taken down again. One empty viewer is retained for subsequent captures because
+ * 3Dmol registers window listeners and observers that clear() does not remove.
  *
  * When there is no WebGL, or 3Dmol will not load, capture returns null rather than throwing, and
  * the questions print without their molecules.
@@ -55,6 +56,12 @@
 
     /** Loading the library once, however many molecules are on the sheet. */
     let libraryPromise = null;
+    let captureStage = null;
+    let captureViewer = null;
+    let initialView = null;
+    // A surface finishes asynchronously. Even separate print requests must not share the viewer
+    // until the previous capture has read its picture and cleared its model.
+    let captureQueue = Promise.resolve();
 
     /**
      * Whether this browser can draw a molecule at all.
@@ -64,7 +71,10 @@
     function isWebGLAvailable() {
         try {
             const canvas = document.createElement('canvas');
-            return !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+            const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!context) return false;
+            context.getExtension('WEBGL_lose_context')?.loseContext();
+            return true;
         } catch (e) {
             return false;
         }
@@ -118,14 +128,14 @@
      * @param {object} library - The $3Dmol namespace
      * @param {string} styleName - The style the author chose
      */
-    function applyStyle(viewer, library, styleName) {
+    async function applyStyle(viewer, library, styleName) {
         const style = (styleName || '').trim().toLowerCase();
 
         if (style === 'surface') {
             // A surface is drawn over faint sticks, exactly as the activity draws it.
             viewer.setStyle({}, { stick: { radius: 0.12, opacity: 0.35 } });
             if (library.SurfaceType && viewer.addSurface) {
-                viewer.addSurface(library.SurfaceType.VDW, { opacity: 0.85, color: 'white' });
+                await viewer.addSurface(library.SurfaceType.VDW, { opacity: 0.85, color: 'white' });
             }
             return;
         }
@@ -163,20 +173,33 @@
 
         const format = modelFormatOf(view);
         if (!format) return null;
-        if (typeof document === 'undefined' || !isWebGLAvailable()) return null;
+        if (typeof document === 'undefined' || (!captureViewer && !isWebGLAvailable())) return null;
 
         const library = await loadLibrary(ideviceBasePath);
         if (!library) return null;
 
-        const stage = openStage();
-        let viewer = null;
+        const pending = captureQueue.then(() => captureWithViewer(view, format, library));
+        captureQueue = pending;
+        return pending;
+    }
 
+    /** Render one queued capture, resetting the shared viewer before using the author's camera. */
+    async function captureWithViewer(view, format, library) {
         try {
-            viewer = library.createViewer(stage, { backgroundColor: view.bgDark ? 'black' : 'white' });
-            if (!viewer) return null;
+            if (!captureStage) captureStage = openStage();
+            else document.body.appendChild(captureStage);
+
+            if (!captureViewer) {
+                captureViewer = library.createViewer(captureStage, { backgroundColor: 'white' });
+                if (!captureViewer) return null;
+                initialView = captureViewer.getView().slice();
+            }
+            const viewer = captureViewer;
+            viewer.setBackgroundColor(view.bgDark ? 'black' : 'white');
+            viewer.setView(initialView.slice());
 
             viewer.addModel(view.modelData, format, { keepH: true });
-            applyStyle(viewer, library, view.modelStyle);
+            await applyStyle(viewer, library, view.modelStyle);
             viewer.zoomTo();
             // The author's camera, when they left one: the angle is part of what they chose to show.
             if (view.cameraView) viewer.setView(view.cameraView);
@@ -186,14 +209,15 @@
         } catch (e) {
             return null;
         } finally {
-            // The canvas holds a WebGL context, and browsers allow only a handful at a time. A sheet
-            // with a dozen molecules on it would run out partway through if these were left open.
+            // clear() releases the model/surface geometry, but not the viewer's window listeners.
+            // Retain that one empty viewer and detach its stage rather than leaking a new viewer
+            // per question. Do not lose its context: 3Dmol may share it with the editor's viewers.
             try {
-                if (viewer) viewer.clear();
+                if (captureViewer) captureViewer.clear();
             } catch (e) {
                 // A viewer that failed to build has nothing to clear.
             }
-            stage.remove();
+            captureStage?.remove();
         }
     }
 
@@ -205,6 +229,11 @@
         _applyStyle: applyStyle,
         _reset: () => {
             libraryPromise = null;
+            captureStage?.remove();
+            captureStage = null;
+            captureViewer = null;
+            initialView = null;
+            captureQueue = Promise.resolve();
         },
     };
 

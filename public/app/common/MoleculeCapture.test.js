@@ -16,6 +16,7 @@ import './MoleculeCapture.js';
 
 const PICTURE = 'data:image/png;base64,iVBORw0KGgo=';
 const MODEL = '\n  Mrv  \n\n  1  0  0  0  0  0            999 V2000\n';
+const INITIAL_VIEW = [0, 0, 0, 0, 0, 0, 0, 1];
 
 /** A stand-in viewer that records what it was told to do. */
 function fakeViewer(overrides = {}) {
@@ -25,6 +26,7 @@ function fakeViewer(overrides = {}) {
         styles: [],
         surfaces: [],
         view: null,
+        backgrounds: [],
         cleared: 0,
         addModel(data, format, options) {
             this.models.push({ data, format, options });
@@ -40,6 +42,12 @@ function fakeViewer(overrides = {}) {
         },
         setView(camera) {
             this.view = camera;
+        },
+        getView() {
+            return this.view || INITIAL_VIEW;
+        },
+        setBackgroundColor(color) {
+            this.backgrounds.push(color);
         },
         render() {
             this.calls.push('render');
@@ -89,7 +97,7 @@ describe('MoleculeCapture', () => {
                     tag,
                     ...rest
                 );
-                if (tag === 'canvas') element.getContext = () => ({});
+                if (tag === 'canvas') element.getContext = () => ({ getExtension: () => null });
                 return element;
             }
         );
@@ -149,12 +157,12 @@ describe('MoleculeCapture', () => {
         });
 
         test('uses the background the author chose', async () => {
-            const { created } = install3Dmol();
+            const { viewer } = install3Dmol();
 
             await MoleculeCapture.capture(view());
             await MoleculeCapture.capture(view({ bgDark: true }));
 
-            expect(created.map(c => c.options.backgroundColor)).toEqual(['white', 'black']);
+            expect(viewer.backgrounds).toEqual(['white', 'black']);
         });
 
         test('uses the author camera when they left one', async () => {
@@ -171,7 +179,7 @@ describe('MoleculeCapture', () => {
 
             await MoleculeCapture.capture(view());
 
-            expect(viewer.view).toBeNull();
+            expect(viewer.view).toEqual(INITIAL_VIEW);
             expect(viewer.calls).toContain('zoomTo');
         });
     });
@@ -210,6 +218,78 @@ describe('MoleculeCapture', () => {
     });
 
     describe('cleaning up after itself', () => {
+        test('reuses one viewer across captures and restores the default camera', async () => {
+            const { viewer, created } = install3Dmol();
+            const camera = [1, 2, 3, 4, 0, 0, 1, 0];
+
+            await MoleculeCapture.capture(view({ cameraView: camera, bgDark: true }));
+            expect(viewer.view).toEqual(camera);
+            await MoleculeCapture.capture(view());
+
+            expect(created).toHaveLength(1);
+            expect(viewer.view).toEqual(INITIAL_VIEW);
+            expect(viewer.backgrounds).toEqual(['black', 'white']);
+            expect(viewer.cleared).toBe(2);
+            expect(globalThis.document.body.children).toHaveLength(0);
+        });
+
+        test('waits for the surface before taking the picture or starting another capture', async () => {
+            let finishSurface;
+            const surface = new Promise(resolve => { finishSurface = resolve; });
+            const png = vi.fn(() => PICTURE);
+            const { viewer, created } = install3Dmol(fakeViewer({
+                addSurface: vi.fn(() => surface),
+                pngURI: png,
+            }));
+
+            const first = MoleculeCapture.capture(view({ modelStyle: 'surface' }));
+            const second = MoleculeCapture.capture(view({ modelData: 'another molecule' }));
+            await vi.waitFor(() => expect(viewer.addSurface).toHaveBeenCalledOnce());
+            expect(png).not.toHaveBeenCalled();
+            expect(viewer.cleared).toBe(0);
+            expect(viewer.models).toHaveLength(1);
+
+            finishSurface();
+            expect(await first).toBe(PICTURE);
+            expect(await second).toBe(PICTURE);
+            expect(png).toHaveBeenCalledTimes(2);
+            expect(viewer.models[1].data).toBe('another molecule');
+            expect(created).toHaveLength(1);
+            expect(viewer.cleared).toBe(2);
+        });
+
+        test('cleans up a rejected surface and allows the next capture', async () => {
+            const { viewer, created } = install3Dmol(fakeViewer({
+                addSurface: () => Promise.reject(new Error('surface failed')),
+            }));
+            expect(await MoleculeCapture.capture(view({ modelStyle: 'surface' }))).toBeNull();
+            expect(await MoleculeCapture.capture(view())).toBe(PICTURE);
+            expect(viewer.cleared).toBe(2);
+            expect(created).toHaveLength(1);
+            expect(globalThis.document.body.children).toHaveLength(0);
+        });
+
+        test('detaches the stage even when clearing the viewer fails', async () => {
+            install3Dmol(fakeViewer({ clear() { throw new Error('context lost'); } }));
+            expect(await MoleculeCapture.capture(view())).toBe(PICTURE);
+            expect(globalThis.document.body.children).toHaveLength(0);
+        });
+
+        test('detaches the stage if no viewer could be created', async () => {
+            install3Dmol(null);
+            expect(await MoleculeCapture.capture(view())).toBeNull();
+            expect(globalThis.document.body.children).toHaveLength(0);
+        });
+
+        test('releases the temporary WebGL capability probe', () => {
+            const loseContext = vi.fn();
+            globalThis.document.createElement.mockReturnValue({
+                getContext: () => ({ getExtension: () => ({ loseContext }) }),
+            });
+            expect(MoleculeCapture._isWebGLAvailable()).toBe(true);
+            expect(loseContext).toHaveBeenCalledOnce();
+        });
+
         test('takes the stage down once the picture is read', async () => {
             const { viewer } = install3Dmol();
 

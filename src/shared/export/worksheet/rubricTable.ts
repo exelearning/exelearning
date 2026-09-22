@@ -29,8 +29,12 @@ const PAYLOAD_CLASS = 'exe-rubrics-DataGame';
 /** Class of the list the iDevice keeps its own wording in. */
 const STRINGS_CLASS = 'exe-rubrics-strings';
 
+/** Classes of the text around the table, which may hold tables of its own. */
+const INSTRUCTIONS_CLASS = 'exe-rubrics-instructions';
+const TEXT_AFTER_CLASS = 'exe-rubrics-text-after';
+
 /** The fields drawn above the table, in the order the activity draws them. */
-const FIELD_KEYS = ['activity', 'score'] as const;
+const FIELD_KEYS = ['activity', 'name', 'score', 'date'] as const;
 
 /** One cell as the current editor stores it. */
 interface StoredCell {
@@ -130,7 +134,11 @@ function assemble(table: StoredTable, fields: string[], notes: string): Printabl
  *
  * @returns The labels for the fields above the table, and for the notes below it
  */
-function readWording(html: string, i18n: Record<string, string> = {}): { fields: string[]; notes: string } {
+function readWording(
+    html: string,
+    i18n: Record<string, string> = {},
+    hasIdentityFields = false,
+): { fields: string[]; notes: string } {
     const fromList = new Map<string, string>();
     for (const list of elementsByClass(parseFragment(html), 'ul', STRINGS_CLASS))
         for (const item of elementsByTag(list, 'li')) {
@@ -140,7 +148,8 @@ function readWording(html: string, i18n: Record<string, string> = {}): { fields:
 
     const word = (key: string) => sanitizeHtml((i18n[key] ?? fromList.get(key) ?? '').trim());
 
-    return { fields: FIELD_KEYS.map(word).filter(label => label !== ''), notes: word('notes') };
+    const fields = FIELD_KEYS.filter(key => !hasIdentityFields || (key !== 'name' && key !== 'date'));
+    return { fields: fields.map(word).filter(label => label !== ''), notes: word('notes') };
 }
 
 /** The payload the current editor writes: `escape()`d JSON, with no obfuscation over it. */
@@ -164,17 +173,40 @@ function readPayload(html: string): StoredRubric | null {
 }
 
 /**
- * The table an older project carries as ordinary HTML.
+ * Every table that could be the rubric's own, most likely first.
  *
- * Skips the one the current runtime draws for itself, which is marked as an export table and would
- * otherwise be read back as if the author had written it.
+ * An author can put a table anywhere — in the instructions, in the closing text — and an older
+ * project does not mark which one is the rubric. Three rules narrow it down, none of them alone
+ * enough:
+ *
+ * - The one the current runtime draws for itself is skipped. It is the same data rendered back,
+ *   and reading it would take the runtime's output for the author's own markup.
+ * - A table inside the text around the rubric is not the rubric.
+ * - A table inside the `rubric` wrapper is, where the project has one. Many do not: the component
+ *   is wrapped by the page, not by the stored HTML, so the oldest projects carry the table bare.
+ *
+ * What settles it is the shape, which is why this returns candidates rather than a choice: the
+ * caller takes the first that reads as a rubric.
  */
-function readLegacyTable(html: string): StoredTable | null {
-    const table = elementsByTag(parseFragment(html), 'table').find(
-        node => !node.attrs.some(attr => attr.name === 'data-rubric-table-type'),
-    );
-    if (!table) return null;
+function rubricTableCandidates(root: Node): Element[] {
+    const drawnByRuntime = (node: Element) =>
+        node.attrs.some(attr => attr.name === 'data-rubric-table-type' && attr.value === 'export');
 
+    const inText = new Set(
+        [INSTRUCTIONS_CLASS, TEXT_AFTER_CLASS].flatMap(className =>
+            elementsByClass(root, 'div', className).flatMap(region => elementsByTag(region, 'table')),
+        ),
+    );
+
+    const wrapped = new Set(elementsByClass(root, 'div', 'rubric').flatMap(scope => elementsByTag(scope, 'table')));
+    const tables = elementsByTag(root, 'table').filter(node => !drawnByRuntime(node) && !inText.has(node));
+
+    // Inside the wrapper first, then the rest in document order.
+    return [...tables.filter(node => wrapped.has(node)), ...tables.filter(node => !wrapped.has(node))];
+}
+
+/** Read one table the way the runtime reads a legacy rubric. */
+function readLegacyTable(table: Element): StoredTable {
     const scores: string[] = [];
     for (const head of elementsByTag(table, 'thead'))
         for (const [index, cell] of elementsByTag(head, 'th').entries()) {
@@ -212,18 +244,25 @@ function readLegacyTable(html: string): StoredTable | null {
  * Read the assessment table out of a Rubric component.
  *
  * @param html - The component's stored HTML
+ * @param hasIdentityFields - Whether the containing sheet already asks for name and date
  * @returns The table as it should print, or null when there is none to read
  */
-export function readRubricTable(html: string): PrintableRubric | null {
+export function readRubricTable(html: string, hasIdentityFields = false): PrintableRubric | null {
     if (!html) return null;
 
     const stored = readPayload(html);
-    const wording = readWording(html, stored?.i18n);
+    const wording = readWording(html, stored?.i18n, hasIdentityFields);
     const table = stored?.table ?? stored;
 
     if (table?.categories && table.scores) return assemble(table, wording.fields, wording.notes);
 
-    const legacy = readLegacyTable(html);
+    // The first candidate that reads as a rubric. A table of two columns in the instructions
+    // yields no levels, so it falls through to the next rather than taking the rubric's place.
+    const root = parseFragment(html);
+    for (const candidate of rubricTableCandidates(root)) {
+        const printable = assemble(readLegacyTable(candidate), wording.fields, wording.notes);
+        if (printable) return printable;
+    }
 
-    return legacy ? assemble(legacy, wording.fields, wording.notes) : null;
+    return null;
 }

@@ -105,6 +105,41 @@ describe('readRubricTable', () => {
     });
 
     describe('the table an older project carries as HTML', () => {
+        /** A table an author put in their own text, which is not the rubric. */
+        const prose = (className: string) =>
+            `<div class="${className}"><table class="exe-table"><tbody><tr><td>Cómo evaluar</td></tr></tbody></table></div>`;
+
+        it('ignores tables in instructions, including tables with the generic exe-table class', () => {
+            expect(readRubricTable(prose('exe-rubrics-instructions') + legacyHtml())?.rows).toEqual(
+                readRubricTable(legacyHtml())?.rows,
+            );
+        });
+
+        it('ignores one in the closing text too', () => {
+            expect(readRubricTable(legacyHtml() + prose('exe-rubrics-text-after'))?.rows).toHaveLength(2);
+        });
+
+        it('reads an unwrapped legacy table and an edition-marked table', () => {
+            const unwrapped = legacyHtml().replace("<div class='rubric'>", '').replace('</div>', '');
+            expect(readRubricTable(unwrapped)?.rows).toHaveLength(2);
+            expect(
+                readRubricTable(
+                    unwrapped.replace("class='exe-table'", 'class="exe-table" data-rubric-table-type="edition"'),
+                )?.rows,
+            ).toHaveLength(2);
+        });
+
+        it('finds the rubric past a table that is not one, wrapper or no wrapper', () => {
+            // The oldest projects carry the table bare: the component is wrapped by the page, not
+            // by the stored HTML, so there is no `rubric` div to scope the search to. What tells
+            // the rubric from a table in someone's prose is its shape.
+            const unwrapped = legacyHtml().replace("<div class='rubric'>", '').replace('</div>', '');
+            const loose = '<table class="exe-table"><tbody><tr><td>Dos columnas</td><td>sin niveles</td></tr></tbody></table>';
+
+            for (const rubric of [legacyHtml(), unwrapped]) {
+                expect(readRubricTable(loose + rubric)?.rows.map(row => row.criterion)).toEqual(['Habla', 'Volumen']);
+            }
+        });
         it('reads the caption, the levels and the criteria', () => {
             const table = readRubricTable(legacyHtml());
 
@@ -123,7 +158,10 @@ describe('readRubricTable', () => {
         it('ignores the table the runtime drew for itself', () => {
             // It is the same data rendered back; reading it would take the runtime's output for
             // the author's own markup.
-            const drawn = legacyHtml().replace("class='exe-table'", 'class="exe-table" data-rubric-table-type="export"');
+            const drawn = legacyHtml().replace(
+                "class='exe-table'",
+                'class="exe-table" data-rubric-table-type="export"',
+            );
 
             expect(readRubricTable(drawn)).toBeNull();
         });
@@ -152,10 +190,11 @@ describe('readRubricTable', () => {
             expect(readRubricTable(html)?.fields).toEqual(['Tarea', 'Nota']);
         });
 
-        it('never asks for the name or the date, which the sheet already asks for', () => {
+        it('preserves name and date unless the containing sheet already asks for them', () => {
             const html = legacyHtml() + strings({ activity: 'Actividad', name: 'Nombre', date: 'Fecha' });
 
-            expect(readRubricTable(html)?.fields).toEqual(['Actividad']);
+            expect(readRubricTable(html)?.fields).toEqual(['Actividad', 'Nombre', 'Fecha']);
+            expect(readRubricTable(html, true)?.fields).toEqual(['Actividad']);
         });
 
         it('prints no field the activity has no word for', () => {

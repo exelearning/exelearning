@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { WorksheetExporter } from './WorksheetExporter';
 import { encryptDataGame } from '../utils/dataGameCipher';
-import type { ExportDocument, ExportPage } from '../interfaces';
+import type { AssetProvider, ExportDocument, ExportPage } from '../interfaces';
 
 /** Component HTML as the Guess editor writes it. */
 function guessContent(
@@ -54,6 +54,57 @@ function documentOf(pageSpecs: PageSpec[], metadata: Record<string, unknown> = {
 }
 
 describe('WorksheetExporter', () => {
+    it('uses the worksheet identity fields instead of repeating them above each rubric', async () => {
+        const content = `<div class="exe-rubrics-DataGame">${escape(
+            JSON.stringify({
+                categories: ['Content'],
+                scores: ['Good'],
+                descriptions: [[{ text: 'Complete', weight: '4' }]],
+                i18n: { activity: 'Activity', name: 'Rubric name', date: 'Rubric date', score: 'Score' },
+            }),
+        )}</div>`;
+        const result = await new WorksheetExporter(
+            documentOf([{ components: [{ type: 'rubric', content }] }]),
+        ).generate();
+        expect(result.success).toBe(true);
+        expect(result.html).toContain('worksheet-rubric-table');
+        expect(result.html).toContain('<span class="worksheet-field">Name:');
+        expect(result.html).toContain('<span class="worksheet-field">Date:');
+        expect(result.html).not.toContain('Rubric name');
+        expect(result.html).not.toContain('Rubric date');
+        result.dispose?.();
+    });
+
+    it.each([
+        ['electrical-circuits', 'electrical-circuits'],
+        ['3dmol', 'dmole'],
+    ])('resolves the current %s instruction image on the server', async (type, prefix) => {
+        const id = '11111111-1111-4111-8111-111111111111';
+        const content =
+            `<div class="${prefix}-instructions"><img src="asset://${id}"></div>` +
+            `<div class="${prefix}-DataGame">${encryptDataGame(
+                JSON.stringify({
+                    instructionsExe: escape('<img src="blob:https://old.example/expired">'),
+                    selectsGame: [{ quextion: 'Question', options: ['A', 'B'], numberOptions: 2 }],
+                }),
+            )}</div>`;
+        const result = await new WorksheetExporter(documentOf([{ components: [{ type, content }] }]), {
+            getAllAssets: async () => [
+                {
+                    id,
+                    filename: 'diagram.svg',
+                    mime: 'image/svg+xml',
+                    data: new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>'),
+                },
+            ],
+        } as unknown as AssetProvider).generate();
+        expect(result.success).toBe(true);
+        expect(result.html).not.toContain('old.example');
+        expect(result.html).not.toContain(`asset://${id}`);
+        expect(result.html).toMatch(/<img src="blob:[^"]+"/);
+        result.dispose?.();
+    });
+
     it('exports round statements and reports unprintable headings and ring clues on the server', async () => {
         const pack = (prefix: string, data: unknown) =>
             `<div class="${prefix}-DataGame">${encryptDataGame(JSON.stringify(data))}</div>`;

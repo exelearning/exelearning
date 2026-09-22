@@ -60,10 +60,7 @@ describe('extractDivContents', () => {
             '<div class="desafio-ChallengeDescription"><p>Segundo</p></div>' +
             '</div>';
 
-        expect(extractDivContents(html, 'desafio-ChallengeDescription')).toEqual([
-            '<p>Primero</p>',
-            '<p>Segundo</p>',
-        ]);
+        expect(extractDivContents(html, 'desafio-ChallengeDescription')).toEqual(['<p>Primero</p>', '<p>Segundo</p>']);
     });
 
     it('keeps an empty one in place, so the positions still line up', () => {

@@ -394,6 +394,8 @@ export interface WorksheetAdapter {
 
 /** Per-call context handed to an adapter. */
 export interface WorksheetAdapterOptions {
+    /** The containing sheet already asks for the student's name and date. */
+    hasIdentityFields?: boolean;
     /** Report questions that cannot be represented faithfully on paper. */
     onOmission?: (reason: NonNullable<UnsupportedActivity['reason']>, count?: number) => void;
     /** Translated heading for this activity type, supplied by the frontend. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import type { PrintableRubric } from '../types';
+import type { PrintableRubric, WorksheetAdapterOptions } from '../types';
 import { RubricWorksheetAdapter } from './RubricWorksheetAdapter';
 
 interface RubricFixture {
@@ -14,7 +14,12 @@ function storedTable(overrides: Record<string, unknown> = {}): Record<string, un
         title: 'Rúbrica de exposición oral',
         categories: ['Habla'],
         scores: ['Excelente', 'Mejorable'],
-        descriptions: [[{ text: 'Habla con claridad.', weight: '4' }, { text: 'Se le entiende mal.', weight: '2' }]],
+        descriptions: [
+            [
+                { text: 'Habla con claridad.', weight: '4' },
+                { text: 'Se le entiende mal.', weight: '2' },
+            ],
+        ],
         ...overrides,
     };
 }
@@ -36,10 +41,10 @@ function rubricHtml(fixture: RubricFixture = {}): string {
     return html;
 }
 
-function tableOf(fixture: RubricFixture = {}): PrintableRubric {
-    const activity = RubricWorksheetAdapter.build(rubricHtml(fixture), {});
-
-    return (activity?.board as { table: PrintableRubric }).table;
+function tableOf(fixture: RubricFixture = {}, options: WorksheetAdapterOptions = {}): PrintableRubric {
+    const activity = RubricWorksheetAdapter.build(rubricHtml(fixture), options);
+    if (activity?.board?.kind !== 'rubricTable') throw new Error('Expected a printable rubric');
+    return activity.board.table;
 }
 
 describe('RubricWorksheetAdapter', () => {
@@ -74,11 +79,18 @@ describe('RubricWorksheetAdapter', () => {
         expect(table.notes).toBe('Notas');
     });
 
-    it('does not ask again for the name or the date', () => {
-        // The sheet asks for both at the top; asking twice on one page reads as a mistake.
+    it('keeps name and date when no containing worksheet supplies them', () => {
         const table = tableOf({ words: { activity: 'Actividad', name: 'Nombre', date: 'Fecha' } });
 
-        expect(table.fields).toEqual(['Actividad']);
+        expect(table.fields).toEqual(['Actividad', 'Nombre', 'Fecha']);
+    });
+
+    it('omits only identity fields already present in the containing worksheet', () => {
+        const table = tableOf(
+            { words: { activity: 'Actividad', name: 'Nombre', score: 'Nota', date: 'Fecha' } },
+            { hasIdentityFields: true },
+        );
+        expect(table.fields).toEqual(['Actividad', 'Nota']);
     });
 
     it('keeps the rubric own name as the table caption', () => {

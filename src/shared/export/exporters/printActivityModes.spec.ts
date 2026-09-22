@@ -57,6 +57,22 @@ function run(pages: ExportPage[], mode: DocumentActivityMode, options: ApplyActi
 }
 
 describe('applyActivityMode', () => {
+    it.each(['in-place', 'appendix'] as const)('keeps rubric identity fields in %s mode', mode => {
+        const content = `<div class="exe-rubrics-DataGame">${escape(
+            JSON.stringify({
+                categories: ['Content'],
+                scores: ['Good'],
+                descriptions: [[{ text: 'Complete', weight: '4' }]],
+                i18n: { activity: 'Activity', name: 'Learner name', date: 'Assessment date', score: 'Score' },
+            }),
+        )}</div>`;
+        const html = componentsOf(run([page([component({ type: 'rubric', content })])], mode))
+            .map(entry => entry.content)
+            .join('');
+        expect(html).toContain('<span>Learner name:</span>');
+        expect(html).toContain('<span>Assessment date:</span>');
+    });
+
     it('leaves a project with no interactive activity untouched', () => {
         for (const mode of ['omit', 'in-place', 'appendix'] as DocumentActivityMode[])
             expect(run([page([text()])], mode)).toEqual([page([text()])]);

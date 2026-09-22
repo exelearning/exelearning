@@ -15,6 +15,8 @@
  */
 
 import { chromium, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-helpers';
 import { encryptDataGame } from '../../../../src/shared/export/utils/dataGameCipher';
@@ -88,6 +90,158 @@ test.describe('Print iDevices', () => {
     // Serial: several of these import multi-megabyte fixtures, and running them against one
     // another starves the dev server enough to time out the workarea handshake.
     test.describe.configure({ mode: 'serial' });
+
+    for (const mode of ['idevices', 'in-place', 'appendix']) {
+        test(`prints rubric identity fields and current instruction images in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Rubric and instruction regressions');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const pictureId = 'd60f409d-a1cc-4a34-a56c-d9e8c042afab';
+            const components = [
+                {
+                    type: 'rubric',
+                    html:
+                        '<div class="exe-rubrics-instructions"><table class="exe-table"><tr><td>Read each criterion</td></tr></table></div>' +
+                        '<div class="rubric"><table class="exe-table"><thead><tr><th></th><th>Good</th></tr></thead>' +
+                        '<tbody><tr><th>Content</th><td>Complete <span>(4)</span></td></tr></tbody></table>' +
+                        '<ul class="exe-rubrics-strings"><li class="activity">Activity</li><li class="name">Learner name</li>' +
+                        '<li class="date">Assessment date</li><li class="score">Score</li></ul></div>',
+                },
+                ...[
+                    ['electrical-circuits', 'electrical-circuits'],
+                    ['3dmol', 'dmole'],
+                ].map(([type, prefix]) => ({
+                    type,
+                    html:
+                        `<div class="${prefix}-instructions"><p>Current diagram <img src="asset://${pictureId}"></p></div>` +
+                        `<div class="${prefix}-DataGame">${encryptDataGame(
+                            JSON.stringify({
+                                instructionsExe: escape('<img src="blob:https://old.example/expired">'),
+                                selectsGame: [{ quextion: 'Question', options: ['A', 'B'], numberOptions: 2 }],
+                            }),
+                        )}</div>`,
+                })),
+            ];
+            await page.evaluate(
+                async ({ components, pictureId }) => {
+                    const bridge = window.eXeLearning.app.project._yjsBridge;
+                    const binding = bridge.structureBinding;
+                    const parent = binding.createPage('Printable rubric and diagrams');
+                    for (const component of components) {
+                        const block = binding.createBlock(parent.id);
+                        binding.createComponent(parent.id, block, component.type, { htmlContent: component.html });
+                    }
+                    const blob = new Blob(
+                        [
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>',
+                        ],
+                        { type: 'image/svg+xml' },
+                    );
+                    await bridge.assetManager.putAsset({
+                        id: pictureId,
+                        filename: 'diagram.svg',
+                        mime: blob.type,
+                        size: blob.size,
+                        blob,
+                    });
+                },
+                { components, pictureId },
+            );
+            await openPrintDialog(page);
+            const { frame } = await choosePrintOption(page, mode);
+            const rubric = frame.locator('.worksheet-rubric');
+            await expect(rubric.locator('tbody th')).toHaveText('Content');
+            await expect(rubric.locator('tbody td')).toContainText('Complete');
+            const fields = rubric.locator('.worksheet-rubric-field');
+            await expect(fields).toHaveCount(mode === 'idevices' ? 2 : 4);
+            if (mode === 'idevices') await expect(frame.locator('.worksheet-fields')).toBeVisible();
+            else {
+                await expect(fields.filter({ hasText: 'Learner name' })).toBeVisible();
+                await expect(fields.filter({ hasText: 'Assessment date' })).toBeVisible();
+            }
+            for (const type of ['electrical-circuits', '3dmol']) {
+                const picture = frame.locator(`[data-idevice="${type}"] .worksheet-instructions img`);
+                await expect(picture).toHaveAttribute('src', /^blob:/);
+                await expect
+                    .poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+            }
+        });
+    }
+
+    test('waits for real molecule surfaces and reuses the viewer across print previews', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Molecule capture regressions');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        // Observe the bundled viewer while leaving its WebGL and surface workers intact.
+        await page.route('**/3dmol/export/3Dmol-min.js', async route => {
+            const response = await route.fetch();
+            expect(response.ok()).toBe(true);
+            const probe = `;(() => {
+                const state = window.__moleculeCaptureProbe = { viewers: new Set(), surfaces: [], captures: 0 };
+                const prototype = window.$3Dmol.GLViewer.prototype;
+                const pngURI = prototype.pngURI;
+                prototype.pngURI = function() {
+                    state.viewers.add(this);
+                    state.captures++;
+                    const surfaces = Object.values(this.surfaces).flat();
+                    if (surfaces.length) state.surfaces.push(surfaces.every(surface => surface.done));
+                    return pngURI.call(this);
+                };
+            })();`;
+            await route.fulfill({ response, body: `${await response.text()}\n${probe}` });
+        });
+        const modelData = readFileSync(
+            path.join('public', 'files', 'perm', 'idevices', 'base', '3dmol', 'export', 'GLC_ideal.sdf'),
+            'utf8',
+        );
+        const html = `<div class="dmole-DataGame">${encryptDataGame(
+            JSON.stringify({
+                selectsGame: ['surface', 'stick'].map(modelStyle => ({
+                    modelData,
+                    modelFormat: 'sdf',
+                    modelStyle,
+                    quextion: 'Count the atoms',
+                    options: ['Six', 'Twelve'],
+                    numberOptions: 2,
+                })),
+            }),
+        )}</div>`;
+        await page.evaluate(html => {
+            const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Molecules');
+            const block = binding.createBlock(parent.id);
+            binding.createComponent(parent.id, block, '3dmol', { htmlContent: html });
+        }, html);
+        for (let preview = 0; preview < 2; preview++) {
+            const { overlay, frame } = await openWorksheet(page);
+            const images = frame.locator('[data-idevice="3dmol"] .worksheet-media img');
+            await expect(images).toHaveCount(2);
+            for (const image of await images.all()) {
+                await expect(image).toHaveAttribute('src', /^data:image\/png/);
+                await expect
+                    .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+            }
+            await overlay.locator('.print-preview-close-btn').click();
+            await expect(overlay).toHaveAttribute('data-visible', 'false');
+        }
+        const state = await page.evaluate(() => {
+            const state = (
+                window as unknown as {
+                    __moleculeCaptureProbe: { viewers: Set<unknown>; surfaces: boolean[]; captures: number };
+                }
+            ).__moleculeCaptureProbe;
+            return { viewers: state.viewers.size, surfaces: state.surfaces, captures: state.captures };
+        });
+        expect(state).toEqual({ viewers: 1, surfaces: [true, true], captures: 4 });
+    });
 
     for (const mode of ['idevices', 'in-place']) {
         test(`preserves sorting statements and printable clues in ${mode} mode`, async ({
@@ -246,12 +400,15 @@ test.describe('Print iDevices', () => {
 
         const { frame } = await openWorksheet(page);
 
+        // Two pages of this project print: the one holding the Guess activity, and the one
+        // holding the rubric.
         const pageTitles = frame.locator('.worksheet-page-title');
-        await expect(pageTitles).toHaveCount(1);
-        await expect(pageTitles.first()).not.toBeEmpty();
+        await expect(pageTitles).toHaveCount(2);
+        for (const title of await pageTitles.all()) await expect(title).not.toBeEmpty();
 
         // Every activity sits inside a page section rather than floating on its own.
-        await expect(frame.locator('.worksheet-page .worksheet-activity')).toHaveCount(1);
+        await expect(frame.locator('.worksheet-activity')).toHaveCount(2);
+        await expect(frame.locator('.worksheet-page .worksheet-activity')).toHaveCount(2);
     });
 
     test('keeps accented characters intact', async ({ authenticatedPage, createProject }) => {

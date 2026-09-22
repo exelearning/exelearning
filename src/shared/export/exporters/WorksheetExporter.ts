@@ -113,6 +113,7 @@ export class WorksheetExporter {
                 };
                 try {
                     const activity = adapter.build(content, {
+                        hasIdentityFields: true,
                         title: options.ideviceTitles?.[component.type],
                         labels: options.labels,
                         random: options.random,

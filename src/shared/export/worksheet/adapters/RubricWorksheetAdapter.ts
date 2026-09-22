@@ -12,8 +12,7 @@
  * - The table is read by `rubricTable`, which handles both the shape the current editor writes and
  *   the plain HTML table an older project carries.
  * - Its own wording for the fields comes from the activity, and where it names none, none is
- *   printed. Name and date are left out whatever it says: the worksheet already asks for both at
- *   the top of the sheet, and asking twice on one page reads as a mistake.
+ *   printed. Name and date are left out only when the containing worksheet already asks for them.
  * - Nothing is left blank in the table. Every other adapter hides the answer; here the descriptors
  *   are what the teacher chooses between, so hiding them would leave a grid of numbers.
  */
@@ -38,7 +37,7 @@ export const RubricWorksheetAdapter: WorksheetAdapter = {
     defaultTitle: 'Rubric',
 
     build(html: string, options: WorksheetAdapterOptions = {}): PrintableActivity | null {
-        const table = readRubricTable(html);
+        const table = readRubricTable(html, options.hasIdentityFields);
         if (!table) return null;
 
         // The whole rubric is the board: there are no questions beside it, and on screen it is one

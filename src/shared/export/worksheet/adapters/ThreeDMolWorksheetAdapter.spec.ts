@@ -13,6 +13,7 @@ interface MoleculeFixture {
     activityMode?: string;
     instructionsExe?: string;
     instructions?: string;
+    instructionsDiv?: string;
     textAfter?: string;
     textAfterDiv?: string;
     questions?: Record<string, unknown>[];
@@ -54,6 +55,7 @@ function moleculesHtml(fixture: MoleculeFixture = {}): string {
     });
 
     let html = '<div class="dmole-IDevice">';
+    if (fixture.instructionsDiv) html += `<div class="dmole-instructions">${fixture.instructionsDiv}</div>`;
     html += `<div class="dmole-DataGame js-hidden">${encryptDataGame(payload)}</div>`;
     if (fixture.textAfterDiv) html += `<div class="dmole-extra-content">${fixture.textAfterDiv}</div>`;
     html += '</div>';
@@ -203,6 +205,17 @@ describe('ThreeDMolWorksheetAdapter', () => {
     });
 
     describe('instructions and closing text', () => {
+        it('reads instructions from the current HTML instead of stale payload image URLs', () => {
+            const instructions = '<p>Observe <img src="asset://current-diagram" /></p>';
+            const activity = ThreeDMolWorksheetAdapter.build(
+                moleculesHtml({
+                    instructionsDiv: instructions,
+                    instructionsExe: escape('<img src="blob:https://old.example/expired" />'),
+                }),
+            );
+            expect(activity?.instructions).toBe(instructions);
+        });
+
         it('unescapes the rich instructions the editor stores', () => {
             const activity = ThreeDMolWorksheetAdapter.build(
                 moleculesHtml({ instructionsExe: escape('<p>Observa cada molécula</p>') }),

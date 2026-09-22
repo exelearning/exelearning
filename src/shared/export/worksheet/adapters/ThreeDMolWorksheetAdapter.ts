@@ -177,7 +177,8 @@ export const ThreeDMolWorksheetAdapter: WorksheetAdapter = {
         };
 
         const instructions = sanitizeHtml(
-            dataGame.instructionsExe ? unescape(dataGame.instructionsExe) : dataGame.instructions,
+            extractDivContent(html, `${PREFIX}-instructions`) ||
+                (dataGame.instructionsExe ? unescape(dataGame.instructionsExe) : dataGame.instructions),
         );
         if (instructions) activity.instructions = instructions;
 
