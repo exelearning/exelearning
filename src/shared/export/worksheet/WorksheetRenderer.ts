@@ -740,6 +740,69 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     border: 1px solid #1a1a1a;
 }
 
+/* Options that are pictures. Laid across the sheet and wrapping, centred so a last row holding
+   two of five still reads as a row rather than as an afterthought on the left. */
+.worksheet-media-options {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 4mm;
+    margin: 1mm 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Each option is kept whole: a picture on one sheet and its words on the next chooses nothing. */
+.worksheet-media-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1mm;
+    width: 40mm;
+    padding: 1.5mm;
+    text-align: center;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* The author's colour as an outline, never as a fill: a class set is thirty copies of it. */
+.worksheet-media-option-marked {
+    border: 1px solid #1a1a1a;
+    border-radius: 1mm;
+}
+
+/* The box beside the picture, which is what the student marks. The band is as tall as the tallest
+   picture may be, so every card in a row puts its box and its words on the same line however tall
+   its own picture is — otherwise a row of mixed pictures reads as scattered rather than as a row. */
+.worksheet-media-option-pick {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2mm;
+    min-height: 30mm;
+}
+
+.worksheet-media-option-box {
+    flex: 0 0 4mm;
+    width: 4mm;
+    height: 4mm;
+    border: 1px solid #1a1a1a;
+}
+
+.worksheet-media-option-pick img {
+    max-width: 30mm;
+    max-height: 30mm;
+    height: auto;
+}
+
+/* The card's own words, under the picture they belong to. */
+.worksheet-media-option-text {
+    font-size: 9pt;
+    line-height: 1.2;
+}
+
 /* Ordering questions ask for a number, so the student gets a line rather than a box. */
 .worksheet-option-line {
     flex: 0 0 8mm;
@@ -924,6 +987,10 @@ function renderAnswer(answer: PrintableAnswer): string {
         return renderOrderCards(answer.cards, answer.columns, answer.headers);
     }
 
+    if (answer.kind === 'mediaOptions') {
+        return renderMediaOptions(answer.cards);
+    }
+
     // Every kind the model declares is rendered above. This guards the next one: fail loudly
     // rather than printing an answer space with nothing in it, so whoever adds a kind and forgets
     // to draw it notices immediately.
@@ -1091,6 +1158,41 @@ function cardAttributes(card: PrintableCard): string {
 /** The same card as a list entry, for the boards that lay cards out in columns. */
 function renderCard(card: PrintableCard): string {
     return `<li${cardAttributes(card)}>${cardContent(card)}</li>`;
+}
+
+/**
+ * Render options that are pictures, each with a box to tick beside it.
+ *
+ * The box and the picture sit on one line and the card's own words go under both, because the
+ * picture is what is being chosen between. The list wraps and is centred, so a last row holding
+ * two of five still reads as a row rather than as an afterthought on the left.
+ */
+function renderMediaOptions(cards: PrintableCard[]): string {
+    const drawn = cards
+        .map(card => {
+            const outline = card.accentColor ? ` style="border-color: ${accentOutline(card.accentColor)}"` : '';
+            const marked = card.accentColor ? ' worksheet-media-option-marked' : '';
+
+            let body = '<span class="worksheet-media-option-box"></span>';
+            if (card.media) {
+                const alt = escapeText(card.media.alt ?? '');
+                body += `<img src="${escapeText(card.media.src)}" alt="${alt}" />`;
+            }
+
+            let label = '';
+            if (card.text) {
+                const color = card.textColor ? ` style="color: ${card.textColor}"` : '';
+                label = `<span class="worksheet-media-option-text"${color}>${card.text}</span>`;
+            }
+
+            return (
+                `<li class="worksheet-media-option${marked}"${outline}>` +
+                `<span class="worksheet-media-option-pick">${body}</span>${label}</li>`
+            );
+        })
+        .join('');
+
+    return `<ul class="worksheet-media-options">${drawn}</ul>`;
 }
 
 /**

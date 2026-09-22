@@ -111,6 +111,45 @@ export function selectQuestions<T>(
 }
 
 /**
+ * Pick how many of a question's cards are put in play, as `getCardsPart` does.
+ *
+ * Select multimedia caps the cards a question offers rather than taking a share of them. The draw
+ * is random but the chosen cards go back into stored order, so an author's arrangement survives a
+ * cap that does not remove everything.
+ *
+ * The cap is stored as the string an `<input type="number">` yields, and anything above thirty —
+ * the editor's own maximum — means no cap at all. An activity saved before the setting existed has
+ * none either, and keeps every card.
+ *
+ * A blank cap is read as no cap, which is one place this departs from the activity. There
+ * `Math.max('', 1)` comes out as one, so an author who cleared the box gets a single card; on paper
+ * that is not an exercise, and clearing a box is not a way of asking for one card.
+ *
+ * @param cards - Every card the question stores
+ * @param max - The cap, as stored
+ * @param randomSource - Randomness, injectable for tests
+ * @returns The cards to print, in stored order
+ */
+export function selectCards<T>(cards: T[], max: unknown, randomSource: RandomSource = Math.random): T[] {
+    if (!Array.isArray(cards)) return [];
+    if (typeof max === 'string' && max.trim() === '') return cards;
+
+    const cap = Number(max);
+    if (!Number.isFinite(cap) || cap > 30) return cards;
+
+    const wanted = Math.max(1, Math.floor(cap));
+    if (wanted >= cards.length) return cards;
+
+    const indices = Array.from({ length: cards.length }, (_, index) => index);
+    shuffle(indices, randomSource);
+
+    return indices
+        .slice(0, wanted)
+        .sort((a, b) => a - b)
+        .map(index => cards[index]);
+}
+
+/**
  * Pick the questions a Crossword activity asks.
  *
  * The Crossword iDevice does not share `getQuestions` with the rest; it carries its own variant

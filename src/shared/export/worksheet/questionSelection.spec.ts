@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { buildAnswerBoxes, selectQuestions } from './questionSelection';
+import { buildAnswerBoxes, selectCards, selectQuestions } from './questionSelection';
 
 /** A randomness source that walks a fixed list, so outcomes are pinned. */
 function sequence(values: number[]): () => number {
@@ -146,5 +146,51 @@ describe('buildAnswerBoxes', () => {
             expect(render(buildAnswerBoxes('Montañés', 100, true))).toBe('Montañés');
             expect(render(buildAnswerBoxes('Montañés', 100, false))).toBe('MONTAÑÉS');
         });
+    });
+});
+
+describe('selectCards', () => {
+    const cards = ['a', 'b', 'c', 'd', 'e'];
+
+    it('keeps every card when the cap is the editor maximum', () => {
+        // Thirty is the highest the editor offers, and means no cap at all.
+        expect(selectCards(cards, '30')).toEqual(cards);
+        expect(selectCards(cards, 31)).toEqual(cards);
+    });
+
+    it('keeps every card when the activity never had the setting', () => {
+        expect(selectCards(cards, undefined)).toEqual(cards);
+        expect(selectCards(cards, '')).toEqual(cards);
+    });
+
+    it('keeps every card when the cap is not below their number', () => {
+        expect(selectCards(cards, '5')).toEqual(cards);
+        expect(selectCards(cards, '9')).toEqual(cards);
+    });
+
+    it('takes as many as the cap allows', () => {
+        expect(selectCards(cards, '3', () => 0.5)).toHaveLength(3);
+    });
+
+    it('returns them in stored order, a cap not being a reshuffle', () => {
+        const taken = selectCards(cards, '3', () => 0.5);
+
+        expect([...taken].sort()).toEqual(taken);
+    });
+
+    it('keeps one card at least, whatever the cap says', () => {
+        expect(selectCards(cards, '0', () => 0.5)).toHaveLength(1);
+        expect(selectCards(cards, '-4', () => 0.5)).toHaveLength(1);
+    });
+
+    it('draws a different set as the randomness changes', () => {
+        const first = selectCards(cards, '2', () => 0.1);
+        const second = selectCards(cards, '2', () => 0.9);
+
+        expect(first).not.toEqual(second);
+    });
+
+    it('takes nothing from something that is not a list of cards', () => {
+        expect(selectCards(undefined as unknown as string[], '3')).toEqual([]);
     });
 });

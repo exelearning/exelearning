@@ -57,7 +57,16 @@ export type PrintableAnswer =
      * `marker` says what: a box to tick for a choice, or a line to write on when the question asks
      * for the options to be put in order.
      */
-    | { kind: 'options'; labels: string[]; marker?: 'box' | 'line' };
+    | { kind: 'options'; labels: string[]; marker?: 'box' | 'line' }
+    /**
+     * Options that are pictures rather than words, each with a box to tick beside it.
+     *
+     * The box sits next to the picture and the card's own words, when it has any, go underneath —
+     * the picture is what is being chosen between, so the words belong to it rather than the other
+     * way round. They are laid across the sheet and wrap, centred, so a row that does not fill the
+     * width still reads as a row.
+     */
+    | { kind: 'mediaOptions'; cards: PrintableCard[] };
 
 /** A picture that belongs to a question. */
 export interface PrintableMedia {

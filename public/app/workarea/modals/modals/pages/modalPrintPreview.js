@@ -219,6 +219,7 @@ export default class ModalPrintPreview {
             challenge: _('Challenge'),
             identify: _('Identify'),
             rubric: _('Rubric'),
+            'select-media-files': _('Select multimedia'),
         };
     }
 

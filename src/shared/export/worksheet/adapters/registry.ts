@@ -28,6 +28,7 @@ import { GuessWorksheetAdapter } from './GuessWorksheetAdapter';
 import { QuickQuestionsWorksheetAdapter } from './QuickQuestionsWorksheetAdapter';
 import { RelateWorksheetAdapter } from './RelateWorksheetAdapter';
 import { RubricWorksheetAdapter } from './RubricWorksheetAdapter';
+import { SelectMediaFilesWorksheetAdapter } from './SelectMediaFilesWorksheetAdapter';
 import { ThreeDMolWorksheetAdapter } from './ThreeDMolWorksheetAdapter';
 
 /** Every adapter shipped today, in no particular order. */
@@ -54,6 +55,7 @@ const ADAPTERS: readonly WorksheetAdapter[] = [
     ChallengeWorksheetAdapter,
     IdentifyWorksheetAdapter,
     RubricWorksheetAdapter,
+    SelectMediaFilesWorksheetAdapter,
 ];
 
 const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapter.ideviceType, adapter]));
