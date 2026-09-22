@@ -77,9 +77,7 @@ function buildChallenge(title: string | undefined, description: string): Printab
 
     const item: PrintableItem = {
         prompt: name ? `<strong class="worksheet-challenge-title">${name}</strong>` : '',
-        // Ruled, not blank: the answer is a word, and a gap between two paragraphs of the author's
-        // own prose says nothing about there being an answer to write.
-        answer: { kind: 'writingSpace', lines: ANSWER_LINES, ruled: true },
+        answer: { kind: 'writingSpace', lines: ANSWER_LINES },
     };
     if (wording) item.extraText = wording;
 

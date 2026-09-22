@@ -121,14 +121,14 @@ describe('applyActivityMode', () => {
 
         it('prints a note where an activity has no printable form yet', () => {
             const content = componentsOf(
-                run([page([component({ type: 'identify', content: '<div/>' })])], 'in-place'),
+                run([page([component({ type: 'padlock', content: '<div/>' })])], 'in-place'),
             )[0].content;
 
             expect(content).toContain('worksheet-activity-unprintable');
             expect(content).toContain('This activity cannot be printed yet.');
             // The type survives as an attribute, for stylesheets and tests, but is not written out
             // anywhere a reader would see it.
-            expect(content).toContain('data-idevice="identify"');
+            expect(content).toContain('data-idevice="padlock"');
         });
 
         it('says an activity is not available rather than not ready, where that is settled', () => {
@@ -149,7 +149,7 @@ describe('applyActivityMode', () => {
                 run([page([component({ type: 'trivial', content: '<div/>' })])], 'in-place', { labels }),
             )[0].content;
             const waiting = componentsOf(
-                run([page([component({ type: 'identify', content: '<div/>' })])], 'in-place', { labels }),
+                run([page([component({ type: 'padlock', content: '<div/>' })])], 'in-place', { labels }),
             )[0].content;
 
             expect(settled).toContain('No disponible en impresión');
@@ -201,7 +201,7 @@ describe('applyActivityMode', () => {
         });
 
         it('numbers an activity with no printable form too, so the pointers still line up', () => {
-            const result = run([page([component({ type: 'identify', content: '<div/>' }), component()])], 'appendix');
+            const result = run([page([component({ type: 'padlock', content: '<div/>' }), component()])], 'appendix');
             const inAppendix = componentsOf([result[result.length - 1]]);
 
             expect(inAppendix[0].content).toContain('worksheet-not-printable');
@@ -235,7 +235,7 @@ describe('applyActivityMode', () => {
 
     describe('translated strings', () => {
         it('uses the labels it is given', () => {
-            const result = run([page([component(), component({ type: 'identify', content: '<div/>' })])], 'appendix', {
+            const result = run([page([component(), component({ type: 'padlock', content: '<div/>' })])], 'appendix', {
                 labels: {
                     appendixTitle: 'Anexo',
                     appendixReference: 'Ver anexo, actividad %s',
@@ -273,7 +273,7 @@ describe('applyActivityMode', () => {
         });
 
         it('escapes a translated label before putting it in markup', () => {
-            const result = run([page([component({ type: 'identify', content: '<div/>' })])], 'in-place', {
+            const result = run([page([component({ type: 'padlock', content: '<div/>' })])], 'in-place', {
                 labels: { notPrintable: '<img src=x onerror=alert(1)>' },
             });
 
@@ -309,11 +309,11 @@ describe('the iDevice name is never printed', () => {
     });
 
     it('is absent from the note for an activity with no printable form', () => {
-        const unprintable = component({ type: 'identify', content: '<div/>' });
+        const unprintable = component({ type: 'padlock', content: '<div/>' });
         const markup = componentsOf(applyActivityMode([page([unprintable])], 'in-place', named))[0].content;
 
         expect(visibleText(markup)).not.toContain('Puzle');
-        expect(visibleText(markup)).not.toContain('identify');
+        expect(visibleText(markup)).not.toContain('padlock');
     });
 
     it('is absent from the pointer into the appendix and from the entry it points at', () => {
@@ -437,7 +437,7 @@ describe("the author's own heading", () => {
     });
 
     it('names an appendix entry that has no printable form too', () => {
-        const unprintable = component({ type: 'identify', content: '<div/>' });
+        const unprintable = component({ type: 'padlock', content: '<div/>' });
         const result = applyActivityMode(
             [page([unprintable], { blocks: [{ id: 'b1', name: 'El puzle', order: 0, components: [unprintable] }] })],
             'appendix',

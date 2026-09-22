@@ -61,8 +61,8 @@ function titled(name: string): string {
     return `<strong class="worksheet-challenge-title">${name}</strong>`;
 }
 
-/** Two ruled lines, which is what every challenge is answered on. */
-const ANSWER = { kind: 'writingSpace', lines: 2, ruled: true };
+/** Two blank lines, which is the room every challenge is answered in. */
+const ANSWER = { kind: 'writingSpace', lines: 2 };
 
 describe('ChallengeWorksheetAdapter', () => {
     it('declares the iDevice type it handles', () => {

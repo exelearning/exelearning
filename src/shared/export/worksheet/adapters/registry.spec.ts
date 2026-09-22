@@ -33,6 +33,7 @@ describe('worksheet adapter registry', () => {
             'flipcards',
             'guess',
             'hidden-image',
+            'identify',
             'mathematicaloperations',
             'mathproblems',
             'quick-questions',

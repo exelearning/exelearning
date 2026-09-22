@@ -781,19 +781,6 @@ describe('writing lines and cards to be ordered', () => {
         }
     });
 
-    it('rules the room when the exercise asked for lines to write on', () => {
-        const html = answered({ kind: 'writingSpace', lines: 2, ruled: true });
-
-        expect(html).toContain('class="worksheet-writing-space worksheet-writing-ruled"');
-        expect(html.match(/class="worksheet-line"/g)).toHaveLength(2);
-    });
-
-    it('rules at least one line, whatever it is asked for', () => {
-        const html = answered({ kind: 'writingSpace', lines: 0, ruled: true });
-
-        expect(html.match(/class="worksheet-line"/g)).toHaveLength(1);
-    });
-
     it('gives every card its own line to be numbered on', () => {
         const html = answered({
             kind: 'orderCards',

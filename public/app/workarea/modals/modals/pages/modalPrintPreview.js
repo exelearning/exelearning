@@ -217,6 +217,7 @@ export default class ModalPrintPreview {
             'electrical-circuits': _('Electrical circuits'),
             '3dmol': _('3D molecules'),
             challenge: _('Challenge'),
+            identify: _('Identify'),
         };
     }
 

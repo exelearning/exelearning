@@ -293,14 +293,14 @@ describe('WorksheetExporter', () => {
                         title: 'La Edad Media',
                         components: [
                             { type: 'guess', content: guessContent() },
-                            { type: 'identify', content: unadaptedContent() },
+                            { type: 'padlock', content: unadaptedContent() },
                         ],
                     },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'identify', pageTitle: 'La Edad Media' },
+                { ideviceType: 'padlock', pageTitle: 'La Edad Media' },
             ]);
         });
 
@@ -315,7 +315,7 @@ describe('WorksheetExporter', () => {
                             { type: 'trivial', content: unadaptedContent() },
                             { type: 'interactive-video', content: unadaptedContent() },
                             { type: 'quick-questions-video', content: unadaptedContent() },
-                            { type: 'identify', content: unadaptedContent() },
+                            { type: 'padlock', content: unadaptedContent() },
                         ],
                     },
                 ]),
@@ -328,7 +328,7 @@ describe('WorksheetExporter', () => {
                 'interactive-video',
                 'quick-questions-video',
             ]);
-            expect(reported.find(entry => entry.ideviceType === 'identify')?.reason).toBeUndefined();
+            expect(reported.find(entry => entry.ideviceType === 'padlock')?.reason).toBeUndefined();
         });
 
         it('does not report plain content as a missing activity', async () => {
@@ -397,17 +397,17 @@ describe('WorksheetExporter', () => {
                     {
                         title: 'Una',
                         components: [
-                            { type: 'identify', content: unadaptedContent() },
-                            { type: 'identify', content: unadaptedContent() },
+                            { type: 'padlock', content: unadaptedContent() },
+                            { type: 'padlock', content: unadaptedContent() },
                         ],
                     },
-                    { title: 'Otra', components: [{ type: 'identify', content: unadaptedContent() }] },
+                    { title: 'Otra', components: [{ type: 'padlock', content: unadaptedContent() }] },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'identify', pageTitle: 'Una' },
-                { ideviceType: 'identify', pageTitle: 'Otra' },
+                { ideviceType: 'padlock', pageTitle: 'Una' },
+                { ideviceType: 'padlock', pageTitle: 'Otra' },
             ]);
         });
     });
