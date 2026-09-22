@@ -20,6 +20,7 @@ describe('worksheet adapter registry', () => {
 
     it('lists the supported types', () => {
         expect(getSupportedIdeviceTypes()).toEqual([
+            '3dmol',
             'az-quiz-game',
             'beforeafter',
             'classify',

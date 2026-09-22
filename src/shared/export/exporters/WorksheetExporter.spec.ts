@@ -544,3 +544,49 @@ describe('WorksheetExporter and the block heading', () => {
         expect(result.html).toContain('&lt;img');
     });
 });
+
+describe('WorksheetExporter and the molecules it has to draw first', () => {
+    const MODEL = '\n  Mrv  \n\n  1  0  0  0  0  0            999 V2000\n';
+    const PICTURE = 'data:image/png;base64,iVBORw0KGgo=';
+
+    /** Component HTML as the 3D molecules editor writes it: a model, and no picture of it. */
+    function moleculeContent(): string {
+        const payload = JSON.stringify({
+            typeGame: '3DMol',
+            activityMode: 'show',
+            selectsGame: [{ modelData: MODEL, modelFormat: 'sdf', description: 'Glucosa' }],
+        });
+        return `<div class="dmole-IDevice"><div class="dmole-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+    }
+
+    function moleculeDocument(): ExportDocument {
+        return documentOf([{ components: [{ type: '3dmol', content: moleculeContent() }] }]);
+    }
+
+    it('draws each molecule before the adapter is asked for an exercise', async () => {
+        const model = await new WorksheetExporter(moleculeDocument()).buildModel({
+            captureMolecule: async () => PICTURE,
+        });
+
+        expect(model.pages[0].activities[0].items[0].media?.src).toBe(PICTURE);
+    });
+
+    it('hands the renderer the molecule the author stored', async () => {
+        const seen: { modelFormat?: string }[] = [];
+
+        await new WorksheetExporter(moleculeDocument()).buildModel({
+            captureMolecule: async view => (seen.push(view), PICTURE),
+        });
+
+        expect(seen).toHaveLength(1);
+        expect(seen[0].modelFormat).toBe('sdf');
+    });
+
+    it('reports the molecule as missing when nothing can draw it', async () => {
+        // A command-line export has no browser, and the activity is presenting pictures nobody drew.
+        const model = await new WorksheetExporter(moleculeDocument()).buildModel();
+
+        expect(model.pages).toHaveLength(0);
+        expect(model.unsupported[0]).toMatchObject({ ideviceType: '3dmol', reason: 'media-required' });
+    });
+});

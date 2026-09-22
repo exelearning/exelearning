@@ -1782,3 +1782,76 @@ describe('the printing context in the document', () => {
         expect(html.indexOf('runtime.printing')).toBeLessThan(html.indexOf('relate.js'));
     });
 });
+
+describe('the molecules the document has to draw before it can convert them', () => {
+    const MODEL = '\n  Mrv  \n\n  1  0  0  0  0  0            999 V2000\n';
+    const PICTURE = 'data:image/png;base64,iVBORw0KGgo=';
+
+    /** Component HTML as the 3D molecules editor writes it: a model, and no picture of it. */
+    function moleculeHtml(): string {
+        const payload = JSON.stringify({
+            typeGame: '3DMol',
+            activityMode: 'show',
+            selectsGame: [{ modelData: MODEL, modelFormat: 'sdf', description: 'Glucosa' }],
+        });
+        return `<div class="dmole-IDevice"><div class="dmole-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+    }
+
+    function projectWithMolecule(): ExportDocument {
+        return createMockDocument([
+            {
+                id: 'page-1',
+                title: 'Química',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'b1',
+                        name: 'Bloque',
+                        order: 0,
+                        components: [{ id: 'c1', type: '3dmol', order: 0, content: moleculeHtml(), properties: {} }],
+                    },
+                ],
+            },
+        ]);
+    }
+
+    async function preview(options: PrintPreviewOptions): Promise<string> {
+        const result = await new PrintPreviewExporter(
+            projectWithMolecule(),
+            createMockResourceProvider(),
+        ).generatePreview(options);
+
+        expect(result.success).toBe(true);
+        return result.html ?? '';
+    }
+
+    it('draws each molecule before the activity is converted', async () => {
+        const html = await preview({
+            activities: { mode: 'in-place', labels: {}, ideviceTitles: {} },
+            captureMolecule: async () => PICTURE,
+        });
+
+        expect(html).toContain('worksheet-activity');
+        expect(html).toContain(PICTURE);
+        expect(html).toContain('Glucosa');
+    });
+
+    it('draws nothing when the document is printing as it stands', async () => {
+        // There is no exercise to put a picture in: the page carries the viewer itself.
+        let asked = 0;
+        const html = await preview({
+            captureMolecule: async () => (asked++, PICTURE),
+        });
+
+        expect(asked).toBe(0);
+        expect(html).toContain('dmole-DataGame');
+    });
+
+    it('converts what it can when nothing is there to draw', async () => {
+        const html = await preview({ activities: { mode: 'in-place', labels: {}, ideviceTitles: {} } });
+
+        expect(html).not.toContain('dmole-DataGame');
+        expect(html).not.toContain(PICTURE);
+    });
+});

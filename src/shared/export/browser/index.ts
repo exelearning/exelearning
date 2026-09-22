@@ -53,6 +53,7 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { isComponentVisible, isPageVisible, isStudentBlock, isTeacherOnly } from '../utils/visibility';
 import { isInteractiveActivity } from '../worksheet/interactiveActivities';
+import type { MoleculeRenderer, MoleculeView } from '../worksheet/moleculeCapture';
 import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
@@ -522,6 +523,31 @@ function getMermaidPreRendererHooks(): MermaidPreRendererHooks | undefined {
 }
 
 /**
+ * Get the molecule capture hook if available in browser context.
+ *
+ * The 3D molecules activity stores a model rather than a picture of it, and only a browser can
+ * turn one into the other. Without this hook — a command-line export, say — those questions print
+ * without their molecules instead of failing.
+ *
+ * @param ideviceBasePath - Where the iDevice export files are served from, which is where the
+ *   viewer library lives; the capture cannot find it otherwise
+ * @returns Object with captureMolecule, or undefined
+ */
+function getMoleculeCaptureHook(ideviceBasePath?: string): { captureMolecule: MoleculeRenderer } | undefined {
+    if (typeof window === 'undefined' || !ideviceBasePath) return undefined;
+
+    const capture = (
+        window as unknown as {
+            MoleculeCapture?: { capture: (view: MoleculeView, basePath?: string) => Promise<string | null> };
+        }
+    ).MoleculeCapture;
+
+    if (!capture) return undefined;
+
+    return { captureMolecule: (view: MoleculeView) => capture.capture(view, ideviceBasePath) };
+}
+
+/**
  * Quick export function - creates exporter and runs export in one call
  *
  * @param format - Export format
@@ -693,6 +719,9 @@ export async function generatePrintPreview(
         ...options,
         ...latexHooks,
         ...mermaidHooks,
+        // Only the modes that turn an activity into an exercise need a molecule drawn; printing the
+        // document as it stands already shows the viewer.
+        ...getMoleculeCaptureHook(options?.activities?.ideviceBasePath),
     };
 
     return exporter.generatePreview(previewOptions);
@@ -729,7 +758,11 @@ export async function generateWorksheet(
     }
 
     const latexHooks = await getLatexPreRendererHooks();
-    return new WorksheetExporter(document, assets).generate({ ...latexHooks, ...options });
+    return new WorksheetExporter(document, assets).generate({
+        ...latexHooks,
+        ...options,
+        ...getMoleculeCaptureHook(options?.ideviceBasePath),
+    });
 }
 
 /**

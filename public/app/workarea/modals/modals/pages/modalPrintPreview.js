@@ -215,6 +215,7 @@ export default class ModalPrintPreview {
             'hidden-image': _('Hidden image'),
             beforeafter: _('Before/After'),
             'electrical-circuits': _('Electrical circuits'),
+            '3dmol': _('3D molecules'),
         };
     }
 

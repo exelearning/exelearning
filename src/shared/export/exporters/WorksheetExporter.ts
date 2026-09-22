@@ -16,6 +16,7 @@ import { AssetUrlResolver } from '../utils/AssetUrlResolver';
 import { isComponentVisible, isStudentBlock, isTeacherOnly, visibleWorksheetPages } from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
 import { isInteractiveActivity, isNeverPrintable } from '../worksheet/interactiveActivities';
+import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
 import { renderWorksheet } from '../worksheet/WorksheetRenderer';
 import type {
     PrintableActivity,
@@ -40,6 +41,13 @@ export interface WorksheetOptions {
     random?: () => number;
     /** Base URL the iDevice export files are served from, ending in a slash. */
     ideviceBasePath?: string;
+    /**
+     * Draws a molecule, for the activity that stores one without a picture of it.
+     *
+     * Only a browser can; a command-line export leaves it out and the questions print without
+     * their molecules.
+     */
+    captureMolecule?: MoleculeRenderer;
 }
 
 export interface WorksheetResult {
@@ -81,7 +89,7 @@ export class WorksheetExporter {
             const activities: PrintableActivity[] = [];
 
             for (const { component, blockTitle } of this.collectComponents(page.blocks || [])) {
-                const content = component.content || '';
+                let content = component.content || '';
                 const adapter = getWorksheetAdapter(component.type);
 
                 if (!adapter) {
@@ -91,6 +99,12 @@ export class WorksheetExporter {
                         this.reportUnsupported(unsupported, component.type, page.title);
                     }
                     continue;
+                }
+
+                // Anything that has to be drawn before it can be printed is drawn now: an adapter
+                // has no browser, and by the time one is asked for an exercise it is too late.
+                if (options.captureMolecule) {
+                    content = await captureMolecules(content, options.captureMolecule);
                 }
 
                 const omissions = new Map<NonNullable<UnsupportedActivity['reason']>, number>();

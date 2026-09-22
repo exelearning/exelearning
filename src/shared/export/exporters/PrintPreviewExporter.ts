@@ -19,6 +19,7 @@ import { AssetUrlResolver } from '../utils/AssetUrlResolver';
 import { isPageVisible } from '../utils/visibility';
 import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
 import { renderMatchingLayoutScript } from '../worksheet/matchingLayout';
+import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
 import { resolveMaterialIconDataUris } from './BaseExporter';
 import {
     applyActivityMode,
@@ -67,6 +68,12 @@ export interface PrintPreviewOptions {
      * behaved before there was anything else to choose.
      */
     activities?: ApplyActivityModeOptions & { mode: DocumentActivityMode };
+    /**
+     * Draws a molecule, for the activity that stores one without a picture of it.
+     *
+     * Only a browser can; without it those questions print without their molecules.
+     */
+    captureMolecule?: MoleculeRenderer;
 }
 
 /**
@@ -132,6 +139,12 @@ export class PrintPreviewExporter {
 
             // Deduplicate components to remove artifacts from complex iDevices (e.g. Complete)
             processedPages = this.deduplicateComponents(processedPages);
+
+            // Anything that has to be drawn before it can be printed is drawn first: converting an
+            // activity into an exercise is synchronous and has no browser to draw with.
+            if (options.activities && options.captureMolecule) {
+                processedPages = await this.captureDrawings(processedPages, options.captureMolecule);
+            }
 
             // Carry out what the user chose to do with the interactive activities. This works on
             // the page model, so everything below renders it as it would any other document.
@@ -257,6 +270,36 @@ export class PrintPreviewExporter {
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { success: false, error: errorMessage };
         }
+    }
+
+    /**
+     * Draw whatever has to exist as a picture before an activity can be converted.
+     *
+     * Walks the components rather than the rendered HTML, because the conversion happens on the
+     * page model and needs the drawing already in place. Pages are copied, never mutated.
+     *
+     * One component at a time: a drawing may need a graphics context, and a browser hands out only
+     * a handful of those at once — a project with a dozen molecules in it would run dry partway
+     * through if they were all drawn together.
+     */
+    private async captureDrawings(pages: ExportPage[], render: MoleculeRenderer): Promise<ExportPage[]> {
+        const captured: ExportPage[] = [];
+
+        // The navigation is flat by the time it gets here, which is also what the conversion that
+        // follows walks.
+        for (const page of pages) {
+            const blocks = [];
+            for (const block of page.blocks || []) {
+                const components = [];
+                for (const component of block.components || []) {
+                    components.push({ ...component, content: await captureMolecules(component.content || '', render) });
+                }
+                blocks.push({ ...block, components });
+            }
+            captured.push({ ...page, blocks });
+        }
+
+        return captured;
     }
 
     /**
