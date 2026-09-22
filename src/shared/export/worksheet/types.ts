@@ -438,6 +438,14 @@ export interface WorksheetAdapter {
 export interface WorksheetAdapterOptions {
     /** The containing sheet already asks for the student's name and date. */
     hasIdentityFields?: boolean;
+    /**
+     * The component's stored properties, for the iDevices that keep their data there.
+     *
+     * Most activities keep theirs inside their HTML, in a hidden div the adapter reads out of the
+     * markup it is handed. The `json` family keeps its data here instead and leaves the HTML as a
+     * shell, so an adapter for one of those has nothing to read without this.
+     */
+    properties?: Record<string, unknown>;
     /** Report questions that cannot be represented faithfully on paper. */
     onOmission?: (reason: NonNullable<UnsupportedActivity['reason']>, count?: number) => void;
     /** Translated heading for this activity type, supplied by the frontend. */

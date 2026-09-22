@@ -31,6 +31,7 @@ describe('worksheet adapter registry', () => {
             'dragdrop',
             'electrical-circuits',
             'flipcards',
+            'form',
             'guess',
             'hidden-image',
             'identify',

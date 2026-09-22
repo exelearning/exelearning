@@ -202,6 +202,7 @@ function convert(
         // reports it, and printing the document should not be the quieter way to lose content.
         const omissions = new Map<NonNullable<UnsupportedActivity['reason']>, number>();
         const activity = adapter.build(component.content || '', {
+            properties: component.properties,
             title: activityTitle(component.type, options),
             labels: options.labels,
             random: options.random,
