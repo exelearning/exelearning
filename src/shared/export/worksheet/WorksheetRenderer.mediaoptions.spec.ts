@@ -65,6 +65,25 @@ describe('renderWorksheet with pictures to choose between', () => {
         expect(body.match(/worksheet-media-option-box/g)).toHaveLength(2);
     });
 
+    it('puts the words beside the box when there is no picture for them to sit under', () => {
+        // A box alone in an empty band reads as a card with something missing.
+        const body = render([{ text: 'Sólo texto' }]);
+
+        expect(body).toContain(
+            '<span class="worksheet-media-option-pick"><span class="worksheet-media-option-box"></span>' +
+                '<span class="worksheet-media-option-text">Sólo texto</span></span></li>',
+        );
+    });
+
+    it('keeps the words out of that row when the option has a picture', () => {
+        const body = render([picture]);
+
+        expect(body).toContain(
+            `<img src="pato.png" alt="Un pato" /></span>` +
+                '<span class="worksheet-media-option-text">Pato</span></li>',
+        );
+    });
+
     it('draws the author colour as an outline rather than a fill', () => {
         const body = render([{ ...picture, accentColor: '#a40000', textColor: '#333333' }]);
 

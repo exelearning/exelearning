@@ -797,9 +797,17 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     height: auto;
 }
 
-/* The card's own words, under the picture they belong to. */
+/* Words with no picture stand where the picture would have been, centred in what is left of the
+   card once the box has taken its place on the left. */
+.worksheet-media-option-pick .worksheet-media-option-text {
+    flex: 1;
+}
+
+/* The card's own words, under the picture they belong to. Set larger than the body: on a card
+   these are not a caption but one of the things being chosen between, and a word the student has
+   to read across the room from the picture it names has to carry. */
 .worksheet-media-option-text {
-    font-size: 9pt;
+    font-size: 14pt;
     line-height: 1.2;
 }
 
@@ -1173,21 +1181,24 @@ function renderMediaOptions(cards: PrintableCard[]): string {
             const outline = card.accentColor ? ` style="border-color: ${accentOutline(card.accentColor)}"` : '';
             const marked = card.accentColor ? ' worksheet-media-option-marked' : '';
 
+            const color = card.textColor ? ` style="color: ${card.textColor}"` : '';
+            const label = card.text ? `<span class="worksheet-media-option-text"${color}>${card.text}</span>` : '';
+
             let body = '<span class="worksheet-media-option-box"></span>';
             if (card.media) {
                 const alt = escapeText(card.media.alt ?? '');
                 body += `<img src="${escapeText(card.media.src)}" alt="${alt}" />`;
             }
 
-            let label = '';
-            if (card.text) {
-                const color = card.textColor ? ` style="color: ${card.textColor}"` : '';
-                label = `<span class="worksheet-media-option-text"${color}>${card.text}</span>`;
-            }
+            // With a picture the words belong under it, as its name. With no picture there is
+            // nothing for them to sit under, and a box alone in an empty band reads as a card
+            // with something missing — so the words take the picture's place beside the box.
+            const wordsOnly = !card.media;
 
             return (
                 `<li class="worksheet-media-option${marked}"${outline}>` +
-                `<span class="worksheet-media-option-pick">${body}</span>${label}</li>`
+                `<span class="worksheet-media-option-pick">${body}${wordsOnly ? label : ''}</span>` +
+                `${wordsOnly ? '' : label}</li>`
             );
         })
         .join('');
