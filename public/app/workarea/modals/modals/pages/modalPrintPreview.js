@@ -218,6 +218,7 @@ export default class ModalPrintPreview {
             '3dmol': _('3D molecules'),
             challenge: _('Challenge'),
             identify: _('Identify'),
+            rubric: _('Rubric'),
         };
     }
 

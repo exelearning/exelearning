@@ -36,7 +36,6 @@ const NOT_ACTIVITIES = new Map<string, string>([
     ['external-website', 'embeds someone else’s site, which this code cannot convert'],
     ['udl-content', 'presents the same content several ways; the printable way already prints'],
     ['checklist', 'is already a list of boxes to tick, which is what it should be on paper'],
-    ['rubric', 'is an assessment table, and prints as the table it is'],
 ]);
 
 /**

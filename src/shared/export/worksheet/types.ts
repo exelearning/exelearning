@@ -141,7 +141,15 @@ export type PrintableBoard =
      * Whichever part the activity asks for is left blank, so the same table sets a drill that
      * asks for the result, for a missing operand or for the sign between them.
      */
-    | { kind: 'operationTable'; rows: PrintableOperationRow[] };
+    | { kind: 'operationTable'; rows: PrintableOperationRow[] }
+    /**
+     * An assessment table: one row per criterion, one column per level, a descriptor in each cell.
+     *
+     * The whole rubric is the board, header and notes included, because on screen it is one thing
+     * a teacher fills in rather than a table with questions around it. The marking is done by
+     * ringing a cell, so nothing here is left blank except the fields and the room for notes.
+     */
+    | { kind: 'rubricTable'; table: PrintableRubric };
 
 /** One row of a table of sums. Either side may be blank, and that is what is asked. */
 export interface PrintableOperationRow {
@@ -149,6 +157,31 @@ export interface PrintableOperationRow {
     operation: string;
     /** The result, or null when the result is what is asked. */
     result: string | null;
+}
+
+/** An assessment table as it is printed. */
+export interface PrintableRubric {
+    /** The rubric's own name, drawn as the table's caption. */
+    title?: string;
+    /**
+     * Labels for the blank fields above the table.
+     *
+     * The activity's own wording, which the author can edit, and empty where it has none — a
+     * worksheet does not invent a word for something the activity already names.
+     */
+    fields: string[];
+    /** Column headings: the levels each criterion is scored against. */
+    levels: string[];
+    rows: PrintableRubricRow[];
+    /** Label for the room to write notes in, when the rubric names one. */
+    notes?: string;
+}
+
+/** One criterion and what each level of it looks like. */
+export interface PrintableRubricRow {
+    criterion: string;
+    /** One descriptor per level, as sanitised HTML. Short rows are padded so columns line up. */
+    cells: string[];
 }
 
 /**

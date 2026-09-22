@@ -24,6 +24,7 @@ import type {
     PrintableActivity,
     PrintableBoard,
     PrintableItem,
+    PrintableRubric,
     WorksheetLabels,
     WorksheetModel,
 } from './types';
@@ -568,6 +569,67 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     min-width: 25mm;
 }
 
+/* An assessment table. Full width and small type, because every cell holds a descriptor the
+   teacher has to read to choose between: shrinking the text is what keeps four levels of them on a
+   sheet, and dropping them would leave a grid of numbers. */
+.worksheet-rubric {
+    margin: 0 0 4mm;
+}
+
+/* The fields the teacher fills in, above the table, each a label and a rule. */
+.worksheet-rubric-field {
+    display: flex;
+    align-items: baseline;
+    gap: 2mm;
+    margin: 0 0 2mm;
+    font-weight: 600;
+}
+
+.worksheet-rubric-field .worksheet-line {
+    flex: 1;
+    height: 5mm;
+}
+
+.worksheet-rubric-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    line-height: 1.3;
+}
+
+.worksheet-rubric-table caption {
+    font-weight: bold;
+    text-align: left;
+    margin-bottom: 2mm;
+}
+
+.worksheet-rubric-table th,
+.worksheet-rubric-table td {
+    border: 1px solid #1a1a1a;
+    padding: 1.5mm 2mm;
+    text-align: left;
+    vertical-align: top;
+}
+
+/* The criterion names its row and is read first, so it keeps the body size. */
+.worksheet-rubric-table tbody th {
+    width: 22mm;
+    font-size: 9pt;
+}
+
+.worksheet-rubric-table thead th {
+    text-align: center;
+}
+
+.worksheet-rubric-weight {
+    white-space: nowrap;
+}
+
+.worksheet-rubric-notes {
+    margin: 3mm 0 0;
+    font-weight: 600;
+}
+
 /* A grid of letters with the answers hidden in it. Square cells and no rules between them, as the
    activity draws it: the letters are the puzzle, and a border on each would fight the reading. */
 .worksheet-word-grid {
@@ -923,8 +985,41 @@ function renderBoard(board: PrintableBoard, labels: Required<WorksheetLabels>): 
     if (board.kind === 'letterRing') return renderLetterRing(board.letters);
     if (board.kind === 'wordGrid') return renderWordGrid(board.rows);
     if (board.kind === 'operationTable') return renderOperationTable(board.rows, labels);
+    if (board.kind === 'rubricTable') return renderRubricTable(board.table);
 
     return renderCrosswordGrid(board);
+}
+
+/**
+ * Render an assessment table: the fields above it, the criteria against the levels, notes below.
+ *
+ * Marking is done by ringing the cell that fits, so every cell is printed full rather than left
+ * blank — the descriptors are what the teacher is choosing between, and a rubric without them is a
+ * grid of numbers.
+ */
+function renderRubricTable(table: PrintableRubric): string {
+    let html = '<div class="worksheet-rubric">';
+
+    for (const field of table.fields) {
+        html += `<p class="worksheet-rubric-field"><span>${field}:</span><span class="worksheet-line"></span></p>`;
+    }
+
+    html += '<table class="worksheet-rubric-table">';
+    if (table.title) html += `<caption>${table.title}</caption>`;
+    // The corner above the criteria heads nothing, as it heads nothing on screen.
+    html += `<thead><tr><th></th>${table.levels.map(level => `<th>${level}</th>`).join('')}</tr></thead>`;
+    html += '<tbody>';
+    for (const row of table.rows) {
+        html += `<tr><th>${row.criterion}</th>${row.cells.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
+    }
+    html += '</tbody></table>';
+
+    if (table.notes) {
+        html += `<p class="worksheet-rubric-notes">${table.notes}:</p>`;
+        html += `<div class="worksheet-writing-space" style="height: ${2 * WRITING_LINE_HEIGHT_MM}mm"></div>`;
+    }
+
+    return `${html}</div>`;
 }
 
 /**

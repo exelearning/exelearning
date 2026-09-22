@@ -73,14 +73,13 @@ describe('isInteractiveActivity', () => {
             for (const { type } of getNonActivityIdevices()) expect(isInteractiveActivity(type)).toBe(false);
         });
 
-        it('lists the five, sorted, each with a reason', () => {
+        it('lists the four, sorted, each with a reason', () => {
             const excluded = getNonActivityIdevices();
 
             expect(excluded.map(entry => entry.type)).toEqual([
                 'checklist',
                 'download-source-file',
                 'external-website',
-                'rubric',
                 'udl-content',
             ]);
             for (const entry of excluded) expect(entry.reason.length).toBeGreaterThan(0);
