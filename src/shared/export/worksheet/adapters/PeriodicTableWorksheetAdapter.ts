@@ -10,7 +10,7 @@
  * ways of playing on a desktop, is therefore not read.
  *
  * Notes on the stored data:
- * - The activity stores which groups are in play (`groups`, one flag per group in a fixed order)
+ * - The activity stores which groups are in play (`groups`, All followed by ten group flags)
  *   and how many elements to ask about (`number`), never which ones: it draws them afresh on every
  *   load. The sheet draws its own set the same way, so no printed copy matches another.
  * - The elements themselves live in the activity's own JavaScript, ported to `periodicElements`.
@@ -24,12 +24,7 @@ import { extractDataGame, extractDivContent } from '../dataGameReader';
 import { PERIODIC_ELEMENTS, PERIODIC_GROUPS, type PeriodicElement } from '../periodicElements';
 import { shuffleWith, type RandomSource } from '../questionSelection';
 import { sanitizeHtml } from '../sanitizeHtml';
-import type {
-    PrintableActivity,
-    PrintableElementCard,
-    WorksheetAdapter,
-    WorksheetAdapterOptions,
-} from '../types';
+import type { PrintableActivity, PrintableElementCard, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 
 /** DataGame class prefix used by this iDevice. */
 const PREFIX = 'periodic-table';
@@ -40,7 +35,7 @@ const ASK_NAME = 1;
 
 /** The Periodic table payload. */
 interface PeriodicDataGame {
-    /** One flag per group, in the order `PERIODIC_GROUPS` lists them. */
+    /** All first, then one flag per group in the order `PERIODIC_GROUPS` lists them. */
     groups?: number[];
     /** How many elements to ask about. */
     number?: number;
@@ -63,7 +58,11 @@ interface PeriodicDataGame {
 function elementsInPlay(groups: number[] | undefined): number[] {
     const flags = Array.isArray(groups) ? groups : [];
 
-    return PERIODIC_GROUPS.flatMap((group, index) => (flags[index] === 1 ? [...group.numbers] : []));
+    // Match the runtime's getActiveGroups: All overrides the individual switches, and is not
+    // itself a group. The editor saves all eleven switches, including this leading flag.
+    return PERIODIC_GROUPS.flatMap((group, index) =>
+        flags[0] === 1 || flags[index + 1] === 1 ? [...group.numbers] : [],
+    );
 }
 
 /** Build one card, with the field the activity asks for left blank. */
@@ -81,7 +80,11 @@ function buildCard(element: PeriodicElement, gameType: number, msgs: Record<stri
         number: asked.number ? null : String(element.number),
         symbol: asked.symbol ? null : element.symbol,
         name: asked.name ? null : word(element.nameKey, element.nameKey),
-        asks: asked.number ? word('msgNumber', 'Number') : asked.name ? word('msgName', 'Name') : word('msgSymbol', 'Symbol'),
+        asks: asked.number
+            ? word('msgNumber', 'Number')
+            : asked.name
+              ? word('msgName', 'Name')
+              : word('msgSymbol', 'Symbol'),
         mass: String(element.mass),
         // Splitting is the activity's own: it draws each state in a box of its own.
         oxidation: element.oxidation.split(',').filter(state => state.trim() !== ''),

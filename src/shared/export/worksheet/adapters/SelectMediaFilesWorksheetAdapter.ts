@@ -109,8 +109,11 @@ function buildQuestion(
     max: unknown,
     random: RandomSource,
 ): PrintableItem | null {
-    const cards = selectCards(question.cards ?? [], max, random)
-        .map((card, index) => buildCard(card ?? {}, images.get(index)))
+    const stored = Array.isArray(question.cards) ? question.cards : [];
+    // Sidecars index the stored cards, not the smaller list produced by a random draw.
+    const indexed = stored.map((card, index) => ({ card, index }));
+    const cards = selectCards(indexed, max, random)
+        .map(({ card, index }) => buildCard(card ?? {}, images.get(index)))
         .filter((card): card is PrintableCard => card !== null);
 
     // Without cards there is nothing to choose between, whatever the question says.

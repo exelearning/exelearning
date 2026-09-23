@@ -56,14 +56,20 @@ describe('renderWorksheet with element cards', () => {
     });
 
     it('labels the group, which is the only labelled row on the activity own card', () => {
-        expect(render([card()])).toContain(
-            '<span class="worksheet-element-group">Grupo: Metal alcalino</span>',
-        );
+        expect(render([card()])).toContain('<span class="worksheet-element-group">Grupo: Metal alcalino</span>');
     });
 
     it('draws the chemistry in the order the activity draws it', () => {
         const body = render([card()]);
-        const order = ['element-number', 'element-symbol', 'element-name', 'element-mass', 'element-negativity', 'element-oxidation', 'element-configuration'];
+        const order = [
+            'element-number',
+            'element-symbol',
+            'element-name',
+            'element-mass',
+            'element-negativity',
+            'element-oxidation',
+            'element-configuration',
+        ];
         const positions = order.map(name => body.indexOf(`worksheet-${name}`));
 
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
@@ -90,9 +96,7 @@ describe('renderWorksheet with element cards', () => {
     it('draws each oxidation state on its own, as the activity boxes them', () => {
         const body = render([card({ oxidation: ['+4', '-4'] })]);
 
-        expect(body).toContain(
-            '<span class="worksheet-element-oxidation"><span>+4</span><span>-4</span></span>',
-        );
+        expect(body).toContain('<span class="worksheet-element-oxidation"><span>+4</span><span>-4</span></span>');
     });
 
     it('leaves out a row the activity records nothing for', () => {

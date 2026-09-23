@@ -92,6 +92,123 @@ test.describe('Print iDevices', () => {
     test.describe.configure({ mode: 'serial' });
 
     for (const mode of ['idevices', 'in-place', 'appendix']) {
+        test(`prints safe form labels, selected card images and stored element groups in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Printed adapter regressions');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const pack = (prefix: string, data: unknown) =>
+                `<div class="${prefix}-DataGame">${encryptDataGame(JSON.stringify(data))}</div>`;
+            const names = ['Cat', 'Dog', 'Bird'];
+            const pictures = names.map(
+                name =>
+                    'data:image/svg+xml;base64,' +
+                    Buffer.from(
+                        `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="30"><text x="5" y="20">${name}</text></svg>`,
+                    ).toString('base64'),
+            );
+            const unsafe = '<img src=x onerror="parent.__printRegressionExecuted=true">';
+            const script = '<script>parent.__printRegressionExecuted=true</script>';
+            const components = [
+                {
+                    type: 'form',
+                    html: '',
+                    properties: {
+                        msgs: { msgTrue: unsafe, msgFalse: 'False' },
+                        questionsData: [
+                            { activityType: 'true-false', baseText: '<p>Statement</p>', answer: '1' },
+                            {
+                                activityType: 'selection',
+                                baseText: '<p>Choose</p>',
+                                answers: [
+                                    [true, 'A<B'],
+                                    [false, script],
+                                ],
+                            },
+                        ],
+                    },
+                },
+                {
+                    type: 'select-media-files',
+                    properties: {},
+                    html:
+                        pack('seleccionamedias', {
+                            numberMaxCards: '2',
+                            phrasesGame: [{ definition: 'Choose an animal', cards: names.map(eText => ({ eText })) }],
+                        }) +
+                        pictures
+                            .map((src, index) => `<a class="seleccionamedias-LinkImages-0" href="${src}">${index}</a>`)
+                            .join(''),
+                },
+                ...[
+                    { groups: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], number: 10 },
+                    { groups: [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], number: 6 },
+                    { groups: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], number: 3 },
+                ].map(data => ({
+                    type: 'periodic-table',
+                    properties: {},
+                    html: pack('periodic-table', { ...data, gameType: 2 }),
+                })),
+                // An activity that still has no paper form, so the note that stands in for one is
+                // covered in the browser as well as in the unit tests.
+                { type: 'padlock', properties: {}, html: '<div class="padlock-IDevice"></div>' },
+            ];
+            await page.evaluate(components => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Adapter regressions');
+                for (const component of components) {
+                    const block = binding.createBlock(parent.id);
+                    binding.createComponent(parent.id, block, component.type, {
+                        htmlContent: component.html,
+                        jsonProperties: JSON.stringify(component.properties),
+                    });
+                }
+                // Keep the draw deterministic in this test's isolated page: Dog and Bird survive the cap.
+                Math.random = () => 0;
+            }, components);
+            await openPrintDialog(page);
+            const { frame } = await choosePrintOption(page, mode);
+            const form = frame.locator('[data-idevice="form"]');
+            await expect(form.locator('.worksheet-option-label')).toHaveText([unsafe, 'False', script, 'A<B']);
+            await expect(form.locator('img, script, [onerror]')).toHaveCount(0);
+            expect(await page.evaluate(() => '__printRegressionExecuted' in window)).toBe(false);
+
+            const cards = frame.locator('[data-idevice="select-media-files"] .worksheet-media-option');
+            await expect(cards).toHaveCount(2);
+            for (const [index, name] of ['Dog', 'Bird'].entries()) {
+                await expect(cards.nth(index).locator('.worksheet-media-option-text')).toHaveText(name);
+                const picture = cards.nth(index).locator('img');
+                await expect(picture).toHaveAttribute('src', pictures[index + 1]);
+                await expect
+                    .poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+            }
+
+            // In the appendix the body keeps a pointer to each exercise, and it carries the same
+            // iDevice type as the exercise it points at. The cards are on the exercise.
+            const tables = frame.locator(
+                '.worksheet-activity[data-idevice="periodic-table"]:not(.worksheet-activity-reference)',
+            );
+            await expect(tables).toHaveCount(3);
+            await expect(tables.nth(0).locator('.worksheet-element-card')).toHaveCount(10);
+            const alkali = await tables.nth(1).locator('.worksheet-element-number').allTextContents();
+            expect(alkali.map(Number).sort((a, b) => a - b)).toEqual([3, 11, 19, 37, 55, 87]);
+            const actinides = await tables.nth(2).locator('.worksheet-element-number').allTextContents();
+            expect(actinides).toHaveLength(3);
+            expect(actinides.every(number => Number(number) >= 89 && Number(number) <= 103)).toBe(true);
+
+            // The one activity here with no paper form is still accounted for, each path saying so
+            // in its own way: the worksheet lists it at the end, the document stands a note where
+            // the activity was.
+            if (mode === 'idevices')
+                await expect(frame.locator('.worksheet-unsupported')).toContainText('padlock');
+            else await expect(frame.locator('.worksheet-activity-unprintable[data-idevice="padlock"]')).toHaveCount(1);
+        });
+    }
+
+    for (const mode of ['idevices', 'in-place', 'appendix']) {
         test(`prints rubric identity fields and current instruction images in ${mode} mode`, async ({
             authenticatedPage: page,
             createProject,
@@ -203,7 +320,7 @@ test.describe('Print iDevices', () => {
         );
         const html = `<div class="dmole-DataGame">${encryptDataGame(
             JSON.stringify({
-                selectsGame: ['surface', 'stick'].map(modelStyle => ({
+                selectsGame: ['stick', 'surface'].map(modelStyle => ({
                     modelData,
                     modelFormat: 'sdf',
                     modelStyle,
@@ -231,6 +348,16 @@ test.describe('Print iDevices', () => {
             }
             await overlay.locator('.print-preview-close-btn').click();
             await expect(overlay).toHaveAttribute('data-visible', 'false');
+            // Let the real ResizeObserver see the detached stage before reopening the preview.
+            // The next first question uses sticks, so no asynchronous surface can mask a zero-size canvas.
+            await page.waitForFunction(() => {
+                const state = (
+                    window as unknown as {
+                        __moleculeCaptureProbe: { viewers: Set<{ getCanvas(): HTMLCanvasElement }> };
+                    }
+                ).__moleculeCaptureProbe;
+                return [...state.viewers].every(viewer => viewer.getCanvas().width === 0);
+            });
         }
         const state = await page.evaluate(() => {
             const state = (
@@ -344,13 +471,16 @@ test.describe('Print iDevices', () => {
 
         const { frame } = await openWorksheet(page);
 
-        // One printable item per question, each with its own answer space.
-        await expect(frame.locator('.worksheet-item')).toHaveCount(EXPECTED_QUESTIONS);
-        await expect(frame.locator('.worksheet-answer')).toHaveCount(EXPECTED_QUESTIONS);
+        // One printable item per question, each with its own answer space. Counted inside the
+        // Guess activity the numbers describe: the fixture holds other activities too, and every
+        // adapter that lands adds its own items to the sheet.
+        const guess = frame.locator('.worksheet-activity[data-idevice="guess"]');
+        await expect(guess.locator('.worksheet-item')).toHaveCount(EXPECTED_QUESTIONS);
+        await expect(guess.locator('.worksheet-answer')).toHaveCount(EXPECTED_QUESTIONS);
 
         // One box per character of the solution, grouped by word.
-        await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
-        await expect(frame.locator('.worksheet-box-group')).toHaveCount(EXPECTED_GROUPS);
+        await expect(guess.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
+        await expect(guess.locator('.worksheet-box-group')).toHaveCount(EXPECTED_GROUPS);
     });
 
     test('gives away some letters as hints but not the whole solution', async ({
@@ -383,7 +513,9 @@ test.describe('Print iDevices', () => {
         const { frame } = await openWorksheet(page);
 
         // The clue is what the student reads; the solution is never spelled out, in either case.
-        await expect(frame.locator('.worksheet-prompt').first()).toContainText(
+        // Scoped to the Guess activity: other activities on this sheet have prompts of their own.
+        const guess = frame.locator('.worksheet-activity[data-idevice="guess"]');
+        await expect(guess.locator('.worksheet-prompt').first()).toContainText(
             'Frase fija para nombrar a los personajes',
         );
         await expect(frame.locator('.worksheet')).not.toContainText('Epíteto épico');
@@ -400,15 +532,17 @@ test.describe('Print iDevices', () => {
 
         const { frame } = await openWorksheet(page);
 
-        // Two pages of this project print: the one holding the Guess activity, and the one
-        // holding the rubric.
+        // The fixture's four activities — a rubric, two forms and the Guess — sit on four pages,
+        // and each page prints its own heading.
         const pageTitles = frame.locator('.worksheet-page-title');
-        await expect(pageTitles).toHaveCount(2);
+        await expect(pageTitles).toHaveCount(4);
         for (const title of await pageTitles.all()) await expect(title).not.toBeEmpty();
 
-        // Every activity sits inside a page section rather than floating on its own.
-        await expect(frame.locator('.worksheet-activity')).toHaveCount(2);
-        await expect(frame.locator('.worksheet-page .worksheet-activity')).toHaveCount(2);
+        // What this is really here for: no activity floats outside a page section. Counting both
+        // ways keeps that true however many activities a new adapter adds to the sheet.
+        const activities = await frame.locator('.worksheet-activity').count();
+        expect(activities).toBe(4);
+        await expect(frame.locator('.worksheet-page .worksheet-activity')).toHaveCount(activities);
     });
 
     test('keeps accented characters intact', async ({ authenticatedPage, createProject }) => {
@@ -739,7 +873,8 @@ test.describe('Print iDevices', () => {
         const uuid = await createProject(page, 'JSON worksheet omissions');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
-        const types = ['adaptative-quiz', 'form', 'trueorfalse', 'scrambled-list'];
+        // The json activities that still have no paper form. `form` is no longer one of them.
+        const types = ['adaptative-quiz', 'trueorfalse', 'scrambled-list'];
         await page.evaluate(types => {
             const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
             const parent = binding.createPage('JSON exercises');
@@ -961,18 +1096,20 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         // its own.
         const exercise = '.worksheet-activity[data-idevice="guess"]';
         await expect(frame.locator(exercise)).toHaveCount(1);
-        // The fixture also contains two JSON activities without paper adapters. Their notes
-        // belong in the document too, but they are not additional Guess exercises.
-        await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(2);
+        // The fixture holds four activities in all — a rubric, two forms and the Guess — and every
+        // one of them now has a paper form, so none is left standing as a note.
+        const converted = '.worksheet-activity:not(.worksheet-activity-reference)';
+        await expect(frame.locator(converted)).toHaveCount(4);
+        await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(0);
         await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
         await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
         await expect(frame.locator(`.exe-single-page ${exercise}`)).toHaveCount(1);
-        await expect(frame.locator('.exe-single-page .worksheet-activity-unprintable')).toHaveCount(2);
+        await expect(frame.locator(`.exe-single-page ${converted}`)).toHaveCount(4);
 
         // The exercise sits inside the component the activity occupied, and the wrapper does not
         // answer to the same class the exercise does.
         await expect(frame.locator(`.idevice_node.printable-activity ${exercise}`)).toHaveCount(1);
-        await expect(frame.locator('.idevice_node.printable-activity .worksheet-activity-unprintable')).toHaveCount(2);
+        await expect(frame.locator(`.idevice_node.printable-activity ${converted}`)).toHaveCount(4);
     });
 
     test('points into an appendix and prints the exercise there', async ({ authenticatedPage, createProject }) => {

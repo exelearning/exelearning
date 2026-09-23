@@ -27,7 +27,9 @@ function properties(fixture: FormFixture = {}): Record<string, unknown> {
 }
 
 function itemsOf(fixture: FormFixture = {}, options = {}): PrintableItem[] {
-    return FormWorksheetAdapter.build('', { properties: properties(fixture), random: () => 0.42, ...options })?.items ?? [];
+    return (
+        FormWorksheetAdapter.build('', { properties: properties(fixture), random: () => 0.42, ...options })?.items ?? []
+    );
 }
 
 /** The options a question offers, as the sheet lays them out. */
@@ -58,6 +60,12 @@ describe('FormWorksheetAdapter', () => {
     });
 
     describe('a statement to mark true or false', () => {
+        it('escapes the author wording instead of inserting executable markup', () => {
+            const [item] = itemsOf({ msgs: { msgTrue: '<img src=x onerror=alert(1)>', msgFalse: 'A<B & C' } });
+
+            expect(labelsOf(item)).toEqual(['&lt;img src=x onerror=alert(1)&gt;', 'A&lt;B &amp; C']);
+        });
+
         it('offers the two in the activity own words', () => {
             const [item] = itemsOf();
 
@@ -94,6 +102,24 @@ describe('FormWorksheetAdapter', () => {
             expect([...labelsOf(item)].sort()).toEqual(['Madrid', 'París', 'Roma']);
         });
 
+        it('prints option text literally, including comparisons and script-like examples', () => {
+            const [item] = itemsOf({
+                questions: [
+                    selection({
+                        answers: [
+                            [true, 'A<B & C>D'],
+                            [false, '<img src=x onerror=alert(1)><script>alert(2)</script>'],
+                        ],
+                    }),
+                ],
+            });
+
+            expect(labelsOf(item).sort()).toEqual([
+                '&lt;img src=x onerror=alert(1)&gt;&lt;script&gt;alert(2)&lt;/script&gt;',
+                'A&lt;B &amp; C&gt;D',
+            ]);
+        });
+
         it('never prints which they are', () => {
             // The pairs are `[isCorrect, text]`; only the text reaches the page.
             expect(JSON.stringify(itemsOf({ questions: [selection()] }))).not.toContain('true');
@@ -110,7 +136,15 @@ describe('FormWorksheetAdapter', () => {
 
         it('leaves out an option the author left blank', () => {
             const [item] = itemsOf({
-                questions: [selection({ answers: [[true, 'París'], [false, '  '], [false, 'Roma']] })],
+                questions: [
+                    selection({
+                        answers: [
+                            [true, 'París'],
+                            [false, '  '],
+                            [false, 'Roma'],
+                        ],
+                    }),
+                ],
             });
 
             expect(labelsOf(item)).toHaveLength(2);

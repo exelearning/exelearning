@@ -52,6 +52,9 @@ function fakeViewer(overrides = {}) {
         render() {
             this.calls.push('render');
         },
+        resize() {
+            this.calls.push('resize');
+        },
         pngURI() {
             return PICTURE;
         },
@@ -218,6 +221,27 @@ describe('MoleculeCapture', () => {
     });
 
     describe('cleaning up after itself', () => {
+        test('restores the canvas size after the detached stage has been observed', async () => {
+            let canvasSize = 480;
+            let stage;
+            const { created } = install3Dmol(fakeViewer({
+                resize() {
+                    expect(globalThis.document.body.children).toHaveLength(1);
+                    canvasSize = 480;
+                },
+                pngURI() { return canvasSize > 0 ? PICTURE : 'data:,'; },
+            }));
+
+            expect(await MoleculeCapture.capture(view())).toBe(PICTURE);
+            stage = created[0].container;
+            expect(stage.isConnected).toBe(false);
+            // 3Dmol's ResizeObserver sees zero size while the stage is detached between previews.
+            canvasSize = 0;
+            expect(await MoleculeCapture.capture(view())).toBe(PICTURE);
+            expect(created).toHaveLength(1);
+            expect(stage.isConnected).toBe(false);
+        });
+
         test('reuses one viewer across captures and restores the default camera', async () => {
             const { viewer, created } = install3Dmol();
             const camera = [1, 2, 3, 4, 0, 0, 1, 0];

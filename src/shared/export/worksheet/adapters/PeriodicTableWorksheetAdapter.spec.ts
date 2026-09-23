@@ -4,7 +4,7 @@ import type { PrintableElementCard } from '../types';
 import { PeriodicTableWorksheetAdapter } from './PeriodicTableWorksheetAdapter';
 
 interface PeriodicFixture {
-    /** One flag per group: alkali metals first, actinides last. */
+    /** The editor stores All first, then the ten individual groups. */
     groups?: number[];
     number?: number;
     gameType?: number;
@@ -42,10 +42,10 @@ const SPANISH = {
 };
 
 /** Only the alkali metals, which is six elements and easy to reason about. */
-const ALKALI = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const ALKALI = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 /** Only the noble gases, four of which record no electronegativity. */
-const NOBLE = [0, 0, 0, 0, 0, 0, 0, 1, 0, 0];
+const NOBLE = [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0];
 
 function periodicHtml(fixture: PeriodicFixture = {}): string {
     const payload = JSON.stringify({
@@ -100,6 +100,24 @@ describe('PeriodicTableWorksheetAdapter', () => {
     });
 
     describe('which elements are asked about', () => {
+        it('uses all 118 elements when All is selected, regardless of the individual flags', () => {
+            for (const individualFlags of [Array(10).fill(0), Array(10).fill(1), ALKALI.slice(1)]) {
+                const numbers = cardsOf({ groups: [1, ...individualFlags], number: 118 })
+                    .map(card => Number(card.number))
+                    .sort((a, b) => a - b);
+
+                expect(numbers).toEqual(Array.from({ length: 118 }, (_, i) => i + 1));
+            }
+        });
+
+        it('keeps the last group, actinides, at its stored index', () => {
+            const numbers = cardsOf({ groups: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], number: 118 })
+                .map(card => Number(card.number))
+                .sort((a, b) => a - b);
+
+            expect(numbers).toEqual(Array.from({ length: 15 }, (_, i) => i + 89));
+        });
+
         it('only those in the groups the author switched on', () => {
             // By atomic number, the symbol being the field this fixture asks for.
             const numbers = cardsOf({ groups: ALKALI }).map(card => Number(card.number));
@@ -150,7 +168,7 @@ describe('PeriodicTableWorksheetAdapter', () => {
         });
 
         it('each oxidation state on its own, as the activity boxes them', () => {
-            const oxygen = cardsOf({ groups: [0, 0, 0, 0, 0, 1, 0, 0, 0, 0], number: 7 }).find(
+            const oxygen = cardsOf({ groups: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0], number: 7 }).find(
                 card => card.number === '6',
             );
 
@@ -247,7 +265,7 @@ describe('PeriodicTableWorksheetAdapter', () => {
         it('skips an activity with no group switched on', () => {
             expect(PeriodicTableWorksheetAdapter.build(periodicHtml({ groups: [] }), {})).toBeNull();
             expect(
-                PeriodicTableWorksheetAdapter.build(periodicHtml({ groups: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }), {}),
+                PeriodicTableWorksheetAdapter.build(periodicHtml({ groups: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }), {}),
             ).toBeNull();
         });
     });

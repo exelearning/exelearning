@@ -24,7 +24,7 @@
 
 import { renderInlineGap } from '../WorksheetRenderer';
 import { selectQuestions, shuffleWith, type RandomSource } from '../questionSelection';
-import { htmlToText, sanitizeHtml } from '../sanitizeHtml';
+import { escapeText, htmlToText, sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 
 /** How wide a gap is, in characters, when the answer gives no better guide. */
@@ -88,7 +88,7 @@ function buildTrueFalse(question: FormQuestion, msgs: Record<string, string>): P
     const prompt = sanitizeHtml(question.baseText);
     if (!prompt) return null;
 
-    const labels = [(msgs.msgTrue ?? '').trim() || 'True', (msgs.msgFalse ?? '').trim() || 'False'];
+    const labels = [(msgs.msgTrue ?? '').trim() || 'True', (msgs.msgFalse ?? '').trim() || 'False'].map(escapeText);
 
     return { prompt, answer: { kind: 'options', labels, marker: 'box' } };
 }
@@ -97,10 +97,12 @@ function buildTrueFalse(question: FormQuestion, msgs: Record<string, string>): P
 function buildSelection(question: FormQuestion, random: RandomSource): PrintableItem | null {
     const prompt = sanitizeHtml(question.baseText);
     const answers = Array.isArray(question.answers) ? question.answers : [];
-    // The pairs are `[isCorrect, text]`; only the text is printed.
+    // Like the interactive Form, treat option labels as text. The renderer accepts safe HTML,
+    // so escape comparisons and author examples as well as executable markup before handing it on.
     const labels = answers
         .map(answer => (Array.isArray(answer) ? String(answer[1] ?? '') : ''))
-        .filter(text => text.trim() !== '');
+        .filter(text => text.trim() !== '')
+        .map(escapeText);
 
     if (!prompt || labels.length === 0) return null;
 

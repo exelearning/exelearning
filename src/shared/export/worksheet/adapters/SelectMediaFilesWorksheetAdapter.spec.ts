@@ -197,6 +197,38 @@ describe('SelectMediaFilesWorksheetAdapter', () => {
     describe('how many cards a question offers', () => {
         const eight = Array.from({ length: 8 }, (_, i) => card({ eText: `C${i}`, url: '' }));
 
+        it('keeps each selected card with the image at its original index', () => {
+            const [item] = itemsOf(
+                {
+                    questions: [question({ cards: ['Cat', 'Dog', 'Bird'].map(eText => card({ eText })) })],
+                    numberMaxCards: '2',
+                    cardImages: { 0: { 0: 'cat.png', 1: 'dog.png', 2: 'bird.png' } },
+                },
+                { random: () => 0 },
+            );
+
+            expect(cardsOf(item).map(entry => [entry.text, entry.media?.src])).toEqual([
+                ['Dog', 'dog.png'],
+                ['Bird', 'bird.png'],
+            ]);
+        });
+
+        it('does not borrow a removed card image for a selected text-only card', () => {
+            const [item] = itemsOf(
+                {
+                    questions: [question({ cards: ['Cat', 'Dog', 'Bird'].map(eText => card({ eText })) })],
+                    numberMaxCards: '2',
+                    cardImages: { 0: { 0: 'cat.png', 2: 'bird.png' } },
+                },
+                { random: () => 0 },
+            );
+
+            expect(cardsOf(item).map(entry => [entry.text, entry.media?.src])).toEqual([
+                ['Dog', undefined],
+                ['Bird', 'bird.png'],
+            ]);
+        });
+
         it('all of them, the cap being the editor maximum', () => {
             expect(cardsOf(itemsOf({ questions: [question({ cards: eight })], numberMaxCards: '30' })[0])).toHaveLength(
                 8,
@@ -263,7 +295,9 @@ describe('SelectMediaFilesWorksheetAdapter', () => {
 
     describe('what cannot be printed', () => {
         it('skips a component whose payload cannot be read', () => {
-            expect(SelectMediaFilesWorksheetAdapter.build('<div class="seleccionamedias-IDevice"></div>', {})).toBeNull();
+            expect(
+                SelectMediaFilesWorksheetAdapter.build('<div class="seleccionamedias-IDevice"></div>', {}),
+            ).toBeNull();
         });
 
         it('skips a payload with no questions in it', () => {

@@ -195,6 +195,9 @@
                 initialView = captureViewer.getView().slice();
             }
             const viewer = captureViewer;
+            // While detached, ResizeObserver can shrink the canvas to zero. Restore its size
+            // synchronously after reattaching, before framing or reading the next molecule.
+            viewer.resize();
             viewer.setBackgroundColor(view.bgDark ? 'black' : 'white');
             viewer.setView(initialView.slice());
 

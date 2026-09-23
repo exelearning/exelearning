@@ -134,7 +134,8 @@ describe('readRubricTable', () => {
             // by the stored HTML, so there is no `rubric` div to scope the search to. What tells
             // the rubric from a table in someone's prose is its shape.
             const unwrapped = legacyHtml().replace("<div class='rubric'>", '').replace('</div>', '');
-            const loose = '<table class="exe-table"><tbody><tr><td>Dos columnas</td><td>sin niveles</td></tr></tbody></table>';
+            const loose =
+                '<table class="exe-table"><tbody><tr><td>Dos columnas</td><td>sin niveles</td></tr></tbody></table>';
 
             for (const rubric of [legacyHtml(), unwrapped]) {
                 expect(readRubricTable(loose + rubric)?.rows.map(row => row.criterion)).toEqual(['Habla', 'Volumen']);

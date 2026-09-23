@@ -41,7 +41,7 @@ function challengeHtml(fixture: ChallengeFixture = {}): string {
         instructionsExe: fixture.instructionsExe,
         instructions: fixture.instructions,
         challengesGame: fixture.challenges ?? [challenge()],
-        msgs: { msgChallenge: fixture.msgChallenge ?? "Reto" },
+        msgs: { msgChallenge: fixture.msgChallenge ?? 'Reto' },
     });
 
     let html = '<div class="desafio-IDevice">';

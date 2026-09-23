@@ -54,6 +54,63 @@ function documentOf(pageSpecs: PageSpec[], metadata: Record<string, unknown> = {
 }
 
 describe('WorksheetExporter', () => {
+    it('exports safe form labels, matched card images and all periodic groups on the server', async () => {
+        const pack = (prefix: string, data: unknown) =>
+            `<div class="${prefix}-DataGame">${encryptDataGame(JSON.stringify(data))}</div>`;
+        const result = await new WorksheetExporter(
+            documentOf([
+                {
+                    components: [
+                        {
+                            type: 'form',
+                            properties: {
+                                questionsData: [
+                                    {
+                                        activityType: 'selection',
+                                        baseText: 'Compare',
+                                        answers: [
+                                            [true, 'A<B'],
+                                            [false, '<img src=x onerror=alert(1)>'],
+                                        ],
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            type: 'select-media-files',
+                            content:
+                                pack('seleccionamedias', {
+                                    numberMaxCards: '2',
+                                    phrasesGame: [{ cards: ['Cat', 'Dog', 'Bird'].map(eText => ({ eText })) }],
+                                }) +
+                                ['cat.png', 'dog.png', 'bird.png']
+                                    .map((src, i) => `<a class="seleccionamedias-LinkImages-0" href="${src}">${i}</a>`)
+                                    .join(''),
+                        },
+                        {
+                            type: 'periodic-table',
+                            content: pack('periodic-table', {
+                                groups: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                number: 10,
+                                gameType: 2,
+                            }),
+                        },
+                    ],
+                },
+            ]),
+        ).generate({ random: () => 0 });
+
+        expect(result.success).toBe(true);
+        expect(result.html).toContain('A&lt;B');
+        expect(result.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+        expect(result.html).not.toContain('<img src=x');
+        expect(result.html).not.toContain('cat.png');
+        expect(result.html).toContain('src="dog.png"');
+        expect(result.html).toContain('src="bird.png"');
+        expect(result.html?.match(/class="worksheet-element-card"/g)).toHaveLength(10);
+        result.dispose?.();
+    });
+
     it('uses the worksheet identity fields instead of repeating them above each rubric', async () => {
         const content = `<div class="exe-rubrics-DataGame">${escape(
             JSON.stringify({
