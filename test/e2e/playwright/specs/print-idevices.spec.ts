@@ -1162,10 +1162,14 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         const exercise = '.worksheet-activity[data-idevice="guess"]';
         await expect(frame.locator(exercise)).toHaveCount(1);
         // The fixture holds four activities in all — a rubric, two forms and the Guess — and every
-        // one of them now has a paper form, so none is left standing as a note.
-        const converted = '.worksheet-activity:not(.worksheet-activity-reference)';
+        // one of them now has a paper form. Its download button has none and never will, so it is
+        // the one note left standing.
+        const converted = '.worksheet-activity:not(.worksheet-activity-reference):not(.worksheet-activity-unprintable)';
         await expect(frame.locator(converted)).toHaveCount(4);
-        await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(0);
+        const note = frame.locator('.worksheet-activity-unprintable');
+        await expect(note).toHaveCount(1);
+        await expect(note).toHaveAttribute('data-idevice', 'download-source-file');
+        await expect(frame.locator('.exe-download-package-link')).toHaveCount(0);
         await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
         await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
         await expect(frame.locator(`.exe-single-page ${exercise}`)).toHaveCount(1);

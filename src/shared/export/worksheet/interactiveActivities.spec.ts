@@ -16,7 +16,7 @@ describe('isInteractiveActivity', () => {
     });
 
     it('leaves out the iDevices that render content rather than an exercise', () => {
-        for (const type of ['text', 'image-gallery', 'markdown-text', 'slide', 'file-attachment'])
+        for (const type of ['text', 'image-gallery', 'markdown-text', 'slide'])
             expect(isInteractiveActivity(type)).toBe(false);
     });
 
@@ -73,15 +73,10 @@ describe('isInteractiveActivity', () => {
             for (const { type } of getNonActivityIdevices()) expect(isInteractiveActivity(type)).toBe(false);
         });
 
-        it('lists the four, sorted, each with a reason', () => {
+        it('lists the two, sorted, each with a reason', () => {
             const excluded = getNonActivityIdevices();
 
-            expect(excluded.map(entry => entry.type)).toEqual([
-                'checklist',
-                'download-source-file',
-                'external-website',
-                'udl-content',
-            ]);
+            expect(excluded.map(entry => entry.type)).toEqual(['checklist', 'udl-content']);
             for (const entry of excluded) expect(entry.reason.length).toBeGreaterThan(0);
         });
 
@@ -103,14 +98,26 @@ describe('isInteractiveActivity', () => {
 describe('the activities that will never have a printed form', () => {
     it('names the ones whose answer is settled', () => {
         expect(getNeverPrintableIdevices().map(entry => entry.type)).toEqual([
+            'download-source-file',
+            'external-website',
+            'file-attachment',
             'geogebra-activity',
             'interactive-video',
+            'magnifier',
             'map',
             'progress-report',
             'puzzle',
             'quick-questions-video',
             'trivial',
         ]);
+    });
+
+    it('counts one as an activity even when it stores its data as JSON', () => {
+        // A magnifier and a file list are json iDevices and nothing else would count them.
+        for (const type of ['magnifier', 'file-attachment']) {
+            expect(getIdeviceConfig(type).componentType).toBe('json');
+            expect(isInteractiveActivity(type)).toBe(true);
+        }
     });
 
     it('says why for each of them', () => {

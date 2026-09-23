@@ -111,6 +111,16 @@ describe('applyActivityMode', () => {
         it('adds no appendix', () => {
             expect(run([page([component()])], 'omit')).toHaveLength(1);
         });
+
+        it('leaves out the widgets that only work on screen, json or html', () => {
+            const widgets = ['external-website', 'download-source-file', 'file-attachment', 'magnifier'];
+            const result = run(
+                [page([text(), ...widgets.map(type => component({ type, content: '<div/>' }))])],
+                'omit',
+            );
+
+            expect(componentsOf(result).map(c => c.type)).toEqual(['text']);
+        });
     });
 
     describe('in place', () => {
@@ -149,8 +159,17 @@ describe('applyActivityMode', () => {
 
         it('says an activity is not available rather than not ready, where that is settled', () => {
             // Trivial, and the two video activities, are not waiting for an adapter. Saying yet
-            // would have the teacher waiting for a release that is not coming.
-            for (const type of ['trivial', 'interactive-video', 'quick-questions-video']) {
+            // would have the teacher waiting for a release that is not coming. Nor are the widgets
+            // that only work on screen: a website, a download, a file list, a magnifier.
+            for (const type of [
+                'trivial',
+                'interactive-video',
+                'quick-questions-video',
+                'external-website',
+                'download-source-file',
+                'file-attachment',
+                'magnifier',
+            ]) {
                 const content = componentsOf(run([page([component({ type, content: '<div/>' })])], 'in-place'))[0]
                     .content;
 

@@ -479,6 +479,20 @@ describe('WorksheetExporter', () => {
             expect(reported.find(entry => entry.ideviceType === 'an-activity-with-no-adapter')?.reason).toBeUndefined();
         });
 
+        it('reports as settled the widgets that only work on screen', async () => {
+            // Two of these are json and two html; none is a game, and paper can show none of them.
+            const types = ['external-website', 'file-attachment', 'download-source-file', 'magnifier'];
+            const exporter = new WorksheetExporter(
+                documentOf([{ components: types.map(type => ({ type, content: '' })) }]),
+            );
+
+            const reported = (await exporter.buildModel()).unsupported;
+
+            expect(reported.map(entry => [entry.ideviceType, entry.reason])).toEqual(
+                types.map(type => [type, 'not-printable']),
+            );
+        });
+
         it('does not report plain content as a missing activity', async () => {
             const exporter = new WorksheetExporter(
                 documentOf([
@@ -487,7 +501,7 @@ describe('WorksheetExporter', () => {
                             { type: 'guess', content: guessContent() },
                             { type: 'text', content: '<p>Texto</p>' },
                             { type: 'image-gallery', content: '<div class="gallery"></div>' },
-                            { type: 'magnifier', content: '' },
+                            { type: 'markdown-text', content: '' },
                             { type: 'digcompedu', content: '' },
                             { type: 'checklist', content: '<input type="checkbox">' },
                         ],

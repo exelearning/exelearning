@@ -32,8 +32,6 @@ import { getIdeviceConfig } from '../browser/idevice-config-browser';
  * whether it still holds.
  */
 const NOT_ACTIVITIES = new Map<string, string>([
-    ['download-source-file', 'offers a file to download; on paper there is nothing to answer'],
-    ['external-website', 'embeds someone else’s site, which this code cannot convert'],
     ['udl-content', 'presents the same content several ways; the printable way already prints'],
     ['checklist', 'is already a list of boxes to tick, which is what it should be on paper'],
 ]);
@@ -56,12 +54,15 @@ const JSON_ACTIVITIES = new Map<string, string>([
 ]);
 
 /**
- * Activities that will not be given a printed form.
+ * iDevices that will not be given a printed form.
  *
- * These are interactive activities, and printing still asks what to do with them — but the answer
- * to "convert it into an exercise" is settled, not pending. What each one does cannot be carried
- * to paper at all: a board game is its board, and a video is a video. The note that stands in for
- * them says so, rather than promising an adapter that is not coming.
+ * Printing asks what to do with them as it does with any activity, but the answer to "convert it
+ * into an exercise" is settled, not pending. What each one does cannot be carried to paper at all:
+ * a board game is its board, a video is a video, and a download is a button. The note that stands
+ * in for them says so, rather than promising an adapter that is not coming.
+ *
+ * Being listed here is enough to count as an activity, whatever the iDevice's component type: a
+ * magnifier stores JSON and a website embed is HTML, and both print as a broken widget.
  *
  * The value is the reason, kept beside the entry so a later reader can tell whether it still
  * holds. A decision to print one of these would be a change of mind about the activity, not an
@@ -75,6 +76,10 @@ const NEVER_PRINTABLE = new Map<string, string>([
     ['puzzle', 'is a picture cut up and reassembled by dragging; paper has nothing to drag'],
     ['interactive-video', 'is a video, and its questions are answered against what is playing'],
     ['quick-questions-video', 'asks about a video that paper cannot show'],
+    ['external-website', 'embeds someone else’s site, which paper cannot show'],
+    ['download-source-file', 'offers the project as a download; on paper there is nothing to click'],
+    ['file-attachment', 'offers files to download; on paper there is nothing to click'],
+    ['magnifier', 'is a picture explored by zooming in, which paper cannot do'],
 ]);
 
 /**
@@ -113,6 +118,7 @@ export function getNeverPrintableIdevices(): { type: string; reason: string }[] 
 export function isInteractiveActivity(type: string): boolean {
     const config = getIdeviceConfig(type);
 
+    if (NEVER_PRINTABLE.has(config.cssClass)) return true;
     if (config.componentType !== 'html') return JSON_ACTIVITIES.has(config.cssClass);
     return !NOT_ACTIVITIES.has(config.cssClass);
 }
