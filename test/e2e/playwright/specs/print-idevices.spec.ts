@@ -151,9 +151,9 @@ test.describe('Print iDevices', () => {
                     properties: {},
                     html: pack('periodic-table', { ...data, gameType: 2 }),
                 })),
-                // An activity that still has no paper form, so the note that stands in for one is
-                // covered in the browser as well as in the unit tests.
-                { type: 'padlock', properties: {}, html: '<div class="padlock-IDevice"></div>' },
+                // A type no iDevice answers to: every one that exists now has a paper form, and the
+                // note that stands in for a missing one still needs covering in the browser.
+                { type: 'an-activity-with-no-adapter', properties: {}, html: '<div class="no-adapter-IDevice"></div>' },
             ];
             await page.evaluate(components => {
                 const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
@@ -203,8 +203,8 @@ test.describe('Print iDevices', () => {
             // in its own way: the worksheet lists it at the end, the document stands a note where
             // the activity was.
             if (mode === 'idevices')
-                await expect(frame.locator('.worksheet-unsupported')).toContainText('padlock');
-            else await expect(frame.locator('.worksheet-activity-unprintable[data-idevice="padlock"]')).toHaveCount(1);
+                await expect(frame.locator('.worksheet-unsupported')).toContainText('an-activity-with-no-adapter');
+            else await expect(frame.locator('.worksheet-activity-unprintable[data-idevice="an-activity-with-no-adapter"]')).toHaveCount(1);
         });
     }
 
@@ -874,7 +874,7 @@ test.describe('Print iDevices', () => {
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
         // The json activities that still have no paper form. `form` is no longer one of them.
-        const types = ['padlock'];
+        const types = ['an-activity-with-no-adapter'];
         await page.evaluate(types => {
             const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
             const parent = binding.createPage('JSON exercises');

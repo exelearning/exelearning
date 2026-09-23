@@ -401,14 +401,14 @@ describe('WorksheetExporter', () => {
                         title: 'La Edad Media',
                         components: [
                             { type: 'guess', content: guessContent() },
-                            { type: 'padlock', content: unadaptedContent() },
+                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
                         ],
                     },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'padlock', pageTitle: 'La Edad Media' },
+                { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'La Edad Media' },
             ]);
         });
 
@@ -423,7 +423,7 @@ describe('WorksheetExporter', () => {
                             { type: 'trivial', content: unadaptedContent() },
                             { type: 'interactive-video', content: unadaptedContent() },
                             { type: 'quick-questions-video', content: unadaptedContent() },
-                            { type: 'padlock', content: unadaptedContent() },
+                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
                         ],
                     },
                 ]),
@@ -436,7 +436,7 @@ describe('WorksheetExporter', () => {
                 'interactive-video',
                 'quick-questions-video',
             ]);
-            expect(reported.find(entry => entry.ideviceType === 'padlock')?.reason).toBeUndefined();
+            expect(reported.find(entry => entry.ideviceType === 'an-activity-with-no-adapter')?.reason).toBeUndefined();
         });
 
         it('does not report plain content as a missing activity', async () => {
@@ -458,7 +458,9 @@ describe('WorksheetExporter', () => {
             expect((await exporter.buildModel()).unsupported).toHaveLength(0);
         });
 
-        it.each(['true-or-false', 'padlock'])(
+        // A type no iDevice answers to: every one that exists now has a paper form, and this test is
+    // about what happens to an activity without one rather than about any particular activity.
+    it.each(['true-or-false', 'an-activity-with-no-adapter'])(
             'reports an unsupported %s activity even when its HTML is empty',
             async type => {
                 const exporter = new WorksheetExporter(
@@ -487,8 +489,8 @@ describe('WorksheetExporter', () => {
                         title: 'Mixed exercises',
                         components: [
                             { type: 'guess', content: guessContent() },
-                            { type: 'padlock', content: '' },
-                            { type: 'padlock', content: '' },
+                            { type: 'an-activity-with-no-adapter', content: '' },
+                            { type: 'an-activity-with-no-adapter', content: '' },
                         ],
                     },
                 ]),
@@ -496,7 +498,7 @@ describe('WorksheetExporter', () => {
 
             const model = await exporter.buildModel();
             expect(model.pages[0].activities).toHaveLength(1);
-            expect(model.unsupported).toEqual([{ ideviceType: 'padlock', pageTitle: 'Mixed exercises' }]);
+            expect(model.unsupported).toEqual([{ ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Mixed exercises' }]);
         });
 
         it('reports each type once per page', async () => {
@@ -505,17 +507,17 @@ describe('WorksheetExporter', () => {
                     {
                         title: 'Una',
                         components: [
-                            { type: 'padlock', content: unadaptedContent() },
-                            { type: 'padlock', content: unadaptedContent() },
+                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
+                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
                         ],
                     },
-                    { title: 'Otra', components: [{ type: 'padlock', content: unadaptedContent() }] },
+                    { title: 'Otra', components: [{ type: 'an-activity-with-no-adapter', content: unadaptedContent() }] },
                 ]),
             );
 
             expect((await exporter.buildModel()).unsupported).toEqual([
-                { ideviceType: 'padlock', pageTitle: 'Una' },
-                { ideviceType: 'padlock', pageTitle: 'Otra' },
+                { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Una' },
+                { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Otra' },
             ]);
         });
     });

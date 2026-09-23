@@ -225,6 +225,7 @@ export default class ModalPrintPreview {
             'scrambled-list': _('Scrambled list'),
             trueorfalse: _('True or false'),
             'adaptative-quiz': _('Adaptative quiz'),
+            padlock: _('Padlock'),
         };
     }
 
