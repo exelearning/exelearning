@@ -35,6 +35,8 @@ export default class ModalPrintPreview {
         this.mode = PREVIEW_MODE_DOCUMENT;
         /** Null means print the document untouched, as it did before there was a choice. */
         this.activityMode = null;
+        /** Ids of the activities to print. Null prints every one of them. */
+        this.selectedActivities = null;
         this.requestId = 0;
         this.disposePreview = null;
     }
@@ -76,8 +78,10 @@ export default class ModalPrintPreview {
      * @param {string} mode - PREVIEW_MODE_DOCUMENT (default) or PREVIEW_MODE_IDEVICES
      * @param {string|null} activityMode - What to do with the interactive activities, for the
      *     document mode. Null prints the document untouched.
+     * @param {string[]|null} selectedActivities - Ids of the activities to print, in either mode.
+     *     Null prints every one of them.
      */
-    async show(mode = PREVIEW_MODE_DOCUMENT, activityMode = null) {
+    async show(mode = PREVIEW_MODE_DOCUMENT, activityMode = null, selectedActivities = null) {
         if (!this.overlay) {
             console.error('[PrintPreview] Overlay element not found');
             return;
@@ -85,6 +89,7 @@ export default class ModalPrintPreview {
 
         this.mode = mode;
         this.activityMode = activityMode;
+        this.selectedActivities = selectedActivities;
         const requestId = ++this.requestId;
         this.cleanup();
         this.applyTitle();
@@ -249,9 +254,19 @@ export default class ModalPrintPreview {
                 labels: this.getWorksheetLabels(),
                 ideviceTitles: this.getIdeviceTitles(),
                 ideviceBasePath: this.getIdeviceBasePath(),
+                ...this.getSelectionOptions(),
             },
             yjsBridge.assetManager || null
         );
+    }
+
+    /**
+     * Which activities to print, when the user chose some rather than all.
+     *
+     * @returns {object} An options fragment, empty when every activity is to be printed
+     */
+    getSelectionOptions() {
+        return this.selectedActivities ? { selectedActivities: this.selectedActivities } : {};
     }
 
     /**
@@ -278,6 +293,7 @@ export default class ModalPrintPreview {
                 },
                 ideviceTitles: this.getIdeviceTitles(),
                 ideviceBasePath: this.getIdeviceBasePath(),
+                ...this.getSelectionOptions(),
             },
         };
     }

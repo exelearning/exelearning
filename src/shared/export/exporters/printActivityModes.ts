@@ -14,7 +14,7 @@
  */
 
 import type { ExportBlock, ExportComponent, ExportPage } from '../interfaces';
-import { isComponentVisible, isStudentBlock, isTeacherOnly } from '../utils/visibility';
+import { isComponentVisible, isStudentBlock, isTeacherOnly, visibleWorksheetPages } from '../utils/visibility';
 import { getWorksheetAdapter } from '../worksheet/adapters/registry';
 import { isInteractiveActivity, isNeverPrintable } from '../worksheet/interactiveActivities';
 import { escapeText } from '../worksheet/sanitizeHtml';
@@ -75,6 +75,22 @@ export interface ApplyActivityModeOptions {
     random?: () => number;
     /** Base URL the iDevice export files are served from, ending in a slash. */
     ideviceBasePath?: string;
+    /**
+     * Component ids of the activities the user chose to print. The others are left out, as the
+     * `omit` mode leaves out all of them. Absent means every one of them is printed.
+     */
+    selectedActivities?: readonly string[];
+}
+
+/** One interactive activity printing acts on, as the print dialog offers it for choosing. */
+export interface InteractiveActivityEntry {
+    /** The component's id, which is what a selection is made of. */
+    id: string;
+    /** iDevice type, e.g. 'guess'. */
+    type: string;
+    pageTitle: string;
+    /** What the author called the block the activity sits in; empty when it was left blank. */
+    blockTitle: string;
 }
 
 const DEFAULT_LABELS = {
@@ -227,6 +243,52 @@ function convert(
 }
 
 /**
+ * Whether printing acts on this component at all.
+ *
+ * What the author restricted stays exactly as the document prints it. Converting it would be
+ * harmless, but moving it to the appendix would not: the appendix is a block of our own, and a copy
+ * there would not carry the restriction its own block applies. `novisible` and `teacher-only` are
+ * display:none in the export stylesheet, so a copy that loses them puts hidden or teacher-only
+ * material on the student's sheet.
+ */
+function isActedOn(block: ExportBlock, component: ExportComponent): boolean {
+    return (
+        isStudentBlock(block) &&
+        isComponentVisible(component) &&
+        !isTeacherOnly(component) &&
+        isInteractiveActivity(component.type)
+    );
+}
+
+/**
+ * The interactive activities printing acts on, in document order.
+ *
+ * This is what the print dialog asks about and offers for choosing, and the same rule decides what
+ * `applyActivityMode` touches — so the dialog never lists an activity the modes leave alone, nor
+ * misses one they change. Pages hidden themselves or under a hidden ancestor do not print, so
+ * nothing on them is listed.
+ *
+ * @param pages - The project's pages, as the export document gives them
+ * @returns One entry per activity
+ */
+export function listInteractiveActivities(pages: ExportPage[]): InteractiveActivityEntry[] {
+    const entries: InteractiveActivityEntry[] = [];
+
+    for (const page of visibleWorksheetPages(pages))
+        for (const block of page.blocks || [])
+            for (const component of block.components || [])
+                if (isActedOn(block, component))
+                    entries.push({
+                        id: component.id,
+                        type: component.type,
+                        pageTitle: (page.title || '').trim(),
+                        blockTitle: (block.name || '').trim(),
+                    });
+
+    return entries;
+}
+
+/**
  * Apply the chosen mode to a project's pages.
  *
  * @param pages - Pages as they come out of preprocessing
@@ -241,6 +303,7 @@ export function applyActivityMode(
 ): ExportPage[] {
     const appendix: ExportComponent[] = [];
     let numbered = 0;
+    const selected = options.selectedActivities ? new Set(options.selectedActivities) : null;
 
     const transformed = pages.map(page => ({
         ...page,
@@ -248,25 +311,15 @@ export function applyActivityMode(
             const components = block.components || [];
             const kept: ExportComponent[] = [];
 
-            // What the author restricted stays exactly as the document prints it. Converting it
-            // would be harmless, but moving it to the appendix would not: the appendix is a block
-            // of our own, and a copy there would not carry the restriction its own block applies.
-            // `novisible` and `teacher-only` are display:none in the export stylesheet, so a copy
-            // that loses them puts hidden or teacher-only material on the student's sheet.
-            const restricted = !isStudentBlock(block);
-
             for (const component of components) {
-                if (
-                    restricted ||
-                    !isComponentVisible(component) ||
-                    isTeacherOnly(component) ||
-                    !isInteractiveActivity(component.type)
-                ) {
+                if (!isActedOn(block, component)) {
                     kept.push(component);
                     continue;
                 }
 
-                if (mode === 'omit') continue;
+                // One the user left unticked goes as every activity goes in `omit`. It is dropped
+                // before it is numbered, so the appendix has no gap where it would have been.
+                if (mode === 'omit' || (selected && !selected.has(component.id))) continue;
 
                 if (mode === 'in-place') {
                     const markup = convert(component, options);

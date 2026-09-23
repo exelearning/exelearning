@@ -1221,6 +1221,147 @@ test.describe('Print: choosing what happens to the interactive activities', () =
     });
 });
 
+test.describe('Print: choosing which interactive activities to print', () => {
+    // Serial for the same reason as above: these import multi-megabyte fixtures.
+    test.describe.configure({ mode: 'serial' });
+
+    const SELECTED = 'input[name="print-activity-selected"]';
+
+    /** The component id of the fixture's Guess activity, as the dialog lists it. */
+    async function guessId(page: Page): Promise<string> {
+        return page.evaluate(() => {
+            const app = window as any;
+            const list: { id: string; type: string }[] = app.SharedExporters.listProjectInteractiveActivities(
+                app.eXeLearning.app.project._yjsBridge.documentManager,
+            );
+            return list.find(activity => activity.type === 'guess')?.id ?? '';
+        });
+    }
+
+    test('lists every activity, all ticked, only while activities are to be printed', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        const dialog = await openPrintDialog(page);
+        await dialog.waitFor({ state: 'visible', timeout: 15000 });
+        const selection = dialog.locator('.print-activities-selection');
+
+        // A rubric, two forms, the Guess and a download button: five, each ticked.
+        await expect(selection).toBeVisible();
+        await expect(selection.locator(SELECTED)).toHaveCount(5);
+        for (const box of await selection.locator(SELECTED).all()) await expect(box).toBeChecked();
+        await expect(selection.locator('#print-activity-select-all')).toBeChecked();
+        // Named by page, then by block or iDevice.
+        await expect(selection.locator('.print-activities-list label').first()).toContainText(' — ');
+
+        await dialog.locator('input[name="print-activity-mode"][value="omit"]').check();
+        await expect(selection).toBeHidden();
+        await dialog.locator('input[name="print-activity-mode"][value="appendix"]').check();
+        await expect(selection).toBeVisible();
+
+        // Five fit without scrolling.
+        const list = selection.locator('.print-activities-list');
+        expect(await list.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(false);
+
+        // Wider than the other confirm dialogs, which are 400px.
+        const width = await dialog.locator('.modal-content').evaluate(node => node.getBoundingClientRect().width);
+        expect(width).toBeGreaterThan(500);
+    });
+
+    test('cannot be accepted with none ticked, unless none is to be printed', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        const dialog = await openPrintDialog(page);
+        await dialog.waitFor({ state: 'visible', timeout: 15000 });
+        const accept = dialog.locator('button.btn.button-primary');
+        const selectAll = dialog.locator('#print-activity-select-all');
+
+        await selectAll.uncheck();
+        for (const box of await dialog.locator(SELECTED).all()) await expect(box).not.toBeChecked();
+        await expect(accept).toBeDisabled();
+
+        await dialog.locator('input[name="print-activity-mode"][value="omit"]').check();
+        await expect(accept).toBeEnabled();
+        await dialog.locator('input[name="print-activity-mode"][value="in-place"]').check();
+        await expect(accept).toBeDisabled();
+
+        // One is enough, and "all" shows that only some are ticked.
+        await dialog.locator(SELECTED).first().check();
+        await expect(accept).toBeEnabled();
+        expect(await selectAll.evaluate(node => (node as HTMLInputElement).indeterminate)).toBe(true);
+
+        // Cancelling leaves no disabled button behind for the next confirm dialog.
+        await selectAll.uncheck();
+        await dialog.locator('button.cancel.btn.button-tertiary').click();
+        await expect(dialog).toBeHidden();
+        const reopened = await openPrintDialog(page);
+        await reopened.waitFor({ state: 'visible', timeout: 15000 });
+        await expect(accept).toBeEnabled();
+    });
+
+    test('leaves out of the document an activity left unticked', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        const dialog = await openPrintDialog(page);
+        await dialog.waitFor({ state: 'visible', timeout: 15000 });
+        await dialog.locator(`${SELECTED}[value="${await guessId(page)}"]`).uncheck();
+        const { frame } = await choosePrintOption(page, 'appendix');
+
+        // Neither the game, nor its exercise, nor a pointer to one.
+        await expect(frame.locator('.worksheet-activity[data-idevice="guess"]')).toHaveCount(0);
+        await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
+        // The other four are numbered from one without a gap.
+        const references = frame.locator('.worksheet-reference');
+        await expect(references).toHaveCount(4);
+        for (let index = 0; index < 4; index++) await expect(references.nth(index)).toContainText(String(index + 1));
+    });
+
+    test('leaves off the worksheet an activity left unticked', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await openFixtureProject(page, createProject);
+
+        const dialog = await openPrintDialog(page);
+        await dialog.waitFor({ state: 'visible', timeout: 15000 });
+        await dialog.locator(`${SELECTED}[value="${await guessId(page)}"]`).uncheck();
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        await expect(frame.locator('.worksheet')).toBeVisible();
+        await expect(frame.locator('.worksheet-activity[data-idevice="guess"]')).toHaveCount(0);
+        await expect(frame.locator('.worksheet-activity').first()).toBeVisible();
+    });
+
+    test('scrolls the list rather than growing the dialog beyond five activities', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Print many activities');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await openElpFile(page, CROSSWORD_FIXTURE);
+
+        const dialog = await openPrintDialog(page);
+        await dialog.waitFor({ state: 'visible', timeout: 15000 });
+        const list = dialog.locator('.print-activities-list');
+        expect(await list.locator(SELECTED).count()).toBeGreaterThan(5);
+
+        const { scrolls, rows } = await list.evaluate(node => {
+            const row = (node.querySelector('.form-check') as HTMLElement).getBoundingClientRect().height;
+            return { scrolls: node.scrollHeight > node.clientHeight, rows: node.clientHeight / row };
+        });
+        expect(scrolls).toBe(true);
+        expect(Math.round(rows)).toBe(5);
+    });
+});
+
 test.describe('Print: a folded block opens on paper', () => {
     test('prints a folded block that is visible, and leaves the hidden ones folded', async ({
         authenticatedPage: page,

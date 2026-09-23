@@ -1666,7 +1666,7 @@ describe('NavbarFile', () => {
 
             navbarFile.openPrintPreview();
 
-            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document', null);
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document', null, null);
         });
 
         it('should open the overlay in idevices mode when asked', () => {
@@ -1675,7 +1675,7 @@ describe('NavbarFile', () => {
 
             navbarFile.openPrintPreview('idevices');
 
-            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('idevices', null);
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('idevices', null, null);
         });
 
         it('should name the right feature in the error for each mode', () => {
@@ -3360,22 +3360,47 @@ describe('NavbarFile printing with interactive activities', () => {
     let printPreview;
     let confirmModal;
 
-    /** Build the dialog body and hand back the radio inputs it contains. */
-    const radios = () => {
+    /** Two activities, as listProjectInteractiveActivities gives them. */
+    const ACTIVITIES = [
+        { id: 'c1', type: 'guess', pageTitle: 'La Edad Media en la península', blockTitle: '' },
+        { id: 'c2', type: 'crossword', pageTitle: 'Repaso', blockTitle: 'Crucigrama final' },
+    ];
+
+    /** Build the dialog body and hand back the element holding it. */
+    const dialogBody = () => {
         const host = document.createElement('div');
-        host.innerHTML = navbarFile.printActivitiesDialogBody();
-        return [...host.querySelectorAll('input[type="radio"]')];
+        host.innerHTML = navbarFile.printActivitiesDialogBody(ACTIVITIES);
+        return host;
     };
+
+    /** Build the dialog body and hand back the radio inputs it contains. */
+    const radios = () => [...dialogBody().querySelectorAll('input[type="radio"]')];
+
+    /** Open the dialog as the confirm modal would, wiring its behaviour into the given body. */
+    const openDialog = () => {
+        const host = dialogBody();
+        confirmModal.modalElementBody = host;
+        navbarFile.startPrint();
+        confirmModal.show.mock.calls.at(-1)[0].behaviour();
+        return host;
+    };
+
+    /** Tick or clear a checkbox and fire the change the browser would. */
+    const setChecked = (input, checked) => {
+        input.checked = checked;
+        input.dispatchEvent(new Event('change'));
+    };
+
+    const accept = () => confirmModal.show.mock.calls.at(-1)[0].confirmExec();
 
     /** Run the dialog and answer it by picking the option with the given value. */
     const answerDialog = (value) => {
-        const host = document.createElement('div');
-        host.innerHTML = navbarFile.printActivitiesDialogBody();
+        const host = dialogBody();
         if (value !== null) host.querySelector(`input[value="${value}"]`).checked = true;
         confirmModal.modalElementBody = host;
 
         navbarFile.startPrint();
-        confirmModal.show.mock.calls.at(-1)[0].confirmExec();
+        accept();
     };
 
     beforeEach(() => {
@@ -3383,17 +3408,20 @@ describe('NavbarFile printing with interactive activities', () => {
         // directly rather than rebuilding the whole menu fixture.
         navbarFile = Object.create(NavbarFile.prototype);
         printPreview = { show: vi.fn() };
-        confirmModal = { show: vi.fn(), modalElementBody: null };
+        confirmModal = { show: vi.fn(), modalElementBody: null, confirmButton: { disabled: false } };
 
         global._ = (str) => str;
         global.eXeLearning = {
             app: {
                 project: { _yjsBridge: { documentManager: {} } },
                 modals: { printpreview: printPreview, confirm: confirmModal },
+                idevices: {
+                    getIdeviceInstalled: vi.fn((type) => (type === 'guess' ? { title: 'Adivina' } : null)),
+                },
             },
         };
         // The suite above deletes global.window in its teardown, so this stands one up again.
-        global.window = { countInteractiveActivities: vi.fn(() => 2) };
+        global.window = { SharedExporters: { listProjectInteractiveActivities: vi.fn(() => ACTIVITIES) } };
     });
 
     afterEach(() => {
@@ -3403,14 +3431,14 @@ describe('NavbarFile printing with interactive activities', () => {
 
     describe('when the project has no interactive activity', () => {
         beforeEach(() => {
-            global.window.countInteractiveActivities = vi.fn(() => 0);
+            global.window.SharedExporters.listProjectInteractiveActivities = vi.fn(() => []);
         });
 
         it('prints without asking anything', () => {
             navbarFile.startPrint();
 
             expect(confirmModal.show).not.toHaveBeenCalled();
-            expect(printPreview.show).toHaveBeenCalledWith('document', null);
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null);
         });
     });
 
@@ -3420,6 +3448,15 @@ describe('NavbarFile printing with interactive activities', () => {
 
             expect(printPreview.show).not.toHaveBeenCalled();
             expect(confirmModal.show).toHaveBeenCalledTimes(1);
+        });
+
+        it('lists the activities it asks about', () => {
+            navbarFile.startPrint();
+
+            expect(global.window.SharedExporters.listProjectInteractiveActivities).toHaveBeenCalledWith(
+                eXeLearning.app.project._yjsBridge.documentManager
+            );
+            expect(confirmModal.show.mock.calls[0][0].body).toContain('Crucigrama final');
         });
 
         it('prints nothing if the dialog is dismissed', () => {
@@ -3451,9 +3488,9 @@ describe('NavbarFile printing with interactive activities', () => {
         });
 
         it.each([
-            ['omit', ['document', 'omit']],
-            ['in-place', ['document', 'in-place']],
-            ['appendix', ['document', 'appendix']],
+            ['omit', ['document', 'omit', null]],
+            ['in-place', ['document', 'in-place', null]],
+            ['appendix', ['document', 'appendix', null]],
         ])('prints the document with the %s mode', (value, expected) => {
             answerDialog(value);
 
@@ -3463,33 +3500,138 @@ describe('NavbarFile printing with interactive activities', () => {
         it('prints the worksheet alone when only the activities were asked for', () => {
             answerDialog('idevices');
 
-            expect(printPreview.show).toHaveBeenCalledWith('idevices', null);
+            expect(printPreview.show).toHaveBeenCalledWith('idevices', null, null);
         });
 
         it('falls back to printing them in place when nothing is selected', () => {
             answerDialog(null);
 
-            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place');
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place', null);
+        });
+    });
+
+    describe('choosing which activities to print', () => {
+        const items = (host) => [...host.querySelectorAll('input[name="print-activity-selected"]')];
+        const selectAll = (host) => host.querySelector('#print-activity-select-all');
+        const box = (host) => host.querySelector('.print-activities-selection');
+        /** Choose a print option, unticking the others as the browser would. */
+        const pick = (host, value) => {
+            host.querySelectorAll('input[type="radio"]').forEach((radio) => {
+                radio.checked = false;
+            });
+            setChecked(host.querySelector(`input[value="${value}"]`), true);
+        };
+
+        it('names each activity by its page, then its block or else its iDevice', () => {
+            const labels = [...dialogBody().querySelectorAll('.print-activities-list label')].map(
+                (label) => label.textContent
+            );
+
+            expect(labels).toEqual(['La Edad Media en la… — Adivina', 'Repaso — Crucigrama final']);
+        });
+
+        it('shows the list while activities are to be printed, and hides it when they are not', () => {
+            const host = openDialog();
+            expect(box(host).hidden).toBe(false);
+
+            pick(host, 'omit');
+            expect(box(host).hidden).toBe(true);
+
+            for (const value of ['appendix', 'idevices', 'in-place']) {
+                pick(host, value);
+                expect(box(host).hidden).toBe(false);
+            }
+        });
+
+        it('prints every one of them when all are left ticked', () => {
+            openDialog();
+            accept();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place', null);
+        });
+
+        it('prints only the ones left ticked, in the document', () => {
+            const host = openDialog();
+            setChecked(items(host)[0], false);
+            accept();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place', ['c2']);
+        });
+
+        it('prints only the ones left ticked, on the worksheet', () => {
+            const host = openDialog();
+            pick(host, 'idevices');
+            setChecked(items(host)[1], false);
+            accept();
+
+            expect(printPreview.show).toHaveBeenCalledWith('idevices', null, ['c1']);
+        });
+
+        it('ignores the ticks when the activities are not printed at all', () => {
+            const host = openDialog();
+            setChecked(items(host)[0], false);
+            pick(host, 'omit');
+            accept();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'omit', null);
+        });
+
+        it('cannot be accepted with none ticked, unless nothing is to be printed', () => {
+            const host = openDialog();
+            expect(confirmModal.confirmButton.disabled).toBe(false);
+
+            setChecked(selectAll(host), false);
+            expect(confirmModal.confirmButton.disabled).toBe(true);
+
+            pick(host, 'omit');
+            expect(confirmModal.confirmButton.disabled).toBe(false);
+
+            pick(host, 'appendix');
+            expect(confirmModal.confirmButton.disabled).toBe(true);
+
+            setChecked(items(host)[1], true);
+            expect(confirmModal.confirmButton.disabled).toBe(false);
+        });
+
+        it('does nothing to a dialog without a list', () => {
+            confirmModal.modalElementBody = document.createElement('div');
+
+            navbarFile.bindPrintActivitiesDialog(confirmModal);
+
+            expect(confirmModal.confirmButton.disabled).toBe(false);
+            expect(navbarFile.readChosenActivities(confirmModal, ACTIVITIES)).toBeNull();
+        });
+    });
+
+    describe('the name of an iDevice', () => {
+        it('is the one the iDevice menu shows', () => {
+            expect(navbarFile.ideviceName('guess')).toBe('Adivina');
+        });
+
+        it('is empty for an iDevice that is not installed', () => {
+            expect(navbarFile.ideviceName('crossword')).toBe('');
+            eXeLearning.app.idevices = undefined;
+            expect(navbarFile.ideviceName('guess')).toBe('');
         });
     });
 
     describe('when the project cannot be inspected', () => {
-        it('prints untouched rather than failing, if the counter is missing', () => {
-            delete global.window.countInteractiveActivities;
+        it('prints untouched rather than failing, if the list is missing', () => {
+            delete global.window.SharedExporters;
 
             navbarFile.startPrint();
 
-            expect(printPreview.show).toHaveBeenCalledWith('document', null);
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null);
         });
 
-        it('prints untouched rather than failing, if the counter throws', () => {
-            global.window.countInteractiveActivities = vi.fn(() => {
+        it('prints untouched rather than failing, if listing throws', () => {
+            global.window.SharedExporters.listProjectInteractiveActivities = vi.fn(() => {
                 throw new Error('broken');
             });
 
             navbarFile.startPrint();
 
-            expect(printPreview.show).toHaveBeenCalledWith('document', null);
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null);
         });
 
         it('prints them in place when the dialog itself is unavailable', () => {
@@ -3497,7 +3639,7 @@ describe('NavbarFile printing with interactive activities', () => {
 
             navbarFile.startPrint();
 
-            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place');
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place', null);
         });
     });
 });

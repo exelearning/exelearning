@@ -479,6 +479,37 @@ describe('WorksheetExporter', () => {
             expect(reported.find(entry => entry.ideviceType === 'an-activity-with-no-adapter')?.reason).toBeUndefined();
         });
 
+        it('prints only the activities the user ticked, and reports none left unticked', async () => {
+            // Ids come out of documentOf as component-<page>-<index>.
+            const exporter = new WorksheetExporter(
+                documentOf([
+                    {
+                        components: [
+                            { type: 'guess', content: guessContent([{ word: 'Uno', definition: 'Primero' }]) },
+                            { type: 'guess', content: guessContent([{ word: 'Dos', definition: 'Segundo' }]) },
+                            { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
+                        ],
+                    },
+                ]),
+            );
+
+            const model = await exporter.buildModel({ selectedActivities: ['component-0-1'] });
+
+            expect(JSON.stringify(model.pages)).toContain('Segundo');
+            expect(JSON.stringify(model.pages)).not.toContain('Primero');
+            // Leaving it out was the user's choice, not something the sheet failed to print.
+            expect(model.unsupported).toEqual([]);
+        });
+
+        it('prints every activity when no choice was made', async () => {
+            const exporter = new WorksheetExporter(
+                documentOf([{ components: [{ type: 'guess', content: guessContent() }] }]),
+            );
+
+            expect((await exporter.buildModel({})).pages).toHaveLength(1);
+            expect((await exporter.buildModel({ selectedActivities: [] })).pages).toHaveLength(0);
+        });
+
         it('reports as settled the widgets that only work on screen', async () => {
             // Two of these are json and two html; none is a game, and paper can show none of them.
             const types = ['external-website', 'file-attachment', 'download-source-file', 'magnifier'];

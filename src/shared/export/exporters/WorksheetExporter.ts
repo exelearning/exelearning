@@ -48,6 +48,12 @@ export interface WorksheetOptions {
      * their molecules.
      */
     captureMolecule?: MoleculeRenderer;
+    /**
+     * Component ids of the activities the user chose to print. The others are left off the sheet,
+     * and off its list of what could not be printed, since leaving them out was the user's call.
+     * Absent means every one of them is printed.
+     */
+    selectedActivities?: readonly string[];
 }
 
 export interface WorksheetResult {
@@ -83,12 +89,15 @@ export class WorksheetExporter {
         const metadata = this.document.getMetadata();
         const pages: PrintablePage[] = [];
         const unsupported: UnsupportedActivity[] = [];
+        const selected = options.selectedActivities ? new Set(options.selectedActivities) : null;
 
         // Ancestors count: a page inside a hidden one does not reach the worksheet either.
         for (const page of visibleWorksheetPages(this.document.getNavigation())) {
             const activities: PrintableActivity[] = [];
 
             for (const { component, blockTitle } of this.collectComponents(page.blocks || [])) {
+                if (selected && isInteractiveActivity(component.type) && !selected.has(component.id)) continue;
+
                 let content = component.content || '';
                 const adapter = getWorksheetAdapter(component.type);
 

@@ -51,8 +51,7 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 
 // Import utilities
 import { LibraryDetector } from '../utils/LibraryDetector';
-import { isComponentVisible, isPageVisible, isStudentBlock, isTeacherOnly } from '../utils/visibility';
-import { isInteractiveActivity } from '../worksheet/interactiveActivities';
+import { type InteractiveActivityEntry, listInteractiveActivities } from '../exporters/printActivityModes';
 import type { MoleculeRenderer, MoleculeView } from '../worksheet/moleculeCapture';
 import '../../../../public/app/common/LatexPreRenderer.js';
 
@@ -641,35 +640,21 @@ export async function exportAndDownload(
  * @returns Preview result with HTML string
  */
 /**
- * Count the interactive activities a printed document would contain.
+ * List the interactive activities a printed document would contain.
  *
- * Printing asks the user what to do with them, and this is what decides whether there is anything
- * to ask about: with none, printing goes straight to the preview as it always did.
+ * Printing asks the user what to do with them and which of them to print, and this is what it asks
+ * about: with none, printing goes straight to the preview as it always did.
  *
- * Counts exactly what `applyActivityMode` would act on, so the dialog never asks about activities
- * the modes leave alone: hidden pages, restricted blocks and teacher-only or hidden components are
- * all left as the document prints them.
+ * Lists exactly what `applyActivityMode` would act on, so the dialog never offers an activity the
+ * modes leave alone: hidden pages, restricted blocks and teacher-only or hidden components are all
+ * left as the document prints them.
  *
  * @param documentManager - YjsDocumentManager instance
- * @returns How many interactive activities are in the document
+ * @returns The activities, in document order
  */
-export function countInteractiveActivities(documentManager: YjsDocumentManagerLike): number {
+export function listProjectInteractiveActivities(documentManager: YjsDocumentManagerLike): InteractiveActivityEntry[] {
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
-    const document = new YjsDocumentAdapter(documentManager as any);
-    let count = 0;
-
-    for (const page of document.getNavigation()) {
-        if (!isPageVisible(page)) continue;
-        for (const block of page.blocks || []) {
-            if (!isStudentBlock(block)) continue;
-            for (const component of block.components || []) {
-                if (!isComponentVisible(component) || isTeacherOnly(component)) continue;
-                if (isInteractiveActivity(component.type)) count++;
-            }
-        }
-    }
-
-    return count;
+    return listInteractiveActivities(new YjsDocumentAdapter(documentManager as any).getNavigation());
 }
 
 export async function generatePrintPreview(
@@ -952,7 +937,7 @@ if (typeof window !== 'undefined') {
         generatePreviewForSW,
         // Print preview functions
         generatePrintPreview,
-        countInteractiveActivities,
+        listProjectInteractiveActivities,
         createPrintPreviewExporter,
         // Worksheet (printable activities) functions
         generateWorksheet,

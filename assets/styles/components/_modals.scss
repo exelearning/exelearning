@@ -215,6 +215,72 @@
     }
 }
 
+/* Print dialog: what to do with the interactive activities, and which of them */
+#modalConfirm:has(.modal-body[modal-content-id="print-activities"]) {
+    .modal-dialog,
+    .modal-dialog.modal-dialog-centered {
+        max-width: min(640px, calc(100vw - 24px));
+    }
+
+    .modal-content {
+        width: min(640px, calc(100vw - 24px));
+    }
+}
+
+.print-activities-selection {
+    /* Height of one activity; the list shows five and scrolls beyond them. */
+    --print-activity-row: 1.75rem;
+
+    margin: 1rem 0 0;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--elements-hover);
+    border-radius: 6px;
+
+    .print-activities-selection-title {
+        float: none;
+        width: auto;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+
+    /* A flex row, so no margin inherited by the label can collapse through it and add height. */
+    .form-check {
+        display: flex;
+        align-items: center;
+        height: var(--print-activity-row);
+        margin: 0;
+        padding-left: 0;
+
+        .form-check-input {
+            flex: none;
+            float: none;
+            margin: 0 var(--margin-m) 0 0;
+        }
+
+        /* One line per activity, so five rows are exactly five activities. */
+        .form-check-label {
+            min-width: 0;
+            margin: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+    }
+
+    .print-activities-select-all {
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--elements-hover);
+        box-sizing: content-box;
+    }
+
+    .print-activities-list {
+        max-height: calc(5 * var(--print-activity-row));
+        overflow-y: auto;
+    }
+}
+
 .form-properties .exe-form-tabs {
     width: max-content;
     display: flex;

@@ -3,6 +3,7 @@ import { encryptDataGame } from '../utils/dataGameCipher';
 import type { ExportComponent, ExportPage } from '../interfaces';
 import {
     applyActivityMode,
+    listInteractiveActivities,
     PRINTABLE_ACTIVITY_TYPE,
     type ApplyActivityModeOptions,
     type DocumentActivityMode,
@@ -499,5 +500,120 @@ describe("the author's own heading", () => {
 
         expect(componentsOf([result[1]])[0].content).not.toContain('<img');
         expect(componentsOf([result[1]])[0].content).toContain('&lt;img');
+    });
+});
+
+describe('the activities the user chose to print', () => {
+    const two = () => [
+        page([text(), component({ id: 'a' }), component({ id: 'b', content: guessHtml('Río', 'Ebro') })]),
+    ];
+
+    it('prints every activity when no choice was made', () => {
+        const contents = componentsOf(run(two(), 'in-place')).map(c => c.content);
+
+        expect(contents.join('')).toContain('Ciudad conquistada');
+        expect(contents.join('')).toContain('Río');
+    });
+
+    it('leaves out one left unticked, where the author put it', () => {
+        const result = run(two(), 'in-place', { selectedActivities: ['b'] });
+
+        expect(componentsOf(result).map(c => c.id)).toEqual(['text-1', 'b']);
+        expect(componentsOf(result)[1].content).toContain('Río');
+    });
+
+    it('numbers the appendix without a gap where one was left out', () => {
+        const result = run(two(), 'appendix', { selectedActivities: ['b'] });
+
+        expect(componentsOf([result[0]]).map(c => c.id)).toEqual(['text-1', 'b']);
+        expect(componentsOf([result[0]])[1].content).toContain('activity 1');
+        expect(componentsOf([result[1]]).map(c => c.content)).toEqual([expect.stringContaining('>1. Bloque<')]);
+    });
+
+    it('drops a block that held only activities left unticked', () => {
+        const result = run([page([component({ id: 'a' })])], 'in-place', { selectedActivities: [] });
+
+        expect(result[0].blocks).toHaveLength(0);
+    });
+
+    it('never touches what is not an activity, ticked or not', () => {
+        expect(componentsOf(run(two(), 'appendix', { selectedActivities: [] })).map(c => c.id)).toEqual(['text-1']);
+    });
+
+    it('leaves what the author restricted as it was, whatever was ticked', () => {
+        const restricted = component({ id: 'a', structureProperties: { teacherOnly: 'true' } });
+
+        expect(componentsOf(run([page([restricted])], 'in-place', { selectedActivities: [] }))).toEqual([restricted]);
+    });
+});
+
+describe('listInteractiveActivities', () => {
+    it('lists each activity with its page and the block it sits in, in document order', () => {
+        const pages = [
+            page([text(), component({ id: 'a' })], { id: 'p1', title: '  La Edad Media  ' }),
+            page([], {
+                id: 'p2',
+                title: 'Repaso',
+                order: 1,
+                blocks: [
+                    {
+                        id: 'b2',
+                        name: ' Crucigrama final ',
+                        order: 0,
+                        components: [component({ id: 'b', type: 'crossword' })],
+                    },
+                ],
+            }),
+        ];
+
+        expect(listInteractiveActivities(pages)).toEqual([
+            { id: 'a', type: 'guess', pageTitle: 'La Edad Media', blockTitle: 'Bloque' },
+            { id: 'b', type: 'crossword', pageTitle: 'Repaso', blockTitle: 'Crucigrama final' },
+        ]);
+    });
+
+    it('gives an empty block title where the author left the block unnamed', () => {
+        const unnamed = page([], { blocks: [{ id: 'b1', name: '', order: 0, components: [component()] }] });
+
+        expect(listInteractiveActivities([unnamed])[0].blockTitle).toBe('');
+    });
+
+    it('lists what the modes act on, and nothing they leave alone', () => {
+        const hiddenPage = page([component({ id: 'on-hidden-page' })], {
+            id: 'hidden',
+            properties: { visibility: false },
+        });
+        const underHidden = page([component({ id: 'under-hidden' })], { id: 'child', parentId: 'hidden', order: 1 });
+        const restrictedBlock = page([], {
+            id: 'p3',
+            order: 2,
+            blocks: [
+                {
+                    id: 'b',
+                    name: '',
+                    order: 0,
+                    components: [component({ id: 'in-teacher-block' })],
+                    properties: { teacherOnly: true },
+                } as never,
+            ],
+        });
+        const mixed = page(
+            [
+                component({ id: 'hidden-component', structureProperties: { visibility: 'false' } }),
+                component({ id: 'teacher-only', structureProperties: { teacherOnly: 'true' } }),
+                text(),
+                component({ id: 'listed' }),
+            ],
+            { id: 'p4', order: 3 },
+        );
+
+        expect(listInteractiveActivities([hiddenPage, underHidden, restrictedBlock, mixed]).map(e => e.id)).toEqual([
+            'listed',
+        ]);
+    });
+
+    it('lists nothing for a project with no activities', () => {
+        expect(listInteractiveActivities([page([text()])])).toEqual([]);
+        expect(listInteractiveActivities([])).toEqual([]);
     });
 });

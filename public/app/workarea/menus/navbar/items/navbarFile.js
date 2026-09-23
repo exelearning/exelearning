@@ -15,6 +15,11 @@ import {
     PREVIEW_MODE_DOCUMENT,
     PREVIEW_MODE_IDEVICES,
 } from '../../../modals/modals/pages/modalPrintPreview.js';
+import {
+    bindActivitySelection,
+    readSelectedActivities,
+    renderActivitySelection,
+} from './printActivitySelection.js';
 
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
@@ -874,41 +879,43 @@ export default class NavbarFile {
      * printing opens the preview straight away, as it always did.
      */
     startPrint() {
-        if (this.countInteractiveActivities() === 0) {
+        const activities = this.listInteractiveActivities();
+        if (activities.length === 0) {
             this.openPrintPreview();
             return;
         }
 
-        this.askAboutInteractiveActivities();
+        this.askAboutInteractiveActivities(activities);
     }
 
     /**
-     * Count the interactive activities in the project.
+     * List the interactive activities in the project.
      *
-     * @returns {number} How many there are, and 0 if the question cannot be answered
+     * @returns {Array<{id: string, type: string, pageTitle: string, blockTitle: string}>} The
+     *     activities in document order, and none if the question cannot be answered
      */
-    countInteractiveActivities() {
-        const countFn =
-            window.countInteractiveActivities ||
-            window.SharedExporters?.countInteractiveActivities;
+    listInteractiveActivities() {
+        const listFn = window.SharedExporters?.listProjectInteractiveActivities;
         const documentManager =
             eXeLearning?.app?.project?._yjsBridge?.documentManager;
 
-        if (typeof countFn !== 'function' || !documentManager) return 0;
+        if (typeof listFn !== 'function' || !documentManager) return [];
 
         try {
-            return countFn(documentManager);
+            return listFn(documentManager);
         } catch (error) {
             // Printing matters more than the question: fall back to printing untouched.
             console.warn('[NavbarFile] Could not inspect the project:', error);
-            return 0;
+            return [];
         }
     }
 
     /**
-     * Ask what should happen to the interactive activities, then print.
+     * Ask what should happen to the interactive activities, and which of them, then print.
+     *
+     * @param {Array<object>} activities - The activities, as listInteractiveActivities gives them
      */
-    askAboutInteractiveActivities() {
+    askAboutInteractiveActivities(activities) {
         const confirmModal = eXeLearning?.app?.modals?.confirm;
 
         if (!confirmModal) {
@@ -920,13 +927,55 @@ export default class NavbarFile {
         confirmModal.show({
             title: _('Print'),
             contentId: 'print-activities',
-            body: this.printActivitiesDialogBody(),
+            body: this.printActivitiesDialogBody(activities),
             confirmButtonText: _('Accept'),
             cancelButtonText: _('Cancel'),
+            behaviour: () => this.bindPrintActivitiesDialog(confirmModal),
             confirmExec: () => {
-                this.printWithChoice(this.readChosenActivityMode(confirmModal));
+                const choice = this.readChosenActivityMode(confirmModal);
+                // With no activity printed, which of them were ticked is beside the point.
+                const selected =
+                    choice === ACTIVITY_MODE_OMIT
+                        ? null
+                        : this.readChosenActivities(confirmModal, activities);
+                this.printWithChoice(choice, selected);
             },
         });
+    }
+
+    /**
+     * Wire the dialog up: show the list only when activities are going to be printed, and allow
+     * accepting only when at least one of them is ticked.
+     *
+     * @param {object} confirmModal - The confirm modal showing the dialog
+     */
+    bindPrintActivitiesDialog(confirmModal) {
+        const body = confirmModal.modalElementBody;
+        const selection = body?.querySelector('.print-activities-selection');
+        if (!selection) return;
+
+        const update = () => {
+            const printing = this.readChosenActivityMode(confirmModal) !== ACTIVITY_MODE_OMIT;
+            selection.hidden = !printing;
+            confirmModal.confirmButton.disabled =
+                printing && readSelectedActivities(selection).length === 0;
+        };
+
+        body.querySelectorAll(`input[name="${PRINT_ACTIVITY_FIELD}"]`).forEach((radio) => {
+            radio.addEventListener('change', update);
+        });
+        bindActivitySelection(selection, update);
+        update();
+    }
+
+    /**
+     * Translated name of an iDevice type, as the iDevice menu shows it.
+     *
+     * @param {string} type - iDevice type, e.g. 'guess'
+     * @returns {string} The name, or empty when the iDevice is not installed
+     */
+    ideviceName(type) {
+        return eXeLearning?.app?.idevices?.getIdeviceInstalled?.(type)?.title || '';
     }
 
     /**
@@ -946,9 +995,10 @@ export default class NavbarFile {
     /**
      * Build the dialog's body.
      *
+     * @param {Array<object>} activities - The activities to offer for choosing
      * @returns {string} HTML for the modal body
      */
-    printActivitiesDialogBody() {
+    printActivitiesDialogBody(activities) {
         const options = this.printActivityChoices()
             .map(({ value, label }, index) => {
                 const id = `${PRINT_ACTIVITY_FIELD}-${index}`;
@@ -962,9 +1012,19 @@ export default class NavbarFile {
             })
             .join('');
 
+        const selection = renderActivitySelection(
+            activities,
+            {
+                heading: _('Select the interactive activities you want to print'),
+                selectAll: _('Select all'),
+            },
+            (type) => this.ideviceName(type)
+        );
+
         return `
             <p>${_('This project has interactive activities. What would you like to do?')}</p>
-            <div class="print-activities-options">${options}</div>`;
+            <div class="print-activities-options">${options}</div>
+            ${selection}`;
     }
 
     /**
@@ -982,17 +1042,34 @@ export default class NavbarFile {
     }
 
     /**
+     * Read which activities the user left ticked.
+     *
+     * @param {object} confirmModal - The confirm modal showing the dialog
+     * @param {Array<object>} activities - The activities the dialog offered
+     * @returns {string[]|null} Their component ids, or null when every one of them is ticked —
+     *     which prints them all, as printing did before there was a choice
+     */
+    readChosenActivities(confirmModal, activities) {
+        const selection = confirmModal.modalElementBody?.querySelector('.print-activities-selection');
+        if (!selection) return null;
+
+        const ids = readSelectedActivities(selection);
+        return ids.length === activities.length ? null : ids;
+    }
+
+    /**
      * Print according to what the user chose.
      *
      * @param {string} choice - An activity mode, or PREVIEW_MODE_IDEVICES for the worksheet
+     * @param {string[]|null} selectedActivities - Ids of the activities to print; null for all
      */
-    printWithChoice(choice) {
+    printWithChoice(choice, selectedActivities = null) {
         if (choice === PREVIEW_MODE_IDEVICES) {
-            this.openPrintPreview(PREVIEW_MODE_IDEVICES);
+            this.openPrintPreview(PREVIEW_MODE_IDEVICES, null, selectedActivities);
             return;
         }
 
-        this.openPrintPreview(PREVIEW_MODE_DOCUMENT, choice);
+        this.openPrintPreview(PREVIEW_MODE_DOCUMENT, choice, selectedActivities);
     }
 
     /**
@@ -1012,12 +1089,13 @@ export default class NavbarFile {
      * @param {string} mode - PREVIEW_MODE_DOCUMENT (default) or PREVIEW_MODE_IDEVICES
      * @param {string|null} activityMode - What to do with the interactive activities. Null
      *     prints the document untouched.
+     * @param {string[]|null} selectedActivities - Ids of the activities to print; null for all
      */
-    openPrintPreview(mode = PREVIEW_MODE_DOCUMENT, activityMode = null) {
+    openPrintPreview(mode = PREVIEW_MODE_DOCUMENT, activityMode = null, selectedActivities = null) {
         // Open print preview modal
         const printPreviewModal = eXeLearning?.app?.modals?.printpreview;
         if (printPreviewModal) {
-            printPreviewModal.show(mode, activityMode);
+            printPreviewModal.show(mode, activityMode, selectedActivities);
         } else {
             console.warn('[NavbarFile] Print preview modal not available');
             eXeLearning?.app?.modals?.alert?.show({

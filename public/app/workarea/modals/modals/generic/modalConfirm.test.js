@@ -99,6 +99,17 @@ describe('ModalConfirm', () => {
       expect(modalConfirm.cancelButton.innerHTML).toBe('Abort');
       vi.useRealTimers();
     });
+
+    it('re-enables the confirm button a previous dialog left disabled', () => {
+      vi.useFakeTimers();
+      modalConfirm.confirmButton.disabled = true;
+
+      modalConfirm.show({ body: 'Another question' });
+      vi.advanceTimersByTime(50);
+
+      expect(modalConfirm.confirmButton.disabled).toBe(false);
+      vi.useRealTimers();
+    });
   });
 
   describe('confirm', () => {

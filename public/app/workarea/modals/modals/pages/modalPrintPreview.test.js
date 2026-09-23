@@ -596,4 +596,35 @@ describe('ModalPrintPreview and interactive activities', () => {
         expect(worksheetOptions.labels).toEqual(modal.getWorksheetLabels());
         expect(worksheetOptions.ideviceTitles).toEqual(modal.getIdeviceTitles());
     });
+
+    describe('the activities the user chose', () => {
+        const worksheetOptions = () => global.window.generateWorksheet.mock.calls.at(-1)[1];
+
+        it('reach the document exporter', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_APPENDIX, ['c2']);
+
+            expect(lastOptions().activities.selectedActivities).toEqual(['c2']);
+        });
+
+        it('reach the worksheet', async () => {
+            await modal.show(PREVIEW_MODE_IDEVICES, null, ['c1', 'c3']);
+
+            expect(worksheetOptions().selectedActivities).toEqual(['c1', 'c3']);
+        });
+
+        it('are left out when every one of them is to be printed', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT, ACTIVITY_MODE_IN_PLACE);
+            expect(lastOptions().activities).not.toHaveProperty('selectedActivities');
+
+            await modal.show(PREVIEW_MODE_IDEVICES);
+            expect(worksheetOptions()).not.toHaveProperty('selectedActivities');
+        });
+
+        it('are forgotten when the next preview does not choose', async () => {
+            await modal.show(PREVIEW_MODE_IDEVICES, null, ['c1']);
+            await modal.show(PREVIEW_MODE_IDEVICES);
+
+            expect(worksheetOptions()).not.toHaveProperty('selectedActivities');
+        });
+    });
 });
