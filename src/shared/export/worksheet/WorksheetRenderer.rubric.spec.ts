@@ -53,11 +53,30 @@ describe('renderWorksheet with an assessment table', () => {
     });
 
     it('draws a row per criterion, with every descriptor in place', () => {
-        // Marking is done by ringing a cell, so nothing in the table is left blank.
+        // Marking is done by ticking a cell, so nothing in the table is left blank.
         const body = render();
+        const mark = '<span class="worksheet-rubric-mark"></span>';
 
-        expect(body).toContain('<tr><th>Habla</th><td>Habla con claridad.</td><td>Se le entiende mal.</td></tr>');
-        expect(body).toContain('<tr><th>Volumen</th><td>Se le oye al fondo.</td><td>Cuesta oírle.</td></tr>');
+        expect(body).toContain(
+            `<tr><th>Habla</th><td>Habla con claridad.${mark}</td><td>Se le entiende mal.${mark}</td></tr>`,
+        );
+        expect(body).toContain(
+            `<tr><th>Volumen</th><td>Se le oye al fondo.${mark}</td><td>Cuesta oírle.${mark}</td></tr>`,
+        );
+    });
+
+    it('gives every cell a box to tick, an empty one included, as the activity gives each a checkbox', () => {
+        const body = render({ rows: [{ criterion: 'Habla', cells: ['Habla con claridad.', ''] }] });
+
+        expect(body.match(/class="worksheet-rubric-mark"/g)).toHaveLength(2);
+        expect(body).toContain('<td><span class="worksheet-rubric-mark"></span></td>');
+    });
+
+    it('puts the box in the bottom-right corner of its cell', () => {
+        const html = renderWorksheet(modelWith(table()), {});
+
+        expect(html).toMatch(/\.worksheet-rubric-table td \{[^}]*position: relative;/);
+        expect(html).toMatch(/\.worksheet-rubric-mark \{[^}]*position: absolute;[^}]*right: [^;]+;[^}]*bottom: [^;]+;/);
     });
 
     it('names the table with the rubric own title', () => {

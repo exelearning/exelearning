@@ -439,7 +439,10 @@ export interface WorksheetAdapter {
 
 /** Per-call context handed to an adapter. */
 export interface WorksheetAdapterOptions {
-    /** The containing sheet already asks for the student's name and date. */
+    /**
+     * The containing sheet already asks for the student's name and date. An activity that asks for
+     * them too may leave its own copy out; the rubric leaves out its date and keeps its name.
+     */
     hasIdentityFields?: boolean;
     /**
      * The component's stored properties, for the iDevices that keep their data there.

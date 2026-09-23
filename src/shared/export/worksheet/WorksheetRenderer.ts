@@ -728,6 +728,22 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     white-space: nowrap;
 }
 
+/* The box to tick, in each cell's bottom-right corner where the activity puts its checkbox. The
+   cell keeps room under its descriptor so the box never sits on the last line of text. */
+.worksheet-rubric-table td {
+    position: relative;
+    padding-bottom: 6mm;
+}
+
+.worksheet-rubric-mark {
+    position: absolute;
+    right: 1.5mm;
+    bottom: 1.5mm;
+    width: 3.5mm;
+    height: 3.5mm;
+    border: 1px solid #1a1a1a;
+}
+
 .worksheet-rubric-notes {
     margin: 3mm 0 0;
     font-weight: 600;
@@ -1217,9 +1233,10 @@ function renderElementCards(cards: PrintableElementCard[]): string {
 /**
  * Render an assessment table: the fields above it, the criteria against the levels, notes below.
  *
- * Marking is done by ringing the cell that fits, so every cell is printed full rather than left
+ * Marking is done by ticking the cell that fits, so every cell is printed full rather than left
  * blank — the descriptors are what the teacher is choosing between, and a rubric without them is a
- * grid of numbers.
+ * grid of numbers. Each cell carries a box to tick in its bottom-right corner, as the activity puts
+ * a checkbox in every cell, an empty one included.
  */
 function renderRubricTable(table: PrintableRubric): string {
     let html = '<div class="worksheet-rubric">';
@@ -1234,7 +1251,9 @@ function renderRubricTable(table: PrintableRubric): string {
     html += `<thead><tr><th></th>${table.levels.map(level => `<th>${level}</th>`).join('')}</tr></thead>`;
     html += '<tbody>';
     for (const row of table.rows) {
-        html += `<tr><th>${row.criterion}</th>${row.cells.map(cell => `<td>${cell}</td>`).join('')}</tr>`;
+        html += `<tr><th>${row.criterion}</th>${row.cells
+            .map(cell => `<td>${cell}<span class="worksheet-rubric-mark"></span></td>`)
+            .join('')}</tr>`;
     }
     html += '</tbody></table>';
 

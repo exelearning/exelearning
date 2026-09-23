@@ -148,7 +148,9 @@ function readWording(
 
     const word = (key: string) => sanitizeHtml((i18n[key] ?? fromList.get(key) ?? '').trim());
 
-    const fields = FIELD_KEYS.filter(key => !hasIdentityFields || (key !== 'name' && key !== 'date'));
+    // Only the date gives way to the sheet's own. The name stays: on the activity it follows the
+    // activity it names, and the two are read together.
+    const fields = FIELD_KEYS.filter(key => !hasIdentityFields || key !== 'date');
     return { fields: fields.map(word).filter(label => label !== ''), notes: word('notes') };
 }
 
@@ -244,7 +246,8 @@ function readLegacyTable(table: Element): StoredTable {
  * Read the assessment table out of a Rubric component.
  *
  * @param html - The component's stored HTML
- * @param hasIdentityFields - Whether the containing sheet already asks for name and date
+ * @param hasIdentityFields - Whether the containing sheet already asks for name and date, which
+ *     leaves the table's own date out
  * @returns The table as it should print, or null when there is none to read
  */
 export function readRubricTable(html: string, hasIdentityFields = false): PrintableRubric | null {

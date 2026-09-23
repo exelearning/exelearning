@@ -85,12 +85,13 @@ describe('RubricWorksheetAdapter', () => {
         expect(table.fields).toEqual(['Actividad', 'Nombre', 'Fecha']);
     });
 
-    it('omits only identity fields already present in the containing worksheet', () => {
+    it('omits only the date when the containing worksheet asks for its own', () => {
         const table = tableOf(
             { words: { activity: 'Actividad', name: 'Nombre', score: 'Nota', date: 'Fecha' } },
             { hasIdentityFields: true },
         );
-        expect(table.fields).toEqual(['Actividad', 'Nota']);
+        // The name stays under the activity it names, as it sits on screen.
+        expect(table.fields).toEqual(['Actividad', 'Nombre', 'Nota']);
     });
 
     it('keeps the rubric own name as the table caption', () => {

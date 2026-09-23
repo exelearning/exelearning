@@ -151,7 +151,7 @@ describe('WorksheetExporter', () => {
         result.dispose?.();
     });
 
-    it('uses the worksheet identity fields instead of repeating them above each rubric', async () => {
+    it('uses the worksheet date instead of repeating it above each rubric, and keeps the rubric name', async () => {
         const content = `<div class="exe-rubrics-DataGame">${escape(
             JSON.stringify({
                 categories: ['Content'],
@@ -167,7 +167,7 @@ describe('WorksheetExporter', () => {
         expect(result.html).toContain('worksheet-rubric-table');
         expect(result.html).toContain('<span class="worksheet-field">Name:');
         expect(result.html).toContain('<span class="worksheet-field">Date:');
-        expect(result.html).not.toContain('Rubric name');
+        expect(result.html).toContain('<span>Rubric name:</span>');
         expect(result.html).not.toContain('Rubric date');
         result.dispose?.();
     });

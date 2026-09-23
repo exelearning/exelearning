@@ -338,12 +338,14 @@ test.describe('Print iDevices', () => {
             await expect(rubric.locator('tbody th')).toHaveText('Content');
             await expect(rubric.locator('tbody td')).toContainText('Complete');
             const fields = rubric.locator('.worksheet-rubric-field');
-            await expect(fields).toHaveCount(mode === 'idevices' ? 2 : 4);
-            if (mode === 'idevices') await expect(frame.locator('.worksheet-fields')).toBeVisible();
-            else {
-                await expect(fields.filter({ hasText: 'Learner name' })).toBeVisible();
-                await expect(fields.filter({ hasText: 'Assessment date' })).toBeVisible();
-            }
+            // The worksheet asks for the date in its own header, so there the rubric drops its date
+            // and keeps its name, under the activity it names.
+            await expect(fields).toHaveCount(mode === 'idevices' ? 3 : 4);
+            await expect(fields.nth(1)).toContainText('Learner name');
+            if (mode === 'idevices') {
+                await expect(frame.locator('.worksheet-fields')).toBeVisible();
+                await expect(fields.filter({ hasText: 'Assessment date' })).toHaveCount(0);
+            } else await expect(fields.filter({ hasText: 'Assessment date' })).toBeVisible();
             for (const type of ['electrical-circuits', '3dmol']) {
                 const picture = frame.locator(`[data-idevice="${type}"] .worksheet-instructions img`);
                 await expect(picture).toHaveAttribute('src', /^blob:/);

@@ -191,11 +191,11 @@ describe('readRubricTable', () => {
             expect(readRubricTable(html)?.fields).toEqual(['Tarea', 'Nota']);
         });
 
-        it('preserves name and date unless the containing sheet already asks for them', () => {
+        it('preserves the date unless the containing sheet already asks for one, and the name always', () => {
             const html = legacyHtml() + strings({ activity: 'Actividad', name: 'Nombre', date: 'Fecha' });
 
             expect(readRubricTable(html)?.fields).toEqual(['Actividad', 'Nombre', 'Fecha']);
-            expect(readRubricTable(html, true)?.fields).toEqual(['Actividad']);
+            expect(readRubricTable(html, true)?.fields).toEqual(['Actividad', 'Nombre']);
         });
 
         it('prints no field the activity has no word for', () => {
