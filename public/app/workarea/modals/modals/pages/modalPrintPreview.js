@@ -223,6 +223,7 @@ export default class ModalPrintPreview {
             'periodic-table': _('Periodic table'),
             form: _('Form'),
             'scrambled-list': _('Scrambled list'),
+            trueorfalse: _('True or false'),
         };
     }
 

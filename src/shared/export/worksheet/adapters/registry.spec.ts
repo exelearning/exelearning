@@ -45,6 +45,7 @@ describe('worksheet adapter registry', () => {
             'scrambled-list',
             'select-media-files',
             'sort',
+            'trueorfalse',
             'word-search',
         ]);
     });

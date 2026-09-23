@@ -874,7 +874,7 @@ test.describe('Print iDevices', () => {
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
         // The json activities that still have no paper form. `form` is no longer one of them.
-        const types = ['adaptative-quiz', 'trueorfalse'];
+        const types = ['adaptative-quiz'];
         await page.evaluate(types => {
             const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
             const parent = binding.createPage('JSON exercises');
