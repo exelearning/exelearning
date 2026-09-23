@@ -222,6 +222,7 @@ export default class ModalPrintPreview {
             'select-media-files': _('Select multimedia'),
             'periodic-table': _('Periodic table'),
             form: _('Form'),
+            'scrambled-list': _('Scrambled list'),
         };
     }
 

@@ -458,7 +458,7 @@ describe('WorksheetExporter', () => {
             expect((await exporter.buildModel()).unsupported).toHaveLength(0);
         });
 
-        it.each(['adaptative-quiz', 'trueorfalse', 'true-or-false', 'scrambled-list'])(
+        it.each(['adaptative-quiz', 'trueorfalse', 'true-or-false'])(
             'reports an unsupported %s activity even when its HTML is empty',
             async type => {
                 const exporter = new WorksheetExporter(

@@ -42,6 +42,7 @@ describe('worksheet adapter registry', () => {
             'quick-questions-multiple-choice',
             'relate',
             'rubric',
+            'scrambled-list',
             'select-media-files',
             'sort',
             'word-search',

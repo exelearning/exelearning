@@ -30,6 +30,7 @@ import { PeriodicTableWorksheetAdapter } from './PeriodicTableWorksheetAdapter';
 import { FormWorksheetAdapter } from './FormWorksheetAdapter';
 import { RelateWorksheetAdapter } from './RelateWorksheetAdapter';
 import { RubricWorksheetAdapter } from './RubricWorksheetAdapter';
+import { ScrambledListWorksheetAdapter } from './ScrambledListWorksheetAdapter';
 import { SelectMediaFilesWorksheetAdapter } from './SelectMediaFilesWorksheetAdapter';
 import { ThreeDMolWorksheetAdapter } from './ThreeDMolWorksheetAdapter';
 
@@ -60,6 +61,7 @@ const ADAPTERS: readonly WorksheetAdapter[] = [
     SelectMediaFilesWorksheetAdapter,
     PeriodicTableWorksheetAdapter,
     FormWorksheetAdapter,
+    ScrambledListWorksheetAdapter,
 ];
 
 const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapter.ideviceType, adapter]));
