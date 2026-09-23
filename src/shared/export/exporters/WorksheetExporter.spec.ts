@@ -458,7 +458,7 @@ describe('WorksheetExporter', () => {
             expect((await exporter.buildModel()).unsupported).toHaveLength(0);
         });
 
-        it.each(['adaptative-quiz', 'true-or-false'])(
+        it.each(['true-or-false', 'padlock'])(
             'reports an unsupported %s activity even when its HTML is empty',
             async type => {
                 const exporter = new WorksheetExporter(
@@ -487,8 +487,8 @@ describe('WorksheetExporter', () => {
                         title: 'Mixed exercises',
                         components: [
                             { type: 'guess', content: guessContent() },
-                            { type: 'adaptative-quiz', content: '' },
-                            { type: 'adaptative-quiz', content: '' },
+                            { type: 'padlock', content: '' },
+                            { type: 'padlock', content: '' },
                         ],
                     },
                 ]),
@@ -496,7 +496,7 @@ describe('WorksheetExporter', () => {
 
             const model = await exporter.buildModel();
             expect(model.pages[0].activities).toHaveLength(1);
-            expect(model.unsupported).toEqual([{ ideviceType: 'adaptative-quiz', pageTitle: 'Mixed exercises' }]);
+            expect(model.unsupported).toEqual([{ ideviceType: 'padlock', pageTitle: 'Mixed exercises' }]);
         });
 
         it('reports each type once per page', async () => {

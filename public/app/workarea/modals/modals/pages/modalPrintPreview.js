@@ -224,6 +224,7 @@ export default class ModalPrintPreview {
             form: _('Form'),
             'scrambled-list': _('Scrambled list'),
             trueorfalse: _('True or false'),
+            'adaptative-quiz': _('Adaptative quiz'),
         };
     }
 
