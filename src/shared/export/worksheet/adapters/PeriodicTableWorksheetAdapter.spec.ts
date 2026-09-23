@@ -8,6 +8,8 @@ interface PeriodicFixture {
     groups?: number[];
     number?: number;
     gameType?: number;
+    mode?: number;
+    types?: unknown[];
     /** Leave the field out of the payload entirely, as an older project may have. */
     omit?: 'number' | 'gameType';
     instructionsExe?: string;
@@ -44,7 +46,7 @@ const SPANISH = {
 /** Only the alkali metals, which is six elements and easy to reason about. */
 const ALKALI = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-/** Only the noble gases, four of which record no electronegativity. */
+/** Only the noble gases, seven elements of another colour. */
 const NOBLE = [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0];
 
 function periodicHtml(fixture: PeriodicFixture = {}): string {
@@ -53,7 +55,8 @@ function periodicHtml(fixture: PeriodicFixture = {}): string {
         groups: fixture.groups ?? ALKALI,
         number: fixture.omit === 'number' ? undefined : (fixture.number ?? 6),
         gameType: fixture.omit === 'gameType' ? undefined : (fixture.gameType ?? 2),
-        mode: 0,
+        mode: fixture.mode ?? 0,
+        types: fixture.types,
         instructionsExe: fixture.instructionsExe,
         instructions: fixture.instructions,
         textAfter: fixture.textAfter,
@@ -155,16 +158,20 @@ describe('PeriodicTableWorksheetAdapter', () => {
                 group: 'Metal alcalino',
                 name: 'Litio',
                 mass: '6.941',
-                electronegativity: '0.98',
                 oxidation: ['+1'],
                 configuration: '1s2 2s1',
             });
         });
 
-        it('no electronegativity where the activity records none', () => {
-            const helium = cardsOf({ groups: NOBLE, number: 7 }).find(card => card.number === '2');
+        it('nothing the activity card hides, such as the electronegativity', () => {
+            const [card] = cardsOf({ groups: ALKALI, number: 1 });
 
-            expect(helium?.electronegativity).toBeUndefined();
+            expect(card).not.toHaveProperty('electronegativity');
+        });
+
+        it('the colour the activity gives its group', () => {
+            expect(cardsOf({ groups: ALKALI, number: 6 }).map(card => card.color)).toEqual(Array(6).fill('#dfa5d2'));
+            expect(cardsOf({ groups: NOBLE, number: 7 }).map(card => card.color)).toEqual(Array(7).fill('#c2c6ff'));
         });
 
         it('each oxidation state on its own, as the activity boxes them', () => {
@@ -177,13 +184,12 @@ describe('PeriodicTableWorksheetAdapter', () => {
     });
 
     describe('which field is left blank', () => {
-        it('the symbol, and it says so in the activity own words', () => {
+        it('the symbol', () => {
             const [card] = cardsOf({ gameType: 2 });
 
             expect(card.symbol).toBeNull();
             expect(card.number).not.toBeNull();
             expect(card.name).not.toBeNull();
-            expect(card.asks).toBe('Símbolo');
         });
 
         it('the atomic number', () => {
@@ -191,7 +197,6 @@ describe('PeriodicTableWorksheetAdapter', () => {
 
             expect(card.number).toBeNull();
             expect(card.symbol).not.toBeNull();
-            expect(card.asks).toBe('Número');
         });
 
         it('the name', () => {
@@ -199,7 +204,6 @@ describe('PeriodicTableWorksheetAdapter', () => {
 
             expect(card.name).toBeNull();
             expect(card.symbol).not.toBeNull();
-            expect(card.asks).toBe('Nombre');
         });
 
         it('the atomic number, for a project that never stored which', () => {
@@ -208,7 +212,66 @@ describe('PeriodicTableWorksheetAdapter', () => {
             const [card] = cardsOf({ omit: 'gameType' });
 
             expect(card.number).toBeNull();
-            expect(card.asks).toBe('Número');
+        });
+    });
+
+    describe('in Complete mode, where the author ticks several values at once', () => {
+        const COMPLETE = 1;
+
+        it('leaves blank every value ticked, and prints the rest', () => {
+            // Number, name and group ticked; symbol, configuration and oxidation states not.
+            const [card] = cardsOf({ mode: COMPLETE, types: [1, 1, 0, 1, 0, 0], gameType: 2 });
+
+            expect(card.number).toBeNull();
+            expect(card.name).toBeNull();
+            expect(card.group).toBeNull();
+            expect(card.symbol).not.toBeNull();
+            expect(card.configuration).not.toBeNull();
+            expect(card.oxidation.length).toBeGreaterThan(0);
+        });
+
+        it('keeps the colour and the word for group, as the activity card keeps them', () => {
+            const [card] = cardsOf({ mode: COMPLETE, types: [0, 0, 0, 1, 0, 0] });
+
+            expect(card.groupLabel).toBe('Grupo');
+            expect(card.color).toBe('#dfa5d2');
+        });
+
+        it('honours the two flags the editor offers no switch for, as the runtime does', () => {
+            const [card] = cardsOf({ mode: COMPLETE, types: [0, 0, 1, 0, 1, 1] });
+
+            expect(card.configuration).toBeNull();
+            expect(card.oxidation).toEqual([]);
+            expect(card.symbol).toBeNull();
+            expect(card.number).not.toBeNull();
+        });
+
+        it('ignores the single value gameType names, which the editor hides in this mode', () => {
+            const [card] = cardsOf({ mode: COMPLETE, types: [0, 1, 0, 0, 0, 0], gameType: 2 });
+
+            expect(card.name).toBeNull();
+            expect(card.symbol).not.toBeNull();
+        });
+
+        it('falls back to gameType when nothing is ticked, so the sheet still asks something', () => {
+            for (const types of [undefined, [0, 0, 0, 0, 0, 0], 'not a list']) {
+                const [card] = cardsOf({ mode: COMPLETE, types: types as unknown[], gameType: 1 });
+
+                expect(card.name).toBeNull();
+                expect(card.number).not.toBeNull();
+                expect(card.group).not.toBeNull();
+            }
+        });
+
+        it('is the only mode that reads the ticks', () => {
+            for (const mode of [0, 2]) {
+                const [card] = cardsOf({ mode, types: [1, 1, 0, 1, 0, 0], gameType: 2 });
+
+                expect(card.symbol).toBeNull();
+                expect(card.number).not.toBeNull();
+                expect(card.name).not.toBeNull();
+                expect(card.group).not.toBeNull();
+            }
         });
     });
 
@@ -224,7 +287,6 @@ describe('PeriodicTableWorksheetAdapter', () => {
             const [card] = cardsOf({ msgs: {} });
 
             expect(card.groupLabel).toBe('Group');
-            expect(card.asks).toBe('Symbol');
         });
     });
 

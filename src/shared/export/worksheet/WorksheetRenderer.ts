@@ -9,7 +9,7 @@
  */
 
 import { renderPrintContextScript } from '../printContext';
-import { accentOutline } from './cardColors';
+import { accentOutline, readColor } from './cardColors';
 import { renderMatchingLayoutScript } from './matchingLayout';
 import { escapeText } from './sanitizeHtml';
 import type {
@@ -570,89 +570,106 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     min-width: 25mm;
 }
 
-/* Element cards, one per question, across the sheet and wrapping. Centred so a last row holding
-   two of five still reads as a row. */
+/* Element cards, one per question, across the sheet and wrapping: three to a row. Centred so a last
+   row holding one or two still reads as a row. */
 .worksheet-element-cards {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 4mm;
+    gap: 6mm 5mm;
     margin: 1mm 0 4mm;
     padding: 0;
     list-style: none;
 }
 
-/* Kept whole: half a card on one sheet and half on the next answers nothing. */
+/* The group above the card, as the activity heads its card on a phone. Kept whole: half a card on
+   one sheet and half on the next answers nothing. */
 .worksheet-element-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 42mm;
-    padding: 2mm;
-    border: 1px solid #1a1a1a;
-    text-align: center;
-    line-height: 1.25;
+    gap: 1.5mm;
+    width: 55mm;
     page-break-inside: avoid;
     break-inside: avoid;
 }
 
-/* The only labelled row, as it is the only labelled one on the activity's own card. */
+/* The only labelled value, as it is the only labelled one on the activity's own card. */
 .worksheet-element-group {
-    font-size: 7.5pt;
-    margin-bottom: 1mm;
+    font-size: 9pt;
+    text-align: center;
+}
+
+/* Room after the label to write the group in, when that is what is asked. */
+.worksheet-element-group-blank {
+    display: inline-block;
+    width: 32mm;
+    height: 5mm;
+    vertical-align: bottom;
+    border-bottom: 1px dotted #1a1a1a;
+}
+
+/* The activity's big card, a 180px square with 16px type on screen, scaled to 55mm so every value
+   keeps its place and its size against the others. The group's colour is set on each card; this
+   yellow is the activity's own before a group colours it. The colour is printed as it is — pale
+   enough to cost little toner — so the browser is told not to drop it. */
+.worksheet-element-box {
+    position: relative;
+    box-sizing: border-box;
+    width: 55mm;
+    height: 55mm;
+    border: 1px solid #1a1a1a;
+    background-color: #f9f9a0;
+    font-size: 4.9mm;
+    line-height: 1.2;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.worksheet-element-box > span {
+    position: absolute;
+}
+
+.worksheet-element-mass {
+    top: 0.9mm;
+    left: 1.5mm;
 }
 
 .worksheet-element-number {
-    align-self: flex-start;
-    font-size: 9pt;
+    top: 0;
+    right: 1.5mm;
+    font-size: 1.8em;
 }
 
 .worksheet-element-symbol {
-    font-size: 20pt;
-    font-weight: bold;
-    line-height: 1.1;
+    top: 45%;
+    left: 2.4mm;
+    transform: translateY(-50%);
+    font-size: 4.5em;
+    line-height: 1;
+}
+
+/* Oxidation states in a column down the right, one to a line, as the activity stacks them. */
+.worksheet-element-oxidation {
+    top: 50%;
+    right: 1.5mm;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    transform: translateY(-50%);
+    font-size: 0.8em;
 }
 
 .worksheet-element-name {
-    font-size: 10pt;
-}
-
-.worksheet-element-mass,
-.worksheet-element-negativity,
-.worksheet-element-configuration {
-    font-size: 7.5pt;
+    top: 38.2mm;
+    left: 1.5mm;
+    font-size: 1.2em;
 }
 
 .worksheet-element-configuration {
-    margin-top: 1mm;
-}
-
-/* Oxidation states side by side, as the activity spaces them out. */
-.worksheet-element-oxidation {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1.5mm;
-    font-size: 7.5pt;
-}
-
-/* What the student writes: a rule where the value would be, and under it the activity's own word
-   for what goes there — the word its input offers as a placeholder. */
-.worksheet-element-ask {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    align-self: stretch;
-    gap: 0.5mm;
-}
-
-.worksheet-element-ask .worksheet-line {
-    height: 7mm;
-}
-
-.worksheet-element-ask small {
-    font-size: 7pt;
-    color: #666;
+    bottom: 1.2mm;
+    left: 1.5mm;
+    font-size: 0.8em;
 }
 
 /* An assessment table. Full width and small type, because every cell holds a descriptor the
@@ -1155,34 +1172,42 @@ function renderBoard(board: PrintableBoard, labels: Required<WorksheetLabels>): 
 /**
  * Render the element cards, laid across the sheet and wrapping.
  *
- * Each card follows the one the activity draws on a phone, row for row: the group above, then the
- * number, the symbol, the name and the chemistry under it. Whichever of the three the activity
- * asks for is a rule to write on, with its own word under it — the word its input offers as a
- * placeholder, so the sheet asks in the same terms the screen does.
+ * Each card is the big card the activity draws on a phone, value for value and place for place:
+ * the group above it and the card in the group's colour. Whatever the activity asks for is left
+ * off the card, and the student writes it into the gap where it goes.
  */
 function renderElementCards(cards: PrintableElementCard[]): string {
-    const slot = (value: string | null, className: string, asks: string) =>
-        value === null
-            ? `<span class="${className} worksheet-element-ask">` +
-              `<span class="worksheet-line"></span><small>${escapeText(asks)}</small></span>`
-            : `<span class="${className}">${escapeText(value)}</span>`;
+    const value = (text: string | null, className: string) =>
+        text === null ? '' : `<span class="${className}">${escapeText(text)}</span>`;
 
     const drawn = cards
         .map(card => {
-            let body = `<span class="worksheet-element-group">${escapeText(card.groupLabel)}: ${escapeText(card.group)}</span>`;
-            body += slot(card.number, 'worksheet-element-number', card.asks);
-            body += slot(card.symbol, 'worksheet-element-symbol', card.asks);
-            body += slot(card.name, 'worksheet-element-name', card.asks);
-            body += `<span class="worksheet-element-mass">${escapeText(card.mass)}</span>`;
-            if (card.electronegativity !== undefined)
-                body += `<span class="worksheet-element-negativity">${escapeText(card.electronegativity)}</span>`;
+            // Read rather than trusted, since it lands in a style attribute.
+            const color = readColor(card.color);
+            let box = `<div class="worksheet-element-box"${color ? ` style="background-color:${color}"` : ''}>`;
+            // The order the activity writes its card in.
+            box += value(card.number, 'worksheet-element-number');
+            box += value(card.symbol, 'worksheet-element-symbol');
+            box += value(card.name, 'worksheet-element-name');
+            box += value(card.mass, 'worksheet-element-mass');
             if (card.oxidation.length > 0)
-                body += `<span class="worksheet-element-oxidation">${card.oxidation
+                box += `<span class="worksheet-element-oxidation">${card.oxidation
                     .map(state => `<span>${escapeText(state)}</span>`)
                     .join('')}</span>`;
-            body += `<span class="worksheet-element-configuration">${escapeText(card.configuration)}</span>`;
+            box += value(card.configuration, 'worksheet-element-configuration');
+            box += '</div>';
 
-            return `<li class="worksheet-element-card">${body}</li>`;
+            // The group sits above the card rather than on it, so when it is asked there is no gap
+            // on the card to write it in: it gets a line of its own after the label.
+            const group =
+                card.group === null ? '<span class="worksheet-element-group-blank"></span>' : escapeText(card.group);
+
+            return (
+                '<li class="worksheet-element-card">' +
+                `<span class="worksheet-element-group">${escapeText(card.groupLabel)}: ${group}</span>` +
+                box +
+                '</li>'
+            );
         })
         .join('');
 

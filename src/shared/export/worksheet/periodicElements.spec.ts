@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test';
-import { PERIODIC_ELEMENTS, PERIODIC_GROUPS } from './periodicElements';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { PERIODIC_ELEMENTS, PERIODIC_GROUP_COLORS, PERIODIC_GROUPS } from './periodicElements';
 
 describe('the periodic table as the activity knows it', () => {
     it('carries every element, in atomic number order', () => {
@@ -89,5 +91,31 @@ describe('the periodic table as the activity knows it', () => {
                 for (const atomicNumber of group.numbers)
                     expect(PERIODIC_ELEMENTS[atomicNumber - 1].groupKey).toBe(byName[group.name]);
         });
+    });
+});
+
+describe('the colour of each group', () => {
+    const exportDir = path.join(process.cwd(), 'public/files/perm/idevices/base/periodic-table/export');
+
+    it('is the one the activity paints it, read from its own files', () => {
+        // The script maps each group's wording key to a class, and the stylesheet the class to a
+        // colour. Reading both keeps the port from drifting if either is restyled.
+        const script = readFileSync(path.join(exportDir, 'periodic-table.js'), 'utf8');
+        const styles = readFileSync(path.join(exportDir, 'periodic-table.css'), 'utf8');
+        const classes = [...script.matchAll(/\[mOptions\.msgs\.(msg\w+)\]:\s*'(PTP-[\w-]+)'/g)];
+        const colourOf = (className: string) =>
+            new RegExp(`\\.${className}\\s*\\{[^}]*?background-color:\\s*(#[0-9a-f]{6})`, 'i')
+                .exec(styles)?.[1]
+                ?.toLowerCase();
+
+        expect(classes).toHaveLength(10);
+        expect(Object.fromEntries(classes.map(([, key, className]) => [key, colourOf(className)]))).toEqual({
+            ...PERIODIC_GROUP_COLORS,
+        });
+    });
+
+    it('is known for every element', () => {
+        for (const element of PERIODIC_ELEMENTS)
+            expect(PERIODIC_GROUP_COLORS[element.groupKey]).toMatch(/^#[0-9a-f]{6}$/);
     });
 });

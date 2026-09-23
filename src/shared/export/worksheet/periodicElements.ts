@@ -1237,3 +1237,23 @@ export const PERIODIC_GROUPS: readonly { readonly name: string; readonly numbers
     { name: 'Lanthanides', numbers: [57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71] },
     { name: 'Actinides', numbers: [89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103] },
 ];
+
+/**
+ * The colour the activity gives each group's cards, keyed like `PeriodicElement.groupKey`.
+ *
+ * Ported from the activity's stylesheet, where `getClassColor` maps each group to a `PTP-*` class
+ * and the class to a background. They are pastels, light enough to fill a printed card without
+ * burying its black text or much toner.
+ */
+export const PERIODIC_GROUP_COLORS: Readonly<Record<string, string>> = {
+    msgAlkaliMetal: '#dfa5d2',
+    msgAlkalineEarthMetal: '#f7bd9c',
+    msgTransitionMetal: '#fff7a2',
+    msgPostTransitionMetal: '#ffd5c2',
+    msgMetalloid: '#c2ffd8',
+    msgNonMetal: '#c2eeff',
+    msgHalogen: '#ffc2d6',
+    msgNobleGas: '#c2c6ff',
+    msgLanthanide: '#b4ffa7',
+    msgActinide: '#affffb',
+};

@@ -170,27 +170,30 @@ export type PrintableBoard =
     | { kind: 'elementCards'; cards: PrintableElementCard[] };
 
 /**
- * One element as the activity shows it on a phone, with the field it asks for left blank.
+ * One element as the activity shows it, with whatever it asks for left blank.
  *
- * The rows carry no labels because the activity's card carries none either. Only the group is
- * labelled, as it is there, and the blank says which of the three it wants.
+ * The values carry no labels because the activity's card carries none either. Only the group is
+ * labelled, as it is there. What is asked for is written into the gap it leaves.
+ *
+ * It carries what that card shows and nothing more. The activity keeps each element's
+ * electronegativity too, but its card hides the row that would show it.
  */
 export interface PrintableElementCard {
     /** The activity's word for 'group', which it prints before the group's name. */
     groupLabel: string;
-    group: string;
-    /** Atomic number, symbol and name. Whichever the activity asks for is null. */
+    /** Null when the group is asked for. */
+    group: string | null;
+    /** Background the activity gives the group's cards, as `#rrggbb`. */
+    color: string;
+    /** Null when asked for: one of these, or several at once when the activity completes cards. */
     number: string | null;
     symbol: string | null;
     name: string | null;
-    /** The activity's word for the one being asked, as its own input offers it. */
-    asks: string;
     mass: string;
-    /** Absent for the noble gases the activity records none for. */
-    electronegativity?: string;
-    /** Oxidation states, one per entry, as the activity draws them. */
+    /** Oxidation states, one per entry, as the activity draws them. Empty when it hides them. */
     oxidation: string[];
-    configuration: string;
+    /** Null when the activity hides it. */
+    configuration: string | null;
 }
 
 /** One row of a table of sums. Either side may be blank, and that is what is asked. */
