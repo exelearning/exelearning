@@ -13,13 +13,19 @@
  * - This is a `json` activity: the questions live in the component's properties.
  * - `typeSelect` says what a question asks, in the runtime's own words: 0 select, 1 sort, 2 word.
  *   The three are printed as options to tick, options to number, and boxes to write a word in.
+ * - **A word question turns the usual fields around**, and its runtime says so in as many words:
+ *   `question` is the word the learner types and `solutionWord` is the definition shown above the
+ *   input. So the definition is the prompt and the word is what the boxes are built from — the
+ *   other way round, the sheet would print the answer and ask for the definition.
+ * - Older projects keep the question's text in `text` rather than `question`, and their options as
+ *   plain strings rather than `{ text, audio }`. Both shapes are read, as the runtime reads them.
  * - A sort question stores its options **in the right order**, so the sheet shuffles them exactly
  *   as Scrambled list does: printed in stored order, the answer would be the list itself.
  * - `numberOptions` says how many of the six option slots are in play, and `percentageShow` how
  *   much of a word to give away. Both are the author's settings and both are followed.
  * - `type` is 1 when the question carries a picture, which is printed with it.
- * - `solutionMulti`, `solutionOrder` and the hidden part of `solutionWord` are never printed.
- * - Option text is plain text: the activity escapes it rather than rendering it as markup.
+ * - `solutionMulti`, `solutionOrder` and the hidden letters of a word answer are never printed.
+ * - Prompts and options are plain text: the activity escapes them rather than rendering markup.
  */
 
 import { buildAnswerBoxes, shuffleWith, type RandomSource } from '../questionSelection';
@@ -56,18 +62,30 @@ interface QuizQuestion {
     url?: string;
     author?: string;
     alt?: string;
+    /** The question's text — or, in a word question, the word the learner types. */
     question?: string;
+    /** Where an older project keeps the question's text instead. */
+    text?: string;
     /** How many of the option slots are in play. */
     numberOptions?: number;
-    options?: QuizOption[];
-    /** The word to write, of which `percentageShow` is given away. */
+    /** `{ text, audio }` today; a plain string in an older project. */
+    options?: (QuizOption | string)[];
+    /** In a word question, the definition shown above the input. */
     solutionWord?: string;
     percentageShow?: number;
+}
+
+/** What the question asks, whichever field this project keeps it in. */
+function wordingOf(question: QuizQuestion): string {
+    return question.question || question.text || '';
 }
 
 /** The Adaptative quiz properties. */
 interface AdaptativeQuizProperties {
     questionsGame?: QuizQuestion[];
+    /** Older projects keep the question list here. */
+    questions?: QuizQuestion[];
+    caseSensitive?: boolean;
     eXeFormInstructions?: string;
     instructions?: string;
     eXeIdeviceTextAfter?: string;
@@ -83,10 +101,13 @@ function optionsOf(question: QuizQuestion): string[] {
     const stored = Array.isArray(question.options) ? question.options : [];
     const inPlay = typeof question.numberOptions === 'number' ? Math.max(0, question.numberOptions) : stored.length;
 
-    return stored
-        .slice(0, inPlay)
-        .map(option => escapeText(String(option?.text ?? '').trim()))
-        .filter(text => text !== '');
+    return (
+        stored
+            .slice(0, inPlay)
+            // An older project stores each option as a plain string rather than as an object.
+            .map(option => escapeText(String(typeof option === 'string' ? option : (option?.text ?? '')).trim()))
+            .filter(text => text !== '')
+    );
 }
 
 /**
@@ -94,9 +115,10 @@ function optionsOf(question: QuizQuestion): string[] {
  *
  * @returns The answer, or null when there is nothing for the student to fill in
  */
-function buildAnswer(question: QuizQuestion, random: RandomSource): PrintableAnswer | null {
+function buildAnswer(question: QuizQuestion, random: RandomSource, caseSensitive: boolean): PrintableAnswer | null {
     if (question.typeSelect === ASK_WORD) {
-        const groups = buildAnswerBoxes(question.solutionWord, question.percentageShow, false, random);
+        // The word is in `question`, not in `solutionWord`: see the note at the top.
+        const groups = buildAnswerBoxes(wordingOf(question), question.percentageShow, caseSensitive, random);
 
         return groups.length > 0 ? { kind: 'characterBoxes', groups } : null;
     }
@@ -114,9 +136,10 @@ function buildAnswer(question: QuizQuestion, random: RandomSource): PrintableAns
 }
 
 /** One question: its words, its picture if it has one, then the answer space. */
-function buildQuestion(question: QuizQuestion, random: RandomSource): PrintableItem | null {
-    const prompt = sanitizeHtml(question.question);
-    const answer = buildAnswer(question, random);
+function buildQuestion(question: QuizQuestion, random: RandomSource, caseSensitive: boolean): PrintableItem | null {
+    // A word question asks its definition and answers with the word, so the two swap places.
+    const prompt = escapeText(question.typeSelect === ASK_WORD ? question.solutionWord : wordingOf(question)).trim();
+    const answer = buildAnswer(question, random, caseSensitive);
 
     // A question needs something to ask and somewhere to answer.
     if (!prompt || !answer) return null;
@@ -139,11 +162,12 @@ export const AdaptativeQuizWorksheetAdapter: WorksheetAdapter = {
 
     build(_html: string, options: WorksheetAdapterOptions = {}): PrintableActivity | null {
         const data = (options.properties ?? {}) as AdaptativeQuizProperties;
-        if (!Array.isArray(data.questionsGame)) return null;
+        const questions = Array.isArray(data.questionsGame) ? data.questionsGame : data.questions;
+        if (!Array.isArray(questions)) return null;
 
         const random: RandomSource = options.random ?? Math.random;
-        const items = data.questionsGame.flatMap(question => {
-            const item = buildQuestion(question ?? {}, random);
+        const items = questions.flatMap(question => {
+            const item = buildQuestion(question ?? {}, random, data.caseSensitive === true);
             if (item) return [item];
             options.onOmission?.('invalid-data');
             return [];

@@ -3,12 +3,7 @@ import type { PrintableActivity } from '../types';
 import { ScrambledListWorksheetAdapter } from './ScrambledListWorksheetAdapter';
 
 /** The steps of the scientific method, as a real project stores them: in the right order. */
-const STEPS = [
-    'Observa el fenómeno',
-    'Plantea una pregunta',
-    'Formula una hipótesis',
-    'Diseña un experimento',
-];
+const STEPS = ['Observa el fenómeno', 'Plantea una pregunta', 'Formula una hipótesis', 'Diseña un experimento'];
 
 function properties(overrides: Record<string, unknown> = {}): Record<string, unknown> {
     return { typeGame: 'sortableList', options: STEPS, instructions: '', textAfter: '', ...overrides };
@@ -115,5 +110,53 @@ describe('ScrambledListWorksheetAdapter', () => {
         it('skips an activity of one element, which is not an ordering', () => {
             expect(build({ options: ['Sólo uno'] })).toBeNull();
         });
+    });
+});
+
+describe('ScrambledListWorksheetAdapter and the shapes older projects wrapped an element in', () => {
+    const elementsOf = (options: unknown[]) => {
+        const activity = ScrambledListWorksheetAdapter.build('', {
+            properties: { options, instructions: '', textAfter: '' },
+            random: () => 0.42,
+        });
+        const answer = activity?.items[0]?.answer;
+        if (answer?.kind !== 'options') throw new Error('Expected elements to order');
+
+        return [...answer.labels].sort();
+    };
+
+    it('reads one kept in an object, under any of the names the activity accepts', () => {
+        // `normalizeOptionItem` tries text, option, content, html, value, label, title, name.
+        expect(elementsOf([{ text: 'Uno' }, { label: 'Dos' }, { value: 'Tres' }])).toEqual(['Dos', 'Tres', 'Uno']);
+    });
+
+    it('reads one kept in an array, taking its first entry with anything in it', () => {
+        expect(elementsOf([['', 'Uno'], ['Dos']])).toEqual(['Dos', 'Uno']);
+    });
+
+    it('still reads the plain strings a project saves today', () => {
+        expect(elementsOf(['Uno', 'Dos'])).toEqual(['Dos', 'Uno']);
+    });
+
+    it('drops a wrapper with nothing in it', () => {
+        expect(elementsOf(['Uno', {}, { other: '' }, [], null, false, 'Dos'])).toEqual(['Dos', 'Uno']);
+    });
+
+    it('falls back to other own keys, including nested wrappers', () => {
+        expect(elementsOf([{ other: 'Uno' }, { text: '', extra: { custom: ['', 'Dos'] } }])).toEqual(['Dos', 'Uno']);
+    });
+
+    it('prefers known wrapper keys over other keys regardless of insertion order', () => {
+        expect(
+            elementsOf([
+                { other: 'Discarded', label: 'Uno' },
+                { extra: 'Discarded', text: 'Dos' },
+            ]),
+        ).toEqual(['Dos', 'Uno']);
+    });
+
+    it('ignores inherited values when choosing an element', () => {
+        const option = Object.assign(Object.create({ text: 'Inherited', extra: 'Inherited' }), { other: 'Uno' });
+        expect(elementsOf([option, 'Dos'])).toEqual(['Dos', 'Uno']);
     });
 });

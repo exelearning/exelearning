@@ -92,6 +92,68 @@ test.describe('Print iDevices', () => {
     test.describe.configure({ mode: 'serial' });
 
     for (const mode of ['idevices', 'in-place', 'appendix']) {
+        test(`prints literal legacy quiz prompts, case-sensitive hints and wrapped lists in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Legacy worksheet text');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            await page.evaluate(() => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Legacy activities');
+                const components = [
+                    {
+                        type: 'adaptative-quiz',
+                        properties: {
+                            caseSensitive: true,
+                            questions: [
+                                { text: 'Is A<B true?', options: ['Yes', 'No'] },
+                                {
+                                    typeSelect: 2,
+                                    question: 'pH',
+                                    solutionWord: 'Acidity < 7 & <script>alert(1)</script>',
+                                    percentageShow: 100,
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        type: 'scrambled-list',
+                        properties: { options: [{ other: 'First' }, { other: ['Second'] }] },
+                    },
+                ];
+                for (const component of components) {
+                    const block = binding.createBlock(parent.id);
+                    binding.createComponent(parent.id, block, component.type, {
+                        htmlContent: '',
+                        jsonProperties: JSON.stringify(component.properties),
+                    });
+                }
+            });
+
+            await openPrintDialog(page);
+            const { frame } = await choosePrintOption(page, mode);
+            const quiz = frame.locator('.worksheet-activity[data-idevice="adaptative-quiz"]');
+            await expect(quiz.locator('.worksheet-prompt')).toHaveText([
+                'Is A<B true?',
+                'Acidity < 7 & <script>alert(1)</script>',
+            ]);
+            await expect(quiz.locator('.worksheet-option-label')).toHaveText(['Yes', 'No']);
+            await expect(quiz.locator('.worksheet-box')).toHaveText(['p', 'H']);
+            await expect(quiz.locator('script')).toHaveCount(0);
+
+            const list = frame.locator('.worksheet-activity[data-idevice="scrambled-list"]');
+            await expect(list.locator('.worksheet-option-label')).toHaveCount(2);
+            expect((await list.locator('.worksheet-option-label').allTextContents()).sort()).toEqual([
+                'First',
+                'Second',
+            ]);
+            await expect(list.locator('.worksheet-option-line')).toHaveCount(2);
+        });
+    }
+
+    for (const mode of ['idevices', 'in-place', 'appendix']) {
         test(`prints safe form labels, selected card images and stored element groups in ${mode} mode`, async ({
             authenticatedPage: page,
             createProject,
@@ -204,7 +266,10 @@ test.describe('Print iDevices', () => {
             // the activity was.
             if (mode === 'idevices')
                 await expect(frame.locator('.worksheet-unsupported')).toContainText('an-activity-with-no-adapter');
-            else await expect(frame.locator('.worksheet-activity-unprintable[data-idevice="an-activity-with-no-adapter"]')).toHaveCount(1);
+            else
+                await expect(
+                    frame.locator('.worksheet-activity-unprintable[data-idevice="an-activity-with-no-adapter"]'),
+                ).toHaveCount(1);
         });
     }
 

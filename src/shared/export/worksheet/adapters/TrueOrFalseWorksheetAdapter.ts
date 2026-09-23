@@ -32,9 +32,25 @@ interface TrueOrFalseQuestion {
     feedback?: string;
 }
 
+/** One statement as a project saved before the migration keeps it. */
+interface LegacyQuestion {
+    /** Where the statement is, under the questionnaire shape. */
+    baseText?: string;
+    hint?: string;
+    feedback?: string;
+}
+
 /** The True or false properties. */
 interface TrueOrFalseProperties {
     questionsGame?: TrueOrFalseQuestion[];
+    /**
+     * Where a project saved before the migration keeps its statements.
+     *
+     * The editor turns these into `questionsGame` when it opens one, but nothing rewrites the
+     * stored copy until the author saves — so a project that has only ever been read still has
+     * them here, and printing it would otherwise find nothing.
+     */
+    questionsData?: LegacyQuestion[];
     questionsRandom?: boolean;
     /** Share of the questions to ask, stored as the editor's input yields it. */
     percentageQuestions?: unknown;
@@ -52,13 +68,19 @@ export const TrueOrFalseWorksheetAdapter: WorksheetAdapter = {
 
     build(_html: string, options: WorksheetAdapterOptions = {}): PrintableActivity | null {
         const data = (options.properties ?? {}) as TrueOrFalseProperties;
-        if (!Array.isArray(data.questionsGame)) return null;
+        // The migration the editor runs on load, done here on the way to the page.
+        const questions: TrueOrFalseQuestion[] = Array.isArray(data.questionsGame)
+            ? data.questionsGame
+            : Array.isArray(data.questionsData)
+              ? data.questionsData.map(entry => ({ question: entry?.baseText, suggestion: entry?.hint }))
+              : [];
+        if (questions.length === 0) return null;
 
         const msgs = data.msgs ?? {};
         const word = (key: string, fallback: string) => escapeText((msgs[key] ?? '').trim() || fallback);
         const labels = [word('msgTrue', 'True'), word('msgFalse', 'False')];
 
-        const items = data.questionsGame.flatMap(question => {
+        const items = questions.flatMap(question => {
             const prompt = sanitizeHtml(question?.question);
             if (!prompt) {
                 options.onOmission?.('invalid-data');

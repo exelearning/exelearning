@@ -54,6 +54,46 @@ function documentOf(pageSpecs: PageSpec[], metadata: Record<string, unknown> = {
 }
 
 describe('WorksheetExporter', () => {
+    it('prints legacy quiz prompts literally, preserves answer case and reads arbitrary list wrappers', async () => {
+        const result = await new WorksheetExporter(
+            documentOf([
+                {
+                    components: [
+                        {
+                            type: 'adaptative-quiz',
+                            properties: {
+                                caseSensitive: true,
+                                questions: [
+                                    { text: 'Is A<B true?', options: ['Yes', 'No'] },
+                                    {
+                                        typeSelect: 2,
+                                        question: 'pH',
+                                        solutionWord: 'Acidity < 7 & <script>alert(1)</script>',
+                                        percentageShow: 100,
+                                    },
+                                ],
+                            },
+                        },
+                        {
+                            type: 'scrambled-list',
+                            properties: { options: [{ other: 'First' }, { other: ['Second'] }] },
+                        },
+                    ],
+                },
+            ]),
+        ).generate({ random: () => 0 });
+
+        expect(result.success).toBe(true);
+        expect(result.html).toContain('Is A&lt;B true?');
+        expect(result.html).toContain('Acidity &lt; 7 &amp; &lt;script&gt;alert(1)&lt;/script&gt;');
+        expect(result.html).not.toContain('<script>alert(1)</script>');
+        expect(result.html).toContain('worksheet-box worksheet-box-filled">p</span>');
+        expect(result.html).toContain('worksheet-box worksheet-box-filled">H</span>');
+        expect(result.html).toContain('First');
+        expect(result.html).toContain('Second');
+        result.dispose?.();
+    });
+
     it('exports safe form labels, matched card images and all periodic groups on the server', async () => {
         const pack = (prefix: string, data: unknown) =>
             `<div class="${prefix}-DataGame">${encryptDataGame(JSON.stringify(data))}</div>`;
@@ -459,8 +499,8 @@ describe('WorksheetExporter', () => {
         });
 
         // A type no iDevice answers to: every one that exists now has a paper form, and this test is
-    // about what happens to an activity without one rather than about any particular activity.
-    it.each(['true-or-false', 'an-activity-with-no-adapter'])(
+        // about what happens to an activity without one rather than about any particular activity.
+        it.each(['true-or-false', 'an-activity-with-no-adapter'])(
             'reports an unsupported %s activity even when its HTML is empty',
             async type => {
                 const exporter = new WorksheetExporter(
@@ -498,7 +538,9 @@ describe('WorksheetExporter', () => {
 
             const model = await exporter.buildModel();
             expect(model.pages[0].activities).toHaveLength(1);
-            expect(model.unsupported).toEqual([{ ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Mixed exercises' }]);
+            expect(model.unsupported).toEqual([
+                { ideviceType: 'an-activity-with-no-adapter', pageTitle: 'Mixed exercises' },
+            ]);
         });
 
         it('reports each type once per page', async () => {
@@ -511,7 +553,10 @@ describe('WorksheetExporter', () => {
                             { type: 'an-activity-with-no-adapter', content: unadaptedContent() },
                         ],
                     },
-                    { title: 'Otra', components: [{ type: 'an-activity-with-no-adapter', content: unadaptedContent() }] },
+                    {
+                        title: 'Otra',
+                        components: [{ type: 'an-activity-with-no-adapter', content: unadaptedContent() }],
+                    },
                 ]),
             );
 

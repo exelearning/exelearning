@@ -10,7 +10,7 @@ function question(overrides: Record<string, unknown> = {}): Record<string, unkno
         url: '',
         author: '',
         alt: '',
-        question: '<p>¿Qué orgánulo guarda el material genético?</p>',
+        question: '¿Qué orgánulo guarda el material genético?',
         numberOptions: 4,
         options: [
             { text: 'Mitocondria', audio: '' },
@@ -99,7 +99,7 @@ describe('AdaptativeQuizWorksheetAdapter', () => {
             question({
                 typeSelect: 1,
                 numberOptions: 4,
-                question: '<p>Ordena del más sencillo al más complejo</p>',
+                question: 'Ordena del más sencillo al más complejo',
                 options: [
                     { text: 'Célula' },
                     { text: 'Tejido' },
@@ -135,9 +135,10 @@ describe('AdaptativeQuizWorksheetAdapter', () => {
         const word = (overrides: Record<string, unknown> = {}) =>
             question({
                 typeSelect: 2,
-                question: '<p>Doble circulación</p>',
+                // The word is in `question` and the definition in `solutionWord`: the runtime says so.
+                question: 'Pasa dos veces',
                 options: [],
-                solutionWord: 'Pasa dos veces',
+                solutionWord: 'Doble circulación',
                 percentageShow: 0,
                 ...overrides,
             });
@@ -164,15 +165,74 @@ describe('AdaptativeQuizWorksheetAdapter', () => {
             expect(answer.groups.flat().every(box => box === null)).toBe(true);
         });
 
+        it('asks the definition and answers with the word, not the other way round', () => {
+            // The runtime is explicit: `question` is the word the learner types and
+            // `solutionWord` the definition above the input. Reversed, the sheet would print the
+            // answer as the question and ask the student to write out the definition.
+            const [item] = build({ questionsGame: [word({ percentageShow: 100 })] })!.items;
+            const answer = item.answer;
+            if (answer?.kind !== 'characterBoxes') throw new Error('Expected boxes');
+
+            expect(item.prompt).toBe('Doble circulación');
+            // The default ignores case, so revealed letters are capitalized.
+            expect(answer.groups.flat().join('')).toBe('PASADOSVECES');
+        });
+
+        it.each([true, false])('honours caseSensitive=%s for revealed letters', caseSensitive => {
+            const [item] = build(
+                { caseSensitive, questionsGame: [word({ question: 'pH', percentageShow: 50 })] },
+                { random: () => 0 },
+            )!.items;
+
+            expect(item.answer).toEqual({ kind: 'characterBoxes', groups: [[caseSensitive ? 'p' : 'P', null]] });
+        });
+
         it('leaves out a question with no word to write', () => {
             const omissions: UnsupportedActivity['reason'][] = [];
             const activity = AdaptativeQuizWorksheetAdapter.build('', {
-                properties: properties({ questionsGame: [word({ solutionWord: '' })] }),
+                properties: properties({ questionsGame: [word({ question: '' })] }),
                 onOmission: (reason: UnsupportedActivity['reason']) => omissions.push(reason),
             });
 
             expect(activity).toBeNull();
             expect(omissions).toEqual(['invalid-data']);
+        });
+    });
+
+    describe('a project saved the old way', () => {
+        it('reads questions when questionsGame is absent or malformed', () => {
+            for (const questionsGame of [undefined, null, {}]) {
+                const activity = build({
+                    questionsGame,
+                    questions: [question({ question: 'Legacy question', options: ['Yes', 'No'], numberOptions: 2 })],
+                });
+
+                expect(activity?.items).toHaveLength(1);
+                expect(activity?.items[0].prompt).toBe('Legacy question');
+                expect(labelsOf(activity!.items[0])).toEqual(['Yes', 'No']);
+            }
+        });
+
+        it('prefers questionsGame, including an explicitly empty list', () => {
+            const legacy = [question({ question: 'Stale question' })];
+            expect(build({ questions: legacy })?.items[0].prompt).toBe('¿Qué orgánulo guarda el material genético?');
+            expect(build({ questionsGame: [], questions: legacy })).toBeNull();
+        });
+
+        it('keeps its question text under another name, and it is still read', () => {
+            const [item] = build({
+                questionsGame: [question({ question: undefined, text: 'Del campo antiguo' })],
+            })!.items;
+
+            expect(item.prompt).toBe('Del campo antiguo');
+        });
+
+        it('stores its options as plain strings, and they are still offered', () => {
+            const [item] = build({
+                questionsGame: [question({ numberOptions: 3, options: ['Uno', 'Dos', 'Tres', 'Borrador'] })],
+            })!.items;
+
+            expect(labelsOf(item)).toEqual(['Uno', 'Dos', 'Tres']);
         });
     });
 
@@ -193,16 +253,21 @@ describe('AdaptativeQuizWorksheetAdapter', () => {
 
     it('prints option text literally, the activity treating it as text', () => {
         const [item] = build({
-            questionsGame: [question({ numberOptions: 2, options: [{ text: 'A<B' }, { text: '<img src=x onerror=1>' }] })],
+            questionsGame: [
+                question({ numberOptions: 2, options: [{ text: 'A<B' }, { text: '<img src=x onerror=1>' }] }),
+            ],
         })!.items;
 
         expect(labelsOf(item)).toEqual(['A&lt;B', '&lt;img src=x onerror=1&gt;']);
     });
 
-    it('strips anything unsafe the author left in a question', () => {
-        const [item] = build({ questionsGame: [question({ question: '<p>Hola<script>alert(1)</script></p>' })] })!.items;
+    it.each([0, 1, 2])('preserves literal text in the prompt of question type %s', typeSelect => {
+        const text = 'Is A<B & C>D? <script>alert(1)</script>';
+        const [item] = build({
+            questionsGame: [question({ typeSelect, question: typeSelect === 2 ? 'Yes' : text, solutionWord: text })],
+        })!.items;
 
-        expect(item.prompt).toBe('<p>Hola</p>');
+        expect(item.prompt).toBe('Is A&lt;B &amp; C&gt;D? &lt;script&gt;alert(1)&lt;/script&gt;');
     });
 
     describe('instructions and closing text', () => {
@@ -230,7 +295,7 @@ describe('AdaptativeQuizWorksheetAdapter', () => {
             const omissions: UnsupportedActivity['reason'][] = [];
             const activity = AdaptativeQuizWorksheetAdapter.build('', {
                 properties: properties({
-                    questionsGame: [question(), question({ question: '' }), question({ options: [] })],
+                    questionsGame: [question(), question({ question: '   ' }), question({ options: [] })],
                 }),
                 random: () => 0.42,
                 onOmission: (reason: UnsupportedActivity['reason']) => omissions.push(reason),
