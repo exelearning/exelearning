@@ -287,6 +287,15 @@ describe('AzQuizGameWorksheetAdapter', () => {
         expect(activity?.unnumbered).toBe(true);
     });
 
+    it('sets its clues in two columns, there being up to one per letter', () => {
+        const activity = AzQuizGameWorksheetAdapter.build(
+            roscoHtml({ letters: 'AB', wordsGame: [word({ word: 'ANT' }), word({ word: 'BEE' })] }),
+            {},
+        );
+
+        expect(activity?.twoColumns).toBe(true);
+    });
+
     describe('robustness', () => {
         it('returns null for an empty, missing or corrupt payload', () => {
             expect(AzQuizGameWorksheetAdapter.build(roscoHtml({ wordsGame: [] }), {})).toBeNull();

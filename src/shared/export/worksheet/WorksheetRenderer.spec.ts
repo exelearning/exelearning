@@ -755,6 +755,45 @@ describe('questions that carry their own label', () => {
     });
 });
 
+describe('questions set in two columns', () => {
+    const items = [
+        { prompt: 'A. Starts with A', answer: { kind: 'characterBoxes' as const, groups: emptyBoxes(3) } },
+        { prompt: 'B. Starts with B', answer: { kind: 'characterBoxes' as const, groups: emptyBoxes(3) } },
+    ];
+
+    it('are one list, so they keep their order, in two columns', () => {
+        const html = renderActivityFragment(activity({ unnumbered: true, twoColumns: true, items }));
+
+        expect(html).toContain('<ol class="worksheet-items worksheet-items-plain worksheet-items-columns">');
+        expect(html.indexOf('Starts with A')).toBeLessThan(html.indexOf('Starts with B'));
+    });
+
+    it('keep their numbers when the activity numbers them', () => {
+        expect(renderActivityFragment(activity({ twoColumns: true, items }))).toContain(
+            '<ol class="worksheet-items worksheet-items-columns">',
+        );
+    });
+
+    it('are left in one column unless the activity asks for two', () => {
+        expect(renderActivityFragment(activity({ items }))).not.toContain('worksheet-items-columns');
+    });
+
+    it('run down the first column and on into the second, parted by a faint rule', () => {
+        const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-items-columns {')[1].split('}')[0];
+
+        expect(rule).toContain('column-count: 2');
+        expect(rule).toContain('column-rule: 1px solid #ccc');
+    });
+
+    it('let a long answer carry its boxes on to the next line rather than run off the column', () => {
+        const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-items-columns .worksheet-box-group {')[1].split(
+            '}',
+        )[0];
+
+        expect(rule).toContain('flex-wrap: wrap');
+    });
+});
+
 describe('writing lines and cards to be ordered', () => {
     const answered = (answer: unknown) =>
         renderActivityFragment(activity({ ideviceType: 'sort', items: [{ prompt: 'x', answer } as never] }));

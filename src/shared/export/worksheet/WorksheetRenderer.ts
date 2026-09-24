@@ -164,6 +164,20 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     list-style: none;
 }
 
+/* Many short questions in two columns, in reading order: down the first and on into the second.
+   Only to save paper, so a faint rule is all that parts them. */
+.worksheet-items-columns {
+    column-count: 2;
+    column-gap: 10mm;
+    column-rule: 1px solid #ccc;
+}
+
+/* Half a sheet is narrower than a long answer's row of boxes, so there a word's boxes may carry on
+   to the next line rather than run off the column. */
+.worksheet-items-columns .worksheet-box-group {
+    flex-wrap: wrap;
+}
+
 /* Keep a question and its answer space on the same sheet. */
 .worksheet-item {
     margin-bottom: 6mm;
@@ -1724,7 +1738,9 @@ function renderActivity(activity: PrintableActivity, labels: Required<WorksheetL
     // crossword numbers its clues after the grid. An activity whose questions already carry a
     // label of their own, such as the letter of an alphabet game, is never numbered on top of it.
     const numbered = !activity.unnumbered && (activity.items.length > 1 || activity.items[0]?.number !== undefined);
-    const listClass = numbered ? 'worksheet-items' : 'worksheet-items worksheet-items-plain';
+    const listClass =
+        (numbered ? 'worksheet-items' : 'worksheet-items worksheet-items-plain') +
+        (activity.twoColumns ? ' worksheet-items-columns' : '');
 
     // An activity whose whole exercise is its board, such as a matching one, has no questions.
     if (activity.items.length > 0) {

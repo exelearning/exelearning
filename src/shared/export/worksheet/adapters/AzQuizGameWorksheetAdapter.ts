@@ -194,6 +194,8 @@ export const AzQuizGameWorksheetAdapter: WorksheetAdapter = {
             board: { kind: 'letterRing', letters: ring },
             // Each clue is labelled by its letter, so the list must not number them as well.
             unnumbered: true,
+            // Up to 27 short clues, which in one column would run over several sheets.
+            twoColumns: true,
             items,
         };
 

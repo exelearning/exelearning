@@ -360,6 +360,11 @@ export interface PrintableActivity {
      * not number them a second time.
      */
     unnumbered?: boolean;
+    /**
+     * Set the questions in two columns, running down the first and on into the second, to save
+     * paper where they are many and short.
+     */
+    twoColumns?: boolean;
     items: PrintableItem[];
     /** Author's closing text, as sanitised HTML. */
     textAfter?: string;
