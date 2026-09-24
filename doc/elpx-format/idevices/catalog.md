@@ -131,7 +131,11 @@ A video player with inline quiz questions triggered at time-coded moments. Game 
 
 ### `interactive-video`
 
-A video annotated with interactive slides (text annotations, single-choice questions, images) that appear at specified timestamps. JSON data is embedded inside a `<script id="exe-interactive-video-contents" type="application/json">` block (or, in older exports, a `<div id="exe-interactive-video-contents" style="display:none">` block) within `htmlView`. `jsonProperties` stores a separately maintained editor state. See [patterns.md#embedded-script-json](patterns.md#embedded-script-json).
+A video annotated with timed interactions (notes, questions, pause points and jumps) that appear at specified timestamps.
+
+**As of v2 (schema version 1)** the iDevice is a `component-type=json` component: the authored data is a normalized, versioned document stored in `jsonProperties` and rendered at export via `renderView`. Shape: `{ schemaVersion, video{provider,url,videoId,posterAssetId,captions[]}, interactions[{id,type,time,duration,pause,title,body,question,jump}], completion{mode,requiredScore}, scorm{enabled,weight}, meta{legacy} }`. Times are numbers (seconds); every interaction has a stable id.
+
+**Backward compatibility:** legacy content stored the data as a `<script id="exe-interactive-video-contents" type="application/json">` island (or, in older exports, a `<div id="exe-interactive-video-contents" style="display:none">`) inside `htmlView`. This is migrated **once, on open** in the editor (idempotent, lossless — unknown interaction types are preserved verbatim). Already-generated exports embed the old runtime and keep working unchanged. See [the changes/2147-interactive-video-refactor design Interactive Video iDevice refactor](../../architecture/sdd/the changes/2147-interactive-video-refactor design-interactive-video-refactor.md).
 
 ### `form`
 
