@@ -124,7 +124,7 @@ describe('worksheet review regressions', () => {
         });
     }
 
-    it('H03 prints the direction and the shared number for a common start', () => {
+    it('H03 tells apart two clues sharing a start by the column each is set in', () => {
         const activity = CrosswordWorksheetAdapter.build(
             content('crucigrama', {
                 wordsGame: [
@@ -145,8 +145,12 @@ describe('worksheet review regressions', () => {
             },
             { across: 'Horizontal', down: 'Vertical' },
         );
-        expect(html).toContain('>Horizontal</strong>');
-        expect(html).toContain('>Vertical</strong>');
+        const columns = html.slice(html.indexOf('<body>')).split('class="worksheet-clue-column"').slice(1);
+        expect(columns).toHaveLength(2);
+        expect(columns[0]).toContain('>Horizontal</h4>');
+        expect(columns[0]).toContain('value="1"');
+        expect(columns[1]).toContain('>Vertical</h4>');
+        expect(columns[1]).toContain('value="1"');
     });
 
     it('H05 keeps per-gap distractors in limited select mode', () => {

@@ -247,13 +247,38 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     font-weight: bold;
 }
 
+/* Large enough to read at arm's length, small enough to leave the middle of the cell to the letter
+   the student writes. */
 .worksheet-grid-number {
     position: absolute;
-    top: 0;
-    left: 0.4mm;
-    font-size: 5pt;
+    top: 0.3mm;
+    left: 0.6mm;
+    font-size: 9pt;
     font-weight: normal;
-    line-height: 1.2;
+    line-height: 1;
+}
+
+/* A crossword's clues, across on the left and down on the right, as a printed crossword sets them
+   out. The columns stretch to the taller one, so the faint rule between them runs the full length
+   of the list without competing with the grid above. */
+.worksheet-clue-columns {
+    display: flex;
+}
+
+.worksheet-clue-column {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.worksheet-clue-column + .worksheet-clue-column {
+    margin-left: 6mm;
+    padding-left: 6mm;
+    border-left: 1px solid #ccc;
+}
+
+.worksheet-clue-heading {
+    margin: 0 0 3mm;
+    font-size: 11pt;
 }
 
 .worksheet-grid-credit {
@@ -1595,10 +1620,9 @@ function renderWordBank(words: string[]): string {
  * The answer space is absent for activities that answer into a shared board, and the number is
  * explicit when it has to match something outside the list, such as a crossword grid.
  */
-function renderItem(item: PrintableItem, labels: Required<WorksheetLabels>): string {
+function renderItem(item: PrintableItem): string {
     const value = item.number === undefined ? '' : ` value="${item.number}"`;
     let html = `<li class="worksheet-item"${value}>`;
-    if (item.direction) html += `<strong class="worksheet-direction">${escapeText(labels[item.direction])}</strong>`;
 
     if (item.prompt) {
         html += `<div class="worksheet-prompt">${item.prompt}</div>`;
@@ -1626,6 +1650,32 @@ function renderItem(item: PrintableItem, labels: Required<WorksheetLabels>): str
     html += '</li>';
 
     return html;
+}
+
+/**
+ * Render a crossword's clues in two columns, across on the left and down on the right, as a
+ * printed crossword sets them out.
+ *
+ * The heading of each column says which way its words run, so no clue repeats it. Each keeps its
+ * number, which is the one in the grid, and the clues run in that order down their column.
+ */
+function renderCluesByDirection(items: PrintableItem[], labels: Required<WorksheetLabels>): string {
+    const columns = (['across', 'down'] as const)
+        .map(direction => ({
+            direction,
+            clues: items.filter(item => item.direction === direction).sort((a, b) => (a.number ?? 0) - (b.number ?? 0)),
+        }))
+        // A crossword whose words all run one way has one column, and it takes the width.
+        .filter(column => column.clues.length > 0)
+        .map(
+            ({ direction, clues }) =>
+                '<div class="worksheet-clue-column">' +
+                `<h4 class="worksheet-clue-heading">${escapeText(labels[direction])}</h4>` +
+                `<ol class="worksheet-items">${clues.map(renderItem).join('')}</ol>` +
+                '</div>',
+        );
+
+    return `<div class="worksheet-clue-columns">${columns.join('')}</div>`;
 }
 
 /**
@@ -1678,7 +1728,9 @@ function renderActivity(activity: PrintableActivity, labels: Required<WorksheetL
 
     // An activity whose whole exercise is its board, such as a matching one, has no questions.
     if (activity.items.length > 0) {
-        html += `<ol class="${listClass}">${activity.items.map(item => renderItem(item, labels)).join('')}</ol>`;
+        html += activity.items.every(item => item.direction)
+            ? renderCluesByDirection(activity.items, labels)
+            : `<ol class="${listClass}">${activity.items.map(renderItem).join('')}</ol>`;
     }
 
     if (activity.textAfter) {

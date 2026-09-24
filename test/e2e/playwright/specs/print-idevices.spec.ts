@@ -686,12 +686,28 @@ test.describe('Print iDevices', () => {
         // Clues are numbered from one and answer into the grid, not into boxes of their own.
         const clues = activity.locator('.worksheet-item');
         expect(await clues.count()).toBeGreaterThan(1);
-        await expect(clues.first()).toHaveAttribute('value', '1');
+        const numbers = (await clues.evaluateAll(items => items.map(item => item.getAttribute('value')))).map(Number);
+        expect(Math.min(...numbers)).toBe(1);
         await expect(activity.locator('.worksheet-answer')).toHaveCount(0);
+
+        // Across on the left and down on the right, each column in number order, split by a rule.
+        const columns = activity.locator('.worksheet-clue-column');
+        await expect(columns).toHaveCount(2);
+        for (const column of await columns.all()) {
+            const inColumn = (
+                await column
+                    .locator('.worksheet-item')
+                    .evaluateAll(items => items.map(item => item.getAttribute('value')))
+            ).map(Number);
+            expect(inColumn).toEqual([...inColumn].sort((a, b) => a - b));
+        }
+        const [left, right] = await Promise.all([columns.nth(0).boundingBox(), columns.nth(1).boundingBox()]);
+        expect(left?.x ?? 0).toBeLessThan(right?.x ?? 0);
+        expect(Math.abs((left?.y ?? 0) - (right?.y ?? 0))).toBeLessThan(1);
 
         // The grid comes before the clue list.
         const gridBox = await activity.locator('.worksheet-grid').boundingBox();
-        const cluesBox = await activity.locator('.worksheet-items').boundingBox();
+        const cluesBox = await activity.locator('.worksheet-clue-columns').boundingBox();
         expect(gridBox?.y ?? 0).toBeLessThan(cluesBox?.y ?? 0);
 
         // The activity draws a picture behind its board, so the worksheet does too.
@@ -1047,10 +1063,12 @@ test.describe('Print iDevices', () => {
         for (const word of ['Madrid', 'Barcelona', 'Sevilla']) await expect(choices).toContainText(word);
         const crossword = frame.locator('[data-idevice="crossword"]');
         const gridNumbers = await crossword.locator('.worksheet-grid-number').allTextContents();
-        for (const clue of await crossword.locator('.worksheet-item').all()) {
-            expect(gridNumbers).toContain(await clue.getAttribute('value'));
-            await expect(clue.locator('.worksheet-direction')).not.toBeEmpty();
-        }
+        // Every clue sits in a column headed by its direction, with the number the grid shows.
+        const allClues = crossword.locator('.worksheet-item');
+        await expect(crossword.locator('.worksheet-clue-column .worksheet-item')).toHaveCount(await allClues.count());
+        for (const clue of await allClues.all()) expect(gridNumbers).toContain(await clue.getAttribute('value'));
+        for (const heading of await crossword.locator('.worksheet-clue-heading').all())
+            await expect(heading).not.toBeEmpty();
         await page.emulateMedia({ media: 'print' });
         await expect(choices).toBeVisible();
         await expect(testActivity.locator('svg')).toBeVisible();
