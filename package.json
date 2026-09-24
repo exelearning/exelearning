@@ -112,7 +112,7 @@
     "@playwright/test": "~1.58.2",
     "@types/fs-extra": "^11.0.4",
     "@types/mime-types": "^3.0.1",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.6.2",
     "@types/nunjucks": "^3.2.6",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.11",
