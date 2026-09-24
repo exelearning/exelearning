@@ -377,6 +377,27 @@ describe('IdevicesEngine', () => {
             expect(engine.nodeContentElement.getAttribute('mode')).toBe('edition');
         });
 
+        it('flushes a deferred remote page reload once no iDevice is in edition (#2427)', () => {
+            const bridge = { flushDeferredPageReload: vi.fn() };
+            engine.project._yjsBridge = bridge;
+            engine.components.idevices = [{ mode: 'export' }];
+
+            engine.updateMode();
+
+            expect(bridge.flushDeferredPageReload).toHaveBeenCalledTimes(1);
+            delete engine.project._yjsBridge;
+        });
+
+        it('does not flush a deferred remote page reload while an iDevice is in edition', () => {
+            const bridge = { flushDeferredPageReload: vi.fn() };
+            engine.project._yjsBridge = bridge;
+            engine.components.idevices = [{ mode: 'edition' }];
+
+            engine.updateMode();
+
+            expect(bridge.flushDeferredPageReload).not.toHaveBeenCalled();
+            delete engine.project._yjsBridge;
+        });
     });
 
     describe('isIdeviceInEdition', () => {
