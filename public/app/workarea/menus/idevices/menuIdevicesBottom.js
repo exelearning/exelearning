@@ -1,3 +1,4 @@
+import createTooltip from '../../../common/app_tooltip.js';
 export default class MenuIdevicesBottom {
     constructor() {
         this.defaultIdevices = [
@@ -61,7 +62,7 @@ export default class MenuIdevicesBottom {
         ideviceDiv.setAttribute('data-bs-title', ideviceData.title);
         ideviceDiv.setAttribute('data-bs-placement', 'top');
         ideviceDiv.setAttribute('data-bs-toggle', 'tooltip');
-        window.bootstrap.Tooltip.getOrCreateInstance(ideviceDiv);
+        createTooltip(ideviceDiv);
         // Testing: quickbar item testid
         ideviceDiv.setAttribute(
             'data-testid',
@@ -112,7 +113,7 @@ export default class MenuIdevicesBottom {
         settingIcon.setAttribute('data-bs-title', _('iDevices'));
         settingIcon.setAttribute('data-bs-placement', 'top');
         settingIcon.setAttribute('data-bs-toggle', 'tooltip');
-        window.bootstrap.Tooltip.getOrCreateInstance(settingIcon);
+        createTooltip(settingIcon);
         return settingIcon;
     }
 

@@ -1,3 +1,5 @@
+vi.mock('../../../../common/app_tooltip.js', () => ({ default: vi.fn(() => ({ hide: vi.fn() })) }));
+import createTooltip from '../../../../common/app_tooltip.js';
 /**
  * navbarUtilities Tests
  *
@@ -288,11 +290,16 @@ describe('NavbarUtilities', () => {
     });
 
     describe('setTooltips', () => {
-        it('should initialize jQuery tooltips on menu buttons', () => {
+        it('should initialize guarded tooltips on menu buttons', () => {
+            const menu = document.createElement('div');
+            menu.className = 'main-menu-right';
+            menu.innerHTML = '<button title=Utilities>Utilities</button>';
+            document.body.appendChild(menu);
             navbarUtilities = new NavbarFile(mockMenu);
             navbarUtilities.setTooltips();
 
-            expect(global.$.fn.tooltip).toHaveBeenCalled();
+            expect(createTooltip).toHaveBeenCalledWith(menu.firstElementChild);
+            expect(menu.firstElementChild.getAttribute('data-bs-placement')).toBe('bottom');
         });
     });
 
