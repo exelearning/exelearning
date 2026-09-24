@@ -16,7 +16,8 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
-import { isPageVisible } from '../utils/visibility';
+import { visibleWorksheetPages } from '../utils/visibility';
+import { isInteractiveActivity } from '../worksheet/interactiveActivities';
 import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
 import { renderMatchingLayoutScript } from '../worksheet/matchingLayout';
 import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
@@ -137,8 +138,9 @@ export class PrintPreviewExporter {
             // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
             let processedPages = await this.preprocessPages(pages);
 
-            // Deduplicate components to remove artifacts from complex iDevices (e.g. Complete)
-            processedPages = this.deduplicateComponents(processedPages);
+            // Runtime artifacts may share a legacy timestamp prefix. Printable activities each
+            // have their own stored data and selection id, so keep every one the dialog offers.
+            processedPages = this.deduplicateComponents(processedPages, options.activities !== undefined);
 
             // Anything that has to be drawn before it can be printed is drawn first: converting an
             // activity into an exercise is synchronous and has no browser to draw with.
@@ -307,8 +309,7 @@ export class PrintPreviewExporter {
      */
     private filterVisiblePages(pages: ExportPage[]): ExportPage[] {
         return (
-            pages
-                .filter(isPageVisible)
+            visibleWorksheetPages(pages)
                 // Recursively filter children (though ExportPage definition implies flat list,
                 // if PageRenderer handles hierarchy via other means, this is safe for future proofing
                 // or if ExportPage has children property not shown in interface file but present in runtime)
@@ -856,7 +857,7 @@ $(function() {
      * This handles cases like 'Complete' iDevice where it splits into multiple components
      * but we only want to show the first one in print.
      */
-    private deduplicateComponents(pages: ExportPage[]): ExportPage[] {
+    private deduplicateComponents(pages: ExportPage[], preserveInteractiveActivities = false): ExportPage[] {
         return pages.map(page => {
             const blocks = page.blocks || [];
             const newBlocks = blocks.map(block => {
@@ -867,7 +868,11 @@ $(function() {
                 for (const component of components) {
                     let isDuplicate = false;
 
-                    if (lastComponent && lastComponent.type === component.type) {
+                    if (
+                        lastComponent &&
+                        lastComponent.type === component.type &&
+                        !(preserveInteractiveActivities && isInteractiveActivity(component.type))
+                    ) {
                         // Check ID prefix (first 14 chars are usually timestamp YYYYMMDDHHMMSS)
                         // Example ID: 20251021091936ZBADPV
                         const prefixLength = 14;

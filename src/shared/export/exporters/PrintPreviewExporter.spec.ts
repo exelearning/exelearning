@@ -1678,6 +1678,62 @@ describe('PrintPreviewExporter and interactive activities', () => {
         return result.html ?? '';
     }
 
+    for (const mode of ['in-place', 'appendix'] as const) {
+        it(`prints a selected activity with a shared legacy id prefix in ${mode} mode`, async () => {
+            const pages = projectWithActivity().getNavigation();
+            const component = pages[0].blocks[0].components[1];
+            pages[0].blocks[0].components = [
+                { ...component, id: '20251021091936FIRST', order: 0 },
+                { ...component, id: '20251021091936SECOND', order: 1 },
+            ];
+
+            const result = await new PrintPreviewExporter(createMockDocument(pages), resources).generatePreview({
+                activities: { mode, selectedActivities: ['20251021091936SECOND'] },
+            });
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('Ciudad conquistada');
+            expect(result.html).toContain('20251021091936SECOND');
+            expect(result.html).not.toContain('20251021091936FIRST');
+        });
+
+        it(`keeps both listed activities with a shared legacy id prefix in ${mode} mode`, async () => {
+            const pages = projectWithActivity().getNavigation();
+            const component = pages[0].blocks[0].components[1];
+            pages[0].blocks[0].components = [
+                { ...component, id: '20251021091936FIRST', order: 0 },
+                { ...component, id: '20251021091936SECOND', order: 1 },
+            ];
+
+            const result = await new PrintPreviewExporter(createMockDocument(pages), resources).generatePreview({
+                activities: { mode },
+            });
+
+            expect(result.success).toBe(true);
+            expect(result.html?.match(/Ciudad conquistada/g)).toHaveLength(2);
+        });
+    }
+
+    for (const mode of [undefined, 'omit', 'in-place', 'appendix'] as const) {
+        it(`excludes descendants absent from the selector in ${mode ?? 'default'} mode`, async () => {
+            const [visible] = projectWithActivity().getNavigation();
+            const hidden = { ...visible, id: 'hidden', properties: { visibility: false } };
+            const child = { ...visible, id: 'hidden-child', title: 'Hidden child', parentId: hidden.id };
+            const grandchild = { ...child, id: 'hidden-grandchild', parentId: child.id };
+            const pages = [visible, hidden, child, grandchild];
+
+            const result = await new PrintPreviewExporter(createMockDocument(pages), resources).generatePreview({
+                activities: mode ? { mode } : undefined,
+            });
+
+            expect(result.success).toBe(true);
+            expect(result.html).not.toContain('Hidden child');
+            expect(result.html).not.toContain('section-hidden');
+            if (mode === 'in-place' || mode === 'appendix')
+                expect(result.html?.match(/Ciudad conquistada/g)).toHaveLength(1);
+        });
+    }
+
     it('prints the game board when asked nothing, as it always did', async () => {
         const html = await preview();
 

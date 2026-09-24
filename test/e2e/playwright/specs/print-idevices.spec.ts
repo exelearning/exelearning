@@ -1247,6 +1247,53 @@ test.describe('Print: choosing which interactive activities to print', () => {
 
     const SELECTED = 'input[name="print-activity-selected"]';
 
+    for (const mode of ['idevices', 'in-place', 'appendix']) {
+        for (const selection of ['all', 'second']) {
+            test(`prints ${selection} listed activities with shared legacy ids in ${mode} mode`, async ({
+                authenticatedPage: page,
+                createProject,
+            }) => {
+                const uuid = await createProject(page, 'Print selection regression');
+                await gotoWorkarea(page, uuid);
+                await waitForAppReady(page);
+                await page.evaluate(() => {
+                    const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                    const visible = binding.createPage('Visible activities');
+                    const block = binding.createBlock(visible.id);
+                    const addQuestion = (pageId: string, blockId: string, id: string, question: string) =>
+                        binding.createComponent(pageId, blockId, 'adaptative-quiz', {
+                            id,
+                            htmlContent: '',
+                            jsonProperties: JSON.stringify({
+                                questionsGame: [{ question, typeSelect: 0, options: ['Yes', 'No'] }],
+                            }),
+                        });
+                    addQuestion(visible.id, block, '20251021091936FIRST', 'First visible question');
+                    addQuestion(visible.id, block, '20251021091936SECOND', 'Second visible question');
+
+                    const hidden = binding.createPage('Hidden parent');
+                    binding.updatePage(hidden.id, { properties: { visibility: 'false' } });
+                    const child = binding.createPage('Hidden descendant', hidden.id);
+                    addQuestion(child.id, binding.createBlock(child.id), 'hidden-question', 'Hidden question');
+                });
+
+                const dialog = await openPrintDialog(page);
+                await expect(dialog.locator(SELECTED)).toHaveCount(2);
+                await expect(dialog.locator(`${SELECTED}[value="hidden-question"]`)).toHaveCount(0);
+                if (selection === 'second') await dialog.locator(`${SELECTED}[value="20251021091936FIRST"]`).uncheck();
+                const { frame } = await choosePrintOption(page, mode);
+
+                await expect(frame.locator('.worksheet-prompt')).toHaveText(
+                    selection === 'all'
+                        ? ['First visible question', 'Second visible question']
+                        : ['Second visible question'],
+                );
+                await expect(frame.locator('body')).not.toContainText('Hidden question');
+                await expect(frame.locator('body')).not.toContainText('Hidden descendant');
+            });
+        }
+    }
+
     /** The component id of the fixture's Guess activity, as the dialog lists it. */
     async function guessId(page: Page): Promise<string> {
         return page.evaluate(() => {
