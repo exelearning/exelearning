@@ -477,7 +477,7 @@ The workarea preview uses a **Service Worker** to serve exported HTML files dire
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| **Service Worker** | `public/app/preview-sw.js` | Intercepts `/viewer/*` requests |
+| **Service Worker** | `public/preview-sw.js` | Intercepts `/viewer/*` requests |
 | **Preview Panel** | `public/app/workarea/interface/elements/previewPanel.js` | UI and orchestration |
 | **Export Generator** | `src/shared/export/exporters/Html5Exporter.ts` | Generates export files |
 | **Browser API** | `src/shared/export/browser/index.ts` | Browser-side export functions |
@@ -497,7 +497,32 @@ The workarea preview uses a **Service Worker** to serve exported HTML files dire
 { type: 'SET_CONTENT', files: Map<path, ArrayBuffer> }  // Set preview content
 { type: 'CLEAR_CONTENT' }                                // Clear preview cache
 { type: 'CLAIM_CLIENTS' }                                // Activate SW for page
+{ type: 'GET_STATUS' }                                   // Health check; replies STATUS { version, appVersion, ready, fileCount }
 ```
+
+### 8.6 Registration Lifecycle and Self-Healing
+
+Browser profiles keep Service Worker registrations indefinitely, so the app never trusts a
+stored worker blindly (see [ADR-2429-01](architecture/adr/ADR-2429-01-self-heal-preview-service-worker-registration.md)).
+`App.registerPreviewServiceWorker()` in `public/app/app.js`:
+
+1. Unregisters `preview-sw.js` registrations whose scope contains the preview scope
+   (`<basePath>viewer/`), e.g. the root scope used by pre-4.0.0 builds. Sibling scopes of
+   other deployments and the PWA `service-worker.js` are left alone.
+2. Registers `preview-sw.js?v=<app version>` at `<basePath>viewer/`, runs
+   `registration.update()` when `register()` did not already start an install, and waits for
+   the installed worker to activate. A new release therefore installs a new worker before any
+   content is sent.
+3. Pings the worker with `GET_STATUS` (3 s). A worker that does not answer is unregistered and
+   registered again once; if it still does not answer the promise resolves `null` and the
+   preview panel falls back to the blob URL renderer.
+
+`App.sendContentToPreviewSW(files, options, { regenerateFiles })` applies the same recovery
+when `SET_CONTENT` is never confirmed: it re-registers the worker once and, because the
+`ArrayBuffer`s were transferred, resends files produced by the caller's `regenerateFiles`
+callback. If that recovery fails the worker is marked unavailable, as after a failed
+registration, and the preview panel falls back to the blob URL renderer. `CLAIM_CLIENTS` is only awaited when the page is inside the registration scope; the
+editor page is not, so no time is spent waiting for a `controllerchange`.
 
 ## 9. Database Architecture
 
@@ -604,7 +629,7 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | `public/app/yjs/AssetWebSocketHandler.js` | Asset protocol |
 | `public/app/yjs/SaveManager.js` | Save orchestration |
 | `public/app/yjs/YjsProjectBridge.js` | Coordination hub |
-| `public/app/preview-sw.js` | Preview Service Worker |
+| `public/preview-sw.js` | Preview Service Worker |
 | `public/app/workarea/interface/elements/previewPanel.js` | Preview panel UI |
 
 ### Configuration
