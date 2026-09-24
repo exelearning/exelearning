@@ -61,10 +61,17 @@ jobs:
             public/app/yjs/exporters.bundle.js
             public/app/yjs/importers.bundle.js
             public/app/common/i18n/**
+            public/app/common/mermaid/mermaid.min.js
             public/app/common/edicuatex/**
             public/bundles/**
+            public/libs/**
             public/style/workarea/main.css
             public/files/perm/idevices/base/slide/edition/slide-editor.bundle.js
+            public/files/perm/idevices/base/progress-report/export/html2canvas.js
+            public/files/perm/idevices/base/checklist/export/html2canvas.js
+            public/files/perm/idevices/base/rubric/export/html2canvas.js
+            public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js
+            public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css
 
       - name: Upload static distribution (static project)
         uses: actions/upload-artifact@v7
@@ -114,6 +121,13 @@ jobs:
         with:
           name: build-static
           path: dist/static
+
+      # Static shards overlay dist/static only, so public/libs is absent on the
+      # runner. Specs such as resource-cache-upgrade.spec.ts read those files
+      # from disk (chromium/firefox already get them via build-public).
+      - name: Copy vendor libs from npm
+        if: matrix.browser == 'static'
+        run: bun run bundle:vendor
 
       - name: Install Playwright Browsers
         run: |
