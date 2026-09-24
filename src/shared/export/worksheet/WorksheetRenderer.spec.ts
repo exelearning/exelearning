@@ -778,11 +778,16 @@ describe('questions set in two columns', () => {
         expect(renderActivityFragment(activity({ items }))).not.toContain('worksheet-items-columns');
     });
 
-    it('run down the first column and on into the second, parted by a faint rule', () => {
-        const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-items-columns {')[1].split('}')[0];
+    it('go two to a row, read left to right, parted by a faint rule', () => {
+        const ruleFor = (selector: string) => WORKSHEET_ACTIVITY_STYLES.split(`${selector} {`)[1].split('}')[0];
 
-        expect(rule).toContain('column-count: 2');
-        expect(rule).toContain('column-rule: 1px solid #ccc');
+        // A grid fills row by row, where columns would run down the first before the second.
+        expect(ruleFor('.worksheet-items-columns')).toContain('grid-template-columns: 1fr 1fr');
+        expect(ruleFor('.worksheet-items-columns > .worksheet-item:nth-child(odd)')).toContain(
+            'border-right: 1px solid #ccc',
+        );
+        // Spaced with padding, so the rule runs unbroken from one row to the next.
+        expect(ruleFor('.worksheet-items-columns > .worksheet-item')).toContain('margin-bottom: 0');
     });
 
     it('let a long answer carry its boxes on to the next line rather than run off the column', () => {

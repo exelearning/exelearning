@@ -361,8 +361,8 @@ export interface PrintableActivity {
      */
     unnumbered?: boolean;
     /**
-     * Set the questions in two columns, running down the first and on into the second, to save
-     * paper where they are many and short.
+     * Set the questions two to a row, read left to right, to save paper where they are many and
+     * short.
      */
     twoColumns?: boolean;
     items: PrintableItem[];

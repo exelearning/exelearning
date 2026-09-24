@@ -164,12 +164,34 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     list-style: none;
 }
 
-/* Many short questions in two columns, in reading order: down the first and on into the second.
-   Only to save paper, so a faint rule is all that parts them. */
+/* Many short questions two to a row, read left to right and row by row as the activity lists them.
+   Only to save paper, so a faint rule down the middle is all that parts them. */
 .worksheet-items-columns {
-    column-count: 2;
-    column-gap: 10mm;
-    column-rule: 1px solid #ccc;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+/* Rows are spaced with padding rather than margin, so the rule runs through the space unbroken:
+   both questions in a row stretch to the taller one, and the rule is the left one's edge. */
+.worksheet-items-columns > .worksheet-item {
+    min-width: 0;
+    margin-bottom: 0;
+    padding-bottom: 6mm;
+}
+
+.worksheet-items-columns > .worksheet-item:nth-child(odd) {
+    padding-right: 5mm;
+    border-right: 1px solid #ccc;
+}
+
+.worksheet-items-columns > .worksheet-item:nth-child(even) {
+    padding-left: 5mm;
+}
+
+/* A number sits outside its question, so on the right it needs room between the rule and itself. */
+.worksheet-items-columns:not(.worksheet-items-plain) > .worksheet-item:nth-child(even) {
+    margin-left: 12mm;
+    padding-left: 0;
 }
 
 /* Half a sheet is narrower than a long answer's row of boxes, so there a word's boxes may carry on
