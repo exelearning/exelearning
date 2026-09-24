@@ -1,7 +1,7 @@
 ---
 id: ADR-2429-01
 title: "Self-heal the preview Service Worker registration instead of trusting the stored worker"
-status: Proposed
+status: Accepted
 date: 2026-09-16
 tracking_issue: 2429
 deciders:
@@ -9,7 +9,7 @@ deciders:
 reviewers:
   - "@ignaciogros"
 related:
-  prs: [2430]
+  prs: [2430, 2432]
   changes: []
   adrs: []
 supersedes: []
@@ -37,10 +37,10 @@ in `about:debugging`. The profile held a registration that the browser reported 
 registration (pre-4.0.0 builds registered the worker with scope `basePath`, PR #1103 moved it
 to `basePath + 'viewer/'`).
 
-On `main` @ `8fa25e7b0` the registration flow, as of that commit, had these properties:
+Before v4.0.5 (`main` @ `8fa25e7b0`) the registration flow had these properties:
 
 - it adopted any registration whose worker script ended in `preview-sw.js` without checking
-  that the worker answers (`app.js:225-239`);
+  that the worker answers;
 - it looked the registration up with `getRegistration(basePath)`, which returns a root-scope
   registration when one exists, so a pre-4.0.0 orphan was adopted in preference to the
   `/viewer/` one;
@@ -50,9 +50,21 @@ On `main` @ `8fa25e7b0` the registration flow, as of that commit, had these prop
   ([Register algorithm, step 7](https://w3c.github.io/ServiceWorker/#register-algorithm)), so a
   `preview-sw.js` changed by a new build kept the old worker running until an in-scope
   navigation triggered a browser update mid-preview;
-- after posting `SET_CONTENT` it rejected on timeout with no recovery path (`app.js:534-538`);
+- after posting `SET_CONTENT` it rejected on timeout with no recovery path;
 - `_tryClaimClients()` posted `CLAIM_CLIENTS` and waited up to 5 s for a `controllerchange`
   that cannot happen, because the editor page (`/workarea`) is outside the `/viewer/` scope.
+
+PR #2432, shipped in v4.0.5, fixed the first two points: at load the app now removes
+`preview-sw.js` registrations whose scope contains the preview scope, pings the adopted worker
+with `GET_STATUS`, re-registers it once when it does not answer and falls back to the blob URL
+preview when that fails too (`SW_VERSION` `1.1.0`). The last three points are still present on
+`main` after #2432; this ADR completes them and adds a diagnostic:
+
+- a changed `preview-sw.js` is still only picked up by a browser-side update mid-preview;
+- a worker that stops answering *during* a session still ends in *Preview Error*;
+- every page load still waits 5 s for the impossible `controllerchange` before the
+  registration promise settles, which delays the first preview;
+- `GET_STATUS` does not say which app version the running worker was registered with.
 
 ## Problem
 
@@ -71,29 +83,32 @@ intervention, in every supported browser and deployment (root, `BASE_PATH`, stat
 
 ## Options considered
 
-### Option 1: Registration-time health check only (minimal hotfix)
+### Option 1: Registration-time health check and orphan cleanup (shipped in v4.0.5 as #2432)
 
-Ping the adopted worker with `GET_STATUS`; if it does not answer, `unregister()` +
-`register()` once. Bump `SW_VERSION` as a constant. Suggested in issue #2429 as the
-release-blocker scope.
+Remove ancestor-scope `preview-sw.js` registrations, ping the adopted worker with
+`GET_STATUS`, `unregister()` + `register()` once when it does not answer, and fall back to the
+blob URL preview when that fails. Bump `SW_VERSION` as a constant.
 
-- Pros: about 50 lines, no change on the happy path.
-- Cons: leaves the root-scope orphan in place (adopted in preference to `/viewer/`, content
-  goes to one worker while another serves the iframe: blank preview and a regeneration loop,
-  reproduced on both browsers, see Evidence); leaves `register()`-only updates in place, so an
-  *alive but old* worker survives an upgrade until the browser updates it mid-preview; no
-  recovery when the worker dies during the session.
+- Pros: small, no change on the happy path; fixes the dead worker at load and the root-scope
+  orphan (blank preview and regeneration loop, reproduced on both browsers, see Evidence).
+- Cons: leaves `register()`-only updates in place, so an *alive but old* worker survives an
+  upgrade until the browser updates it mid-preview; no recovery when the worker dies during
+  the session; the 5 s claim wait on every load remains.
 
-### Option 2: Full self-healing registration lifecycle (chosen)
+### Option 2: Complete the self-healing lifecycle on top of #2432 (chosen)
 
-1. Remove preview registrations whose scope is an *ancestor* of `<basePath>viewer/`.
+Keep everything #2432 introduced and add:
+
+1. (from #2432) Remove preview registrations whose scope is an *ancestor* of `<basePath>viewer/`.
 2. Register `preview-sw.js?v=<app version>` at `<basePath>viewer/`, run `registration.update()`
    when `register()` did not already start an install, and wait for the installed worker to
    activate.
-3. Ping the worker; re-register once when it does not answer; resolve `null` (blob-URL preview
-   fallback) when that fails too.
+3. (from #2432) Ping the worker; re-register once when it does not answer; resolve `null`
+   (blob-URL preview fallback) when that fails too.
 4. In `sendContentToPreviewSW()`, on timeout re-register once and resend files produced by a
    caller-supplied `regenerateFiles` callback (transferred `ArrayBuffer`s cannot be reused).
+   When that recovery fails, mark the worker unavailable, exactly like a failed load-time
+   registration, so the preview panel degrades to the blob URL renderer.
 5. Only wait for `CLAIM_CLIENTS` when the page is inside the registration scope.
 6. The worker reports its script revision (`version`) and the app version it was registered
    with (`appVersion`) in `GET_STATUS`; the app warns on a mismatch.
@@ -111,7 +126,9 @@ diagnostics panel. Useful as a support tool, not a substitute for self-healing; 
 ## Evidence
 
 Reproduction harness (Playwright library, headless Chromium 1208 and Firefox 1538, local
-server from `main` @ `8fa25e7b0`, empty project, run 2026-09-16):
+server, empty project, run 2026-09-16). The baseline below is `main` @ `8fa25e7b0`, **before**
+#2432: rows 2 and 4 are fixed by #2432 at load; rows 5 and 6 are unchanged by #2432 and fixed
+by this ADR.
 
 | Scenario | Chromium | Firefox |
 |----------|----------|---------|
@@ -122,7 +139,8 @@ server from `main` @ `8fa25e7b0`, empty project, run 2026-09-16):
 | `preview-sw.js` bytes changed, reload | preview in 3.7 s (browser-side update mid-preview) | preview in 3.7 s |
 | Registration promise settle time (`register()` to resolve) | 5.0 s, `CLAIM_CLIENTS` sent at +18 ms | 5.0 s, sent at +14 ms |
 
-The same harness on the branch of this ADR (same browsers, same day) renders the preview in
+The same harness on the branch of this ADR (same browsers, same day, before it was rebased on
+#2432) renders the preview in
 every scenario on both browsers: fresh profile 0.36 s / 0.40 s, dead worker 0.36 s / 0.40 s
 (worker re-registered at load), root-scope orphan 0.36 s / 0.42 s (orphan removed at load),
 script changed on disk 0.32 s / 0.38 s (worker replaced at load instead of mid-preview). A
@@ -131,8 +149,8 @@ stored stub that cannot be replaced (route still active) degrades to the blob-UR
 
 Two observations bound the scope of the reported failure:
 
-- A clean profile that used v4.0.3 and then opens v4.0.5 does **not** fail: reported by
-  @erseco on Firefox (manual test, 2026-09-16) and matched by the "bytes changed" row above
+- A clean profile that used v4.0.3 and then opens v4.0.5 does **not** fail: manual Firefox
+  test run during the review of #2429 (2026-09-16), matched by the "bytes changed" row above
   (3.7 s, browser-side update). The error in #2429 needs a registration that is already broken
   or duplicated; long-lived profiles (pre-4.0.0 root-scope registrations, PR #1103) and
   development profiles with many deployments on one origin are the population at risk.
@@ -150,17 +168,18 @@ the stored script), [Unregister](https://w3c.github.io/ServiceWorker/#navigator-
 (the registration is removed from the scope map at once; a later `register()` creates a new one).
 
 Prior art in the repository: PR #1103 (scope moved to `basePath + 'viewer/'`), PR #2254
-(`preview-sw.js` change that shipped in v4.0.5), `src/index.ts` and `app/main.js` serve
+(`preview-sw.js` change that shipped in v4.0.5), PR #2432 (health check at load and orphan
+cleanup, shipped in v4.0.5), `src/index.ts` and `app/main.js` serve
 `preview-sw.js` with `Cache-Control: no-store` and ignore the query string, so the version
 query is safe for the server, Electron (`app://`) and the static build.
 
 ## Decision
 
-We will implement Option 2. The application treats a stored preview worker as untrusted until
-it answers `GET_STATUS`, keeps exactly one preview registration per deployment (removing
-ancestor-scope leftovers), tags the worker script URL with the app version and always asks the
-browser to compare the script, and recovers once (re-register, regenerate, resend) when the
-worker stops answering. When recovery fails the preview degrades to the blob-URL renderer
+We will implement Option 2, completing #2432. The application treats a stored preview worker
+as untrusted until it answers `GET_STATUS`, keeps exactly one preview registration per
+deployment (removing ancestor-scope leftovers), tags the worker script URL with the app version
+and always asks the browser to compare the script, and recovers once (re-register, regenerate,
+resend) when the worker stops answering. When recovery fails the preview degrades to the blob-URL renderer
 instead of showing an error.
 
 Sibling-scope registrations (another deployment under a different `BASE_PATH` on the same
@@ -170,7 +189,8 @@ origin) and non-preview workers (the PWA `service-worker.js`) are never touched.
 
 ### Positive
 
-- The failure in #2429 self-heals on the next load; no manual `about:debugging` step.
+- The failure in #2429 self-heals on the next load (#2432) and, with this ADR, also when the
+  worker dies during a session; no manual `about:debugging` step.
 - Upgrades are deterministic: a new release installs a new worker at registration time,
   before any content is sent, instead of mid-preview.
 - The first preview after page load is no longer delayed by the 5 s claim timeout.
@@ -186,8 +206,9 @@ origin) and non-preview workers (the PWA `service-worker.js`) are never touched.
 ### Neutral
 
 - `sendContentToPreviewSW()` gains an optional third argument; existing callers keep working.
-- `SW_VERSION` becomes the script revision (`1.1.0`) and must be bumped when the worker
-  script changes; the app version travels separately.
+- `SW_VERSION` is the script revision (`1.1.0` in #2432, `1.2.0` with the `appVersion`
+  field added here) and must be bumped whenever the worker script changes; the app version
+  travels separately.
 
 ## Risks
 
@@ -202,11 +223,15 @@ origin) and non-preview workers (the PWA `service-worker.js`) are never touched.
 
 ## Validation
 
-- Vitest: `public/app/app.test.js` (registration flow, ping, stale cleanup, recovery,
-  `sendContentToPreviewSW` retry, claim guard), `public/app/workarea/interface/elements/previewPanel.test.js`
-  (regenerate callback, blob fallback), `public/preview-sw.test.js` (version resolution).
-- Playwright: `test/e2e/playwright/specs/preview-sw-recovery.spec.ts` on Chromium and
-  Firefox (dead worker simulated from the page, root-scope orphan cleanup).
+- Vitest: `public/app/app.test.js` (registration flow, `update()` handling, version query and
+  mismatch warning, ping, stale cleanup, recovery, `sendContentToPreviewSW` retry and its
+  failure marking the worker unavailable, claim guard),
+  `public/app/workarea/interface/elements/previewPanel.test.js` (regenerate callback, blob
+  fallback), `public/preview-sw.test.js` (`SW_VERSION` `1.2.0`, app version resolution).
+- Playwright: `test/e2e/playwright/specs/preview-sw-recovery.spec.ts` on Chromium and Firefox.
+  The spec comes from #2432 (dead worker at load, root-scope orphan cleanup); this ADR adds
+  the case where the worker stops answering after the first preview and the next preview
+  still renders from a re-registered worker.
 - Manual: Firefox and Chrome profiles that used v4.0.3 open a v4.0.5+ instance and the first
   preview works unaided; clean profiles show no behaviour change.
 
@@ -218,7 +243,7 @@ origin) and non-preview workers (the PWA `service-worker.js`) are never touched.
 
 ## References
 
-- Issue #2429, PR #2254, PR #1103
+- Issue #2429, PR #2432, PR #2254, PR #1103
 - `public/app/app.js`, `public/preview-sw.js`, `public/app/workarea/interface/elements/previewPanel.js`
 - Service Worker specification: Register, Update and Unregister algorithms (links above)
 - Playwright network documentation on service workers (link above)

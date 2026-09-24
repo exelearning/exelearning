@@ -520,7 +520,8 @@ stored worker blindly (see [ADR-2429-01](architecture/adr/ADR-2429-01-self-heal-
 `App.sendContentToPreviewSW(files, options, { regenerateFiles })` applies the same recovery
 when `SET_CONTENT` is never confirmed: it re-registers the worker once and, because the
 `ArrayBuffer`s were transferred, resends files produced by the caller's `regenerateFiles`
-callback. `CLAIM_CLIENTS` is only awaited when the page is inside the registration scope; the
+callback. If that recovery fails the worker is marked unavailable, as after a failed
+registration, and the preview panel falls back to the blob URL renderer. `CLAIM_CLIENTS` is only awaited when the page is inside the registration scope; the
 editor page is not, so no time is spent waiting for a `controllerchange`.
 
 ## 9. Database Architecture

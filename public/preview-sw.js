@@ -21,7 +21,7 @@ function resolveServiceWorkerVersion(search) {
 }
 
 /** Revision of this script. Bump it whenever preview-sw.js changes. */
-const SW_VERSION = '1.1.0';
+const SW_VERSION = '1.2.0';
 
 /** App version the worker was registered with (?v=), reported by GET_STATUS. */
 const SW_APP_VERSION = resolveServiceWorkerVersion(

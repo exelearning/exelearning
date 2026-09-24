@@ -286,11 +286,21 @@ export default class App {
      * @private
      */
     _isPreviewServiceWorkerScript(scriptURL) {
-        if (!scriptURL) return false;
+        return this._toPathname(scriptURL).endsWith('/preview-sw.js');
+    }
+
+    /**
+     * Pathname of an absolute URL or absolute path; empty string when it cannot be parsed.
+     * @param {string|undefined} value
+     * @returns {string}
+     * @private
+     */
+    _toPathname(value) {
+        if (!value) return '';
         try {
-            return new URL(scriptURL, window.location.origin).pathname.endsWith('/preview-sw.js');
+            return new URL(String(value), 'http://localhost').pathname;
         } catch {
-            return false;
+            return '';
         }
     }
 
@@ -315,12 +325,13 @@ export default class App {
             return [];
         }
 
-        const expectedScope = new URL(previewScope, window.location.origin).href;
+        // Registrations are same-origin by definition, so scopes are compared by path.
+        const expectedPath = this._toPathname(previewScope);
         const stale = registrations.filter((registration) => {
             const worker = registration.active || registration.waiting || registration.installing;
             if (!this._isPreviewServiceWorkerScript(worker?.scriptURL)) return false;
-            const scope = String(registration.scope || '');
-            return scope !== expectedScope && expectedScope.startsWith(scope);
+            const scopePath = this._toPathname(registration.scope);
+            return Boolean(scopePath) && scopePath !== expectedPath && expectedPath.startsWith(scopePath);
         });
 
         await Promise.all(
@@ -724,6 +735,9 @@ export default class App {
                 registration = await this._recoverPreviewServiceWorker();
             } catch (recoveryError) {
                 console.error('[Preview SW] Recovery failed:', recoveryError);
+                // Same outcome as a failed load-time registration: stop offering the worker so
+                // the preview panel degrades to blob URLs instead of showing an error.
+                this._previewSwUnavailable = true;
                 throw error;
             }
 

@@ -40,7 +40,7 @@ describe('Preview Service Worker', () => {
 
     describe('Constants', () => {
         it('should have SW_VERSION defined', () => {
-            expect(SW_VERSION).toBe('1.1.0');
+            expect(SW_VERSION).toBe('1.2.0');
         });
 
         it('should report the app version as unversioned when no version query is present', () => {
