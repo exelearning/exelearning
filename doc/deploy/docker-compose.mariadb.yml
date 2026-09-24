@@ -44,7 +44,7 @@ services:
       - mariadb
 
   mariadb:
-    image: mariadb:12.3
+    image: mariadb:13.0
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-root}"
