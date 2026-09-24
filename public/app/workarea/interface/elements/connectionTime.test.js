@@ -1,3 +1,5 @@
+vi.mock('../../../common/app_tooltip.js', () => ({ default: vi.fn(() => ({ hide: vi.fn() })) }));
+import createTooltip from '../../../common/app_tooltip.js';
 import ConnectionTime from './connectionTime.js';
 
 describe('ConnectionTime', () => {
@@ -205,6 +207,7 @@ describe('ConnectionTime', () => {
     describe('setStaticModeState', () => {
       it('should set offline mode class and content', () => {
         connectionTime.setStaticModeState();
+        expect(createTooltip).toHaveBeenCalledWith(mockWrapper);
 
         expect(mockWrapper.className).toBe('offline-mode');
         expect(mockContent.innerHTML).toContain('cloud_off');

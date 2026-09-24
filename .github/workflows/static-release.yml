@@ -90,6 +90,11 @@ jobs:
           images: |
             ${{ github.repository }}
             ghcr.io/${{ github.repository }}
+          # `latest-static` moves only in promote-latest.yml. `type=raw` is not
+          # affected by the default `latest=auto` flavor, but the intent is
+          # stated here too so the two build workflows read the same.
+          flavor: |
+            latest=false
           tags: |
             type=raw,value=${{ steps.version.outputs.version }}-static
 
