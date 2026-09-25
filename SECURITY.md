@@ -11,6 +11,15 @@ Only the latest version of `exelearning` is supported with security updates. `ex
 
 Older versions (below 3.x) are no longer maintained or supported.
 
+## Secure configuration in production
+
+Deployments running in production (`APP_ENV=prod` or `NODE_ENV=production`) **must**
+set strong, unique values for `API_JWT_SECRET` and `APP_SECRET` (e.g.
+`openssl rand -hex 32`). The server **refuses to boot** if either is missing or
+left at its in-repo default — leaving them default makes API and
+platform-integration JWTs forgeable by anyone who reads this repository. See
+[doc/development/environment.md](doc/development/environment.md).
+
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in `exelearning`, please report it privately and responsibly.
