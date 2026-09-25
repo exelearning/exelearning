@@ -64,14 +64,24 @@ var $exeDevice = {
     },
 
     enableForm: async function () {
-        await $exeDevice.initQuestions();
-        $exeDevice.loadPreviousValues();
-        $exeDevice.addEvents();
+        // The default model can still be loading when the editor closes, and
+        // teardown releases `$exeDevice`: work on this instance, and stop if
+        // the edition is gone once the load settles.
+        const lifecycle = this.$lifecycle;
+        try {
+            await this.initQuestions();
+        } catch (error) {
+            if (lifecycle.isAbortError(error)) return;
+            throw error;
+        }
+        if (!lifecycle.isActive()) return;
+        this.loadPreviousValues();
+        this.addEvents();
         // Ensure correct layout for current mode
         var currentMode = $('input[name="slcactivitymode"]:checked').val() || 'test';
-        $exeDevice.toggleActivityMode(currentMode);
+        this.toggleActivityMode(currentMode);
         // Show first question and render model preview
-        $exeDevice.showQuestion($exeDevice.active);
+        this.showQuestion(this.active);
     },
 
     toggleActivityMode: function (mode) {
@@ -469,28 +479,37 @@ var $exeDevice = {
             return;
         }
 
-        $exeDevice.modelLibraryCallbacks.push(callback);
-        if ($exeDevice.modelLibraryLoading) return;
+        const self = this;
+        const lifecycle = this.$lifecycle;
 
-        $exeDevice.modelLibraryLoading = true;
+        self.modelLibraryCallbacks.push(callback);
+        if (self.modelLibraryLoading) return;
+
+        self.modelLibraryLoading = true;
         const script = document.createElement('script');
-        script.src = $exeDevice.get3DmolScriptPath();
-        script.onload = function () {
-            $exeDevice.modelLibraryLoading = false;
-            const callbacks = $exeDevice.modelLibraryCallbacks.slice();
-            $exeDevice.modelLibraryCallbacks = [];
+        script.src = self.get3DmolScriptPath();
+        // The script lives in <head>, so it outlives the edition form. Its
+        // callbacks are bound to this edition and the tag is dropped on close,
+        // so a load that finishes late cannot drive the next iDevice.
+        const notify = function (ok) {
+            self.modelLibraryLoading = false;
+            const callbacks = self.modelLibraryCallbacks.slice();
+            self.modelLibraryCallbacks = [];
             callbacks.forEach(function (cb) {
-                cb(true);
+                cb(ok);
             });
         };
-        script.onerror = function () {
-            $exeDevice.modelLibraryLoading = false;
-            const callbacks = $exeDevice.modelLibraryCallbacks.slice();
-            $exeDevice.modelLibraryCallbacks = [];
-            callbacks.forEach(function (cb) {
-                cb(false);
-            });
-        };
+        script.onload = lifecycle.bind(function () {
+            notify(true);
+        });
+        script.onerror = lifecycle.bind(function () {
+            notify(false);
+        });
+        lifecycle.own(function () {
+            script.onload = null;
+            script.onerror = null;
+            script.remove();
+        });
         document.head.appendChild(script);
     },
 
@@ -538,30 +557,17 @@ var $exeDevice = {
         );
     },
 
+    // The read is owned by the edition: closing the editor aborts it and
+    // rejects the promise, so a caller awaiting a model file is never left
+    // hanging on a form that no longer exists.
     readFileAsText: function (file) {
-        return new Promise(function (resolve, reject) {
-            const reader = new FileReader();
-            reader.onload = function (ev) {
-                resolve((ev.target.result || '').toString());
-            };
-            reader.onerror = function () {
-                reject(new Error('Could not read model file as text'));
-            };
-            reader.readAsText(file);
-        });
+        return this.$lifecycle
+            .readFile(file, 'readAsText')
+            .then((result) => (result || '').toString());
     },
 
     readFileAsArrayBuffer: function (file) {
-        return new Promise(function (resolve, reject) {
-            const reader = new FileReader();
-            reader.onload = function (ev) {
-                resolve(ev.target.result);
-            };
-            reader.onerror = function () {
-                reject(new Error('Could not read model file as binary'));
-            };
-            reader.readAsArrayBuffer(file);
-        });
+        return this.$lifecycle.readFile(file, 'readAsArrayBuffer');
     },
 
     decodeBytesAsText: function (bytes) {
@@ -850,7 +856,11 @@ var $exeDevice = {
             throw new Error('Could not determine model source');
         }
 
-        const response = await fetch(sourceUrl);
+        // Aborted with the edition, so a model download cannot keep running
+        // against an editor that no longer exists.
+        const response = await fetch(sourceUrl, {
+            signal: this.$lifecycle.signal,
+        });
         if (!response.ok) {
             throw new Error(`Could not load model file (${response.status})`);
         }
@@ -1077,6 +1087,7 @@ var $exeDevice = {
      * p.modelData still present in older projects.
      */
     ensureModelDataAndRender: function (p) {
+        const lifecycle = this.$lifecycle;
         const inline = $('#dmoleModelData').val() || '';
         if (inline.trim()) {
             // Legacy inline data (or freshly loaded by the change handler).
@@ -1090,25 +1101,52 @@ var $exeDevice = {
             $exeDevice.renderModelPreview();
             return;
         }
+        // The continuations write into the edition form, so they are bound to
+        // this edition and no-op once it is closed.
         $exeDevice
             .loadModelFromPath(modelPath, $exeDevice.getModelBlobUrl())
-            .then((modelFile) => {
-                $('#dmoleModelData').val(modelFile.modelData || '');
-                if (modelFile.modelFormat) {
-                    $('#dmoleModelFormat').val(modelFile.modelFormat);
-                }
-                if (!$('#dmoleModelFileName').text().trim() && modelFile.modelName) {
-                    $('#dmoleModelFileName').text(modelFile.modelName);
-                }
-                $exeDevice.renderModelPreview();
-            })
-            .catch((error) => {
-                console.error(error);
-                $exeDevice.renderModelPreview();
-            });
+            .then(
+                lifecycle.bind(function (modelFile) {
+                    $('#dmoleModelData').val(modelFile.modelData || '');
+                    if (modelFile.modelFormat) {
+                        $('#dmoleModelFormat').val(modelFile.modelFormat);
+                    }
+                    if (!$('#dmoleModelFileName').text().trim() && modelFile.modelName) {
+                        $('#dmoleModelFileName').text(modelFile.modelName);
+                    }
+                    this.renderModelPreview();
+                }),
+            )
+            .catch(
+                lifecycle.bind(function (error) {
+                    console.error(error);
+                    this.renderModelPreview();
+                }),
+            );
+    },
+
+    /**
+     * Release the WebGL viewer created for the editor preview. The sequence
+     * mirrors `$eXe3Dmol.destroyViewer()` in the export runtime, which is the
+     * teardown this project already uses for a 3Dmol `GLViewer`.
+     *
+     * @param {Object} viewer
+     */
+    ownModelViewer: function (viewer) {
+        if (!viewer) return;
+        const self = this;
+        this.$lifecycle.own(function () {
+            if (viewer.removeAllSurfaces) viewer.removeAllSurfaces();
+            if (viewer.removeAllModels) viewer.removeAllModels();
+            if (viewer.removeAllShapes) viewer.removeAllShapes();
+            if (viewer.removeAllLabels) viewer.removeAllLabels();
+            if (viewer.clear) viewer.clear();
+            if (self.modelViewer === viewer) self.modelViewer = null;
+        });
     },
 
     renderModelPreview: function () {
+        const self = this;
         // Keep the model data raw: MDL molfiles (SDF/MOL) are line-position
         // sensitive (line 1 is the title, which may be empty), so trimming the
         // leading blank line shifts the counts line and breaks parsing. Trim
@@ -1158,6 +1196,7 @@ var $exeDevice = {
                     $exeDevice.modelViewer = $3Dmol.createViewer(preview, {
                         backgroundColor: bgColor,
                     });
+                    self.ownModelViewer($exeDevice.modelViewer);
                 } else if ($exeDevice.modelViewer.setBackgroundColor) {
                     $exeDevice.modelViewer.setBackgroundColor(bgColor);
                 }
@@ -1561,19 +1600,23 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.tabs.init('dMoleIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
 
-        $exeDevice.enableForm();
+        // Nothing awaits createForm(), so a failure must be reported here
+        // rather than surface as an unhandled rejection.
+        this.enableForm().catch((error) => {
+            console.error('[3dmol] Could not initialise the edition form:', error);
+        });
     },
 
     initQuestions: async function () {
 
-        if ($exeDevice.selectsGame.length == 0) {
-            const defaultModel = await $exeDevice.ensureDefaultModelLoaded();
-            const question = $exeDevice.getCuestionDefault(defaultModel);
-            $exeDevice.selectsGame.push(question);
+        if (this.selectsGame.length == 0) {
+            const defaultModel = await this.ensureDefaultModelLoaded();
+            const question = this.getCuestionDefault(defaultModel);
+            this.selectsGame.push(question);
             this.showOptions(4);
             this.showSolution('');
         }
-        $exeDevice.showTypeQuestion(0);
+        this.showTypeQuestion(0);
         this.active = 0;
     },
 
@@ -1585,54 +1628,55 @@ var $exeDevice = {
 
     ensureDefaultModelLoaded: async function () {
         if (
-            $exeDevice.defaultModelDataCache &&
-            $exeDevice.defaultModelDataCache.modelData &&
-            $exeDevice.defaultModelDataCache.modelFormat
+            this.defaultModelDataCache &&
+            this.defaultModelDataCache.modelData &&
+            this.defaultModelDataCache.modelFormat
         ) {
-            return $exeDevice.defaultModelDataCache;
+            return this.defaultModelDataCache;
         }
 
-        if ($exeDevice.defaultModelDataPromise) {
-            return $exeDevice.defaultModelDataPromise;
+        if (!this.defaultModelDataPromise) {
+            this.defaultModelDataPromise = this.loadDefaultModel();
         }
 
-        const sourcePath = $exeDevice.getDefaultModelSourcePath();
-        $exeDevice.defaultModelDataPromise = $exeDevice
-            .loadModelFromPath(sourcePath)
+        // Settles with an AbortError as soon as the edition closes, whatever
+        // the load is doing, so callers never mistake teardown for a result.
+        const pending = this.defaultModelDataPromise;
+        return this.$lifecycle.promise((resolve, reject) => pending.then(resolve, reject));
+    },
+
+    loadDefaultModel: function () {
+        const sourcePath = this.getDefaultModelSourcePath();
+        return this.loadModelFromPath(sourcePath)
             .then(async (modelFile) => {
                 const modelData = modelFile.modelData || '';
-                const modelName =
-                    modelFile.modelName ||
-                    $exeDevice.getModelFileNameFromPath(sourcePath);
+                const modelName = modelFile.modelName || this.getModelFileNameFromPath(sourcePath);
                 // Persist the bundled default model as a project asset so it
                 // follows the same asset:// discipline as uploaded models.
-                const assetUrl = await $exeDevice.createAssetFromModel(
-                    modelData,
-                    modelName
-                );
-                $exeDevice.defaultModelDataCache = {
+                const assetUrl = await this.createAssetFromModel(modelData, modelName);
+                this.defaultModelDataCache = {
                     modelData: modelData,
                     modelFormat: (modelFile.modelFormat || '').toLowerCase(),
                     modelName: modelName,
                     modelPath: assetUrl || sourcePath,
                 };
-                return $exeDevice.defaultModelDataCache;
+                return this.defaultModelDataCache;
             })
             .catch((error) => {
+                // An interrupted load is not a missing model: cache nothing.
+                if (this.$lifecycle.isAbortError(error)) throw error;
                 console.error(error);
-                $exeDevice.defaultModelDataCache = {
+                this.defaultModelDataCache = {
                     modelData: '',
                     modelFormat: '',
                     modelName: '',
                     modelPath: sourcePath,
                 };
-                return $exeDevice.defaultModelDataCache;
+                return this.defaultModelDataCache;
             })
             .finally(() => {
-                $exeDevice.defaultModelDataPromise = null;
+                this.defaultModelDataPromise = null;
             });
-
-        return $exeDevice.defaultModelDataPromise;
     },
 
     getCuestionDefault: function (defaultModel) {
@@ -2178,6 +2222,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const lifecycle = this.$lifecycle;
         const $dmolePaste = $('#dmolePaste'),
             $dmoleTimeShowSolution = $('#dmoleTimeShowSolution'),
             $dmoleShowSolution = $('#dmoleShowSolution'),
@@ -2434,13 +2479,11 @@ var $exeDevice = {
             try {
                 // Read the blob URL from the native dataset (fresh per select);
                 // jQuery .data() would return a stale blob when switching models.
-                const blobUrl = selectedFile.startsWith('asset://')
-                    ? $exeDevice.getModelBlobUrl()
-                    : '';
-                const modelFile = await $exeDevice.loadModelFromPath(
-                    selectedFile,
-                    blobUrl
-                );
+                const blobUrl = selectedFile.startsWith('asset://') ? $exeDevice.getModelBlobUrl() : '';
+                const modelFile = await $exeDevice.loadModelFromPath(selectedFile, blobUrl);
+                // The download is aborted when the editor closes; nothing past
+                // this point may touch a form that no longer belongs to it.
+                if (!lifecycle.isActive()) return;
                 $('#dmoleModelData').val(modelFile.modelData || '');
                 $('#dmoleModelFormat').val(modelFile.modelFormat || '');
                 $('#dmoleModelFileName').text(
@@ -2458,6 +2501,7 @@ var $exeDevice = {
                 }
                 $exeDevice.renderModelPreview();
             } catch (error) {
+                if (!lifecycle.isActive()) return;
                 console.error(error);
                 $('#dmoleModelData').val('');
                 $('#dmoleModelFormat').val('');

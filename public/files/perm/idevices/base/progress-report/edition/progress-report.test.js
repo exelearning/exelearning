@@ -14,6 +14,11 @@ const __dirname = path.dirname(__filename);
 const iDevicePath = path.join(__dirname, 'progress-report.js');
 const iDeviceCode = fs.readFileSync(iDevicePath, 'utf8');
 
+// The real jQuery installed by the Vitest setup, kept aside because
+// loadIdevice() below replaces the global with a stub for the pure-function
+// tests. The lifecycle tests put it back.
+const realJQuery = global.$;
+
 /**
  * Helper to load the iDevice with mocked globals
  */
@@ -557,6 +562,112 @@ describe('progress-report edition iDevice', () => {
     describe('sessionIdevices property', () => {
         test('should be defined', () => {
             expect($exeDevice.sessionIdevices).toBeDefined();
+        });
+    });
+
+    describe('edition lifecycle teardown', () => {
+        let lifecycle;
+
+        beforeEach(() => {
+            // This file stubs jQuery for the pure-function tests; the lifecycle
+            // handlers need the real one back.
+            global.$ = realJQuery;
+            global.jQuery = realJQuery;
+            window.$ = realJQuery;
+            window.jQuery = realJQuery;
+
+            lifecycle = global.attachEditionLifecycle($exeDevice);
+
+            document.body.innerHTML = `
+                <form id="informeQEIdeviceForm">
+                    <input type="radio" name="showtype" value="0" />
+                    <button id="informeERefresh"></button>
+                    <div id="informeEPages"></div>
+                </form>`;
+        });
+
+        afterEach(() => {
+            if (!lifecycle.isDestroyed()) lifecycle.destroy();
+            document.body.innerHTML = '';
+        });
+
+        test('redraws the pages when the display type is clicked', () => {
+            $exeDevice.showPages = vi.fn();
+            $exeDevice.addEvents();
+
+            realJQuery('input[name="showtype"]').trigger('click');
+
+            expect($exeDevice.showPages).toHaveBeenCalledTimes(1);
+        });
+
+        test('stops handling display type clicks once the edition is closed', () => {
+            $exeDevice.showPages = vi.fn();
+            $exeDevice.addEvents();
+
+            lifecycle.destroy();
+            realJQuery('input[name="showtype"]').trigger('click');
+
+            expect($exeDevice.showPages).not.toHaveBeenCalled();
+        });
+
+        test('leaves unrelated document handlers in place after teardown', () => {
+            const unrelated = vi.fn();
+            realJQuery(document).on('click.informeUnrelated', 'input[name="showtype"]', unrelated);
+            $exeDevice.showPages = vi.fn();
+            $exeDevice.addEvents();
+
+            lifecycle.destroy();
+            realJQuery('input[name="showtype"]').trigger('click');
+
+            expect(unrelated).toHaveBeenCalledTimes(1);
+            realJQuery(document).off('click.informeUnrelated');
+        });
+
+        test('does not apply a load that resolves after the edition closed', async () => {
+            let resolveApi;
+            global.eXeLearning = {
+                app: {
+                    project: { odeSession: 'session-1' },
+                    api: {
+                        getIdevicesBySessionId: () =>
+                            new Promise(resolve => {
+                                resolveApi = resolve;
+                            }),
+                    },
+                },
+            };
+            $exeDevice.sessionIdevices = 'untouched';
+            $exeDevice.buildNestedPages = vi.fn(() => []);
+            $exeDevice.showPages = vi.fn();
+
+            const pending = $exeDevice.getIdevicesBySessionId();
+            lifecycle.destroy();
+            resolveApi({ data: [{ id: 'a' }] });
+            await pending;
+
+            expect($exeDevice.buildNestedPages).not.toHaveBeenCalled();
+            expect($exeDevice.showPages).not.toHaveBeenCalled();
+            expect($exeDevice.sessionIdevices).toBe('untouched');
+        });
+
+        test('applies a load that resolves while the edition is open', async () => {
+            global.eXeLearning = {
+                app: {
+                    project: { odeSession: 'session-1' },
+                    api: {
+                        getIdevicesBySessionId: () => Promise.resolve({ data: [{ id: 'a' }] }),
+                    },
+                },
+            };
+            $exeDevice.buildNestedPages = vi.fn(() => ['page']);
+            $exeDevice.generateHtmlFromPagesEdition = vi.fn(() => '<p>ok</p>');
+            $exeDevice.showPages = vi.fn();
+
+            await $exeDevice.getIdevicesBySessionId();
+
+            expect($exeDevice.sessionIdevices).toEqual(['page']);
+            expect($exeDevice.showPages).toHaveBeenCalledTimes(1);
+            expect(realJQuery('#informeEPages').html()).toBe('<p>ok</p>');
         });
     });
 });

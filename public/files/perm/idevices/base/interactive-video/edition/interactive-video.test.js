@@ -82,6 +82,7 @@ describe('interactive-video iDevice edition', () => {
   // the form and overwrote what the author had chosen.
   describe('the SCORM weight reaches the form', () => {
     let setValues;
+    let previousTop;
 
     /** The exported markup the editor parses, carrying just the SCORM block. */
     function previousDataWith(scorm) {
@@ -92,11 +93,12 @@ describe('interactive-video iDevice edition', () => {
     beforeEach(() => {
       setValues = vi.fn();
       $exeDevicesEdition.iDevice.gamification.scorm.setValues = setValues;
+      previousTop = global.top;
       global.top = { interactiveVideoEditor: {} };
     });
 
     afterEach(() => {
-      delete global.top;
+      global.top = previousTop;
     });
 
     it('hands over the weight the author stored', () => {
@@ -191,6 +193,125 @@ describe('interactive-video iDevice edition', () => {
         $exeDevice.hasScorableSlide([null, question], false)
       ).not.toThrow();
       expect($exeDevice.hasScorableSlide([null, question], false)).toBe(true);
+    });
+  });
+
+  describe('edition lifecycle teardown (#2293)', () => {
+    let show;
+    let hide;
+    let dispose;
+    let iframeLoading;
+
+    beforeEach(() => {
+      // The editor modal embeds the editor in an iframe. Let happy-dom create
+      // the element without navigating to it: the test is about who owns the
+      // modal, not about what the editor page does.
+      iframeLoading = window.happyDOM.settings.disableIframePageLoading;
+      window.happyDOM.settings.disableIframePageLoading = true;
+      show = vi.fn();
+      dispose = vi.fn();
+      // Bootstrap's own `show()`/`hide()` put the scroll lock and the backdrop
+      // on <body> and take them off again; the fake reproduces just that, which
+      // is what teardown has to leave behind cleanly.
+      hide = vi.fn(() => {
+        document.body.classList.remove('modal-open');
+        document.querySelectorAll('.modal-backdrop').forEach((el) => el.remove());
+      });
+      window.__EXE_STATIC_MODE__ = true;
+      global.bootstrap = {
+        Modal: function () {
+          return {
+            show: vi.fn(() => {
+              document.body.classList.add('modal-open');
+              document.body.appendChild(
+                Object.assign(document.createElement('div'), { className: 'modal-backdrop' })
+              );
+              document.getElementById('modalGenericIframeContainer')?.classList.add('show');
+              show();
+            }),
+            hide,
+            dispose,
+          };
+        },
+      };
+      // createForm reads `top.interactiveVideoEditor`. SCORM tests also set this
+      // and must restore it, so this suite cannot rely on leftover global state.
+      global.top = { interactiveVideoEditor: {} };
+
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      $exeDevice.init(container, '', '/files/perm/idevices/base/interactive-video/edition/');
+      $('#interactiveVideoFile').val('files/tmp/video.mp4');
+    });
+
+    afterEach(() => {
+      window.happyDOM.settings.disableIframePageLoading = iframeLoading;
+      delete window.__EXE_STATIC_MODE__;
+      delete global.bootstrap;
+      document.body.classList.remove('modal-open');
+      document.querySelectorAll('.modal-backdrop').forEach((el) => el.remove());
+    });
+
+    it('opens the editor modal with its stylesheet', () => {
+      $exeDevice.editor.start();
+
+      expect(show).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('modalGenericIframeContainer')).not.toBeNull();
+      expect(document.getElementById('modalGenericIframeContainerCSS')).not.toBeNull();
+    });
+
+    it('disposes and removes the editor modal when the edition closes', () => {
+      $exeDevice.editor.start();
+
+      $exeDevice.$lifecycle.destroy();
+
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(document.getElementById('modalGenericIframeContainer')).toBeNull();
+      expect(document.getElementById('modalGenericIframeContainerCSS')).toBeNull();
+    });
+
+    /**
+     * Bootstrap's `dispose()` drops the instance without hiding it, so a
+     * teardown with the modal still open — a page switch — would leave the page
+     * scroll-locked behind a backdrop with no modal to close.
+     */
+    it('hides the modal before disposing it, so the page is usable again', () => {
+      $exeDevice.editor.start();
+      expect(document.body.classList.contains('modal-open')).toBe(true);
+
+      $exeDevice.$lifecycle.destroy();
+
+      expect(hide).toHaveBeenCalledTimes(1);
+      expect(hide.mock.invocationCallOrder[0]).toBeLessThan(dispose.mock.invocationCallOrder[0]);
+      expect(document.body.classList.contains('modal-open')).toBe(false);
+      expect(document.querySelectorAll('.modal-backdrop')).toHaveLength(0);
+    });
+
+    /**
+     * `hide()` is a no-op while Bootstrap is mid-transition, so what it may have
+     * left behind is swept — but only once nothing else is on screen.
+     */
+    it('sweeps a scroll lock that hide() could not clear', () => {
+      hide.mockImplementation(() => {});
+      $exeDevice.editor.start();
+
+      $exeDevice.$lifecycle.destroy();
+
+      expect(document.body.classList.contains('modal-open')).toBe(false);
+      expect(document.querySelectorAll('.modal-backdrop')).toHaveLength(0);
+    });
+
+    it('leaves the scroll lock alone while another modal is still open', () => {
+      hide.mockImplementation(() => {});
+      $exeDevice.editor.start();
+      const other = document.createElement('div');
+      other.className = 'modal show';
+      document.body.appendChild(other);
+
+      $exeDevice.$lifecycle.destroy();
+
+      expect(document.body.classList.contains('modal-open')).toBe(true);
+      expect(document.querySelectorAll('.modal-backdrop')).toHaveLength(1);
     });
   });
 });
