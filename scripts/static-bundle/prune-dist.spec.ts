@@ -7,6 +7,7 @@ import {
     KEEP_LOOSE_APP_FILES,
     STATIC_ONLY_PRUNE_PATHS,
     computeBundledAppSources,
+    isLicenseMaterial,
     pruneDistPaths,
     removeEmptyDirs,
 } from './prune-dist';
@@ -51,12 +52,55 @@ describe('pruneDistPaths', () => {
         const dist = makeTempDist();
         try {
             fs.mkdirSync(path.join(dist, 'libs/foo'), { recursive: true });
+            fs.mkdirSync(path.join(dist, 'files/perm/idevices/base/electrical-circuits/edition/fonts'), {
+                recursive: true,
+            });
             fs.writeFileSync(path.join(dist, 'libs/foo/LICENSE'), 'MIT');
-            expect(() => pruneDistPaths(dist, ['libs/foo/LICENSE'])).toThrow(/license/);
+            fs.writeFileSync(path.join(dist, 'libs/LICENSES.md'), 'notices');
+            fs.writeFileSync(
+                path.join(dist, 'files/perm/idevices/base/electrical-circuits/edition/fonts/LICENCE_BAKOMA.txt'),
+                'BaKoMa',
+            );
+            expect(() => pruneDistPaths(dist, ['libs/foo/LICENSE'])).toThrow(/license material/);
+            expect(() => pruneDistPaths(dist, ['libs/LICENSES.md'])).toThrow(/license material/);
+            expect(() =>
+                pruneDistPaths(dist, ['files/perm/idevices/base/electrical-circuits/edition/fonts/LICENCE_BAKOMA.txt']),
+            ).toThrow(/license material/);
             expect(fs.existsSync(path.join(dist, 'libs/foo/LICENSE'))).toBe(true);
+            expect(fs.existsSync(path.join(dist, 'libs/LICENSES.md'))).toBe(true);
         } finally {
             fs.rmSync(dist, { recursive: true, force: true });
         }
+    });
+
+    it('prunes application modules whose camelCase name merely contains "license"', () => {
+        // Regression: licenseOptions.js is in the app.bundle.js graph (imported by
+        // the File Manager). The previous substring guard treated it as attribution
+        // material, aborted the static build mid-prune, and shipped an unrepacked
+        // TikZJax dist — the e2e (static) shard then timed out waiting for
+        // __exeTikzAsset (electrical-circuits-tikzjax-static.spec.ts).
+        const dist = makeTempDist();
+        try {
+            fs.mkdirSync(path.join(dist, 'app/common'), { recursive: true });
+            fs.writeFileSync(path.join(dist, 'app/common/licenseOptions.js'), 'export const LICENSES = [];');
+
+            const stats = pruneDistPaths(dist, ['app/common/licenseOptions.js']);
+
+            expect(stats.files).toBe(1);
+            expect(fs.existsSync(path.join(dist, 'app/common/licenseOptions.js'))).toBe(false);
+        } finally {
+            fs.rmSync(dist, { recursive: true, force: true });
+        }
+    });
+});
+
+describe('isLicenseMaterial', () => {
+    it('matches attribution filenames and rejects camelCase application modules', () => {
+        expect(isLicenseMaterial('libs/foo/LICENSE')).toBe(true);
+        expect(isLicenseMaterial('libs/LICENSES.md')).toBe(true);
+        expect(isLicenseMaterial('edition/fonts/LICENCE_BAKOMA.txt')).toBe(true);
+        expect(isLicenseMaterial('app/common/licenseOptions.js')).toBe(false);
+        expect(isLicenseMaterial('app/common/figureCaption.js')).toBe(false);
     });
 });
 
@@ -102,6 +146,9 @@ describe('computeBundledAppSources', () => {
 
         expect(bundled.length).toBeGreaterThanOrEqual(50);
         expect(bundled).toContain('app/app.js');
+        // Imported by the File Manager; must be prunable (see isLicenseMaterial).
+        expect(bundled).toContain('app/common/licenseOptions.js');
+        expect(bundled.filter(isLicenseMaterial)).toEqual([]);
         for (const rel of bundled) {
             expect(rel.startsWith('app/')).toBe(true);
             expect(fs.existsSync(path.join(projectRoot, 'public', rel)), `missing in public/: ${rel}`).toBe(true);

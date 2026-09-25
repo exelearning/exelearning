@@ -278,7 +278,7 @@ var $exeDevice = {
                             <div>
                                 <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
                                     <label>${_('Image')}:</label>
-                                    <input type="text" id="puzzleEURLImageDefinition" class="exe-file-picker form-control me-0" />
+                                    <input type="text" id="puzzleEURLImageDefinition" data-author-target="#puzzleEAuthorDefinition" class="exe-file-picker form-control me-0" />
                                     <a href="#" id="puzzleEPlayImageDefinition" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
                                     <a href="#" id="puzzleEShowMoreDefinition" class="PZLE-ENavigationButton PZLE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="PZLE-EButtonImage " /></a>
                                 </div>

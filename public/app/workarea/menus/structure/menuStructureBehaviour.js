@@ -144,7 +144,12 @@ export default class MenuStructureBehaviour {
 
                 this.selectNode(navElement).then((nodeElement) => {
                     if (wasAlreadySelected && nodeElement) {
-                        if (eXeLearning.app.project.checkOpenIdevice()) return;
+                        // This continuation runs after the async page load settles;
+                        // an iDevice may have legitimately entered edition meanwhile
+                        // (e.g. the user already added one). Only skip the inline
+                        // rename affordance — checkOpenIdevice() would pop the
+                        // "Unsaved changes" alert for an action nobody attempted.
+                        if (eXeLearning.app.project.hasOpenIdevice()) return;
                         this.startInlinePageRename(nodeElement);
                     }
                 });

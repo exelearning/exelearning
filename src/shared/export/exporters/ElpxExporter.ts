@@ -33,7 +33,47 @@ import { validateXml, formatValidationErrors } from '../../../services/xml/xml-p
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
 
+/** Path of the centralized asset metadata sidecar inside an ELPX package. */
+const ASSET_METADATA_SIDECAR_PATH = 'content/asset-metadata.json';
+
 export class ElpxExporter extends Html5Exporter {
+    /**
+     * Write the centralized asset metadata sidecar (content/asset-metadata.json),
+     * mapping each asset's resource export path to its reusable metadata
+     * (description/title/license/author/authorUrl/sourceUrl). This lets the importer
+     * restore the metadata onto the re-created assets.
+     *
+     * No-op when the provider does not expose getExportMetadataMap or when no asset
+     * has metadata — so existing packages remain byte-for-byte identical.
+     *
+     * @param trackingList - Optional ELPX file list to append the sidecar path to
+     */
+    private async addAssetMetadataSidecar(trackingList?: string[] | null): Promise<void> {
+        try {
+            if (!this.assets.getExportMetadataMap) return;
+            const metadataMap = await this.assets.getExportMetadataMap();
+            if (!metadataMap || metadataMap.size === 0) return;
+
+            const exportPathMap = await this.buildAssetExportPathMap();
+            const sidecarAssets: Record<string, unknown> = {};
+            for (const [assetId, metadata] of metadataMap) {
+                const exportPath = exportPathMap.get(assetId);
+                if (exportPath) {
+                    sidecarAssets[exportPath] = metadata;
+                }
+            }
+
+            if (Object.keys(sidecarAssets).length === 0) return;
+
+            const json = JSON.stringify({ version: 1, assets: sidecarAssets }, null, 2);
+            this.zip.addFile(ASSET_METADATA_SIDECAR_PATH, json);
+            if (trackingList) trackingList.push(ASSET_METADATA_SIDECAR_PATH);
+        } catch (e) {
+            // Non-fatal: the export still succeeds, metadata simply isn't carried.
+            console.warn('[ElpxExporter] Failed to write asset metadata sidecar:', e);
+        }
+    }
+
     /**
      * Decode screenshot from base64 data URL or raw base64 to Uint8Array.
      * Returns null if the data is not valid PNG.
@@ -339,6 +379,11 @@ export class ElpxExporter extends Html5Exporter {
 
             // 1.9 Add project assets
             await this.addAssetsToZipWithResourcePath(fileList);
+
+            // 1.9b Add centralized asset metadata sidecar (description/title/license/
+            // author/authorUrl/sourceUrl) so reusable metadata survives an ELPX re-import.
+            // Written only when at least one asset has metadata, keeping packages unchanged otherwise.
+            await this.addAssetMetadataSidecar(fileList);
 
             // 1.10 Add HTML pages to ZIP (with manifest script on pages that have download-source-file).
             // The ELPX download manifest itself is generated LAST (Section 2.4) — after the content.xml /

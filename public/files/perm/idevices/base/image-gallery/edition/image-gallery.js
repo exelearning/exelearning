@@ -318,15 +318,35 @@ var $exeDevice = {
             img.setAttribute('data-asset-origin', assetUrl);
             img.setAttribute('src', blobUrl || assetUrl);
             img.setAttribute('data-asset-url', assetUrl);
+            this.seedAttributionFromAsset(`img_${this.editionId}`, asset);
         } else {
             // Adding new image - blobUrl for display, assetUrl for persistence in 'origin'
             this.addImageHTML(this.idImage, assetUrl, blobUrl || assetUrl);
+            this.seedAttributionFromAsset(`img_${this.idImage}`, asset);
             // Add sortable behaviour to the new image
             let images = this.ideviceBody.querySelectorAll('.imgSelectContainer');
             this.addSortableBehaviour(images[images.length - 1]);
             this.idImage++;
         }
         this.editionId = null;
+    },
+
+    /**
+     * Seed an image's attribution (title / author / license) from the centralized
+     * File Manager metadata, filling only empty fields so values the user already
+     * entered are never overwritten. The gallery's license vocabulary matches the
+     * centralized license labels (see public/app/common/licenseOptions.js), so the
+     * license label maps across directly.
+     * @param {string} key - attributionData key for the image (e.g. "img_0")
+     * @param {Object} asset - centralized asset metadata ({ title, author, license, ... })
+     */
+    seedAttributionFromAsset: function (key, asset) {
+        if (!key || !asset) return;
+        const seeded = { ...($exeDevice.attributionData[key] || {}) };
+        if (!seeded.title && asset.title) seeded.title = asset.title;
+        if (!seeded.author && asset.author) seeded.author = asset.author;
+        if (!seeded.license && asset.license) seeded.license = asset.license;
+        $exeDevice.attributionData[key] = seeded;
     },
 
     /**

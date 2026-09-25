@@ -239,7 +239,7 @@ var $exeDevice = {
                             </span>                            
                             <div class="d-flex align-items-center gap-2 flex-nowrap" id="ccgmbackground1">
                                 <label for="ccgmEURLBack" class="mb-0">${_('URL')}: </label>
-                                <input type="text" class="exe-file-picker CCGM-EURLImage form-control me-0" id="ccgmEURLBack"/>
+                                <input type="text" class="exe-file-picker CCGM-EURLImage form-control me-0" id="ccgmEURLBack" data-author-target="#ccgmAuthorBack"/>
                                 <a href="#" id="ccgmEPlayBack" class="CCGM-ENavigationButton CCGMEEPlayVideo" title="${_('Show')}">
                                     <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage " />
                                 </a>
@@ -280,7 +280,7 @@ var $exeDevice = {
                                 <span class="CCGM-ETitleImage" id="ccgmETitleImage">${_('Image URL')}</span>
                                 <div class="CCGM-EInputImage align-items-center gap-2 mb-3  flex-nowrap" id="ccgmEInputImage">
                                     <label class="sr-av" for="ccgmEURLImage">${_('Image URL')}</label>
-                                    <input type="text" class="exe-file-picker form-control me-0" id="ccgmEURLImage"/>
+                                    <input type="text" class="exe-file-picker form-control me-0" id="ccgmEURLImage" data-author-target="#ccgmEAuthor"/>
                                     <a href="#" id="ccgmEPlayImage" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Show')}">
                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage " />
                                     </a>

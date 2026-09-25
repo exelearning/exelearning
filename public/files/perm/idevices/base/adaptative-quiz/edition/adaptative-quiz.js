@@ -357,7 +357,7 @@ var $exeDevice = {
                                     </div>
                                     <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="adaptativeQuizInputImage">
                                         <label class="sr-av" for="adaptativeQuizEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-image-picker w-100 form-control me-0 ADQ-EImageInput" id="adaptativeQuizEURLImage"/>
+                                        <input type="text" class="exe-image-picker w-100 form-control me-0 ADQ-EImageInput" id="adaptativeQuizEURLImage" data-author-target="#adaptativeQuizEAuthor"/>
                                         <a href="#" class="ADQ-ENavigationButton ADQ-EImageReload" id="adaptativeQuizEReloadImage" title="${_('Reload image')}" aria-label="${_('Reload image')}"><img src="${path}quextIEPlay.png" alt="${_('Reload image')}" class="ADQ-ENavigationButton" /></a>
                                     </div>
                                     <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="adaptativeQuizEAuthorAlt">

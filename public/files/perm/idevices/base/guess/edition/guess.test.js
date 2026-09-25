@@ -280,6 +280,17 @@ describe('guess iDevice', () => {
       expect($exeDevice.wordsGame.length).toBe(0);
     });
   });
+  describe('author prefill wiring (data-author-target)', () => {
+    it('declares the image picker prefill target pointing at the Authorship input', () => {
+      const filePath = join(__dirname, 'guess.js');
+      const code = readFileSync(filePath, 'utf-8');
+      // The image picker opts into the shared author prefill (common_edition.js
+      // seedDeclaredTargets) and must keep pointing at this question's author input.
+      expect(code).toMatch(
+        /id="adivinaEURLImage"[^>]*data-author-target="#adivinaEAuthor"|data-author-target="#adivinaEAuthor"[^>]*id="adivinaEURLImage"/
+      );
+    });
+  });
 
   // The editor truncates its numeric fields on keyup. Capping them at one digit
   // made ordinary values impossible to enter: the second keystroke was dropped,

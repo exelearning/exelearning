@@ -504,6 +504,28 @@ describe('ProjectManager', () => {
         });
     });
 
+    describe('hasOpenIdevice (silent state check)', () => {
+        it('returns false when no container exists', () => {
+            document.body.innerHTML = '';
+            expect(projectManager.hasOpenIdevice()).toBe(false);
+        });
+
+        it('returns false when no idevice is in edition mode', () => {
+            document.getElementById('node-content').innerHTML =
+                '<div class="idevice_node" mode="view"></div>';
+            expect(projectManager.hasOpenIdevice()).toBe(false);
+        });
+
+        it('returns true WITHOUT showing the alert when an idevice is in edition', () => {
+            document.getElementById('node-content').innerHTML =
+                '<div class="idevice_node" mode="edition"></div>';
+            expect(projectManager.hasOpenIdevice()).toBe(true);
+            // Unlike checkOpenIdevice, the silent check never pops the modal —
+            // async continuations rely on this to avoid spurious alerts.
+            expect(window.eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
+        });
+    });
+
     describe('checkPageCollaborativeEditing', () => {
         it('returns false when page is not locked', () => {
             projectManager.activeLocks.set('test-page', false);
