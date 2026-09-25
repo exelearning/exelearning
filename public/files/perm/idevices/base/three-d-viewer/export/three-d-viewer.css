@@ -119,3 +119,206 @@
 .three-d-viewer-nav-up { grid-column: 2; grid-row: 1; }
 .three-d-viewer-nav-down { grid-column: 2; grid-row: 2; }
 .three-d-viewer-nav-right { grid-column: 3; grid-row: 2; }
+
+/* ───────────────────────────────────────────────────────────────────────
+   Interaction layer — markers, dialog, questions, guided nav, fallback.
+   Rendered by the shared runtime, so these styles are shared by the editor
+   preview (edition/three-d-viewer.css mirrors this block) and export.
+   ─────────────────────────────────────────────────────────────────────── */
+.tdv-marker-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.tdv-marker {
+    pointer-events: auto;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    max-width: 14em;
+    padding: 0.15em 0.5em;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: rgba(13, 110, 253, 0.92);
+    color: #fff;
+    font: inherit;
+    font-size: 0.85rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* model-viewer positions slotted hotspots itself — drop our absolute layout */
+.tdv-marker--mv {
+    position: static;
+    transform: none;
+}
+
+.tdv-marker:hover,
+.tdv-marker:focus-visible {
+    background: rgba(13, 110, 253, 1);
+    outline: none;
+}
+
+.tdv-marker:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.9);
+    outline-offset: 1px;
+}
+
+.tdv-marker--active {
+    background: #d63384;
+}
+
+.tdv-marker--hidden {
+    opacity: 0.25;
+    pointer-events: none;
+}
+
+.tdv-marker-icon {
+    flex: 0 0 auto;
+    width: 0.9em;
+    height: 0.9em;
+    border-radius: 50%;
+    background: #fff;
+    display: inline-block;
+}
+
+.tdv-marker-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tdv-dialog-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.tdv-dialog {
+    width: 100%;
+    max-width: 32rem;
+    max-height: 90%;
+    overflow: auto;
+    padding: 1rem;
+    background: #fff;
+    color: #212529;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.3);
+}
+
+.tdv-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.tdv-dialog-title {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.tdv-dialog-close {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.tdv-dialog-figure img,
+.tdv-dialog-video {
+    max-width: 100%;
+    height: auto;
+}
+
+.tdv-question {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.tdv-question-prompt {
+    margin-bottom: 0.5rem;
+    padding: 0;
+    font-weight: 600;
+}
+
+.tdv-question-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.tdv-q-check {
+    margin-top: 0.5rem;
+}
+
+.tdv-q-feedback {
+    margin-top: 0.5rem;
+    font-weight: 600;
+}
+
+.tdv-q-feedback--correct { color: #0f5132; }
+.tdv-q-feedback--incorrect { color: #842029; }
+
+.tdv-guided-nav {
+    position: absolute;
+    left: 50%;
+    bottom: 0.5rem;
+    transform: translateX(-50%);
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-radius: 999px;
+    pointer-events: auto;
+}
+
+.tdv-guided-nav button {
+    padding: 0.1rem 0.6rem;
+    color: #fff;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.tdv-guided-nav button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.tdv-guided-status {
+    font-size: 0.85rem;
+}
+
+.tdv-fallback {
+    margin-top: 0.5rem;
+}
+
+.tdv-fallback[hidden] {
+    display: none;
+}
+
+.tdv-placing,
+.tdv-placing model-viewer,
+.tdv-placing canvas {
+    cursor: crosshair !important;
+}
