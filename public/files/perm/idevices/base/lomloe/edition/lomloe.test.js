@@ -2294,6 +2294,68 @@ describe('Edition lifecycle', () => {
             expect(received.signal.aborted).toBe(true);
         });
 
+        // Review H2: see the DigCompEdu twin of this test.
+        describe('when the edition closes mid-download', () => {
+            let xhrs;
+            let OriginalXHR;
+
+            beforeEach(() => {
+                xhrs = [];
+                OriginalXHR = globalThis.XMLHttpRequest;
+                globalThis.XMLHttpRequest = function () {
+                    const xhr = { open: vi.fn(), send: vi.fn(), abort: vi.fn() };
+                    xhrs.push(xhr);
+                    return xhr;
+                };
+            });
+
+            afterEach(() => {
+                globalThis.XMLHttpRequest = OriginalXHR;
+                delete window.fzstd;
+            });
+
+            const abortableFetch = () =>
+                vi.fn(
+                    (url, options) =>
+                        new Promise((_resolve, reject) => {
+                            options.signal.addEventListener('abort', () =>
+                                reject(new DOMException('aborted', 'AbortError')),
+                            );
+                        }),
+                );
+
+            it('does not fall back to an XHR from the plain fetch', async () => {
+                globalThis.fetch = abortableFetch();
+                dev.init(el, null);
+                await new Promise(r => setTimeout(r, 10));
+                dev.$lifecycle.destroy();
+                await new Promise(r => setTimeout(r, 10));
+
+                expect(xhrs).toEqual([]);
+                expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('does not fall back from the .zst request either', async () => {
+                window.fzstd = { decompress: vi.fn() };
+                globalThis.fetch = abortableFetch();
+                dev.init(el, null);
+                await new Promise(r => setTimeout(r, 10));
+                dev.$lifecycle.destroy();
+                await new Promise(r => setTimeout(r, 10));
+
+                expect(xhrs).toEqual([]);
+                expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+            });
+
+            it('still falls back to an XHR when the fetch fails for another reason', async () => {
+                globalThis.fetch = vi.fn(() => Promise.reject(new TypeError('Failed to fetch')));
+                dev.init(el, null);
+                await vi.waitFor(() => expect(xhrs).toHaveLength(1));
+
+                expect(xhrs[0].send).toHaveBeenCalled();
+            });
+        });
+
         it('does not render a dataset that arrives after the edition closed', async () => {
             let release;
             globalThis.fetch = vi.fn(

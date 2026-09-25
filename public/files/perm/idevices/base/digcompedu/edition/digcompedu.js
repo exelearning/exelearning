@@ -166,6 +166,14 @@ var $exeDevice = {
             this.jsonPathTemplate.replace('{lang}', lang)
         );
 
+        // An abort is a decision, not a failure: once the edition closed, no
+        // tier may fall back to the next one and start new network work.
+        const stopIfClosed = (error) => {
+            if (!lifecycle.isActive()) {
+                throw (lifecycle.signal && lifecycle.signal.reason) || error;
+            }
+        };
+
         const loadViaXHR = (targetUrl) =>
             new Promise((resolve, reject) => {
                 if (typeof XMLHttpRequest === 'undefined') {
@@ -256,6 +264,7 @@ var $exeDevice = {
                           return response.json();
                       })
                       .catch((error) => {
+                          stopIfClosed(error);
                           if (typeof XMLHttpRequest === 'function') {
                               return loadViaXHR(url).catch((xhrError) => {
                                   throw xhrError || error;
@@ -265,7 +274,10 @@ var $exeDevice = {
                       })
                 : loadViaXHR(url);
 
-        const fetchPromise = zstPromise.catch(() => rawJsonPromise());
+        const fetchPromise = zstPromise.catch((error) => {
+            stopIfClosed(error);
+            return rawJsonPromise();
+        });
 
         this.dataLoadPromises[lang] = fetchPromise
             .then((data) => {

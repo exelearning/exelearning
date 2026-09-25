@@ -2624,6 +2624,53 @@ describe('common_edition.js', () => {
           }
         );
       });
+
+      // Review H5: the success path was guarded, the error path was not. The
+      // form of the next edition — B — shares these ids, so a stale failure
+      // from A rewrote B's message and re-enabled B's controls mid-request.
+      it('keeps a late failure out of the form of the next edition', async () => {
+        mountIAForm();
+        let failRequest;
+
+        await withApi(
+          () =>
+            new Promise((_resolve, reject) => {
+              failRequest = reject;
+            }),
+          async () => {
+            openEdition();
+            const pending = iDevice().gamification.share.genarateIAQuestons(0, vi.fn());
+
+            lifecycle.destroy();
+            // B opens its own form, with a request of its own in flight.
+            mountIAForm();
+            openEdition();
+            document.getElementById('eXeIAMessage').textContent = 'B is generating';
+            document.getElementById('eXeThemeIA').disabled = true;
+
+            failRequest(new Error('network'));
+            await pending;
+
+            expect(document.getElementById('eXeIAMessage').textContent).toBe('B is generating');
+            expect(document.getElementById('eXeThemeIA').disabled).toBe(true);
+          }
+        );
+      });
+
+      it('reports a failure while the editor is still open', async () => {
+        mountIAForm();
+
+        await withApi(
+          () => Promise.reject(new Error('network')),
+          async () => {
+            openEdition();
+            await iDevice().gamification.share.genarateIAQuestons(0, vi.fn());
+
+            expect(document.getElementById('eXeIAMessage').textContent).not.toBe('');
+            expect(document.getElementById('eXeThemeIA').disabled).toBe(false);
+          }
+        );
+      });
     });
 
     describe('downloadBlob', () => {
@@ -2773,6 +2820,57 @@ describe('common_edition.js', () => {
         expect(helpers.playerAudio).toBeNull();
         expect(helpers.currentAudioUrl).toBeNull();
       });
+
+      // Review H8: both calls passed stopSound() before either had a player,
+      // then both created one and the shared reference kept only the last —
+      // so teardown could stop only that one and the first kept playing.
+      it('leaves no player outside cleanup when two resolutions overlap', async () => {
+        const players = [];
+        previousAudio = globalThis.Audio;
+        globalThis.Audio = vi.fn(function () {
+          const player = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(function () { this.paused = true; }), paused: false };
+          players.push(player);
+          return player;
+        });
+        const pendingResolutions = [];
+        window.eXeLearningAssetResolver = {
+          resolve: vi.fn(() => new Promise((resolve) => pendingResolutions.push(resolve))),
+        };
+        const helpers = iDevice().gamification.helpers;
+
+        openEdition();
+        const first = helpers.playSound('asset://first.webm');
+        const second = helpers.playSound('asset://second.webm');
+        pendingResolutions[0]('blob:first');
+        pendingResolutions[1]('blob:second');
+        await Promise.all([first, second]);
+
+        lifecycle.destroy();
+
+        expect(players.length).toBeGreaterThan(0);
+        expect(players.every((player) => player.paused)).toBe(true);
+        // Only the request made last may start playing.
+        expect(globalThis.Audio).toHaveBeenCalledTimes(1);
+        expect(globalThis.Audio).toHaveBeenCalledWith('blob:second');
+      });
+
+      it('does not start audio whose resolution finished after stopSound()', async () => {
+        const instance = { play: vi.fn().mockResolvedValue(undefined), pause: vi.fn(), paused: true };
+        const ctor = useAudioMock(instance);
+        let resolveAsset;
+        window.eXeLearningAssetResolver = {
+          resolve: vi.fn(() => new Promise((resolve) => (resolveAsset = resolve))),
+        };
+        const helpers = iDevice().gamification.helpers;
+
+        openEdition();
+        const pending = helpers.playSound('asset://recording.webm');
+        helpers.stopSound();
+        resolveAsset('blob:resolved-audio');
+        await pending;
+
+        expect(ctor).not.toHaveBeenCalled();
+      });
     });
 
     describe('voiceRecorder', () => {
@@ -2827,6 +2925,123 @@ describe('common_edition.js', () => {
         expect(stopTrack).toHaveBeenCalledTimes(1);
         expect(recorder.instances.some((entry) => entry.containerEl === container)).toBe(false);
         expect(document.querySelector('.exe-voice-recorder-fallback-modal')).toBeNull();
+      });
+
+      const mountRecorder = (id) => {
+        document.body.innerHTML = `
+          <div id="${id}" data-voice-recorder data-voice-input="#audioInput">
+            <input id="audioInput" type="text" class="exe-file-picker" />
+            <input type="button" class="exe-pick-any-file" value="Select a file" />
+          </div>
+        `;
+      };
+
+      // Review H7: a real MediaRecorder delivers `stop` asynchronously. The
+      // handler outlived cleanup, then built a blob, an object URL and
+      // reopened a modal that had already been disposed.
+      it('ignores a stop event delivered after the editor closed', async () => {
+        const stream = { getTracks: () => [{ stop: vi.fn() }] };
+        globalThis.navigator.mediaDevices = { getUserMedia: vi.fn().mockResolvedValue(stream) };
+        let liveRecorder;
+        globalThis.MediaRecorder = class {
+          static isTypeSupported() {
+            return true;
+          }
+          constructor() {
+            this.mimeType = 'audio/webm';
+            this.state = 'inactive';
+            liveRecorder = this;
+          }
+          start() {
+            this.state = 'recording';
+          }
+          stop() {
+            this.state = 'inactive';
+            // Delivered later, like the browser does.
+            this.pendingStop = () => this.onstop && this.onstop();
+          }
+        };
+        const createObjectURL = vi.spyOn(window.URL, 'createObjectURL');
+        const recorder = iDevice().voiceRecorder;
+        mountRecorder('voice-late-stop');
+
+        openEdition();
+        recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+        document.querySelector('.exe-voice-recorder-toggle').click();
+        await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
+        expect(liveRecorder.state).toBe('recording');
+
+        lifecycle.destroy();
+        expect(() => liveRecorder.pendingStop()).not.toThrow();
+
+        expect(createObjectURL).not.toHaveBeenCalled();
+        expect(document.querySelector('.exe-voice-recorder-fallback-modal')).toBeNull();
+        createObjectURL.mockRestore();
+      });
+
+      // Review H9: permission granted after the editor closed used to start a
+      // recorder nobody could stop, on a live microphone track.
+      it('releases a microphone granted after the editor closed, without recording', async () => {
+        const stopTrack = vi.fn();
+        const stream = { getTracks: () => [{ stop: stopTrack }] };
+        let grant;
+        globalThis.navigator.mediaDevices = {
+          getUserMedia: vi.fn(() => new Promise((resolve) => (grant = resolve))),
+        };
+        const constructed = vi.fn();
+        globalThis.MediaRecorder = class {
+          static isTypeSupported() {
+            return true;
+          }
+          constructor() {
+            constructed();
+            this.state = 'inactive';
+          }
+          start() {
+            this.state = 'recording';
+          }
+          stop() {
+            this.state = 'inactive';
+          }
+        };
+        const recorder = iDevice().voiceRecorder;
+        mountRecorder('voice-late-grant');
+
+        openEdition();
+        recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+        document.querySelector('.exe-voice-recorder-toggle').click();
+        expect(globalThis.navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+
+        lifecycle.destroy();
+        grant(stream);
+        await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
+
+        expect(constructed).not.toHaveBeenCalled();
+        expect(stopTrack).toHaveBeenCalledTimes(1);
+      });
+
+      it('shows nothing when the permission is refused after the editor closed', async () => {
+        let refuse;
+        globalThis.navigator.mediaDevices = {
+          getUserMedia: vi.fn(() => new Promise((_resolve, reject) => (refuse = reject))),
+        };
+        globalThis.MediaRecorder = class {
+          static isTypeSupported() {
+            return true;
+          }
+        };
+        const recorder = iDevice().voiceRecorder;
+        mountRecorder('voice-late-refusal');
+
+        openEdition();
+        recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+        const toggle = document.querySelector('.exe-voice-recorder-toggle');
+        toggle.click();
+        lifecycle.destroy();
+        refuse(new Error('NotAllowedError'));
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        expect(document.querySelector('.exe-voice-recorder-error:not(.d-none)')).toBeNull();
       });
 
       it('rebinds its page-level cleanup handlers for the next edition', () => {

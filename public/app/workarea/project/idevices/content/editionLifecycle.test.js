@@ -889,6 +889,91 @@ describe('EditionLifecycle', () => {
     });
 
     /*******************************************************************************
+     * SETTLED PROMISES
+     *******************************************************************************/
+
+    describe('promise()', () => {
+        it('settles like the executor asks', async () => {
+            await expect(lifecycle.promise((resolve) => resolve('ok'))).resolves.toBe('ok');
+            await expect(lifecycle.promise((_resolve, reject) => reject(new Error('no')))).rejects.toThrow('no');
+        });
+
+        it('rejects an executor that throws', async () => {
+            await expect(
+                lifecycle.promise(() => {
+                    throw new Error('thrown');
+                }),
+            ).rejects.toThrow('thrown');
+        });
+
+        /**
+         * Whatever would have completed the promise — a timer, a listener — is
+         * released by teardown, so without this the caller hangs forever.
+         */
+        it('rejects work that teardown interrupts', async () => {
+            const pending = lifecycle.promise(() => {});
+
+            lifecycle.destroy();
+
+            await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+        });
+
+        it('rejects at once, without running the executor, when the edition is closed', async () => {
+            const executor = vi.fn();
+            lifecycle.destroy();
+
+            await expect(lifecycle.promise(executor)).rejects.toMatchObject({ name: 'AbortError' });
+            expect(executor).not.toHaveBeenCalled();
+        });
+
+        it('forgets its teardown hook once settled, so a long edition does not pile them up', async () => {
+            const before = lifecycle.disposers.length;
+
+            await lifecycle.promise((resolve) => resolve());
+            await lifecycle.promise((_resolve, reject) => reject(new Error('x'))).catch(() => {});
+
+            expect(lifecycle.disposers.length).toBe(before);
+        });
+    });
+
+    describe('delay()', () => {
+        it('resolves after the delay', async () => {
+            vi.useFakeTimers();
+            const done = vi.fn();
+            lifecycle.delay(100).then(done);
+
+            await vi.advanceTimersByTimeAsync(99);
+            expect(done).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(1);
+            expect(done).toHaveBeenCalled();
+        });
+
+        it('rejects when the edition closes before the delay ends', async () => {
+            vi.useFakeTimers();
+            const pending = lifecycle.delay(100);
+            const outcome = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+
+            lifecycle.destroy();
+            await vi.advanceTimersByTimeAsync(200);
+
+            await outcome;
+        });
+    });
+
+    describe('isAbortError()', () => {
+        it('recognises the error teardown settles with, and aborted fetches', async () => {
+            const pending = lifecycle.promise(() => {});
+            lifecycle.destroy();
+            const error = await pending.catch((e) => e);
+
+            expect(lifecycle.isAbortError(error)).toBe(true);
+            expect(lifecycle.isAbortError(new DOMException('x', 'AbortError'))).toBe(true);
+            expect(lifecycle.isAbortError(new Error('network'))).toBe(false);
+            expect(lifecycle.isAbortError(null)).toBe(false);
+        });
+    });
+
+    /*******************************************************************************
      * DESTROY HOOK
      *******************************************************************************/
 

@@ -96,10 +96,13 @@ var $exeDevice = (function () {
             this.set3DViewerJSON(previousData || {});
             this.applyStateToForm();
             await this.createModelViewer();
+            // Each await can outlive the editor; a closed edition stops here.
+            if (!this.$lifecycle.isActive()) return;
 
             // Pre-resolve asset:// URL if present (load blob into cache)
             if (this.state.src && this.state.src.startsWith('asset://')) {
                 await this.preResolveAssetUrl(this.state.src);
+                if (!this.$lifecycle.isActive()) return;
             }
 
             this.updatePreview();
@@ -581,6 +584,9 @@ var $exeDevice = (function () {
 
         createModelViewer: async function () {
             await this.ensureModelViewerLoaded();
+            // The loader is shared and may legitimately outlive this edition;
+            // the element it was awaited for must not.
+            if (!this.$lifecycle.isActive()) return;
             this.modelViewer = document.createElement('model-viewer');
             this.modelViewer.setAttribute('shadow-intensity', '1');
             this.modelViewer.setAttribute('tone-mapping', 'pbr-neutral');
@@ -672,6 +678,7 @@ var $exeDevice = (function () {
             // state.
             if (!blobUrl && state.src && state.src.startsWith('asset://')) {
                 const assetManager = await this.waitForAssetManager(5000);
+                if (!this.$lifecycle.isActive()) return;
                 if (assetManager) {
                     try {
                         blobUrl = await assetManager.resolveAssetURL(state.src);
@@ -682,6 +689,7 @@ var $exeDevice = (function () {
                 } else {
                     console.warn('[3D Viewer] STL: AssetManager not available after waiting');
                 }
+                if (!this.$lifecycle.isActive()) return;
             }
 
             if (!blobUrl) {
@@ -876,6 +884,7 @@ var $exeDevice = (function () {
                         } catch (err) {
                             console.error('[3D Viewer] Failed to load asset:', err);
                         }
+                        if (!this.$lifecycle.isActive()) return;
                     }
                 }
             }
@@ -1075,7 +1084,7 @@ var $exeDevice = (function () {
 
             try {
                 const blobUrl = await assetManager.resolveAssetURL(assetUrl);
-                if (blobUrl) {
+                if (blobUrl && this.$lifecycle.isActive()) {
                     this.previewBlobUrl = blobUrl;
                     this.updatePreview(true); // Force update with new blob URL
                 }
@@ -1111,11 +1120,14 @@ var $exeDevice = (function () {
                     return assetManager;
                 }
                 // Stop polling as soon as the editor closes: the caller has
-                // nothing left to render into.
-                if (!this.$lifecycle.isActive()) return null;
-                await new Promise(resolve => {
-                    if (this.$lifecycle.setTimeout(resolve, pollInterval) === null) resolve();
-                });
+                // nothing left to render into. The owned delay settles on
+                // teardown, so the wait never hangs on a cancelled timer.
+                try {
+                    await this.$lifecycle.delay(pollInterval);
+                } catch (error) {
+                    if (this.$lifecycle.isAbortError(error)) return null;
+                    throw error;
+                }
             }
 
             return null;

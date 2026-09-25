@@ -1052,10 +1052,13 @@ var $exeDevice = {
     // server runtime keeps serving the loose files.
     // Format: u32le header length + JSON {family: [offset, length]} + payload.
     loadTikzFontPack: function () {
-        if (!$exeDevice.tikzFontPackPromise) {
-            $exeDevice.tikzFontPackPromise = (async () => {
+        // Both caches belong to the edition that fills them; the async work
+        // below must never read or reset the `$exeDevice` that replaced it.
+        const self = this;
+        if (!self.tikzFontPackPromise) {
+            self.tikzFontPackPromise = (async () => {
                 if (!window.fzstd) return null;
-                const url = ($exeDevice.idevicePath || '') + 'fonts.pack.zst';
+                const url = (self.idevicePath || '') + 'fonts.pack.zst';
                 const response = await fetch(url);
                 // A missing pack (server mode serves the loose TTFs instead)
                 // is a stable answer worth caching for the session.
@@ -1074,21 +1077,22 @@ var $exeDevice = {
             })().catch(() => {
                 // Transient failure (network blip): let a later call retry
                 // instead of degrading fonts for the whole session.
-                $exeDevice.tikzFontPackPromise = null;
+                self.tikzFontPackPromise = null;
                 return null;
             });
         }
-        return $exeDevice.tikzFontPackPromise;
+        return self.tikzFontPackPromise;
     },
 
     // Fetch and parse a Computer Modern font shipped next to this iDevice,
     // caching the (promise of the) result. Overridable in tests.
     loadTikzFont: function (family) {
-        if (!$exeDevice.tikzFontCache[family]) {
+        const self = this;
+        if (!self.tikzFontCache[family]) {
             // Capture the edition's signal now: the pack lookup is async, and
             // a later edition must not own this fallback fetch.
             const signal = this.$lifecycle && this.$lifecycle.signal;
-            $exeDevice.tikzFontCache[family] = $exeDevice
+            self.tikzFontCache[family] = self
                 .loadTikzFontPack()
                 .then((pack) => {
                     const entry = pack && pack.header[family];
@@ -1096,10 +1100,10 @@ var $exeDevice = {
                         // .slice() copies into a fresh buffer, matching the
                         // ArrayBuffer shape parseTikzFont expects.
                         const bytes = pack.payload.slice(entry[0], entry[0] + entry[1]);
-                        return $exeDevice.parseTikzFont(bytes.buffer);
+                        return self.parseTikzFont(bytes.buffer);
                     }
                     const url =
-                        ($exeDevice.idevicePath || '') + 'fonts/' + family + '.ttf';
+                        (self.idevicePath || '') + 'fonts/' + family + '.ttf';
                     // Loose-file fallback is aborted with the edition. The zstd
                     // pack is session-wide and must not be cancelled here.
                     return fetch(url, { signal })
@@ -1107,12 +1111,12 @@ var $exeDevice = {
                             response.ok ? response.arrayBuffer() : null
                         )
                         .then((buffer) =>
-                            buffer ? $exeDevice.parseTikzFont(buffer) : null
+                            buffer ? self.parseTikzFont(buffer) : null
                         );
                 })
                 .catch(() => null);
         }
-        return $exeDevice.tikzFontCache[family];
+        return self.tikzFontCache[family];
     },
 
     /**
@@ -1134,9 +1138,12 @@ var $exeDevice = {
             ),
         ];
 
+        // Font loading is async: the continuation must keep using the edition
+        // that started it, never whatever `$exeDevice` holds by then.
+        const self = this;
         return Promise.all(
             families.map((family) =>
-                $exeDevice
+                self
                     .loadTikzFont(family)
                     .then((font) => [family, font])
             )
@@ -1149,7 +1156,7 @@ var $exeDevice = {
                 const x = parseFloat(text.getAttribute('x')) || 0;
                 const y = parseFloat(text.getAttribute('y')) || 0;
                 const fontSize = parseFloat(text.getAttribute('font-size')) || 10;
-                const data = $exeDevice.tikzGlyphStringToPath(
+                const data = self.tikzGlyphStringToPath(
                     font,
                     text.textContent,
                     x,
@@ -1247,12 +1254,20 @@ var $exeDevice = {
             // that are never registered, so convert them to self-contained
             // <path>s before capturing. Conversion is async (it fetches fonts);
             // expose the promise so the rest of the flow (and tests) can await.
+            // bind() guards only this callback's entry: the conversion it
+            // starts can finish after the edition closed, so its continuation
+            // is bound too and runs on this instance (`this`), never on the
+            // `$exeDevice` that replaced it.
             const renderedSvg = preview.querySelector('svg');
-            $exeDevice.tikzCapturePromise = Promise.resolve(
-                renderedSvg ? $exeDevice.convertTikzTextToPaths(renderedSvg) : null
+            this.tikzCapturePromise = Promise.resolve(
+                renderedSvg ? this.convertTikzTextToPaths(renderedSvg) : null
             )
                 .catch(() => {})
-                .then(() => $exeDevice.captureRenderedTikzPreview(code, preview));
+                .then(
+                    lifecycle.bind(function () {
+                        return this.captureRenderedTikzPreview(code, preview);
+                    })
+                );
         });
         $exeDevice.tikzFinishedHandler = onFinished;
         preview.addEventListener('tikzjax-load-finished', onFinished);
@@ -1299,8 +1314,10 @@ var $exeDevice = {
         // Same ownership as the manual preview: the timeout and the TikZJax
         // answer both outlive the render request, so they belong to this
         // edition and stop with it.
+        // `lifecycle.promise()` rejects with an AbortError on teardown, which
+        // cancels the timeout and the listener that would otherwise settle it.
         const lifecycle = this.$lifecycle;
-        return new Promise((resolve) => {
+        return lifecycle.promise((resolve) => {
             let settled = false;
             const finish = (svg) => {
                 if (settled) return;
@@ -1315,17 +1332,17 @@ var $exeDevice = {
             const onFinished = lifecycle.bind(function () {
                 const renderedSvg = preview.querySelector('svg');
                 Promise.resolve(
-                    renderedSvg
-                        ? $exeDevice.convertTikzTextToPaths(renderedSvg)
-                        : null
+                    renderedSvg ? this.convertTikzTextToPaths(renderedSvg) : null
                 )
                     .catch(() => {})
-                    .then(() => {
-                        const finalSvg = preview.querySelector('svg');
-                        finish(
-                            finalSvg ? $exeDevice.sanitizeTikzSvg(finalSvg) : ''
-                        );
-                    });
+                    .then(
+                        lifecycle.bind(function () {
+                            const finalSvg = preview.querySelector('svg');
+                            finish(
+                                finalSvg ? this.sanitizeTikzSvg(finalSvg) : ''
+                            );
+                        })
+                    );
             });
 
             preview.innerHTML = '';
@@ -2827,10 +2844,13 @@ var $exeDevice = {
     // for the user to fix and try again. Returns { handledMessaging: true } so
     // the shared handler skips its generic alert.
     insertAIQuestions: async function (validLines, invalidLines = []) {
-        const parsed = $exeDevice.parseAIQuestions(validLines);
+        // Passed as a bare callback, so `this` is not the device. Capture the
+        // edition that asked now: every await below can outlive it.
+        const self = $exeDevice;
+        const parsed = self.parseAIQuestions(validLines);
         const remainingLines = [...(invalidLines || []), ...parsed.invalidLines];
 
-        $exeDevice.showCircuitGenerationModal();
+        self.showCircuitGenerationModal();
         try {
             const validQuestions = [];
             let isFirstRender = true;
@@ -2846,10 +2866,21 @@ var $exeDevice = {
                 // circuit so a valid circuit is not wrongly discarded on a slow
                 // browser; the engine is warm for the rest.
                 const timeoutMs = isFirstRender
-                    ? $exeDevice.tikzColdStartTimeoutMs
-                    : $exeDevice.tikzRenderTimeoutMs;
+                    ? self.tikzColdStartTimeoutMs
+                    : self.tikzRenderTimeoutMs;
                 isFirstRender = false;
-                const svg = await $exeDevice.renderTikzCodeToSvg(code, timeoutMs);
+                let svg;
+                try {
+                    svg = await self.renderTikzCodeToSvg(code, timeoutMs);
+                } catch (error) {
+                    // The editor closed mid-render: nothing is left to add the
+                    // questions to or to report into. `finally` still closes
+                    // the app-level modal.
+                    if (self.$lifecycle.isAbortError(error)) {
+                        return { handledMessaging: true };
+                    }
+                    throw error;
+                }
                 if (svg) {
                     question.tikzSvg = svg;
                     validQuestions.push(question);
@@ -2859,16 +2890,16 @@ var $exeDevice = {
             }
 
             if (validQuestions.length > 0) {
-                $exeDevice.addQuestions(validQuestions);
+                self.addQuestions(validQuestions);
             }
         } finally {
-            $exeDevice.hideCircuitGenerationModal();
+            self.hideCircuitGenerationModal();
         }
 
         if (remainingLines.length > 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEQuestionsNotAdded);
+            self.showMessage(self.msgs.msgEQuestionsNotAdded);
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgQuestionsAdded);
+            self.showMessage(self.msgs.msgQuestionsAdded);
         }
 
         return { handledMessaging: true, remainingLines };

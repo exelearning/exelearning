@@ -484,19 +484,29 @@ var $exeDevice = (function () {
                 return JSON.parse(new TextDecoder().decode(decompressed));
             })
             : Promise.reject(new Error('fzstd unavailable'));
-        return zstPromise.catch(function () {
+        // An abort is a decision, not a failure: once the edition closed, no
+        // tier may fall back to the next one and start new network work.
+        function stopIfClosed(err) {
+            if (lc && !lc.isActive()) throw (lc.signal && lc.signal.reason) || err;
+        }
+        return zstPromise.catch(function (err) {
+            stopIfClosed(err);
             if (typeof fetch === 'function') {
                 return fetch(url, opts).then(function (r) {
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     return r.json();
-                }).catch(function () { return loadViaXHR(url); });
+                }).catch(function (fetchErr) {
+                    stopIfClosed(fetchErr);
+                    return loadViaXHR(url, lc);
+                });
             }
-            return loadViaXHR(url);
+            return loadViaXHR(url, lc);
         });
     }
 
-    function loadViaXHR(url) {
-        var lc = lifecycle;
+    // `lc` is passed in, not read from the module variable: by the time a
+    // fallback runs, a later edition may have replaced `lifecycle`.
+    function loadViaXHR(url, lc) {
         return new Promise(function (resolve, reject) {
             var xhr = new XMLHttpRequest();
             // Aborted with the edition, like the fetch paths above.

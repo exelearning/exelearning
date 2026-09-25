@@ -309,24 +309,86 @@ export default class EditionLifecycle {
      * @returns {Promise<*>} Resolves with the reader's result.
      */
     readFile(file, method = 'readAsText') {
-        return new Promise((resolve, reject) => {
-            if (!this.isActive()) {
-                reject(editionClosedError(this.name));
-                return;
-            }
+        return this.promise((resolve, reject) => {
             const reader = new FileReader();
             if (typeof reader[method] !== 'function') {
                 reject(new TypeError(`FileReader has no ${method}() method`));
                 return;
             }
             this.ownFileReader(reader);
-            // Rejecting a promise that already settled is a no-op, so this
-            // disposer needs no unregistering when the read finishes normally.
-            this.own(() => reject(editionClosedError(this.name)));
             reader.onload = this.bind((event) => resolve(event && event.target ? event.target.result : undefined));
             reader.onerror = this.bind(() => reject(reader.error || new Error('Could not read the file')));
             reader[method](file);
         });
+    }
+
+    /**
+     * `new Promise(executor)` that **always** settles.
+     *
+     * Teardown releases whatever an edition uses to complete its own promises —
+     * timers, listeners, readers — so a plain promise wrapped around them hangs
+     * for the lifetime of the page once the editor closes, holding its caller's
+     * continuation. This one rejects with an `AbortError` instead, like an
+     * aborted `fetch()` on `signal`, so callers need a single branch for both.
+     * A closed edition rejects at once without running the executor.
+     *
+     * @param {Function} executor `(resolve, reject) => void`
+     * @returns {Promise<*>}
+     */
+    promise(executor) {
+        return new Promise((resolve, reject) => {
+            if (!this.isActive()) {
+                reject(editionClosedError(this.name));
+                return;
+            }
+            const onClose = () => reject(editionClosedError(this.name));
+            this.own(onClose);
+            // Unregistered once settled, so an edition that stays open for a
+            // long time does not accumulate one disposer per operation.
+            const forget = () => {
+                const index = this.disposers.indexOf(onClose);
+                if (index !== -1) this.disposers.splice(index, 1);
+            };
+            try {
+                executor(
+                    (value) => {
+                        forget();
+                        resolve(value);
+                    },
+                    (error) => {
+                        forget();
+                        reject(error);
+                    },
+                );
+            } catch (error) {
+                forget();
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * Wait `delay` ms on an owned timer. Rejects with an `AbortError` when the
+     * edition closes first, since teardown cancels the timer.
+     *
+     * @param {Number} delay
+     * @returns {Promise<void>}
+     */
+    delay(delay) {
+        return this.promise((resolve) => {
+            this.setTimeout(() => resolve(), delay);
+        });
+    }
+
+    /**
+     * True for the error an interrupted operation settles with: the one
+     * `promise()` rejects with on teardown, or an aborted `fetch()`.
+     *
+     * @param {*} error
+     * @returns {Boolean}
+     */
+    isAbortError(error) {
+        return Boolean(error) && error.name === 'AbortError';
     }
 
     /**

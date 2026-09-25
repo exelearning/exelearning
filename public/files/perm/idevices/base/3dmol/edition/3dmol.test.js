@@ -8,7 +8,7 @@
  */
 
 /* eslint-disable no-undef */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, onTestFinished, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -482,6 +482,92 @@ describe('3dmol iDevice edition', () => {
             });
         });
 
+        describe('ensure3Dmol failure', () => {
+            it('reports a failed library load to the waiting callbacks', () => {
+                const seen = [];
+                dmol.ensure3Dmol(ok => seen.push(ok));
+                seen.length = 0;
+                dmol.modelLibraryLoading = true;
+                dmol.modelLibraryCallbacks = [ok => seen.push(ok)];
+
+                document.head.querySelector('script[src$="3Dmol-min.js"]').onerror();
+
+                expect(seen).toEqual([false]);
+            });
+        });
+
+        describe('ensureModelDataAndRender while the edition is open', () => {
+            beforeEach(() => {
+                document.body.innerHTML = `
+                    <textarea id="dmoleModelData"></textarea>
+                    <input id="dmoleModelFormat" value="" />
+                    <div id="dmoleModelFileName"></div>
+                    <input id="dmoleModelFile" value="" />
+                `;
+            });
+
+            it('fills the form and renders the model', async () => {
+                dmol.loadModelFromPath = () =>
+                    Promise.resolve({ modelData: 'MOL', modelFormat: 'sdf', modelName: 'g.sdf' });
+                dmol.renderModelPreview = vi.fn();
+
+                dmol.ensureModelDataAndRender({ modelPath: '/files/glucose.sdf' });
+                await vi.waitFor(() => expect(dmol.renderModelPreview).toHaveBeenCalled());
+
+                expect(document.getElementById('dmoleModelData').value).toBe('MOL');
+                expect(document.getElementById('dmoleModelFormat').value).toBe('sdf');
+                expect(document.getElementById('dmoleModelFileName').textContent).toBe('g.sdf');
+            });
+
+            it('still renders when the model cannot be loaded', async () => {
+                vi.spyOn(console, 'error').mockImplementation(() => {});
+                dmol.loadModelFromPath = () => Promise.reject(new Error('404'));
+                dmol.renderModelPreview = vi.fn();
+
+                dmol.ensureModelDataAndRender({ modelPath: '/files/glucose.sdf' });
+
+                await vi.waitFor(() => expect(dmol.renderModelPreview).toHaveBeenCalled());
+            });
+        });
+
+        describe('default model while the edition is open', () => {
+            it('loads, persists and caches the bundled default model', async () => {
+                dmol.loadModelFromPath = () =>
+                    Promise.resolve({ modelData: 'MOL', modelFormat: 'SDF', modelName: 'glucose.sdf' });
+                dmol.createAssetFromModel = vi.fn().mockResolvedValue('asset://glucose');
+
+                const model = await dmol.ensureDefaultModelLoaded();
+
+                expect(model).toMatchObject({ modelData: 'MOL', modelFormat: 'sdf', modelPath: 'asset://glucose' });
+                // Second call is served from the cache.
+                dmol.loadModelFromPath = vi.fn();
+                await expect(dmol.ensureDefaultModelLoaded()).resolves.toBe(model);
+                expect(dmol.loadModelFromPath).not.toHaveBeenCalled();
+            });
+
+            it('enableForm() builds the first question and wires the form', async () => {
+                dmol.selectsGame = [];
+                dmol.ensureDefaultModelLoaded = () => Promise.resolve({ modelData: 'MOL', modelFormat: 'sdf' });
+                for (const name of ['showOptions', 'showSolution', 'showTypeQuestion', 'loadPreviousValues', 'addEvents', 'toggleActivityMode', 'showQuestion']) {
+                    dmol[name] = vi.fn();
+                }
+
+                await dmol.enableForm();
+
+                expect(dmol.selectsGame).toHaveLength(1);
+                expect(dmol.selectsGame[0].modelData).toBe('MOL');
+                expect(dmol.loadPreviousValues).toHaveBeenCalled();
+                expect(dmol.addEvents).toHaveBeenCalled();
+                expect(dmol.showQuestion).toHaveBeenCalledWith(0);
+            });
+
+            it('enableForm() propagates failures that are not an abort', async () => {
+                dmol.initQuestions = () => Promise.reject(new Error('boom'));
+
+                await expect(dmol.enableForm()).rejects.toThrow('boom');
+            });
+        });
+
         describe('ensureModelDataAndRender', () => {
             it('does not touch the form when the model resolves after the edition closed', async () => {
                 document.body.innerHTML = `
@@ -506,6 +592,102 @@ describe('3dmol iDevice edition', () => {
 
                 expect(render).not.toHaveBeenCalled();
                 expect(document.getElementById('dmoleModelData').value).toBe('');
+            });
+        });
+
+        /**
+         * Review H4: an aborted default-model load used to resolve like a
+         * normal (empty) result, so initQuestions() carried on into a
+         * `$exeDevice` teardown had already released — a TypeError, rejected
+         * from a promise nobody awaited.
+         */
+        describe('closing during the initial default-model load', () => {
+            const abortableLoad = () =>
+                new Promise((_resolve, reject) => {
+                    dmol.$lifecycle.signal.addEventListener('abort', () =>
+                        reject(new DOMException('aborted', 'AbortError')),
+                    );
+                });
+
+            function closeEdition() {
+                // What IdeviceNode.destroyEditionInstance() does, in order.
+                dmol.$lifecycle.destroy();
+                global.$exeDevice = undefined;
+            }
+
+            it('rejects with the abort instead of resolving an empty model', async () => {
+                dmol.createAssetFromModel = vi.fn();
+                dmol.loadModelFromPath = abortableLoad;
+
+                const pending = dmol.ensureDefaultModelLoaded();
+                closeEdition();
+
+                await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+                // An interrupted load is not a missing model: nothing is cached.
+                expect(dmol.defaultModelDataCache?.modelPath).toBeUndefined();
+            });
+
+            it('still falls back to an empty model when the file is really missing', async () => {
+                dmol.loadModelFromPath = () => Promise.reject(new Error('404'));
+                vi.spyOn(console, 'error').mockImplementation(() => {});
+
+                await expect(dmol.ensureDefaultModelLoaded()).resolves.toMatchObject({ modelData: '' });
+            });
+
+            it('stops enableForm() quietly, touching neither the form nor the released global', async () => {
+                dmol.selectsGame = [];
+                dmol.loadModelFromPath = abortableLoad;
+                const later = vi.fn();
+                dmol.loadPreviousValues = later;
+                dmol.addEvents = later;
+
+                const pending = dmol.enableForm();
+                closeEdition();
+
+                await expect(pending).resolves.toBeUndefined();
+                expect(later).not.toHaveBeenCalled();
+                expect(dmol.selectsGame).toEqual([]);
+            });
+
+            it('stops enableForm() when the edition closes after the model arrived', async () => {
+                dmol.selectsGame = [{}];
+                dmol.showTypeQuestion = () => closeEdition();
+                const later = vi.fn();
+                dmol.loadPreviousValues = later;
+
+                await dmol.enableForm();
+
+                expect(later).not.toHaveBeenCalled();
+            });
+
+            it('createForm() reports an enableForm() failure instead of leaving it unhandled', async () => {
+                const failure = new Error('boom');
+                dmol.enableForm = vi.fn(() => Promise.reject(failure));
+                const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+                dmol.ideviceBody = document.createElement('div');
+                const stub = () => '';
+                const original = global.$exeDevicesEdition;
+                global.$exeDevicesEdition = {
+                    iDevice: {
+                        common: { getTextFieldset: stub },
+                        tabs: { init: stub },
+                        gamification: {
+                            common: { getLanguageTab: stub },
+                            instructions: { getFieldset: stub },
+                            itinerary: { getTab: stub },
+                            scorm: { getTab: stub, init: stub },
+                        },
+                    },
+                };
+                const originalApp = global.eXeLearning;
+                global.eXeLearning = { ...originalApp, app: { ...originalApp?.app, project: { odeId: 'ode' } } };
+                onTestFinished(() => {
+                    global.$exeDevicesEdition = original;
+                    global.eXeLearning = originalApp;
+                });
+
+                dmol.createForm();
+                await vi.waitFor(() => expect(errors).toHaveBeenCalledWith(expect.any(String), failure));
             });
         });
     });

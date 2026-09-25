@@ -64,14 +64,24 @@ var $exeDevice = {
     },
 
     enableForm: async function () {
-        await $exeDevice.initQuestions();
-        $exeDevice.loadPreviousValues();
-        $exeDevice.addEvents();
+        // The default model can still be loading when the editor closes, and
+        // teardown releases `$exeDevice`: work on this instance, and stop if
+        // the edition is gone once the load settles.
+        const lifecycle = this.$lifecycle;
+        try {
+            await this.initQuestions();
+        } catch (error) {
+            if (lifecycle.isAbortError(error)) return;
+            throw error;
+        }
+        if (!lifecycle.isActive()) return;
+        this.loadPreviousValues();
+        this.addEvents();
         // Ensure correct layout for current mode
         var currentMode = $('input[name="slcactivitymode"]:checked').val() || 'test';
-        $exeDevice.toggleActivityMode(currentMode);
+        this.toggleActivityMode(currentMode);
         // Show first question and render model preview
-        $exeDevice.showQuestion($exeDevice.active);
+        this.showQuestion(this.active);
     },
 
     toggleActivityMode: function (mode) {
@@ -1590,19 +1600,23 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.tabs.init('dMoleIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
 
-        $exeDevice.enableForm();
+        // Nothing awaits createForm(), so a failure must be reported here
+        // rather than surface as an unhandled rejection.
+        this.enableForm().catch((error) => {
+            console.error('[3dmol] Could not initialise the edition form:', error);
+        });
     },
 
     initQuestions: async function () {
 
-        if ($exeDevice.selectsGame.length == 0) {
-            const defaultModel = await $exeDevice.ensureDefaultModelLoaded();
-            const question = $exeDevice.getCuestionDefault(defaultModel);
-            $exeDevice.selectsGame.push(question);
+        if (this.selectsGame.length == 0) {
+            const defaultModel = await this.ensureDefaultModelLoaded();
+            const question = this.getCuestionDefault(defaultModel);
+            this.selectsGame.push(question);
             this.showOptions(4);
             this.showSolution('');
         }
-        $exeDevice.showTypeQuestion(0);
+        this.showTypeQuestion(0);
         this.active = 0;
     },
 
@@ -1621,12 +1635,19 @@ var $exeDevice = {
             return this.defaultModelDataCache;
         }
 
-        if (this.defaultModelDataPromise) {
-            return this.defaultModelDataPromise;
+        if (!this.defaultModelDataPromise) {
+            this.defaultModelDataPromise = this.loadDefaultModel();
         }
 
+        // Settles with an AbortError as soon as the edition closes, whatever
+        // the load is doing, so callers never mistake teardown for a result.
+        const pending = this.defaultModelDataPromise;
+        return this.$lifecycle.promise((resolve, reject) => pending.then(resolve, reject));
+    },
+
+    loadDefaultModel: function () {
         const sourcePath = this.getDefaultModelSourcePath();
-        this.defaultModelDataPromise = this.loadModelFromPath(sourcePath)
+        return this.loadModelFromPath(sourcePath)
             .then(async (modelFile) => {
                 const modelData = modelFile.modelData || '';
                 const modelName = modelFile.modelName || this.getModelFileNameFromPath(sourcePath);
@@ -1642,6 +1663,8 @@ var $exeDevice = {
                 return this.defaultModelDataCache;
             })
             .catch((error) => {
+                // An interrupted load is not a missing model: cache nothing.
+                if (this.$lifecycle.isAbortError(error)) throw error;
                 console.error(error);
                 this.defaultModelDataCache = {
                     modelData: '',
@@ -1654,8 +1677,6 @@ var $exeDevice = {
             .finally(() => {
                 this.defaultModelDataPromise = null;
             });
-
-        return this.defaultModelDataPromise;
     },
 
     getCuestionDefault: function (defaultModel) {

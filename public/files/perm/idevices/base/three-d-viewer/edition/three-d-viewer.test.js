@@ -844,6 +844,99 @@ describe('three-d-viewer iDevice (edition)', () => {
             expect(Date.now() - started).toBeLessThan(1000);
         });
 
+        // Review H1: cancelling the poll timer used to leave this promise
+        // pending forever, so its caller never ran again.
+        it('settles a poll that the edition closes mid-wait', async () => {
+            vi.useFakeTimers();
+            try {
+                $exeDevice.getAssetManager = () => null;
+                const settled = vi.fn();
+                $exeDevice.waitForAssetManager(5000).then(settled, settled);
+
+                await vi.advanceTimersByTimeAsync(250);
+                $exeDevice.$lifecycle.destroy();
+                await vi.advanceTimersByTimeAsync(6000);
+
+                expect(settled).toHaveBeenCalledWith(null);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('stops rendering an STL whose edition closed while the AssetManager was awaited', async () => {
+            $exeDevice.state = { src: 'asset://model.stl' };
+            $exeDevice.getModelViewerUrl = () => null;
+            $exeDevice.waitForAssetManager = async () => {
+                $exeDevice.$lifecycle.destroy();
+                return null;
+            };
+            let emptyStateCalls = 0;
+            $exeDevice.toggleEmptyState = () => {
+                emptyStateCalls += 1;
+            };
+
+            await $exeDevice.renderSTLWithThreeJS(true);
+
+            expect(emptyStateCalls).toBe(0);
+        });
+
+        // Review H6: the shared loader may outlive the edition; the element
+        // this edition would create must not.
+        it('does not create a model-viewer for an edition that closed while the library loaded', async () => {
+            const container = document.createElement('div');
+            document.body.appendChild(container);
+            $exeDevice.previewContainer = container;
+            let finishLoad;
+            $exeDevice.ensureModelViewerLoaded = () => new Promise((resolve) => (finishLoad = resolve));
+
+            const pending = $exeDevice.createModelViewer();
+            $exeDevice.$lifecycle.destroy();
+            finishLoad();
+            await pending;
+
+            expect(container.querySelector('model-viewer')).toBeNull();
+            expect($exeDevice.modelViewer).toBeNull();
+            container.remove();
+        });
+
+        it('ignores an asset resolved after the edition closed', async () => {
+            const closeOnResolve = async () => {
+                $exeDevice.$lifecycle.destroy();
+                return 'blob:late';
+            };
+            $exeDevice.getAssetManager = () => ({
+                resolveAssetURLSync: () => null,
+                resolveAssetURL: closeOnResolve,
+            });
+            const updates = [];
+            $exeDevice.updatePreview = () => updates.push('updatePreview');
+            $exeDevice.readFormState = () => updates.push('readFormState');
+            $exeDevice.formElements = { src: { value: 'asset://model.glb' } };
+            $exeDevice.state = {};
+
+            await $exeDevice.handleModelSelection();
+            await $exeDevice.resolveAssetAndUpdate('asset://model.glb');
+
+            expect(updates).toEqual([]);
+            expect($exeDevice.state.src).toBeUndefined();
+        });
+
+        it('stops init() once the edition closes while the viewer is created', async () => {
+            $exeDevice.renderEditor = () => {};
+            $exeDevice.collectFormElements = () => {};
+            $exeDevice.set3DViewerJSON = () => {};
+            $exeDevice.applyStateToForm = () => {};
+            $exeDevice.createModelViewer = async () => $exeDevice.$lifecycle.destroy();
+            const later = [];
+            $exeDevice.updatePreview = () => later.push('updatePreview');
+            $exeDevice.registerBehaviours = () => later.push('registerBehaviours');
+            $exeDevice.setupControls = () => later.push('setupControls');
+
+            await $exeDevice.init(document.createElement('div'), {});
+
+            expect(later).toEqual([]);
+        });
+
         it('never builds a viewer for an edition that closed while the runtime loaded', async () => {
             const container = document.createElement('div');
             document.body.appendChild(container);

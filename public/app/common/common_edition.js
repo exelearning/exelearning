@@ -1209,6 +1209,9 @@ var $exeDevicesEdition = {
                         }
                         $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', false);
                     } catch (error) {
+                        // The selectors below are global: once this edition is
+                        // gone they would reach the form of the next one.
+                        if (lifecycle && !lifecycle.isActive()) return;
                         sdata = _('An error occurred while retrieving the questions. Please try again.');
                         $('#eXeIAMessage').text(_(sdata)).show();
                         $('#eXeFormIAContainer').find('input, textarea, button, select').prop('disabled', false);
@@ -1538,6 +1541,13 @@ var $exeDevicesEdition = {
 
                     // Stop any currently playing audio before playing new one
                     this.stopSound();
+                    // stopSound() bumps the request counter, so it is read
+                    // afterwards. Resolving an asset:// URL is async: requests
+                    // can overlap, and only the latest one — not stopped in
+                    // the meantime — may create a player. Otherwise each would
+                    // create its own and only the last stays reachable by
+                    // stopSound() and by the lifecycle.
+                    const request = this._soundRequest;
 
                     const self = this;
                     // Captured before any await: the audio must belong to the
@@ -1572,8 +1582,10 @@ var $exeDevicesEdition = {
                     }
 
                     // Resolving an asset:// URL is asynchronous: give up if the
-                    // editor was closed while it was in flight.
+                    // editor was closed, or a later request or a stop superseded
+                    // this one, while it was in flight.
                     if (lifecycle && !lifecycle.isActive()) return;
+                    if (request !== this._soundRequest) return;
 
                     // Extract URL from Google Drive if applicable
                     if (
@@ -1604,6 +1616,8 @@ var $exeDevicesEdition = {
                  * Stop the currently playing audio
                  */
                 stopSound: function () {
+                    // Cancels any playSound() still resolving its URL.
+                    this._soundRequest = (this._soundRequest || 0) + 1;
                     if (this.playerAudio && typeof this.playerAudio.pause === 'function') {
                         this.playerAudio.pause();
                         this.playerAudio = null;
@@ -2085,6 +2099,10 @@ var $exeDevicesEdition = {
                     modalOpen: false,
                     recordingStarted: false,
                     suggestedName: '',
+                    // Set by cleanup(). The microphone permission, the recorder's
+                    // `stop` event and the upload all settle later, so each of
+                    // them checks it before touching anything cleanup released.
+                    destroyed: false,
                 };
 
                 var self = this;
@@ -2270,7 +2288,16 @@ var $exeDevicesEdition = {
                         resetBlob();
                         showError('', false);
                         state.lastFocused = document.activeElement;
-                        state.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        if (state.destroyed) {
+                            // Granted too late: release the microphone at once
+                            // instead of recording into a closed editor.
+                            stream.getTracks().forEach(function (track) {
+                                if (track && typeof track.stop === 'function') track.stop();
+                            });
+                            return;
+                        }
+                        state.stream = stream;
                         state.chunks = [];
 
                         var options = state.mimeType ? { mimeType: state.mimeType } : undefined;
@@ -2285,6 +2312,9 @@ var $exeDevicesEdition = {
                         };
 
                         state.recorder.onstop = function () {
+                            // Delivered asynchronously after stop(), so it can
+                            // arrive once cleanup disposed the modal.
+                            if (state.destroyed) return;
                             clearTimers();
                             stopStream();
                             state.recordingStarted = false;
@@ -2298,6 +2328,7 @@ var $exeDevicesEdition = {
                         scheduleRecordingStart();
                     } catch (error) {
                         stopStream();
+                        if (state.destroyed) return;
                         setIdleState();
                         showError(strings.microphoneError, false);
                     }
@@ -2349,6 +2380,7 @@ var $exeDevicesEdition = {
                         );
 
                         var assetUrl = await manager.insertImage(file);
+                        if (state.destroyed) return;
                         $input.val(assetUrl).trigger('change');
 
                         if ($preview.length && $preview.is('audio')) {
@@ -2369,6 +2401,7 @@ var $exeDevicesEdition = {
                     cleanup: function () {
                         if ($container.data('voiceRecorderDestroyed')) return;
                         $container.data('voiceRecorderDestroyed', true);
+                        state.destroyed = true;
 
                         try {
                             if (state.recorder && state.recorder.state === 'recording') {
