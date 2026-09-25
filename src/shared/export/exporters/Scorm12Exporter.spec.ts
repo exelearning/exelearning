@@ -43,6 +43,14 @@ class MockDocument implements ExportDocument {
     }
 }
 
+// Document that exposes an editable ODE source, like YjsDocumentAdapter does.
+// Kept separate from MockDocument so existing expectations stay unchanged.
+class MockDocumentWithSource extends MockDocument {
+    async getContentXml(): Promise<string> {
+        return '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE ode SYSTEM "content.dtd">\n<ode/>';
+    }
+}
+
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
@@ -911,6 +919,52 @@ describe('Scorm12Exporter', () => {
 
             const indexHtml = zip.files.get('index.html') as string;
             expect(indexHtml).toContain('theme/icons/activity.png');
+        });
+    });
+
+    describe('editable source (exportSource, #2415)', () => {
+        it('includes content.xml and content.dtd by default', async () => {
+            document = new MockDocumentWithSource({}, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('does NOT include content.xml or content.dtd when exportSource is false', async () => {
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(false);
+            expect(zip.files.has('content.dtd')).toBe(false);
+        });
+
+        it('includes content.xml when a host forces the editable source', async () => {
+            // A host that stores the package AS the project and re-opens it
+            // later (Moodle mod_exescorm) must never get a package it cannot
+            // read back, whatever the author chose.
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+
+            await exporter.export({ forceEditableSource: true });
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('does NOT reference content.xml in the manifest when exportSource is false', async () => {
+            document = new MockDocumentWithSource({ exportSource: false }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).not.toContain('<file href="content.xml"/>');
+            expect(manifest).not.toContain('<file href="content.dtd"/>');
         });
     });
 });
