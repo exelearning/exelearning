@@ -26,6 +26,16 @@ var $exeDevice = {
     btnAddSelectionBottom: 'buttonAddSelectionQuestionBottom',
     passRateId: 'passRateMessage',
     dropdownPassRateId: 'dropdownPassRate',
+    /**
+     * The threshold the export applies when an activity carries no authored
+     * one. Kept in step with $form.defaultPassRate in export/form.js.
+     *
+     * Note the control itself is still hidden (`display:none` on its
+     * container), so the values that reach `dropdownPassRate` today come from
+     * legacy content — ScormTestHandler maps the old `passRate` property onto
+     * it. Revealing the control is a separate decision.
+     */
+    defaultPassRate: 50,
     checkCapitalizationId: 'checkCapitalization',
     checkStrictQualificationId: 'checkStrictQualification',
     checkAddBtnAnswersId: 'checkAddBtnAnswers',
@@ -307,6 +317,12 @@ var $exeDevice = {
         if (previousData[$exeDevice.dropdownPassRateId] !== undefined) {
             dropdownPassRate.value =
                 previousData[$exeDevice.dropdownPassRateId];
+        } else {
+            // Content saved before the pass rate reached the runtime carries
+            // none, and was graded against the 50 the export hardcoded. Seed
+            // that, so saving such an activity again keeps the grading it has
+            // always had instead of persisting the blank option.
+            dropdownPassRate.value = String($exeDevice.defaultPassRate);
         }
 
         let checkAddBtnAnswers = $exeDevice.ideviceBody.querySelector(
@@ -389,7 +405,7 @@ var $exeDevice = {
             ).checked;
         this.showSlider =
             this.ideviceBody.querySelector('#frmEShowSlider').checked;
-        this.passRate = 50;
+        this.passRate = this[$exeDevice.dropdownPassRateId];
         this.addBtnAnswers =
             $exeDevice.ideviceBody.querySelector(`#checkAddBtnAnswers`).checked;
         this.questionsRandom = this.ideviceBody.querySelector(
@@ -758,7 +774,9 @@ var $exeDevice = {
         data.time = this.time;
         data.eXeFormInstructions = this.eXeFormInstructions;
         data.questionsData = this.questionsData;
-        data.passRate = 5;
+        data.passRate = this.passRate;
+        data[$exeDevice.dropdownPassRateId] =
+            this[$exeDevice.dropdownPassRateId];
         data.addBtnAnswers = this.addBtnAnswers;
         data.eXeIdeviceTextAfter = this.eXeIdeviceTextAfter;
         data.showSlider = this.showSlider;
