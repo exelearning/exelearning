@@ -1767,9 +1767,16 @@ export default class IdeviceNode {
             // A synchronized reload keeps the open editor alive on purpose, so
             // its instance and everything it owns must survive untouched.
             this.isSync = false;
-        } else {
-            this.destroyEditionInstance();
+            return;
         }
+        // $exeDevice is the edition object of the iDevice being edited locally.
+        // Rendering another iDevice in export mode (e.g. one just received from
+        // a collaborator) must not clear it, or the open editor saves the last
+        // saved data instead of its current content (#2427). This also covers
+        // an edition whose script loaded but has no lifecycle yet.
+        const editing = this.engine?.isIdeviceInEdition?.();
+        if (editing && editing !== this) return;
+        this.destroyEditionInstance();
     }
 
     /**
