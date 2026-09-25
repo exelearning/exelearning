@@ -216,7 +216,16 @@ describe('Pages Routes', () => {
     });
 
     describe('GET /', () => {
-        it('should redirect to /workarea', async () => {
+        it('should redirect to /projects in online mode', async () => {
+            const res = await app.handle(new Request('http://localhost/'));
+
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location');
+            expect(location).toContain('/projects');
+        });
+
+        it('should redirect to /workarea in offline mode', async () => {
+            process.env.APP_ONLINE_MODE = '0';
             const res = await app.handle(new Request('http://localhost/'));
 
             expect(res.status).toBe(302);
@@ -1059,8 +1068,8 @@ describe('Pages Routes', () => {
         });
     });
 
-    describe('new project creation', () => {
-        it('should create new project when no projectUuid provided', async () => {
+    describe('no project UUID handling', () => {
+        it('should redirect to /projects when no projectUuid provided (online mode)', async () => {
             const jwt = await import('@elysiajs/jwt');
             const jwtInstance = jwt.jwt({
                 name: 'jwt',
@@ -1083,27 +1092,14 @@ describe('Pages Routes', () => {
                 }),
             );
 
-            // Should redirect with new project ID
+            // Should redirect to projects page
             expect(res.status).toBe(302);
             const location = res.headers.get('location');
-            expect(location).toContain('project=');
+            expect(location).toContain('/projects');
         });
 
-        it('should NOT eagerly create session directories for new project (lazy creation)', async () => {
-            // With lazy directory creation, createSessionDirectories should NOT be called
-            // during project creation - directories are created on-demand when files are written
-            let createDirectoriesCalled = false;
-            const customFileHelper: PagesFileHelperDeps = {
-                createSessionDirectories: async (_sessionId: string) => {
-                    createDirectoriesCalled = true;
-                },
-            };
-
-            const customDeps = {
-                ...mockDeps,
-                fileHelper: customFileHelper,
-            };
-            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+        it('should preserve jwt_token when redirecting in offline mode without a project UUID', async () => {
+            process.env.APP_ONLINE_MODE = '0';
 
             const jwt = await import('@elysiajs/jwt');
             const jwtInstance = jwt.jwt({
@@ -1119,24 +1115,25 @@ describe('Pages Routes', () => {
                 isGuest: false,
             });
 
-            await customApp.handle(
-                new Request('http://localhost/workarea', {
+            const res = await app.handle(
+                new Request('http://localhost/workarea?jwt_token=platform-jwt-token', {
                     headers: {
                         Cookie: `auth=${token}`,
                     },
                 }),
             );
 
-            // Directories should NOT be created eagerly - they are created on-demand
-            expect(createDirectoriesCalled).toBe(false);
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location') || '';
+            expect(location).toContain('/workarea?project=');
+            expect(location).toContain('jwt_token=platform-jwt-token');
         });
 
-        it('should still work if createSessionDirectories would throw (since it is not called)', async () => {
-            // Since createSessionDirectories is no longer called during project creation,
-            // even if it would throw, the project creation should succeed
+        it('should redirect to /projects without creating directories when no project UUID', async () => {
+            let createDirectoriesCalled = false;
             const customFileHelper: PagesFileHelperDeps = {
                 createSessionDirectories: async (_sessionId: string) => {
-                    throw new Error('Failed to create directories');
+                    createDirectoriesCalled = true;
                 },
             };
 
@@ -1168,8 +1165,83 @@ describe('Pages Routes', () => {
                 }),
             );
 
-            // Should still return something (possibly render workarea without project)
-            expect([200, 302]).toContain(res.status);
+            expect(res.status).toBe(302);
+            expect(res.headers.get('location')).toContain('/projects');
+            expect(createDirectoriesCalled).toBe(false);
+        });
+    });
+
+    describe('GET /projects', () => {
+        it('should redirect to /login when not authenticated', async () => {
+            const res = await app.handle(new Request('http://localhost/projects'));
+
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location') || '';
+            expect(location).toContain('/login');
+        });
+
+        it('should redirect to /workarea in offline mode', async () => {
+            process.env.APP_ONLINE_MODE = '0';
+            const res = await app.handle(new Request('http://localhost/projects'));
+
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location') || '';
+            expect(location).toContain('/workarea');
+        });
+
+        it('should return HTML projects page when authenticated', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/projects', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toContain('text/html');
+        });
+
+        it('should include translation strings in response', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/projects', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const html = await res.text();
+            expect(html).toBeTruthy();
         });
     });
 
@@ -1239,7 +1311,7 @@ describe('Pages Routes', () => {
             expect(location).toContain('moodle-jwt-token');
         });
 
-        it('should preserve jwt_token in redirect when creating new project without odeId', async () => {
+        it('should redirect to /projects when no project UUID even with jwt_token', async () => {
             const jwt = await import('@elysiajs/jwt');
             const jwtInstance = jwt.jwt({
                 name: 'jwt',
@@ -1262,12 +1334,10 @@ describe('Pages Routes', () => {
                 }),
             );
 
-            // Should redirect with jwt_token preserved
+            // Should redirect to projects page (no auto-creation)
             expect(res.status).toBe(302);
             const location = res.headers.get('location') || '';
-            expect(location).toContain('project=');
-            expect(location).toContain('jwt_token=');
-            expect(location).toContain('platform-jwt-token');
+            expect(location).toContain('/projects');
         });
 
         it('should find project by platform_id when odeId is not a UUID', async () => {
@@ -1891,7 +1961,7 @@ describe('Pages Routes', () => {
 
             expect(res.status).toBe(302);
             const location = res.headers.get('location');
-            expect(location).toContain('/myapp/workarea');
+            expect(location).toContain('/myapp/projects');
         });
 
         it('should handle returnUrl correctly', async () => {

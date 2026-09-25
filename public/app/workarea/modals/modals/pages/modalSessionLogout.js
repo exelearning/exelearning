@@ -210,12 +210,66 @@ export default class ModalSessionLogout extends Modal {
                 return;
             }
 
-            // Pure logout without save: redirect
-            this.close();
-            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
-            window.onbeforeunload = null;
-            const basePath = window.eXeLearning?.config?.basePath || '';
-            window.location.href = `${basePath}/logout`;
+            // Handle Yjs project navigation (from Recent Projects menu)
+            if (data.openYjsProject && data.projectUuid) {
+                const basePath = window.eXeLearning?.config?.basePath || '';
+                window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
+                this.close();
+                return;
+            }
+
+            let odeParams = [];
+            odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
+
+            if (data.openOdeFile) {
+                if (data.localOdeFile) {
+                    // Check if this is a large file upload
+                    if (data.isLargeFile && data.odeFile) {
+                        // For large files, resume the upload process
+                        eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
+                            data.odeFile,
+                            false,
+                            false,
+                            true, // skipSessionCheck
+                            true // forceCloseSession
+                        );
+                    } else {
+                        // For regular files, use the normal flow
+                        eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
+                            data.odeFileName,
+                            data.odeFilePath
+                        );
+                    }
+                } else {
+                    eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
+                        data.id
+                    );
+                }
+                this.close();
+            } else {
+                window.onbeforeunload = null;
+                this.closeSession(odeParams['odeSessionId'], data);
+            }
         });
+    }
+
+    /**
+     * closeSession
+     *
+     * @param {*} odeSessionId
+     */
+    async closeSession(odeSessionId, data) {
+        let params = { odeSessionId: odeSessionId };
+        if (data.newFile) {
+            eXeLearning.app.menus.navbar.file.createSession(params);
+            return;
+        }
+
+        // Pure logout without save: redirect
+        this.close();
+        window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
+        window.onbeforeunload = null;
+        const basePath = window.eXeLearning?.config?.basePath || '';
+        window.location.href = `${basePath}/logout`;
     }
 }

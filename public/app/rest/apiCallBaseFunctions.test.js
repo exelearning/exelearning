@@ -134,14 +134,14 @@ describe('ApiCallBaseFunctions', () => {
       });
     });
 
-    it('redirects to workarea after 403', () => {
+    it('redirects to projects after 403', () => {
       const api = new ApiCallBaseFunctions();
       const originalHref = window.location.href;
 
       api.handleAccessError(403, 'Forbidden');
       vi.advanceTimersByTime(2000);
 
-      expect(window.location.href).toBe('/web/exelearning/workarea');
+      expect(window.location.href).toBe('/web/exelearning/projects');
       window.location.href = originalHref;
     });
 
