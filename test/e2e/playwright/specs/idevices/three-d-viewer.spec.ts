@@ -201,6 +201,29 @@ test.describe('3D Viewer iDevice', () => {
         });
     });
 
+    test('vendored three ES modules load and parse an STL', async ({ authenticatedPage }) => {
+        const page = authenticatedPage;
+        const stl = fs.readFileSync(path.join(process.cwd(), 'test/fixtures/ascii-cube.stl'), 'utf-8');
+        const result = await page.evaluate(async source => {
+            const base = `${location.origin}/files/perm/idevices/base/three-d-viewer/export/`;
+            const THREE = await import(`${base}three.module.min.js`);
+            const { STLLoader } = await import(`${base}STLLoader.js`);
+            const { OrbitControls } = await import(`${base}OrbitControls.js`);
+            const geometry = new STLLoader().parse(source);
+            const controls = new OrbitControls(new THREE.PerspectiveCamera(), document.createElement('canvas'));
+            controls.dispose();
+            return {
+                revision: THREE.REVISION,
+                vertices: geometry.getAttribute('position').count,
+                sharedCore: geometry instanceof THREE.BufferGeometry,
+            };
+        }, stl);
+        expect(Number(result.revision)).toBeGreaterThanOrEqual(186);
+        expect(result.vertices).toBeGreaterThan(0);
+        // The addons must resolve `three` to the same module instance as the viewer.
+        expect(result.sharedCore).toBe(true);
+    });
+
     test.describe('Model Upload', () => {
         test('should upload GLB model and display in preview', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;

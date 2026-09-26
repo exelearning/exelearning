@@ -471,6 +471,12 @@ fix: check-bun fix-ts fix-js fix-tests
 vendor-mathjax: check-bun
 	bun run scripts/vendor-mathjax.ts
 
+# Regenerate the Three.js files of the 3D and 360 viewer iDevices from the pinned
+# `three` npm package. Committed like MathJax; vendor-three.spec.ts fails on drift.
+.PHONY: vendor-three
+vendor-three: check-bun
+	bun run scripts/vendor-three.ts
+
 # Regenerate public/app/common/edicuatex/ from the pinned `edicuatex` package. The
 # tree is gitignored and build:all regenerates it, so this is only needed to refresh
 # it without a full build; `--check` reports a tree left stale by an interrupted one.

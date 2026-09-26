@@ -23,7 +23,6 @@
     <export-js>
         <filename>three-sixty-viewer.js</filename>
         <filename>three.min.js</filename>
-        <filename>OrbitControls.js</filename>
     </export-js>
     <export-css>
         <filename>three-sixty-viewer.css</filename>

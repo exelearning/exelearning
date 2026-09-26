@@ -134,7 +134,7 @@ const IDEVICE_JS_DEPENDENCIES: Record<string, string[]> = {
     'progress-report': ['html2canvas.js'],
     'select-media-files': ['mansory-jq.js'],
     'image-gallery': ['simple-lightbox.min.js'],
-    'three-sixty-viewer': ['three.min.js', 'OrbitControls.js'],
+    'three-sixty-viewer': ['three.min.js'],
     'three-d-viewer': ['model-viewer.min.js', 'three.module.min.js', 'STLLoader.js', 'OrbitControls.js'],
 };
 
