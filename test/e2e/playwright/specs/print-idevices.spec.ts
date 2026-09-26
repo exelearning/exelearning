@@ -437,7 +437,13 @@ test.describe('Print iDevices', () => {
         expect(state).toEqual({ viewers: 1, surfaces: [true, true], captures: 4 });
     });
 
-    for (const idevice of ['az-quiz-game', 'guess', 'quick-questions', 'quick-questions-multiple-choice'] as const) {
+    for (const idevice of [
+        'az-quiz-game',
+        'guess',
+        'quick-questions',
+        'quick-questions-multiple-choice',
+        'hidden-image',
+    ] as const) {
         for (const mode of ['idevices', 'in-place', 'appendix']) {
             test(`keeps ${idevice} illustrations inside two columns in ${mode} mode`, async ({
                 authenticatedPage: page,
@@ -460,18 +466,25 @@ test.describe('Print iDevices', () => {
                     'az-quiz-game': 'rosco',
                     'quick-questions': 'quext',
                     'quick-questions-multiple-choice': 'selecciona',
+                    'hidden-image': 'hiddenimage',
                 }[idevice];
                 const questions = [
-                    { type: 1, quextion: 'First illustration', url: picture },
-                    { type: 0, quextion: `<p>Natural size</p><img src="${picture}">` },
+                    { type: 1, quextion: 'First illustration', question: 'First illustration', url: picture },
+                    {
+                        type: 0,
+                        quextion: `<p>Natural size</p><img src="${picture}">`,
+                        question: `<p>Natural size</p><img src="${picture}">`,
+                    },
                     {
                         type: 3,
                         quextion: 'Small illustration',
+                        question: `<p>Small illustration</p><img src="${picture}" width="40" height="30">`,
                         eText: escape(`<img src="${picture}" width="40" height="30">`),
                     },
                     {
                         type: 3,
                         quextion: 'Last illustration',
+                        question: `<p>Last illustration</p><img src="${picture}" width="400" height="300">`,
                         eText: escape(`<img src="${picture}" width="400" height="300">`),
                         options: [`<img src="${picture}" width="400" height="300">`, 'No'],
                     },
@@ -488,7 +501,8 @@ test.describe('Print iDevices', () => {
                         percentajeQuestions: 100,
                         percentageShow: 0,
                         answersRamdon: false,
-                        questionsGame: idevice === 'quick-questions' ? questions : undefined,
+                        questionsGame:
+                            idevice === 'quick-questions' || idevice === 'hidden-image' ? questions : undefined,
                         selectsGame: idevice === 'quick-questions-multiple-choice' ? questions : undefined,
                         wordsGame:
                             idevice === 'guess'
@@ -552,7 +566,11 @@ test.describe('Print iDevices', () => {
                 const activity = frame.locator(`[data-idevice="${idevice}"]`);
                 const pictures = activity.locator('.worksheet-item img');
                 await expect(pictures).toHaveCount(
-                    idevice === 'quick-questions' || idevice === 'quick-questions-multiple-choice' ? 5 : 4,
+                    idevice === 'quick-questions' ||
+                        idevice === 'quick-questions-multiple-choice' ||
+                        idevice === 'hidden-image'
+                        ? 5
+                        : 4,
                 );
                 for (const picture of await pictures.all()) {
                     await expect
@@ -596,7 +614,11 @@ test.describe('Print iDevices', () => {
                     await expect(activity.locator('.worksheet-items')).not.toHaveClass(/worksheet-items-plain/);
                     await expect(activity.locator('.worksheet-item').first().locator('.worksheet-box')).toHaveCount(24);
                 }
-                if (idevice === 'quick-questions' || idevice === 'quick-questions-multiple-choice') {
+                if (
+                    idevice === 'quick-questions' ||
+                    idevice === 'quick-questions-multiple-choice' ||
+                    idevice === 'hidden-image'
+                ) {
                     await expect(activity.locator('.worksheet-items')).not.toHaveClass(/worksheet-items-plain/);
                     await expect(activity.locator('.worksheet-option-box')).toHaveCount(8);
                     await expect(activity.locator('.worksheet-option').first()).toHaveText('Yes');

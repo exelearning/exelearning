@@ -155,6 +155,7 @@ export const HiddenImageWorksheetAdapter: WorksheetAdapter = {
         const activity: PrintableActivity = {
             ideviceType: 'hidden-image',
             title: options.title || HiddenImageWorksheetAdapter.defaultTitle,
+            twoColumns: true,
             items: selected,
         };
 

@@ -71,7 +71,10 @@ describe('HiddenImageWorksheetAdapter', () => {
     });
 
     it('uses the supplied title and falls back to the default', () => {
-        expect(HiddenImageWorksheetAdapter.build(hiddenImageHtml(), { title: 'Imagen' })?.title).toBe('Imagen');
+        const supplied = HiddenImageWorksheetAdapter.build(hiddenImageHtml(), { title: 'Imagen' });
+        expect(supplied?.title).toBe('Imagen');
+        expect(supplied?.twoColumns).toBe(true);
+        expect(supplied?.unnumbered).not.toBe(true);
         expect(HiddenImageWorksheetAdapter.build(hiddenImageHtml(), {})?.title).toBe('Hidden image');
     });
 
