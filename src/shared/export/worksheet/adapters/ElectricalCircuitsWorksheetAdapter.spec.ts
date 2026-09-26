@@ -91,7 +91,9 @@ describe('ElectricalCircuitsWorksheetAdapter', () => {
         });
 
         it('does not number the circuits, since they are a set of diagrams', () => {
-            expect(ElectricalCircuitsWorksheetAdapter.build(circuitsHtml(shown), {})?.unnumbered).toBe(true);
+            const activity = ElectricalCircuitsWorksheetAdapter.build(circuitsHtml(shown), {});
+            expect(activity?.unnumbered).toBe(true);
+            expect(activity?.twoColumns).toBe(true);
         });
 
         it('takes a circuit that carries no description', () => {
@@ -120,11 +122,31 @@ describe('ElectricalCircuitsWorksheetAdapter', () => {
             expect(item.prompt).toBe('¿Cómo están conectadas las bombillas?');
         });
 
-        it('sets the question, its circuit, then the options', () => {
-            const [item] = itemsOf();
+        it('sets the question, its circuit, then the options in two columns', () => {
+            const activity = ElectricalCircuitsWorksheetAdapter.build(circuitsHtml(), {});
+            expect(activity?.twoColumns).toBe(true);
+            const [item] = activity?.items ?? [];
 
             expect(item.media?.src.startsWith('data:image/svg+xml,')).toBe(true);
             expect(item.answer).toEqual({ kind: 'options', labels: ['En serie', 'En paralelo'], marker: 'box' });
+        });
+
+        it('supports questions with options and prompts containing images', () => {
+            const [item] = itemsOf({
+                questions: [
+                    question({
+                        quextion: '<p>¿Qué componente es?</p><img src="blob:http://localhost/comp.png" />',
+                        options: ['<img src="blob:http://localhost/r.png" /> Resistencia', 'Condensador'],
+                    }),
+                ],
+            });
+
+            expect(item.prompt).toBe('<p>¿Qué componente es?</p><img src="blob:http://localhost/comp.png" />');
+            expect(item.answer).toEqual({
+                kind: 'options',
+                labels: ['<img src="blob:http://localhost/r.png" /> Resistencia', 'Condensador'],
+                marker: 'box',
+            });
         });
 
         it('gives an ordering question a line to write a position on', () => {

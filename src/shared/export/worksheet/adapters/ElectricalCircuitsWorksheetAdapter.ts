@@ -168,6 +168,7 @@ export const ElectricalCircuitsWorksheetAdapter: WorksheetAdapter = {
         const activity: PrintableActivity = {
             ideviceType: 'electrical-circuits',
             title: options.title || ElectricalCircuitsWorksheetAdapter.defaultTitle,
+            twoColumns: true,
             items: selected,
             // A presented circuit is not a numbered question: the sheet is a set of diagrams.
             ...(presenting ? { unnumbered: true } : {}),

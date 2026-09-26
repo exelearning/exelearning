@@ -1004,6 +1004,122 @@ test.describe('Print iDevices', () => {
         await expect(activity.locator('.worksheet-item .worksheet-media img')).toHaveCount(5);
     });
 
+    test('prints an electrical circuits activity with questions and diagrams in two columns', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print iDevices Electrical Circuits');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const circuitSvg =
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" width="100" height="80"><rect width="100" height="80" fill="#bbccee"/></svg>';
+        const payload = JSON.stringify({
+            typeGame: 'ElectricalCircuits',
+            version: 3.1,
+            selectsGame: [
+                {
+                    quextion: '¿Cómo están conectadas las bombillas?',
+                    description: 'Circuito 1',
+                    tikzSvg: circuitSvg,
+                    typeSelect: 0,
+                    options: ['En serie', 'En paralelo'],
+                    numberOptions: 2,
+                    solution: 0,
+                },
+                {
+                    quextion: '¿Qué componente es?',
+                    description: 'Circuito 2',
+                    tikzSvg: circuitSvg,
+                    typeSelect: 0,
+                    options: ['Resistencia', 'Condensador'],
+                    numberOptions: 2,
+                    solution: 0,
+                },
+            ],
+        });
+        const html = `<div class="electrical-circuits-IDevice"><div class="electrical-circuits-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+        await page.evaluate(
+            ({ htmlContent }) => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Circuits Page');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'electrical-circuits', {
+                    htmlContent,
+                });
+            },
+            { htmlContent: html },
+        );
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="electrical-circuits"]');
+        await expect(activity).toHaveCount(1);
+
+        // Rendered in two columns
+        await expect(activity.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
+        await expect(activity.locator('.worksheet-item')).toHaveCount(2);
+
+        // Diagrams and options are rendered
+        await expect(activity.locator('.worksheet-item .worksheet-media img')).toHaveCount(2);
+        await expect(activity.locator('.worksheet-option-box')).toHaveCount(4);
+    });
+
+    test('prints electrical circuits in presentation mode in two columns', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print iDevices Electrical Circuits Show');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const circuitSvg =
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" width="100" height="80"><rect width="100" height="80" fill="#bbccee"/></svg>';
+        const payload = JSON.stringify({
+            typeGame: 'ElectricalCircuits',
+            version: 3.1,
+            activityMode: 'show',
+            selectsGame: [
+                {
+                    description: 'Circuito en serie',
+                    tikzSvg: circuitSvg,
+                },
+                {
+                    description: 'Circuito en paralelo',
+                    tikzSvg: circuitSvg,
+                },
+            ],
+        });
+        const html = `<div class="electrical-circuits-IDevice"><div class="electrical-circuits-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+        await page.evaluate(
+            ({ htmlContent }) => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Circuits Show Page');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'electrical-circuits', {
+                    htmlContent,
+                });
+            },
+            { htmlContent: html },
+        );
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="electrical-circuits"]');
+        await expect(activity).toHaveCount(1);
+
+        // Rendered in two columns, plain (unnumbered)
+        await expect(activity.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
+        await expect(activity.locator('.worksheet-items')).toHaveClass(/worksheet-items-plain/);
+        await expect(activity.locator('.worksheet-item')).toHaveCount(2);
+
+        // Diagrams and descriptions
+        await expect(activity.locator('.worksheet-item .worksheet-media img')).toHaveCount(2);
+        await expect(activity.locator('.worksheet-extra')).toHaveCount(2);
+    });
+
     test('prints a complete activity as gapped text, with its words when they are offered', async ({
         authenticatedPage,
         createProject,
