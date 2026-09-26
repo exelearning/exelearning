@@ -1079,27 +1079,24 @@ export default class PreviewPanelManager {
      */
     async refreshWithServiceWorker() {
         Logger.log('[PreviewPanel] Generating preview files for SW...');
-        const result = await this._generatePreviewFiles();
+        const files = await this._generatePreviewFilesOrThrow();
 
-        if (!result.success || !result.files) {
-            throw new Error(result.error || 'Failed to generate preview files');
-        }
+        Logger.log(`[PreviewPanel] Generated ${Object.keys(files).length} files, sending to SW...`);
 
-        Logger.log(
-            `[PreviewPanel] Generated ${Object.keys(result.files).length} files, sending to SW...`
-        );
-
-        // Send files to Service Worker
+        // Send files to Service Worker. The buffers are transferred, so a resend after the
+        // app re-registers a dead worker needs freshly generated files.
         const app = eXeLearning.app;
         try {
-            await app.sendContentToPreviewSW(result.files, {
-                openExternalLinksInNewWindow: true,
-            });
+            await app.sendContentToPreviewSW(
+                files,
+                { openExternalLinksInNewWindow: true },
+                { regenerateFiles: () => this._generatePreviewFilesOrThrow() }
+            );
         } catch (error) {
             if (this.isServiceWorkerPreviewAvailable()) {
                 throw error;
             }
-            // The app gave up on the Service Worker while we were generating: degrade instead of erroring.
+            // The app gave up on the Service Worker (recovery failed): degrade instead of erroring.
             Logger.warn('[PreviewPanel] Preview Service Worker unavailable, using blob URL fallback:', error);
             await this.refreshWithBlobUrl();
             return;
@@ -1109,6 +1106,19 @@ export default class PreviewPanelManager {
         this.loadPreviewFromServiceWorker();
 
         Logger.log('[PreviewPanel] Preview loaded via Service Worker');
+    }
+
+    /**
+     * Generate the preview files, turning a failed result into an exception.
+     * @returns {Promise<Object>} Map of file paths to content
+     * @private
+     */
+    async _generatePreviewFilesOrThrow() {
+        const result = await this._generatePreviewFiles();
+        if (!result.success || !result.files) {
+            throw new Error(result.error || 'Failed to generate preview files');
+        }
+        return result.files;
     }
 
     /**
