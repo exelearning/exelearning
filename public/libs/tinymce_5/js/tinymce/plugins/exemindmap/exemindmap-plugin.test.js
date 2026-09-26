@@ -238,6 +238,24 @@ describe('exemindmap editor - host translators', () => {
         expect(jqueryUiAt).toBeLessThan(bundleAt);
     });
 
+    it('ships and names no private or legacy jQuery / jQuery UI', () => {
+        // The editor runs on eXeLearning's own /libs/jquery and /libs/jquery-ui. A
+        // private copy, or a leftover reference to the 1.6.1 / 1.8 ones it used to
+        // carry, is exactly what a plugin-directory review flags. (The Aristo theme
+        // stylesheet keeps its jquery-ui-1.8.7.custom.css name: it is CSS only.)
+        const walk = dir =>
+            fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+                const full = path.join(dir, entry.name);
+                return entry.isDirectory() ? walk(full) : [full];
+            });
+        for (const file of walk(__dirname).filter(f => !f.endsWith('.test.js'))) {
+            expect(path.basename(file), file).not.toMatch(/^jquery(-ui)?([.-][\d.]+)?(\.custom)?(\.min)?\.js$/i);
+            if (!/\.(js|html|css)$/.test(file)) continue;
+            const text = fs.readFileSync(file, 'utf8');
+            expect(text, file).not.toMatch(/jQuery (JavaScript Library )?v1\.|jquery-ui-1\.8[\w.-]*\.js|jQuery UI (- )?v?1\.8/i);
+        }
+    });
+
     it('no longer inserts langs/all.js with appendChild, which would race', () => {
         expect(indexHtml).not.toMatch(/langsScript/);
         expect(indexHtml).not.toMatch(/createElement\('script'\)/);
