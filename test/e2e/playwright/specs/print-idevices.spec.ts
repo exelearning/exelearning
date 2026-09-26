@@ -1120,6 +1120,126 @@ test.describe('Print iDevices', () => {
         await expect(activity.locator('.worksheet-extra')).toHaveCount(2);
     });
 
+    test('prints a 3D molecules activity with questions and captures in two columns', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print iDevices 3D Molecules');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const picture =
+            'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%2080%22%20width%3D%22100%22%20height%3D%2280%22%3E%3Crect%20width%3D%22100%22%20height%3D%2280%22%20fill%3D%22%23bbccee%22%2F%3E%3C%2Fsvg%3E';
+        const payload = JSON.stringify({
+            typeGame: '3DMol',
+            version: 1.0,
+            selectsGame: [
+                {
+                    quextion: '¿Cuántos átomos de carbono tiene?',
+                    description: 'Glucosa',
+                    alt: 'Glucosa',
+                    modelImage: picture,
+                    typeSelect: 0,
+                    options: ['Seis', 'Doce'],
+                    numberOptions: 2,
+                    solution: 0,
+                },
+                {
+                    quextion: '¿Qué molécula representa?',
+                    description: 'Agua',
+                    alt: 'Agua',
+                    modelImage: picture,
+                    typeSelect: 0,
+                    options: ['Agua', 'Metano'],
+                    numberOptions: 2,
+                    solution: 0,
+                },
+            ],
+        });
+        const html = `<div class="dmole-IDevice"><div class="dmole-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+        await page.evaluate(
+            ({ htmlContent }) => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Molecules Page');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), '3dmol', {
+                    htmlContent,
+                });
+            },
+            { htmlContent: html },
+        );
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="3dmol"]');
+        await expect(activity).toHaveCount(1);
+
+        // Rendered in two columns
+        await expect(activity.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
+        await expect(activity.locator('.worksheet-item')).toHaveCount(2);
+
+        // Captures and options are rendered
+        await expect(activity.locator('.worksheet-item .worksheet-media img')).toHaveCount(2);
+        await expect(activity.locator('.worksheet-option-box')).toHaveCount(4);
+    });
+
+    test('prints 3D molecules in presentation mode in two columns', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print iDevices 3D Molecules Show');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const picture =
+            'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%2080%22%20width%3D%22100%22%20height%3D%2280%22%3E%3Crect%20width%3D%22100%22%20height%3D%2280%22%20fill%3D%22%23bbccee%22%2F%3E%3C%2Fsvg%3E';
+        const payload = JSON.stringify({
+            typeGame: '3DMol',
+            version: 1.0,
+            activityMode: 'show',
+            selectsGame: [
+                {
+                    description: 'Glucosa en varillas',
+                    alt: 'Glucosa',
+                    modelImage: picture,
+                },
+                {
+                    description: 'Agua en esferas',
+                    alt: 'Agua',
+                    modelImage: picture,
+                },
+            ],
+        });
+        const html = `<div class="dmole-IDevice"><div class="dmole-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+        await page.evaluate(
+            ({ htmlContent }) => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Molecules Show Page');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), '3dmol', {
+                    htmlContent,
+                });
+            },
+            { htmlContent: html },
+        );
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="3dmol"]');
+        await expect(activity).toHaveCount(1);
+
+        // Rendered in two columns, plain (unnumbered)
+        await expect(activity.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
+        await expect(activity.locator('.worksheet-items')).toHaveClass(/worksheet-items-plain/);
+        await expect(activity.locator('.worksheet-item')).toHaveCount(2);
+
+        // Captures and descriptions
+        await expect(activity.locator('.worksheet-item .worksheet-media img')).toHaveCount(2);
+        await expect(activity.locator('.worksheet-extra')).toHaveCount(2);
+    });
+
     test('prints a complete activity as gapped text, with its words when they are offered', async ({
         authenticatedPage,
         createProject,

@@ -97,7 +97,9 @@ describe('ThreeDMolWorksheetAdapter', () => {
         });
 
         it('does not number the molecules, since they are a set of pictures', () => {
-            expect(ThreeDMolWorksheetAdapter.build(moleculesHtml(shown), {})?.unnumbered).toBe(true);
+            const activity = ThreeDMolWorksheetAdapter.build(moleculesHtml(shown), {});
+            expect(activity?.unnumbered).toBe(true);
+            expect(activity?.twoColumns).toBe(true);
         });
 
         it('takes a molecule that carries no description', () => {
@@ -124,11 +126,31 @@ describe('ThreeDMolWorksheetAdapter', () => {
             expect(itemsOf()[0].prompt).toBe('¿Cuántos átomos de carbono tiene?');
         });
 
-        it('sets the question, its molecule, then the options', () => {
-            const [item] = itemsOf();
+        it('sets the question, its molecule, then the options in two columns', () => {
+            const activity = ThreeDMolWorksheetAdapter.build(moleculesHtml(), {});
+            expect(activity?.twoColumns).toBe(true);
+            const [item] = activity?.items ?? [];
 
             expect(item.media?.src).toBe(PICTURE);
             expect(item.answer).toEqual({ kind: 'options', labels: ['Seis', 'Doce'], marker: 'box' });
+        });
+
+        it('supports questions with options and prompts containing images', () => {
+            const [item] = itemsOf({
+                questions: [
+                    question({
+                        quextion: '<p>¿Qué molécula es?</p><img src="blob:http://localhost/mol.png" />',
+                        options: ['<img src="blob:http://localhost/glu.png" /> Glucosa', 'Fructosa'],
+                    }),
+                ],
+            });
+
+            expect(item.prompt).toBe('<p>¿Qué molécula es?</p><img src="blob:http://localhost/mol.png" />');
+            expect(item.answer).toEqual({
+                kind: 'options',
+                labels: ['<img src="blob:http://localhost/glu.png" /> Glucosa', 'Fructosa'],
+                marker: 'box',
+            });
         });
 
         it('gives an ordering question a line to write a position on', () => {

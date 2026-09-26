@@ -171,6 +171,7 @@ export const ThreeDMolWorksheetAdapter: WorksheetAdapter = {
         const activity: PrintableActivity = {
             ideviceType: '3dmol',
             title: options.title || ThreeDMolWorksheetAdapter.defaultTitle,
+            twoColumns: true,
             items: selected,
             // A presented molecule is not a numbered question: the sheet is a set of pictures.
             ...(presenting ? { unnumbered: true } : {}),
