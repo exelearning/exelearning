@@ -777,7 +777,7 @@ describe('questions set in two columns', () => {
         }
         for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
             expect(styles).toMatch(
-                /\.worksheet-prompt img,\s*\.worksheet-extra img\s*\{[^}]*max-width: 100%;[^}]*height: auto;/,
+                /\.worksheet-prompt img,\s*\.worksheet-extra img,\s*\.worksheet-option-label img\s*\{[^}]*max-width: 100%;[^}]*height: auto;/,
             );
         }
     });

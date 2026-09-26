@@ -149,6 +149,7 @@ export const QuickQuestionsWorksheetAdapter: WorksheetAdapter = {
         const activity: PrintableActivity = {
             ideviceType: 'quick-questions',
             title: options.title || QuickQuestionsWorksheetAdapter.defaultTitle,
+            twoColumns: true,
             items,
         };
 

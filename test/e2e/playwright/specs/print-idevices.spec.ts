@@ -437,13 +437,13 @@ test.describe('Print iDevices', () => {
         expect(state).toEqual({ viewers: 1, surfaces: [true, true], captures: 4 });
     });
 
-    for (const idevice of ['az-quiz-game', 'guess']) {
+    for (const idevice of ['az-quiz-game', 'guess', 'quick-questions'] as const) {
         for (const mode of ['idevices', 'in-place', 'appendix']) {
             test(`keeps ${idevice} illustrations inside two columns in ${mode} mode`, async ({
                 authenticatedPage: page,
                 createProject,
             }) => {
-                const uuid = await createProject(page, 'Rosco inline illustrations');
+                const uuid = await createProject(page, 'Two-column illustrated questions');
                 await gotoWorkarea(page, uuid);
                 await waitForAppReady(page);
                 const picture = await page.evaluate(() => {
@@ -455,13 +455,37 @@ test.describe('Print iDevices', () => {
                     context.fillRect(0, 0, 400, 300);
                     return canvas.toDataURL('image/png');
                 });
-                const prefix = idevice === 'guess' ? 'adivina' : 'rosco';
+                const prefix = { guess: 'adivina', 'az-quiz-game': 'rosco', 'quick-questions': 'quext' }[idevice];
                 const html = `<div class="${prefix}-DataGame">${encryptDataGame(
                     JSON.stringify({
                         letters: 'ABCD',
                         optionsRamdon: false,
                         percentajeQuestions: 100,
                         percentageShow: 0,
+                        answersRamdon: false,
+                        questionsGame:
+                            idevice === 'quick-questions'
+                                ? [
+                                      { type: 1, quextion: 'First illustration', url: picture },
+                                      { type: 0, quextion: `<p>Natural size</p><img src="${picture}">` },
+                                      {
+                                          type: 3,
+                                          quextion: 'Small illustration',
+                                          eText: escape(`<img src="${picture}" width="40" height="30">`),
+                                      },
+                                      {
+                                          type: 3,
+                                          quextion: 'Last illustration',
+                                          eText: escape(`<img src="${picture}" width="400" height="300">`),
+                                          options: [`<img src="${picture}" width="400" height="300">`, 'No'],
+                                      },
+                                  ].map(question => ({
+                                      numberOptions: 2,
+                                      solution: 0,
+                                      options: ['Yes', 'No'],
+                                      ...question,
+                                  }))
+                                : undefined,
                         wordsGame:
                             idevice === 'guess'
                                 ? [
@@ -523,7 +547,7 @@ test.describe('Print iDevices', () => {
                 });
                 const activity = frame.locator(`[data-idevice="${idevice}"]`);
                 const pictures = activity.locator('.worksheet-item img');
-                await expect(pictures).toHaveCount(4);
+                await expect(pictures).toHaveCount(idevice === 'quick-questions' ? 5 : 4);
                 for (const picture of await pictures.all()) {
                     await expect
                         .poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
@@ -565,6 +589,12 @@ test.describe('Print iDevices', () => {
                 if (idevice === 'guess') {
                     await expect(activity.locator('.worksheet-items')).not.toHaveClass(/worksheet-items-plain/);
                     await expect(activity.locator('.worksheet-item').first().locator('.worksheet-box')).toHaveCount(24);
+                }
+                if (idevice === 'quick-questions') {
+                    await expect(activity.locator('.worksheet-items')).not.toHaveClass(/worksheet-items-plain/);
+                    await expect(activity.locator('.worksheet-option-box')).toHaveCount(8);
+                    await expect(activity.locator('.worksheet-option').first()).toHaveText('Yes');
+                    await expect(activity.locator('.worksheet-option').last()).toHaveText('No');
                 }
             });
         }

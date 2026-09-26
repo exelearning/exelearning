@@ -66,6 +66,8 @@ describe('QuickQuestionsWorksheetAdapter', () => {
         const activity = QuickQuestionsWorksheetAdapter.build(quextHtml(), {});
 
         expect(activity?.items).toHaveLength(1);
+        expect(activity?.twoColumns).toBe(true);
+        expect(activity?.unnumbered).not.toBe(true);
         expect(activity?.items[0].prompt).toBe('<p>Question</p>');
         expect(labelsOf(activity)).toEqual(['A', 'B', 'C', 'D']);
     });

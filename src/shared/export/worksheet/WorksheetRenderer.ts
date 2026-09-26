@@ -210,7 +210,8 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 /* Illustrations embedded in a clue must fit its column, even when the author stored a pixel
    width and height. Keep smaller pictures at their authored size and preserve their proportions. */
 .worksheet-prompt img,
-.worksheet-extra img {
+.worksheet-extra img,
+.worksheet-option-label img {
     max-width: 100%;
     height: auto;
 }
@@ -926,6 +927,11 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     width: 4mm;
     height: 4mm;
     border: 1px solid #1a1a1a;
+}
+
+/* Let image-bearing labels shrink beside the tick box in a narrow question column. */
+.worksheet-option-label {
+    min-width: 0;
 }
 
 /* Options that are pictures. Laid across the sheet and wrapping, centred so a last row holding
