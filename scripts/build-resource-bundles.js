@@ -298,6 +298,7 @@ function buildCommonLibsBundle(manifest) {
     'exe_elpx_download',
     'exe_math',      // MathJax (only included when addMathJax=true or LaTeX detected)
     'exe_atools',    // Accessibility toolbar (only included when addAccessibilityToolbar=true)
+    'abcjs',         // ABC music notation, with its bundled piano soundfont (soundfont/)
   ];
 
   const allFiles = [];

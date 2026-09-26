@@ -333,6 +333,9 @@
 *   Files: /public/libs/abcjs/\*
     *   Copyright: Paul Rosen and Gregory Dyke, under the GNU GPL v3 license.
     *   License: MIT
+*   Files: /public/libs/abcjs/soundfont/acoustic\_grand\_piano-mp3/\* (FluidR3\_GM piano samples, from midi-js-soundfonts)
+    *   Copyright: Frank Wen (Fluid R3 GM SoundFont); MP3 rendering by Benjamin Gleitzman (midi-js-soundfonts)
+    *   License: MIT
 *   Files: /public/libs/bootstrap/\*
     *   Copyright: The Bootstrap Authors / Twitter, Inc.
     *   License: MIT

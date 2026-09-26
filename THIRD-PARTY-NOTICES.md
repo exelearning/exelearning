@@ -80,3 +80,18 @@ byte-for-byte.
 - **License:** Apache-2.0
 - **Usage:** `model-viewer-decoders.js` points model-viewer's
   `ktx2TranscoderLocation` here, so models with KTX2 textures load offline.
+
+## FluidR3_GM acoustic grand piano samples (for abcjs)
+
+- **Path:** `public/libs/abcjs/soundfont/acoustic_grand_piano-mp3/` (88 MP3 files, A0 to C8)
+- **Upstream:** <https://github.com/gleitz/midi-js-soundfonts> (`FluidR3_GM/acoustic_grand_piano-mp3`),
+  retrieved from the abcjs default location
+  `https://paulrosen.github.io/midi-js-soundfonts/FluidR3_GM/`
+- **Retrieved:** 2026-09-26
+- **SHA-256** of the 88 files concatenated in `ls` order: `e96969dbf4a519b0053f8c42fb764519a368368943a93ebf7373d8620ba6fda7`
+- **License:** MIT (the midi-js-soundfonts repository and the Fluid R3 GM
+  SoundFont by Frank Wen)
+- **Usage:** `exe_abc_music.js` passes this folder as abcjs's `soundFontUrl`
+  so ABC notation plays offline. Only the piano (General MIDI program 0, the
+  default) is bundled; tunes that select another instrument with
+  `%%MIDI program` render and export MIDI but play no audio.
