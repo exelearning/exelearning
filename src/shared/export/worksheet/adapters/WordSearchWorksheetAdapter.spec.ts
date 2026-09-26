@@ -58,6 +58,7 @@ describe('WordSearchWorksheetAdapter', () => {
 
         expect(activity?.board?.kind).toBe('wordGrid');
         expect(gridOf(activity).length).toBeGreaterThan(0);
+        expect(activity?.twoColumns).toBe(true);
         expect(activity?.items).toHaveLength(2);
     });
 
@@ -142,13 +143,50 @@ describe('WordSearchWorksheetAdapter', () => {
             expect(activity?.items[1].media?.src).toBe('blob:http://localhost/sun');
         });
 
-        it('reads a clue as text, whatever markup it was written with', () => {
+        it('preserves formatting markup and inline illustrations in a clue', () => {
             const activity = WordSearchWorksheetAdapter.build(
-                searchHtml({ wordsGame: [word({ definition: '<p>Una <b>vivienda</b></p>' })] }),
+                searchHtml({
+                    wordsGame: [
+                        word({ definition: '<p>Una <b>vivienda</b></p><img src="blob:http://localhost/pic.png" />' }),
+                    ],
+                }),
                 {},
             );
 
-            expect(activity?.items[0].prompt).toBe('Una vivienda');
+            expect(activity?.items[0].prompt).toBe(
+                '<p>Una <b>vivienda</b></p><img src="blob:http://localhost/pic.png" />',
+            );
+        });
+
+        it('keeps a clue that has an illustration even without definition text', () => {
+            const activity = WordSearchWorksheetAdapter.build(
+                searchHtml({
+                    wordsGame: [word({ definition: '' })],
+                    imageLinks: { 0: 'blob:http://localhost/house' },
+                }),
+                {},
+            );
+
+            expect(activity?.items).toHaveLength(1);
+            expect(activity?.items[0].prompt).toBeUndefined();
+            expect(activity?.items[0].media?.src).toBe('blob:http://localhost/house');
+        });
+
+        it('omits a clue that is only audio with no printable content', () => {
+            const omissions: string[] = [];
+            const activity = WordSearchWorksheetAdapter.build(
+                searchHtml({
+                    wordsGame: [
+                        word({ word: 'SOL', definition: '<audio src="sol.mp3"></audio>' }),
+                        word({ word: 'LUNA', definition: 'Satélite' }),
+                    ],
+                }),
+                { onOmission: reason => omissions.push(reason) },
+            );
+
+            expect(activity?.items).toHaveLength(1);
+            expect(activity?.items[0].prompt).toBe('Satélite');
+            expect(omissions).toEqual(['media-required']);
         });
     });
 
@@ -227,11 +265,12 @@ describe('WordSearchWorksheetAdapter', () => {
     describe('untrusted content', () => {
         it('strips markup smuggled into a clue', () => {
             const activity = WordSearchWorksheetAdapter.build(
-                searchHtml({ wordsGame: [word({ definition: 'Hola<script>alert(1)</script>' })] }),
+                searchHtml({ wordsGame: [word({ definition: '<p>Hola</p><script>alert(1)</script>' })] }),
                 {},
             );
 
             expect(activity?.items[0].prompt).not.toContain('<script>');
+            expect(activity?.items[0].prompt).toContain('<p>Hola</p>');
         });
 
         it('strips a script smuggled into the instructions', () => {

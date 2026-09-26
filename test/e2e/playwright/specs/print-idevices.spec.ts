@@ -443,6 +443,7 @@ test.describe('Print iDevices', () => {
         'quick-questions',
         'quick-questions-multiple-choice',
         'hidden-image',
+        'word-search',
     ] as const) {
         for (const mode of ['idevices', 'in-place', 'appendix']) {
             test(`keeps ${idevice} illustrations inside two columns in ${mode} mode`, async ({
@@ -467,6 +468,7 @@ test.describe('Print iDevices', () => {
                     'quick-questions': 'quext',
                     'quick-questions-multiple-choice': 'selecciona',
                     'hidden-image': 'hiddenimage',
+                    'word-search': 'sopa',
                 }[idevice];
                 const questions = [
                     { type: 1, quextion: 'First illustration', question: 'First illustration', url: picture },
@@ -975,6 +977,31 @@ test.describe('Print iDevices', () => {
 
         // Its questions offer options to tick.
         expect(await activity.locator('.worksheet-option-box').count()).toBeGreaterThan(0);
+    });
+
+    test('prints a word search activity with its grid and clues in two columns', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Print iDevices Word Search');
+
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await openElpFile(page, CROSSWORD_FIXTURE);
+
+        const { frame } = await openWorksheet(page);
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="word-search"]');
+        await expect(activity).toHaveCount(1);
+
+        // Grid on top
+        await expect(activity.locator('.worksheet-word-grid')).toBeVisible();
+
+        // Clues below in two columns with their illustrations
+        await expect(activity.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
+        await expect(activity.locator('.worksheet-item')).toHaveCount(5);
+        await expect(activity.locator('.worksheet-item .worksheet-media img')).toHaveCount(5);
     });
 
     test('prints a complete activity as gapped text, with its words when they are offered', async ({

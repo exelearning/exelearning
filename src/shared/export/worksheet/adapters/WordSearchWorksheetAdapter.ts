@@ -19,7 +19,7 @@
 
 import { extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
 import { indexedQuestions, type RandomSource, selectQuestions } from '../questionSelection';
-import { escapeText, htmlToText, sanitizeHtml } from '../sanitizeHtml';
+import { hasPrintableContent, sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 import { buildWordSearchLayout } from '../wordSearchLayout';
 
@@ -63,14 +63,17 @@ interface IndexedWord {
 /**
  * Build the clue for one word.
  */
-function buildClue(entry: IndexedWord, number: number, imageLinks: Map<number, string>): PrintableItem {
+function buildClue(entry: IndexedWord, number: number, imageLinks: Map<number, string>): PrintableItem | null {
     const { question: word, index } = entry;
+    const definition = sanitizeHtml(word.definition);
 
     const item: PrintableItem = {
-        prompt: escapeText(htmlToText(word.definition)),
         // The answer is found in the shared grid, so the clue has no writing space of its own.
         number,
     };
+    if (hasPrintableContent(definition)) {
+        item.prompt = definition;
+    }
 
     const src = imageLinks.get(index) ?? word.url ?? '';
     if (src.length >= MIN_MEDIA_HREF_LENGTH) {
@@ -84,7 +87,9 @@ function buildClue(entry: IndexedWord, number: number, imageLinks: Map<number, s
         };
     }
 
-    return item;
+    // A clue with text/inline illustration or an attached image is printable.
+    // Audio-only or empty clues have no paper equivalent.
+    return item.prompt || item.media ? item : null;
 }
 
 export const WordSearchWorksheetAdapter: WorksheetAdapter = {
@@ -132,7 +137,7 @@ export const WordSearchWorksheetAdapter: WorksheetAdapter = {
 
         const items = asked.flatMap((entry, position) => {
             const clue = buildClue(entry, position + 1, imageLinks);
-            if (clue.prompt || clue.media) return [clue];
+            if (clue) return [clue];
             // A clue that is only a sound clip has nothing to read on paper.
             options.onOmission?.('media-required');
             return [];
@@ -144,6 +149,7 @@ export const WordSearchWorksheetAdapter: WorksheetAdapter = {
             ideviceType: 'word-search',
             title: options.title || WordSearchWorksheetAdapter.defaultTitle,
             board: { kind: 'wordGrid', rows: layout.rows },
+            twoColumns: true,
             items,
         };
 
