@@ -437,6 +437,85 @@ test.describe('Print iDevices', () => {
         expect(state).toEqual({ viewers: 1, surfaces: [true, true], captures: 4 });
     });
 
+    for (const mode of ['idevices', 'in-place', 'appendix']) {
+        test(`keeps inline rosco illustrations inside their columns in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Rosco inline illustrations');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const picture = await page.evaluate(() => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 400;
+                canvas.height = 300;
+                const context = canvas.getContext('2d')!;
+                context.fillStyle = '#bbccee';
+                context.fillRect(0, 0, 400, 300);
+                return canvas.toDataURL('image/png');
+            });
+            const html = `<div class="rosco-DataGame">${encryptDataGame(
+                JSON.stringify({
+                    letters: 'ABCD',
+                    wordsGame: [
+                        {
+                            word: 'ANT',
+                            definition: `<p>First illustration</p><img src="${picture}" width="400" height="300">`,
+                        },
+                        { word: 'BEE', definition: `<p>Natural size</p><img src="${picture}">` },
+                        {
+                            word: 'CAT',
+                            definition: `<p>Small illustration</p><img src="${picture}" width="40" height="30">`,
+                        },
+                        {
+                            word: 'DOG',
+                            definition: `<p>Last illustration</p><img src="${picture}" width="400" height="300">`,
+                        },
+                    ],
+                }),
+            )}</div>`;
+            await page.evaluate(htmlContent => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Illustrated clues');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'az-quiz-game', { htmlContent });
+            }, html);
+            await openPrintDialog(page);
+            const { frame } = await choosePrintOption(page, mode);
+            await page.emulateMedia({ media: 'print' });
+            await page.locator('.print-preview-iframe').evaluate((iframe: HTMLIFrameElement) => {
+                iframe.style.width = '180mm';
+            });
+            const pictures = frame.locator('[data-idevice="az-quiz-game"] .worksheet-prompt img');
+            await expect(pictures).toHaveCount(4);
+            for (const picture of await pictures.all()) {
+                await expect
+                    .poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+            }
+            const geometry = await pictures.evaluateAll(images =>
+                images.map(image => {
+                    const bounds = image.getBoundingClientRect();
+                    const prompt = image.closest('.worksheet-prompt')!.getBoundingClientRect();
+                    return {
+                        width: bounds.width,
+                        height: bounds.height,
+                        left: bounds.left - prompt.left,
+                        right: prompt.right - bounds.right,
+                    };
+                }),
+            );
+            for (const bounds of geometry) {
+                expect(bounds.width).toBeGreaterThan(0);
+                expect(bounds.left).toBeGreaterThanOrEqual(-1);
+                expect(bounds.right).toBeGreaterThanOrEqual(-1);
+                expect(Math.abs(bounds.width / bounds.height - 4 / 3)).toBeLessThan(0.02);
+            }
+            // Small author-sized pictures should not be enlarged to fill a column.
+            expect(geometry[2].width).toBeCloseTo(40, 0);
+            expect(geometry[0].width).toBeLessThan(400);
+        });
+    }
+
     for (const mode of ['idevices', 'in-place']) {
         test(`preserves sorting statements and printable clues in ${mode} mode`, async ({
             authenticatedPage: page,
@@ -1031,13 +1110,14 @@ test.describe('Print iDevices', () => {
                 const hiddenId = binding.createBlock(parent.id, 'Teacher content');
                 binding.getBlockMap(parent.id, hiddenId).get('properties').set('teacherOnly', 'true');
                 binding.createComponent(parent.id, hiddenId, 'complete', { htmlContent: components[1].html });
-                const png = Uint8Array.from(
-                    atob(
-                        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/n9sAAAAASUVORK5CYII=',
-                    ),
-                    c => c.charCodeAt(0),
-                );
-                const blob = new Blob([png], { type: 'image/png' });
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = 1;
+                const blob = await new Promise<Blob>((resolve, reject) => {
+                    canvas.toBlob(
+                        value => (value ? resolve(value) : reject(new Error('Could not encode test PNG'))),
+                        'image/png',
+                    );
+                });
                 await bridge.assetManager.putAsset({
                     id: pictureId,
                     filename: 'pixel.png',

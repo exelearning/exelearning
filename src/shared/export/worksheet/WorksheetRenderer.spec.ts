@@ -761,6 +761,25 @@ describe('questions set in two columns', () => {
         { prompt: 'B. Starts with B', answer: { kind: 'characterBoxes' as const, groups: emptyBoxes(3) } },
     ];
 
+    it('preserves embedded illustrations and includes their sizing rule in standalone and shared styles', () => {
+        const illustrated = activity({
+            ideviceType: 'az-quiz-game',
+            unnumbered: true,
+            twoColumns: true,
+            items: [{ prompt: '<img src="clue.png" width="400" height="300">' }, ...items],
+        });
+        const standalone = renderWorksheet(
+            model({ pages: [{ pageId: 'p1', title: 'Clues', activities: [illustrated] }] }),
+        );
+        const fragment = renderActivityFragment(illustrated);
+        for (const html of [standalone, fragment]) {
+            expect(html).toContain('<div class="worksheet-prompt"><img src="clue.png" width="400" height="300"></div>');
+        }
+        for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
+            expect(styles).toMatch(/\.worksheet-prompt img\s*\{[^}]*max-width: 100%;[^}]*height: auto;/);
+        }
+    });
+
     it('are one list, so they keep their order, in two columns', () => {
         const html = renderActivityFragment(activity({ unnumbered: true, twoColumns: true, items }));
 
