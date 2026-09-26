@@ -46,3 +46,37 @@ byte-for-byte.
 - **Usage:** lazy-loaded from the iDevice folder when the user saves a
   checklist, progress report or rubric as PDF. Replaces the former unpinned
   jsDelivr load so no executable code is fetched from a remote server.
+
+## Draco decoder (for model-viewer)
+
+- **Path:** `public/files/perm/idevices/base/three-d-viewer/export/draco/`
+  (`draco_wasm_wrapper.js`, `draco_decoder.wasm`)
+- **Upstream:** <https://github.com/google/draco>, retrieved from the exact
+  location model-viewer uses by default,
+  `https://www.gstatic.com/draco/versioned/decoders/1.5.6/`
+- **Version:** 1.5.6
+- **Retrieved:** 2026-09-26
+- **SHA-256:**
+  - `draco_wasm_wrapper.js`: `e8049906ef3f8f75d3456c22a3f31bfdfe5b5b5bd09ccdec613b9e9a49d554d8`
+  - `draco_decoder.wasm`: `c55a594e8ffd18426d36b27fea9618af3df5e173640a3e56d46f09d76f0574f2`
+- **License:** Apache-2.0
+- **Usage:** `model-viewer-decoders.js` points model-viewer's
+  `dracoDecoderLocation` here, so Draco-compressed glTF/GLB models decode
+  offline. The asm.js fallback (`draco_decoder.js`, only used by browsers
+  without WebAssembly) is not shipped; such browsers fail closed.
+
+## Basis Universal transcoder (for model-viewer)
+
+- **Path:** `public/files/perm/idevices/base/three-d-viewer/export/basis/`
+  (`basis_transcoder.js`, `basis_transcoder.wasm`)
+- **Upstream:** <https://github.com/BinomialLLC/basis_universal>, retrieved
+  from the exact location model-viewer uses by default,
+  `https://www.gstatic.com/basis-universal/versioned/2021-04-15-ba1c3e4/`
+- **Version:** build `2021-04-15-ba1c3e4`
+- **Retrieved:** 2026-09-26
+- **SHA-256:**
+  - `basis_transcoder.js`: `48a0ef319a28bf0224ee88ded34f74eaf97c175bba9eb18b47fb9720510ad6c4`
+  - `basis_transcoder.wasm`: `79ae97d781e10a566659c689b7bb1de91726453f55f9f5e3bcc07a4e3904070f`
+- **License:** Apache-2.0
+- **Usage:** `model-viewer-decoders.js` points model-viewer's
+  `ktx2TranscoderLocation` here, so models with KTX2 textures load offline.

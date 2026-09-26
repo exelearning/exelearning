@@ -338,6 +338,8 @@ describe('idevice-config-browser', () => {
             // All dependencies should be before the main file
             expect(files.indexOf('model-viewer.min.js')).toBeLessThan(files.indexOf('three-d-viewer.js'));
             expect(files.indexOf('three.module.min.js')).toBeLessThan(files.indexOf('three-d-viewer.js'));
+            // Local decoder locations must be in place before model-viewer can load a model
+            expect(files.indexOf('model-viewer-decoders.js')).toBe(0);
         });
 
         it('returns just main file for iDevice without dependencies', () => {

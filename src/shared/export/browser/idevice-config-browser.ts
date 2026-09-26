@@ -135,7 +135,13 @@ const IDEVICE_JS_DEPENDENCIES: Record<string, string[]> = {
     'select-media-files': ['mansory-jq.js'],
     'image-gallery': ['simple-lightbox.min.js'],
     'three-sixty-viewer': ['three.min.js', 'OrbitControls.js'],
-    'three-d-viewer': ['model-viewer.min.js', 'three.module.min.js', 'STLLoader.js', 'OrbitControls.js'],
+    'three-d-viewer': [
+        'model-viewer-decoders.js',
+        'model-viewer.min.js',
+        'three.module.min.js',
+        'STLLoader.js',
+        'OrbitControls.js',
+    ],
 };
 
 /**

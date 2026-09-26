@@ -297,6 +297,12 @@
 *   File: /public/files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js
     *   model-viewer (Google)
     *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/three-d-viewer/export/draco/\* (Draco 1.5.6 WASM decoder)
+    *   Copyright: Google LLC
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/three-d-viewer/export/basis/\* (Basis Universal transcoder)
+    *   Copyright: Binomial LLC
+    *   License: Apache License 2.0
 *   File: public/files/perm/idevices/base/three-sixty-viewer/three-sixty-viewer-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
