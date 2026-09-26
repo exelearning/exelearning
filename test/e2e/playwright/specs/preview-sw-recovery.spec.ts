@@ -93,6 +93,53 @@ test.describe('Preview Service Worker recovery', () => {
         expect(previewErrors).toEqual([]);
     });
 
+    test('re-registers a worker that stops answering mid-session and renders the next preview', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        // The first SET_CONTENT waits for its 10 s timeout before the worker is replaced.
+        test.setTimeout(120000);
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Preview SW mid-session recovery');
+
+        const previewErrors: string[] = [];
+        page.on('console', message => {
+            if (message.type() === 'error' && message.text().includes('[PreviewPanel] Error')) {
+                previewErrors.push(message.text());
+            }
+        });
+
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await expectPreviewRenders(page);
+
+        // Mark the first rendered document so the second render can be told apart from it.
+        await page.evaluate(() => {
+            const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+            iframe.contentDocument!.body.dataset.e2eFirstRender = 'true';
+        });
+
+        // The worker dies after the first preview: every message is dropped until the app
+        // unregisters it.
+        await page.evaluate(installZombiePreviewWorker);
+        await page.click('#preview-refresh-button');
+
+        await expect(getPreviewFrame(page).locator('body.exe-export:not([data-e2e-first-render])')).toBeAttached({
+            timeout: 60000,
+        });
+        const state = await page.evaluate(() => ({
+            zombie: (window as any).__previewSwZombie as ZombieState,
+            unavailable: (window as any).eXeLearning.app._previewSwUnavailable,
+            iframeSrc: (document.getElementById('preview-iframe') as HTMLIFrameElement).src,
+        }));
+        expect(state.zombie.dropped).toBeGreaterThan(0);
+        expect(state.zombie.unregistered).toBe(true);
+        // Served by the re-registered worker, not by the blob URL fallback.
+        expect(state.unavailable).toBe(false);
+        expect(new URL(state.iframeSrc).pathname).toContain('/viewer/');
+        expect(previewErrors).toEqual([]);
+    });
+
     test('removes an orphaned root-scope preview worker registration', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         const projectUuid = await createProject(page, 'Preview SW orphan cleanup');
