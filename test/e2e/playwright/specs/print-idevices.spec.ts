@@ -1337,6 +1337,54 @@ test.describe('Print iDevices', () => {
         expect(heightPx).toBeLessThan(22);
     });
 
+    test('prints a math problems activity with compact writing spaces', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print iDevices Math Problems');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const payload = JSON.stringify({
+            typeGame: 'MathProblems',
+            instructions: 'Resuelve los siguientes problemas',
+            questions: [
+                { wordingseg: 'Compra {a} manzanas a 2 euros. ¿Cuánto paga?', min: 3, max: 3, decimals: 0 },
+                { wordingseg: 'Tiene {a} lápices y regala 1. ¿Cuántos le quedan?', min: 5, max: 5, decimals: 0 },
+            ],
+        });
+        const html = `<div class="mathproblems-IDevice"><div class="mathproblems-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+        await page.evaluate(
+            ({ htmlContent }) => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Math Page');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'mathproblems', {
+                    htmlContent,
+                });
+            },
+            { htmlContent: html },
+        );
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="mathproblems"]');
+        await expect(activity).toHaveCount(1);
+
+        await expect(activity.locator('.worksheet-item')).toHaveCount(2);
+        await expect(activity.locator('.worksheet-writing-space')).toHaveCount(2);
+
+        // Verify the compact writing space has 5mm computed height (~18.9px at 96 DPI)
+        const spaceHeight = await activity
+            .locator('.worksheet-writing-space')
+            .first()
+            .evaluate(el => window.getComputedStyle(el).height);
+        const heightPx = Number.parseFloat(spaceHeight);
+        expect(heightPx).toBeGreaterThan(15);
+        expect(heightPx).toBeLessThan(22);
+    });
+
     test('prints a complete activity as gapped text, with its words when they are offered', async ({
         authenticatedPage,
         createProject,

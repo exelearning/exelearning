@@ -68,11 +68,10 @@ describe('MathProblemsWorksheetAdapter', () => {
         expect(activity?.items[0].prompt).toBe('Compra 4 manzanas. ¿Cuánto paga?');
     });
 
-    it('leaves room to work the problem out in, with nothing ruled', () => {
-        // A maths problem is worked out before it is answered, so the space is for both.
+    it('leaves room to write the problem answer in, with nothing ruled', () => {
         expect(MathProblemsWorksheetAdapter.build(mathHtml(), {})?.items[0].answer).toEqual({
             kind: 'writingSpace',
-            lines: 3,
+            lines: 1,
         });
     });
 

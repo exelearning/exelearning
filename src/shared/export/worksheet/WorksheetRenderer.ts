@@ -537,8 +537,9 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-top: 2mm;
 }
 
-/* Sort sentence mode: compact vertical space just enough to write the sentence in order. */
-.worksheet-activity[data-idevice="sort"] .worksheet-item {
+/* Sort sentence mode and Maths problems: compact vertical space just enough to write the answer. */
+.worksheet-activity[data-idevice="sort"] .worksheet-item,
+.worksheet-activity[data-idevice="mathproblems"] .worksheet-item {
     margin-bottom: 2.5mm;
 }
 
@@ -546,11 +547,13 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-bottom: 6mm;
 }
 
-.worksheet-activity[data-idevice="sort"] .worksheet-answer {
+.worksheet-activity[data-idevice="sort"] .worksheet-answer,
+.worksheet-activity[data-idevice="mathproblems"] .worksheet-answer {
     margin-top: 1mm;
 }
 
-.worksheet-activity[data-idevice="sort"] .worksheet-writing-space {
+.worksheet-activity[data-idevice="sort"] .worksheet-writing-space,
+.worksheet-activity[data-idevice="mathproblems"] .worksheet-writing-space {
     margin-top: 0.5mm;
     height: 5mm !important;
 }
