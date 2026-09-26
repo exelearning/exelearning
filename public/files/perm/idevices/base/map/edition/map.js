@@ -595,7 +595,7 @@ var $exeDevice = {
                 let id = url
                     .split('https://mediateca.educa.madrid.org/video/')[1]
                     .split('?')[0];
-                id = 'http://mediateca.educa.madrid.org/streaming.php?id=' + id;
+                id = 'https://mediateca.educa.madrid.org/streaming.php?id=' + id;
                 return id;
             } else {
                 return false;

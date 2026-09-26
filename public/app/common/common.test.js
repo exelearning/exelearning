@@ -3206,7 +3206,7 @@ describe('common.js $exeDevices', () => {
       const media = getMedia();
       const url = 'https://mediateca.educa.madrid.org/video/abc123';
       const result = media.getURLVideoMediaTeca(url);
-      expect(result).toContain('streaming.php');
+      expect(result).toBe('https://mediateca.educa.madrid.org/streaming.php?id=abc123');
     });
 
     it('getURLAudioMediaTeca returns false for non-mediateca URLs', () => {
