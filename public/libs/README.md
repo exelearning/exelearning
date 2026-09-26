@@ -325,6 +325,7 @@
     *   Copyright: Paul Rosen and Gregory Dyke, under the GNU GPL v3 license.
     *   License: MIT
 *   Files: /public/libs/bootstrap/\*
+    *   Version: 5.3.8
     *   Copyright: The Bootstrap Authors / Twitter, Inc.
     *   License: MIT
 *   Files: /public/libs/fflate/\*
@@ -341,7 +342,8 @@
 *   File: /public/libs/jquery/jquery.min.js
     *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
-*   File: /public/libs/jquery-ui/jquery-ui.min.js
+*   Files: /public/libs/jquery-ui/\* (jquery-ui.min.js, jquery-ui.min.css)
+    *   Version: 1.14.2
     *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
 *   Files: /public/libs/pdfjs/*
@@ -357,6 +359,7 @@
     *   Copyright: Andre Rinas
     *   License: MIT
 *   Files: /public/libs/tinymce\_5/\*
+    *   Version: 5.10.9
     *   Copyright: Tiny Technologies Inc.
     *   License: LGPL-2.1
 *   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor (cropper.js, jquery-cropper.js and CSS)
