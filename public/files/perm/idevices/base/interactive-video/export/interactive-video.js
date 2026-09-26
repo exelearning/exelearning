@@ -950,14 +950,14 @@ var $interactivevideo = {
 
     enableJWPlayer: function (id, h, w) {
         var img =
-            'http://mediateca.educa.madrid.org/imagen.php?id=' +
+            'https://mediateca.educa.madrid.org/imagen.php?id=' +
             id +
             '&type=1&m=0';
         jwplayer('player').setup({
             sources: [
                 {
                     file:
-                        'http://mediateca.educa.madrid.org/streaming.php?id=' +
+                        'https://mediateca.educa.madrid.org/streaming.php?id=' +
                         id,
                     label: '480p',
                     type: 'mp4',
@@ -967,12 +967,12 @@ var $interactivevideo = {
             ],
             image: img,
             logo: {
-                file: 'http://mediateca.educa.madrid.org/images/player/educamadrid.png',
-                link: 'http://mediateca.educa.madrid.org/video/' + id,
+                file: 'https://mediateca.educa.madrid.org/images/player/educamadrid.png',
+                link: 'https://mediateca.educa.madrid.org/video/' + id,
                 hide: true,
             },
             abouttext: 'Mediateca',
-            aboutlink: 'http://mediateca.educa.madrid.org/ayuda.php',
+            aboutlink: 'https://mediateca.educa.madrid.org/ayuda.php',
             // controls: false,
             height: h,
             width: w,

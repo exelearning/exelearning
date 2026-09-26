@@ -7,7 +7,7 @@
  * - getThreeJSBaseUrl: Returns base URL for Three.js modules with absolute URLs
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -982,6 +982,23 @@ describe('three-d-viewer renderBehaviour — strips stale model-viewer src for S
 
         const mv = node.querySelector('model-viewer');
         expect(mv.hasAttribute('src')).toBe(false);
+    });
+
+    it('loads the local decoder config before model-viewer itself', () => {
+        delete globalThis.$exeLibs;
+        const appended = [];
+        const spy = vi.spyOn(document.head, 'appendChild').mockImplementation(el => {
+            appended.push(el);
+            return el;
+        });
+        const node = makeIdeviceWithStaleSrc('asset://abc.glb', 'asset://abc.glb');
+
+        $threedviewer.renderBehaviour({ ideviceId: node.id, src: 'asset://abc.glb' });
+
+        const first = appended.find(el => el.tagName === 'SCRIPT');
+        expect(first.getAttribute('src')).toMatch(/model-viewer-decoders\.js$/);
+        spy.mockRestore();
+        delete globalThis.$exeLibs;
     });
 
     it('LEAVES src untouched when the file is GLB / GLTF', () => {

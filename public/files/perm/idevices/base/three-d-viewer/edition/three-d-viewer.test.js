@@ -5,7 +5,7 @@
  * - getThreeJSBaseUrl: Returns absolute URL for dynamic ES module imports
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -307,6 +307,36 @@ describe('three-d-viewer iDevice (edition)', () => {
 
             expect(result).toBe(`http://localhost:8080/${expectedPath}`);
             expect(result).not.toContain('some/deep/path');
+        });
+    });
+
+    describe('ensureModelViewerLoaded', () => {
+        afterEach(() => {
+            delete window.$exeLibs;
+            vi.restoreAllMocks();
+        });
+
+        it('loads the local decoder config before model-viewer itself', async () => {
+            global.eXeLearning.config = { isStaticMode: true };
+            delete window.$exeLibs;
+            vi.spyOn(window.customElements, 'get').mockReturnValue(undefined);
+            vi.spyOn(window.customElements, 'whenDefined').mockResolvedValue(undefined);
+            const appended = [];
+            vi.spyOn(document.head, 'appendChild').mockImplementation(el => {
+                appended.push(el);
+                return el;
+            });
+
+            const loaded = $exeDevice.ensureModelViewerLoaded();
+            expect(appended[0].getAttribute('src')).toBe(
+                './files/perm/idevices/base/three-d-viewer/export/model-viewer-decoders.js'
+            );
+            appended[0].dispatchEvent(new Event('load'));
+            expect(appended[1].getAttribute('src')).toBe(
+                './files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js'
+            );
+            appended[1].dispatchEvent(new Event('load'));
+            await expect(loaded).resolves.toBeUndefined();
         });
     });
 

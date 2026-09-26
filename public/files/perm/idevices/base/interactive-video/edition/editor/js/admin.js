@@ -123,7 +123,7 @@ var iAdmin = {
 
                 enableVideoPlayer(
                     id,
-                    'http://mediateca.educa.madrid.org/imagen.php?id=' + id + '&type=1&m=0',
+                    'https://mediateca.educa.madrid.org/imagen.php?id=' + id + '&type=1&m=0',
                     '356',
                     '448',
                 );
@@ -2135,7 +2135,7 @@ var iAdmin = {
 
 function enableVideoPlayer(video, image, h, w) {
     if (typeof jwplayer === 'undefined') {
-        console.warn('jwplayer not loaded yet, loading now...');
+        // Mediateca's player is only needed for Mediateca videos, so load it on demand.
         var script = document.createElement('script');
         script.src = 'https://mediateca.educa.madrid.org/includes/player/exelearning/jwplayer.js';
         script.onload = () => {
@@ -2152,7 +2152,7 @@ function setupJWPlayer(video, image, h, w) {
     jwplayer('player').setup({
         sources: [
             {
-                file: 'http://mediateca.educa.madrid.org/streaming.php?id=' + video,
+                file: 'https://mediateca.educa.madrid.org/streaming.php?id=' + video,
                 label: '480p',
                 type: 'mp4',
                 provider: 'http',
@@ -2161,7 +2161,7 @@ function setupJWPlayer(video, image, h, w) {
         ],
         image: image,
         abouttext: 'Mediateca',
-        aboutlink: 'http://mediateca.educa.madrid.org/video/' + video,
+        aboutlink: 'https://mediateca.educa.madrid.org/video/' + video,
         controls: true,
         height: h,
         width: w,

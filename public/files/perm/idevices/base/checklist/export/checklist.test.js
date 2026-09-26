@@ -197,6 +197,15 @@ describe('checklist iDevice export', () => {
             expect(onReady).toHaveBeenCalledTimes(1);
             expect(onError).not.toHaveBeenCalled();
         });
+
+        it('loads the bundled jsPDF from the iDevice folder, never from a CDN', () => {
+            document.getElementById('jspdf-umd-loader')?.remove();
+            $checklist.idevicePath = 'idevices/checklist/';
+            $checklist.ensureJsPDF(vi.fn(), vi.fn());
+            const script = document.getElementById('jspdf-umd-loader');
+            expect(script.getAttribute('src')).toBe('idevices/checklist/jspdf/jspdf.umd.min.js');
+            script.remove();
+        });
     });
 
     describe('loadDataGame', () => {

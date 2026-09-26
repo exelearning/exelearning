@@ -198,11 +198,13 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
     },
 
     // ABC Music notation (abcjs)
+    // isDirectory: true to include the bundled piano soundfont (abcjs/soundfont/)
     {
         name: 'abcjs',
         type: 'class',
         pattern: 'abc-music',
         files: ['abcjs/abcjs-basic-min.js', 'abcjs/exe_abc_music.js', 'abcjs/abcjs-audio.css'],
+        isDirectory: true,
     },
 
     // LaTeX math expressions (MathJax)

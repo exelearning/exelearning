@@ -265,9 +265,9 @@ describe('common.js $exe helpers', () => {
   });
 
   describe('$exe.options', () => {
-    it('has atools property with modeToggler and translator', () => {
+    it('has atools property with modeToggler', () => {
       expect(global.$exe.options.atools.modeToggler).toBe(false);
-      expect(global.$exe.options.atools.translator).toBe(false);
+      expect(global.$exe.options.atools).not.toHaveProperty('translator');
     });
 
     it('has i18n object', () => {
@@ -3206,7 +3206,7 @@ describe('common.js $exeDevices', () => {
       const media = getMedia();
       const url = 'https://mediateca.educa.madrid.org/video/abc123';
       const result = media.getURLVideoMediaTeca(url);
-      expect(result).toContain('streaming.php');
+      expect(result).toBe('https://mediateca.educa.madrid.org/streaming.php?id=abc123');
     });
 
     it('getURLAudioMediaTeca returns false for non-mediateca URLs', () => {

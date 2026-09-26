@@ -2150,7 +2150,7 @@ var $eXeInforme = {
         }
         const s = document.createElement('script');
         s.id = scriptId;
-        s.src = 'https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js';
+        s.src = (this.idevicePath || '') + 'jspdf/jspdf.umd.min.js';
         s.async = true;
         s.onload = function () {
             onReady();
