@@ -141,6 +141,7 @@ export const GuessWorksheetAdapter: WorksheetAdapter = {
         const activity: PrintableActivity = {
             ideviceType: 'guess',
             title: options.title || GuessWorksheetAdapter.defaultTitle,
+            twoColumns: true,
             items,
         };
 

@@ -78,6 +78,8 @@ describe('GuessWorksheetAdapter', () => {
 
         expect(activity).not.toBeNull();
         expect(activity?.items).toHaveLength(2);
+        expect(activity?.twoColumns).toBe(true);
+        expect(activity?.unnumbered).not.toBe(true);
         expect(activity?.items[0].prompt).toBe('Ciudad conquistada');
         expect(answerOf(activity, 0)).toBe('........');
         expect(answerOf(activity, 1)).toBe('... ...');

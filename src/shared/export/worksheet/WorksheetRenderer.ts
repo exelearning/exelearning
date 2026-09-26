@@ -209,7 +209,8 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 
 /* Illustrations embedded in a clue must fit its column, even when the author stored a pixel
    width and height. Keep smaller pictures at their authored size and preserve their proportions. */
-.worksheet-prompt img {
+.worksheet-prompt img,
+.worksheet-extra img {
     max-width: 100%;
     height: auto;
 }
@@ -219,7 +220,7 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 }
 
 .worksheet-media img {
-    max-width: 80mm;
+    max-width: min(80mm, 100%);
     max-height: 60mm;
     height: auto;
 }

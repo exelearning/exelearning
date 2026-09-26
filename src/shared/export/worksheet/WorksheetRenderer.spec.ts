@@ -776,7 +776,9 @@ describe('questions set in two columns', () => {
             expect(html).toContain('<div class="worksheet-prompt"><img src="clue.png" width="400" height="300"></div>');
         }
         for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
-            expect(styles).toMatch(/\.worksheet-prompt img\s*\{[^}]*max-width: 100%;[^}]*height: auto;/);
+            expect(styles).toMatch(
+                /\.worksheet-prompt img,\s*\.worksheet-extra img\s*\{[^}]*max-width: 100%;[^}]*height: auto;/,
+            );
         }
     });
 

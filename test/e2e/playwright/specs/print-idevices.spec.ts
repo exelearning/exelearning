@@ -437,83 +437,137 @@ test.describe('Print iDevices', () => {
         expect(state).toEqual({ viewers: 1, surfaces: [true, true], captures: 4 });
     });
 
-    for (const mode of ['idevices', 'in-place', 'appendix']) {
-        test(`keeps inline rosco illustrations inside their columns in ${mode} mode`, async ({
-            authenticatedPage: page,
-            createProject,
-        }) => {
-            const uuid = await createProject(page, 'Rosco inline illustrations');
-            await gotoWorkarea(page, uuid);
-            await waitForAppReady(page);
-            const picture = await page.evaluate(() => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 400;
-                canvas.height = 300;
-                const context = canvas.getContext('2d')!;
-                context.fillStyle = '#bbccee';
-                context.fillRect(0, 0, 400, 300);
-                return canvas.toDataURL('image/png');
+    for (const idevice of ['az-quiz-game', 'guess']) {
+        for (const mode of ['idevices', 'in-place', 'appendix']) {
+            test(`keeps ${idevice} illustrations inside two columns in ${mode} mode`, async ({
+                authenticatedPage: page,
+                createProject,
+            }) => {
+                const uuid = await createProject(page, 'Rosco inline illustrations');
+                await gotoWorkarea(page, uuid);
+                await waitForAppReady(page);
+                const picture = await page.evaluate(() => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 400;
+                    canvas.height = 300;
+                    const context = canvas.getContext('2d')!;
+                    context.fillStyle = '#bbccee';
+                    context.fillRect(0, 0, 400, 300);
+                    return canvas.toDataURL('image/png');
+                });
+                const prefix = idevice === 'guess' ? 'adivina' : 'rosco';
+                const html = `<div class="${prefix}-DataGame">${encryptDataGame(
+                    JSON.stringify({
+                        letters: 'ABCD',
+                        optionsRamdon: false,
+                        percentajeQuestions: 100,
+                        percentageShow: 0,
+                        wordsGame:
+                            idevice === 'guess'
+                                ? [
+                                      {
+                                          word: 'ABCDEFGHIJKLMNOPQRSTUVWX',
+                                          type: 1,
+                                          definition: 'First illustration',
+                                          url: picture,
+                                      },
+                                      {
+                                          word: 'BEE',
+                                          type: 3,
+                                          definition: 'Natural size',
+                                          eText: escape(`<img src="${picture}">`),
+                                      },
+                                      {
+                                          word: 'CAT',
+                                          type: 3,
+                                          definition: 'Small illustration',
+                                          eText: escape(`<img src="${picture}" width="40" height="30">`),
+                                      },
+                                      {
+                                          word: 'DOG',
+                                          type: 3,
+                                          definition: 'Last illustration',
+                                          eText: escape(`<img src="${picture}" width="400" height="300">`),
+                                      },
+                                  ]
+                                : [
+                                      {
+                                          word: 'ANT',
+                                          definition: `<p>First illustration</p><img src="${picture}" width="400" height="300">`,
+                                      },
+                                      { word: 'BEE', definition: `<p>Natural size</p><img src="${picture}">` },
+                                      {
+                                          word: 'CAT',
+                                          definition: `<p>Small illustration</p><img src="${picture}" width="40" height="30">`,
+                                      },
+                                      {
+                                          word: 'DOG',
+                                          definition: `<p>Last illustration</p><img src="${picture}" width="400" height="300">`,
+                                      },
+                                  ],
+                    }),
+                )}</div>`;
+                await page.evaluate(
+                    ({ htmlContent, idevice }) => {
+                        const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                        const parent = binding.createPage('Illustrated clues');
+                        binding.createComponent(parent.id, binding.createBlock(parent.id), idevice, { htmlContent });
+                    },
+                    { htmlContent: html, idevice },
+                );
+                await openPrintDialog(page);
+                const { frame } = await choosePrintOption(page, mode);
+                await page.emulateMedia({ media: 'print' });
+                await page.locator('.print-preview-iframe').evaluate((iframe: HTMLIFrameElement) => {
+                    iframe.style.width = '180mm';
+                });
+                const activity = frame.locator(`[data-idevice="${idevice}"]`);
+                const pictures = activity.locator('.worksheet-item img');
+                await expect(pictures).toHaveCount(4);
+                for (const picture of await pictures.all()) {
+                    await expect
+                        .poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                        .toBe(true);
+                }
+                const geometry = await pictures.evaluateAll(images =>
+                    images.map(image => {
+                        const bounds = image.getBoundingClientRect();
+                        const prompt = image.parentElement!.getBoundingClientRect();
+                        return {
+                            width: bounds.width,
+                            height: bounds.height,
+                            left: bounds.left - prompt.left,
+                            right: prompt.right - bounds.right,
+                        };
+                    }),
+                );
+                for (const bounds of geometry) {
+                    expect(bounds.width).toBeGreaterThan(0);
+                    expect(bounds.left).toBeGreaterThanOrEqual(-1);
+                    expect(bounds.right).toBeGreaterThanOrEqual(-1);
+                    expect(Math.abs(bounds.width / bounds.height - 4 / 3)).toBeLessThan(0.02);
+                }
+                // Small author-sized pictures should not be enlarged to fill a column.
+                expect(geometry[2].width).toBeCloseTo(40, 0);
+                expect(geometry[0].width).toBeLessThan(400);
+                const positions = await activity.locator('.worksheet-item').evaluateAll(items =>
+                    items.map(item => {
+                        const bounds = item.getBoundingClientRect();
+                        return { x: bounds.x, y: bounds.y, overflow: item.scrollWidth - item.clientWidth };
+                    }),
+                );
+                expect(positions).toHaveLength(4);
+                expect(positions[0].x).toBeLessThan(positions[1].x);
+                expect(Math.abs(positions[0].y - positions[1].y)).toBeLessThan(1);
+                expect(positions[2].y).toBeGreaterThan(positions[0].y);
+                expect(Math.abs(positions[2].y - positions[3].y)).toBeLessThan(1);
+                for (const position of positions) expect(position.overflow).toBeLessThanOrEqual(1);
+                if (idevice === 'guess') {
+                    await expect(activity.locator('.worksheet-items')).not.toHaveClass(/worksheet-items-plain/);
+                    await expect(activity.locator('.worksheet-item').first().locator('.worksheet-box')).toHaveCount(24);
+                }
             });
-            const html = `<div class="rosco-DataGame">${encryptDataGame(
-                JSON.stringify({
-                    letters: 'ABCD',
-                    wordsGame: [
-                        {
-                            word: 'ANT',
-                            definition: `<p>First illustration</p><img src="${picture}" width="400" height="300">`,
-                        },
-                        { word: 'BEE', definition: `<p>Natural size</p><img src="${picture}">` },
-                        {
-                            word: 'CAT',
-                            definition: `<p>Small illustration</p><img src="${picture}" width="40" height="30">`,
-                        },
-                        {
-                            word: 'DOG',
-                            definition: `<p>Last illustration</p><img src="${picture}" width="400" height="300">`,
-                        },
-                    ],
-                }),
-            )}</div>`;
-            await page.evaluate(htmlContent => {
-                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
-                const parent = binding.createPage('Illustrated clues');
-                binding.createComponent(parent.id, binding.createBlock(parent.id), 'az-quiz-game', { htmlContent });
-            }, html);
-            await openPrintDialog(page);
-            const { frame } = await choosePrintOption(page, mode);
-            await page.emulateMedia({ media: 'print' });
-            await page.locator('.print-preview-iframe').evaluate((iframe: HTMLIFrameElement) => {
-                iframe.style.width = '180mm';
-            });
-            const pictures = frame.locator('[data-idevice="az-quiz-game"] .worksheet-prompt img');
-            await expect(pictures).toHaveCount(4);
-            for (const picture of await pictures.all()) {
-                await expect
-                    .poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
-                    .toBe(true);
-            }
-            const geometry = await pictures.evaluateAll(images =>
-                images.map(image => {
-                    const bounds = image.getBoundingClientRect();
-                    const prompt = image.closest('.worksheet-prompt')!.getBoundingClientRect();
-                    return {
-                        width: bounds.width,
-                        height: bounds.height,
-                        left: bounds.left - prompt.left,
-                        right: prompt.right - bounds.right,
-                    };
-                }),
-            );
-            for (const bounds of geometry) {
-                expect(bounds.width).toBeGreaterThan(0);
-                expect(bounds.left).toBeGreaterThanOrEqual(-1);
-                expect(bounds.right).toBeGreaterThanOrEqual(-1);
-                expect(Math.abs(bounds.width / bounds.height - 4 / 3)).toBeLessThan(0.02);
-            }
-            // Small author-sized pictures should not be enlarged to fill a column.
-            expect(geometry[2].width).toBeCloseTo(40, 0);
-            expect(geometry[0].width).toBeLessThan(400);
-        });
+        }
     }
 
     for (const mode of ['idevices', 'in-place']) {
