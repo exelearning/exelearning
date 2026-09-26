@@ -121,14 +121,17 @@ var $udlcontent = {
                                     // Resize H5P activities (to review)
                                     var iframes = $('iframe', block);
                                     iframes.each(function () {
+                                        // Identified by the query, not by the
+                                        // path: wp-admin can be renamed or
+                                        // relocated on a WordPress site.
                                         if (
                                             this.src &&
                                             (this.src.indexOf(
                                                 'https://h5p.org/'
                                             ) == 0 ||
-                                                this.src.indexOf(
-                                                    '/wp-admin/admin-ajax.php?action=h5p_embed'
-                                                ) != -1)
+                                                /[?&]action=h5p_embed(?:[&#]|$)/.test(
+                                                    this.src
+                                                ))
                                         ) {
                                             if (
                                                 !this.style ||

@@ -113,6 +113,34 @@ describe('exe_effects (app/common)', () => {
     expect(assigned).toBe(1);
   });
 
+  // A WordPress H5P embed is recognized by its action query parameter, not by
+  // the path it is served from: wp-admin can be renamed or moved, and the same
+  // embed is also reachable through a site's own permalink structure.
+  it.each([
+    ['https://example.org/wp-admin/admin-ajax.php?action=h5p_embed&id=7', 1],
+    ['https://example.org/wp/backend/admin-ajax.php?action=h5p_embed&id=7', 1],
+    ['https://example.org/admin-ajax.php?id=7&action=h5p_embed', 1],
+    ['https://example.org/wp-admin/admin-ajax.php?action=something_else', 0],
+    ['https://example.org/page?transaction=h5p_embed', 0],
+    ['https://example.org/page?action=h5p_embedded', 0],
+  ])('reloads %s %i time(s)', (initial, expected) => {
+    const block = document.createElement('div');
+    const iframe = document.createElement('iframe');
+    let src = initial;
+    let assigned = 0;
+    Object.defineProperty(iframe, 'src', {
+      get: () => src,
+      set: (value) => {
+        src = value;
+        assigned += 1;
+      },
+      configurable: true,
+    });
+    block.appendChild(iframe);
+    exeFX.h5pResize($(block));
+    expect(assigned).toBe(expected);
+  });
+
   it('builds accordion structure from headings', () => {
     const container = document.createElement('div');
     container.innerHTML = '<h2>One</h2><p>A</p><h2>Two</h2><p>B</p>';

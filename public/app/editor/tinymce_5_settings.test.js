@@ -213,6 +213,18 @@ describe('TinyMCE 5 Settings', () => {
       expect(templates[0]).toHaveProperty('url');
     });
 
+    it('ships every template locally, with no remote resource in it', () => {
+      // Template content is copied into the author's page and every export of
+      // it, so a remote src there is a third-party request from each of them.
+      const fs = require('node:fs');
+      const path = require('node:path');
+      for (const { url } of globalThis.$exeTinyMCE.getTemplates()) {
+        const html = fs.readFileSync(path.join(__dirname, '../..', url), 'utf8');
+        expect(html, url).not.toMatch(/\ssrc\s*=\s*["']?(?:https?:)?\/\//i);
+        expect(html, url).not.toMatch(/<iframe/i);
+      }
+    });
+
     it('getAssetURL constructs correct URL', () => {
       const url = '/libs/test.js';
       const result = globalThis.$exeTinyMCE.getAssetURL(url);
