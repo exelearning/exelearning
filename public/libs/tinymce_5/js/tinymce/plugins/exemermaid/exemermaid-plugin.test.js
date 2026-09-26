@@ -2,7 +2,7 @@
  * Unit tests for exemermaid TinyMCE plugin path handling
  *
  * Tests the CSS path construction logic.
- * The exemermaid plugin is simpler than exemindmap/codemagic as it uses
+ * The exemermaid plugin is simpler than exemindmap as it uses
  * TinyMCE's built-in `url` parameter for resource loading.
  */
 
