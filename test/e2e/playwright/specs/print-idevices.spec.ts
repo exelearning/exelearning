@@ -1240,6 +1240,58 @@ test.describe('Print iDevices', () => {
         await expect(activity.locator('.worksheet-extra')).toHaveCount(2);
     });
 
+    test('prints a padlock activity showing only feedback and no instructions', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print iDevices Padlock');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const payload = JSON.stringify({
+            candadoSolution: '1234',
+            candadoInstructions: '',
+            candadoRetro: '',
+            candadoAttemps: 3,
+        });
+        const html = [
+            '<div class="candado-IDevice">',
+            '<div class="candado-version js-hidden">1</div>',
+            '<div class="candado-instructions js-hidden"><p>Pista secreta para resolver el candado</p></div>',
+            '<div class="candado-retro js-hidden"><p>¡Enhorabuena! Has desbloqueado el contenido secreto.</p></div>',
+            `<div class="candado-DataGame js-hidden">${encryptDataGame(payload)}</div>`,
+            '</div>',
+        ].join('');
+
+        await page.evaluate(
+            ({ htmlContent }) => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Padlock Page');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'padlock', {
+                    htmlContent,
+                });
+            },
+            { htmlContent: html },
+        );
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="padlock"]');
+        await expect(activity).toHaveCount(1);
+
+        // Instructions must NOT be printed
+        await expect(activity.locator('.worksheet-instructions')).toHaveCount(0);
+        await expect(activity).not.toContainText('Pista secreta para resolver el candado');
+
+        // Only feedback is rendered (unnumbered)
+        await expect(activity.locator('.worksheet-items')).toHaveClass(/worksheet-items-plain/);
+        await expect(activity.locator('.worksheet-item')).toHaveCount(1);
+        await expect(activity.locator('.worksheet-item')).toContainText(
+            '¡Enhorabuena! Has desbloqueado el contenido secreto.',
+        );
+    });
+
     test('prints a complete activity as gapped text, with its words when they are offered', async ({
         authenticatedPage,
         createProject,

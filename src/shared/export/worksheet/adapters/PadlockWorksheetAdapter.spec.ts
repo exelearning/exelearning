@@ -45,10 +45,10 @@ describe('PadlockWorksheetAdapter', () => {
         expect(build()?.title).toBe('Padlock');
     });
 
-    it('prints the instructions, and the feedback under them', () => {
+    it('prints the feedback alone and never the instructions', () => {
         const activity = build();
 
-        expect(activity?.instructions).toBe('<p>Busca el código en la unidad</p>');
+        expect(activity?.instructions).toBeUndefined();
         expect(activity?.items).toHaveLength(1);
         expect(activity?.items[0].prompt).toBe('<p>La célula</p>');
     });
@@ -61,35 +61,28 @@ describe('PadlockWorksheetAdapter', () => {
         expect(JSON.stringify(build({ solution: 'SECRETO' }))).not.toContain('SECRETO');
     });
 
-    it('reads both from their divs, the payload keeping them empty', () => {
+    it('reads the feedback from its div, the payload keeping it empty, and ignores instructions', () => {
         // The editor writes `candadoInstructions` and `candadoRetro` as empty strings.
         const activity = build({ instructions: '<p>Del div</p>', feedback: '<p>También del div</p>' });
 
-        expect(activity?.instructions).toBe('<p>Del div</p>');
+        expect(activity?.instructions).toBeUndefined();
         expect(activity?.items[0].prompt).toBe('<p>También del div</p>');
     });
 
-    it('prints the instructions alone when the lock guards nothing', () => {
-        const activity = PadlockWorksheetAdapter.build(padlockHtml({ instructions: '<p>Sólo esto</p>' }), {});
-
-        expect(activity?.instructions).toBe('<p>Sólo esto</p>');
-        expect(activity?.items).toEqual([]);
-    });
-
-    it('prints the feedback alone when the author wrote no instructions', () => {
+    it('prints the feedback when the author wrote no instructions', () => {
         const activity = PadlockWorksheetAdapter.build(padlockHtml({ feedback: '<p>Sólo esto</p>' }), {});
 
         expect(activity?.instructions).toBeUndefined();
         expect(activity?.items[0].prompt).toBe('<p>Sólo esto</p>');
     });
 
-    it('strips anything unsafe the author left in either', () => {
+    it('strips anything unsafe the author left in the feedback', () => {
         const activity = build({
             instructions: '<p>Hola<script>alert(1)</script></p>',
             feedback: '<p>Adiós<img src=x onerror=alert(2)></p>',
         });
 
-        expect(activity?.instructions).toBe('<p>Hola</p>');
+        expect(activity?.instructions).toBeUndefined();
         // The picture is content and stays; what goes is the handler hung off it.
         expect(activity?.items[0].prompt).toBe('<p>Adiós<img src="x" /></p>');
     });
@@ -102,6 +95,10 @@ describe('PadlockWorksheetAdapter', () => {
 
         it('skips one whose texts are empty', () => {
             expect(PadlockWorksheetAdapter.build(padlockHtml({ instructions: '  ', feedback: '' }), {})).toBeNull();
+        });
+
+        it('skips a component when it has instructions but no feedback', () => {
+            expect(PadlockWorksheetAdapter.build(padlockHtml({ instructions: '<p>Instrucciones</p>' }), {})).toBeNull();
         });
     });
 });
