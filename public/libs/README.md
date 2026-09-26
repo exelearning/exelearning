@@ -170,6 +170,9 @@
 *   Package: scorm-again
     *   Copyright: Jonathan Putney
     *   License: MIT
+*   Package: three
+    *   Copyright: mrdoob
+    *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0
@@ -289,7 +292,7 @@
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/three-d-viewer/export/three.module.min.js, ./OrbitControls.js and ./STLLoader.js
-    *   Three.js (Three.js Authors)
+    *   Three.js 0.186.1 (Three.js Authors), built from the pinned `three` npm package by scripts/vendor-three.ts
     *   License: MIT
 *   File: /public/files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js
     *   model-viewer (Google)
@@ -297,8 +300,8 @@
 *   File: public/files/perm/idevices/base/three-sixty-viewer/three-sixty-viewer-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
-*   Files: /public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js and ./OrbitControls.js
-    *   Three.js (Three.js Authors)
+*   File: /public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js (includes OrbitControls)
+    *   Three.js 0.186.1 (Three.js Authors), built from the pinned `three` npm package by scripts/vendor-three.ts
     *   License: MIT
 *   Files: /public/files/perm/themes/flux/fonts/* (Fredoka Font)
     *   Copyright: Milena Brandao
