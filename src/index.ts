@@ -45,7 +45,6 @@ import { getSettingNumber } from './services/app-settings';
 import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
 import { getBasePath } from './utils/basepath.util';
 import { serveSiteThemeFile } from './utils/site-theme-file';
-import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
 import { warnIfProviderUrlsMissing } from './utils/platform-jwt';
@@ -112,52 +111,6 @@ const exemindmapEditorHandler = ({
 // Base route handler for exemindmap editor (when no path is provided)
 const exemindmapEditorBaseHandler = ({ set }: { set: { status: number; headers: Record<string, string> } }) => {
     return exemindmapEditorHandler({ params: { '*': '' }, set });
-};
-
-// Reusable handler for codemagic editor (to register at both root and BASE_PATH)
-const codemagicEditorHandler = ({
-    params,
-    set,
-}: {
-    params: { '*': string };
-    set: { status: number; headers: Record<string, string> };
-}) => {
-    const relativePath = params['*'] || 'codemagic.html';
-    const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/codemagic';
-    const filePath = path.join(process.cwd(), editorBase, relativePath);
-
-    // Security: ensure path is within the editor directory
-    const resolvedPath = path.resolve(filePath);
-    const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
-    if (!resolvedPath.startsWith(resolvedBase)) {
-        set.status = 403;
-        return 'Forbidden';
-    }
-
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-        let content = fs.readFileSync(filePath);
-        const ext = path.extname(filePath).toLowerCase();
-        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-        // For HTML files, rewrite document-relative asset paths to BASE_PATH-aware
-        // absolute paths so they resolve behind a subdirectory reverse proxy (#1806).
-        if (ext === '.html' || ext === '.htm') {
-            const html = rewriteCodemagicAssetPaths(content.toString('utf-8'));
-            content = Buffer.from(html, 'utf-8');
-        }
-
-        set.headers['Content-Type'] = contentType;
-        set.headers['Content-Length'] = content.length.toString();
-        return content;
-    }
-
-    set.status = 404;
-    return 'Not Found';
-};
-
-// Base route handler for codemagic editor (when no path is provided)
-const codemagicEditorBaseHandler = ({ set }: { set: { status: number; headers: Record<string, string> } }) => {
-    return codemagicEditorHandler({ params: { '*': '' }, set });
 };
 
 // Reusable handler for mermaid library (alias /libs/mermaid/* to /app/common/mermaid/*)
@@ -444,10 +397,6 @@ const app = new Elysia()
     // This uses /api/exemindmap-editor/* which Bun won't intercept
     .get('/api/exemindmap-editor', exemindmapEditorBaseHandler) // Base route (no path)
     .get('/api/exemindmap-editor/*', exemindmapEditorHandler) // Wildcard (with subpath)
-    // Serve codemagic editor via API endpoint to bypass Bun's HTML bundler
-    // This uses /api/codemagic-editor/* which Bun won't intercept
-    .get('/api/codemagic-editor', codemagicEditorBaseHandler) // Base route (no path)
-    .get('/api/codemagic-editor/*', codemagicEditorHandler) // Wildcard (with subpath)
     // Serve mermaid library from /libs/mermaid/* (aliased to /app/common/mermaid/*)
     // MermaidPreRenderer.js expects mermaid at /libs/mermaid/mermaid.min.js
     .get('/libs/mermaid', mermaidLibBaseHandler) // Base route (no path)
@@ -630,8 +579,6 @@ if (routePrefix) {
             // Editor handlers must be registered at BASE_PATH too
             .get('/api/exemindmap-editor', exemindmapEditorBaseHandler)
             .get('/api/exemindmap-editor/*', exemindmapEditorHandler)
-            .get('/api/codemagic-editor', codemagicEditorBaseHandler)
-            .get('/api/codemagic-editor/*', codemagicEditorHandler)
             // Mermaid library alias for BASE_PATH
             .get('/libs/mermaid', mermaidLibBaseHandler)
             .get('/libs/mermaid/*', mermaidLibHandler),

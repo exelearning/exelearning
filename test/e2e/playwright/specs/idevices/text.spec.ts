@@ -8,7 +8,7 @@ import { addTextIdevice } from '../../helpers/workarea-helpers';
  *
  * Tests the Text iDevice functionality including:
  * - Basic operations (add, edit, save, delete)
- * - TinyMCE advanced editor (CodeMagic)
+ * - TinyMCE source code editor (core code plugin)
  * - TinyMCE mind map editor (exemindmap)
  * - Text formatting and persistence
  */
@@ -86,27 +86,17 @@ test.describe('Text iDevice', () => {
         });
     });
 
-    test.describe('TinyMCE Advanced Editor (CodeMagic)', () => {
-        test('should open advanced HTML editor without blank window', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const _workarea = new WorkareaPage(page);
-
-            const projectUuid = await createProject(page, 'CodeMagic Test');
-            await gotoWorkarea(page, projectUuid);
-
-            await waitForAppReady(page);
-
-            // Add a text iDevice
-            await addTextIdevice(page);
+    test.describe('TinyMCE Source Code Editor', () => {
+        async function openSourceCodeDialog(page) {
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            await block.waitFor({ timeout: 10000 });
 
             // Check if already in edit mode (TinyMCE visible) or need to click edit button
-            const tinyMceMenubar = page.locator('.tox-menubar');
-            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
-
+            const isTinyMceVisible = await page
+                .locator('.tox-menubar')
+                .isVisible()
+                .catch(() => false);
             if (!isTinyMceVisible) {
-                // Enter edit mode
-                const block = page.locator('#node-content article .idevice_node.text').last();
-                await block.waitFor({ timeout: 10000 });
                 const editBtn = block.locator('.btn-edit-idevice');
                 if ((await editBtn.count()) > 0) {
                     await editBtn.waitFor({ timeout: 10000 });
@@ -126,131 +116,50 @@ test.describe('Text iDevice', () => {
             await expect(toolsMenu).toBeVisible({ timeout: 10000 });
             await toolsMenu.click();
 
-            // Wait for dropdown to appear
-            await page.waitForTimeout(300);
-
-            // Click on "Edit source code (advanced editor)"
-            const codemagicMenuItem = page.locator('.tox-collection__item').filter({
-                hasText: /avanzado|advanced/i,
+            // Core TinyMCE "code" plugin menu item ("Source code", shown as "Edit source code")
+            const sourceCodeMenuItem = page.locator('.tox-collection__item').filter({
+                hasText: /source code|código fuente/i,
             });
-            await expect(codemagicMenuItem).toBeVisible({ timeout: 5000 });
-            await codemagicMenuItem.click();
+            await expect(sourceCodeMenuItem).toBeVisible({ timeout: 5000 });
+            await sourceCodeMenuItem.click();
 
-            // Wait for codemagic dialog
             const dialog = page.locator('.tox-dialog');
             await expect(dialog).toBeVisible({ timeout: 10000 });
+            return { block, dialog };
+        }
 
-            // Find the codemagic iframe
-            const codemagicFrame = page.frameLocator('iframe[src*="codemagic.html"]');
+        test('should open the HTML source code dialog', async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
 
-            // Verify key UI elements are visible (NOT blank)
-            // These elements should be visible if jQuery loaded correctly and i18n.js ran
-            // Note: #htmlSource textarea is hidden because CodeMirror replaces it with its own UI
-            await expect(codemagicFrame.locator('.CodeMirror')).toBeVisible({ timeout: 10000 });
-            await expect(codemagicFrame.locator('#codemagic_insert')).toBeVisible({ timeout: 5000 });
-            await expect(codemagicFrame.locator('#wraptext')).toBeVisible({ timeout: 5000 });
-            await expect(codemagicFrame.locator('#codemagic_cancel')).toBeVisible({ timeout: 5000 });
+            const projectUuid = await createProject(page, 'Source Code Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await addTextIdevice(page);
 
-            // Close dialog
-            await codemagicFrame.locator('#codemagic_cancel').click();
+            const { dialog } = await openSourceCodeDialog(page);
+            await expect(dialog.locator('textarea.tox-textarea')).toBeVisible({ timeout: 5000 });
 
-            // Verify dialog closed
+            // Close dialog with the Cancel button
+            await dialog.locator('.tox-dialog__footer .tox-button--secondary').click();
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
         });
 
         test('should edit HTML source and apply changes', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
-            const _workarea = new WorkareaPage(page);
 
-            const projectUuid = await createProject(page, 'CodeMagic Edit Test');
+            const projectUuid = await createProject(page, 'Source Code Edit Test');
             await gotoWorkarea(page, projectUuid);
-
             await waitForAppReady(page);
-
-            // Add a text iDevice
             await addTextIdevice(page);
 
-            const block = page.locator('#node-content article .idevice_node.text').last();
-            await block.waitFor({ timeout: 10000 });
+            const { block, dialog } = await openSourceCodeDialog(page);
 
-            // Check if already in edit mode (TinyMCE visible) or need to click edit button
-            const tinyMceMenubar = page.locator('.tox-menubar');
-            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
-
-            if (!isTinyMceVisible) {
-                // Enter edit mode
-                const editBtn = block.locator('.btn-edit-idevice');
-                if ((await editBtn.count()) > 0) {
-                    await editBtn.waitFor({ timeout: 10000 });
-                    await editBtn.click();
-                }
-            }
-
-            // Wait for TinyMCE to load
-            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
-
-            // Open Tools menu (use first() since there may be multiple TinyMCE editors)
-            const toolsMenu = page
-                .locator('.tox-mbtn')
-                .filter({ hasText: /Tools|Herramientas/i })
-                .first();
-            await toolsMenu.click();
-            await page.waitForTimeout(300);
-
-            // Click on codemagic (Edit source code (advanced editor) menu item)
-            const codemagicMenuItem = page.locator('.tox-collection__item').filter({
-                hasText: /advanced|avanzado/i,
-            });
-            await codemagicMenuItem.click();
-
-            // Wait for codemagic dialog
-            const dialog = page.locator('.tox-dialog');
-            await expect(dialog).toBeVisible({ timeout: 10000 });
-
-            // Get the codemagic frame (served via API endpoint)
-            const codemagicFrame = page.frameLocator('iframe[src*="codemagic.html"]');
-
-            // Wait for CodeMirror to be initialized
-            await codemagicFrame.locator('.CodeMirror').waitFor({ timeout: 10000 });
-
-            // Set content via CodeMirror's API
             const uniqueId = Date.now();
-            const testHtml = `<p id="test-${uniqueId}">HTML edited via CodeMagic</p>`;
+            const testHtml = `<p id="test-${uniqueId}">HTML edited via source code dialog</p>`;
+            await dialog.locator('textarea.tox-textarea').fill(testHtml);
 
-            // Get the iframe element and use evaluate to set CodeMirror content
-            const iframeHandle = await page.locator('iframe[src*="codemagic.html"]').elementHandle();
-            const frame = await iframeHandle?.contentFrame();
-            if (frame) {
-                // Wait for CodeMirror element to be available (it stores a reference on the DOM element)
-                await frame.waitForFunction(
-                    () => {
-                        const cmElement = document.querySelector('.CodeMirror') as any;
-                        return cmElement?.CodeMirror;
-                    },
-                    undefined,
-                    { timeout: 10000 },
-                );
-
-                // Set the content using CodeMirror API via DOM element
-                await frame.evaluate(html => {
-                    const cmElement = document.querySelector('.CodeMirror') as any;
-                    if (cmElement?.CodeMirror) {
-                        cmElement.CodeMirror.setValue(html);
-                    }
-                }, testHtml);
-
-                // Verify the content was set
-                const cmContent = await frame.evaluate(() => {
-                    const cmElement = document.querySelector('.CodeMirror') as any;
-                    return cmElement?.CodeMirror ? cmElement.CodeMirror.getValue() : '';
-                });
-                expect(cmContent).toContain('HTML edited via CodeMagic');
-            }
-
-            // Click Insert and Close button
-            await codemagicFrame.locator('#codemagic_insert').click();
-
-            // Verify dialog closed
+            // Apply with the primary (Save) button
+            await dialog.locator('.tox-dialog__footer .tox-button:not(.tox-button--secondary)').click();
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
             // Save the iDevice
@@ -270,7 +179,9 @@ test.describe('Text iDevice', () => {
             );
 
             // Verify the HTML content was applied
-            await expect(page.locator('#node-content')).toContainText('HTML edited via CodeMagic', { timeout: 10000 });
+            await expect(page.locator('#node-content')).toContainText('HTML edited via source code dialog', {
+                timeout: 10000,
+            });
         });
     });
 

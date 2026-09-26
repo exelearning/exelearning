@@ -195,13 +195,13 @@ print(greeting)</code></pre>
             expect(multiCodeCheck.hasHtml).toBe(true);
         });
 
-        test('should handle code blocks inserted via TinyMCE CodeMagic', async ({
+        test('should handle code blocks inserted via the TinyMCE source code dialog', async ({
             authenticatedPage,
             createProject,
         }) => {
             const page = authenticatedPage;
 
-            const projectUuid = await createProject(page, 'CodeMagic Test');
+            const projectUuid = await createProject(page, 'Source Code Dialog Test');
             await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
@@ -214,12 +214,9 @@ print(greeting)</code></pre>
 
             await waitForTinyMCEReady(page);
 
-            // Try to find and click the CodeMagic button (code editor)
-            // The button has tooltip "Advanced Code Editor (CodeMagic)" or similar
+            // Try to find and click the core TinyMCE source code button
             const codeButton = page
-                .locator(
-                    '.tox-tbtn[aria-label*="Code"], .tox-tbtn[aria-label*="code"], .tox-tbtn[title*="Code"], .tox-tbtn[aria-label*="Magic"]',
-                )
+                .locator('.tox-tbtn[aria-label*="Code"], .tox-tbtn[aria-label*="code"], .tox-tbtn[title*="Code"]')
                 .first();
 
             // Toggle toolbars first if needed
