@@ -129,9 +129,9 @@ var $udlcontent = {
                                             (this.src.indexOf(
                                                 'https://h5p.org/'
                                             ) == 0 ||
-                                                this.src.indexOf(
-                                                    'action=h5p_embed'
-                                                ) != -1)
+                                                /[?&]action=h5p_embed(?:[&#]|$)/.test(
+                                                    this.src
+                                                ))
                                         ) {
                                             if (
                                                 !this.style ||

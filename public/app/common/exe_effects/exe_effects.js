@@ -84,7 +84,7 @@ $exeFX = {
       // A WordPress H5P embed is identified by its query, never by the path it
       // is served from: wp-admin can be renamed or relocated, and the same embed
       // is also reachable through the site's own permalink structure.
-      if (this.src && (this.src.indexOf("https://h5p.org/") == 0 || this.src.indexOf("action=h5p_embed") != -1)) {
+      if (this.src && (this.src.indexOf("https://h5p.org/") == 0 || /[?&]action=h5p_embed(?:[&#]|$)/.test(this.src))) {
         if (!this.style || !this.style.height || this.style.height == "") {
           this.src = this.src;
         }

@@ -113,13 +113,20 @@ describe('exe_effects (app/common)', () => {
     expect(assigned).toBe(1);
   });
 
-  it('reloads h5p iframes embedded from a WordPress site', () => {
-    // A WordPress H5P embed is recognized by its query, not by the path it is
-    // served from: wp-admin can be renamed or moved, and the same embed is also
-    // reachable through a site's own permalink structure.
+  // A WordPress H5P embed is recognized by its action query parameter, not by
+  // the path it is served from: wp-admin can be renamed or moved, and the same
+  // embed is also reachable through a site's own permalink structure.
+  it.each([
+    ['https://example.org/wp-admin/admin-ajax.php?action=h5p_embed&id=7', 1],
+    ['https://example.org/wp/backend/admin-ajax.php?action=h5p_embed&id=7', 1],
+    ['https://example.org/admin-ajax.php?id=7&action=h5p_embed', 1],
+    ['https://example.org/wp-admin/admin-ajax.php?action=something_else', 0],
+    ['https://example.org/page?transaction=h5p_embed', 0],
+    ['https://example.org/page?action=h5p_embedded', 0],
+  ])('reloads %s %i time(s)', (initial, expected) => {
     const block = document.createElement('div');
     const iframe = document.createElement('iframe');
-    let src = 'https://example.org/wp/backend/admin-ajax.php?action=h5p_embed&id=7';
+    let src = initial;
     let assigned = 0;
     Object.defineProperty(iframe, 'src', {
       get: () => src,
@@ -131,25 +138,7 @@ describe('exe_effects (app/common)', () => {
     });
     block.appendChild(iframe);
     exeFX.h5pResize($(block));
-    expect(assigned).toBe(1);
-  });
-
-  it('leaves iframes that are not h5p embeds alone', () => {
-    const block = document.createElement('div');
-    const iframe = document.createElement('iframe');
-    let src = 'https://example.org/wp-admin/admin-ajax.php?action=something_else';
-    let assigned = 0;
-    Object.defineProperty(iframe, 'src', {
-      get: () => src,
-      set: (value) => {
-        src = value;
-        assigned += 1;
-      },
-      configurable: true,
-    });
-    block.appendChild(iframe);
-    exeFX.h5pResize($(block));
-    expect(assigned).toBe(0);
+    expect(assigned).toBe(expected);
   });
 
   it('builds accordion structure from headings', () => {
