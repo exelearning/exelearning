@@ -1,3 +1,4 @@
+import createTooltip from "./app_tooltip.js";
 import DateConversion from "./app_date_conversion.js";
 
 export default class Common {
@@ -32,32 +33,15 @@ export default class Common {
    * @returns {string}
    */
   initTooltips(elm) {
-    try {
-      const scope = elm instanceof Element ? elm : document;
-      const elems = scope.querySelectorAll('.exe-app-tooltip');
-      elems.forEach((el) => {
-        // Idempotent initialization: only create if not already bound
-        const existing = window.bootstrap?.Tooltip?.getInstance
-          ? window.bootstrap.Tooltip.getInstance(el)
-          : null;
-        if (!existing && window.bootstrap?.Tooltip?.getOrCreateInstance) {
-          window.bootstrap.Tooltip.getOrCreateInstance(el);
-          // Hide on click/mouseleave like previous jQuery behavior
-          el.addEventListener('click', () => {
-            try { window.bootstrap.Tooltip.getInstance(el)?.hide(); } catch (_) {}
-          }, { passive: true });
-          el.addEventListener('mouseleave', () => {
-            try { window.bootstrap.Tooltip.getInstance(el)?.hide(); } catch (_) {}
-          }, { passive: true });
-        }
-      });
-    } catch (_) {
-      // Fallback to jQuery plugin if Bootstrap global is not available
-      $(".exe-app-tooltip", elm).tooltip();
-      $('.exe-app-tooltip', elm).on('click mouseleave', function(){
-        $(this).tooltip('hide');
-      });
-    }
+    if (!window.bootstrap?.Tooltip) return;
+    const scope = elm instanceof Element ? elm : document;
+    scope.querySelectorAll('.exe-app-tooltip').forEach((el) => {
+      if (window.bootstrap.Tooltip.getInstance(el)) return;
+      const tooltip = createTooltip(el);
+      for (const event of ['click', 'mouseleave']) {
+        el.addEventListener(event, () => tooltip.hide(), { passive: true });
+      }
+    });
   }
 
   /**

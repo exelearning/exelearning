@@ -1818,8 +1818,46 @@ describe('PreviewPanelManager', () => {
       await manager.refreshWithServiceWorker();
 
       expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
-      expect(window.eXeLearning.app.sendContentToPreviewSW).toHaveBeenCalled();
+      expect(window.eXeLearning.app.sendContentToPreviewSW).toHaveBeenCalledWith(
+        { 'index.html': expect.any(Uint8Array) },
+        { openExternalLinksInNewWindow: true },
+        { regenerateFiles: expect.any(Function) },
+      );
       expect(loadSpy).toHaveBeenCalled();
+    });
+
+    it('gives the app a callback that regenerates the files for a resend', async () => {
+      vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+      await manager.refreshWithServiceWorker();
+      const { regenerateFiles } = window.eXeLearning.app.sendContentToPreviewSW.mock.calls[0][2];
+      const freshFiles = { 'index.html': new Uint8Array([9]) };
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files: freshFiles });
+
+      await expect(regenerateFiles()).resolves.toBe(freshFiles);
+
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: false, error: 'Regen failed' });
+      await expect(regenerateFiles()).rejects.toThrow('Regen failed');
+    });
+
+    it('falls back to the blob URL preview when the SW is gone after a failed send', async () => {
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(new Error('Timeout waiting for SW content ready'));
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+      const loadSpy = vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+
+      await manager.refreshWithServiceWorker();
+
+      expect(blobSpy).toHaveBeenCalled();
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
+
+    it('rethrows send errors while the SW is still available', async () => {
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockRejectedValue(new Error('Timeout waiting for SW content ready'));
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('Timeout waiting for SW content ready');
+      expect(blobSpy).not.toHaveBeenCalled();
     });
 
     it('should use theme from eXeLearning.app.themes.selected', async () => {

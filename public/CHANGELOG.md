@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v4.0.6 – Unreleased
+
+### Fixed
+
+- Preview: the first preview after opening a project no longer waits about 5 seconds, and the preview now recovers by itself when its worker stops responding during a session
+
 ## v4.0.5 – 2026-09-16
 
 ### Added

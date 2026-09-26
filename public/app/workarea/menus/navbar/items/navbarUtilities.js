@@ -1,3 +1,4 @@
+import createTooltip from '../../../../common/app_tooltip.js';
 import LinkValidationManager from '../../../utils/LinkValidationManager.js';
 
 // Use global AppLogger for debug-controlled logging
@@ -69,9 +70,10 @@ export default class NavbarFile {
     setTooltips() {
         // See eXeLearning.app.common.initTooltips
         // Avoid binding tooltips to dropdown toggles to prevent Bootstrap instance conflicts
-        $('.main-menu-right > button')
-            .attr('data-bs-placement', 'bottom')
-            .tooltip();
+        document.querySelectorAll('.main-menu-right > button').forEach((button) => {
+            button.setAttribute('data-bs-placement', 'bottom');
+            createTooltip(button);
+        });
     }
 
     /**

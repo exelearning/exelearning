@@ -2209,6 +2209,48 @@ describe('YjsProjectBridge', () => {
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
 
+    it('defers the reload while an iDevice is being edited locally (#2427)', async () => {
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+
+      bridge.schedulePageReloadIfCurrent('current-page');
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBe('current-page');
+    });
+
+    it('flushDeferredPageReload runs the deferred reload once the edition ends', async () => {
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+      bridge.schedulePageReloadIfCurrent('current-page');
+
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => false);
+      bridge.flushDeferredPageReload();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledTimes(1);
+      expect(bridge._deferredPageReloadId).toBeNull();
+    });
+
+    it('flushDeferredPageReload skips the reload when the user left the page', async () => {
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+      bridge.schedulePageReloadIfCurrent('current-page');
+
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => false);
+      bridge.app.project.structure.menuStructureBehaviour.nodeSelected.getAttribute = mock(() => 'another-page');
+      bridge.flushDeferredPageReload();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBeNull();
+    });
+
+    it('flushDeferredPageReload is a no-op without a deferred reload', async () => {
+      bridge.flushDeferredPageReload();
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+
   });
 
   describe('asset refresh on late asset arrival', () => {
@@ -2280,6 +2322,17 @@ describe('YjsProjectBridge', () => {
         { id: 'page-element' },
       );
       expect(bridge.assetManager.updateDomImagesForAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('defers the late-asset reload while an iDevice is being edited locally (#2427)', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+      bridge.app.project.idevices.isIdeviceInEdition = mock(() => ({ mode: 'edition' }));
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge._deferredPageReloadId).toBe('page-1');
     });
 
     it('does not reload when current page does not reference late asset', async () => {
