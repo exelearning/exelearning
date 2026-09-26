@@ -1459,4 +1459,55 @@ describe('rubric iDevice SCORM integration', () => {
         expect($rubric.normalizeWeight(NaN)).toBe(100);
       });
     });
+
+    describe('local script loading', () => {
+      afterEach(() => {
+        delete window.jspdf;
+        delete window.html2canvas;
+        document.getElementById('jspdf-umd-loader')?.remove();
+        document.getElementById('html2canvas-loader')?.remove();
+        document.body.innerHTML = '';
+      });
+
+      it('only offers local candidate URLs, preferring the installed iDevice path', () => {
+        document.body.innerHTML = '<div class="idevice_node rubric" data-idevice-path="idevices/rubric/"></div>';
+        const sources = $rubric.getLocalScriptSources('jspdf/jspdf.umd.min.js');
+        expect(sources[0]).toBe('idevices/rubric/jspdf/jspdf.umd.min.js');
+        sources.forEach(src => expect(src).not.toMatch(/^https?:/));
+      });
+
+      it('ensureJsPDF injects the bundled jsPDF and walks local fallbacks until one loads', () => {
+        const appended = [];
+        const spy = vi.spyOn(document.head, 'appendChild').mockImplementation(el => {
+          appended.push(el);
+          return el;
+        });
+        const onReady = vi.fn();
+        const onError = vi.fn();
+        $rubric.ensureJsPDF(onReady, onError);
+        expect(appended[0].getAttribute('src')).toBe('/files/perm/idevices/base/rubric/export/jspdf/jspdf.umd.min.js');
+        appended[0].onerror();
+        expect(appended[1].getAttribute('src')).toBe('idevices/rubric/jspdf/jspdf.umd.min.js');
+        appended[1].onload();
+        expect(onReady).toHaveBeenCalledTimes(1);
+        expect(onError).not.toHaveBeenCalled();
+        spy.mockRestore();
+      });
+
+      it('ensureHtml2Canvas reports an error after the last local candidate fails', () => {
+        const appended = [];
+        const spy = vi.spyOn(document.head, 'appendChild').mockImplementation(el => {
+          appended.push(el);
+          return el;
+        });
+        const onError = vi.fn();
+        $rubric.ensureHtml2Canvas(vi.fn(), onError);
+        for (let i = 0; i < 3; i++) {
+          expect(appended[i].getAttribute('src')).not.toMatch(/^https?:/);
+          appended[i].onerror();
+        }
+        expect(onError).toHaveBeenCalledTimes(1);
+        spy.mockRestore();
+      });
+    });
 });

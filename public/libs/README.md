@@ -258,6 +258,9 @@
 *   Files: /public/files/perm/idevices/\*/export/html2canvas.js
     *   Copyright: Niklas von Hertzen
     *   License: MIT
+*   Files: /public/files/perm/idevices/base/{checklist,progress-report,rubric}/export/jspdf/jspdf.umd.min.js (jsPDF 4.2.1)
+    *   Copyright: James Hall, yWorks GmbH and other contributors
+    *   License: MIT
 *   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0

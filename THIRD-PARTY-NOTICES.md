@@ -30,3 +30,19 @@ byte-for-byte.
 - **Verification:** the unit suite asserts that the SCORM 1.2 export pipeline
   ships this file byte-identical to the vendored copy
   (`src/shared/export/utils/Scorm12Runtime.spec.ts`).
+
+## jsPDF
+
+- **Path:** `public/files/perm/idevices/base/{checklist,progress-report,rubric}/export/jspdf/jspdf.umd.min.js`
+  (one copy per iDevice, like `html2canvas.js`, because each iDevice export
+  folder is copied as a unit into exported packages; kept in a `jspdf/`
+  subfolder because the server-side exporter adds a `<script>` tag for every
+  top-level `.js` file there, and jsPDF must only load when a PDF is requested)
+- **Upstream:** <https://github.com/parallax/jsPDF> (npm `jspdf@4.2.1`, `dist/jspdf.umd.min.js`)
+- **Version:** 4.2.1
+- **Retrieved:** 2026-09-26
+- **SHA-256:** `e6551fcdc32f09d6853b2c5126d18d01d9447e0da618a41a11ebeee0f6c20d54`
+- **License:** MIT
+- **Usage:** lazy-loaded from the iDevice folder when the user saves a
+  checklist, progress report or rubric as PDF. Replaces the former unpinned
+  jsDelivr load so no executable code is fetched from a remote server.

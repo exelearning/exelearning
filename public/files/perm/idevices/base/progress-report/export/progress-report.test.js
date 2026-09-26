@@ -223,6 +223,18 @@ describe('progress-report iDevice (export)', () => {
     });
   });
 
+  describe('ensureJsPDF', () => {
+    it('loads the bundled jsPDF from the iDevice folder, never from a CDN', () => {
+      delete window.jspdf;
+      document.getElementById('jspdf-umd-loader')?.remove();
+      $eXeInforme.idevicePath = 'idevices/progress-report/';
+      $eXeInforme.ensureJsPDF(vi.fn(), vi.fn());
+      const script = document.getElementById('jspdf-umd-loader');
+      expect(script.getAttribute('src')).toBe('idevices/progress-report/jspdf/jspdf.umd.min.js');
+      script.remove();
+    });
+  });
+
   describe('addZero', () => {
     it('adds leading zero to single digit numbers', () => {
       expect($eXeInforme.addZero(0)).toBe('00');
