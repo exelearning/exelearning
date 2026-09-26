@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import { describe, expect, it } from 'bun:test';
 import { WORKSHEET_ACTIVITY_STYLES, renderActivityFragment, renderWorksheet } from './WorksheetRenderer';
 import type { CharacterBoxGroup, PrintableActivity, WorksheetModel } from './types';
@@ -612,7 +613,7 @@ describe('two-column boards and the page break', () => {
 
     it.each([2, 3, 4, 5, 6, 7, 8, 9])(
         'keeps every destination beside each group of cards with %i categories',
-        count => {
+        (count: number) => {
             const html = matchBoard(6, count);
             const blocks = html.split(/<div class="worksheet-match[^"]*">/).slice(1);
 

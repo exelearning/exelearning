@@ -21,6 +21,12 @@ import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-helpers';
 import { encryptDataGame } from '../../../../src/shared/export/utils/dataGameCipher';
 
+declare global {
+    interface Window {
+        eXeLearning: any;
+    }
+}
+
 const FIXTURE = 'test/fixtures/old_el_cid.elp';
 
 /**
