@@ -210,6 +210,7 @@ export const MultipleChoiceWorksheetAdapter: WorksheetAdapter = {
         const activity: PrintableActivity = {
             ideviceType: 'quick-questions-multiple-choice',
             title: options.title || MultipleChoiceWorksheetAdapter.defaultTitle,
+            twoColumns: true,
             items,
         };
 
