@@ -28,12 +28,10 @@
 $exe.atools = {
     options : {
         draggable : true,
-        modeToggler : $exe.options.atools.modeToggler,
-        translator : $exe.options.atools.translator
+        modeToggler : $exe.options.atools.modeToggler
     },
     i18n : {
         read : $exe_i18n["read"],
-        translate : $exe_i18n["translate"],
         drag_and_drop : $exe_i18n["drag_and_drop"],
         mode_toggler : $exe_i18n["mode_toggler"],
         uppercase_text : $exe_i18n["uppercase_text"] || "Uppercase",
@@ -51,13 +49,6 @@ $exe.atools = {
             var originalFontSize = window.getComputedStyle(document.body).getPropertyValue('font-size');
                 originalFontSize = originalFontSize.replace("px","");
                 $exe.atools.storage.originalFontSize = Number(originalFontSize);
-        },
-        getTranslatorStatus : function(){
-            var opts = $exe.atools.options;
-            if (opts.translator!==true) return "off";
-            var e = localStorage.getItem('exeAtoolsTranslator');
-            if (e==="on") return "on";
-            return "off";
         },
         getToolbarStatus : function(){
             var e = localStorage.getItem('exeAtoolsStatus');
@@ -91,7 +82,6 @@ $exe.atools = {
         try {
             // Those values might be changed in HEADER / FOOTER
             this.options.modeToggler = $exe.options.atools.modeToggler;
-            this.options.translator = $exe.options.atools.translator;
         } catch(e) {
             
         }
@@ -110,8 +100,6 @@ $exe.atools = {
         $exe.atools.storage.setOriginalFontSize();
         var reader = "";
         if (typeof(SpeechSynthesisUtterance)=="function") reader = '<button id="eXeAtoolsReadBtn">'+i18n["read"]+'</button>';
-        var translator = "";
-        if (opts.translator==true) translator = '<button id="eXeAtoolsTranslateBtn">'+i18n["translate"]+' (Google Translate)</button>';
         var dragBtn = "";
         if (opts.draggable==true) {
             dragBtn = '<button id="eXeAtoolsSetDragHandler" data-drog>'+i18n["drag_and_drop"]+'</button>';        
@@ -133,7 +121,7 @@ $exe.atools = {
                         <option value="od">OpenDyslexic</option>\
                         <option value="ah">Atkinson Hyperlegible</option>\
                         <option value="mo">Montserrat</option>\
-                    </select><button id="eXeAtoolsLgTextBtn">'+i18n["increase_text_size"]+'</button><button id="eXeAtoolsSmTextBtn">'+i18n["decrease_text_size"]+'</button><button id="eXeAtoolsUppercaseBtn">'+i18n["uppercase_text"]+'</button><button id="eXeAtoolsResetBtn">'+i18n["reset"]+'</button>'+modeBtn+reader+translator+'<button id="eXeAtoolsCloseBtn">'+i18n["close_toolbar"]+'</button>\
+                    </select><button id="eXeAtoolsLgTextBtn">'+i18n["increase_text_size"]+'</button><button id="eXeAtoolsSmTextBtn">'+i18n["decrease_text_size"]+'</button><button id="eXeAtoolsUppercaseBtn">'+i18n["uppercase_text"]+'</button><button id="eXeAtoolsResetBtn">'+i18n["reset"]+'</button>'+modeBtn+reader+'<button id="eXeAtoolsCloseBtn">'+i18n["close_toolbar"]+'</button>\
                 </div>\
             </div>\
         ';
@@ -154,11 +142,6 @@ $exe.atools = {
         $("#eXeAtoolsFont").val($exe.atools.storage.getFontFamily()).trigger("change");
         // Check if uppercase text should be on
         $exe.atools.setUppercase($exe.atools.storage.getUppercaseStatus()==="on", false);
-        // Check if the translator should be on
-        if ($exe.atools.storage.getTranslatorStatus()==="on") {
-            localStorage.setItem('exeAtoolsTranslator',false);
-            $exe.atools.toggleGoogleTranslateWidget();
-        }
         // Check the reset button status
         $exe.atools.checkResetBtnStatus();
         // Show the toolbar
@@ -177,7 +160,7 @@ $exe.atools = {
     },
     checkResetBtnStatus : function(){
         var btn = $("#eXeAtoolsResetBtn");
-        if ($exe.atools.storage.getTranslatorStatus()=="on" || $exe.atools.storage.getFontSize()!="" || $exe.atools.storage.getFontFamily()!="" || $exe.atools.storage.getUppercaseStatus()=="on") {
+        if ($exe.atools.storage.getFontSize()!="" || $exe.atools.storage.getFontFamily()!="" || $exe.atools.storage.getUppercaseStatus()=="on") {
             btn.removeClass("reset-disabled");
         } else {
             btn.addClass("reset-disabled");
@@ -243,11 +226,6 @@ $exe.atools = {
             // Check the reset button status
             $exe.atools.checkResetBtnStatus();
         });
-        $("#eXeAtoolsTranslateBtn").click(function(){
-            $exe.atools.toggleGoogleTranslateWidget();
-            // Check the reset button status
-            $exe.atools.checkResetBtnStatus();
-        });
         $("#eXeAtoolsReadBtn").click(function(){
             $exe.atools.reader.read();
         });
@@ -258,7 +236,6 @@ $exe.atools = {
             $("#eXeAtoolsFont").val("").trigger("change");
             localStorage.setItem('exeAtoolsFontFamily', '');
             $exe.atools.setUppercase(false);
-            if($exe.atools.storage.getTranslatorStatus()=="on") $exe.atools.toggleGoogleTranslateWidget();
             // Back to left bottom position:
             // $("#eXeAtoolsSet").attr("style","");
             // localStorage.setItem('exeAtoolsToolbarStyles','');
@@ -341,41 +318,12 @@ $exe.atools = {
         document.body.style.fontSize = currentFontSize + 'px';
         localStorage.setItem('exeAtoolsFontSize', currentFontSize + 'px');
     },
-    toggleGoogleTranslateWidget : function() {
-        var googleTranslateWidgetVisible = $exe.atools.storage.getTranslatorStatus();
-        if (googleTranslateWidgetVisible=="off") {
-            const script = document.createElement('script');
-                script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-                script.id = 'google-translate-script';
-            document.head.appendChild(script);
-            const googleTranslateElement = document.createElement('div');
-                googleTranslateElement.id = 'google_translate_element';
-                googleTranslateElement.style.position = 'fixed';
-                googleTranslateElement.style.top = '0';
-                googleTranslateElement.style.right = '0';
-                googleTranslateElement.style.zIndex = '1000';
-            document.body.appendChild(googleTranslateElement);
-            window.googleTranslateElementInit = function() {
-                new google.translate.TranslateElement({pageLanguage: 'auto', layout: google.translate.TranslateElement.FloatPosition.TOP_RIGHT}, 'google_translate_element');
-            };
-            googleTranslateWidgetVisible = "on";
-        } else {
-            $("#google-translate-script,#google_translate_element,.skiptranslate").remove();
-            document.body.style.top = "auto";
-            googleTranslateWidgetVisible = "off";
-        }
-        localStorage.setItem('exeAtoolsTranslator',googleTranslateWidgetVisible);
-    },
     draggable : {
         limit : function(x,y){
             var e = $("#eXeAtoolsSet");
             var h = e.height();
             var w = e.width();
             var maxTop = ($(window).height()-h);
-            var bodyT = $("body").css("top");
-            if (bodyT=="40px") {
-                maxTop = maxTop-40;
-            }
             var maxLeft = ($(window).width()-w);
             if (x>maxLeft) x = maxLeft;
             else if (x<0) x = 0;

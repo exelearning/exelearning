@@ -192,7 +192,6 @@ var $exe = {
         // Accessibility toolbar
         atools: {
             modeToggler: false,
-            translator: false,
             i18n: {}
         }
     },

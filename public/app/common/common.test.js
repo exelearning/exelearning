@@ -265,9 +265,9 @@ describe('common.js $exe helpers', () => {
   });
 
   describe('$exe.options', () => {
-    it('has atools property with modeToggler and translator', () => {
+    it('has atools property with modeToggler', () => {
       expect(global.$exe.options.atools.modeToggler).toBe(false);
-      expect(global.$exe.options.atools.translator).toBe(false);
+      expect(global.$exe.options.atools).not.toHaveProperty('translator');
     });
 
     it('has i18n object', () => {
