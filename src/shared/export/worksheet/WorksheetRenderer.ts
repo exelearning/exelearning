@@ -537,6 +537,24 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-top: 2mm;
 }
 
+/* Sort sentence mode: compact vertical space just enough to write the sentence in order. */
+.worksheet-activity[data-idevice="sort"] .worksheet-item {
+    margin-bottom: 2.5mm;
+}
+
+.worksheet-activity[data-idevice="sort"] .worksheet-item:has(.worksheet-order) {
+    margin-bottom: 6mm;
+}
+
+.worksheet-activity[data-idevice="sort"] .worksheet-answer {
+    margin-top: 1mm;
+}
+
+.worksheet-activity[data-idevice="sort"] .worksheet-writing-space {
+    margin-top: 0.5mm;
+    height: 5mm !important;
+}
+
 
 /* A line to write a single value on, under the card it belongs to. */
 .worksheet-line {

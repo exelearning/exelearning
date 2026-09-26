@@ -846,6 +846,13 @@ describe('writing lines and cards to be ordered', () => {
         }
     });
 
+    it('sets compact vertical spacing for sort sentence mode', () => {
+        expect(WORKSHEET_ACTIVITY_STYLES).toContain('.worksheet-activity[data-idevice="sort"] .worksheet-item');
+        expect(WORKSHEET_ACTIVITY_STYLES).toContain(
+            '.worksheet-activity[data-idevice="sort"] .worksheet-writing-space',
+        );
+    });
+
     it('gives every card its own line to be numbered on', () => {
         const html = answered({
             kind: 'orderCards',
