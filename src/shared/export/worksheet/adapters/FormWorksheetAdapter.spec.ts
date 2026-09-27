@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import { describe, expect, it } from 'bun:test';
 import type { PrintableItem, UnsupportedActivity } from '../types';
 import { FormWorksheetAdapter } from './FormWorksheetAdapter';
@@ -49,6 +50,10 @@ describe('FormWorksheetAdapter', () => {
 
         expect(built('Cuestionario')?.title).toBe('Cuestionario');
         expect(built()?.title).toBe('Form');
+    });
+
+    it('sets questions in two columns', () => {
+        expect(FormWorksheetAdapter.build('', { properties: properties() })?.twoColumns).toBe(true);
     });
 
     it('reads its data from the properties, the markup being an empty shell', () => {

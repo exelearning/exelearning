@@ -165,6 +165,7 @@ export const FormWorksheetAdapter: WorksheetAdapter = {
         const activity: PrintableActivity = {
             ideviceType: 'form',
             title: options.title || FormWorksheetAdapter.defaultTitle,
+            twoColumns: true,
             items: selected,
         };
 

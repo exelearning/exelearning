@@ -216,6 +216,12 @@ test.describe('Print iDevices', () => {
                                     [false, script],
                                 ],
                             },
+                            { activityType: 'fill', baseText: '<p>Complete the <u>sentence</u></p>' },
+                            {
+                                activityType: 'dropdown',
+                                baseText: '<p>Choose <u>red</u></p>',
+                                wrongAnswersValue: 'blue',
+                            },
                         ],
                     },
                 },
@@ -260,6 +266,9 @@ test.describe('Print iDevices', () => {
             await openPrintDialog(page);
             const { frame } = await choosePrintOption(page, mode);
             const form = frame.locator('[data-idevice="form"]');
+            await expect(form.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
+            await expect(form.locator('.worksheet-item')).toHaveCount(4);
+            await expect(form.locator('.worksheet-gap')).toHaveCount(2);
             await expect(form.locator('.worksheet-option-label')).toHaveText([unsafe, 'False', script, 'A<B']);
             await expect(form.locator('img, script, [onerror]')).toHaveCount(0);
             expect(await page.evaluate(() => '__printRegressionExecuted' in window)).toBe(false);
