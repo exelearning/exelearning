@@ -47,7 +47,7 @@ artifact in every copy, which is error prone and left the tree with tens of
 thousands of lines of vendored minified code that reviewers cannot meaningfully
 audit.
 
-PR #1593 removes those committed artifacts (roughly 56,900 deleted lines across
+PR #1593 removes those committed artifacts (roughly 51,000 deleted lines across
 the vendor blobs) and replaces them with a declared, npm-managed source of
 truth plus a deterministic build step. This ADR records the sourcing and
 build-time-generation decision. The Yjs-specific shim strategy is recorded
@@ -211,7 +211,7 @@ ported.
 ### Positive
 
 - Every vendored file traces to a named package at a pinned version; the large
-  minified blobs leave version control (~56,900 lines deleted in PR #1593).
+  minified blobs leave version control (~51,000 lines deleted in PR #1593).
 - Duplicated copies (html2canvas ×3, DOMPurify ×2) now derive from a single npm
   source, satisfying the single-source-of-truth rule.
 - Assets are still served from the app's own origin, so offline, desktop,

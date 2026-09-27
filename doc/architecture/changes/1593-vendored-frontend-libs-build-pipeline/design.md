@@ -76,7 +76,7 @@ desktop, static, and embedded/opaque deployments — a runtime CDN is not an opt
 ## Current state
 
 Before this change the runtime files were tracked minified blobs. PR #1593
-removes them (roughly 56,900 deleted lines across the vendor artifacts) and,
+removes them (roughly 51,000 deleted lines across the vendor artifacts) and,
 after this change, they are generated:
 
 - Library distributions are copied by `scripts/copy-vendor-libs.js` (its `COPIES`
@@ -270,7 +270,7 @@ intentionally not translated.
   ~25 file copies); negligible relative to the full `build:all`.
 - No meaningful runtime performance change: the same library paths are served
   (html2canvas is now the minified build, so those files shrink).
-- Repository/checkout size drops substantially (~56,900 fewer tracked lines).
+- Repository/checkout size drops substantially (~51,000 fewer tracked lines).
 
 ## Testing strategy
 
