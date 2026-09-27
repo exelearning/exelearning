@@ -32,7 +32,7 @@ npm-declared dependencies, and ADR-1593-02 generates the browser-side Yjs runtim
 from those packages with esbuild. That only delivers a real security-update path
 if the newly npm-managed dependencies are actually kept current. Manual bumps do
 not scale across the enlarged dependency set (jQuery, Bootstrap, showdown,
-fflate, abcjs, interact.js, jQuery UI, SimpleLightbox, DOMPurify, fabric,
+fflate, abcjs, interact.js, jQuery UI, DOMPurify, fabric,
 html2canvas, pdf.js, mermaid, plus the Yjs ecosystem and the backend/test/build
 toolchains).
 

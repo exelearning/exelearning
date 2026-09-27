@@ -156,9 +156,6 @@ public/libs/interact/interact.min.js
 public/libs/interact/interact.min.js.map
 public/libs/jquery-ui/jquery-ui.min.js
 public/libs/jquery-ui/jquery-ui.min.css
-public/libs/simplelightbox/dist/
-public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js
-public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css
 public/libs/fabric/fabric.min.js
 public/libs/dompurify/purify.min.js
 # 3D / 360° viewers: model-viewer + its Draco/KTX2 decoders (copy-vendor-libs.js)
