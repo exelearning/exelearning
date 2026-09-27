@@ -1,6 +1,7 @@
+/// <reference types="bun-types" />
 import { describe, expect, it } from 'bun:test';
 import { encryptDataGame } from '../../utils/dataGameCipher';
-import type { PrintableItem, UnsupportedActivity } from '../types';
+import type { PrintableAnswer, PrintableItem, UnsupportedActivity } from '../types';
 import { ChallengeWorksheetAdapter } from './ChallengeWorksheetAdapter';
 
 interface ChallengeFixture {
@@ -69,8 +70,8 @@ function numbered(position: number, name: string): string {
     return titled(`Reto ${position}. ${name}`);
 }
 
-/** Two blank lines, which is the room every challenge is answered in. */
-const ANSWER = { kind: 'writingSpace', lines: 2 };
+/** One blank line, which is the room every challenge is answered in. */
+const ANSWER: PrintableAnswer = { kind: 'writingSpace', lines: 1 };
 
 describe('ChallengeWorksheetAdapter', () => {
     it('declares the iDevice type it handles', () => {

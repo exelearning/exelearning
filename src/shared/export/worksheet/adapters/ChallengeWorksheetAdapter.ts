@@ -9,7 +9,7 @@
  * mode one challenge unlocks the next. None of that survives the trip, and none of it has to: what
  * the student is actually asked is a question with a title and a description, and the answer is a
  * word they write. So the sheet prints the main challenge first, then each of the smaller ones the
- * same way, each with two lines under it.
+ * same way, each with a line under it to write the answer.
  *
  * Notes on the stored data:
  * - The DataGame class prefix is 'desafio', not the iDevice's name.
@@ -38,8 +38,8 @@ import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapt
 /** DataGame class prefix used by this iDevice. */
 const PREFIX = 'desafio';
 
-/** Lines of room left under each challenge. The answer is a word or a short phrase. */
-const ANSWER_LINES = 2;
+/** Lines of room left under each challenge to write the answer. */
+const ANSWER_LINES = 1;
 
 /** One of the smaller challenges leading up to the main one. */
 interface Challenge {

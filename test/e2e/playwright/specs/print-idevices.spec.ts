@@ -1391,6 +1391,68 @@ test.describe('Print iDevices', () => {
         expect(heightPx).toBeLessThan(22);
     });
 
+    test('prints a challenge activity with compact writing spaces for challenge and trials', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print iDevices Challenge');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const payload = JSON.stringify({
+            typeGame: 'desafio',
+            desafioTitle: 'Pandemia reto mundial',
+            desafioDescription: '<p>Averigua qué pandemia fue</p>',
+            desafioSolution: 'Gripe española',
+            desafioType: 0,
+            desafioTime: 60,
+            instructions: 'Resuelve el desafío y los retos',
+            challengesGame: [
+                {
+                    title: 'Los primeros síntomas',
+                    description: '<p>Busca la fecha del primer caso</p>',
+                    solution: 'G P Ñ',
+                },
+                {
+                    title: 'Propagación rápida',
+                    description: '<p>Encuentra el foco de infección</p>',
+                    solution: 'Camp Funston',
+                },
+            ],
+            msgs: { msgChallenge: 'Reto' },
+        });
+        const html = `<div class="desafio-IDevice"><div class="desafio-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+        await page.evaluate(
+            ({ htmlContent }) => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Challenge Page');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'challenge', {
+                    htmlContent,
+                });
+            },
+            { htmlContent: html },
+        );
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="challenge"]');
+        await expect(activity).toHaveCount(1);
+
+        await expect(activity.locator('.worksheet-item')).toHaveCount(3);
+        await expect(activity.locator('.worksheet-writing-space')).toHaveCount(3);
+
+        // Verify the compact writing space has 5mm computed height (~18.9px at 96 DPI)
+        const spaceHeight = await activity
+            .locator('.worksheet-writing-space')
+            .first()
+            .evaluate(el => window.getComputedStyle(el).height);
+        const heightPx = Number.parseFloat(spaceHeight);
+        expect(heightPx).toBeGreaterThan(15);
+        expect(heightPx).toBeLessThan(22);
+    });
+
     test('prints a complete activity as gapped text, with its words when they are offered', async ({
         authenticatedPage,
         createProject,

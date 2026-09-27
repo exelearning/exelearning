@@ -537,9 +537,10 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin-top: 2mm;
 }
 
-/* Sort sentence mode and Maths problems: compact vertical space just enough to write the answer. */
+/* Sort sentence mode, Maths problems and Challenge: compact vertical space just enough to write the answer. */
 .worksheet-activity[data-idevice="sort"] .worksheet-item,
-.worksheet-activity[data-idevice="mathproblems"] .worksheet-item {
+.worksheet-activity[data-idevice="mathproblems"] .worksheet-item,
+.worksheet-activity[data-idevice="challenge"] .worksheet-item {
     margin-bottom: 2.5mm;
 }
 
@@ -548,14 +549,20 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 }
 
 .worksheet-activity[data-idevice="sort"] .worksheet-answer,
-.worksheet-activity[data-idevice="mathproblems"] .worksheet-answer {
+.worksheet-activity[data-idevice="mathproblems"] .worksheet-answer,
+.worksheet-activity[data-idevice="challenge"] .worksheet-answer {
     margin-top: 1mm;
 }
 
 .worksheet-activity[data-idevice="sort"] .worksheet-writing-space,
-.worksheet-activity[data-idevice="mathproblems"] .worksheet-writing-space {
+.worksheet-activity[data-idevice="mathproblems"] .worksheet-writing-space,
+.worksheet-activity[data-idevice="challenge"] .worksheet-writing-space {
     margin-top: 0.5mm;
     height: 5mm !important;
+}
+
+.worksheet-activity[data-idevice="challenge"] .worksheet-extra > p {
+    margin: 1mm 0;
 }
 
 
