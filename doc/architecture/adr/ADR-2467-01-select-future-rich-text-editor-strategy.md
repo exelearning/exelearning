@@ -254,7 +254,8 @@ Derived from the facts above. A candidate that cannot meet the first seven is no
 - **Character-level collaborative editing.** It does not exist, was deliberately not
   activated (#2169), and is off in static mode. A native Yjs binding is a *possible
   future advantage*, not a requirement for this migration. The sibling specification
-  record DR-0006 points the other way; see *Yjs considerations* for how the two relate.
+  records DR-0006 and DR-0017 point the other way; see *Yjs considerations* for how they
+  relate.
 - Premium or cloud features of any vendor (AI, comments, track changes, cloud RTC). If
   co-editing is ever promoted to a requirement, it must also pass the license gate: a
   vendor whose only collaboration path is commercial then fails for that need.
@@ -348,7 +349,7 @@ Modified BSD, Apache-2.0 and MPL-2.0 are listed as GPLv3-compatible
 | Gutenberg (`@wordpress/block-editor` 18.0.0) | GPL-2.0-or-later (npm); `LICENSE.md` adds MPL-2.0 for contributions since 2021-04-15 | **PASS** | None (rejected on fit) |
 | Remirror 3.0.3 + `@remirror/extension-yjs` 4.0.3 | MIT | **PASS** | License only; discarded on maintenance status |
 | Milkdown 7.22.2 + `@milkdown/plugin-collab` | MIT | **PASS** | License only; discarded on model |
-| BlockNote 0.55.0 | Core, react, server-util: MPL-2.0; `xl-*` (multi-column, AI, DOCX/PDF/ODT export): "GPL-3.0 OR PROPRIETARY" (<https://github.com/TypeCellOS/BlockNote/blob/main/LICENSE.txt>) | **PASS** (core); `xl-*` PASS-WITH-CONDITIONS | MPL-2.0 without the "Incompatible With Secondary Licenses" notice; `xl-*` combine as GPL-3.0-only under §13. Discarded on fit |
+| BlockNote 0.55.0 | Core, react, server-util: MPL-2.0; `xl-*` (multi-column, AI, DOCX/PDF/ODT export): npm field "GPL-3.0 OR PROPRIETARY", `LICENSE.txt` "GPL-3.0" plus a commercial license (<https://github.com/TypeCellOS/BlockNote/blob/main/LICENSE.txt>) | **PASS** (core); `xl-*` PASS-WITH-CONDITIONS | MPL-2.0 without the "Incompatible With Secondary Licenses" notice; `xl-*` combine as GPL-3.0-only under §13. Discarded on fit |
 | Quill 2.0.3 + y-quill 1.0.0 | BSD-3-Clause / MIT | **PASS** | License only; discarded on maintenance and fidelity |
 | Plate (`platejs` 53.3.14, `@platejs/yjs` 53.2.0) | MIT (`@platejs/diff` Apache-2.0 + MIT) | **PASS** | Plate Plus templates are paid and not needed. Discarded on fit |
 | Slate 0.126.2 + `@slate-yjs/core` 1.0.2 | MIT | **PASS** | License only; discarded |
@@ -858,9 +859,11 @@ before the engine decision and would have reduced #2463's regression to zero.
   migration estimates, which do not include it. That is a separate ADR. Recommended
   weight in this decision: low.
 
-**Relation to DR-0006 [FACT + OPINION].** The sibling specification record
-`exelearning/idevices-spec` DR-0006 (status "Recommended", 2026-04-09) recommends
-continuous, non-blocking sync with no save step and maps rich text to `Y.XmlFragment`
+**Relation to DR-0006 and DR-0017 [FACT + OPINION].** `exelearning/idevices-spec` is a
+**private** repository, so the links below return 404 without access (checked
+2026-09-27). The sibling specification record DR-0006 (status "Recommended", 2026-04-09)
+recommends continuous, non-blocking sync with no save step and maps rich text to
+`Y.XmlFragment`
 (<https://github.com/exelearning/idevices-spec/blob/main/docs/decisions/DR-0006-collaborative-non-blocking-editing.md>).
 That contradicts requirement 5 (save-time commit) and the non-requirement
 "character-level collaborative editing" of this record. It also calls `Y.XmlFragment`
@@ -876,6 +879,20 @@ to confirm in PR #2467:
   ProseMirror family stays in the matrix, and why the collaboration-model ADR (open
   question 9) should cite DR-0006 and supersede or amend one of the two.
 - DR-0006's TinyMCE sentence should be corrected in that repository.
+- [FACT] DR-0017 in the same repository ("Transition to modern Yjs-native rich-text editor
+  (Tiptap / ProseMirror)", status "Recommended", 2026-04-25) already recommends Tiptap as
+  the primary engine for "iDevices 4.0", phased in with TinyMCE 5 kept for non-migrated
+  iDevices, mainly for native `Y.XmlFragment` sync
+  (<https://github.com/exelearning/idevices-spec/blob/main/docs/decisions/DR-0017-modern-yjs-native-rich-text-editor.md>).
+  Two of its premises do not match this repository: it describes the "custom
+  `YjsTinyMCEBinding` adapter" as current, but that binding was never activated and has
+  been removed (`public/app/yjs/INTEGRATION.md:15`); and it counts "64+ bundled plugins",
+  where the script measures 44 plugin directories, 24 of them eXe's. [OPINION] DR-0017
+  weighs Yjs as the deciding requirement, which this record deliberately does not (see
+  *Non-requirements*); under this record's suggested weights Tiptap ranks fourth (third
+  among migration targets). The team must say which record governs the editor of the
+  current application; if DR-0017 is meant to govern it, criterion 26 needs a much higher
+  weight and requirement 5 must go.
 - Independent of the editor, and to be filed separately: no lock keep-alive during long
   iDevice edits, no notice to a client that loses a lock race, and the concatenation
   hazard of concurrent delete-all + insert (all **PLAUSIBLE, not reproduced by a test**);
@@ -951,8 +968,8 @@ its notice (and for Monaco its `ThirdPartyNotices.txt`) must be added to
 `THIRD-PARTY-NOTICES.md`, which today lists neither TinyMCE nor CodeMirror.
 
 **The TinyMCE 8 npm license text [FACT].** Up to 8.2.2 the npm `license.md` is plain GPL.
-From **8.3.0 (2025-12-10)** it reads "Licensed under, and subject to the restrictions of:
-1. The terms of GNU General Public License Version 2 or later; or 2. The Tiny
+From **8.3.0 (2025-12-10)** it reads "Licensed under, and subject to the restrictions
+of: 1. The terms of GNU General Public License Version 2 or later; or 2. The Tiny
 Technologies, Inc Software Terms & Conditions … **By use of this Software you have agreed
 to these Tiny Technologies, Inc Software Terms & Conditions of Use.**" The repository's
 `LICENSE.md` is still plain GPL. The Gruntfile copies the repository `LICENSE.md` into
@@ -1375,7 +1392,8 @@ To recompute after changing `evaluation.json`: `node scripts/analyze-editor-debt
    (used by exemindmap) still exist at runtime? UNVERIFIED.
 9. Should the collaboration model (locks plus save-time sync) get its own ADR before any
    Yjs-driven editor argument is weighed? It must reconcile this record's requirement 5
-   with `idevices-spec` DR-0006 (continuous `Y.XmlFragment` sync) and say which wins.
+   with `idevices-spec` DR-0006 (continuous `Y.XmlFragment` sync) and DR-0017 (Tiptap as
+   the Yjs-native engine for iDevices 4.0) and say which wins.
 10. Where does eXe's CodeMagic port come from (MIT, GPL-2.0-only or the paid "Pro"
     product)? Until answered, CodeMagic B is also the license fix.
 11. If the ProseMirror family is ever preferred: what share of the 941-fragment corpus ends
@@ -1501,8 +1519,8 @@ favour the TinyMCE family by small margins that a single score change can revers
 - Clarify licenses of eXe plugins (CC BY-SA 4.0 headers, codemagic provenance); consider
   relicensing eXe-own plugins to AGPL-3.0-or-later.
 - Add the chosen editor's notice to `THIRD-PARTY-NOTICES.md`.
-- Ask `idevices-spec` to correct DR-0006's "TinyMCE Yjs bindings" sentence and to
-  cross-reference this record.
+- Ask `idevices-spec` to correct DR-0006's "TinyMCE Yjs bindings" sentence and DR-0017's
+  premises (removed `YjsTinyMCEBinding`, plugin count), and to cross-reference this record.
 - Separate issues: Yjs lock keep-alive and lost-lock notice; stale `INTEGRATION.md`.
 
 ## References
@@ -1555,6 +1573,8 @@ favour the TinyMCE family by small margins that a single score change can revers
   <https://pro.platejs.org/pricing>, <https://github.com/advisories/GHSA-v3m3-f69x-jf25>,
   <https://github.com/toeverything/blocksuite>.
 - TinyMCE RTC retirement: <https://www.tiny.cloud/docs/tinymce/6/rtc-introduction/>.
-- DR-0006: <https://github.com/exelearning/idevices-spec/blob/main/docs/decisions/DR-0006-collaborative-non-blocking-editing.md>.
+- DR-0006 and DR-0017 (private repository):
+  <https://github.com/exelearning/idevices-spec/blob/main/docs/decisions/DR-0006-collaborative-non-blocking-editing.md>,
+  <https://github.com/exelearning/idevices-spec/blob/main/docs/decisions/DR-0017-modern-yjs-native-rich-text-editor.md>.
 - CodeMagic provenance: <https://github.com/tinymce-plugins/codemagic>,
   <https://plugins.svn.wordpress.org/ultimate-tinymce/trunk/>.
