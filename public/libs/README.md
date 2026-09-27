@@ -32,6 +32,9 @@
 *   Package: @elysiajs/swagger
     *   Copyright: saltyAom
     *   License: MIT
+*   Package: @google/model-viewer
+    *   Copyright: Jordan Santell, Chris Joel, Emmett Lalish
+    *   License: Apache-2.0
 *   Package: @material-symbols/svg-400
     *   Copyright: Google LLC
     *   License: Apache-2.0
@@ -197,6 +200,9 @@
 *   Package: simplelightbox
     *   Copyright: Andre Rinas
     *   License: MIT
+*   Package: three
+    *   Copyright: mrdoob
+    *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0
@@ -316,16 +322,22 @@
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/three-d-viewer/export/three.module.min.js, ./OrbitControls.js and ./STLLoader.js
-    *   Three.js (Three.js Authors)
+    *   Three.js (Three.js Authors), built from the `three` npm package by scripts/vendor-three.ts
     *   License: MIT
 *   File: /public/files/perm/idevices/base/three-d-viewer/export/model-viewer.min.js
-    *   model-viewer (Google)
+    *   model-viewer (Google), copied from the `@google/model-viewer` npm package (bundles Three.js, MIT)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/three-d-viewer/export/draco/\* (Draco WASM decoder, from the `three` npm package)
+    *   Copyright: Google LLC
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/idevices/base/three-d-viewer/export/basis/\* (Basis Universal transcoder, from the `three` npm package)
+    *   Copyright: Binomial LLC
     *   License: Apache License 2.0
 *   File: public/files/perm/idevices/base/three-sixty-viewer/three-sixty-viewer-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
-*   Files: /public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js and ./OrbitControls.js
-    *   Three.js (Three.js Authors)
+*   File: /public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js (includes OrbitControls)
+    *   Three.js (Three.js Authors), built from the `three` npm package by scripts/vendor-three.ts
     *   License: MIT
 *   Files: /public/files/perm/themes/flux/fonts/* (Fredoka Font)
     *   Copyright: Milena Brandao

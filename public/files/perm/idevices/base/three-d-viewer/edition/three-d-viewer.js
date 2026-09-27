@@ -1256,7 +1256,14 @@ var $exeDevice = (function () {
                     console.error('[3D Viewer] Unable to load model-viewer library', event);
                     resolve();
                 });
-                document.head.appendChild(script);
+                // Local Draco/KTX2 decoder locations go in first, so no model
+                // can reach model-viewer's CDN defaults (see model-viewer-decoders.js).
+                const decoders = document.createElement('script');
+                decoders.src = url.replace(/model-viewer\.min\.js$/, 'model-viewer-decoders.js');
+                const loadLibrary = () => document.head.appendChild(script);
+                decoders.addEventListener('load', loadLibrary);
+                decoders.addEventListener('error', loadLibrary);
+                document.head.appendChild(decoders);
             });
             return window.$exeLibs.modelViewerPromise;
         },

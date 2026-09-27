@@ -1280,19 +1280,17 @@ var $exeDevice = {
                 return;
             }
             var prefix = candidates[i];
+            // three.min.js bundles OrbitControls (scripts/vendor-three.ts).
             loadScript(prefix + 'three.min.js', err => {
                 if (err) return tryLoad(i + 1);
-                loadScript(prefix + 'OrbitControls.js', err2 => {
-                    if (err2) return tryLoad(i + 1);
-                    var cbs = self._scriptsLoading || [];
-                    self._scriptsLoading = null;
-                    cbs.forEach(c => {
-                        try {
-                            c();
-                        } catch (_) {
-                            /* ignore */
-                        }
-                    });
+                var cbs = self._scriptsLoading || [];
+                self._scriptsLoading = null;
+                cbs.forEach(c => {
+                    try {
+                        c();
+                    } catch (_) {
+                        /* ignore */
+                    }
                 });
             });
         }
