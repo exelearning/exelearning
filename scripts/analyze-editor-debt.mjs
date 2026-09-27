@@ -2,8 +2,8 @@
 /**
  * Read-only analysis of how eXeLearning is coupled to its bundled TinyMCE 5.
  *
- * It backs the rich-text editor ADR in doc/architecture/adr/ (search for
- * "rich-text editor strategy"). Node >= 18 or Bun, standard library only.
+ * It backs ADR-2467-01 (doc/architecture/adr/ADR-2467-01-select-future-rich-text-editor-strategy.md).
+ * Node >= 18 or Bun, standard library only.
  *
  * Usage, from the repository root:
  *   node scripts/analyze-editor-debt.mjs                   # JSON on stdout, writes nothing
