@@ -49,7 +49,6 @@ const THIRD_PARTY_LIBS = new Set([
   'jquery-ui',
   'jspdf',
   'showdown',
-  'simplelightbox',
   'tinymce_5',
   'yjs',
 ]);

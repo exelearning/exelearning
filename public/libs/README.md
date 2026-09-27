@@ -197,9 +197,6 @@
 *   Package: showdown
     *   Copyright: Estevão Santos
     *   License: MIT
-*   Package: simplelightbox
-    *   Copyright: Andre Rinas
-    *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0
@@ -288,6 +285,10 @@
 *   Files: /public/files/perm/idevices/\*/export/html2canvas.js
     *   Copyright: Niklas von Hertzen
     *   License: MIT
+*   Files: /public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.{js,css}
+    *   Copyright: Andre Rinas
+    *   License: MIT
+    *   Note: eXeLearning-patched fork of SimpleLightbox 2.10.3 (array `captionsData`, title/author/license caption links, SDWEB CSS block). Kept in git, outside the npm vendor pipeline, until the patch is ported to an upstream release.
 *   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
@@ -382,9 +383,6 @@
     *   License: MIT
 *   Files: /public/libs/showdown/* (Showdown v2)
     *   Copyright: ShowdownJS
-    *   License: MIT
-*   Files: /public/libs/simplelightbox/\*
-    *   Copyright: Andre Rinas
     *   License: MIT
 *   Files: /public/libs/tinymce\_5/\*
     *   Copyright: Tiny Technologies Inc.
