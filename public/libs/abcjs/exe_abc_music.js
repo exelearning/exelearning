@@ -2,27 +2,6 @@ var synthControl;
 var is_n_audio_ok;
 var abc = [];
 
-/**
- * Synth options shared by every abcjs audio call.
- *
- * abcjs downloads its default soundfont from a remote server. eXeLearning
- * ships the piano (program 0, what ABC code plays unless it selects another
- * instrument with %%MIDI program) under soundfont/, resolved against this
- * script so the editor, the preview and exported packages all find it offline.
- * Tunes that select other instruments get no audio instead of a remote fetch.
- */
-var exeAbcSynthOptions = {
-    soundFontUrl: (function () {
-        try {
-            return new URL("soundfont/", document.currentScript.src).href;
-        } catch (e) {
-            return "soundfont/";
-        }
-    })(),
-    // abcjs plays its default FluidR3_GM soundfont at 3x; keep that level for the bundled copy.
-    soundFontVolumeMultiplier: 3
-};
-
 class CursorControl {
 
     constructor(index) {
@@ -115,46 +94,13 @@ window.abcjsLoad = () => {
 function clickListener(abcElem, tuneNumber, classes, analysis, drag, mouseEvent) {
     var lastClicked = abcElem.midiPitches;
     if (!lastClicked) return;
-    exeAbcPlayEvent(
+    window.ABCJS.synth.playEvent(
         lastClicked, abcElem.midiGraceNotePitches, synthControl.visualObj.millisecondsPerMeasure()
     ).then(function (response) {
         //
     }).catch(function (error) {
         //
     });
-}
-
-/**
- * ABCJS.synth.playEvent() with exeAbcSynthOptions. abcjs 6.0.4's playEvent()
- * cannot take a soundfont URL and would fetch notes from its remote default.
- *
- * @param {Array} pitches
- * @param {Array} graceNotes
- * @param {number} millisecondsPerMeasure
- * @returns {Promise}
- */
-function exeAbcPlayEvent(pitches, graceNotes, millisecondsPerMeasure) {
-    var sequence = new window.ABCJS.synth.SynthSequence();
-    for (var i = 0; i < pitches.length; i++) {
-        var note = pitches[i];
-        var track = sequence.addTrack();
-        sequence.setInstrument(track, note.instrument);
-        if (i === 0 && graceNotes) {
-            for (var j = 0; j < graceNotes.length; j++) {
-                var grace = graceNotes[j];
-                sequence.appendNote(track, grace.pitch, 1 / 64, grace.volume, grace.cents);
-            }
-        }
-        sequence.appendNote(track, note.pitch, note.duration, note.volume, note.cents);
-    }
-    var synth = new window.ABCJS.synth.CreateSynth();
-    return synth.init({
-        sequence: sequence,
-        millisecondsPerMeasure: millisecondsPerMeasure,
-        options: exeAbcSynthOptions
-    })
-        .then(function () { return synth.prime(); })
-        .then(function () { return synth.start(); });
 }
 
 /**
@@ -232,11 +178,17 @@ function setTune(userAction, index) {
         // sequence: [],
         // millisecondsPerMeasure: 1000,
         // debugCallback: function(message) { console.log(message) },
-        options: exeAbcSynthOptions
+        options: {
+            // soundFontUrl: "https://paulrosen.github.io/midi-js-soundfonts/FluidR3_GM/" ,
+            // sequenceCallback: function(noteMapTracks, callbackContext) { return noteMapTracks; },
+            // callbackContext: this,
+            // onEnded: function(callbackContext),
+            // pan: [ -0.5, 0.5 ]
+        }
     })
         .then(function (response) {
             if (synthControl) {
-                synthControl.setTune(visualObj, userAction, exeAbcSynthOptions)
+                synthControl.setTune(visualObj, userAction)
                     .then(function (response) { is_n_audio_ok = true })
                     .catch(function (error) { console.warn("Audio problem:", error) });
             }
