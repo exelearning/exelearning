@@ -116,6 +116,11 @@ test.describe('Print iDevices', () => {
                             questions: [
                                 { text: 'Is A<B true?', options: ['Yes', 'No'] },
                                 {
+                                    typeSelect: 1,
+                                    question: 'Sort order',
+                                    options: ['Alpha', 'Beta'],
+                                },
+                                {
                                     typeSelect: 2,
                                     question: 'pH',
                                     solutionWord: 'Acidity < 7 & <script>alert(1)</script>',
@@ -141,11 +146,23 @@ test.describe('Print iDevices', () => {
             await openPrintDialog(page);
             const { frame } = await choosePrintOption(page, mode);
             const quiz = frame.locator('.worksheet-activity[data-idevice="adaptative-quiz"]');
+            await expect(quiz.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
             await expect(quiz.locator('.worksheet-prompt')).toHaveText([
                 'Is A<B true?',
+                'Sort order',
                 'Acidity < 7 & <script>alert(1)</script>',
             ]);
-            await expect(quiz.locator('.worksheet-option-label')).toHaveText(['Yes', 'No']);
+            await expect(quiz.locator('.worksheet-item').nth(0).locator('.worksheet-option-label')).toHaveText([
+                'Yes',
+                'No',
+            ]);
+            await expect(quiz.locator('.worksheet-option-box')).toHaveCount(2);
+            await expect(quiz.locator('.worksheet-option-line')).toHaveCount(2);
+            expect(
+                (
+                    await quiz.locator('.worksheet-item').nth(1).locator('.worksheet-option-label').allTextContents()
+                ).sort(),
+            ).toEqual(['Alpha', 'Beta']);
             await expect(quiz.locator('.worksheet-box')).toHaveText(['p', 'H']);
             await expect(quiz.locator('script')).toHaveCount(0);
 

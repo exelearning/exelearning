@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import { describe, expect, it } from 'bun:test';
 import type { PrintableActivity, PrintableItem, UnsupportedActivity } from '../types';
 import { AdaptativeQuizWorksheetAdapter } from './AdaptativeQuizWorksheetAdapter';
@@ -56,6 +57,10 @@ describe('AdaptativeQuizWorksheetAdapter', () => {
     it('uses the supplied title and falls back to the default', () => {
         expect(build({}, { title: 'Cuestionario' })?.title).toBe('Cuestionario');
         expect(build()?.title).toBe('Adaptative quiz');
+    });
+
+    it('sets questions in two columns', () => {
+        expect(build()?.twoColumns).toBe(true);
     });
 
     it('reads its data from the properties, this being a json activity', () => {

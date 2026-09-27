@@ -178,6 +178,7 @@ export const AdaptativeQuizWorksheetAdapter: WorksheetAdapter = {
         const activity: PrintableActivity = {
             ideviceType: 'adaptative-quiz',
             title: options.title || AdaptativeQuizWorksheetAdapter.defaultTitle,
+            twoColumns: true,
             items,
         };
 
