@@ -1051,7 +1051,7 @@ var $rubric = {
                     if (window.jspdf && window.jspdf.jsPDF) {
                         if (!toPdf(canvas)) toPng(canvas);
                     } else {
-                        $rubric.ensureJsPDF(
+                        $exe.loadJsPDF(
                             function () {
                                 if (!toPdf(canvas)) toPng(canvas);
                             },
@@ -1243,42 +1243,6 @@ var $rubric = {
         };
 
         tryLoad(0);
-    },
-
-    ensureJsPDF: function (onReady, onError) {
-        if (window.jspdf && window.jspdf.jsPDF) {
-            onReady && onReady();
-            return;
-        }
-
-        var scriptId = 'jspdf-umd-loader';
-        var existing = document.getElementById(scriptId);
-        if (existing) {
-            var tries = 0;
-            var iv = setInterval(function () {
-                tries++;
-                if (window.jspdf && window.jspdf.jsPDF) {
-                    clearInterval(iv);
-                    onReady && onReady();
-                } else if (tries > 50) {
-                    clearInterval(iv);
-                    onError && onError();
-                }
-            }, 100);
-            return;
-        }
-
-        var s = document.createElement('script');
-        s.id = scriptId;
-        s.src = 'https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js';
-        s.async = true;
-        s.onload = function () {
-            onReady && onReady();
-        };
-        s.onerror = function () {
-            onError && onError();
-        };
-        document.head.appendChild(s);
     },
 
     calculateTableScore: function (table) {

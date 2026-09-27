@@ -809,6 +809,7 @@ describe('saveAsPdf Electron path', () => {
 
   it('toPng uses electronAPI.saveBufferAs when jsPDF is not available', async () => {
     window.jspdf = undefined;
+    vi.stubGlobal('$exe', { loadJsPDF: vi.fn((onReady, onError) => onError()) });
 
     const canvas = document.createElement('canvas');
     canvas.width = 100;
@@ -828,6 +829,8 @@ describe('saveAsPdf Electron path', () => {
     await new Promise((r) => setTimeout(r, 300));
 
     expect(mockSaveBufferAs).toHaveBeenCalledTimes(1);
+    expect($exe.loadJsPDF).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
     expect(mockSaveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
     expect(mockSaveBufferAs.mock.calls[0][0].length).toBeGreaterThan(0);
     expect(mockSaveBufferAs.mock.calls[0][2]).toBe('rubric_name.png');
@@ -1458,5 +1461,14 @@ describe('rubric iDevice SCORM integration', () => {
         expect($rubric.normalizeWeight('abc')).toBe(100);
         expect($rubric.normalizeWeight(NaN)).toBe(100);
       });
+    });
+});
+
+describe('jsPDF loading', () => {
+    it('uses the shared bundled copy through $exe.loadJsPDF, never a CDN', () => {
+        const code = readFileSync(join(__dirname, 'rubric.js'), 'utf-8');
+        expect(code).not.toMatch(/https?:\/\/[^'"`]*jspdf/i);
+        expect(code).toContain('$exe.loadJsPDF(');
+        expect(code).not.toContain('ensureJsPDF');
     });
 });

@@ -766,6 +766,8 @@ export interface LibraryPattern {
     requiresLatexCheck?: boolean;
     /** When true, files array contains directory names and all contents should be included recursively */
     isDirectory?: boolean;
+    /** When true, files are packaged but not script/link-tagged: the page loads them itself when needed */
+    loadOnDemand?: boolean;
 }
 
 /**

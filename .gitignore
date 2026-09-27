@@ -161,6 +161,7 @@ public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js
 public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css
 public/libs/fabric/fabric.min.js
 public/libs/dompurify/purify.min.js
+public/libs/jspdf/jspdf.umd.min.js
 
 ###> claude-code ###
 .claude/settings.local.json

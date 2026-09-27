@@ -1057,6 +1057,55 @@ var $exe = {
         document.getElementsByTagName("head")[0].appendChild(s)
     },
 
+    // URL of a file under libs/, resolved from the jQuery script: the editor, the
+    // static build, the preview and exported packages all load it from libs/.
+    getLibUrl: function (file) {
+        var s = document.querySelector('script[src*="libs/jquery/jquery.min.js"]');
+        return s ? s.src.replace(/jquery\/jquery\.min\.js.*$/, file) : '';
+    },
+
+    // Load the bundled jsPDF (libs/jspdf/) on demand for the "save as PDF"
+    // buttons. Exports only ship it next to an iDevice that needs it
+    // (LIBRARY_PATTERNS 'jspdf'). There is deliberately no remote fallback.
+    loadJsPDF: function (onReady, onError) {
+        var ready = function () {
+            return !!(window.jspdf && window.jspdf.jsPDF);
+        };
+        if (ready()) {
+            if (onReady) onReady();
+            return;
+        }
+        var id = 'jspdf-umd-loader';
+        var s = document.getElementById(id);
+        if (!s) {
+            var url = this.getLibUrl('jspdf/jspdf.umd.min.js');
+            if (!url) {
+                console.error('jsPDF: libs/ folder not found');
+                if (onError) onError();
+                return;
+            }
+            s = document.createElement('script');
+            s.id = id;
+            s.src = url;
+            s.async = true;
+            document.head.appendChild(s);
+        }
+        var fail = function () {
+            console.error('jsPDF could not be loaded from ' + s.src);
+            // Drop the tag so a later click retries instead of waiting on it.
+            s.remove();
+            if (onError) onError();
+        };
+        s.addEventListener('load', function () {
+            if (ready()) {
+                if (onReady) onReady();
+            } else {
+                fail();
+            }
+        });
+        s.addEventListener('error', fail);
+    },
+
     // Check if you're in eXe
     isInExe: function () {
         return typeof eXeLearning !== "undefined";

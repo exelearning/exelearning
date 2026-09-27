@@ -134,6 +134,7 @@
     "interactjs": "^1.10.27",
     "jquery": "^3.7.1",
     "jquery-ui": "^1.14.2",
+    "jspdf": "^4.2.1",
     "kill-port": "^2.0.1",
     "mathjax": "4.1.3",
     "sass": "^1.103.1",

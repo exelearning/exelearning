@@ -107,6 +107,7 @@ describe('checklist iDevice export', () => {
 
         it('fallbackPng uses electronAPI.saveBufferAs with Uint8Array when jsPDF unavailable', async () => {
             window.jspdf = undefined;
+            vi.stubGlobal('$exe', { loadJsPDF: vi.fn((onReady, onError) => onError()) });
 
             const canvas = document.createElement('canvas');
             canvas.width = 100;
@@ -124,6 +125,8 @@ describe('checklist iDevice export', () => {
             await new Promise((r) => setTimeout(r, 300));
 
             expect(mockSaveBufferAs).toHaveBeenCalledTimes(1);
+            expect($exe.loadJsPDF).toHaveBeenCalledTimes(1);
+            vi.unstubAllGlobals();
             expect(mockSaveBufferAs.mock.calls[0][0]).toBeInstanceOf(Uint8Array);
             expect(mockSaveBufferAs.mock.calls[0][0].length).toBeGreaterThan(0);
             expect(mockSaveBufferAs.mock.calls[0][1]).toBe('checklist-png');
@@ -184,21 +187,6 @@ describe('checklist iDevice export', () => {
         });
     });
 
-    describe('ensureJsPDF', () => {
-        afterEach(() => {
-            delete window.jspdf;
-        });
-
-        it('calls onReady immediately when jspdf already loaded', () => {
-            window.jspdf = { jsPDF: function () {} };
-            const onReady = vi.fn();
-            const onError = vi.fn();
-            $checklist.ensureJsPDF(onReady, onError);
-            expect(onReady).toHaveBeenCalledTimes(1);
-            expect(onError).not.toHaveBeenCalled();
-        });
-    });
-
     describe('loadDataGame', () => {
         it('returns defaults for invalid JSON data', () => {
             // Mock helpers
@@ -222,5 +210,14 @@ describe('checklist iDevice export', () => {
 
             global.$exeDevices = origHelpers;
         });
+    });
+});
+
+describe('jsPDF loading', () => {
+    it('uses the shared bundled copy through $exe.loadJsPDF, never a CDN', () => {
+        const code = readFileSync(join(__dirname, 'checklist.js'), 'utf-8');
+        expect(code).not.toMatch(/https?:\/\/[^'"`]*jspdf/i);
+        expect(code).toContain('$exe.loadJsPDF(');
+        expect(code).not.toContain('ensureJsPDF');
     });
 });

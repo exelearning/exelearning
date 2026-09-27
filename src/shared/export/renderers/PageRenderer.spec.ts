@@ -979,6 +979,12 @@ describe('PageRenderer', () => {
             expect(html).not.toContain('libs/exe_effects/exe_effects.js');
         });
 
+        it('should not add a script tag for on-demand libraries in single-page output', () => {
+            const html = renderer.renderSinglePage([createTestPage()], { detectedLibraries: ['jspdf'] });
+
+            expect(html).not.toContain('libs/jspdf/');
+        });
+
         it('should render license as a link when licenseUrl is provided', () => {
             const pages = [createTestPage()];
             const html = renderer.renderSinglePage(pages, {
@@ -1851,6 +1857,17 @@ describe('PageRenderer', () => {
 
             expect(head).toContain('libs/exe_highlighter/exe_highlighter.js');
             expect(head).toContain('libs/exe_highlighter/exe_highlighter.css');
+        });
+
+        it('should not add a script tag for on-demand libraries such as jspdf', () => {
+            const head = renderer.renderHead({
+                pageTitle: 'Test',
+                basePath: '',
+                usedIdevices: [],
+                detectedLibraries: ['jspdf'],
+            });
+
+            expect(head).not.toContain('jspdf');
         });
 
         it('should include exe_lightbox only when detected', () => {

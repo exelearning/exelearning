@@ -584,7 +584,7 @@ var $eXeListaCotejo = {
                 if (window.jspdf && window.jspdf.jsPDF) {
                     if (!doPdf()) fallbackPng();
                 } else {
-                    $eXeListaCotejo.ensureJsPDF(
+                    $exe.loadJsPDF(
                         function onReady() {
                             if (!doPdf()) fallbackPng();
                         },
@@ -733,44 +733,6 @@ var $eXeListaCotejo = {
             }
         }
         return html;
-    },
-
-    ensureJsPDF: function (onReady, onError) {
-        try {
-            if (window.jspdf && window.jspdf.jsPDF) {
-                onReady && onReady();
-                return;
-            }
-        } catch (_) {}
-
-        const scriptId = 'jspdf-umd-loader';
-        const existing = document.getElementById(scriptId);
-        if (existing) {
-            let tries = 0;
-            const iv = setInterval(function () {
-                tries++;
-                if (window.jspdf && window.jspdf.jsPDF) {
-                    clearInterval(iv);
-                    onReady && onReady();
-                } else if (tries > 50) {
-                    clearInterval(iv);
-                    onError && onError();
-                }
-            }, 100);
-            return;
-        }
-
-        const s = document.createElement('script');
-        s.id = scriptId;
-        s.src = 'https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js';
-        s.async = true;
-        s.onload = function () {
-            onReady && onReady();
-        };
-        s.onerror = function () {
-            onError && onError();
-        };
-        document.head.appendChild(s);
     },
 };
 $(function () {
