@@ -11,6 +11,10 @@ reviewers:
   - "@ignaciogros"
   - "@mnunezcedec"
   - "@franmate"
+  - "@cristinavaldera"
+  - "@mnarvaezm"
+  - "@juanda"
+  - "@pabloamayab"
 related:
   prs: [1593, 2463, 2464, 2467]
   changes: []
@@ -19,7 +23,7 @@ supersedes: []
 superseded_by: []
 ai_assistance:
   tool: "Claude Code"
-  model: "claude-opus-5-5"
+  model: "Claude Opus 5.5, GPT-6 Astra"
 ---
 
 # ADR-2467-01: Future rich-text editor strategy
@@ -29,6 +33,9 @@ ai_assistance:
 > eXeLearning's rich-text editor can be discussed in
 > [PR #2467](https://github.com/exelearning/exelearning/pull/2467) and recorded here
 > once there is consensus.
+>
+> Prepared with AI assistance (Claude Opus 5.5 and GPT-6 Astra); the evidence, experiments and
+> scores are reproducible from the scripts in this PR and are reviewed by the maintainers.
 
 ## How to read this record
 
