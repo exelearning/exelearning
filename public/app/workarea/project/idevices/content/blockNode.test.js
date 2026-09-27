@@ -3357,6 +3357,116 @@ describe('IdeviceBlockNode', () => {
     });
 
     // -------------------------------------------------------------------------
+    // addBehaviourImportIdeviceButton
+    // -------------------------------------------------------------------------
+    describe('addBehaviourImportIdeviceButton', () => {
+        let importButton;
+
+        beforeEach(() => {
+            block.blockButtons = document.createElement('div');
+            importButton = document.createElement('button');
+            importButton.id = `dropdownBlockMore-button-import-idevice${block.blockId}`;
+            block.blockButtons.appendChild(importButton);
+        });
+
+        it('does nothing when an iDevice is already open', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
+            const appendSpy = vi.spyOn(document.body, 'appendChild');
+            block.addBehaviourImportIdeviceButton();
+            importButton.click();
+            expect(appendSpy).not.toHaveBeenCalled();
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+        });
+
+        it('creates a file input restricted to .idevice on click', () => {
+            let capturedInput;
+            const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
+                capturedInput = node;
+                return node;
+            });
+            block.addBehaviourImportIdeviceButton();
+            importButton.click();
+            expect(capturedInput.type).toBe('file');
+            expect(capturedInput.accept).toBe('.idevice');
+            appendSpy.mockRestore();
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // importIdeviceFileIntoBlock
+    // -------------------------------------------------------------------------
+    describe('importIdeviceFileIntoBlock', () => {
+        let originalBridge;
+        let originalComponentImporter;
+        let originalMenuNodeSelected;
+
+        beforeEach(() => {
+            block.pageId = 'page-1';
+            originalBridge = eXeLearning.app.project._yjsBridge;
+            originalComponentImporter = window.ComponentImporter;
+            originalMenuNodeSelected =
+                eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected;
+        });
+
+        afterEach(() => {
+            eXeLearning.app.project._yjsBridge = originalBridge;
+            window.ComponentImporter = originalComponentImporter;
+            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected =
+                originalMenuNodeSelected;
+        });
+
+        it('imports successfully, preloads assets and refreshes the page', async () => {
+            const importMock = vi.fn().mockResolvedValue({
+                success: true,
+                blockId: block.blockId,
+                componentIds: ['new-idevice-1'],
+            });
+            const preloadMock = vi.fn().mockResolvedValue(1);
+            const loadIdevicesMock = vi.fn().mockResolvedValue();
+
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: vi.fn(() => ({})),
+                assetManager: { preloadAllAssets: preloadMock },
+            };
+            window.ComponentImporter = class {
+                constructor() {}
+                importIdeviceIntoBlock = importMock;
+            };
+            eXeLearning.app.project.idevices = {
+                loadApiIdevicesInPage: loadIdevicesMock,
+            };
+
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(importMock).toHaveBeenCalledWith(file, 'page-1', block.blockId);
+            expect(preloadMock).toHaveBeenCalled();
+            expect(loadIdevicesMock).toHaveBeenCalledWith(true);
+        });
+
+        it('shows an alert when import fails', async () => {
+            eXeLearning.app.project._yjsBridge = {
+                getDocumentManager: vi.fn(() => ({})),
+                assetManager: null,
+            };
+            window.ComponentImporter = class {
+                constructor() {}
+                importIdeviceIntoBlock = vi.fn().mockResolvedValue({
+                    success: false,
+                    error: 'boom',
+                });
+            };
+
+            const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+            await block.importIdeviceFileIntoBlock(file);
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({ title: 'Import error', body: 'boom' }),
+            );
+        });
+    });
+
+    // -------------------------------------------------------------------------
     // addBehaviourToggleBlockButton
     // -------------------------------------------------------------------------
     describe('addBehaviourToggleBlockButton', () => {

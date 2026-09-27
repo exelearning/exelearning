@@ -274,6 +274,80 @@ describe('ComponentImporter', () => {
       expect(result.error).toBe('fflate library not loaded');
     });
 
+    it('should reject a file larger than the maximum compressed size before reading it', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const importer = new ComponentImporter(docManager, null);
+
+      const file = {
+        name: 'huge.idevice',
+        size: 60 * 1024 * 1024,
+        arrayBuffer: vi.fn(),
+      };
+
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('too large');
+      expect(file.arrayBuffer).not.toHaveBeenCalled();
+    });
+
+    it('should reject a ZIP whose decompressed contents exceed the maximum size', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+
+      // Simulate a decompression bomb: a tiny ZIP that inflates to > 200 MiB.
+      global.window.fflate = {
+        unzipSync: () => ({
+          'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+          'huge.bin': { byteLength: 201 * 1024 * 1024 },
+        }),
+      };
+
+      const importer = new ComponentImporter(docManager, null);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+    });
+
+    it('should reject a ZIP whose declared uncompressed size exceeds the limit before inflating it', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+
+      // Faithful fflate simulation: unzipSync only decompresses entries the
+      // filter accepts, and the filter sees each entry's declared
+      // (uncompressed) size before that entry is inflated.
+      const entries = [
+        { name: 'content.xml', originalSize: 1024, data: new TextEncoder().encode(SAMPLE_COMPONENT_XML) },
+        { name: 'huge.bin', originalSize: 201 * 1024 * 1024, data: { byteLength: 0 } },
+      ];
+      const inflated = [];
+      global.window.fflate = {
+        unzipSync: (data, options) => {
+          const zip = {};
+          for (const entry of entries) {
+            const accepted = !options || typeof options.filter !== 'function' || options.filter(entry);
+            if (accepted) {
+              inflated.push(entry.name);
+              zip[entry.name] = entry.data;
+            }
+          }
+          return zip;
+        },
+      };
+
+      const importer = new ComponentImporter(docManager, null);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+      // The oversized entry was skipped before being inflated: only the
+      // entries within the limit reached decompression.
+      expect(inflated).toEqual(['content.xml']);
+    });
+
     it('should return error for invalid component file (missing marker)', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
 
@@ -416,6 +490,137 @@ describe('ComponentImporter', () => {
       expect(result.success).toBe(true);
       expect(docManager.getDoc().transact).toHaveBeenCalled();
       expect(docManager.getDoc().transact.mock.calls[0][1]).toBe(docManager.getDoc().clientID);
+    });
+  });
+
+  describe('size limits', () => {
+    const importer = () => new ComponentImporter(createMockDocumentManager(), null);
+
+    it('validateCompressedSize returns null for a file within limits', () => {
+      expect(importer().validateCompressedSize({ size: 1024 })).toBeNull();
+    });
+
+    it('validateCompressedSize tolerates a missing size property', () => {
+      expect(importer().validateCompressedSize({ name: 'no-size.idevice' })).toBeNull();
+    });
+
+    it('validateUncompressedSize returns null for entries within limits', () => {
+      const zip = { a: new Uint8Array([1, 2, 3]), b: new Uint8Array([4, 5]) };
+      expect(importer().validateUncompressedSize(zip)).toBeNull();
+    });
+
+    it('validateUncompressedSize ignores entries without a numeric byteLength', () => {
+      const zip = { a: { notBytes: true }, b: null, c: 'text' };
+      expect(importer().validateUncompressedSize(zip)).toBeNull();
+    });
+
+    it('validateUncompressedSize returns an error when cumulative size exceeds the limit', () => {
+      const zip = {
+        first: { byteLength: 200 * 1024 * 1024 },
+        second: { byteLength: 1024 },
+      };
+      expect(importer().validateUncompressedSize(zip)).toContain('uncompressed');
+    });
+
+    it('createDeclaredSizeFilter accepts entries while the cumulative declared size stays within the limit', () => {
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'a', originalSize: 100 * 1024 * 1024 })).toBe(true);
+      expect(filter({ name: 'b', originalSize: 50 * 1024 * 1024 })).toBe(true);
+      expect(violation.error).toBeNull();
+    });
+
+    it('createDeclaredSizeFilter rejects the entry that crosses the limit and records the error', () => {
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'a', originalSize: 150 * 1024 * 1024 })).toBe(true);
+      expect(filter({ name: 'b', originalSize: 100 * 1024 * 1024 })).toBe(false);
+      expect(violation.error).toContain('uncompressed');
+    });
+
+    it('createDeclaredSizeFilter skips every entry after a violation', () => {
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'bomb.bin', originalSize: 300 * 1024 * 1024 })).toBe(false);
+      expect(filter({ name: 'small.txt', originalSize: 1 })).toBe(false);
+      expect(filter({ name: 'tiny.txt', originalSize: 1 })).toBe(false);
+    });
+
+    it('createDeclaredSizeFilter tolerates entries without a usable declared size', () => {
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'a' })).toBe(true);
+      expect(filter({ name: 'b', originalSize: 'not-a-number' })).toBe(true);
+      expect(filter(null)).toBe(true);
+      expect(violation.error).toBeNull();
+    });
+  });
+
+  describe('real fflate integration (vendored bundle)', () => {
+    // The vendored UMD (public/libs/fflate/fflate.umd.js) exposes its full API
+    // over CommonJS. Requiring it here runs these assertions against the exact
+    // code the app loads at runtime, so they fail if a fflate update ever
+    // breaks the unzipSync filter contract the importer depends on.
+    const realFflate = require('../../libs/fflate/fflate.umd.js');
+
+    it('unzipSync invokes the filter with each entry name and declared size before inflating it', () => {
+      const bytes = realFflate.zipSync({ 'a.txt': new TextEncoder().encode('hello') });
+      const infos = [];
+      const zip = realFflate.unzipSync(bytes, {
+        filter: (info) => {
+          infos.push(info);
+          return true;
+        },
+      });
+      expect(infos.length).toBe(1);
+      expect(infos[0].name).toBe('a.txt');
+      expect(infos[0].originalSize).toBe(5);
+      expect(new TextDecoder().decode(zip['a.txt'])).toBe('hello');
+    });
+
+    it('importComponent passes a declared-size filter to the real fflate and rejects bomb metadata', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const importer = new ComponentImporter(docManager, null);
+
+      // Build an honest, small ZIP with the real fflate...
+      const zipBytes = new Uint8Array(
+        realFflate.zipSync({
+          'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+          'small.txt': new TextEncoder().encode('x'),
+        })
+      );
+
+      // ...then forge the central-directory declared uncompressed size of
+      // small.txt to 201 MiB, the metadata shape of a decompression bomb.
+      const forged = new Uint8Array(zipBytes);
+      const view = new DataView(forged.buffer);
+      const decoder = new TextDecoder();
+      for (let i = 0; i < forged.length - 4; i++) {
+        // Central directory file header: signature PK\x01\x02 (0x02014b50).
+        if (view.getUint32(i, true) !== 0x02014b50) continue;
+        const nameLen = view.getUint16(i + 28, true);
+        const name = decoder.decode(forged.subarray(i + 46, i + 46 + nameLen));
+        if (name === 'small.txt') {
+          // Uncompressed size lives 24 bytes into the central directory record.
+          view.setUint32(i + 24, 201 * 1024 * 1024, true);
+        }
+      }
+
+      // Prove the importer wires a filter into the real unzipSync call.
+      let passedFilter = null;
+      global.window.fflate = {
+        unzipSync: (data, options) => {
+          passedFilter = options && typeof options.filter === 'function' ? options.filter : null;
+          return realFflate.unzipSync(data, options);
+        },
+      };
+
+      const file = new File([forged], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(typeof passedFilter).toBe('function');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
     });
   });
 
@@ -1277,6 +1482,206 @@ describe('ComponentImporter', () => {
       const found = importer.findPage('nonexistent');
 
       expect(found).toBeNull();
+    });
+  });
+
+  describe('importIdeviceIntoBlock', () => {
+    // Builds a document manager with one page that already contains a block.
+    const createManagerWithBlock = (pageId = 'page-1', blockId = 'block-1') => {
+      const Y = createMockY();
+      const navigation = new Y.Array();
+      const pageMap = new Y.Map();
+      pageMap.set('id', pageId);
+      pageMap.set('pageId', pageId);
+      pageMap.set('blocks', new Y.Array());
+
+      const blockMap = new Y.Map();
+      blockMap.set('blockId', blockId);
+      blockMap.set('id', blockId);
+      pageMap.get('blocks').push([blockMap]);
+      navigation.push([pageMap]);
+
+      const mockDoc = { clientID: 'test-client-id', transact: vi.fn((fn) => fn()) };
+      return {
+        getDoc: () => mockDoc,
+        getNavigation: () => navigation,
+        _navigation: navigation,
+        _Y: Y,
+      };
+    };
+
+    it('rejects non-.idevice files', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.block');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('.idevice');
+    });
+
+    it('rejects a file larger than the maximum compressed size before reading it', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      const file = {
+        name: 'huge.idevice',
+        size: 60 * 1024 * 1024,
+        arrayBuffer: vi.fn(),
+      };
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('too large');
+      expect(file.arrayBuffer).not.toHaveBeenCalled();
+    });
+
+    it('rejects a ZIP whose decompressed contents exceed the maximum size', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      global.window.fflate = {
+        unzipSync: () => ({
+          'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+          'huge.bin': { byteLength: 201 * 1024 * 1024 },
+        }),
+      };
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+    });
+
+    it('rejects a ZIP whose declared uncompressed size exceeds the limit before inflating it', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      // Faithful fflate simulation: unzipSync only decompresses entries the
+      // filter accepts, and the filter sees each entry's declared
+      // (uncompressed) size before that entry is inflated.
+      const entries = [
+        { name: 'content.xml', originalSize: 1024, data: new TextEncoder().encode(SAMPLE_COMPONENT_XML) },
+        { name: 'huge.bin', originalSize: 201 * 1024 * 1024, data: { byteLength: 0 } },
+      ];
+      const inflated = [];
+      global.window.fflate = {
+        unzipSync: (data, options) => {
+          const zip = {};
+          for (const entry of entries) {
+            const accepted = !options || typeof options.filter !== 'function' || options.filter(entry);
+            if (accepted) {
+              inflated.push(entry.name);
+              zip[entry.name] = entry.data;
+            }
+          }
+          return zip;
+        },
+      };
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+      // The oversized entry was skipped before being inflated: only the
+      // entries within the limit reached decompression.
+      expect(inflated).toEqual(['content.xml']);
+    });
+
+    it('appends the parsed component to the target block', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(result.blockId).toBe('block-1');
+      expect(result.componentIds).toHaveLength(1);
+
+      const pageMap = docManager.getNavigation().get(0);
+      const blockMap = pageMap.get('blocks').get(0);
+      const components = blockMap.get('components');
+      expect(components.length).toBe(1);
+      const compMap = components.get(0);
+      expect(compMap.get('ideviceType')).toBe('text');
+      expect(compMap.get('order')).toBe(0);
+      // Fresh ID: must not be the original idevice id
+      expect(compMap.get('id')).not.toBe('idevice-original-456');
+      expect(compMap.get('id')).toMatch(/^idevice-/);
+    });
+
+    it('generates fresh component IDs distinct from the original', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.componentIds[0]).not.toBe('idevice-original-456');
+      expect(result.componentIds[0]).toMatch(/^idevice-/);
+    });
+
+    it('appends after existing components and preserves their order', async () => {
+      const docManager = createManagerWithBlock();
+      const Y = docManager._Y;
+      // Pre-seed a component with order 0
+      const existing = new Y.Map();
+      existing.set('id', 'existing-1');
+      existing.set('order', 0);
+      const existingComp = new Y.Array();
+      existingComp.push([existing]);
+      docManager.getNavigation().get(0).get('blocks').get(0).set('components', existingComp);
+
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const components = docManager.getNavigation().get(0).get('blocks').get(0).get('components');
+      expect(components.length).toBe(2);
+      expect(components.get(0).get('id')).toBe('existing-1');
+      expect(components.get(1).get('order')).toBe(1);
+    });
+
+    it('returns error when the target block is not in the page', async () => {
+      const docManager = createManagerWithBlock('page-1', 'block-other');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-missing');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not found');
+    });
+
+    it('returns error for missing content.xml marker', async () => {
+      // Override fflate to return invalid XML
+      global.window.fflate = createMockFflate(INVALID_COMPONENT_XML);
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('odeComponentsResources');
+    });
+
+    it('extracts assets from the zip when an asset manager is present', async () => {
+      const docManager = createManagerWithBlock();
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(assetManager.extractAssetsFromZip).toHaveBeenCalled();
     });
   });
 });
