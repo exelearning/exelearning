@@ -847,7 +847,7 @@ describe('writing lines and cards to be ordered', () => {
         }
     });
 
-    it('sets compact vertical spacing for sort sentence mode, math problems and challenge', () => {
+    it('sets compact vertical spacing for sort sentence mode, math problems, challenge and identify', () => {
         expect(WORKSHEET_ACTIVITY_STYLES).toContain('.worksheet-activity[data-idevice="sort"] .worksheet-item');
         expect(WORKSHEET_ACTIVITY_STYLES).toContain(
             '.worksheet-activity[data-idevice="sort"] .worksheet-writing-space',
@@ -862,6 +862,10 @@ describe('writing lines and cards to be ordered', () => {
         );
         expect(WORKSHEET_ACTIVITY_STYLES).toContain(
             '.worksheet-activity[data-idevice="challenge"] .worksheet-extra > p',
+        );
+        expect(WORKSHEET_ACTIVITY_STYLES).toContain('.worksheet-activity[data-idevice="identify"] .worksheet-item');
+        expect(WORKSHEET_ACTIVITY_STYLES).toContain(
+            '.worksheet-activity[data-idevice="identify"] .worksheet-writing-space',
         );
     });
 

@@ -32,7 +32,7 @@ import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapt
 const PREFIX = 'identifica';
 
 /** Lines of blank room left to name the answer. */
-const ANSWER_LINES = 2;
+const ANSWER_LINES = 1;
 
 /** One question as stored by the Identify iDevice. */
 interface IdentifyQuestion {

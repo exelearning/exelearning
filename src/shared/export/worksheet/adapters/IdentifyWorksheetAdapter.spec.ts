@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import { describe, expect, it } from 'bun:test';
 import { encryptDataGame } from '../../utils/dataGameCipher';
 import type { PrintableItem, UnsupportedActivity } from '../types';
@@ -86,7 +87,7 @@ describe('IdentifyWorksheetAdapter', () => {
     });
 
     it('leaves blank room to name the answer in', () => {
-        expect(itemsOf()[0].answer).toEqual({ kind: 'writingSpace', lines: 2 });
+        expect(itemsOf()[0].answer).toEqual({ kind: 'writingSpace', lines: 1 });
     });
 
     it('leaves the picture out, recognising it being the whole of the game', () => {

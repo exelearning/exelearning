@@ -1474,6 +1474,65 @@ test.describe('Print iDevices', () => {
         expect(heightPx).toBeLessThan(22);
     });
 
+    test('prints an identify activity with compact writing spaces', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Print iDevices Identify');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+
+        const payload = JSON.stringify({
+            typeGame: 'identifica',
+            instructions: 'Adivina el personaje',
+            questionsGame: [
+                {
+                    question: 'Filósofo griego',
+                    numberClues: 2,
+                    clues: ['Discípulo de Sócrates', 'Fundó la Academia'],
+                    solution: 'Platón',
+                },
+                {
+                    question: 'Científico',
+                    numberClues: 1,
+                    clues: ['Teoría de la relatividad'],
+                    solution: 'Einstein',
+                },
+            ],
+            msgs: { msgClue: 'Pista' },
+        });
+        const html = `<div class="identifica-IDevice"><div class="identifica-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+        await page.evaluate(
+            ({ htmlContent }) => {
+                const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Identify Page');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'identify', {
+                    htmlContent,
+                });
+            },
+            { htmlContent: html },
+        );
+
+        await openPrintDialog(page);
+        const { frame } = await choosePrintOption(page, 'idevices');
+
+        const activity = frame.locator('.worksheet-activity[data-idevice="identify"]');
+        await expect(activity).toHaveCount(1);
+
+        await expect(activity.locator('.worksheet-item')).toHaveCount(2);
+        await expect(activity.locator('.worksheet-writing-space')).toHaveCount(2);
+
+        // Verify the compact writing space has 5mm computed height (~18.9px at 96 DPI)
+        const spaceHeight = await activity
+            .locator('.worksheet-writing-space')
+            .first()
+            .evaluate(el => window.getComputedStyle(el).height);
+        const heightPx = Number.parseFloat(spaceHeight);
+        expect(heightPx).toBeGreaterThan(15);
+        expect(heightPx).toBeLessThan(22);
+    });
+
     test('prints a complete activity as gapped text, with its words when they are offered', async ({
         authenticatedPage,
         createProject,
