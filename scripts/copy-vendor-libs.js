@@ -10,6 +10,12 @@
  *   public/app/common/exe_math/ is a customized subset that mixes files from different
  *   sources (MathJax 3.x + 4.x extensions, extra adaptors, SRE mathmaps).
  *   It requires a dedicated migration — see the migration plan for details.
+ *
+ * SimpleLightbox (image-gallery iDevice) is intentionally excluded:
+ *   public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.{js,css}
+ *   is an eXe-patched fork of SimpleLightbox 2.10.3 (array `captionsData`, title/
+ *   author/license caption links, SDWEB CSS block) that image-gallery.js depends on.
+ *   It stays tracked in git until the patch is ported to an upstream release.
  */
 
 'use strict';
@@ -77,28 +83,11 @@ function copyFile(src, dest, options = {}) {
     console.log(`  ✓ ${path.relative(ROOT, dest)}`);
 }
 
-/**
- * Append `content` to a file already produced by copyFile. Throws (rather than
- * calling process.exit) so the CLI wrapper turns failures into a non-zero exit
- * while keeping the error path unit-testable.
- */
-function appendFile(dest, content) {
-    try {
-        fs.appendFileSync(dest, content);
-    } catch (err) {
-        throw new Error(`could not append to ${dest}: ${err.message}`);
-    }
-    console.log(`  ✎ ${path.relative(ROOT, dest)}`);
-}
-
-/** Copy every entry in COPIES, then re-apply local overrides. Throws on the first failure. */
+/** Copy every entry in COPIES. Throws on the first failure. */
 function run() {
     console.log('Copying vendor libs from node_modules...');
     for (const { src, dest, stripSourceMap } of COPIES) {
         copyFile(src, dest, { stripSourceMap });
-    }
-    for (const { dest, content } of APPENDS) {
-        appendFile(dest, content);
     }
     console.log('Done.');
 }
@@ -172,57 +161,11 @@ const COPIES = [
     // jquery-ui
     { src: nm('jquery-ui/dist/jquery-ui.min.js'), dest: pub('libs/jquery-ui/jquery-ui.min.js') },
     { src: nm('jquery-ui/dist/themes/base/jquery-ui.min.css'), dest: pub('libs/jquery-ui/jquery-ui.min.css') },
-
-    // simplelightbox — only min.js and min.css are referenced (from public/libs/simplelightbox/dist/)
-    // and from image-gallery iDevice export directory
-    {
-        src: nm('simplelightbox/dist/simple-lightbox.min.js'),
-        dest: pub('libs/simplelightbox/dist/simple-lightbox.min.js'),
-    },
-    {
-        src: nm('simplelightbox/dist/simple-lightbox.min.css'),
-        dest: pub('libs/simplelightbox/dist/simple-lightbox.min.css'),
-    },
-    {
-        src: nm('simplelightbox/dist/simple-lightbox.min.js'),
-        dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js'),
-    },
-    {
-        src: nm('simplelightbox/dist/simple-lightbox.min.css'),
-        dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css'),
-    },
-];
-
-/**
- * Local CSS override for simplelightbox (marker: SDWEB). The npm distribution
- * does not carry it, so it is re-appended to every generated
- * simple-lightbox.min.css after the pristine file is copied. Without this the
- * override — aqua links plus caption/license padding — is lost on every rebuild,
- * so exported image galleries silently drop those styles. copyFile truncates the
- * destination first, so a rebuild always ends with exactly one override block.
- */
-const SIMPLELIGHTBOX_CSS_OVERRIDE =
-    '\n/* +++++ SDWEB +++++ */' +
-    '.sl-wrapper a{color:aqua}' +
-    '.sl-wrapper a{padding-right:10px}' +
-    '.sl-wrapper span{padding-right:10px}' +
-    '.sl-wrapper .license,.sl-wrapper .license a,.sl-wrapper .custom-license,.sl-wrapper .custom-license a{padding-right:0}' +
-    '/* +++++++++++++++++ */\n';
-
-const APPENDS = [
-    { dest: pub('libs/simplelightbox/dist/simple-lightbox.min.css'), content: SIMPLELIGHTBOX_CSS_OVERRIDE },
-    {
-        dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css'),
-        content: SIMPLELIGHTBOX_CSS_OVERRIDE,
-    },
 ];
 
 // Exported for unit testing. The CLI entry point runs below.
 module.exports = {
-    APPENDS,
     COPIES,
-    SIMPLELIGHTBOX_CSS_OVERRIDE,
-    appendFile,
     copyFile,
     resetCreatedDirs,
     run,

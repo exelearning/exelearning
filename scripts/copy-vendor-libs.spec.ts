@@ -65,6 +65,14 @@ describe('copy-vendor-libs', () => {
             expect(missing).toEqual([]);
         });
 
+        it('never overwrites the eXe-patched SimpleLightbox fork of the image-gallery iDevice', () => {
+            // image-gallery/export/simple-lightbox.min.{js,css} is a locally patched
+            // SimpleLightbox 2.10.3 tracked in git. An npm copy here would replace it
+            // with upstream and drop the author/license captions.
+            const dests = COPIES.map(c => c.dest.replace(/\\/g, '/'));
+            expect(dests.filter(d => d.includes('simple-lightbox'))).toEqual([]);
+        });
+
         it('strips sourceMappingURL from the Bootstrap dist copies exports actually load', () => {
             const stripped = COPIES.filter(c => c.stripSourceMap).map(c => c.dest.replace(/\\/g, '/'));
             expect(stripped.some(d => d.endsWith('libs/bootstrap/bootstrap.bundle.min.js'))).toBe(true);
@@ -126,60 +134,6 @@ describe('copy-vendor-libs', () => {
                 const dest = path.join(tmpDir, 'out', 'bootstrap.bundle.min.js');
                 copyVendor.copyFile(src, dest, { stripSourceMap: true });
                 expect(fs.readFileSync(dest, 'utf8')).not.toContain('sourceMappingURL');
-            } finally {
-                fs.rmSync(tmpDir, { recursive: true, force: true });
-            }
-        });
-    });
-
-    describe('APPENDS table (local simplelightbox override)', () => {
-        type Append = { dest: string; content: string };
-        const APPENDS: Append[] = copyVendor.APPENDS;
-
-        it('re-applies the override to both generated simple-lightbox.min.css copies', () => {
-            const dests = APPENDS.map(a => a.dest.replace(/\\/g, '/'));
-            expect(dests.some(d => d.endsWith('libs/simplelightbox/dist/simple-lightbox.min.css'))).toBe(true);
-            expect(
-                dests.some(d => d.endsWith('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css')),
-            ).toBe(true);
-        });
-
-        it('only appends to files that COPIES also generates', () => {
-            const copyDests = new Set(COPIES.map(c => c.dest));
-            for (const a of APPENDS) {
-                expect(copyDests.has(a.dest)).toBe(true);
-            }
-        });
-
-        it('carries the SDWEB marker and the recovered override rules', () => {
-            for (const a of APPENDS) {
-                expect(a.content).toContain('SDWEB');
-                expect(a.content).toContain('.sl-wrapper a{color:aqua}');
-            }
-            expect(copyVendor.SIMPLELIGHTBOX_CSS_OVERRIDE).toContain('padding-right:0');
-        });
-    });
-
-    describe('appendFile', () => {
-        it('appends content to an existing file without truncating it', () => {
-            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'copy-vendor-append-'));
-            try {
-                const dest = path.join(tmpDir, 'style.min.css');
-                fs.writeFileSync(dest, '.base{color:red}');
-                copyVendor.appendFile(dest, '\n.override{color:aqua}\n');
-                const out = fs.readFileSync(dest, 'utf8');
-                expect(out.startsWith('.base{color:red}')).toBe(true);
-                expect(out).toContain('.override{color:aqua}');
-            } finally {
-                fs.rmSync(tmpDir, { recursive: true, force: true });
-            }
-        });
-
-        it('throws when the destination cannot be written', () => {
-            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'copy-vendor-append-'));
-            try {
-                // Appending to a directory path fails (EISDIR), exercising the error branch.
-                expect(() => copyVendor.appendFile(tmpDir, 'x')).toThrow(/could not append/);
             } finally {
                 fs.rmSync(tmpDir, { recursive: true, force: true });
             }

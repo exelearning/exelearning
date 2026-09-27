@@ -39,9 +39,9 @@ assets still coming from the app's own origin (no CDN).
 ## Problem statement
 
 Maintainers and reviewers cannot audit or safely update opaque, committed vendor
-blobs: they carry no version metadata, several are duplicated byte-for-byte
-across iDevice export directories, and updating one means hand-editing minified
-files. There is no automated security-update path, and the vendored code inflates
+blobs: they carry no version metadata, several are duplicated across iDevice
+export directories, some carry undocumented local eXe modifications on top of
+the upstream release, and updating one means hand-editing minified files. There is no automated security-update path, and the vendored code inflates
 the repository with tens of thousands of unreviewable lines. At the same time,
 the app must keep serving these assets from its own origin for offline, Electron
 desktop, static, and embedded/opaque deployments — a runtime CDN is not an option.
@@ -58,11 +58,14 @@ desktop, static, and embedded/opaque deployments — a runtime CDN is not an opt
 - Establish automated, grouped dependency updates.
 - Keep assets served from the app's own origin (no CDN) across web, desktop,
   static, and embedded builds.
+- Never replace a locally patched file with the pristine upstream build.
 
 ## Non-goals
 
 - Migrating MathJax (`public/app/common/exe_math/`) off its committed subset —
   explicitly deferred.
+- Porting the eXe patch of SimpleLightbox (image-gallery captions) to a current
+  upstream release — deferred; the patched files stay tracked.
 - Rewriting the vanilla frontend to import libraries as ESM through an
   application bundler (globals are retained).
 - Adding subresource-integrity/checksum verification of the copied files beyond
@@ -126,8 +129,8 @@ step a hard error, `build-resource-bundles.js` marks the critical vendor files a
 
 ## User experience
 
-No end-user-visible change. The app loads the same libraries at runtime and
-behaves identically. The change is visible to contributors and CI:
+No intended end-user-visible change. The app loads the same library paths at
+runtime; some libraries are newer upstream versions. The change is visible to contributors and CI:
 
 - A fresh checkout has no runtime vendor files until `bundle:vendor` (via
   `make bundle` / `build:all`) runs.
@@ -148,10 +151,26 @@ each destination directory once (via a `createdDirs` cache) and throws
 `could not copy <src>: …` on failure, which the CLI wrapper turns into a non-zero
 exit. Duplicated libraries are expressed as multiple `COPIES` entries from one
 source: `html2canvas` → `progress-report`, `checklist`, `rubric` export dirs;
-`simple-lightbox.min.{js,css}` → `public/libs/simplelightbox/dist/` and the
-`image-gallery` export dir; `dompurify/purify.min.js` → `edicuatex` and
-`public/libs/dompurify/`. MathJax is intentionally excluded (documented in the
-file header).
+`dompurify/purify.min.js` → `edicuatex` and `public/libs/dompurify/`. Entries
+flagged `stripSourceMap` (the Bootstrap dist files) have their
+`sourceMappingURL` comments removed after copying (#2260). MathJax and the
+patched SimpleLightbox are intentionally excluded (documented in the file
+header).
+
+### Local modifications and version differences
+
+The committed copies were audited against their npm releases before deletion.
+They were not all byte-for-byte upstream files; each difference was handled as
+follows (details in ADR-1593-01):
+
+| Committed file on `main` | Difference from upstream | Handling |
+|---|---|---|
+| `image-gallery/export/simple-lightbox.min.js` | eXe-patched SimpleLightbox 2.10.3 (array `captionsData`, title/author/license caption links via `myCaptionData`); `image-gallery.js` needs it. | Kept tracked and out of `COPIES`/`.gitignore` until the patch is ported. |
+| `image-gallery/export/simple-lightbox.min.css` | Upstream CSS plus a local `/* SDWEB */` block. | Kept tracked with the JS above. |
+| `public/libs/simplelightbox/dist/*` | Upstream 2.10.1, not loaded by anything. | Deleted; `simplelightbox` dropped from `package.json`. |
+| `html2canvas.js` ×3 | Same version (1.4.1) but a Prettier-reformatted non-minified build; two copies added `/* eslint-disable */`. No functional change. | Replaced by npm's `html2canvas.min.js`. |
+| `libs/abcjs/abcjs-audio.css` | Upstream 6.0.4 file, reformatted, plus an eXe block of presentation rules. | Kept tracked; the upstream part was aligned with abcjs 6.7.0. `abcjs-basic-min.js` is generated. |
+| Bootstrap, jQuery UI, interact.js, DOMPurify, pdf.js, mermaid, abcjs JS | Version bumps; no local markers. | Generated from npm. |
 
 ### Yjs shim generator — `scripts/build-yjs-shims.js` (see ADR-1593-02)
 
@@ -180,8 +199,8 @@ matching the previous lenient behavior for tracked files.
 runs inside `build:all` before `bundle:resources`. `.github/workflows/ci.yml`
 adds a "Build vendor libs" step before unit tests. `.github/workflows/e2e.yml`
 adds `public/libs/**`, the mermaid and edicuatex/DOMPurify outputs, and the
-html2canvas / SimpleLightbox iDevice-export files to the dynamic-bundles artifact
-so E2E runs against generated assets.
+html2canvas iDevice-export files to the dynamic-bundles artifact so E2E runs
+against generated assets.
 
 ## Data model
 
@@ -201,13 +220,14 @@ static declarative structures:
 - Committed vendor blobs are deleted and their destinations gitignored; the first
   `build:all` / `make bundle` after checkout regenerates them.
 - CI, packaging, and E2E paths are updated to run/consume `bundle:vendor`.
-- Backward compatibility for runtime consumers is total: the same file paths and
-  the same `window.*` globals are produced, so `yjs-loader.js` and the iDevice
-  export scripts load exactly as before.
+- Runtime consumers keep working unchanged: the same file paths and the same
+  `window.*` globals are produced, so `yjs-loader.js` and the iDevice export
+  scripts load exactly as before. Several libraries move to newer upstream
+  versions (see the table above); locally patched files are not replaced.
 - Rollback is a revert of PR #1593 (restore blobs, drop the scripts and the
   `bundle:vendor` wiring).
-- MathJax is deliberately left tracked, so the "no committed vendor blobs" state
-  is partial until the follow-up migration.
+- MathJax, the SimpleLightbox fork and `abcjs-audio.css` are deliberately left
+  tracked, so the "no committed vendor blobs" state is partial.
 
 ## Security and privacy
 
@@ -248,8 +268,8 @@ intentionally not translated.
 
 - Adds a bounded build-time step (esbuild `buildSync` for three small shims plus
   ~25 file copies); negligible relative to the full `build:all`.
-- No runtime performance change: the same minified files are served, so bundle
-  sizes and load behavior are unchanged.
+- No meaningful runtime performance change: the same library paths are served
+  (html2canvas is now the minified build, so those files shrink).
 - Repository/checkout size drops substantially (~56,900 fewer tracked lines).
 
 ## Testing strategy
@@ -257,8 +277,9 @@ intentionally not translated.
 - **Unit (`bun test`).** `scripts/copy-vendor-libs.spec.ts` verifies the `COPIES`
   table is non-empty, the runtime-loaded rubric `html2canvas.js` copy is present,
   all three html2canvas destinations map from the npm package, every `src`
-  resolves after install, and `copyFile` throws on a missing source and creates
-  each destination directory once.
+  resolves after install, no entry targets the patched SimpleLightbox files, and
+  `copyFile` throws on a missing source and creates each destination directory
+  once.
   `scripts/build-resource-bundles.spec.ts` ("required vendor libs") verifies
   jQuery/Bootstrap are marked `required`, tracked sources are not, and
   `buildLibsBundle()` throws when a required file is moved aside (then restores
@@ -266,9 +287,13 @@ intentionally not translated.
 - **Frontend (Vitest).** `public/vitest.setup.js` loads the generated
   `libs/yjs/yjs.min.js` and exposes `window.Y` / `global.Y`, so Yjs client tests
   under `public/app/yjs/` run against the real generated shim.
+  `image-gallery/export/image-gallery.test.js` opens a gallery through the
+  tracked SimpleLightbox fork and asserts the title, author link and license
+  link are rendered in the caption.
 - **E2E (Playwright).** Collaboration and export/static flows run against the
   vendor assets now included in the e2e dynamic-bundles artifact
-  (`.github/workflows/e2e.yml`).
+  (`.github/workflows/e2e.yml`). `abc-music.spec.ts` renders ABC notation with
+  the generated abcjs build and checks the audio controls.
 - **Patch coverage.** New script lines ship with the colocated `*.spec.ts`
   above, targeting the ≥ 90% patch-coverage gate in `AGENTS.md`.
 
@@ -280,8 +305,8 @@ Delivered as a single PR (#1593) in two conceptual phases reflected in
 1. **Phase 1** — libraries already declared in `package.json` (Yjs shims,
    pdf.js, mermaid) generated by `bundle:vendor`.
 2. **Phase 2** — newly added devDependencies (jQuery, Bootstrap, showdown,
-   fflate, abcjs, html2canvas, DOMPurify, interact.js, jQuery UI, SimpleLightbox,
-   fabric) copied by `copy-vendor-libs.js`.
+   fflate, abcjs, html2canvas, DOMPurify, interact.js, jQuery UI, fabric)
+   copied by `copy-vendor-libs.js`.
 
 CI gains the vendor build step and E2E artifacts gain the generated files in the
 same PR; Dependabot (ADR-1593-03) turns on grouped updates going forward.
@@ -300,6 +325,10 @@ same PR; Dependabot (ADR-1593-03) turns on grouped updates going forward.
   `yjs-ecosystem` and `build-tools` updates plus tests loading the real shim.
 - **Supply-chain compromise** → residual; reduced to lockfile trust, no runtime
   CDN. Future SRI/checksum work.
+- **Silently dropping a local patch** when a committed file is replaced by its
+  upstream build → each file was diffed against its npm release; patched files
+  stay tracked, and `image-gallery.test.js` plus the `copy-vendor-libs.spec.ts`
+  guard fail if the SimpleLightbox fork is replaced.
 
 ## Open questions
 
@@ -308,6 +337,8 @@ same PR; Dependabot (ADR-1593-03) turns on grouped updates going forward.
 - Can the hand-written `y-indexeddb-browser.js` be replaced by a bundled npm
   `y-indexeddb` through the existing alias mechanism?
 - What is the concrete migration path for MathJax (`exe_math/`) into this flow?
+- Should the SimpleLightbox caption patch move into `image-gallery.js` (using a
+  stock upstream release) or be upstreamed?
 
 ## ADRs required or referenced
 
@@ -365,8 +396,10 @@ same PR; Dependabot (ADR-1593-03) turns on grouped updates going forward.
 - [x] Add `.github/dependabot.yml` grouped updates.
 - [x] Add colocated specs (`copy-vendor-libs.spec.ts`,
       `build-resource-bundles.spec.ts`).
-- [ ] Follow-up: MathJax migration; consider SRI/checksums; evaluate npm
-      `y-indexeddb`.
+- [x] Audit committed copies for local modifications; keep patched files
+      (SimpleLightbox fork, `abcjs-audio.css`) tracked.
+- [ ] Follow-up: MathJax migration; port the SimpleLightbox patch; consider
+      SRI/checksums; evaluate npm `y-indexeddb`.
 
 ## References
 
