@@ -107,6 +107,7 @@ export const TrueOrFalseWorksheetAdapter: WorksheetAdapter = {
         const activity: PrintableActivity = {
             ideviceType: 'trueorfalse',
             title: options.title || TrueOrFalseWorksheetAdapter.defaultTitle,
+            twoColumns: true,
             items: selected,
         };
 

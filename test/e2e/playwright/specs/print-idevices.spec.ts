@@ -226,6 +226,17 @@ test.describe('Print iDevices', () => {
                     },
                 },
                 {
+                    type: 'trueorfalse',
+                    html: '',
+                    properties: {
+                        msgs: { msgTrue: 'True', msgFalse: 'False' },
+                        questionsGame: [
+                            { question: '<p>First statement</p>' },
+                            { question: '<p>Second statement</p>' },
+                        ],
+                    },
+                },
+                {
                     type: 'select-media-files',
                     properties: {},
                     html:
@@ -272,6 +283,11 @@ test.describe('Print iDevices', () => {
             await expect(form.locator('.worksheet-option-label')).toHaveText([unsafe, 'False', script, 'A<B']);
             await expect(form.locator('img, script, [onerror]')).toHaveCount(0);
             expect(await page.evaluate(() => '__printRegressionExecuted' in window)).toBe(false);
+
+            const tof = frame.locator('[data-idevice="trueorfalse"]');
+            await expect(tof.locator('.worksheet-items')).toHaveClass(/worksheet-items-columns/);
+            await expect(tof.locator('.worksheet-item')).toHaveCount(2);
+            await expect(tof.locator('.worksheet-option-label')).toHaveText(['True', 'False', 'True', 'False']);
 
             const cards = frame.locator('[data-idevice="select-media-files"] .worksheet-media-option');
             await expect(cards).toHaveCount(2);

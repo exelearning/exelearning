@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import { describe, expect, it } from 'bun:test';
 import type { PrintableActivity, PrintableItem, UnsupportedActivity } from '../types';
 import { TrueOrFalseWorksheetAdapter } from './TrueOrFalseWorksheetAdapter';
@@ -47,6 +48,10 @@ describe('TrueOrFalseWorksheetAdapter', () => {
     it('uses the supplied title and falls back to the default', () => {
         expect(build({}, { title: 'Verdadero o falso' })?.title).toBe('Verdadero o falso');
         expect(build()?.title).toBe('True or false');
+    });
+
+    it('sets questions in two columns', () => {
+        expect(build()?.twoColumns).toBe(true);
     });
 
     it('reads its data from the properties, this being a json activity', () => {
