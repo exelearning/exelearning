@@ -1201,18 +1201,6 @@ var $rubric = {
         );
     },
 
-    ensureJsPDF: function (onReady, onError) {
-        this.loadLocalScript(
-            'jspdf/jspdf.umd.min.js',
-            'jspdf-umd-loader',
-            function () {
-                return !!(window.jspdf && window.jspdf.jsPDF);
-            },
-            onReady,
-            onError
-        );
-    },
-
     /**
      * Candidate URLs for a file shipped in this iDevice's export folder.
      * Only local paths: the workarea, the preview and exported packages
@@ -1286,6 +1274,42 @@ var $rubric = {
         };
 
         tryLoad(0);
+    },
+
+    ensureJsPDF: function (onReady, onError) {
+        if (window.jspdf && window.jspdf.jsPDF) {
+            onReady && onReady();
+            return;
+        }
+
+        var scriptId = 'jspdf-umd-loader';
+        var existing = document.getElementById(scriptId);
+        if (existing) {
+            var tries = 0;
+            var iv = setInterval(function () {
+                tries++;
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    clearInterval(iv);
+                    onReady && onReady();
+                } else if (tries > 50) {
+                    clearInterval(iv);
+                    onError && onError();
+                }
+            }, 100);
+            return;
+        }
+
+        var s = document.createElement('script');
+        s.id = scriptId;
+        s.src = 'https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js';
+        s.async = true;
+        s.onload = function () {
+            onReady && onReady();
+        };
+        s.onerror = function () {
+            onError && onError();
+        };
+        document.head.appendChild(s);
     },
 
     calculateTableScore: function (table) {
