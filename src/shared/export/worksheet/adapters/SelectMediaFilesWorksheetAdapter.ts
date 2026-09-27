@@ -19,10 +19,10 @@
  * - `numberMaxCards` caps how many cards a question puts in play, drawn at random and returned to
  *   stored order. Questions are drawn at random too, always: this activity offers no way to turn
  *   that off.
- * - Cards carry the author's colours, read for paper by `cardColors` as Relate and Flip cards do.
+ * - Cards carry the author's text color, read for paper by textInk.
  */
 
-import { cardAccent, textInk } from '../cardColors';
+import { textInk } from '../cardColors';
 import { extractDataGame, extractDivContent, extractMediaLinksByClass } from '../dataGameReader';
 import { selectCards, selectQuestions, type RandomSource } from '../questionSelection';
 import { sanitizeHtml } from '../sanitizeHtml';
@@ -94,9 +94,7 @@ function buildCard(card: MediaCard, src: string | undefined): PrintableCard | nu
     if (text) printable.text = text;
 
     const ink = textInk(card.color);
-    const accent = cardAccent(card.backcolor);
     if (text && ink) printable.textColor = ink;
-    if (accent) printable.accentColor = accent;
 
     return printable;
 }

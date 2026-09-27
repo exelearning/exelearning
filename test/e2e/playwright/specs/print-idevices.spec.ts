@@ -242,7 +242,12 @@ test.describe('Print iDevices', () => {
                     html:
                         pack('seleccionamedias', {
                             numberMaxCards: '2',
-                            phrasesGame: [{ definition: 'Choose an animal', cards: names.map(eText => ({ eText })) }],
+                            phrasesGame: [
+                                {
+                                    definition: 'Choose an animal',
+                                    cards: names.map(eText => ({ eText, backcolor: '#ff0000' })),
+                                },
+                            ],
                         }) +
                         pictures
                             .map((src, index) => `<a class="seleccionamedias-LinkImages-0" href="${src}">${index}</a>`)
@@ -291,6 +296,9 @@ test.describe('Print iDevices', () => {
 
             const cards = frame.locator('[data-idevice="select-media-files"] .worksheet-media-option');
             await expect(cards).toHaveCount(2);
+            await expect(
+                frame.locator('[data-idevice="select-media-files"] .worksheet-media-option-marked'),
+            ).toHaveCount(0);
             for (const [index, name] of ['Dog', 'Bird'].entries()) {
                 await expect(cards.nth(index).locator('.worksheet-media-option-text')).toHaveText(name);
                 const picture = cards.nth(index).locator('img');

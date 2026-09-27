@@ -181,10 +181,10 @@ describe('SelectMediaFilesWorksheetAdapter', () => {
     });
 
     describe('the author colours', () => {
-        it('are read for paper, as the cards of the other activities are', () => {
+        it('leaves out card background color so options are never framed with borders', () => {
             const [first] = cardsOf(itemsOf({ questions: [question({ cards: [card({ backcolor: '#a40000' })] })] })[0]);
 
-            expect(first.accentColor).toBe('#a40000');
+            expect(first.accentColor).toBeUndefined();
         });
 
         it('drop a font colour the paper would swallow', () => {

@@ -84,16 +84,17 @@ describe('renderWorksheet with pictures to choose between', () => {
         );
     });
 
-    it('draws the author colour as an outline rather than a fill', () => {
-        const body = render([{ ...picture, accentColor: '#a40000', textColor: '#333333' }]);
+    it('renders options without an outer frame or border, preserving readable text color', () => {
+        const body = render([{ ...picture, textColor: '#333333' }]);
 
-        expect(body).toContain('class="worksheet-media-option worksheet-media-option-marked"');
-        expect(body).toContain('style="border-color: #a40000"');
+        expect(body).toContain('<li class="worksheet-media-option">');
+        expect(body).not.toContain('worksheet-media-option-marked');
         expect(body).toContain('<span class="worksheet-media-option-text" style="color: #333333">Pato</span>');
     });
 
-    it('leaves an unmarked option without a border', () => {
+    it('leaves all options without a surrounding box or border', () => {
         expect(render([picture])).toContain('<li class="worksheet-media-option">');
+        expect(render([picture])).not.toContain('style="border');
     });
 
     it('escapes what goes into a picture source and its description', () => {

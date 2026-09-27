@@ -992,12 +992,6 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     break-inside: avoid;
 }
 
-/* The author's colour as an outline, never as a fill: a class set is thirty copies of it. */
-.worksheet-media-option-marked {
-    border: 1px solid #1a1a1a;
-    border-radius: 1mm;
-}
-
 /* The box beside the picture, which is what the student marks. The band is as tall as the tallest
    picture may be, so every card in a row puts its box and its words on the same line however tall
    its own picture is — otherwise a row of mixed pictures reads as scattered rather than as a row. */
@@ -1452,9 +1446,6 @@ function renderCard(card: PrintableCard): string {
 function renderMediaOptions(cards: PrintableCard[]): string {
     const drawn = cards
         .map(card => {
-            const outline = card.accentColor ? ` style="border-color: ${accentOutline(card.accentColor)}"` : '';
-            const marked = card.accentColor ? ' worksheet-media-option-marked' : '';
-
             const color = card.textColor ? ` style="color: ${card.textColor}"` : '';
             const label = card.text ? `<span class="worksheet-media-option-text"${color}>${card.text}</span>` : '';
 
@@ -1470,7 +1461,7 @@ function renderMediaOptions(cards: PrintableCard[]): string {
             const wordsOnly = !card.media;
 
             return (
-                `<li class="worksheet-media-option${marked}"${outline}>` +
+                '<li class="worksheet-media-option">' +
                 `<span class="worksheet-media-option-pick">${body}${wordsOnly ? label : ''}</span>` +
                 `${wordsOnly ? '' : label}</li>`
             );
